@@ -29,8 +29,8 @@ import { readStandardCyclePlanContext, evaluateStandardCyclePlan } from "./stand
 import { preWriteAdmit } from "../../../tools/runtime/pre-write-admit.mjs";
 import { assertStandardWorkflowModelSource, assertStandardWorkflowActivityOutputs } from "../../core/workflow/standard-workflow-model-catalog.mjs";
 import { assertStandardOperationInput } from "../../core/workflow/standard-operation-contracts.mjs";
-import { assertAgenticProcessInstance, agenticProcessPrefixSha256, inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
-import { processModels, processFrameModel, processFrameNode } from "../../core/workflow/process-call-model.mjs";
+import { agenticProcessPrefixSha256, inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
+import { processModels, processFrameNode } from "../../core/workflow/process-call-model.mjs";
 import { assertAgenticProcessModel, agenticPolicyPins } from "../../core/workflow/agentic-process-model.mjs";
 import { shadowHash, freezeShadow, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
@@ -69,6 +69,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   const configuration = freezeShadow(structuredClone(suppliedConfiguration));
   const model = freezeShadow(structuredClone(supplied)); assertAgenticProcessModel(model);
   if (model.contract_version !== "agentic-process-model.v2") fail("STANDARD_PROCESS_PROFILE_UNSUPPORTED");
+  const modelsByHash = new Map(processModels(model).map(component => [shadowHash(component), component]));
   const source = modelSource === null ? null : freezeShadow(structuredClone(assertStandardWorkflowModelSource(modelSource, model)));
   if (source) assertStandardWorkflowActivityOutputs(source, model, configuration.activity_outputs);
   const signer = createOperationJournalSigner(readSigningKey), initial = readWorkflowProjectAuthority({ targetRoot: configuration.target_root });
@@ -116,7 +117,9 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   // process JSON, grants and model facts cannot weaken allocation exclusion.
   function authenticateHistory(instance, { reservation = null, productSha256, checkControlContext = false, forNative = false } = {},
     diagnostic = false, scopeMismatch = "STANDARD_PROCESS_AUTHORITY_CHANGED") {
-    assertAgenticProcessInstance(instance);
+    // Inspection validates and replays the supplied prefix. Use that cursor
+    // within this synchronous check, then discard it with the observations.
+    const cursor = inspectAgenticProcess(instance);
     // Diagnostic authentication uses the immutable model and signed historical
     // bindings. Only execution requires that model's pins to match today's code.
     // This private selection is never taken from caller options or process JSON.
@@ -143,7 +146,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
         if (instance.events.length < covered || shadowHash(instance.events.slice(0, covered)) !== shadowHash(native.instance.events)) fail("STANDARD_PROCESS_NATIVE_HISTORY_CHANGED");
       }
     } else if (reservation) fail("STANDARD_PROCESS_NATIVE_ALLOCATION_CHANGED");
-    const seen = new Map(), frames = new Map(inspectAgenticProcess(instance).occurrences.map(row => [row.occurrence_id, row]));
+    const seen = new Map(), frames = new Map(cursor.occurrences.map(row => [row.occurrence_id, row]));
     for (const [index, event] of instance.events.entries()) {
       if (["assign", "result", "refusal"].includes(event.kind)) {
         if (!native || index >= covered || shadowHash(event) !== shadowHash(native.instance.events[index])) fail("STANDARD_PROCESS_NATIVE_HISTORY_NOT_AUTHENTICATED");
@@ -151,7 +154,10 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
         const id = event.intent?.operation_id ?? event.receipt.operation_id;
         if (!seen.has(id)) {
           const record = operationStore.read(id).record; signer.verify(record); signer.verify(record.preview);
-          const component = processFrameModel(model, frames.get(event.occurrence_id));
+          const frame = frames.get(event.occurrence_id);
+          if (!frame) fail("PROCESS_OCCURRENCE_UNKNOWN");
+          const component = frame.model_sha256 === undefined ? model : modelsByHash.get(frame.model_sha256);
+          if (!component) fail("PROCESS_CALL_TARGET_CHANGED");
           assertProcessOperationBinding(record.preview.binding);
           if (validateJsonSchema(record.preview, previewSchema, "$", { contractKind: "workflow-definition" }).length
             || record.preview.binding.id !== record.intent.binding_ref

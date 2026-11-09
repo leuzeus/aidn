@@ -49,6 +49,13 @@ witness read and pre-CAS authority check observes its own inputs again.
 The observation stays inside history authentication, with no cache or
 caller-supplied authority. Published assets require explicit repinning.
 
+History authentication uses the cursor from its initial full replay and
+resolves frames against the frozen component hashes. FILES record reads use
+one physical path walk before the protected file open. Only absence observed
+during that walk yields a missing record. Redirects, aliases and changes
+during the protected read still fail, and each journal signature is checked
+against freshly read bytes.
+
 ## Eligible occurrence lookup, 2026-11-06
 
 After the common service validates the complete cursor, the mixed host checks

@@ -59,22 +59,23 @@ export function assertAgentRunConfiguration(value) {
   return value;
 }
 
-export function agentRunPhysicalPath(input, { missing = false, directory = false } = {}) {
+function observeAgentRunPhysicalPath(input, { missing = false, directory = false } = {}) {
   absolute(input);
   const resolved = path.resolve(input), parsed = path.parse(resolved);
-  let current = parsed.root, absent = false;
+  let current = parsed.root;
   for (const part of resolved.slice(parsed.root.length).split(path.sep).filter(Boolean)) {
     current = path.join(current, part);
-    if (absent) continue;
     try { if (fs.lstatSync(current).isSymbolicLink()) fail("AGENT_RUN_PATH_REDIRECT"); }
-    catch (cause) { if (missing && cause.code === "ENOENT") absent = true; else throw cause; }
+    catch (cause) { if (missing && cause.code === "ENOENT") return null; throw cause; }
   }
-  if (absent) return resolved;
   const actual = fs.realpathSync.native(resolved);
   const key = value => process.platform === "win32" ? value.toLowerCase() : value;
   if (key(actual) !== key(resolved)) fail("AGENT_RUN_PATH_ALIAS");
   if (directory && !fs.statSync(actual).isDirectory()) fail("AGENT_RUN_DIRECTORY_REQUIRED");
   return actual;
+}
+export function agentRunPhysicalPath(input, options) {
+  return observeAgentRunPhysicalPath(input, options) ?? path.resolve(input);
 }
 export function assertAgentRunSecretScope(resourcesRoot, secretPath) {
   const root = agentRunPhysicalPath(resourcesRoot, { directory: true }), secret = agentRunPhysicalPath(secretPath);
@@ -82,8 +83,10 @@ export function assertAgentRunSecretScope(resourcesRoot, secretPath) {
   if (!inside(root) || inside(path.join(root, "snapshots")) || inside(path.join(root, "scratch"))) fail("AGENT_RUN_SECRET_SCOPE_INVALID");
   return secret;
 }
-export function readAgentRunFile(input, { sha256, maxBytes = 8 * 1024 * 1024, json = true } = {}) {
-  const file = agentRunPhysicalPath(input), before = fs.lstatSync(file);
+export function readAgentRunFile(input, { sha256, maxBytes = 8 * 1024 * 1024, json = true, optional = false } = {}) {
+  const file = observeAgentRunPhysicalPath(input, { missing: optional });
+  if (file === null) return null;
+  const before = fs.lstatSync(file);
   if (!before.isFile() || before.nlink !== 1 || before.size > maxBytes) fail("AGENT_RUN_FILE_INVALID");
   const descriptor = fs.openSync(file, "r");
   try {

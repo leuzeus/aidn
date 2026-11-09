@@ -7,6 +7,7 @@ import { createStandardWorkflowFixture } from "./standard-workflow-fixture-lib.m
 import { createIndexStore } from "../../src/lib/index/index-store.mjs";
 import { createArtifactStore } from "../../src/adapters/runtime/artifact-store.mjs";
 import { createPostgresRuntimeArtifactStore } from "../../src/adapters/runtime/postgres-runtime-artifact-store.mjs";
+import { createWorkflowRecordStore } from "../../src/adapters/runtime/workflow-record-store.mjs";
 import { createRuntimePersistenceFakePgClientFactory } from "./runtime-persistence-fake-pg-lib.mjs";
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { artifactContentHash, assertWorkflowRecordProjection } from "../../src/core/workflow/artifact-compare-swap.mjs";
@@ -14,6 +15,27 @@ import { artifactContentHash, assertWorkflowRecordProjection } from "../../src/c
 const temporary = fs.realpathSync(os.tmpdir()), owned = [];
 let checks = 0;
 try {
+  const filesRoot = createStandardWorkflowFixture("files", owned);
+  const relative = "workflows/record-read-fixture/checkpoint.json";
+  const store = createWorkflowRecordStore({ targetRoot: filesRoot, stateMode: "files", descriptor: {
+    pathForId: () => relative, validate: value => assert.equal(value.id, "checkpoint"),
+    idOf: value => value.id, kind: "runtime",
+  } });
+  const file = path.join(filesRoot, "docs/audit", relative);
+  assert.deepEqual(store.read("checkpoint"), { record: null, content_sha256: null });
+  const record = { id: "checkpoint" };
+  assert.equal(store.compareAndSwap(record, null).written, true);
+  assert.deepEqual(store.read("checkpoint"), { record, content_sha256: artifactContentHash(JSON.stringify(record) + "\n") });
+  const alias = path.dirname(file), relocated = alias + "-relocated";
+  fs.renameSync(alias, relocated);
+  fs.symlinkSync(relocated, alias, process.platform === "win32" ? "junction" : "dir");
+  try {
+    assert.throws(() => store.read("checkpoint"), { code: "AGENT_RUN_PATH_REDIRECT" });
+    fs.unlinkSync(path.join(relocated, path.basename(file)));
+    assert.throws(() => store.read("checkpoint"), { code: "AGENT_RUN_PATH_REDIRECT" });
+  } finally { fs.unlinkSync(alias); }
+  process.stdout.write("PASS FILES record read: absence, canonical bytes, and redirect refusals\n"); checks++;
+
   for (const directory of ["instances", "definitions", "process-instances", "operation-records", "decision-inbox", "control-inbox", "native-allocations"]) {
     const root = createStandardWorkflowFixture("dual", owned), sqliteFile = resolveRuntimeSqliteFile({ targetRoot: root });
     const row = content => ({ path: `workflows/${directory}/checkpoint.json`, kind: "runtime", family: "runtime", content_format: "utf8",

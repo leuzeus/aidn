@@ -22,13 +22,13 @@ export function createWorkflowRecordStore({ targetRoot, stateMode, descriptor, e
   const assertBinding = () => { if (binding(resolution()) !== initialBinding) fail("WORKFLOW_INSTANCE_PERSISTENCE_CHANGED"); };
   const database = stateMode !== "files" || selected.backend === "postgres";
   const artifactStore = options => { assertBinding(); return artifactStoreFactory({ targetRoot: root, env, ...(deadlineMs === undefined ? {} : { deadlineMs }), ...options }); };
-  const location = id => agentRunPhysicalPath(path.join(root, "docs/audit", pathForId(id)), { missing: true });
+  const filename = id => path.join(root, "docs/audit", pathForId(id));
+  const location = id => agentRunPhysicalPath(filename(id), { missing: true });
   function read(id, inspected = false) {
     assertBinding();
     let text = null;
     if (!database) {
-      const file = location(id);
-      if (fs.existsSync(file)) text = readAgentRunFile(file, { json: false }).value.toString("utf8");
+      text = readAgentRunFile(filename(id), { json: false, optional: true })?.value.toString("utf8") ?? null;
     } else {
       const store = artifactStore({ readOnly: true });
       try { const row = store.getArtifact(pathForId(id));
