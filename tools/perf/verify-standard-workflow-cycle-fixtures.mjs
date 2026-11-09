@@ -212,8 +212,11 @@ if (process.argv[2] === "--accept") {
       const simulation = simulateAgenticProcess({ instanceId: pending.record.instance_id, model: pending.record.model,
         parameters: pending.record.initial_parameters, policyPins: pending.record.policy_pins, scopeId: pending.record.scope_id, events: pending.record.events });
       assert.equal(simulation.trace.at(-1).instance_sha256, pending.record.instance_sha256);
+      const retainedEvent = eventBytes();
       await assert.rejects(operations.finalizeCycleCheckpoint(checkpointPlan, { write: true, expectPlan: checkpointPlan.plan_sha256, assertAuthorized() {}, assertCurrent() {} }),
-        { code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" });
+        { code: "STANDARD_RESOURCE_FENCE_RECONCILIATION_REQUIRED", effect_status: "no_effect" });
+      assert.deepEqual(eventBytes(), retainedEvent);
+      assert.equal(business.ownerPending(), true);
       pass(`${label}: lost post-hook confirmation retains unknown effects and ownership without a second checkpoint`);
       continue;
     }
