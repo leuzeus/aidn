@@ -49,6 +49,12 @@ witness read and pre-CAS authority check observes its own inputs again.
 The observation stays inside history authentication, with no cache or
 caller-supplied authority. Published assets require explicit repinning.
 
+R05 context preparation reads its fixed canonical document set in one bounded
+PostgreSQL observation after the closure-admission check. The same ordered
+required and optional documents feed the diagnostic digest. Integrity and
+backend selection are checked before returning the document observation. A
+separate preparation, dispatch or effect fence still reads fresh evidence.
+
 History authentication uses the cursor from its initial full replay and
 resolves frames against the frozen component hashes. FILES record reads use
 one physical path walk before the protected file open. Only absence observed

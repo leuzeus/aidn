@@ -3522,6 +3522,12 @@ second admission invocation.
 
 ## Artifact efficiency intent
 
+The STANDARD drift context uses a bounded canonical document read after
+closure admission. The fixture comparison checks byte-identical ordered
+context and evidence on PostgreSQL, missing required artifacts, optional
+omissions, and fresh reads after a later canonical revision. This comparison
+measures that context read only.
+
 The project artifact command fixture checks bounded PostgreSQL journal reads
 with a doubled SQL transport. It covers canonical scope selection, requested
 order, missing paths, invalid requests, bounded output and a failed worker.

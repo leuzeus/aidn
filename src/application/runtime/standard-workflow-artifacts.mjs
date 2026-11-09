@@ -42,18 +42,33 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     if (current.backend === "sqlite" && !fs.existsSync(resolveRuntimeSqliteFile({ targetRoot: root }))) fail("STANDARD_CANONICAL_STORE_UNAVAILABLE");
     return createProjectArtifactStore({ targetRoot: root, readOnly, existingOnly: true, env });
   }
+  function readRow(name, row, selected, required) {
+    if (selected.database && row && (row.content_format !== "utf8" || typeof row.content !== "string" || artifactContentHash(row.content) !== row.sha256))
+      fail("STANDARD_ARTIFACT_INTEGRITY_INVALID");
+    if (!row && required) fail("STANDARD_REQUIRED_ARTIFACT_MISSING");
+    return { path: name, content: row?.content ?? null, sha256: row?.sha256 ?? null, source: selected.database ? selected.backend : "files" };
+  }
   function read(name, { required = false } = {}) {
     relative(name); const selected = describe(); let row = null;
     if (selected.database) {
       const store = open(true);
       try { row = store.getArtifact(name); } finally { store.close(); }
-      if (row && (row.content_format !== "utf8" || typeof row.content !== "string" || artifactContentHash(row.content) !== row.sha256)) fail("STANDARD_ARTIFACT_INTEGRITY_INVALID");
     } else {
       const file = location(name);
       if (fs.existsSync(file)) { const observed = readAgentRunFile(file, { json: false, maxBytes: 1048576 }); row = { content: observed.value.toString("utf8"), sha256: observed.sha256 }; }
     }
-    if (!row && required) fail("STANDARD_REQUIRED_ARTIFACT_MISSING");
-    return { path: name, content: row?.content ?? null, sha256: row?.sha256 ?? null, source: selected.database ? selected.backend : "files" };
+    return readRow(name, row, selected, required);
+  }
+  function readMany(names, { required = [] } = {}) {
+    const requiredNames = new Set(required), selected = describe();
+    if (selected.backend !== "postgres") return names.map(name => read(name, { required: requiredNames.has(name) }));
+    const paths = names.map(relative), store = open(true);
+    try {
+      if (store.backend !== "postgres") fail("STANDARD_CANONICAL_BACKEND_CONFLICT");
+      const rows = store.getArtifacts(paths);
+      if (shadowHash(describe()) !== shadowHash(selected)) fail("STANDARD_CANONICAL_BACKEND_CONFLICT");
+      return paths.map((name, index) => readRow(name, rows[index], selected, requiredNames.has(name)));
+    } finally { store.close(); }
   }
   function compareAndSwap(change) {
     if (!activeOwner) fail("STANDARD_EFFECT_OWNER_REQUIRED");
@@ -259,6 +274,6 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     if (new Set(result.map(row => BigInt(row.cycle_id.slice(1)).toString())).size !== result.length) fail("STANDARD_CYCLE_ID_AMBIGUOUS");
     return result;
   }
-  return Object.freeze({ root, describe, read, inventory, observeInventory, sessions, cycles, metadataHash, compareAndSwapPreservingMetadata, compareAndSwap, project, withLocalEffectOwner, assertLocalEffectOwner,
+  return Object.freeze({ root, describe, read, readMany, inventory, observeInventory, sessions, cycles, metadataHash, compareAndSwapPreservingMetadata, compareAndSwap, project, withLocalEffectOwner, assertLocalEffectOwner,
     resourceFence: () => fence(), localOwnerPending: () => fs.existsSync(lock()), ownerPending: () => fs.existsSync(lock()) || fence().read().record?.state === "held" });
 }

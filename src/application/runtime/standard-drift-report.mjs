@@ -76,22 +76,16 @@ export async function readStandardDriftContext({ targetRoot, productSha256, prod
   const objectiveSection = brief ? /^##\s+Objective\s*\r?\n([\s\S]*?)(?=^##?\s|$(?![\s\S]))/m.exec(brief.content)?.[1]?.trim() : null;
   const objective = brief ? objectiveSection?.replace(/^\s*-\s*/, "").replace(/\s+/gu, " ").trim() : analyzeStructuredArtifact(session.content).key_values.session_objective;
   if (!objective || objective.length > 4096) fail("STANDARD_DRIFT_OBJECTIVE_REQUIRED");
-  const documents = ["SPEC.md", "WORKFLOW.md", "baseline/current.md", "snapshots/context-snapshot.md"].map(name => artifacts.read(name, { required: true }));
+  const required = ["SPEC.md", "WORKFLOW.md", "baseline/current.md", "snapshots/context-snapshot.md"];
   // Baseline finalization writes these canonical artifacts too. They must be
-  // observed before a later session-close R05, never hidden as foreign paths.
-  for (const name of ["baseline/history.md", "index.md"]) {
-    const row = artifacts.read(name); if (row.sha256 !== null) documents.push(row);
-  }
-  const runtime = artifacts.read("RUNTIME-STATE.md"); if (runtime.sha256 !== null) documents.push(runtime);
-  const parking = artifacts.read("parking-lot.md");
-  if (parking.sha256 !== null) documents.push(parking);
-  documents.push(current, session); if (cycle) {
-    documents.push(cycle, brief);
-    for (const name of ["plan.md", "change-requests.md"]) documents.push(artifacts.read(cycle.path.replace(/status\.md$/, name), { required: true }));
-    for (const name of ["hypotheses.md", "audit-spec.md", "traceability.md", "decisions.md"]) {
-      const row = artifacts.read(cycle.path.replace(/status\.md$/, name)); if (row.sha256 !== null) documents.push(row);
-    }
-  }
+  // observed before a later session-close R05.
+  const sessionPaths = [...required, "baseline/history.md", "index.md", "RUNTIME-STATE.md", "parking-lot.md"];
+  const cyclePaths = cycle ? ["plan.md", "change-requests.md", "hypotheses.md", "audit-spec.md", "traceability.md", "decisions.md"]
+    .map(name => cycle.path.replace(/status\.md$/, name)) : [];
+  const observed = artifacts.readMany([...sessionPaths, ...cyclePaths], { required: [...required, ...cyclePaths.slice(0, 2)] });
+  const present = row => row.sha256 !== null;
+  const documents = [...observed.slice(0, sessionPaths.length).filter(present), current, session];
+  if (cycle) documents.push(cycle, brief, ...observed.slice(sessionPaths.length).filter(present));
   for (const row of documents) assertDiagnosticPathScope(path.join(artifacts.root, "docs/audit", row.path), deniedRoots);
   const git = readControlledDriftGit({ root: artifacts.root, productRoot, productFiles, deniedRoots, environment,
     observedDocuments: documents.map(row => "docs/audit/" + row.path) });

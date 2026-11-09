@@ -29,6 +29,11 @@ read-only transaction. Journal validation and signature checks still run for
 every referenced record. No batch result carries across authentication calls
 or effect boundaries.
 
+The STANDARD R05 context reader groups the fixed post-admission document
+reads when PostgreSQL owns the artifacts. It reuses the bounded read-only
+artifact port and checks content integrity and required paths in request order.
+A later diagnostic or effect boundary acquires its own observation.
+
 ## Do Not Move Implicitly
 
 ADR-0013 defines an explicit migration of standard AIDN executable assets to a
