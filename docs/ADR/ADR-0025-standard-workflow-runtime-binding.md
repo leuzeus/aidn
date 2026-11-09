@@ -2967,9 +2967,21 @@ archived witness binds the original bytes and stable file identity. The move
 may change the filesystem's change timestamp. The original signed dispatch
 retains its exact pre-move identity, original fence and UNKNOWN outcome.
 Cold retries require a known transfer and refuse missing, foreign or duplicate
-witnesses. Fixture transfer intents exercise this primitive. The ordinary host
-still needs the signed disposition reservation, provider and grant checks,
-receipt append and acceptance to expose recovery.
+witnesses. The operation disposition profile uses the existing canonical
+control and audit stores. It binds the original UNKNOWN result and the
+three postimages to a distinct confirmation. A new owner can resume an exact
+transfer recorded in a signed control intent. A pre-archive audit preserves
+the selected receipt across a process exit after the move.
+
+The current provider must authenticate the same subject before transfer,
+archival and receipt admission. The plan preserves its selected provider
+observation, including its temporal digest. Later authenticated collections
+must confirm the same stable subject. The host obtains a separate current
+grant for the disposition and its acceptance. Provider requests for receipt
+admission run under the fence outside the bounded reducer callback. That
+callback checks the retained admission, current fence and exact local
+witness. The original UNKNOWN and dispatch remain immutable. The new receipt
+opens the existing corrective checkpoint after acceptance.
 
 ### Missing checkpoint acknowledgement, released local owner, 2026-11-04
 

@@ -17,6 +17,7 @@ import { artifactContentHash } from '../../src/core/workflow/artifact-compare-sw
 import { assertStandardOperationInput, assertStandardOperationOutput, assertStandardPrCorrectionPlan } from '../../src/core/workflow/standard-operation-contracts.mjs';
 import { agenticProcessImplementationPins } from '../../src/application/runtime/agentic-process-implementation-pins.mjs';
 import { createPrCorrectionReopenFixture } from './standard-pr-correction-fixture-lib.mjs';
+import { verifyReopenDisposition } from './verify-standard-pr-correction-reopen-disposition-fixtures.mjs';
 import { createStandardOperationDisposition } from '../../src/application/runtime/standard-operation-disposition.mjs';
 import { createOperationJournalSigner } from '../../src/core/workflow/process-operation-journal.mjs';
 import { createProcessDispatchRecordStore } from '../../src/adapters/runtime/process-dispatch-record-store.mjs';
@@ -288,6 +289,7 @@ if (process.argv[2] === '--retirement-owner-worker') {
       archive_sha256: archivedWitness.sha256, original_dispatch_preserved: true, original_result: 'unknown', application_consent: 'FIXTURE',
       application_receipt: 'NOT_RUN', retained_fixture_intents: reservations }));
   });
+  if (mode === 'files') await test('cold disposition preserves UNKNOWN and accepts one confirmation under a current separate grant', verifyReopenDisposition);
   console.log(JSON.stringify({ status: 'PASS', checks, mode, canonical_cas_projection_git_admission: 'ACTUAL', accepted_triage_and_external_source: 'DOUBLED',
     source_factory: 'SEPARATE_SUITE', host_ir_binding: 'NOT_EXERCISED_BY_THIS_SUITE', native_corrections: 'NOT_RUN', full_standard: false, installed_archive: 'NOT_RUN' }));
 } finally {

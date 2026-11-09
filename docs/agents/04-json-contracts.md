@@ -7,6 +7,13 @@ checkpoint, revised objective and canonical cycle inventory. A signed
 fresh cycle fields to the existing separately authorized initializer.
 Earlier inbox and decision versions retain their readers.
 
+The private operation disposition plan and authorization request support a
+`confirmed_reopen` profile. Its signed plan includes the original dispatch
+and journal digests, the exact lock digest, and the proposed confirmation
+output digest and bytes. Existing original-return plans keep their closed
+shape. The operation journal can retain the original UNKNOWN result and a
+distinct confirmed disposition receipt for the same intent.
+
 At the two published pre-triage waits, `--control-source aidn:external-merge`
 adds a stable `merge_subject_sha256` to the existing control action preview.
 Exact apply rechecks fresh protected observations. The control reservation v1

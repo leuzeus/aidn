@@ -1065,8 +1065,15 @@ source and provider are fixtures. The same FILES case transfers the held
 fence through signed fixture intents across process exits before and after
 the archive operation. It retains the physical lock bytes, original
 dispatch and three business postimages, and refuses duplicate locks and
-revoked fixture consent. Ordinary host disposition, acceptance and
-redelivery still require separate evidence.
+revoked fixture consent.
+
+The FILES case also runs the operation disposition fixture on a small process
+graph with real canonical records and the original writer. It exits one child after fence
+transfer and a second after archiving the lock, then resumes to append and
+accept a distinct result. The fixture also checks current provider refusal,
+separate acceptance consent, retry without a second append, and the next
+checkpoint in the reducer. Its provider and consent are fixtures. The
+published corrective workflow and redelivery require separate evidence.
 
 `verify-standard-pr-correction-checkpoint-fixtures.mjs --mode=files|dual|db-only`
 checks the internal checkpoint component now selected after reopening by the

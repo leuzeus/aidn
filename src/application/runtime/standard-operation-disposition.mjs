@@ -18,13 +18,32 @@ import grantSchema from "../../core/contracts/workflow-definition/process-dispos
 import controlSchema from "../../core/contracts/workflow-definition/process-operation-control-intent.v1.schema.json" with { type: "json" };
 import fenceSchema from "../../core/contracts/workflow-definition/local-artifact-resource-fence.v1.schema.json" with { type: "json" };
 import { assertProcessReconciliationInventory } from "../../core/workflow/process-reconciliation-inventory.mjs";
-import { inspectInterruptedReopenLock } from "./local-artifact-owner-retirement.mjs";
+import { inspectInterruptedReopenLock, retireInterruptedReopenLock } from "./local-artifact-owner-retirement.mjs";
 
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const bodyOf = ({ authentication, key_id, ...body }) => body;
 const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length;
+const reopenAssessment = "confirmed_reopen";
+const isReopenPlan = plan => plan?.assessment === reopenAssessment;
+function validPlan(plan) {
+  if (!valid(plan, planSchema) || isReopenPlan(plan) !== Object.hasOwn(plan, "reopen")) return false;
+  if (!isReopenPlan(plan)) return true;
+  const output = assertStandardOperationOutput(plan.reopen.output), causal = output.observations.causal;
+  return output.operation_ref === "session_pr_correction_reopen" && output.outcome === "completed"
+    && output.effect_status === "confirmed" && causal?.canonical_transition === "verified-separately-by-exact-plan-postimages"
+    && [causal.origin_source_sha256, causal.event_sha256, causal.git_before_sha256, causal.git_after_sha256, causal.fresh_observation_sha256]
+      .every(value => typeof value === "string" && /^[a-f0-9]{64}$/.test(value))
+    && shadowHash(output) === plan.output_sha256;
+}
+function reopenConfirmationSubject(output) {
+  const { causal, ...observations } = output.observations;
+  // The provider signs a new collection on each observation. Its temporal
+  // digest is evidence retained by the first plan, not the stable subject.
+  const { fresh_observation_sha256, ...subject } = causal;
+  return shadowHash({ ...output, observations: { ...observations, causal: subject } });
+}
 const assertRecord = value => {
-  if (!valid(value, recordSchema) || !valid(value.plan, planSchema) || value.operation_id !== value.plan.operation_id
+  if (!valid(value, recordSchema) || !validPlan(value.plan) || value.operation_id !== value.plan.operation_id
     || value.receipt.operation_id !== value.operation_id || value.plan.output_sha256 !== value.receipt.output_sha256)
     fail("PROCESS_DISPOSITION_RECORD_INVALID");
   return value;
@@ -34,9 +53,12 @@ const dispositionPath = id => {
   return `workflows/operation-dispositions/${id}.json`;
 };
 const controlPath = id => dispositionPath(id).replace("operation-dispositions/", "operation-control-intents/");
-function inventoryMaterial(retained, id) {
+function inventoryMaterial(retained, id, reopening = false) {
   const { observed_at_ms, authentication, key_id, ...material } = retained;
-  material.resources = material.resources.filter(row => !["artifact:" + dispositionPath(id), "artifact:" + controlPath(id), "artifact:" + LOCAL_ARTIFACT_FENCE_PATH].includes(row.ref));
+  const controls = ["artifact:" + dispositionPath(id), "artifact:" + controlPath(id), "artifact:" + LOCAL_ARTIFACT_FENCE_PATH];
+  // These two locations are one separately authenticated physical witness.
+  if (reopening) controls.push("local:effects.lock", "local:retired-" + id + ".lock");
+  material.resources = material.resources.filter(row => !controls.includes(row.ref));
   return material;
 }
 
@@ -49,7 +71,7 @@ const correctionReopen = "session_pr_correction_reopen";
 const planBoundOwner = id => artifactProfiles.has(id) || id === prCheckpoint || id === correctionReopen;
 
 export function createStandardOperationDisposition({ targetRoot, stateMode, signer, artifacts, readOperation,
-  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, confirmPrCheckpoint,
+  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, confirmPrCheckpoint, confirmInterruptedReopen,
   onBoundary = async () => {}, onLocalResource = () => {}, now = Date.now }) {
   const dispatches = createProcessDispatchRecordStore({ targetRoot, stateMode });
   const acceptance = new AsyncLocalStorage();
@@ -91,7 +113,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     for (const attempt of before.record.attempts) {
       signer.verify(attempt.plan); signer.verify(attempt.inventory);
       assertProcessReconciliationInventory(attempt.inventory);
-      if (!valid(attempt.plan, planSchema) || attempt.plan.operation_id !== id
+      if (!validPlan(attempt.plan) || attempt.plan.operation_id !== id
         || attempt.plan.physical_root_sha256 !== shadowHash(artifacts.root)
         || attempt.plan.runtime_sha256 !== runtime()
         || attempt.inventory.instance_id !== attempt.plan.instance_id
@@ -112,7 +134,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
         || attempt.grant.verification.authority_id !== attempt.grant.grant.authority_id
         || attempt.instance_sha256 !== attempt.plan.instance_sha256
         || attempt.journal_sha256 !== attempt.plan.journal_sha256
-        || shadowHash(inventoryMaterial(attempt.inventory, id)) !== attempt.plan.inventory_sha256
+        || shadowHash(inventoryMaterial(attempt.inventory, id, isReopenPlan(attempt.plan))) !== attempt.plan.inventory_sha256
         || attempt.resource_fence.previous_sha256 !== attempt.plan.fence_sha256)) fail("PROCESS_CONTROL_INTENT_SUBJECT_CHANGED");
       if (attempt.action === "acceptance" && (attempt.grant !== null || !attempt.receipt_sha256 || !attempt.audit_sha256))
         fail("PROCESS_CONTROL_INTENT_SUBJECT_CHANGED");
@@ -170,16 +192,72 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     // declare its successful required projection in the captured original output.
     return "confirmed_original";
   }
-  function observation(id) {
-    const operation = readOperation(id).record, capsule = readDispatch(id, operation).record;
+  function reopenOwner(record, capsule, allowTransfer = false) {
+    const original = record.results[0];
+    if (record.intent.binding_ref !== correctionReopen || record.phase !== "receipted" || record.results.length > 2
+      || original?.receipt.effect_status !== "unknown" || original?.receipt.outcome !== "reconciliation_required"
+      || capsule?.contract_version !== "process-dispatch-record.v2" || capsule.phase !== "returned"
+      || capsule.output_sha256 !== original.receipt.output_sha256 || capsule.output_sha256 !== shadowHash(original.output)
+      || capsule.local_owner_intentions.length !== 1 || capsule.leases.length !== 1)
+      fail("PROCESS_INTERRUPTED_REOPEN_SUBJECT_REQUIRED");
+    const [originalLease] = capsule.leases, [intention] = capsule.local_owner_intentions;
+    const fence = artifacts.resourceFence().read(), processIdentity = capsule.process_identity, dispatchSha = shadowHash(capsule);
+    const originalHeld = shadowHash(originalLease.resource_fence) === shadowHash(fence.record);
+    const audit = allowTransfer ? dispositions.read(record.operation_id).record : null;
+    if (audit) {
+      signer.verify(audit); signer.verify(audit.plan);
+      if (!isReopenPlan(audit.plan) || audit.plan.dispatch_sha256 !== dispatchSha) fail("PROCESS_INTERRUPTED_REOPEN_SUBJECT_REQUIRED");
+    }
+    const lock = inspectInterruptedReopenLock(artifacts.root, record.operation_id, intention, originalLease,
+      { allowRetired: Boolean(audit) && !originalHeld });
+    if (audit && audit.plan.reopen.lock_sha256 !== lock.sha256) fail("PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED");
+    const transfers = allowTransfer && !originalHeld ? readControls(record.operation_id).record?.attempts : [];
+    const known = transfers?.find(attempt => isReopenPlan(attempt.plan) && attempt.plan.dispatch_sha256 === dispatchSha
+      && attempt.plan.reopen.lock_sha256 === lock.sha256
+      && attempt.receipt_sha256 === shadowHash(attempt.action === "disposition" ? original.receipt : audit?.receipt ?? null)
+      && [attempt.resource_fence.record, { ...attempt.resource_fence.record, state: "released", revision: attempt.resource_fence.record.revision + 1 }]
+        .some(row => shadowHash(row) === shadowHash(fence.record)));
+    if (originalLease.status !== "held" || originalLease.owner.pid !== record.owner?.pid || originalLease.owner.pid !== processIdentity.pid
+      || shadowHash(originalLease.resource_fence) !== shadowHash(intention.resource_fence.record)
+      || shadowHash(originalLease.resource_fence.process_identity) !== shadowHash(processIdentity)
+      || !(originalHeld || known) || observeLocalProcessOwner(processIdentity) !== "terminated")
+      fail("PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED");
+    const observed = observeBoundary ? observeBoundary() : { authority: readAuthority(), context: readContext() };
+    if (shadowHash(observed.authority) !== capsule.authority_sha256 || shadowHash(observed.context) !== capsule.context_after_sha256)
+      fail("PROCESS_INTERRUPTED_REOPEN_CONTEXT_CHANGED");
+    return { original, originalLease, intention, lock, fence, dispatch_sha256: dispatchSha };
+  }
+  async function reopenConfirmation(operation, instance, owner, signal) {
+    if (typeof confirmInterruptedReopen !== "function") fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED");
+    if (!instance.events.some(row => row.kind === "operation_result" && shadowHash(row.receipt) === shadowHash(owner.original.receipt)))
+      fail("PROCESS_INTERRUPTED_REOPEN_SUBJECT_REQUIRED");
+    const assertOwner = () => {
+      const latest = reopenOwner(operation, readDispatch(operation.operation_id, operation).record, true);
+      if (shadowHash(readOperation(operation.operation_id).record) !== shadowHash(operation)
+        || latest.dispatch_sha256 !== owner.dispatch_sha256 || latest.lock.sha256 !== owner.lock.sha256
+        || latest.lock.retired !== owner.lock.retired || latest.fence.content_sha256 !== owner.fence.content_sha256)
+        fail("PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED");
+    };
+    const output = await confirmInterruptedReopen(instance, operation, owner.original, { assertOwner, signal });
+    if (signal?.aborted) fail("PROCESS_DISPOSITION_ABORTED");
+    assertOwner();
+    const valid = assertStandardOperationOutput(output);
+    if (valid.operation_ref !== correctionReopen || valid.outcome !== "completed" || valid.effect_status !== "confirmed")
+      fail("PROCESS_INTERRUPTED_REOPEN_SUBJECT_REQUIRED");
+    return valid;
+  }
+  function observation(id, reopenOutput = null, operation = readOperation(id).record) {
+    const capsule = readDispatch(id, operation).record;
+    const owner = reopenOutput === null ? null : reopenOwner(operation, capsule, true);
     const { instance, inventory: retained } = inventory.observeSubject(operation.intent.instance_id);
     if (retained.operations.find(row => row.operation_id === id)?.record_sha256 !== shadowHash(operation))
       fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
     // This operation's audit attempts are retained and authenticated separately.
     // Exclude only their own artifact from the pre-append business-resource fence,
     // so a crash before the journal CAS can resume without rewriting an old plan.
-    const material = inventoryMaterial(retained, id);
-    return { operation, instance, capsule, inventory_sha256: shadowHash(material), assessment: assessment(instance, operation, capsule),
+    const material = inventoryMaterial(retained, id, owner !== null);
+    return { operation, instance, capsule, owner, reopenOutput, inventory_sha256: shadowHash(material),
+      assessment: owner ? reopenAssessment : assessment(instance, operation, capsule),
       authority_sha256: shadowHash(readAuthority()), runtime_sha256: runtime(), physical_root_sha256: shadowHash(artifacts.root),
       fence_sha256: artifacts.resourceFence().read().content_sha256, inventory_record: retained };
   }
@@ -191,7 +269,8 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       journal_sha256: shadowHash(operation), dispatch_sha256: capsule ? shadowHash(capsule) : null,
       inventory_sha256: observed.inventory_sha256, assessment: observed.assessment,
       fence_sha256: observed.fence_sha256,
-      output_sha256: observed.assessment === "unknown" ? null : capsule.output_sha256 };
+      output_sha256: observed.assessment === "unknown" ? null : observed.owner ? shadowHash(observed.reopenOutput) : capsule.output_sha256,
+      ...(observed.owner ? { reopen: { lock_sha256: observed.owner.lock.sha256, output: observed.reopenOutput } } : {}) };
   }
   async function invokeSource(method, request, signal) {
     if (typeof dispositionSource?.[method] !== "function") fail("PROCESS_DISPOSITION_AUTHORITY_UNAVAILABLE");
@@ -237,29 +316,62 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       || proof.request_sha256 !== shadowHash(request)) fail("PROCESS_DISPOSITION_AUTHORIZATION_NOT_AUTHENTICATED");
     return proof;
   }
+  async function prepareReopen(operation, expectedSha256, signal) {
+    const instance = readInstance(operation.intent.instance_id);
+    if (instance.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");
+    const id = operation.operation_id, capsule = readDispatch(id, operation).record;
+    const previous = dispositions.read(id).record;
+    if (previous) {
+      signer.verify(previous); signer.verify(previous.plan);
+      if (operation.results.some(row => shadowHash(row.receipt) === shadowHash(previous.receipt))) return previous.plan;
+    }
+    const owner = reopenOwner(operation, capsule, true);
+    const output = await reopenConfirmation(operation, instance, owner, signal);
+    const retainedOutput = previous?.plan.reopen.output ?? output;
+    if (reopenConfirmationSubject(output) !== reopenConfirmationSubject(retainedOutput)) fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+    const observed = observation(id, retainedOutput);
+    if (observed.instance.instance_sha256 !== expectedSha256 || shadowHash(observed.operation) !== shadowHash(operation)
+      || observed.owner.lock.sha256 !== owner.lock.sha256 || observed.owner.lock.retired !== owner.lock.retired
+      || observed.fence_sha256 !== owner.fence.content_sha256) fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+    return signer.seal({ contract_version: "process-operation-disposition-plan.v1", ...subject(observed), prepared_at_ms: now(), nonce: randomUUID() });
+  }
+  function checkReopenReceipt(plan, record, capsule) {
+    const owner = reopenOwner(record, capsule, true);
+    if (!owner.lock.retired || owner.lock.sha256 !== plan.reopen.lock_sha256 || owner.dispatch_sha256 !== plan.dispatch_sha256)
+      fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+    return owner;
+  }
+  async function admitReopenReceipt(reserved, instance, lease, signal) {
+    // Keep provider requests outside the reducer's bounded authority callback.
+    // The receipt still needs a fresh local witness and exact instance CAS.
+    const id = reserved.operation_id, record = readOperation(id).record, receipt = reserved.receipt;
+    const capsule = readDispatch(id, record).record;
+    if (!record.results.some(row => shadowHash(row.receipt) === shadowHash(receipt))
+      || receipt.output_sha256 !== reserved.plan.output_sha256) fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+    const output = await reopenConfirmation(record, instance, checkReopenReceipt(reserved.plan, record, capsule), signal);
+    if (reopenConfirmationSubject(output) !== reopenConfirmationSubject(reserved.plan.reopen.output))
+      fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+    const grant = await currentGrant({ action: "operation_disposition_accept", disposition_sha256: shadowHash(reserved),
+      receipt_sha256: shadowHash(receipt), instance_sha256: instance.instance_sha256, scope_id: instance.scope_id }, signal);
+    artifacts.resourceFence().assert(lease);
+    const before = dispositions.read(id);
+    if (readInstance(instance.instance_id).instance_sha256 !== instance.instance_sha256
+      || shadowHash(readOperation(id).record) !== shadowHash(record)
+      || shadowHash(readDispatch(id, record).record) !== shadowHash(capsule)
+      || shadowHash(before.record) !== shadowHash(reserved)) fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+    checkReopenReceipt(reserved.plan, record, capsule);
+    if (signal?.aborted) fail("PROCESS_DISPOSITION_ABORTED");
+    freshGrant(grant.grant, grant.request);
+    if (reserved.admissions.length >= 32) fail("PROCESS_DISPOSITION_ADMISSION_LIMIT");
+    const admission = { instance_sha256: instance.instance_sha256, receipt_sha256: shadowHash(receipt), grant };
+    write(dispositions, { ...bodyOf(reserved), revision: reserved.revision + 1, admissions: [...reserved.admissions, admission] }, before.content_sha256);
+    return admission;
+  }
   return Object.freeze({
     observeInterruptedReopen(record) {
       signer.verify(record); signer.verify(record.preview);
-      const { record: capsule } = readDispatch(record.operation_id, record);
-      const result = record.results.at(-1);
-      if (record.intent.binding_ref !== correctionReopen || record.phase !== "receipted"
-        || result?.receipt.effect_status !== "unknown" || result?.receipt.outcome !== "reconciliation_required"
-        || capsule?.contract_version !== "process-dispatch-record.v2" || capsule.phase !== "returned"
-        || capsule.output_sha256 !== result.receipt.output_sha256 || capsule.local_owner_intentions.length !== 1 || capsule.leases.length !== 1)
-        fail("PROCESS_INTERRUPTED_REOPEN_SUBJECT_REQUIRED");
-      const [lease] = capsule.leases, [intention] = capsule.local_owner_intentions;
-      const lock = inspectInterruptedReopenLock(artifacts.root, record.operation_id, intention, lease);
-      const fence = artifacts.resourceFence().read(), processIdentity = capsule.process_identity;
-      if (lease.status !== "held" || lease.owner.pid !== record.owner?.pid || lease.owner.pid !== processIdentity.pid
-        || shadowHash(lease.resource_fence) !== shadowHash(intention.resource_fence.record)
-        || shadowHash(lease.resource_fence) !== shadowHash(fence.record)
-        || shadowHash(fence.record.process_identity) !== shadowHash(processIdentity)
-        || observeLocalProcessOwner(processIdentity) !== "terminated")
-        fail("PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED");
-      const observed = observeBoundary ? observeBoundary() : { authority: readAuthority(), context: readContext() };
-      if (shadowHash(observed.authority) !== capsule.authority_sha256 || shadowHash(observed.context) !== capsule.context_after_sha256)
-        fail("PROCESS_INTERRUPTED_REOPEN_CONTEXT_CHANGED");
-      return { dispatch_sha256: shadowHash(capsule), lock_sha256: lock.sha256, fence_sha256: fence.content_sha256 };
+      const owner = reopenOwner(record, readDispatch(record.operation_id, record).record);
+      return { dispatch_sha256: owner.dispatch_sha256, lock_sha256: owner.lock.sha256, fence_sha256: owner.fence.content_sha256 };
     },
     async run(record, effect) {
       if (dispatches.read(record.operation_id).record) fail("PROCESS_DISPATCH_ALREADY_DECLARED");
@@ -323,14 +435,19 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       if (shadowHash(readContext()) !== contextAfter) fail("PROCESS_DISPATCH_CONTEXT_CHANGED");
       return output;
     },
-    prepare(id, { expectedSha256 } = {}) {
-      const observed = observation(id);
+    prepare(id, { expectedSha256, signal } = {}) {
+      const operation = readOperation(id).record;
+      if (operation.intent.binding_ref === correctionReopen && typeof confirmInterruptedReopen === "function"
+        && operation.results[0]?.output.observations?.reason_code === "STANDARD_PLAN_EXPIRED") {
+        return prepareReopen(operation, expectedSha256, signal);
+      }
+      const observed = observation(id, null, operation);
       if (observed.instance.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");
       return signer.seal({ contract_version: "process-operation-disposition-plan.v1", ...subject(observed), prepared_at_ms: now(), nonce: randomUUID() });
     },
     async apply(plan, { write: explicit = false, expectedPlanSha256, signal } = {}) {
       plan = structuredClone(plan);
-      if (!valid(plan, planSchema)) fail("PROCESS_DISPOSITION_PLAN_INVALID");
+      if (!validPlan(plan)) fail("PROCESS_DISPOSITION_PLAN_INVALID");
       signer.verify(plan);
       if (explicit !== true || expectedPlanSha256 !== shadowHash(plan)) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const previous = dispositions.read(plan.operation_id);
@@ -345,7 +462,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       const fresh = lease => {
         const age = now() - plan.prepared_at_ms;
         if (signal?.aborted || !Number.isSafeInteger(age) || age < 0 || age > 60000) fail("PROCESS_DISPOSITION_PLAN_EXPIRED");
-        const observed = observation(plan.operation_id);
+        const observed = observation(plan.operation_id, plan.reopen?.output ?? null);
         if (lease) { artifacts.resourceFence().assert(lease); observed.fence_sha256 = lease.previous_sha256; }
         if (shadowHash(subject(observed)) !== shadowHash(Object.fromEntries(Object.entries(plan).filter(([key]) => !["contract_version", "prepared_at_ms", "nonce", "key_id", "authentication"].includes(key)))))
           fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
@@ -353,25 +470,36 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       };
       let observed = fresh();
       if (observed.assessment === "unknown") return { status: "reconciliation_required", effect_status: "unknown", written: false };
-      const record = observed.operation;
-      const original = record.results.find(row => row.receipt.output_sha256 === observed.capsule.output_sha256);
+      const record = observed.operation, reopening = isReopenPlan(plan);
+      const original = reopening ? null : record.results.find(row => row.receipt.output_sha256 === observed.capsule.output_sha256);
+      const confirmReopening = async current => {
+        const output = await reopenConfirmation(current.operation, current.instance, current.owner, signal);
+        if (reopenConfirmationSubject(output) !== reopenConfirmationSubject(plan.reopen.output))
+          fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+      };
       if (!(record.phase === "dispatching" || record.phase === "receipted" && (record.results.at(-1).receipt.effect_status === "unknown" || original)))
         fail("PROCESS_DISPOSITION_UNCERTAIN_OPERATION_REQUIRED");
       const grant = await currentGrant({ action: "operation_disposition", plan_sha256: shadowHash(plan), plan }, signal);
+      if (reopening) {
+        await confirmReopening(fresh());
+        observed = fresh();
+      }
       const control = readControls(plan.operation_id), fence = artifacts.resourceFence();
       const ownedLease = [...(previous.record ? [previous.record.resource_fence, ...previous.record.attempts.map(row => row.resource_fence)] : []),
-        ...(control.record?.attempts.map(row => row.resource_fence.record) ?? [])]
+        ...(control.record?.attempts.map(row => row.resource_fence.record) ?? []),
+        ...(reopening ? [observed.owner.originalLease.resource_fence] : [])]
         .find(row => shadowHash(row) === shadowHash(artifacts.resourceFence().read().record));
       const prepared = fence.prepareAcquire({ expectedSha256: plan.fence_sha256 });
       currentConsent(plan, grant, signal);
       reserveControl(control, { action: "disposition", plan, grant, inventory: observed.inventory_record,
         instance_sha256: observed.instance.instance_sha256, journal_sha256: shadowHash(record),
-        receipt_sha256: original ? shadowHash(original.receipt) : null, audit_sha256: previous.record ? shadowHash(previous.record) : null,
+        receipt_sha256: reopening ? shadowHash(observed.owner.original.receipt) : original ? shadowHash(original.receipt) : null, audit_sha256: previous.record ? shadowHash(previous.record) : null,
         resource_fence: prepared });
       await onBoundary("disposition_control_reserved", record.operation_id);
       // A reservation authenticates ownership, never continuing permission.
       // No expired/cancelled/revoked consent may acquire its proposed lease.
       await verifyGrant(grant, signal);
+      if (reopening) fresh();
       currentConsent(plan, grant, signal);
       const lease = fence.acquire({ prepared, expectedSha256: plan.fence_sha256, ...(ownedLease ? { dispositionLease: ownedLease } : {}) });
       try {
@@ -385,22 +513,37 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       // acquisition adds no protected observation; retain no cross-call cache.
       observed = fresh(lease);
       freshGrant(grant.grant, grant.request);
-      const receipt = original?.receipt ?? makeReceipt(observed.operation, observed.capsule.output);
+      const output = reopening ? plan.reopen.output : observed.capsule.output;
+      const receipt = original?.receipt ?? makeReceipt(observed.operation, output);
       if (previous.record && (shadowHash(previous.record.receipt) !== shadowHash(receipt) || previous.record.attempts.length >= 32)) fail("PROCESS_DISPOSITION_SUBJECT_CHANGED");
       const audit = previous.record
         ? { ...bodyOf(previous.record), revision: previous.record.revision + 1, attempts: [...previous.record.attempts, { plan, grant: auditGrant, resource_fence: lease.record }] }
         : { contract_version: "process-operation-disposition.v1", operation_id: plan.operation_id, revision: 1, plan, grant: auditGrant, receipt, resource_fence: lease.record, attempts: [], admissions: [], acceptance_reservations: [] };
-      write(dispositions, audit, previous.content_sha256);
+      const recordedAudit = write(dispositions, audit, previous.content_sha256);
       await onBoundary("disposition_recorded", record.operation_id);
+      if (reopening) await confirmReopening(fresh(lease));
       await verifyGrant(grant, signal);
       observed = fresh(lease);
       freshGrant(grant.grant, grant.request);
-      if (!original && shadowHash(appendResult(observed.operation, observed.capsule.output)) !== shadowHash(receipt)) fail("PROCESS_DISPOSITION_RECEIPT_CHANGED");
+      if (reopening) {
+        const { intention, originalLease } = observed.owner;
+        retireInterruptedReopenLock({ targetRoot: artifacts.root, operationId: record.operation_id, intention, originalLease, fence,
+          dispositionLease: lease, expectedLockSha256: plan.reopen.lock_sha256, write: true,
+          assertPermit() {
+            currentConsent(plan, grant, signal);
+            if (shadowHash(dispositions.read(record.operation_id).record) !== shadowHash(recordedAudit)
+              || shadowHash(readOperation(record.operation_id).record) !== shadowHash(observed.operation))
+              fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+          } });
+        if (onLocalResource("disposition_owner_retired", record.operation_id) !== undefined) fail("PROCESS_DISPATCH_RESOURCE_CALLBACK_INVALID");
+        currentConsent(plan, grant, signal);
+      }
+      if (!original && shadowHash(appendResult(observed.operation, output)) !== shadowHash(receipt)) fail("PROCESS_DISPOSITION_RECEIPT_CHANGED");
       await onBoundary("disposition_receipted", record.operation_id);
       return { status: "receipted", receipt, written: true };
       } finally { artifacts.resourceFence().release(lease); }
     },
-    async withReceiptAcceptance(id, action) {
+    async withReceiptAcceptance(id, action, { signal } = {}) {
       const before = dispositions.read(id);
       if (!before.record) return action();
       signer.verify(before.record); signer.verify(before.record.plan);
@@ -417,10 +560,12 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       const lease = artifacts.resourceFence().acquire({ prepared, expectedSha256: currentFence.content_sha256, ...(known ? { dispositionLease: known } : {}) });
       try {
         if (before.record.acceptance_reservations.length >= 32) fail("PROCESS_DISPOSITION_ADMISSION_LIMIT");
-        write(dispositions, { ...bodyOf(before.record), revision: before.record.revision + 1,
+        const reserved = write(dispositions, { ...bodyOf(before.record), revision: before.record.revision + 1,
           acceptance_reservations: [...before.record.acceptance_reservations, { instance_sha256: readInstance(before.record.plan.instance_id).instance_sha256,
             resource_fence: lease.record }] }, before.content_sha256);
-        return await acceptance.run(lease, action);
+        if (!isReopenPlan(reserved.plan)) return await acceptance.run(lease, action);
+        const admission = await admitReopenReceipt(reserved, instance, lease, signal);
+        return await acceptance.run({ lease, admission }, action);
       } finally { artifacts.resourceFence().release(lease); }
     },
     async verifyReceipt(record, receipt, signal) {
@@ -429,6 +574,17 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       signer.verify(before.record); signer.verify(before.record.plan);
       if (shadowHash(before.record.receipt) !== shadowHash(receipt)) return false;
       const instance = readInstance(record.intent.instance_id), capsule = readDispatch(record.operation_id, record).record;
+      if (isReopenPlan(before.record.plan)) {
+        const authorized = acceptance.getStore();
+        if (!authorized?.admission || authorized.admission.instance_sha256 !== instance.instance_sha256
+          || authorized.admission.receipt_sha256 !== shadowHash(receipt)
+          || !before.record.admissions.some(row => shadowHash(row) === shadowHash(authorized.admission)))
+          fail("PROCESS_DISPOSITION_ACCEPTANCE_FENCE_REQUIRED");
+        artifacts.resourceFence().assert(authorized.lease);
+        checkReopenReceipt(before.record.plan, record, capsule);
+        freshGrant(authorized.admission.grant.grant, authorized.admission.grant.request);
+        return true;
+      }
       if (assessment(instance, record, capsule) === "unknown" || before.record.plan.output_sha256 !== receipt.output_sha256)
         fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
       const grant = await currentGrant({ action: "operation_disposition_accept", disposition_sha256: shadowHash(before.record),

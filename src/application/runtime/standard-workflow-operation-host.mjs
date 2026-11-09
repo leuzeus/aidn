@@ -1153,6 +1153,16 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readOperation: retained, readInstance: id => current(id).record, readAuthority, readContext: snapshot, observeBoundary,
     inventory: reconciliationInventory, dispositionSource, onBoundary: dispatchCheckpoint,
     confirmPrCheckpoint: (instance, record, output) => sessionPrCheckpoint?.confirmsOriginal(instance, record, output),
+    async confirmInterruptedReopen(instance, record, original, options) {
+      if (!prCorrectionReopen) fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED");
+      const state = current(instance.instance_id);
+      const frame = state.cursor.occurrences.find(row => row.occurrence_id === record.intent.occurrence_id);
+      if (state.record.instance_sha256 !== instance.instance_sha256 || frame?.status !== "WAITING"
+        || shadowHash(frame.operation?.intent ?? null) !== shadowHash(record.intent)
+        || shadowHash(frame.operation?.receipt ?? null) !== shadowHash(original.receipt))
+        fail("STANDARD_PR_CORRECTION_REOPEN_DISPATCH_REQUIRED");
+      return (await prCorrectionReopen.observeInterrupted(instance, record.preview.prepared, original.output, options)).confirmation;
+    },
     appendResult(record, output) {
       const before = retained(record.operation_id);
       if (shadowHash(before.record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
@@ -1867,7 +1877,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         if (shadowHash(retained(id).record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
       }
       return disposition.withReceiptAcceptance(id, () => service.acceptOperation({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256, occurrenceId: record.intent.occurrence_id,
-        eventId: "result_" + id.slice(3) + (index ? "_" + index : ""), receiptId: receipt.receipt_id, write: true }));
+        eventId: "result_" + id.slice(3) + (index ? "_" + index : ""), receiptId: receipt.receipt_id, write: true }), { signal });
     },
     readJournal: id => structuredClone(retained(id).record),
     readDecisionSource: ref => human.readSource(ref),

@@ -87,6 +87,12 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
     const value = { contract_version: 'standard-pr-correction-reopen-output.v1', operation_ref: 'session_pr_correction_reopen', outcome, effect_status, observations, facts, evidence_refs };
     if (!valid(value, outputSchema)) fail('STANDARD_PR_CORRECTION_OUTPUT_INVALID'); return value;
   }
+  function confirmed(plan, committed, causal) {
+    return emit('completed', 'confirmed', { triage_operation_id: plan.input.triage_operation_id, session_id: plan.source.session_id,
+      source_sha256: plan.source_sha256, postimages: committed, causal, cycle: 'not-created', implementation_admission: 'not-established',
+      validation: 'pending', responses: 'pending', resolutions: 'pending', merge_authorization: 'not-established' },
+    { session_pr_correction_context_open: true, session_pr_correction_cycle_required: true }, committed.map(row => ({ ref: 'docs/audit/' + row.path, sha256: row.sha256 })));
+  }
   return Object.freeze({ prepare: (instance, input, { signal } = {}) => prepare(instance, input, now(), false, signal),
     async observeInterrupted(instance, prepared, output, { assertOwner, signal } = {}) {
       const plan = prepared?.plan;
@@ -111,7 +117,7 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
       if (causal?.origin_source_sha256 !== plan.source_sha256 || shadowHash(observe()) !== shadowHash(before))
         fail('STANDARD_PR_CORRECTION_CAUSAL_SOURCE_CHANGED');
       return { source_sha256: plan.source_sha256, plan_sha256: prepared.plan_sha256,
-        postimages: structuredClone(committed), causal, local_sha256: shadowHash(before) };
+        postimages: structuredClone(committed), causal, local_sha256: shadowHash(before), confirmation: confirmed(plan, committed, causal) };
     },
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized, signal } = {}) {
       active(signal); const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
@@ -159,10 +165,7 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
           }
           const causal = await unchanged(); projections(plan.changes, committed);
           active(signal); assertDocuments(plan.changes, committed);
-          return emit('completed', 'confirmed', { triage_operation_id: plan.input.triage_operation_id, session_id: plan.source.session_id,
-            source_sha256: plan.source_sha256, postimages: committed, causal, cycle: 'not-created', implementation_admission: 'not-established',
-            validation: 'pending', responses: 'pending', resolutions: 'pending', merge_authorization: 'not-established' },
-          { session_pr_correction_context_open: true, session_pr_correction_cycle_required: true }, committed.map(row => ({ ref: 'docs/audit/' + row.path, sha256: row.sha256 })));
+          return confirmed(plan, committed, causal);
         } catch (cause) {
           return emit(attempted ? 'reconciliation_required' : 'blocked', attempted ? 'unknown' : 'no_effect',
             { reason_code: /^[A-Z][A-Z0-9_]+$/.test(cause.code ?? '') ? cause.code : 'STANDARD_PR_CORRECTION_UNCONFIRMED', committed });
