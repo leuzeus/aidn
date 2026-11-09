@@ -157,10 +157,18 @@ try {
     actor, gh: pin(fixtureGh), git: pin(gitExecutable),
   }));
   let protectedTransfers = 0, protectedReads = 0, protectedAuthorizations = 0;
+  let changeAfter = null;
+  const identityReads = [];
   const host = createStandardGithubProviderHost({ configuration, home, identity, environment }, {
-    runGithubRead(executable, args) {
+    async runGithubRead(executable, args) {
       assert.equal(executable, fixtureGh);
       const endpoint = args.at(-1);
+      const command = args[0] === 'auth' ? 'token' : endpoint;
+      identityReads.push(command);
+      if (changeAfter?.command === command) {
+        await Promise.resolve();
+        changeAfter.mutate();
+      }
       const value = args[0] === 'auth' ? 'fixture-only-token' : JSON.stringify(endpoint === 'user' ? actor :
         { node_id: repository.node_id, full_name: 'Fixture/repository' });
       return { status: 0, stdout: value };
@@ -184,6 +192,27 @@ try {
       return { status: 0, stdout: git(client, remoteArgs) };
     },
   });
+  const credential = path.join(home, identity + '.github', 'hosts.yml');
+  const fixtureGhBytes = fs.readFileSync(fixtureGh);
+  for (const probe of [
+    { command: 'token', mutate: () => fs.writeFileSync(credential, 'changed'), restore: () => fs.unlinkSync(credential),
+      code: 'STANDARD_GITHUB_HOST_CREDENTIAL_CHANGED', reads: ['token'] },
+    { command: 'user', mutate: () => git(client, ['remote', 'set-url', 'origin', 'https://example.invalid/wrong']),
+      restore: () => git(client, ['remote', 'set-url', 'origin', githubUrl]),
+      code: 'STANDARD_GITHUB_REPOSITORY_BINDING_INVALID', reads: ['token', 'user'] },
+    { command: 'repos/Fixture/repository', mutate: () => fs.appendFileSync(fixtureGh, '!'),
+      restore: () => fs.writeFileSync(fixtureGh, fixtureGhBytes),
+      code: 'STANDARD_GITHUB_EXECUTABLE_PIN_CHANGED', reads: ['token', 'user', 'repos/Fixture/repository'] },
+  ]) {
+    identityReads.length = 0;
+    changeAfter = probe;
+    try {
+      await assert.rejects(host.verifyIdentity(), { code: probe.code });
+      assert.deepEqual(identityReads, probe.reads);
+    } finally { changeAfter = null; probe.restore(); }
+  }
+  await host.verifyIdentity();
+  console.log('PASS protected identity handshake refuses changed credentials, checkout and executable after transport');
   const protectedPort = host.sessionReviewPort.postMergeFetch;
   const protectedInput = { ...input(merge, 6), providerRepository: repository };
   assert.throws(() => protectedPort.prepare({ ...protectedInput, providerRepository: { ...repository, node_id: 'R_foreign' } }),

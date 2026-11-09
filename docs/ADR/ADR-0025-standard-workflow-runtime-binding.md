@@ -3061,6 +3061,12 @@ environment. Credentials are kept out of the action and operation evidence.
 Provider initialization and reads grant no push or PR creation. Existing effect
 admission and authorization still apply.
 
+The identity handshake checks the manifest, credential files, executables and
+checkout before the token request and after each transport response. Each
+response check also fences construction of the next fixed identity request in
+the same synchronous continuation. Other observations and the mutation send
+retain their own fresh transport checks.
+
 An absent manifest preserves local STANDARD behavior with unavailable provider
 ports. Replay and simulation need only retained history. They skip the provider
 configuration and contact neither provider nor credential source. An external

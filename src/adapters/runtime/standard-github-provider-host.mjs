@@ -125,11 +125,12 @@ export function createStandardGithubProviderHost({ configuration, home, identity
   }
   const options = { cwd: home, env, encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, maxBuffer: 262144, stdio: "pipe" };
   function* authenticate(guard) {
+    guard();
     function* command(args, commandEnv) {
-      guard();
       let result;
       try { result = yield [gh.path, args, { ...options, env: commandEnv }]; }
       catch { fail("STANDARD_GITHUB_AUTHENTICATION_UNAVAILABLE"); }
+      // The next fixed request is yielded in this same synchronous continuation.
       guard();
       if (result?.status !== 0 || result.signal || result.error || typeof result.stdout !== "string"
         || Buffer.byteLength(result.stdout) > options.maxBuffer) fail("STANDARD_GITHUB_AUTHENTICATION_UNAVAILABLE");
