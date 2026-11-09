@@ -1,5 +1,12 @@
 # 04 JSON Contracts
 
+The private STANDARD drift recovery cycle question binds the confirmed Git
+checkpoint, revised objective and canonical cycle inventory. A signed
+`human-drift-recovery-cycle-decision.v1` is retained in
+`process-decision-inbox.v17`. Its accepted no-effect receipt supplies the
+fresh cycle fields to the existing separately authorized initializer.
+Earlier inbox and decision versions retain their readers.
+
 At the two published pre-triage waits, `--control-source aidn:external-merge`
 adds a stable `merge_subject_sha256` to the existing control action preview.
 Exact apply rechecks fresh protected observations. The control reservation v1

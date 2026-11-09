@@ -11,6 +11,8 @@ import { mergeConsentOperation, mergeConsentQuestion, assertHumanMergeConsent, m
 import { resolutionExceptionOperation, resolutionExceptionQuestion, assertHumanResolutionException, resolutionExceptionOutput } from "../../core/workflow/standard-pr-resolution-exception.mjs";
 import { externalMergeDisposition, externalMergeQuestionVersion, externalMergePretriageQuestionVersion, externalMergeQuestion, assertHumanExternalMergeDisposition,
   externalMergeDispositionOutput } from "../../core/workflow/standard-pr-external-merge.mjs";
+import { recoveryCycleSelection, recoveryCycleQuestionVersion, recoveryCycleQuestion, assertHumanRecoveryCycleSelection,
+  recoveryCycleSelectionOutput } from "../../core/workflow/standard-drift-recovery-cycle-selection.mjs";
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const choices = ["THINKING", "EXPLORING", "COMMITTING", "refused", "deferred", "cancelled"];
 export function createStandardHumanDecisions({ inbox, signer, source, projectionRequired }) {
@@ -24,6 +26,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
   const closure = record => record.intent.binding_ref === "cycle_closure_decision";
   const resolutionException = record => record.intent.binding_ref === resolutionExceptionOperation;
   const question = record => {
+    if (record.intent.binding_ref === recoveryCycleSelection) return recoveryCycleQuestion(record);
     if (record.intent.binding_ref === externalMergeDisposition) return externalMergeQuestion(record);
     if (record.intent.binding_ref === postMergeDecisionOperation) return postMergeDecisionQuestion(record);
     if (record.intent.binding_ref === mergeConsentOperation) return mergeConsentQuestion(record);
@@ -90,7 +93,8 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     } finally { clearTimeout(timer); combined.removeEventListener("abort", onAbort); stop.abort(); }
   }
   async function verify(claim, sourceRef, request, signal, historical = false) {
-    if (request.contract_version === "standard-spike-question.v1") assertHumanSpikeDecision(claim, request);
+    if (request.contract_version === recoveryCycleQuestionVersion) assertHumanRecoveryCycleSelection(claim, request);
+    else if (request.contract_version === "standard-spike-question.v1") assertHumanSpikeDecision(claim, request);
     else if (request.contract_version === "standard-mode-work-question.v1") assertHumanModeWorkDecision(claim, request);
     else if ([externalMergeQuestionVersion, externalMergePretriageQuestionVersion].includes(request.contract_version)) assertHumanExternalMergeDisposition(claim, request);
     else if (request.contract_version === postMergeQuestionVersion) assertHumanPostMergeDecision(claim, request);
@@ -138,7 +142,8 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
         if (projectionRequired) inbox.materialize(id, { write: true });
         return before.record;
       }
-      const version = record.intent.binding_ref === externalMergeDisposition ? "process-decision-inbox.v16"
+      const version = record.intent.binding_ref === recoveryCycleSelection ? "process-decision-inbox.v17"
+        : record.intent.binding_ref === externalMergeDisposition ? "process-decision-inbox.v16"
         : record.intent.binding_ref === postMergeDecisionOperation ? "process-decision-inbox.v15"
         : record.intent.binding_ref === mergeConsentOperation ? "process-decision-inbox.v14" : resolutionException(record) ? "process-decision-inbox.v13" : spike(record) ? "process-decision-inbox.v11" : modeWork(record) ? "process-decision-inbox.v10" : correction(record) ? (claim.contract_version === "human-pr-correction-decision.v3" ? "process-decision-inbox.v9" : claim.contract_version === "human-pr-correction-decision.v2" ? "process-decision-inbox.v8" : "process-decision-inbox.v7") : integration(record) ? "process-decision-inbox.v6" : sessionClosure(record) ? "process-decision-inbox.v5" : promotion(record) ? "process-decision-inbox.v4" : closure(record) ? "process-decision-inbox.v3" : recovery(record) ? (claim.contract_version === "human-drift-recovery-decision.v2" ? "process-decision-inbox.v12" : "process-decision-inbox.v2") : "process-decision-inbox.v1";
       claimDecision?.(claim);
@@ -162,6 +167,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     },
     output(record, capture) {
       const request = question(record);
+      if (record.intent.binding_ref === recoveryCycleSelection) return recoveryCycleSelectionOutput(request, capture);
       if (record.intent.binding_ref === externalMergeDisposition) return externalMergeDispositionOutput(request, capture);
       if (record.intent.binding_ref === postMergeDecisionOperation) return postMergeDecisionOutput(request, capture, record.preview.input.allow_fast_forward === true);
       if (record.intent.binding_ref === mergeConsentOperation) return mergeConsentOutput(request, capture);

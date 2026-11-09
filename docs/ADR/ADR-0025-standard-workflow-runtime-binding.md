@@ -314,10 +314,15 @@ separate exact plan, live grant, canonical compare-and-swap and postimage checks
 The written CR remains pending. A direct new-cycle choice uses the accepted
 findings to refresh the canonical cycle context and uses that receipt to
 observe the exact external Git checkpoint. A dirty worktree waits for
-reconciliation, and the observer performs no Git mutation. The checkpoint does
-not supply the identity of a new cycle or authorize its creation. The call
-exports no completion facts and does not release the existing diagnosis
-admission fence. Rollback remains a separately governed recovery path.
+reconciliation, and the observer performs no Git mutation.
+
+After a confirmed checkpoint, a separate signed question binds the checkpoint,
+revised objective, observed head and canonical cycle inventory. It requires a
+fresh cycle identifier, type and title. The initializer consumes those fields
+from the accepted no-effect receipt and the checkpoint from the same call.
+Its independent exact plan, admission and live effect grant remain required.
+Creation leaves R05 completion and cycle readiness false. The call exports no
+completion facts. Rollback and further governed work remain separate paths.
 
 
 ## SOURCE61 reload cache effect fence candidate, 2026-11-05

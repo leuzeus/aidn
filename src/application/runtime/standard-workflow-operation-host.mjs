@@ -23,6 +23,7 @@ import { createStandardPrReviewEffectsVerification } from "./standard-session-pr
 import { createStandardExternalMergeDisposition } from "./standard-session-pr-external-merge.mjs";
 import { createPretriageMergeControl, createPretriageMergeSource } from "./standard-session-pr-pretriage-merge.mjs";
 import { externalMergeControlRef, externalMergeEventKey, externalMergeDisposition, externalMergeObservationVersion } from "../../core/workflow/standard-pr-external-merge.mjs";
+import { recoveryCycleSelection, assertRecoveryCycleSubject } from "../../core/workflow/standard-drift-recovery-cycle-selection.mjs";
 import { createStandardSessionPrMergeObservation } from "./standard-session-pr-merge-observe.mjs";
 import { createStandardSessionPrReviewAuthority } from "./standard-session-pr-review-authority.mjs";
 import { createStandardPrTriageSource } from "./standard-pr-triage-source.mjs";
@@ -923,6 +924,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(instance, record.preview.prepared.plan, { signal });
+      if (record.intent.binding_ref === recoveryCycleSelection) await assertRecoveryCycleSelectionFresh(instance, record, signal);
       if (record.preview.binding.executor_kind === "human") await verifyHumanRecord(record, signal);
       if (record.intent.binding_ref === resolutionExceptionOperation) await assertResolutionExceptionFresh(instance, record, signal);
       if (record.intent.binding_ref === postMergeDecisionOperation) {
@@ -939,6 +941,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(instance, record.preview.prepared.plan, { signal });
+      if (record.intent.binding_ref === recoveryCycleSelection) await assertRecoveryCycleSelectionFresh(instance, record, signal);
       if (!record.results.some(row => shadowHash(row.receipt) === shadowHash(receipt)) || shadowHash(record.intent) !== shadowHash(intent)) fail("PROCESS_OPERATION_RESULT_NOT_AUTHENTICATED");
       return { outcome: "verified", authority_id: receipt.authority_id, receipt_sha256: shadowHash(receipt), intent_sha256: shadowHash(intent) };
     },
@@ -1097,6 +1100,30 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     if (checked.output.facts.drift_recovery_checkpoint_verified !== true || checked.record.preview.prepared.plan.source_sha256 !== shadowHash(selected)
       || checked.output.observations.causal_transition?.before_context_sha256 !== selected.transition.after_context_sha256) fail("STANDARD_RECOVERY_CYCLE_SOURCE_REQUIRED");
     return { ...selected, source_operation_id: input.checkpoint_operation_id, transition: checked.output.observations.causal_transition };
+  }
+  async function recoveryCycleSubject(instance, input, signal) {
+    if (signal?.aborted || !processAuthority) fail("STANDARD_RECOVERY_CYCLE_SELECTION_UNAVAILABLE");
+    const selected = cycleRecoverySource(instance, "drift_recovery_cycle_initialize", input);
+    const observed = await processAuthority.observeDriftContext();
+    const { context } = observed;
+    if (signal?.aborted || observed.context_sha256 !== selected.transition.after_context_sha256
+      || context.head !== selected.transition.after_head || context.session_id !== selected.review.session_id
+      || current(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail("STANDARD_RECOVERY_CYCLE_SELECTION_STALE");
+    const rows = artifacts.cycles().map(row => ({ cycle_id: row.cycle_id, path: row.path, sha256: row.sha256,
+      metadata_sha256: artifacts.metadataHash(row.path) })).sort((a, b) => a.path.localeCompare(b.path, "en"));
+    const numbers = rows.map(row => Number(row.cycle_id.slice(1)));
+    if (rows.length > 4096 || rows.some(row => !/^C[0-9]{3,6}$/.test(row.cycle_id))
+      || new Set(numbers).size !== numbers.length) fail("STANDARD_RECOVERY_CYCLE_INVENTORY_INVALID");
+    return assertRecoveryCycleSubject({ contract_version: "standard-drift-recovery-cycle-subject.v1",
+      checkpoint_operation_id: input.checkpoint_operation_id, source_sha256: shadowHash(selected), context_sha256: observed.context_sha256,
+      head: context.head, session_id: context.session_id, objective: selected.report.current_objective, inventory_sha256: shadowHash(rows),
+      minimum_cycle_number: Math.max(0, ...numbers) + 1 });
+  }
+  async function assertRecoveryCycleSelectionFresh(instance, record, signal) {
+    const { subject, expires_at_ms } = record.preview.prepared;
+    if (now() >= expires_at_ms || shadowHash(await recoveryCycleSubject(instance, record.preview.input, signal)) !== shadowHash(subject)
+      || now() >= expires_at_ms) fail("STANDARD_RECOVERY_CYCLE_SELECTION_STALE");
   }
   async function commitIntent(id, { write = false } = {}) {
     if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
@@ -1352,6 +1379,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "cycle_closure_decision" ? await closureReview?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CLOSURE_AUDIT_AUTHORITY_REQUIRED")
         : binding.id === "drift_completion_select" ? await driftRoute?.completion(state.record) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_completion_decision" ? await recovery?.prepareRenewal(state.record, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
+        : binding.id === recoveryCycleSelection ? { can_apply: true, subject: await recoveryCycleSubject(state.record, input), expires_at_ms: now() + 300000 }
         : binding.id === "drift_recovery_decision" ? await recovery?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_recovery_record" ? await (async () => { const body = { ...await recoveryDecision(state.record, input), prepared_at_ms: now() };
           return { ...body, can_apply: true, plan_sha256: shadowHash(body) }; })()
@@ -1440,6 +1468,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const frame = state.cursor.occurrences.find(row => row.occurrence_id === record.intent.occurrence_id);
       if (frame?.status !== "WAITING" || !frame.operation || frame.operation.receipt || shadowHash(frame.operation.intent) !== shadowHash(record.intent)) fail("STANDARD_HOST_CANONICAL_INTENT_REQUIRED");
       if (record.preview.binding.executor_kind === "human") {
+        if (record.intent.binding_ref === recoveryCycleSelection) await assertRecoveryCycleSelectionFresh(state.record, record, signal);
         if (record.intent.binding_ref === postMergeDecisionOperation && alignedPostMergeSubject(record.preview.prepared.subject))
           return { status: "question_recovery_required" };
         if (["drift_recovery_decision", "drift_completion_decision"].includes(record.intent.binding_ref)) await recovery.assertFresh(state.record, record.preview.prepared.plan);
@@ -1694,7 +1723,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     async receiveDecision(id, { sourceRef, write = false, signal } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const before = retained(id), record = before.record, state = current(record.intent.instance_id);
-      if (record.preview.binding.executor_kind !== "human" || ![externalMergeDisposition, postMergeDecisionOperation, mergeConsentOperation, resolutionExceptionOperation, "spike_conversion_decision", "mode_work_continue_decision", "session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "drift_completion_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+      if (record.preview.binding.executor_kind !== "human" || ![recoveryCycleSelection, externalMergeDisposition, postMergeDecisionOperation, mergeConsentOperation, resolutionExceptionOperation, "spike_conversion_decision", "mode_work_continue_decision", "session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "drift_completion_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
       if (postMergeRecoveryResult(record)) fail("STANDARD_PR_POST_MERGE_QUESTION_DISPOSED");
       const r09 = record.intent.binding_ref === postMergeDecisionOperation;
       const external = record.intent.binding_ref === externalMergeDisposition;
@@ -1717,6 +1746,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(state.record, record.preview.prepared.plan, { signal });
       if (record.intent.binding_ref === "baseline_promotion_decision") await promotionReview.assertFresh(state.record, record.preview.prepared.plan);
       const assertFreshDecision = external ? assertExternalDispositionFresh
+        : record.intent.binding_ref === recoveryCycleSelection ? assertRecoveryCycleSelectionFresh
         : record.intent.binding_ref === mergeConsentOperation ? assertMergeConsentFresh
         : record.intent.binding_ref === resolutionExceptionOperation ? assertResolutionExceptionFresh
         : record.intent.binding_ref === postMergeDecisionOperation ? assertPostMergeDecisionFresh : null;
@@ -1754,6 +1784,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.intent.binding_ref === "baseline_promotion_decision") await promotionReview.assertFresh(state.record, record.preview.prepared.plan);
       if (assertFreshDecision) {
         await human.verifyReserved(record, capture, signal);
+        if (record.intent.binding_ref === recoveryCycleSelection) await assertRecoveryCycleSelectionFresh(state.record, record, signal);
         if (r09 || external) (external ? externalDisposition : postMergeDecision).assertAge(record.preview.prepared);
         if (record.intent.binding_ref === mergeConsentOperation && now() >= record.preview.prepared.expires_at_ms)
           fail("STANDARD_PR_MERGE_CONSENT_EXPIRED");

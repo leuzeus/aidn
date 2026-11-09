@@ -86,7 +86,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 187); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 189); assert.equal(assets.catalog.activities.length, 23);
 });
 test("correction work and closure consume the new implementation and new validation authorities", () => {
   const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
@@ -501,6 +501,12 @@ test("corrective redelivery and review select fresh integration, cycle and updat
   assert.deepEqual(fields("correction_pr_triage_evaluate").report_occurrence_id, { source: "occurrence_id", node_id: "correction_pr_triage" });
 });
 test("the published recovery call routes confirmed findings to the selected CR or checkpoint port", () => {
+  for (const contract of ["standard-drift-recovery-cycle-selection-input.v1", "standard-drift-recovery-cycle-subject.v1",
+    "standard-drift-recovery-cycle-question.v1", "human-drift-recovery-cycle-decision.v1",
+    "standard-drift-recovery-cycle-selection-output.v1", "process-decision-inbox.v17"]) {
+    const schema = JSON.parse(read(`src/core/contracts/workflow-definition/${contract}.schema.json`));
+    assert.deepEqual(validateJsonSchemaDefinition(schema, "#", { contractKind: "workflow-definition" }), []);
+  }
   const site = assets.model.nodes.find(node => node.id === "closure_drift_recovery_execution");
   const { model, ...identity } = assets.model.call_targets.find(row => row.model_id === "aidn-standard-drift-recovery");
   assert.deepEqual(site.target, identity);
@@ -541,6 +547,13 @@ test("the published recovery call routes confirmed findings to the selected CR o
         intent.operation_id);
       assert.deepEqual(model.data_bindings.inputs.find(row => row.node_id === "recovery_checkpoint_observe").fields.context_operation_id,
         { source: "operation_id", node_id: "recovery_context_refresh" });
+      assert.equal(model.nodes.find(row => row.id === "recovery_cycle_decide").binding_ref, "drift_recovery_cycle_decision");
+      assert.deepEqual(model.data_bindings.inputs.find(row => row.node_id === "recovery_cycle_decide").fields.checkpoint_operation_id,
+        { source: "operation_id", node_id: "recovery_checkpoint_observe" });
+      const fields = model.data_bindings.inputs.find(row => row.node_id === "recovery_cycle_initialize").fields;
+      assert.deepEqual(fields.checkpoint_operation_id, { source: "operation_id", node_id: "recovery_checkpoint_observe" });
+      for (const key of ["cycle_id", "cycle_type", "title"]) assert.deepEqual(fields[key],
+        { source: "operation_output", node_id: "recovery_cycle_decide", path: ["observations", "selected_cycle", key] });
     } else {
       assert.equal(cr, undefined);
       assert.equal(after.status, "COMPLETED");
@@ -601,7 +614,7 @@ test("the ordinary loader authenticates the two final-verification operations fo
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 256);
   assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 152);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 35);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 37);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
   assert.equal(loaded.model.call_targets.length, 5);
   assert.equal(child.model_id, "aidn-standard-final-verification");

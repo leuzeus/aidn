@@ -19,6 +19,8 @@ import recoverySourceV2 from "../contracts/workflow-definition/human-drift-recov
 import inboxV12 from "../contracts/workflow-definition/process-decision-inbox.v12.schema.json" with { type: "json" };
 import { assertHumanExternalMergeDisposition } from "./standard-pr-external-merge.mjs";
 import inboxV16 from "../contracts/workflow-definition/process-decision-inbox.v16.schema.json" with { type: "json" };
+import inboxV17 from "../contracts/workflow-definition/process-decision-inbox.v17.schema.json" with { type: "json" };
+import { assertHumanRecoveryCycleSelection } from "./standard-drift-recovery-cycle-selection.mjs";
 import inboxV15 from "../contracts/workflow-definition/process-decision-inbox.v15.schema.json" with { type: "json" };
 import { assertHumanPostMergeDecision } from "./standard-pr-post-merge-decision.mjs";
 import inboxV14 from "../contracts/workflow-definition/process-decision-inbox.v14.schema.json" with { type: "json" };
@@ -81,6 +83,14 @@ export function decisionInboxPath(id) {
   return `workflows/decision-inbox/${id}.json`;
 }
 export function assertDecisionInbox(value) {
+  if (value?.contract_version === "process-decision-inbox.v17") {
+    if (checkShadowJson(value) || validateJsonSchema(value, inboxV17, "$", { contractKind: "workflow-definition" }).length)
+      fail("PROCESS_DECISION_INBOX_INVALID");
+    assertHumanRecoveryCycleSelection(value.source);
+    if (value.inbox_id !== decisionInboxId(value.source) || (value.phase === "receipted") !== (value.receipt_sha256 !== null))
+      fail("PROCESS_DECISION_INBOX_BINDING_CHANGED");
+    return value;
+  }
   if (["process-decision-inbox.v15", "process-decision-inbox.v16"].includes(value?.contract_version)) {
     const external = value.contract_version === "process-decision-inbox.v16";
     if (checkShadowJson(value) || validateJsonSchema(value, external ? inboxV16 : inboxV15, "$", { contractKind: "workflow-definition" }).length)

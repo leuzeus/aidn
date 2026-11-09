@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-drift-recovery-cycle-subject.v1",
+  "x-aidn-contract-version": "standard-drift-recovery-cycle-subject.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "checkpoint_operation_id",
+    "source_sha256",
+    "context_sha256",
+    "head",
+    "session_id",
+    "objective",
+    "inventory_sha256",
+    "minimum_cycle_number"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-drift-recovery-cycle-subject.v1"
+    },
+    "checkpoint_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "context_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "head": {
+      "type": "string",
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{3,6}$"
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "inventory_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "minimum_cycle_number": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 999999
+    }
+  }
+}

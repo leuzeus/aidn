@@ -480,9 +480,15 @@ let driftRecoveryTarget, driftRecoveryRef;
   xor("recovery_effect_route", [["record", "change_request_record", "drift_recovery_requirements_delta"],
     ["new_cycle", "cycle_recovery_checkpoint", "drift_recovery_new_cycle"], ["pending", "other_recovery_pending", null]]);
   op("change_request_record", "drift_change_request_record", operation(null, "recovery_record_operation_id", "recovery_record"));
-  seq("cycle_recovery_checkpoint", ["recovery_context_refresh", "recovery_checkpoint_observe"]);
+  seq("cycle_recovery_checkpoint", ["recovery_context_refresh", "recovery_checkpoint_observe", "recovery_cycle_decide", "recovery_cycle_initialize"]);
   op("recovery_context_refresh", "drift_recovery_context_refresh", operation(null, "recovery_operation_id", "recovery_record"));
   op("recovery_checkpoint_observe", "drift_recovery_checkpoint_observe", operation(null, "context_operation_id", "recovery_context_refresh"));
+  op("recovery_cycle_decide", "drift_recovery_cycle_decision", operation(null, "checkpoint_operation_id", "recovery_checkpoint_observe"));
+  op("recovery_cycle_initialize", "drift_recovery_cycle_initialize", {
+    ...operation(null, "checkpoint_operation_id", "recovery_checkpoint_observe"),
+    ...Object.fromEntries(["cycle_id", "cycle_type", "title"].map(key => [key,
+      { source: "operation_output", node_id: "recovery_cycle_decide", path: ["observations", "selected_cycle", key] }])),
+  });
   seq("other_recovery_pending", []);
   const recoveryNodes = nodes.splice(firstNode);
   driftRecoveryTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-drift-recovery", revision: 1,

@@ -1302,10 +1302,12 @@ writer for a confirmed requirements delta. The composition fixture checks the
 pinned call, its exact accepted operation input, and the shared reducer's
 selection of the CR writer. New-cycle and rollback choices do not select it.
 The direct new-cycle choice instead refreshes canonical context and observes
-the external Git checkpoint. Its focused fixture uses the published call,
-requires a dirty-worktree wait, then records the observed checkpoint after
-external reconciliation. This proof does not initialize a cycle. The existing
-cold CR and cycle-creation fixtures provide separate port evidence.
+the external Git checkpoint. Run the execution fixture with
+`--drift-cycle-mode=files --drift-cycle-published-selection --retain-always`
+to exercise the published call in a focused IR. It requires a dirty-worktree
+wait, an observed external checkpoint, a signed choice of a fresh cycle and
+separately admitted initialization after a cold restart. It refuses an old
+cycle number and compares replay with simulation. The CR path stays pending.
 
 ## Structured agentic process
 

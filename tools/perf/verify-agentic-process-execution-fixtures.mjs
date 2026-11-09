@@ -92,8 +92,8 @@ if (selectedRecoveryMode !== undefined && !["files", "dual", "db-only"].includes
 const selectedChangeRequestMode = process.argv.find(value => value.startsWith("--drift-cr-mode="))?.slice("--drift-cr-mode=".length);
 if (selectedChangeRequestMode !== undefined && !["files", "dual", "db-only"].includes(selectedChangeRequestMode)) throw Error("CHANGE_REQUEST_FIXTURE_MODE_INVALID");
 const selectedRecoveryCycleMode = process.argv.find(value => value.startsWith("--drift-cycle-mode="))?.slice("--drift-cycle-mode=".length);
-const publishedRecoveryCheckpoint = process.argv.includes("--drift-cycle-published-checkpoint");
-if (publishedRecoveryCheckpoint && selectedRecoveryCycleMode !== "files") throw Error("PUBLISHED_RECOVERY_CHECKPOINT_FIXTURE_MODE_INVALID");
+const publishedRecoverySelection = process.argv.includes("--drift-cycle-published-selection");
+if (publishedRecoverySelection && selectedRecoveryCycleMode !== "files") throw Error("PUBLISHED_RECOVERY_SELECTION_FIXTURE_MODE_INVALID");
 const selectedCyclePlanMode = process.argv.find(value => value.startsWith("--cycle-plan-mode="))?.slice("--cycle-plan-mode=".length);
 const selectedCycleReadinessMode = process.argv.find(value => value.startsWith("--cycle-readiness-mode="))?.slice("--cycle-readiness-mode=".length);
 const selectedCycleWorkMode = process.argv.find(value => value.startsWith("--cycle-work-mode="))?.slice("--cycle-work-mode=".length);
@@ -1699,14 +1699,14 @@ if (process.argv[2] === "--mixed-continue") {
       policyPins: waiting.record.policy_pins, parameters: waiting.record.initial_parameters, events: waiting.record.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, waiting.record.instance_sha256);
   });
-  for (const mode of ["files", "dual", "db-only"]) await check(`drift cycle ${mode}: authenticated recovery waits for Git reconciliation and ${publishedRecoveryCheckpoint
-    ? "returns from the published checkpoint call with exact simulation" : "initializes a real cycle with exact simulation"}`, async () => {
+  for (const mode of ["files", "dual", "db-only"]) await check(`drift cycle ${mode}: authenticated recovery waits for Git reconciliation and ${publishedRecoverySelection
+    ? "selects and initializes a fresh cycle through the published call" : "initializes a real cycle with exact simulation"}`, async () => {
     const claims = new Map(), humanSource = { read: ({ sourceRef }) => claims.get(sourceRef) ?? null,
       verify: ({ source, sourceRef }) => claims.has(sourceRef) && shadowHash(claims.get(sourceRef)) === shadowHash(source)
         ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" } };
     const withCr = mode === "dual";
-    const f = mixedFixture(mode, { drift: true, recovery: true, recoveryCycle: !publishedRecoveryCheckpoint,
-      publishedRecoveryCall: publishedRecoveryCheckpoint, changeRequest: withCr, humanSource, answer({ params }) {
+    const f = mixedFixture(mode, { drift: true, recovery: true, recoveryCycle: !publishedRecoverySelection,
+      publishedRecoveryCall: publishedRecoverySelection, changeRequest: withCr, humanSource, answer({ params }) {
       const context = JSON.parse(params.input[0].text.split("\n").at(-1));
       return { outcome: "completed", summary: "Cycle recovery diagnostic fixture.", report: { contract_version: "standard-drift-report.v1", context_sha256: context.context_sha256,
         original_objective: context.context.original_objective, current_objective: "Implement the revised goal in a separately admitted cycle", drift_level: "severe", objective_changed: true,
@@ -1727,7 +1727,7 @@ if (process.argv[2] === "--mixed-continue") {
       source_event_id: `cycle-${mode}`, subject_sha256: "a".repeat(64), question_sha256: shadowHash(waiting.question), choice: withCr ? "requirements_delta" : "new_cycle",
       evidence_refs: [{ ref: "fixture:operator/cycle", sha256: "a".repeat(64) }] });
     await f.open().receiveDecision(waiting.question.operation_id, { sourceRef: "accept", write: true }); await f.open().acceptOperation(waiting.question.operation_id, { write: true }); claims.clear();
-    if (publishedRecoveryCheckpoint) {
+    if (publishedRecoverySelection) {
       const entering = await f.open().step({ write: true });
       assert.equal(entering.kind, "call");
       assert.equal(entering.transition.transition, "call_entry");
@@ -1752,27 +1752,48 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(checkpointOutput.facts.drift_recovery_checkpoint_verified, true, JSON.stringify(checkpointOutput)); assert.equal(checkpointOutput.effect_status, "no_effect");
     assert.equal((await f.open().dispatchOperation(refreshed.operation_id, { write: true })).status, "retained_result");
     console.log(`STEP drift cycle ${mode}: external checkpoint observed`);
-    if (publishedRecoveryCheckpoint) {
+    let selectedCycle = f.cycleParameters;
+    if (publishedRecoverySelection) {
+      const waitingSelection = await f.open().step({ write: true });
+      assert.equal(waitingSelection.status, "waiting_for_human");
+      const { question } = waitingSelection;
+      assert.equal(question.contract_version, "standard-drift-recovery-cycle-question.v1");
+      assert.equal(question.subject.checkpoint_operation_id, checked.operation_id);
+      assert.equal(checkpointOutput.observations.causal_transition.after_head, git("rev-parse", "HEAD"));
+      assert.equal(question.subject.head, git("rev-parse", "HEAD"));
+      selectedCycle = { cycle_id: "C" + String(question.subject.minimum_cycle_number).padStart(3, "0"),
+        cycle_type: "spike", title: "admitted-recovery" };
+      const claim = { contract_version: "human-drift-recovery-cycle-decision.v1", source_kind: "human", authority_id: "fixture_operator",
+        source_event_id: "fresh-recovery-cycle", subject_sha256: shadowHash(question.subject), question_sha256: shadowHash(question),
+        choice: "select_cycle", selected_cycle: selectedCycle, rationale: "Select the next cycle after the observed external checkpoint.",
+        evidence_refs: [{ ref: "fixture:operator/fresh-cycle", sha256: "a".repeat(64) }] };
+      const id = question.operation_id;
+      claims.set("wrong", { ...claim, selected_cycle: { ...selectedCycle, cycle_id: "C000" } });
+      await assert.rejects(f.open().receiveDecision(id, { sourceRef: "wrong", write: true }), { code: "STANDARD_RECOVERY_CYCLE_SELECTION_CHANGED" });
+      claims.set("wrong-head", { ...claim, subject_sha256: "b".repeat(64) });
+      await assert.rejects(f.open().receiveDecision(id, { sourceRef: "wrong-head", write: true }), { code: "STANDARD_RECOVERY_CYCLE_SELECTION_CHANGED" });
+      claims.set("select-cycle", claim);
+      await f.open().receiveDecision(id, { sourceRef: "select-cycle", write: true });
+      await f.open().acceptOperation(id, { write: true });
+      assert.deepEqual(f.open().readOperation(id).results.at(-1).output.observations.selected_cycle, selectedCycle);
+      claims.clear();
+    }
+    let initialized;
+    if (mode === "files") {
+      const file = put(f.base, "cycle-restart.json", JSON.stringify({ fixture: { configuration: f.configuration, dirs: f.dirs, base: f.base }, key_hex: f.key.toString("hex") }));
+      const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--recovery-record", file], { encoding: "utf8", shell: false, windowsHide: true, timeout: 300000 });
+      assert.equal(child.status, 0, child.stderr); const value = JSON.parse(child.stdout); assert.equal(value.status, "WAITING"); assert.equal(value.launches, 0); assert.equal(value.sessions, 0); initialized = { operation_id: value.operation_id };
+    } else initialized = await f.open().step({ write: true });
+    const output = f.open().readOperation(initialized.operation_id).results.at(-1).output; assert.equal(output.effect_status, "confirmed", JSON.stringify(output));
+    assert.equal(output.facts.drift_recovery_cycle_initialized, true); assert.equal(output.facts.cycle_dor_ready, false); assert.equal(output.facts.drift_check_completed, false);
+    assert.equal(output.observations.causal_transition.before_context_sha256, checkpointOutput.observations.causal_transition.after_context_sha256);
+    assert.equal(git("branch", "--show-current"), `spike/${selectedCycle.cycle_id}-admitted-recovery`);
+    assert.equal((await f.open().dispatchOperation(initialized.operation_id, { write: true })).status, "retained_result");
+    if (publishedRecoverySelection) {
       const returning = await f.open().step({ write: true });
       assert.equal(returning.kind, "call");
       assert.equal(returning.transition.transition, "call_return");
       assert.ok(returning.cursor.occurrences.some(row => row.node_id === "recovery_action_pending" && row.wait_reason === "event"));
-      assert.equal(checkpointOutput.observations.causal_transition.after_head, git("rev-parse", "HEAD"));
-      assert.equal(checkpointOutput.facts.drift_check_completed, false);
-      assert.ok(!returning.record.events.some(row => row.kind === "operation_intent"
-        && ["drift_change_request_record", "drift_recovery_cycle_initialize"].includes(row.intent.binding_ref)));
-    } else {
-      let initialized;
-      if (mode === "files") {
-        const file = put(f.base, "cycle-restart.json", JSON.stringify({ fixture: { configuration: f.configuration, dirs: f.dirs, base: f.base }, key_hex: f.key.toString("hex") }));
-        const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--recovery-record", file], { encoding: "utf8", shell: false, windowsHide: true, timeout: 300000 });
-        assert.equal(child.status, 0, child.stderr); const value = JSON.parse(child.stdout); assert.equal(value.status, "WAITING"); assert.equal(value.launches, 0); assert.equal(value.sessions, 0); initialized = { operation_id: value.operation_id };
-      } else initialized = await f.open().step({ write: true });
-      const output = f.open().readOperation(initialized.operation_id).results.at(-1).output; assert.equal(output.effect_status, "confirmed", JSON.stringify(output));
-      assert.equal(output.facts.drift_recovery_cycle_initialized, true); assert.equal(output.facts.cycle_dor_ready, false); assert.equal(output.facts.drift_check_completed, false);
-      assert.equal(output.observations.causal_transition.before_context_sha256, checkpointOutput.observations.causal_transition.after_context_sha256);
-      assert.equal(git("branch", "--show-current"), `spike/${f.cycleParameters.cycle_id}-admitted-recovery`);
-      assert.equal((await f.open().dispatchOperation(initialized.operation_id, { write: true })).status, "retained_result");
     }
     const after = f.open().inspect(); assert.equal(after.cursor.status, "WAITING");
     const simulated = simulateAgenticProcess({ instanceId: after.record.instance_id, model: after.record.model, parameters: after.record.initial_parameters,

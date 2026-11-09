@@ -158,6 +158,8 @@ import changeRequestInput from "../contracts/workflow-definition/standard-drift-
 import changeRequestOutput from "../contracts/workflow-definition/standard-drift-change-request-output.v1.schema.json" with { type: "json" };
 import driftCycleContext from "../contracts/workflow-definition/standard-drift-cycle-context-input.v1.schema.json" with { type: "json" };
 import driftCycleCheckpoint from "../contracts/workflow-definition/standard-drift-cycle-checkpoint-input.v1.schema.json" with { type: "json" };
+import recoveryCycleSelectionInput from "../contracts/workflow-definition/standard-drift-recovery-cycle-selection-input.v1.schema.json" with { type: "json" };
+import { recoveryCycleSelection, assertRecoveryCycleSelectionOutput } from "./standard-drift-recovery-cycle-selection.mjs";
 import driftCycleInput from "../contracts/workflow-definition/standard-drift-cycle-initialize-input.v1.schema.json" with { type: "json" };
 import driftCycleOutput from "../contracts/workflow-definition/standard-drift-cycle-output.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
@@ -171,6 +173,11 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (operation === recoveryCycleSelection) {
+    if (checkShadowJson(value) || validateJsonSchema(value, recoveryCycleSelectionInput, "$", { contractKind: "workflow-definition" }).length)
+      fail("STANDARD_OPERATION_INPUT_INVALID");
+    return value;
+  }
   if (operation === "cycle_plan_select") {
     if (checkShadowJson(value) || validateJsonSchema(value, empty, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
@@ -271,6 +278,7 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-drift-recovery-cycle-selection-output.v1") return assertRecoveryCycleSelectionOutput(value);
   if (value?.contract_version === "standard-cycle-close-selection-output.v1") {
     if (checkShadowJson(value) || validateJsonSchema(value, closeSelectionOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
