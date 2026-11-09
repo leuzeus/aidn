@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { runCheckpointUseCase } from "../../src/application/runtime/checkpoint-use-case.mjs";
-import { runCycleCreateAdmitUseCase } from "../../src/application/runtime/cycle-create-admit-use-case.mjs";
+import { runCycleCreateHookUseCase } from "../../src/application/runtime/cycle-create-hook-use-case.mjs";
 import { resolveDefaultIndexStore } from "../../src/core/state-mode/runtime-index-policy.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -135,68 +134,11 @@ function printUsage() {
   console.log("  node tools/perf/cycle-create-hook.mjs --target . --mode COMMITTING --index-store dual --json");
 }
 
-function shouldRunCheckpoint(admission) {
-  return ["proceed_r1_strict_chain", "proceed_r2_session_base_with_import", "create_cycle_allowed"].includes(String(admission?.action ?? ""));
-}
-
-function buildSummary(result) {
-  const checkpointSummary = result.checkpoint?.summary ?? {};
-  return {
-    result: result.result,
-    reason_code: result.reason_code ?? null,
-    action: result.action,
-    admitted: result.admission?.ok === true,
-    checkpoint_ran: result.checkpoint != null,
-    checkpoint_result: checkpointSummary.result ?? null,
-    repair_layer_open_count: Number(checkpointSummary.repair_layer_open_count ?? 0),
-    repair_layer_blocking: checkpointSummary.repair_layer_blocking === true,
-    repair_layer_status: checkpointSummary.repair_layer_status ?? "clean",
-    repair_layer_advice: checkpointSummary.repair_layer_advice ?? "Repair layer is clean.",
-    repair_primary_reason: checkpointSummary.repair_primary_reason ?? checkpointSummary.repair_layer_advice ?? "Repair layer is clean.",
-    repair_layer_top_findings: Array.isArray(checkpointSummary.repair_layer_top_findings)
-      ? checkpointSummary.repair_layer_top_findings
-      : [],
-  };
-}
-
 function main() {
   Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const admission = await runCycleCreateAdmitUseCase({
-      targetRoot,
-      mode: args.mode,
-    });
-    args.stateMode = admission.state_mode ?? args.stateMode;
-    if (!args.indexStoreExplicit) {
-      args.indexStore = resolveDefaultIndexStore(args.stateMode);
-    }
-    const checkpoint = shouldRunCheckpoint(admission)
-      ? await runCheckpointUseCase({
-        args,
-        runtimeDir: PERF_DIR,
-        targetRoot,
-      })
-      : null;
-
-    const result = {
-      ts: new Date().toISOString(),
-      ok: admission.ok === true && (checkpoint ? checkpoint.ok === true : true),
-      skill: "cycle-create",
-      target_root: targetRoot,
-      mode: args.mode,
-      state_mode: checkpoint?.state_mode ?? admission.state_mode ?? args.stateMode,
-      action: admission.action,
-      result: admission.result,
-      reason_code: admission.reason_code,
-      branch: admission.branch,
-      branch_kind: admission.branch_kind,
-      workspace: admission.workspace ?? null,
-      admission,
-      checkpoint,
-      summary: null,
-    };
-    result.summary = buildSummary(result);
+    const result = await runCycleCreateHookUseCase({ args, runtimeDir: PERF_DIR, targetRoot });
 
     if (args.json) {
       console.log(JSON.stringify(result, null, 2));
@@ -206,8 +148,8 @@ function main() {
     console.log(`Result: ${result.result}`);
     console.log(`Action: ${result.action}`);
     console.log(`Branch: ${result.branch}`);
-    if (admission.recommended_next_action) {
-      console.log(`Next action: ${admission.recommended_next_action}`);
+    if (result.admission.recommended_next_action) {
+      console.log(`Next action: ${result.admission.recommended_next_action}`);
     }
     process.exit(0);
   }).catch((error) => {

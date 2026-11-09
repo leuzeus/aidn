@@ -494,7 +494,34 @@ function mixedFixture(stateMode = "files", options = {}) {
           : { decision_operation_id: { source: "operation_id", node_id: "decide" } } },
         { node_id: "action_executed", fields: {} }, { node_id: "action_cancelled", fields: {} },
       ] };
-      if (options.publishedRecoveryCall) {
+      if (options.publishedCorrectiveDrift) {
+        const target = loadStandardWorkflowAssets().model.call_targets.find(row => row.model_id === "aidn-standard-corrective-drift");
+        const { model: child, ...identity } = target;
+        model.participants = child.participants;
+        model.nodes = model.nodes.filter(row => row.id !== "decide");
+        for (const node of model.nodes) node.participant_ref = child.participants[0].id;
+        model.nodes[0].children = model.nodes[0].children.filter(id => id !== "decide");
+        const record = model.nodes.find(row => row.id === "record");
+        delete record.binding_ref;
+        Object.assign(record, { kind: "call", target: identity });
+        delete model.operation_pins.drift_recovery_decision;
+        delete model.operation_pins.drift_check_finalize;
+        model.call_targets = [target];
+        model.data_bindings.contract_version = "process-data-bindings.v4";
+        model.data_bindings.inputs = model.data_bindings.inputs.filter(row => row.node_id !== "decide");
+        if (options.publishedCheckpoint) {
+          const checkpoint = op("checkpoint", "cycle_checkpoint_finalize");
+          checkpoint.participant_ref = child.participants[0].id;
+          model.nodes.push(checkpoint);
+          model.nodes[0].children.splice(-1, 0, checkpoint.id);
+          model.operation_pins.cycle_checkpoint_finalize = shadowHash(standardWorkflowOperationBindings().find(row => row.id === "cycle_checkpoint_finalize"));
+          model.data_bindings.inputs.push({ node_id: checkpoint.id, fields: {
+            session_id: { source: "operation_input", node_id: "initialize", path: ["session_id"] },
+            cycle_id: { source: "literal", value: "C001" },
+            evaluation_operation_id: { source: "operation_id", node_id: "evaluate" },
+          } });
+        }
+      } else if (options.publishedRecoveryCall) {
         const target = loadStandardWorkflowAssets().model.call_targets.find(row => row.model_id === "aidn-standard-drift-recovery");
         const { model: recoveryModel, ...identity } = target;
         model.participants = recoveryModel.participants;
@@ -1265,6 +1292,22 @@ if (process.argv[2] === "--mixed-continue") {
             assert.equal((await f.open().receiveDecision(result.operation_id, { sourceRef: 'missing-correction', write: true })).status, 'waiting_for_human');
             assert.equal(f.open().inspect().record.instance_sha256, beforeWait); assert.equal(f.t.sessions.length, nativeCount);
             claim = composedCorrectionChoice(result.question, result.operation_id);
+          } else if (["drift_recovery_decision", "drift_completion_decision"].includes(binding)) {
+            assert.equal(fullCorrection, true);
+            const question = result.question, parent = state.cursor.occurrences.find(row => row.occurrence_id === frame.call_scope_id);
+            assert.equal(parent?.node_id, "correction_cycle_drift_finalize");
+            assert.equal(question.contract_version, "standard-drift-recovery-question.v2");
+            assert.ok(question.choices.includes("confirm_alignment"));
+            const beforeWait = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
+            assert.equal((await f.open().receiveDecision(result.operation_id, { sourceRef: "missing-corrective-drift", write: true })).status, "waiting_for_human");
+            assert.equal(f.open().inspect().record.instance_sha256, beforeWait); assert.equal(f.t.sessions.length, nativeCount);
+            ref = "corrective_drift_" + result.operation_id;
+            claim = { contract_version: "human-drift-recovery-decision.v2", source_kind: "human", authority_id: "fixture_operator",
+              source_event_id: "standard:" + ref, subject_sha256: shadowHash(question.review), question_sha256: shadowHash(question),
+              choice: "confirm_alignment", rationale: binding === "drift_completion_decision"
+                ? "The fixture operator confirms the witnessed corrective completion for the separate cycle checkpoint."
+                : "The selected corrective cycle addresses the accepted review finding within the current fixture session.",
+              evidence_refs: [{ ref: "fixture:operator-corrective-drift", sha256: shadowHash(question.review) }] };
           } else if (binding === "session_branch_integration_decision") {
             assert.ok(runsPromotion); assert.ok(result.question.choices.includes("integrate-to-session"));
             const beforeWait = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
@@ -1944,11 +1987,15 @@ if (process.argv[2] === "--mixed-continue") {
     // a semantic verdict about either objective. Native/Human are fixture ports.
     const sessionObjective = "Learn through an explicitly admitted bounded SPIKE";
     const cycleObjective = "Determine whether a bounded prototype is useful";
-    for (const route of ["finalize", "recovery"]) {
+    const checkpointOnly = process.argv.includes("--drift-objective-checkpoint-only");
+    const publishedCheckpoint = process.argv.includes("--drift-objective-published-checkpoint");
+    assert.ok(!checkpointOnly || publishedCheckpoint);
+    for (const route of checkpointOnly ? ["recovery"] : ["finalize", "recovery"]) {
       let humanReads = 0;
       const humanClaims = new Map();
-      const finalizeOpinion = process.argv.includes("--drift-objective-finalize-accept"), acceptOpinion = finalizeOpinion || process.argv.includes("--drift-objective-human-accept");
-      const options = route === "recovery" ? { finalize: false, recovery: true, objectiveFinalize: finalizeOpinion, humanSource: {
+      const published = publishedCheckpoint || process.argv.includes("--drift-objective-published-corrective");
+      const finalizeOpinion = published || process.argv.includes("--drift-objective-finalize-accept"), acceptOpinion = finalizeOpinion || process.argv.includes("--drift-objective-human-accept");
+      const options = route === "recovery" ? { finalize: false, recovery: true, objectiveFinalize: finalizeOpinion, publishedCorrectiveDrift: published, publishedCheckpoint, humanSource: {
         read({ sourceRef, question }) { humanReads++; assert.equal(question.contract_version, "standard-drift-recovery-question.v2"); return humanClaims.get(sourceRef) ?? null; },
         verify({ source, sourceRef }) { assert.deepEqual(source, humanClaims.get(sourceRef)); return { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) }; },
       } } : {};
@@ -1962,11 +2009,11 @@ if (process.argv[2] === "--mixed-continue") {
         console.log(JSON.stringify({ drift_objective_model_preflight: route, outcome: "constructed", native_allocations: 0 }));
         continue;
       }
-      const auth = await bootstrapMixed(f), c = await prepareCompletionCycle(f, "DONE");
+      const auth = await bootstrapMixed(f), c = await prepareCompletionCycle(f, published ? "OPEN" : "DONE");
       assert.match(c.artifacts.sessions().find(row => row.session_id === "S001").content, new RegExp(sessionObjective));
       const observed = await c.context();
       assert.equal(observed.context.original_objective, cycleObjective);
-      assert.equal(observed.context.context_use, "cycle_completion");
+      assert.equal(observed.context.context_use, published ? "active_cycle" : "cycle_completion");
       const native = await f.open().step({ write: true, authorization: auth });
       assert.equal(native.journal_phase, "closed", JSON.stringify(native));
       const occurrence = f.open().inspect().cursor.occurrences.find(row => row.node_id === "analyze").occurrence_id;
@@ -1982,9 +2029,20 @@ if (process.argv[2] === "--mixed-continue") {
         assert.equal(preview.preview.prepared.reason_code, "STANDARD_DRIFT_GATE_BLOCKED");
         assert.ok(preview.preview.prepared.gate.levels.level2.active_signals.includes("objective_delta"));
       } else {
+        if (published) {
+          const entered = await f.open().step({ write: true });
+          assert.equal(entered.kind, "call");
+          const selection = await f.open().step({ write: true });
+          const chosen = f.open().readOperation(selection.operation_id).results.at(-1).output;
+          assert.equal(chosen.observations.evaluation_operation_id, evaluated.operation_id);
+          assert.equal(chosen.observations.reason_code, "STANDARD_DRIFT_OBJECTIVE_REVIEW");
+          assert.equal(chosen.effect_status, "no_effect");
+          assert.equal(chosen.facts.drift_objective_review_required, true);
+        }
+        const beforeReview = f.open().inspect().record.instance_sha256;
         const preview = await f.open().step({ write: false });
         assert.equal(preview.preview.prepared.plan.contract_version, "standard-drift-recovery-plan.v2");
-        assert.equal(f.open().inspect().record.instance_sha256, before);
+        assert.equal(f.open().inspect().record.instance_sha256, beforeReview);
         const waiting = await f.open().step({ write: true });
         assert.equal(waiting.status, "waiting_for_human"); assert.equal(humanReads, 0);
         assert.equal(waiting.question.contract_version, "standard-drift-recovery-question.v2");
@@ -1997,11 +2055,20 @@ if (process.argv[2] === "--mixed-continue") {
             source_event_id: "fixture-objective-alignment-1", subject_sha256: shadowHash(waiting.question.review), question_sha256: shadowHash(waiting.question),
             choice: "confirm_alignment", rationale: "Fixture operator reviews this exact disagreement; signal discharge remains pending.",
             evidence_refs: [{ ref: "fixture:operator/objective", sha256: shadowHash(waiting.question.review) }] };
+          if (published) {
+            const waitingHash = f.open().inspect().record.instance_sha256;
+            assert.equal(f.reopen().inspect().record.instance_sha256, waitingHash);
+            assert.equal((await f.open().receiveDecision(waiting.operation_id, { write: true, sourceRef: "missing" })).status, "waiting_for_human");
+            assert.equal(f.open().inspect().record.instance_sha256, waitingHash);
+          }
           humanClaims.set("accept", claim);
           await f.open().receiveDecision(waiting.operation_id, { write: true, sourceRef: "accept" });
           await f.open().acceptOperation(waiting.operation_id, { write: true });
           const decision = f.open().readOperation(waiting.operation_id).results.at(-1).output;
-          assert.equal(decision.observations.signal_discharged, false); assert.deepEqual(decision.facts, { drift_check_completed: false });
+          assert.equal(decision.observations.signal_discharged, false);
+          assert.deepEqual(decision.facts, published
+            ? { drift_check_completed: false, drift_route_ready: true, drift_diagnosis_requested: false }
+            : { drift_check_completed: false });
           if (finalizeOpinion) {
             const closed = await f.open().step({ write: true }), finalized = f.open().readOperation(closed.operation_id).results.at(-1).output;
             assert.equal(finalized.effect_status, "confirmed", JSON.stringify(finalized));
@@ -2014,6 +2081,53 @@ if (process.argv[2] === "--mixed-continue") {
             assert.equal(record.preview.prepared.plan.contract_version, "standard-drift-finalize-plan.v3");
             assert.equal((await f.open().dispatchOperation(closed.operation_id, { write: true })).status, "retained_result");
             assert.equal(f.open().readOperation(closed.operation_id).results.length, record.results.length);
+            if (published) {
+              const review = await f.open().step({ write: true });
+              assert.equal(review.status, "waiting_for_human");
+              assert.equal(review.question.review.previous_completion.operation_id, closed.operation_id);
+              const renewed = { ...claim, source_event_id: "fixture-objective-checkpoint-1",
+                question_sha256: shadowHash(review.question), subject_sha256: shadowHash(review.question.review),
+                rationale: "Fixture operator confirms the witnessed completion for the separate cycle checkpoint." };
+              humanClaims.set("renew", renewed);
+              await f.open().receiveDecision(review.operation_id, { write: true, sourceRef: "renew" });
+              await f.open().acceptOperation(review.operation_id, { write: true });
+              const renewal = f.open().readOperation(review.operation_id).results.at(-1).output;
+              assert.equal(renewal.effect_status, "no_effect");
+              assert.equal(renewal.observations.signal_discharged, false);
+              assert.deepEqual(f.open().readOperation(closed.operation_id), record);
+              assert.equal((await f.open().step({ write: true })).kind, "call");
+              const transitions = f.open().inspect().record.events.filter(row => ["call_enter", "call_return"].includes(row.kind));
+              assert.deepEqual(transitions.map(row => row.kind), ["call_enter", "call_return"]);
+              assert.equal(transitions[0].occurrence_id, transitions[1].occurrence_id);
+              if (publishedCheckpoint) {
+                assert.deepEqual(review.question.review.gate_constraints.level1, { decision: "full", fallback: true, reason_codes: ["MISSING_CACHE"] });
+                const previewStarted = performance.now();
+                const checkpointPreview = await f.open().step({ write: false });
+                const previewMs = Math.round(performance.now() - previewStarted);
+                const prepared = checkpointPreview.preview.prepared;
+                assert.equal(prepared.can_apply, true, JSON.stringify(prepared));
+                assert.equal(prepared.plan.input.evaluation_operation_id, evaluated.operation_id);
+                assert.match(prepared.plan.objective_completion_sha256, /^[a-f0-9]{64}$/);
+                assert.notEqual(prepared.plan.objective_completion_sha256, shadowHash(finalized.observations.hook.payload.objective_alignment));
+                const stageStarted = performance.now();
+                const staged = await f.open().stageOperation(checkpointPreview.preview,
+                  { write: true, expectedPreviewSha256: shadowHash(checkpointPreview.preview) });
+                const stageMs = Math.round(performance.now() - stageStarted);
+                const dispatchStarted = performance.now();
+                const checkpoint = await f.open().step({ write: true });
+                assert.equal(checkpoint.operation_id, staged.operation_id);
+                const checkpointRecord = f.open().readOperation(checkpoint.operation_id), result = checkpointRecord.results.at(-1).output;
+                console.log(JSON.stringify({ corrective_checkpoint_timing: true, preview_ms: previewMs, stage_ms: stageMs,
+                  dispatch_and_accept_ms: Math.round(performance.now() - dispatchStarted), operation_id: checkpoint.operation_id,
+                  outcome: result.outcome, effect_status: result.effect_status }));
+                assert.equal(result.effect_status, "confirmed", JSON.stringify(result));
+                assert.equal(result.facts.cycle_checkpoint_completed, true);
+                assert.equal(result.observations.hook.invocation, "in_process_authenticated_objective_completion");
+                assert.equal(result.observations.hook.payload.checkpoint.gate.skipped, false);
+                assert.equal(result.observations.event.event, "checkpoint_summary");
+                assert.equal((await f.open().dispatchOperation(checkpoint.operation_id, { write: true })).status, "retained_result");
+              }
+            }
           } else await assert.rejects(f.open().step({ write: false }), /STANDARD_RECOVERY_CONFIRMED_FINDINGS_REQUIRED/);
           const after = f.open().inspect(), simulation = simulateAgenticProcess({ instanceId: after.record.instance_id, model: after.record.model,
             parameters: after.record.initial_parameters, scopeId: after.record.scope_id, policyPins: after.record.policy_pins, events: after.record.events });
@@ -2023,7 +2137,7 @@ if (process.argv[2] === "--mixed-continue") {
       }
       if (route === "finalize") assert.equal(f.open().inspect().record.instance_sha256, before);
       assert.equal(c.artifacts.ownerPending(), false);
-      assert.equal(humanReads, route === "recovery" && acceptOpinion ? 1 : 0);
+      assert.equal(humanReads, route === "recovery" && acceptOpinion ? published ? 3 : 1 : 0);
       assert.equal(f.t.sessions.length, 1); assert.ok(f.t.sessions.every(row => row.closed));
       console.log(JSON.stringify({ diagnosis: route === "recovery" && finalizeOpinion ? "AUTHENTICATED_FIXTURE_ALIGNMENT_FINALIZED" : "UNRESOLVED_SIGNAL_REPORT_DISAGREEMENT", route,
         session_objective: sessionObjective, cycle_objective: cycleObjective, target: f.configuration.target_root,

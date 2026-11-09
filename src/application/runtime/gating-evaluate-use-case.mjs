@@ -64,7 +64,7 @@ function runReloadCheck(runtimeDir, targetRoot, cachePath, stateMode, indexFile,
   });
 }
 
-async function detectSignals(targetRoot, args, reloadResult, gitAdapter, completionContext = null, verifyObjectiveAlignment = null, readObjectiveCompletion = null) {
+async function detectSignals(targetRoot, args, reloadResult, gitAdapter, completionContext = null, verifyObjectiveAlignment = null, readObjectiveCompletion = null, requireIntentSignals = false) {
   const observations = await collectGatingObservations({
     targetRoot,
     eventFile: args.eventFile,
@@ -76,6 +76,7 @@ async function detectSignals(targetRoot, args, reloadResult, gitAdapter, complet
     reloadResult,
     gitAdapter,
     completionContext,
+    requireIntentSignals,
   });
   const observedReload = observations.canonicalIntentFailureReason ? {
     ...reloadResult,
@@ -188,7 +189,7 @@ export function printHumanGatingResult(result) {
   }
 }
 
-export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir, completionCycleId = null, verifyObjectiveAlignment = null, readObjectiveCompletion = null, assertEventAuthorized = null }) {
+export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir, completionCycleId = null, verifyObjectiveAlignment = null, readObjectiveCompletion = null, assertEventAuthorized = null, requireIntentSignals = false }) {
   const started = Date.now();
   const gitAdapter = createLocalGitAdapter();
   args.cache = resolveRuntimeTargetPath(targetRoot, args.cache);
@@ -242,7 +243,7 @@ export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir, c
       args.indexBackend,
     );
   }
-  const { levels, repairLayerObserved, objectiveAlignment } = await detectSignals(targetRoot, args, reload, gitAdapter, completionContext, verifyObjectiveAlignment, readObjectiveCompletion);
+  const { levels, repairLayerObserved, objectiveAlignment } = await detectSignals(targetRoot, args, reload, gitAdapter, completionContext, verifyObjectiveAlignment, readObjectiveCompletion, requireIntentSignals);
   if (completionRefusal) {
     levels.level1.decision = "stop";
     levels.level1.reason_codes = [...new Set([...levels.level1.reason_codes, completionRefusal])];

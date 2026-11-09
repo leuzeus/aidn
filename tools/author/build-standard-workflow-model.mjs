@@ -355,6 +355,33 @@ checkpointDrift("closure_drift", "cycle_work", "close_finalize");
 checkpointDrift("promotion_drift", "promotion", "promotion_finalize");
 checkpointDrift("session_closure_drift", null, null);
 
+// The corrective checkpoint may arbitrate a sole objective signal against its
+// own evaluation. The finalizer still owns R05 and refuses unresolved drift.
+const correctiveDriftSite = "correction_cycle_drift_finalize";
+const correctiveDriftNodeStart = nodes.length, correctiveDriftInputStart = inputs.length;
+const correctiveEvaluation = { evaluation_operation_id: { source: "parameter", key: "evaluation_operation_id", path: [] } };
+seq("checkpoint_drift", ["select", "objective_route", "finalize", "checkpoint_review_route"]);
+op("select", "drift_followup_select", correctiveEvaluation);
+xor("objective_route", [["review", "decide", "drift_objective_review_required"], ["other", "without_review", null]]);
+op("decide", "drift_recovery_decision", correctiveEvaluation);
+seq("without_review", []);
+op("finalize", "drift_check_finalize", correctiveEvaluation);
+xor("checkpoint_review_route", [["review", "checkpoint_review", "drift_objective_review_required"], ["nominal", "checkpoint_without_review", null]]);
+op("checkpoint_review", "drift_completion_decision");
+seq("checkpoint_without_review", []);
+const correctiveDriftNodes = nodes.splice(correctiveDriftNodeStart);
+const correctiveDriftTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-corrective-drift", revision: 1,
+  participants: [{ id: "project" }], roles: [], policies: [], entry: "checkpoint_drift", nodes: correctiveDriftNodes,
+  operation_pins: pinsFor(correctiveDriftNodes), call_interface: { parameters: { evaluation_operation_id: "string" }, returns: {} },
+  data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["evaluation_operation_id"], inputs: inputs.splice(correctiveDriftInputStart) } };
+const correctiveDriftRef = pinTarget(correctiveDriftTarget);
+const correctiveDriftCall = nodes.find(row => row.id === correctiveDriftSite);
+delete correctiveDriftCall.binding_ref;
+Object.assign(correctiveDriftCall, { kind: "call", target: correctiveDriftRef });
+inputs.find(row => row.node_id === "correction_cycle_checkpoint").fields = {
+  ...correctionRef, ...operation(null, "evaluation_operation_id", "correction_cycle_drift_evaluate"),
+};
+
 // The correction is an ordinary new cycle. Reuse the governed task/validation
 // and closure subgraph with distinct occurrences and the new implementation
 // authority; never borrow the first cycle's accepted work or validation.
@@ -568,6 +595,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...pretriageRef, model: pretriageTarget },
     { ...captureRef, model: captureTarget },
     { ...driftRecoveryRef, model: driftRecoveryTarget },
+    { ...correctiveDriftRef, model: correctiveDriftTarget },
   ],
   data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session", "cycle"], inputs } };
 if (existing) {

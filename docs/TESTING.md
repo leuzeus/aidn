@@ -536,6 +536,25 @@ case must be qualified on its own exact source; the earlier question/capture
 case does not prove it. Neither case qualifies published-model routing, actual
 human/native actors, installed execution or the entire standard workflow.
 
+Add `--drift-objective-published-corrective` to `--drift-objective-mismatch-only`
+to exercise the exact published corrective checkpoint call inside a disposable
+mixed fixture with an active cycle. The direct finalizer first retains its
+objective refusal. The call then binds the accepted evaluation, waits for the
+signed fixture opinion across host reopening, and returns after the confirmed
+R05 result and the fresh review linked to that completion. Use `--drift-objective-published-checkpoint` with
+`--drift-objective-mismatch-only` to also exercise the next real cycle checkpoint,
+including its linked plan, separate grant, gate invocation and retained result.
+The full correction sequence, installed package and actual actors have separate
+gates.
+Add `--drift-objective-checkpoint-only` with the published-checkpoint selector
+to isolate its positive route within the same execution bound. The direct
+refusal is verified by a separate execution.
+The positive fixture stages the exact preview returned by the mixed host and
+then dispatches and accepts that occurrence through the ordinary step. It
+records preview, staging and dispatch/acceptance elapsed times separately.
+The missing-cache case exercises a reload write followed by continued live v3
+review validation, with a real checkpoint summary and one confirmed effect.
+
 The console fixture includes a changing prepared-plan clock. It retains the exact
 STANDARD action in the returned request, rejects a missing prepared request,
 changed action and changed live authority before effects, and checks that the

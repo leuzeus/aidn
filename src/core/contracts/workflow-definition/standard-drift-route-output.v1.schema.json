@@ -42,6 +42,9 @@
         "drift_followup_review_required": {
           "type": "boolean"
         },
+        "drift_objective_review_required": {
+          "type": "boolean"
+        },
         "drift_diagnosis_requested": {
           "type": "boolean"
         },

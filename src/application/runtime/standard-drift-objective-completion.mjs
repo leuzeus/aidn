@@ -15,15 +15,19 @@ export function createStandardObjectiveCompletion({ readOperation, readEvaluatio
   readCurrent, readReport, readEvent, readHistoricalDisposition = null, readRenewedDisposition = null, now = Date.now }) {
   if ([readOperation, readEvaluation, readDisposition, readCurrent, readReport, readEvent].some(value => typeof value !== "function"))
     fail("STANDARD_OBJECTIVE_COMPLETION_AUTHORITY_REQUIRED");
-  async function inspect(instance, historical = false) {
+  async function inspect(instance, historical = false, evaluationOperationId = null) {
       const id = instance.events.filter(event => event.kind === "operation_intent"
         && event.intent.binding_ref === "drift_check_finalize").at(-1)?.intent.operation_id;
+      if (!id && evaluationOperationId !== null) fail("STANDARD_OBJECTIVE_COMPLETION_REQUIRED");
       if (!id) return null;
       const record = readOperation(id), retainedSha256 = shadowHash(record), plan = record.preview?.prepared?.plan;
+      if (evaluationOperationId !== null && plan?.input?.evaluation_operation_id !== evaluationOperationId)
+        fail("STANDARD_OBJECTIVE_COMPLETION_SUBJECT_CHANGED");
       // Historical finalizers do not imply a retained alignment opinion. Never
       // search backwards past the latest finalizer to reuse an older v3 result.
-      if (["standard-drift-finalize-plan.v1", "standard-drift-finalize-plan.v2"].includes(plan?.contract_version)) return null;
-      if (validateJsonSchema(plan, planSchema, "$", { contractKind: "workflow-definition" }).length)
+      const nominal = ["standard-drift-finalize-plan.v1", "standard-drift-finalize-plan.v2"].includes(plan?.contract_version);
+      if (nominal && evaluationOperationId === null) return null;
+      if (!nominal && validateJsonSchema(plan, planSchema, "$", { contractKind: "workflow-definition" }).length)
         fail("STANDARD_OBJECTIVE_COMPLETION_PLAN_INVALID");
       const result = record.results.at(-1), receipt = result?.receipt, output = assertStandardOperationOutput(result?.output);
       if (record.operation_id !== id || plan.operation_id !== id || record.intent.binding_ref !== "drift_check_finalize"
@@ -33,6 +37,11 @@ export function createStandardObjectiveCompletion({ readOperation, readEvaluatio
         || output.outcome !== "completed" || output.effect_status !== "confirmed" || output.facts.drift_check_completed !== true
         || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(receipt)))
         fail("STANDARD_OBJECTIVE_COMPLETION_NOT_ACCEPTED");
+      if (nominal) {
+        if (output.observations.evaluation_operation_id !== evaluationOperationId
+          || shadowHash(record.preview.input) !== shadowHash(plan.input)) fail("STANDARD_OBJECTIVE_COMPLETION_SUBJECT_CHANGED");
+        return null;
+      }
       const observed = output.observations, alignment = plan.objective_alignment;
       if (plan.input.evaluation_operation_id !== alignment.evaluation_operation_id
         || plan.evaluation_sha256 !== alignment.evaluation_sha256 || plan.context_sha256 !== alignment.context_sha256
@@ -93,11 +102,11 @@ export function createStandardObjectiveCompletion({ readOperation, readEvaluatio
       if (!proof) fail("STANDARD_OBJECTIVE_COMPLETION_REQUIRED");
       return structuredClone(proof.anchor);
     },
-    async read(instance) {
+    async read(instance, { evaluationOperationId = null } = {}) {
       const renewal = instance.events.findLast(event => event.kind === "operation_intent" && event.intent.binding_ref === "drift_completion_decision");
       const finalization = instance.events.findLast(event => event.kind === "operation_intent" && event.intent.binding_ref === "drift_check_finalize");
       const renew = renewal && instance.events.indexOf(renewal) > instance.events.indexOf(finalization);
-      const proof = await inspect(instance, Boolean(renew));
+      const proof = await inspect(instance, Boolean(renew), evaluationOperationId);
       if (!proof) return null;
       if (!renew) return proof.disposition;
       if (typeof readRenewedDisposition !== "function") fail("STANDARD_OBJECTIVE_COMPLETION_RENEWAL_AUTHORITY_REQUIRED");

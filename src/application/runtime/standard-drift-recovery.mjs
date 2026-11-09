@@ -132,16 +132,23 @@ export function createStandardDriftRecovery({ targetRoot, readEvaluation, observ
       return afterMetadata;
     } finally { store.close(); }
   }
-  async function prepare(instance, input, operationId, at) {
+  async function prepare(instance, input, operationId, at, { retainedRenewal = null, verifiedEvaluation = null } = {}) {
     projectionFiles();
-    const verified = await readEvaluation(instance, input), report = verified.output.observations.report;
+    const verified = verifiedEvaluation ?? await readEvaluation(instance, input), report = verified.output.observations.report;
     if (verified.output.facts.drift_present === false && verified.output.facts.drift_context_complete === true
       && verified.output.facts.drift_recovery_required === false) {
       const context = verified.context, session = context.documents.find(row => /^audit:sessions\/S[0-9]{3,6}\.md$/.test(row.ref));
       const sessionObjective = session && analyzeStructuredArtifact(session.content).key_values.session_objective;
-      const gate = await observeStandardDriftGate(artifacts, context.mode ?? "COMMITTING");
+      const gate = await observeStandardDriftGate(artifacts, context.mode ?? "COMMITTING", { requireIntentSignals: retainedRenewal !== null });
       const constraints = { level1: gate.levels.level1, level3: gate.levels.level3,
         other_signals: gate.levels.level2.active_signals.filter(value => value !== "time_since_last_drift_check") };
+      // A checkpoint fills the previously missing cache under its own grant.
+      // Keep the signed review bytes only for this expected R03 transition.
+      // Live objective and all other gate constraints still have to match.
+      const retainedGate = retainedRenewal?.gate_constraints;
+      if (retainedGate && shadowHash(retainedGate.level1) === shadowHash({ decision: "full", fallback: true, reason_codes: ["MISSING_CACHE"] })
+        && shadowHash(constraints.level1) === shadowHash({ decision: "incremental", fallback: false, reason_codes: [] }))
+        constraints.level1 = retainedGate.level1;
       const plan = assertObjectiveReview({ contract_version: "standard-drift-recovery-plan.v2", review_kind: "objective_signal_disagreement",
         review_operation_id: operationId, evaluation_operation_id: input.evaluation_operation_id, evaluation_sha256: verified.evaluation_sha256,
         context_sha256: verified.context_sha256, prepared_at_ms: at, session_id: context.session_id, cycle_id: context.cycle_id,
@@ -176,28 +183,30 @@ export function createStandardDriftRecovery({ targetRoot, readEvaluation, observ
     if ((await observeContext()).context_sha256 !== verified.context_sha256) fail("STANDARD_RECOVERY_REVIEW_STALE");
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }
-  async function prepareRenewal(instance, operationId, at) {
-    if (typeof readPreviousCompletion !== "function") fail("STANDARD_OBJECTIVE_COMPLETION_AUTHORITY_REQUIRED");
-    const anchor = await readPreviousCompletion(instance);
+  async function prepareRenewal(instance, operationId, at, witnessedCompletion = null, currentReview = {}) {
+    if (witnessedCompletion === null && typeof readPreviousCompletion !== "function") fail("STANDARD_OBJECTIVE_COMPLETION_AUTHORITY_REQUIRED");
+    const anchor = witnessedCompletion ?? await readPreviousCompletion(instance);
     const original = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === anchor.operation_id);
     if (!original || original.intent.binding_ref !== "drift_check_finalize") fail("STANDARD_OBJECTIVE_COMPLETION_REQUIRED");
     // The accepted completion reader authenticates its diagnostic and anchor.
     // Resolve the evaluation through that accepted finalizer's signed source.
     const completed = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "drift_report_evaluate").at(-1);
     if (!completed) fail("STANDARD_OBJECTIVE_COMPLETION_REQUIRED");
-    const fresh = await prepare(instance, { evaluation_operation_id: completed.intent.operation_id }, operationId, at);
+    const fresh = await prepare(instance, { evaluation_operation_id: completed.intent.operation_id }, operationId, at, currentReview);
     if (!fresh.can_apply || fresh.plan.contract_version !== "standard-drift-recovery-plan.v2") fail("STANDARD_OBJECTIVE_COMPLETION_REVIEW_REQUIRED");
     const plan = assertObjectiveReview({ ...fresh.plan, contract_version: "standard-drift-recovery-plan.v3", previous_completion: anchor });
-    if (shadowHash(await readPreviousCompletion(instance)) !== shadowHash(anchor)) fail("STANDARD_OBJECTIVE_COMPLETION_LINK_CHANGED");
+    if (witnessedCompletion === null && shadowHash(await readPreviousCompletion(instance)) !== shadowHash(anchor))
+      fail("STANDARD_OBJECTIVE_COMPLETION_LINK_CHANGED");
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }
   return Object.freeze({
     prepare: (instance, input, operationId) => prepare(instance, input, operationId, now()),
     prepareRenewal: (instance, operationId) => prepareRenewal(instance, operationId, now()),
-    async assertFresh(instance, plan) {
+    async assertFresh(instance, plan, witnessedCompletion = null, verifiedEvaluation = null) {
       assertRecoveryPlan(plan);
       const fresh = plan.contract_version === "standard-drift-recovery-plan.v3"
-        ? await prepareRenewal(instance, plan.review_operation_id, plan.prepared_at_ms)
+        ? await prepareRenewal(instance, plan.review_operation_id, plan.prepared_at_ms, witnessedCompletion,
+          witnessedCompletion === null ? {} : { retainedRenewal: plan, verifiedEvaluation })
         : await prepare(instance, { evaluation_operation_id: plan.evaluation_operation_id }, plan.review_operation_id, plan.prepared_at_ms);
       if (fresh.plan_sha256 !== shadowHash(plan)) fail("STANDARD_RECOVERY_REVIEW_STALE");
     },

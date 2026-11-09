@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import { runGatingEvaluateUseCase } from "./gating-evaluate-use-case.mjs";
 import { runSkillHookUseCase } from "./skill-hook-use-case.mjs";
 import { runCycleCreateAdmitUseCase } from "./cycle-create-admit-use-case.mjs";
+import { runCycleCreateHookUseCase } from "./cycle-create-hook-use-case.mjs";
+import { defaultCycleCloseHookArguments as defaultCheckpointArguments } from "./cycle-close-hook-use-case.mjs";
 import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-adapter.mjs";
 import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
@@ -23,13 +25,15 @@ const emit = (outcome, effect_status, observations, facts = {}, evidence_refs = 
 // suppress the conditional drift gate, or supply a successful hook result.
 export function createStandardCycleCheckpoint({ artifacts, scope, session, audit, now }) {
   const root = artifacts.root;
+  const auditCycle = ({ session_id, cycle_id }) => audit({ session_id, cycle_id });
   function assertPlan(plan) {
     if (checkShadowJson(plan) || validateJsonSchema(plan, schema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_CYCLE_CHECKPOINT_PLAN_INVALID");
     assertStandardOperationInput("cycle_checkpoint_finalize", plan.input);
+    if (plan.objective_completion_sha256 && !plan.input.evaluation_operation_id) fail("STANDARD_CYCLE_CHECKPOINT_PLAN_INVALID");
     return plan;
   }
-  async function gate(mode) {
-    return runGatingEvaluateUseCase({ targetRoot: root, runtimeDir, args: {
+  async function gate(mode, readObjectiveCompletion) {
+    return runGatingEvaluateUseCase({ targetRoot: root, runtimeDir, readObjectiveCompletion, args: {
       cache: ".aidn/runtime/cache/reload-state.json", eventFile: eventRelative, indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
       stateMode: artifacts.describe().state_mode, stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto",
       thresholdFiles: 3, thresholdMinutes: 45, mode, runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: false,
@@ -55,9 +59,11 @@ export function createStandardCycleCheckpoint({ artifacts, scope, session, audit
     if (bytes.length && bytes.at(-1) !== 10) fail("STANDARD_CYCLE_CHECKPOINT_EVENT_LOG_INVALID");
     return bytes;
   }
-  async function prepare(input, preparedAt, acquired = false) {
+  async function prepare(input, preparedAt, readObjectiveCompletion, acquired = false) {
     assertStandardOperationInput("cycle_checkpoint_finalize", input);
-    const context = scope(), observed = session(input.session_id), checked = await audit(input);
+    if (input.evaluation_operation_id && typeof readObjectiveCompletion !== "function")
+      return { can_apply: false, reason_code: "STANDARD_OBJECTIVE_COMPLETION_REQUIRED" };
+    const context = scope(), observed = session(input.session_id), checked = await auditCycle(input);
     if ((!acquired && artifacts.ownerPending()) || !checked.allowed) return { can_apply: false, reason_code: "STANDARD_CYCLE_CHECKPOINT_ADMISSION_BLOCKED", admission: checked };
     // Step 9 of the skill and its route specify COMMITTING for the performance
     // checkpoint. This does not alter session mode or the admitted cycle rule.
@@ -65,18 +71,20 @@ export function createStandardCycleCheckpoint({ artifacts, scope, session, audit
     if (hookAdmission.ok !== true || hookAdmission.active_session !== input.session_id || hookAdmission.active_cycle !== input.cycle_id
       || !["proceed_r1_strict_chain", "proceed_r2_session_base_with_import"].includes(hookAdmission.action))
       return { can_apply: false, reason_code: "STANDARD_CYCLE_CHECKPOINT_ADMISSION_BLOCKED", admission: hookAdmission };
-    const gating = await gate(hookMode);
+    const gating = await gate(hookMode, readObjectiveCompletion);
     if (!openGate(gating)) return { can_apply: false, reason_code: "STANDARD_CYCLE_CHECKPOINT_GATE_REQUIRED", gate: gating };
+    const completion = gating.objective_alignment ?? await readObjectiveCompletion?.() ?? null;
     const before = events();
     const plan = assertPlan({ contract_version: "standard-cycle-checkpoint-plan.v1", operation_ref: "cycle_checkpoint_finalize", input,
       prepared_at_ms: preparedAt, scope: context, mode: observed.metadata.mode, hook_mode: hookMode, dor_ready: checked.dor_ready, documents: documents(observed, checked),
       event_log: { bytes: before.length, sha256: artifactContentHash(before) },
-      effects: ["checkpoint", "runtime_index", "checkpoint_events"] });
+      effects: ["checkpoint", "runtime_index", "checkpoint_events"],
+      ...(completion === null ? {} : { objective_completion_sha256: shadowHash(completion) }) });
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }
   return Object.freeze({
-    prepareCycleCheckpoint: input => prepare(input, now()),
-    async finalizeCycleCheckpoint(prepared, { write = false, expectPlan, assertAuthorized, assertCurrent } = {}) {
+    prepareCycleCheckpoint: (input, { readObjectiveCompletion = null } = {}) => prepare(input, now(), readObjectiveCompletion),
+    async finalizeCycleCheckpoint(prepared, { write = false, expectPlan, assertAuthorized, assertCurrent, readObjectiveCompletion = null } = {}) {
       let plan;
       try {
         plan = assertPlan(prepared?.plan); const age = now() - plan.prepared_at_ms;
@@ -86,14 +94,27 @@ export function createStandardCycleCheckpoint({ artifacts, scope, session, audit
         if (age > 300000) fail("STANDARD_PLAN_EXPIRED");
       } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
+        const readBoundCompletion = plan.objective_completion_sha256 ? async () => {
+          const completion = await readObjectiveCompletion?.();
+          if (!completion || shadowHash(completion) !== plan.objective_completion_sha256)
+            fail("STANDARD_OBJECTIVE_COMPLETION_SUBJECT_CHANGED");
+          return completion;
+        } : null;
+        const assertEffectAuthorized = async () => {
+          await readBoundCompletion?.();
+          await assertAuthorized(); await assertCurrent();
+          const age = now() - plan.prepared_at_ms;
+          if (age < 0 || age > 300000) fail("STANDARD_PLAN_EXPIRED");
+        };
         let before;
         try {
-          const fresh = await prepare(plan.input, plan.prepared_at_ms, true);
+          const fresh = await prepare(plan.input, plan.prepared_at_ms, readObjectiveCompletion, true);
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_PREVIEW_CHANGED");
           await assertAuthorized(); await assertCurrent();
           if (now() - plan.prepared_at_ms > 300000) fail("STANDARD_PLAN_EXPIRED");
-          if (shadowHash(documents(session(plan.input.session_id), await audit(plan.input))) !== shadowHash(plan.documents)) fail("STANDARD_PREVIEW_CHANGED");
-          if (!openGate(await gate(plan.hook_mode))) fail("STANDARD_CYCLE_CHECKPOINT_GATE_REQUIRED");
+          if (shadowHash(documents(session(plan.input.session_id), await auditCycle(plan.input))) !== shadowHash(plan.documents)) fail("STANDARD_PREVIEW_CHANGED");
+          if (!openGate(await gate(plan.hook_mode, readBoundCompletion))) fail("STANDARD_CYCLE_CHECKPOINT_GATE_REQUIRED");
+          if (readBoundCompletion) await assertEffectAuthorized();
           before = events();
           if (before.length !== plan.event_log.bytes || artifactContentHash(before) !== plan.event_log.sha256) fail("STANDARD_PREVIEW_CHANGED");
           await assertCurrent();
@@ -102,7 +123,12 @@ export function createStandardCycleCheckpoint({ artifacts, scope, session, audit
         let hook = null;
         try {
           const runId = "process_cycle_" + expectPlan.slice(0, 40), started = now();
-          hook = runSkillHookUseCase({ args: { skill: "cycle-create", mode: plan.hook_mode, strict: true, noAutoSkipGate: true, runId },
+          if (readBoundCompletion) {
+            const payload = await runCycleCreateHookUseCase({ targetRoot: root, runtimeDir, readObjectiveCompletion: readBoundCompletion,
+              assertEffectAuthorized, args: { ...defaultCheckpointArguments(runtimeDir), mode: plan.hook_mode, runId, autoSkipGateOnNoSignal: false } });
+            hook = { ok: payload.ok, skill: "cycle-create", tool: "cycle-create-hook.mjs", mode: plan.hook_mode, target: root,
+              state_mode: payload.state_mode, strict: true, invocation: "in_process_authenticated_objective_completion", result: payload.result, payload };
+          } else hook = runSkillHookUseCase({ args: { skill: "cycle-create", mode: plan.hook_mode, strict: true, noAutoSkipGate: true, runId },
             perfDir: runtimeDir, targetRoot: root, processAdapter: createLocalProcessAdapter() });
           const payload = hook.payload, checkpoint = payload?.checkpoint;
           if (hook.ok !== true || hook.strict !== true || hook.state_mode !== plan.scope.persistence.state_mode
@@ -125,8 +151,8 @@ export function createStandardCycleCheckpoint({ artifacts, scope, session, audit
           if (matches.length !== 1 || event.skill !== "perf-checkpoint" || event.result !== "ok" || event.branch !== plan.scope.branch || event.mode !== plan.hook_mode
             || event.ts !== checkpoint.ts || !Number.isFinite(Date.parse(event.ts)) || Date.parse(event.ts) < started || Date.parse(event.ts) > now()) fail("STANDARD_CYCLE_CHECKPOINT_EVENT_UNCONFIRMED");
           await assertCurrent();
-          if (shadowHash(scope()) !== shadowHash(plan.scope) || shadowHash(documents(session(plan.input.session_id), await audit(plan.input))) !== shadowHash(plan.documents)
-            || !openGate(await gate(plan.hook_mode))) fail("STANDARD_CYCLE_CHECKPOINT_POSTCONDITION_FAILED");
+          if (shadowHash(scope()) !== shadowHash(plan.scope) || shadowHash(documents(session(plan.input.session_id), await auditCycle(plan.input))) !== shadowHash(plan.documents)
+            || !openGate(await gate(plan.hook_mode, readBoundCompletion))) fail("STANDARD_CYCLE_CHECKPOINT_POSTCONDITION_FAILED");
           return emit("completed", "confirmed", { hook, event, event_offset: matches[0].offset, event_file: eventRelative },
             { cycle_checkpoint_completed: true }, [{ ref: "aidn:cycle-checkpoint/" + runId, sha256: shadowHash(event) }]);
         } catch (cause) {

@@ -101,7 +101,16 @@ test('v3 plans both cycles through the same published model, new closure, redeli
   const correction = JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/standard-workflow/composed-correction.v3.json', import.meta.url)));
   const result = preflightStandardComposedFixture({ model, scenario: correction, stop: "pr_effects_pending" });
   assert.equal(result.responses_required, 17); assert.equal(result.planned_status, 'WAITING');
-  assert.equal(result.operations.length, 121); assert.equal(result.event_count, 289);
+  assert.equal(result.operations.length, 124); assert.equal(result.event_count, 297);
+  const correctiveDrift = result.call_transitions.filter(row => row.node_id === "correction_cycle_drift_finalize");
+  assert.deepEqual(correctiveDrift.map(row => row.kind), ["call_enter", "call_return"]);
+  const evaluation = correctiveDrift[0].resolution.input.evaluation_operation_id;
+  assert.deepEqual(correctiveDrift[0].resolution.sources.map(({ source, operation_id }) => [source, operation_id]), [["operation_id", evaluation]]);
+  const decisionIndex = result.operations.indexOf("correction_cycle_drift_decide");
+  assert.ok(decisionIndex > 0);
+  assert.deepEqual(result.operations.slice(decisionIndex - 2, decisionIndex + 4), ["correction_cycle_drift_evaluate",
+    "correction_cycle_drift_select", "correction_cycle_drift_decide", "correction_cycle_drift_finalize",
+    "correction_cycle_drift_checkpoint_review", "correction_cycle_checkpoint"]);
   verifyFinalVerificationCalls(result, ["final_verification", "correction_final_verification"]);
   verifyReviewCall(result, "correction");
   assert.ok(result.operations.includes('correction_initialize'));
@@ -119,6 +128,12 @@ test("correction retains its original budget refusal and interruption choices", 
     assert.equal(stopped.responses_required, 9); assert.equal(stopped.interrupted, true);
     assert.ok(!stopped.operations.includes('correction_initialize'));
     assert.notEqual(stopped.planned_status, 'COMPLETED');
+  }
+  for (const node_id of ["correction_cycle_drift_decide", "correction_cycle_drift_checkpoint_review"]) {
+    const deferred = preflightStandardComposedFixture({ model, scenario: { ...correction, interruption: { node_id, outcome: "deferred" } } });
+    assert.equal(deferred.planned_status, "WAITING");
+    assert.ok(!deferred.operations.includes("correction_cycle_checkpoint"));
+    assert.deepEqual(deferred.call_transitions.filter(row => row.node_id === "correction_cycle_drift_finalize").map(row => row.kind), ["call_enter"]);
   }
 });
 test("an interrupted final evaluation retains its entry without returning or entering verification", () => {

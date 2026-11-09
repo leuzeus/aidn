@@ -74,7 +74,7 @@ export function createStandardDriftRoute({ targetRoot, readEvaluation, authentic
       return output("drift_followup_select", "completed", {
         reason_code: recovery ? "STANDARD_DRIFT_CONFIRMED_RECOVERY" : objective ? "STANDARD_DRIFT_OBJECTIVE_REVIEW" : "STANDARD_DRIFT_NOMINAL",
         evaluation_operation_id: input.evaluation_operation_id, context_sha256: fresh.context_sha256, evaluation_sha256: fresh.evaluation_sha256, gate,
-      }, { drift_route_ready: nominal, drift_followup_review_required: recovery || objective,
+      }, { drift_route_ready: nominal, drift_followup_review_required: recovery || objective, drift_objective_review_required: objective,
         drift_diagnosis_requested: false, drift_recovery_chosen: false, drift_check_completed: false }, fresh.output.evidence_refs);
     },
   });

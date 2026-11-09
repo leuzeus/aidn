@@ -142,6 +142,18 @@ async function dispositionFixture(choice = "confirm_alignment") {
   assert.deepEqual(await f.reader.read(f.instance, { evaluation_operation_id: id }, f.verified), value);
   pass("accepted objective opinion is consumed from its durable inbox with exact receipt, question, evaluation and live source verification");
 }
+{
+  const f = await dispositionFixture();
+  f.time(300002); f.stale();
+  const history = () => f.reader.readHistorical(f.instance, { evaluation_operation_id: id }, f.verified, f.record.operation_id);
+  const retained = await history();
+  assert.equal(retained.review_sha256, shadowHash(f.review));
+  assert.equal(f.freshCalls(), 0);
+  await assert.rejects(f.read(), /EXPIRED/);
+  f.verified.context_sha256 = "b".repeat(64);
+  await assert.rejects(history(), /SUBJECT_CHANGED/);
+  pass("historical objective opinion authenticates its exact evaluation without rebuilding a current review");
+}
 for (const [name, mutate, reason] of [
   ["unaccepted receipt", f => f.instance.events.pop(), /NOT_ACCEPTED/],
   ["wrong instance", f => f.instance.instance_id = "another", /NOT_ACCEPTED/],
@@ -178,7 +190,10 @@ for (const fault of ["none", "context-revocation", "context-expiry", "wrong-link
     { kind: "operation_intent", intent: { binding_ref: "drift_completion_decision", operation_id: f.record.operation_id } }, { kind: "operation_result", receipt }] };
   let time = 1;
   const reader = createStandardObjectiveDisposition({ readOperation: () => f.record, human: f.human, now: () => time,
-    async assertFresh() { await new Promise(resolve => setImmediate(resolve));
+    async assertFresh(current, selectedReview, witnessedCompletion) {
+      assert.equal(current, instance); assert.deepEqual(selectedReview, f.record.preview.prepared.plan);
+      assert.deepEqual(witnessedCompletion, anchor);
+      await new Promise(resolve => setImmediate(resolve));
       if (fault === "context-revocation") f.sources.clear(); if (fault === "context-expiry") time = 300002; } });
   const verified = { context_sha256: H, evaluation_sha256: H, output: { observations: { report: review.report } } };
   const selected = fault === "wrong-link" ? { ...anchor, event_offset: 18 } : anchor;

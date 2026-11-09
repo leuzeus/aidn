@@ -21,8 +21,8 @@ const schemaFor = plan => plan?.contract_version === "standard-drift-finalize-pl
 const planMode = plan => ["standard-drift-finalize-plan.v2", "standard-drift-finalize-plan.v3"].includes(plan.contract_version) ? plan.mode : "COMMITTING";
 const emit = (outcome, effect_status, observations, facts = {}, evidence_refs = []) => assertStandardOperationOutput({
   contract_version: "standard-drift-output.v1", operation_ref: "drift_check_finalize", outcome, effect_status, observations, facts, evidence_refs });
-export async function observeStandardDriftGate(artifacts, mode) {
-  return runGatingEvaluateUseCase({ targetRoot: artifacts.root, runtimeDir: fileURLToPath(new URL("../../../tools/perf/", import.meta.url)), args: {
+export async function observeStandardDriftGate(artifacts, mode, { requireIntentSignals = false } = {}) {
+  return runGatingEvaluateUseCase({ requireIntentSignals, targetRoot: artifacts.root, runtimeDir: fileURLToPath(new URL("../../../tools/perf/", import.meta.url)), args: {
     cache: ".aidn/runtime/cache/reload-state.json", eventFile: eventRelative, indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
     stateMode: artifacts.describe().state_mode, stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto",
     thresholdFiles: 3, thresholdMinutes: 45, mode, runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: true,

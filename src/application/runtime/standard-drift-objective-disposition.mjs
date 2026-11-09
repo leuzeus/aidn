@@ -36,9 +36,11 @@ export function createStandardObjectiveDisposition({ readOperation, human, asser
       if (capture.phase !== "receipted" || capture.source.contract_version !== "human-drift-recovery-decision.v2"
         || capture.source.question_sha256 !== shadowHash(question) || capture.source.subject_sha256 !== shadowHash(review)
         || shadowHash(human.output(record, capture)) !== shadowHash(output)) fail("STANDARD_OBJECTIVE_DISPOSITION_CAPTURE_CHANGED");
-      // Historical verification authenticates the retained source, without
-      // relaxing this review's own current freshness or canonical CAS fences.
-      await assertFresh(instance, review);
+      // The historical reader receives an authenticated evaluation from the
+      // completion reader. Bind the retained opinion to it without rebuilding
+      // the old question against a present gate. A current opinion or renewal
+      // still rebuilds its own review and checks its own live authority.
+      if (historicalId === null) await assertFresh(instance, review, previousCompletion, verified);
       // Authenticate current H permission AFTER every awaited canonical/historical
       // observation. Only synchronous TTL/subject/output checks follow.
       await human.verifyCaptured(record, undefined, { historical: Boolean(historicalId) || !previousCompletion });

@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-checkpoint-input.v1",
+  "x-aidn-contract-version": "standard-cycle-checkpoint-input.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["session_id", "cycle_id"],
+  "properties": {
+    "session_id": { "type": "string", "pattern": "^S[0-9]{3,6}$" },
+    "cycle_id": { "type": "string", "pattern": "^C[0-9]{3,6}$" },
+    "evaluation_operation_id": { "type": "string", "pattern": "^op_[a-f0-9]{40}$" }
+  }
+}

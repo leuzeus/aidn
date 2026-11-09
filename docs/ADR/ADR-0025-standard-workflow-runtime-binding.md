@@ -301,6 +301,39 @@ post-selector expiry recovery, cold productive published execution, general L4,
 required193, genuine actors and exact installed behavior remain unqualified.
 The entire L1-L8/A1-A10 objective remains incomplete.
 
+### Corrective cycle checkpoint
+
+The published corrective cycle creation route passes its accepted R05 evaluation
+to a pinned call. The deterministic selector requests human review only for a
+clean diagnostic with a sole objective disagreement. The existing v2 review
+binds that exact diagnostic and objective pair. The R05 finalizer authenticates
+current alignment and retains its separate effect authority. Before the objective
+route returns, a fresh v3 review binds the accepted R05 receipt, report and
+physical event to the separate checkpoint. It preserves the original completion
+and starts a new review window under the existing limit. The cycle checkpoint's
+signed plan retains the renewed completion digest and the existing hook
+reauthenticates that proof under its own grant. Other signals and unconfirmed
+alignment stop the checkpoint. Corrective rediagnosis and later corrective R05
+checkpoints require separate routing and qualification.
+
+Within a single renewal read, the authenticated completion reader supplies
+the witnessed historical anchor and authenticated evaluation to current review
+validation. The live gate and context are reobserved before authenticating the
+new human source. After that authentication the completion reader checks the retained
+journal, report, event, process CAS and expiry again. Standalone preparation
+and validation of a review read their own historical anchor. Each gate or
+effect boundary starts a fresh read.
+
+The historical opinion reader binds the signed source and receipt to the
+completion reader's authenticated evaluation. It does not reconstruct the old
+question from the present gate. The current opinion or renewal still rebuilds
+its review against the live gate and context and verifies current authority.
+Consumption of an accepted v3 review explicitly observes intent on a clean
+incremental reload. Its signed L1 snapshot can differ only when a missing cache
+has become a clean incremental reload. The exact context, objective signal, L3
+constraints, report, event, H freshness and separate operation grant still bind
+the effect. Preparing or accepting the review itself requires its exact gate.
+
 ### Change request and checkpoint after confirmed primary closure drift
 
 The primary cycle-closure recovery branch calls the pinned

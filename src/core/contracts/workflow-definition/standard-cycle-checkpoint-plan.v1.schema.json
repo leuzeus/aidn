@@ -39,6 +39,10 @@
         "cycle_id": {
           "type": "string",
           "pattern": "^C[0-9]{3,6}$"
+        },
+        "evaluation_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
         }
       }
     },
@@ -144,6 +148,10 @@
           "pattern": "^[a-f0-9]{64}$"
         }
       }
+    },
+    "objective_completion_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
     },
     "hook_mode": {
       "const": "COMMITTING"

@@ -750,7 +750,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     projectionRequired });
   const objectiveDisposition = createStandardObjectiveDisposition({ now, human,
     readOperation: id => retained(id).record,
-    assertFresh: async (instance, review) => { processAuthority.authenticate(instance); await recovery.assertFresh(instance, review); } });
+    assertFresh: async (instance, review, witnessedCompletion, verified) => {
+      processAuthority.authenticate(instance);
+      // A renewal read comes from the completion reader that just witnessed
+      // this anchor and rechecks it after current H authentication. Rebuild
+      // the current canonical review without recursively reading that anchor.
+      await recovery.assertFresh(instance, review, witnessedCompletion, verified);
+    } });
   const objectiveCompletion = processAuthority ? createStandardObjectiveCompletion({ now,
     readOperation: id => retained(id).record,
     readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
@@ -768,6 +774,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         fail("STANDARD_OBJECTIVE_COMPLETION_EVENT_CHANGED");
       return bytes.subarray(offset, end + 1);
     } }) : null;
+  const checkpointCompletion = (instance, input) => input.evaluation_operation_id && objectiveCompletion
+    ? () => objectiveCompletion.read(instance, { evaluationOperationId: input.evaluation_operation_id }) : null;
   function verifyHumanRecord(record, signal) {
     const accepted = current(record.intent.instance_id).record.events.some(event => event.kind === "operation_result"
       && event.receipt.operation_id === record.operation_id && record.results.some(result => shadowHash(result.receipt) === shadowHash(event.receipt)));
@@ -1389,7 +1397,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_start_finalize" ? await operations.prepareStart(input)
         : binding.id === "cycle_context_refresh" ? await operations.prepareCycleContext(input)
         : binding.id === "cycle_initialize" ? await operations.prepareCycle(input)
-        : binding.id === "cycle_checkpoint_finalize" ? await operations.prepareCycleCheckpoint(input)
+        : binding.id === "cycle_checkpoint_finalize" ? await operations.prepareCycleCheckpoint(input, { readObjectiveCompletion: checkpointCompletion(state.record, input) })
         : binding.id === "cycle_plan_record" ? await cyclePlanRecord?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_PLAN_AUTHORITY_UNAVAILABLE")
         : binding.id === "cycle_implementation_enter" ? await cycleImplementation?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_READINESS_AUTHORITY_UNAVAILABLE")
         : binding.id === "cycle_validation_execute" ? await cycleValidation?.prepare(state.record, input) ?? fail("STANDARD_VALIDATION_AUTHORITY_UNAVAILABLE")
@@ -1650,6 +1658,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "cycle_checkpoint_finalize") output = await operations.finalizeCycleCheckpoint(record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record),
+            readObjectiveCompletion: checkpointCompletion(state.record, record.preview.input),
             assertCurrent: () => { if (current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256) fail("STANDARD_CYCLE_CHECKPOINT_PROCESS_CHANGED"); } });
         else output = await operations.finalizeStart(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         if (record.preview.binding.effect_class === "read-only" && shadowHash(snapshot()) !== shadowHash(record.preview.snapshot))
