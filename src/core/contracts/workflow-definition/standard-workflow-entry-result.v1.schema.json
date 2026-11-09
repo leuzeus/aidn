@@ -5,7 +5,7 @@
   "required": ["contract_version", "action_kind", "process_status", "workflow_completed", "operation_outcome", "effect_status", "written", "native_started", "details"],
   "properties": {
     "contract_version": { "const": "standard-workflow-entry-result.v1" },
-    "action_kind": { "enum": ["prepare_host", "initialize", "operation", "dispatch", "decision", "question_recovery", "control", "native"] },
+    "action_kind": { "enum": ["prepare_host", "initialize", "operation", "dispatch", "decision", "question_recovery", "operation_disposition", "operation_disposition_accept", "control", "native"] },
     "process_status": { "type": ["string", "null"] }, "workflow_completed": { "type": "boolean" },
     "operation_outcome": { "enum": ["completed", "rejected", "blocked", "deferred", "cancelled", "reconciliation_required", null] },
     "effect_status": { "enum": ["no_effect", "confirmed", "unknown", null] },

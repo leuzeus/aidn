@@ -359,6 +359,13 @@ finalization; `--verify` retains its read-only verification behavior.
     disposition of the previous intent. The next preview either prepares a
     new question or continues through the verified alignment and completion
     operations.
+    For an expired corrective reopening with all three exact postimages,
+    STANDARD can preview an `operation_disposition` action. Applying its exact
+    action file records one confirmed receipt and preserves the original
+    UNKNOWN. The next preview is a separate `operation_disposition_accept`
+    action bound to that receipt and current journal. Apply that exact action
+    to advance the reducer to the corrective checkpoint. Each action needs
+    its own explicit execution and current protected authority.
     `--replay` and `--simulate` observe retained model/events without writes or
     Native allocation. The console run action forwards these same selectors.
     Custom native-only v1/v2 graphs keep their owned runner; raw v2 control facts

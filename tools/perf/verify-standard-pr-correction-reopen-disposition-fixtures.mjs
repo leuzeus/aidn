@@ -12,6 +12,8 @@ import { createStandardWorkflowArtifacts } from "../../src/application/runtime/s
 import { createStandardPrCorrectionReopen } from "../../src/application/runtime/standard-pr-correction-reopen.mjs";
 import { createStandardOperationDisposition } from "../../src/application/runtime/standard-operation-disposition.mjs";
 import { createStandardReconciliationInventory } from "../../src/application/runtime/standard-reconciliation-inventory.mjs";
+import { runStandardWorkflowAction } from "../../src/application/runtime/standard-workflow-entry.mjs";
+import { createStandardHostAuthority } from "../../src/adapters/runtime/standard-host-authority.mjs";
 import { createOperationJournalSigner, operationJournalId, operationOutputRef } from "../../src/core/workflow/process-operation-journal.mjs";
 import { createProcessOperationJournalStore } from "../../src/adapters/runtime/process-operation-journal-store.mjs";
 import { createAgenticProcessStore } from "../../src/adapters/runtime/agentic-process-store.mjs";
@@ -30,7 +32,7 @@ const here = fileURLToPath(import.meta.url);
 const temp = fs.realpathSync(os.tmpdir());
 const protocolError = code => Object.assign(Error(code), { code });
 
-function open(config, boundary = null) {
+function open(config, boundary = null, entryDispositionSource = null) {
   const { root, source, names } = config;
   const artifacts = createStandardWorkflowArtifacts({ targetRoot: root }), reopen = binding(opBinding), checkpoint = binding(checkpointBinding);
   const signer = createOperationJournalSigner(() => Buffer.alloc(32, 68));
@@ -93,7 +95,7 @@ function open(config, boundary = null) {
       assert.equal(sha(frame.operation.receipt), sha(original.receipt));
       return (await writer.observeInterrupted(instance, record.preview.prepared, original.output, options)).confirmation;
     },
-    dispositionSource: {
+    dispositionSource: entryDispositionSource ?? {
       async authorize({ request }) {
         requests++;
         const now = Date.now();
@@ -211,9 +213,40 @@ export async function verifyReopenDisposition() {
     assert.equal(fs.existsSync(lock), false);
     assert.deepEqual(fs.readFileSync(archived), originalLock);
     assert.equal(sha(h.readOperation(id).record), sha(original));
-    const cold = open(config), recovered = await prepare(cold);
-    const applied = await apply(cold, recovered), record = cold.readOperation(id).record;
+    const authorityRoot = path.join(evidence, "protected-host");
+    const control = path.join(evidence, "control"), review = path.join(evidence, "review"), nativeHome = path.join(evidence, "native");
+    for (const folder of [authorityRoot, control, review, nativeHome]) fs.mkdirSync(folder);
+    const configuration = { target_root: f.root, control_root: control, review_root: review, instance_id: instanceId,
+      native: { home: nativeHome, tool_roots: [], protected_roots: [authorityRoot] } };
+    const operator = createStandardHostAuthority({ configuration, environment: { AIDN_STANDARD_HOST_HOME: authorityRoot } }, { useProvider: false });
+    operator.ensureKey();
+    const compose = (_authorize, source) => {
+      const host = open(config, null, source);
+      return {
+        inspect() { const record = host.readInstance(instanceId); return { record, cursor: inspectAgenticProcess(record) }; },
+        previewNative: () => ({ native_started: false }),
+        step: async () => ({ kind: "reconciliation", status: "WAITING" }),
+        readOperation: id => host.readOperation(id).record,
+        prepareOperationDisposition: (id, options) => host.disposition.prepare(id, options),
+        applyOperationDisposition: (plan, options) => host.disposition.apply(plan, options),
+        acceptOperation(id, options) {
+          assert.equal(options.write, true);
+          const receipt = host.readOperation(id).record.results.find(row => row.receipt.receipt_id === options.receiptId).receipt;
+          return host.disposition.withReceiptAcceptance(id, () => host.accept(receipt), { signal: options.signal });
+        },
+      };
+    };
+    const entry = options => runStandardWorkflowAction({ request: {}, configuration, parameters: {}, modelSource: {}, ...options },
+      { authority: operator, compose });
+    const execute = preview => entry({ preparedAction: preview.preview, execute: true, expectPlan: preview.action_sha256 });
+    const cold = open(config), entryPreview = await entry();
+    assert.equal(entryPreview.preview.kind, "operation_disposition");
+    assert.equal(entryPreview.written, false);
+    const recovered = entryPreview.preview.payload.disposition_plan;
+    const result = await execute(entryPreview), applied = result.result.details, record = cold.readOperation(id).record;
     assert.equal(applied.status, "receipted");
+    assert.equal(result.result.process_status, "WAITING");
+    assert.equal(cold.readInstance(instanceId).instance_sha256, instance.instance_sha256);
     assert.equal(record.results.length, 2);
     assert.deepEqual(record.results[0], original.results[0]);
     assert.deepEqual(record.results[1].output, recovered.reopen.output);
@@ -224,7 +257,11 @@ export async function verifyReopenDisposition() {
     await assert.rejects(cold.disposition.withReceiptAcceptance(id, () => cold.accept(applied.receipt)), { code: "PROCESS_DISPOSITION_AUTHORIZATION_REQUIRED" });
     assert.equal(cold.readInstance(instanceId).instance_sha256, instance.instance_sha256);
     cold.faults.grant = null;
-    const accepted = await cold.disposition.withReceiptAcceptance(id, () => cold.accept(applied.receipt));
+    const acceptPreview = await entry();
+    assert.equal(acceptPreview.preview.kind, "operation_disposition_accept");
+    assert.equal(acceptPreview.written, false);
+    const acceptedResult = await execute(acceptPreview), accepted = acceptedResult.result.details.accepted;
+    assert.equal(acceptedResult.result.process_status, "RUNNING");
     assert.deepEqual(accepted.record.events.slice(0, -1), instance.events);
     assert.deepEqual(accepted.record.events.at(-1).receipt, applied.receipt);
     const cursor = inspectAgenticProcess(accepted.record);
@@ -232,7 +269,8 @@ export async function verifyReopenDisposition() {
     assert.equal(cold.artifacts.ownerPending(), false);
     assert.deepEqual(business(), postimages);
     assert.deepEqual(fs.readFileSync(dispatchFile), dispatchBytes);
-    console.log(JSON.stringify({ status: "PASS", scope: "canonical FILES disposition and reducer with fixture providers and grants",
+    console.log(JSON.stringify({ status: "PASS", scope: "STANDARD exact entry, canonical FILES disposition and reducer with fixture provider",
+      separate_protected_operator_actions: true,
       boundaries: [transferred.phase, retired.phase], original_receipt: sha(original.results[0].receipt), confirmed_receipt: sha(applied.receipt),
       next_node: "checkpoint", evidence, full_standard: "NOT_RUN", ordinary_provider: "FIXTURE" }));
   } finally {

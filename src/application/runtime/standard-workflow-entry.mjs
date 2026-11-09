@@ -49,9 +49,9 @@ export async function runStandardWorkflowEntry({ request, actionFile = null, pre
   const resolved = resolveStandardWorkflowConfiguration(request), { configuration, parameters, modelSource, validationProfile } = resolved;
   const authority = createStandardHostAuthority({ configuration, environment }, { providerTransport, useProvider: observation === null });
   const provider = authority.githubProvider;
-  const compose = authorize => createStandardWorkflowExecution({ configuration, readSigningKey: () => authority.keyId() === null ? Buffer.alloc(32) : authority.readKey(),
+  const compose = (authorize, dispositionSource) => createStandardWorkflowExecution({ configuration, readSigningKey: () => authority.keyId() === null ? Buffer.alloc(32) : authority.readKey(),
     authorize, environment, validationProfile, humanSource: authority.humanSource, controlSource: authority.controlSource,
-    nativeAuthorizationSource: authority.nativeAuthorizationSource,
+    nativeAuthorizationSource: authority.nativeAuthorizationSource, dispositionSource,
     sessionPushPort: provider?.sessionPushPort, sessionPullRequestPort: provider?.sessionPullRequestPort,
     sessionReviewPort: provider?.sessionReviewPort, sessionReviewEventPort: provider?.sessionReviewEventPort });
   return runStandardWorkflowAction({ request, configuration, parameters, modelSource, actionFile, preparedAction, decisionSource, controlSource,
@@ -71,8 +71,12 @@ export async function runStandardWorkflowAction({ request, configuration, parame
     "$", { contractKind: "workflow-definition" }).length)) fail("STANDARD_ENTRY_ACTION_INVALID");
   const supplied = candidate === null ? null : structuredClone(candidate);
   if (execute && (!supplied || expectPlan !== shadowHash(supplied))) fail("STANDARD_ENTRY_EXACT_ACTION_REQUIRED");
-  let permittedOperation = null;
-  const host = compose(input => authority.authorizeOperation(input, permittedOperation));
+  let permittedOperation = null, permittedDisposition = null;
+  const dispositionSource = typeof authority.authorizeDisposition === "function" && typeof authority.verifyDisposition === "function" ? {
+    authorize: ({ request }) => authority.authorizeDisposition(request, permittedDisposition),
+    verify: ({ request, grant }) => authority.verifyDisposition(request, grant, permittedDisposition),
+  } : null;
+  const host = compose(input => authority.authorizeOperation(input, permittedOperation), dispositionSource);
   let state = null;
   try { state = host.inspect(); } catch (cause) { if (cause.code !== "PROCESS_INSTANCE_NOT_FOUND") throw cause; }
   const initial = state ? null : host.initialize({ parameters });
@@ -103,6 +107,23 @@ export async function runStandardWorkflowAction({ request, configuration, parame
     if (next.kind === "call") return { kind: "call", payload: { ...next.transition, instance_id: state.record.instance_id,
       model_sha256: state.record.model_sha256 } };
     if (next.kind === "question_recovery") return { kind: "question_recovery", payload: { recovery_plan: next.plan } };
+    if (next.kind === "reconciliation" && dispositionSource) {
+      const frames = state.cursor.occurrences.filter(frame => frame.status === "WAITING"
+        && frame.operation?.intent?.binding_ref === "session_pr_correction_reopen"
+        && frame.operation.receipt?.outcome === "reconciliation_required" && frame.operation.receipt.effect_status === "unknown");
+      if (frames.length === 1) {
+        const id = frames[0].operation.intent.operation_id, record = host.readOperation(id);
+        if (record.results[0]?.output.observations?.reason_code === "STANDARD_PLAN_EXPIRED") {
+          const plan = await host.prepareOperationDisposition(id, { expectedSha256: state.record.instance_sha256, signal });
+          if (plan.assessment !== "confirmed_reopen") fail("STANDARD_ENTRY_DISPOSITION_PLAN_REQUIRED");
+          if (record.results.length === 1) return { kind: "operation_disposition", payload: { disposition_plan: plan } };
+          const receipt = record.results[1]?.receipt;
+          if (record.results.length !== 2 || receipt.effect_status !== "confirmed" || receipt.output_sha256 !== plan.output_sha256)
+            fail("STANDARD_ENTRY_DISPOSITION_RECEIPT_CHANGED");
+          return { kind: "operation_disposition_accept", payload: { operation_id: id, journal_sha256: shadowHash(record), receipt_sha256: shadowHash(receipt) } };
+        }
+      }
+    }
     if (next.kind === "operation_preview") return { kind: "operation", payload: { preview: next.preview } };
     if (["human_wait", "operation_wait"].includes(next.kind)) return { kind: "dispatch", payload: { operation_id: next.operation_id,
       journal_sha256: shadowHash(host.readOperation(next.operation_id)), ...(next.kind === "human_wait" ? { question: host.prepareDecision(next.operation_id) } : {}) } };
@@ -121,10 +142,10 @@ export async function runStandardWorkflowAction({ request, configuration, parame
         || shadowHash(host.prepareControl({ expectedSha256: state.record.instance_sha256,
           occurrenceId: standardWorkflowControlOccurrence(state) })) !== shadowHash(action.payload.request))
         fail("STANDARD_ENTRY_ACTION_CHANGED");
-    } else if (!["operation", "question_recovery"].includes(action.kind)
+    } else if (!["operation", "question_recovery", "operation_disposition"].includes(action.kind)
       && shadowHash(await currentKind()) !== shadowHash({ kind: action.kind, payload: action.payload })) fail("STANDARD_ENTRY_ACTION_CHANGED");
-    if (["operation", "question_recovery"].includes(action.kind) && (decisionSource || controlSource || observation || !state
-      || (action.payload.preview ?? action.payload.recovery_plan)?.instance_sha256 !== state.record.instance_sha256))
+    if (["operation", "question_recovery", "operation_disposition"].includes(action.kind) && (decisionSource || controlSource || observation || !state
+      || (action.payload.preview ?? action.payload.recovery_plan ?? action.payload.disposition_plan)?.instance_sha256 !== state.record.instance_sha256))
       fail("STANDARD_ENTRY_ACTION_CHANGED");
   } else {
     const next = await currentKind();
@@ -133,7 +154,8 @@ export async function runStandardWorkflowAction({ request, configuration, parame
       fail("STANDARD_ENTRY_ACTION_INVALID");
   }
   const payloadKeys = { prepare_host: [], initialize: ["instance_sha256"], operation: ["preview"], decision: ["operation_id", "question", "source_ref"],
-    question_recovery: ["recovery_plan"], control: ["request", "source_ref"], native: ["authorization_sha256"], observe: ["status", "reason"], replay: [], simulate: [],
+    question_recovery: ["recovery_plan"], operation_disposition: ["disposition_plan"],
+    operation_disposition_accept: ["operation_id", "journal_sha256", "receipt_sha256"], control: ["request", "source_ref"], native: ["authorization_sha256"], observe: ["status", "reason"], replay: [], simulate: [],
     call: ["transition", "occurrence_id", "event_id", "result_sha256", "instance_id", "model_sha256"] };
   if (action.kind === "control" && action.payload.source_ref === externalMergeControlRef)
     payloadKeys.control = ["request", "source_ref", "merge_subject_sha256"];
@@ -183,6 +205,24 @@ export async function runStandardWorkflowAction({ request, configuration, parame
     const result = await host.applyQuestionRecovery(plan, { write: true, expectedPlanSha256: permittedOperation, signal });
     output.result = { ...result, accepted: await host.acceptOperation(plan.operation_id, { write: true, signal }) };
     output.written = true;
+  } else if (action.kind === "operation_disposition" || action.kind === "operation_disposition_accept") {
+    if (!dispositionSource) fail("STANDARD_ENTRY_DISPOSITION_AUTHORITY_REQUIRED");
+    const plan = action.payload.disposition_plan;
+    if (action.kind === "operation_disposition" && plan?.assessment !== "confirmed_reopen") fail("STANDARD_ENTRY_DISPOSITION_PLAN_REQUIRED");
+    permittedDisposition = { action: action.kind, scope_id: state.record.scope_id, instance_sha256: state.record.instance_sha256,
+      subject_sha256: plan ? shadowHash(plan) : action.payload.receipt_sha256, action_sha256: expectPlan,
+      key_id: context.key_id, trust_sha256: context.trust_sha256 };
+    if (plan) {
+      const result = await host.applyOperationDisposition(plan, { write: true, expectedPlanSha256: permittedDisposition.subject_sha256, signal });
+      output.result = result; output.written = result.written;
+    } else {
+      const id = action.payload.operation_id, record = host.readOperation(id), receipt = record.results.at(-1)?.receipt;
+      if (!receipt || shadowHash(record) !== action.payload.journal_sha256 || shadowHash(receipt) !== action.payload.receipt_sha256)
+        fail("STANDARD_ENTRY_DISPOSITION_RECEIPT_CHANGED");
+      const accepted = await host.acceptOperation(id, { write: true, receiptId: receipt.receipt_id, signal });
+      output.result = { receipt, accepted };
+      output.written = accepted.record.instance_sha256 !== state.record.instance_sha256;
+    }
   } else if (action.kind === "control") {
     const result = await host.captureControl({ expectedSha256: state.record.instance_sha256, occurrenceId: action.payload.request.occurrence_id,
       sourceRef: action.payload.source_ref, expectedSubjectSha256: action.payload.merge_subject_sha256, write: true, signal });

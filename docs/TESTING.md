@@ -1072,7 +1072,8 @@ graph with real canonical records and the original writer. It exits one child af
 transfer and a second after archiving the lock, then resumes to append and
 accept a distinct result. The fixture also checks current provider refusal,
 separate acceptance consent, retry without a second append, and the next
-checkpoint in the reducer. Its provider and consent are fixtures. The
+checkpoint in the reducer. The exact entry actions use the protected local
+operator issuer and the same canonical fixture. Its provider and consent are fixtures. The
 published corrective workflow and redelivery require separate evidence.
 
 `verify-standard-pr-correction-checkpoint-fixtures.mjs --mode=files|dual|db-only`

@@ -12,7 +12,10 @@ The private operation disposition plan and authorization request support a
 and journal digests, the exact lock digest, and the proposed confirmation
 output digest and bytes. Existing original-return plans keep their closed
 shape. The operation journal can retain the original UNKNOWN result and a
-distinct confirmed disposition receipt for the same intent.
+distinct confirmed disposition receipt for the same intent. STANDARD entry
+previews and results expose separate `operation_disposition` and
+`operation_disposition_accept` action kinds. The former carries the signed
+plan. The latter binds the operation, current journal and confirmed receipt.
 
 At the two published pre-triage waits, `--control-source aidn:external-merge`
 adds a stable `merge_subject_sha256` to the existing control action preview.

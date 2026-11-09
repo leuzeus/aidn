@@ -2983,6 +2983,13 @@ callback checks the retained admission, current fence and exact local
 witness. The original UNKNOWN and dispatch remain immutable. The new receipt
 opens the existing corrective checkpoint after acceptance.
 
+The ordinary entry issues two exact actions. A protected local operator
+grant binds each explicit execution to its action kind, instance, scope,
+subject and current host trust. The disposition action can write a second
+receipt while the process remains waiting. A later acceptance action binds
+that receipt and current journal and advances the reducer under its own
+grant. Neither preview starts Native or writes canonical state.
+
 ### Missing checkpoint acknowledgement, released local owner, 2026-11-04
 
 The checkpoint component has a retrospective observation path selected by the

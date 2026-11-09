@@ -5,6 +5,7 @@ import path from "node:path";
 import { generateKeyPairSync, sign } from "node:crypto";
 import { createStandardHostAuthority } from "../../src/adapters/runtime/standard-host-authority.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { runStandardWorkflowAction } from "../../src/application/runtime/standard-workflow-entry.mjs";
 
 // Separate each rejection boundary from slow CLI dispatch and other invalid
 // fields. These are fixture Ed25519 principals, never genuine-human evidence.
@@ -55,4 +56,63 @@ check("trust role changes are observed on the next read", () => { put(); registr
   fs.writeFileSync(registryFile, JSON.stringify(registry)); refuses("STANDARD_HOST_SOURCE_NOT_AUTHENTICATED"); });
 check("exact operation authority cannot be substituted", () => refuses("STANDARD_HOST_EXACT_OPERATION_REQUIRED", () => host.authorizeOperation({ preview_sha256: "a" }, "b")));
 check("source checks allocate no host key or Native evidence", () => { assert.equal(host.keyId(), null); assert.deepEqual(fs.readdirSync(dirs.control), []); });
+host.ensureKey();
+{
+  const id = "op_" + "d".repeat(40), scope = "fixture_disposition", before = "a".repeat(64), after = "b".repeat(64);
+  const unknown = { outcome: "reconciliation_required", effect_status: "unknown", receipt_id: "fixture_unknown" };
+  const confirmed = { outcome: "completed", effect_status: "confirmed", receipt_id: "fixture_confirmed", output_sha256: "c".repeat(64) };
+  const plan = { operation_id: id, assessment: "confirmed_reopen", instance_sha256: before, scope_id: scope, output_sha256: confirmed.output_sha256 };
+  const state = { record: { scope_id: scope, instance_sha256: before, initial_parameters: {} }, cursor: { status: "WAITING",
+    occurrences: [{ status: "WAITING", operation: { intent: { operation_id: id, binding_ref: "session_pr_correction_reopen" }, receipt: unknown } }] } };
+  const journal = { results: [{ output: { observations: { reason_code: "STANDARD_PLAN_EXPIRED" } }, receipt: unknown }] };
+  let grants = 0;
+  const compose = (_operation, disposition) => {
+    async function checkGrant(request) {
+      const grant = await disposition.authorize({ request });
+      assert.equal((await disposition.verify({ request, grant })).outcome, "verified");
+      await assert.rejects(async () => disposition.verify({ request, grant: { ...grant, principal_sha256: "e".repeat(64) } }),
+        { code: "STANDARD_HOST_DISPOSITION_GRANT_CHANGED" });
+      await assert.rejects(async () => disposition.authorize({ request: { ...request, action: "operation" } }),
+        { code: "STANDARD_HOST_EXACT_DISPOSITION_REQUIRED" });
+      grants++;
+    }
+    return { inspect: () => structuredClone(state), previewNative: () => ({ native_started: false }),
+      step: async () => ({ kind: "reconciliation", status: "WAITING" }),
+      readOperation: selected => { assert.equal(selected, id); return structuredClone(journal); },
+      prepareOperationDisposition: async (selected, options) => {
+        assert.equal(selected, id); assert.equal(options.expectedSha256, before); return structuredClone(plan);
+      },
+      async applyOperationDisposition(value, options) {
+        assert.equal(options.write, true);
+        assert.equal(options.expectedPlanSha256, shadowHash(value));
+        await checkGrant({ action: "operation_disposition", plan: value, plan_sha256: shadowHash(value) });
+        journal.results.push({ receipt: confirmed });
+        return { status: "receipted", receipt: confirmed, written: true };
+      },
+      async acceptOperation(selected, options) {
+        assert.equal(selected, id); assert.equal(options.receiptId, confirmed.receipt_id); assert.equal(options.write, true);
+        await checkGrant({ action: "operation_disposition_accept", instance_sha256: before, scope_id: scope, receipt_sha256: shadowHash(confirmed) });
+        state.record.instance_sha256 = after; state.cursor.status = "RUNNING";
+        return structuredClone(state);
+      },
+    };
+  };
+  const input = { request: {}, configuration, parameters: {}, modelSource: {} };
+  const run = options => runStandardWorkflowAction({ ...input, ...options }, { authority: host, compose });
+  const apply = action => run({ preparedAction: action, execute: true, expectPlan: shadowHash(action) });
+  const proposed = await run();
+  assert.equal(proposed.preview.kind, "operation_disposition"); assert.equal(proposed.written, false); assert.equal(grants, 0);
+  await assert.rejects(run({ preparedAction: proposed.preview, execute: true, expectPlan: "f".repeat(64) }), { code: "STANDARD_ENTRY_EXACT_ACTION_REQUIRED" });
+  const applied = await apply(proposed.preview);
+  assert.equal(applied.result.action_kind, "operation_disposition"); assert.equal(applied.result.process_status, "WAITING");
+  assert.equal(state.record.instance_sha256, before); assert.equal(grants, 1);
+  const accept = await run();
+  assert.equal(accept.preview.kind, "operation_disposition_accept"); assert.equal(accept.written, false); assert.equal(grants, 1);
+  const changed = structuredClone(accept.preview); changed.payload.receipt_sha256 = "e".repeat(64);
+  await assert.rejects(apply(changed), { code: "STANDARD_ENTRY_ACTION_CHANGED" });
+  const accepted = await apply(accept.preview);
+  assert.equal(accepted.result.action_kind, "operation_disposition_accept"); assert.equal(accepted.result.process_status, "RUNNING");
+  assert.equal(state.record.instance_sha256, after); assert.equal(grants, 2);
+  check("corrective reopening requires separate exact entry grants to write and accept a receipt", () => assert.equal(journal.results.length, 2));
+}
 console.log(JSON.stringify({ status: "PASS", checks, scope: "production-source-adapter-fixture-principals", reducer_accepted_history: "NOT_RUN", genuine_human: "NOT_RUN", native: "NOT_RUN", base }));

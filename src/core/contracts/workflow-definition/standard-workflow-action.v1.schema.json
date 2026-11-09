@@ -17,13 +17,13 @@
         "native": { "type": "object" }
       }
     },
-    "kind": { "enum": ["prepare_host", "initialize", "operation", "dispatch", "decision", "question_recovery", "control", "native", "observe", "replay", "simulate"] },
+    "kind": { "enum": ["prepare_host", "initialize", "operation", "dispatch", "decision", "question_recovery", "operation_disposition", "operation_disposition_accept", "control", "native", "observe", "replay", "simulate"] },
     "payload": {
       "type": "object", "additionalProperties": false,
       "properties": {
-        "instance_sha256": { "type": "string" }, "preview": { "type": "object" }, "recovery_plan": { "type": "object" },
+        "instance_sha256": { "type": "string" }, "preview": { "type": "object" }, "recovery_plan": { "type": "object" }, "disposition_plan": { "type": "object" },
         "operation_id": { "type": "string", "pattern": "^op_[a-f0-9]{40}$" },
-        "journal_sha256": { "type": "string" }, "question": { "type": "object" }, "request": { "type": "object" },
+        "journal_sha256": { "type": "string" }, "receipt_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "question": { "type": "object" }, "request": { "type": "object" },
         "source_ref": { "type": "string" }, "merge_subject_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "authorization_sha256": { "type": ["string", "null"] },
         "status": { "type": "string" }, "reason": { "type": "string" }
       }
