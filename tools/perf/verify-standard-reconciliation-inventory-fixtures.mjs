@@ -17,6 +17,7 @@ import { nativeJournalId } from "../../src/core/workflow/native-allocation-journ
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { assertProcessReconciliationInventory } from "../../src/core/workflow/process-reconciliation-inventory.mjs";
 import { exactFileIdentity } from "../../src/lib/fs/exact-file-identity.mjs";
+import { processModelIdentity } from "../../src/core/workflow/process-call-model.mjs";
 
 // Fault-injected journal states below qualify discovery/authentication only.
 // They are not real process-death, external closure or disposition evidence.
@@ -74,6 +75,35 @@ export async function verifyStandardReconciliationInventory(mode, pass) {
     assert.equal(changedContext.instance_sha256, inventory.instance_sha256);
     assert.equal(changedContext.permits_effects, false); assert.equal(authorizations, 0);
     pass(`${mode}: an already open host freshly observes changed Git context without renewing authority or writing an inventory`);
+
+    const emptyInputs = { contract_version: "process-data-bindings.v4", parameter_keys: [], inputs: [{ node_id: "reload", fields: {} }] };
+    const target = { ...model, model_id: "inventory-call-target", data_bindings: emptyInputs,
+      call_interface: { parameters: {}, returns: {} } };
+    const identity = processModelIdentity(target), nestedId = "nested-inventory";
+    const nestedModel = { ...model, model_id: "inventory-with-call", operation_pins: {}, data_bindings: emptyInputs,
+      nodes: [{ id: "reload", kind: "call", participant_ref: "project", target: identity }],
+      call_targets: [{ ...identity, model: target }] };
+    const openNested = () => createStandardWorkflowOperationHost({ targetRoot: root, model: nestedModel,
+      readSigningKey: () => key, authorize: async () => { authorizations++; throw Error("UNEXPECTED_AUTHORIZATION"); } });
+    const nestedHost = openNested(), nestedInitial = nestedHost.initialize({ instanceId: nestedId });
+    nestedHost.initialize({ instanceId: nestedId, write: true, expectedResultSha256: nestedInitial.record.instance_sha256 });
+    const entered = await nestedHost.enterCall({ instanceId: nestedId, expectedSha256: nestedInitial.record.instance_sha256,
+      occurrenceId: "root", eventId: "enter_inventory_call", write: true });
+    const nestedPreview = await nestedHost.preview({ instanceId: nestedId, expectedSha256: entered.record.instance_sha256,
+      occurrenceId: entered.cursor.ready[0] });
+    const nestedStaged = await nestedHost.stage(nestedPreview, { write: true, expectedPreviewSha256: shadowHash(nestedPreview) });
+    const nestedBefore = instances.read(nestedId).record;
+    const nestedInventory = openNested().prepareReconciliationInventory(nestedId, { expectedSha256: nestedBefore.instance_sha256 });
+    signer.verify(nestedInventory);
+    assert.equal(nestedInventory.operations.length, 1);
+    assert.equal(nestedInventory.operations[0].operation_id, nestedStaged.operation_id);
+    assert.equal(nestedInventory.operations[0].binding_sha256, target.operation_pins.context_reload);
+    assert.equal(nestedInventory.operations[0].effect_status, "not_dispatched");
+    assert.equal(nestedInventory.permits_effects, false);
+    assert.equal(nestedInventory.written, false);
+    assert.deepEqual(instances.read(nestedId).record, nestedBefore);
+    assert.equal(authorizations, 0);
+    pass(`${mode}: an embedded operation uses its target model pin even when its node ID matches the root call`);
 
     // The same immutable intent is discoverable both before a receipt and after
     // an UNKNOWN receipt. Preserve the original owner and every result identity.

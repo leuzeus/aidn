@@ -155,6 +155,10 @@ remain unresolved; the envelope grants no closure, disposition, authority,
 budget refund or effect. It adds no public CLI output or durable record and does
 not convert historical journals. See ADR-0026.
 
+The inventory validates an embedded operation against the model identity of
+its reducer occurrence and that model's operation pin. Its signed intent
+still binds the containing instance and exact prefix.
+
 ## Close expiry continuation contracts
 
 The renewal plan embeds the closed hook-input data shape and its contract-version

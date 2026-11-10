@@ -9,6 +9,7 @@ import { assertDecisionInbox } from "../../core/workflow/process-decision-inbox.
 import { assertControlInbox } from "../../core/workflow/process-control-inbox.mjs";
 import { assertNativeAllocationJournal } from "../../core/workflow/native-allocation-journal.mjs";
 import { assertAgenticProcessInstance, agenticProcessPrefixSha256, inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
+import { processFrameModel } from "../../core/workflow/process-call-model.mjs";
 import { assertProcessReconciliationInventory, RECONCILIATION_DISCOVERY_DOMAINS } from "../../core/workflow/process-reconciliation-inventory.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import ownerSchema from "../../core/contracts/workflow-definition/process-local-effect-owner.v1.schema.json" with { type: "json" };
@@ -57,11 +58,12 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
           prefixes.set(intent.instance_revision, { instance: prefix, cursor: inspectAgenticProcess(prefix) });
         }
         const prefix = prefixes.get(intent.instance_revision), frame = prefix.cursor.occurrences.find(row => row.occurrence_id === intent.occurrence_id);
-        const bindingNode = frame && instance.model.nodes.find(row => row.id === frame.node_id);
+        const bindingModel = frame && processFrameModel(instance.model, frame);
+        const bindingNode = bindingModel?.nodes.find(row => row.id === frame.node_id);
         if (!bindingNode || bindingNode.kind !== "operation" || !(frame.status === "READY" || frame.status === "WAITING"
           && ["blocked", "deferred"].includes(frame.operation?.receipt?.outcome))) fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
         assertProcessOperationIntent(intent, { instance, node: bindingNode, occurrenceId: intent.occurrence_id,
-          revision: intent.instance_revision, expectedInstanceSha256: prefix.instance.instance_sha256 });
+          model: bindingModel, revision: intent.instance_revision, expectedInstanceSha256: prefix.instance.instance_sha256 });
         if (record.operation_id !== operationJournalId({ instance_sha256: intent.instance_sha256 }, intent.occurrence_id)
           || record.preview.binding.id !== intent.binding_ref || shadowHash(record.preview.binding) !== intent.binding_sha256
           || shadowHash(record.preview.input) !== intent.input_sha256

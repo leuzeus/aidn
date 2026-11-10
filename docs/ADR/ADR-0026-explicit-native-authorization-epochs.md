@@ -153,6 +153,10 @@ delivery, every retained receipt and Native allocation, and local effect owners
 and unreferenced evidence. DB modes use canonical content and metadata from one
 list statement per observation; visible projections remain non-authoritative.
 Exact scope/model/prefix/binding/input/grant links and host MACs are checked.
+For a reusable call, the reconstructed prefix identifies the occurrence's
+model. Inventory resolves the operation node and pin within that model,
+while retaining the containing instance's model and scope hashes in the
+intent check.
 Physical file identities use bigint stats, exact decimal identifiers, bounded
 numeric size/mode/link counts and before/opened/after identity checks.
 Two unchanged observations detect drift; they are not an atomic multi-store

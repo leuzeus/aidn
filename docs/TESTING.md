@@ -377,6 +377,9 @@ events, dispatching/no-receipt and receipted/UNKNOWN, retained owners/debits,
 unreferenced evidence, substituted grants, stale prefixes and db-only projection
 non-adoption. Bigint physical identities distinguish adjacent values above
 2**53 and roundtrip through JSON; actual files are reobserved before/after reads.
+The embedded-operation check stages a child operation whose node ID matches
+the parent call. It verifies the child's operation pin and the absence of
+inventory writes or effect authorization after reopening the host.
 The same checks join the existing required host fixture case; no previous gate
 case or argv is removed. Fault-injected journal/Native states are fixtures,
 not real crashes, external closure, a disposition or the full STANDARD model.
