@@ -4825,8 +4825,12 @@ cached across guards. The existing real-port reopening suite remains required
 for the canonical/provider/authorization boundaries. Timings are separate
 diagnostics and do not replace the negative matrix or full composed recovery.
 
-The local and GitHub push adapters validate the explicit branch ref once per
-inspection and reuse it within that observation. Owned inspection batches the
+Branch integration resolves ref OIDs and the three Git lock and reflog paths
+in one invocation per synchronous observation. Each path is still validated
+physically, and the operation's later observations run independently. Local
+push uses the validated source ref from that same integration observation.
+The GitHub adapter validates the explicit branch ref once per inspection.
+Owned inspection batches the
 three Git lock paths into one fresh Git command per local sample. Physical path
 validation and separate samples on both sides of transport remain required.
 The local push fixture injects each lock before observation and a config lock

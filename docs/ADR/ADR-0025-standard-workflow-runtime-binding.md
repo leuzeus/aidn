@@ -2610,6 +2610,13 @@ refs/tips, delivery HEAD, index, filters, reflog prefixes and other worktrees.
 Changed state invalidates the answer. This bounded binding explicitly refuses
 additional attached cycles; their resolution remains a required follow-up.
 
+Within a synchronous branch-integration observation, Git resolves the ref OIDs
+and lock and reflog path names together. The observation validates each
+physical path and reads lock presence and reflog bytes separately. Local push
+uses the ref already validated by that observation. Each side of the remote
+read and each authorization or transaction fence observes the current state
+again.
+
 The new human source and v6 inbox preserve refusal, deferral and cancellation.
 Existing inbox readers v1-v5 remain unchanged and no historical record is
 converted. Consent emits only a request with no effect. Integration additionally

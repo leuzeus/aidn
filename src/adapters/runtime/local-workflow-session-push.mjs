@@ -59,7 +59,7 @@ export function createLocalWorkflowSessionPush({ targetRoot, remoteRoot, environ
   function inspectInternal(branch, assertLocal = null) {
     config(); const local = assertLocal ? inspectLocal(branch) : localIntegration().inspect({ source_branch: branch, target_branch: branch });
     if (!assertLocal && !local.clean) fail('WORKFLOW_PUSH_LOCAL_CONTEXT_BLOCKED');
-    const target = ref(branch);
+    const target = local.source_ref;
     if (local.current_ref !== target || local.head !== local.source_head || local.source_symbolic || local.target_symbolic
       || local.lock_present || local.source_lock_present) fail('WORKFLOW_PUSH_LOCAL_CONTEXT_BLOCKED');
     if (assertLocal) assertLocal(structuredClone(local));

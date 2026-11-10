@@ -45,14 +45,12 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
   }
   if (git(["ls-files", "--stage", "-z"]).split("\0").some(row => row.startsWith("160000 "))) fail("WORKFLOW_BRANCH_SUBMODULE_SCOPE_UNSUPPORTED");
   const index = binding.index, lock = index + ".lock";
-  function gitPaths(names) {
-    // One fresh Git invocation resolves this finite batch. Physical validation
-    // still applies to every returned path, including linked-worktree paths.
-    const rows = git(["rev-parse", ...names.flatMap(name => ["--git-path", name])]).trimEnd().split(/\r?\n/);
-    if (rows.length !== names.length) fail("WORKFLOW_BRANCH_GIT_PATHS_INVALID");
-    return rows.map(row => agentRunPhysicalPath(path.resolve(root, row), { missing: true }));
+  const physicalGitPath = row => agentRunPhysicalPath(path.resolve(root, row), { missing: true });
+  function gitPath(name) {
+    const rows = git(["rev-parse", "--git-path", name]).trimEnd().split(/\r?\n/);
+    if (rows.length !== 1) fail("WORKFLOW_BRANCH_GIT_PATHS_INVALID");
+    return physicalGitPath(rows[0]);
   }
-  const gitPath = name => gitPaths([name])[0];
   function logBytes(ref, observedPath = null) {
     const file = observedPath ?? gitPath("logs/" + ref);
     if (!fs.existsSync(file)) return Buffer.alloc(0);
@@ -85,7 +83,11 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
     const sourceRef = branch(source_branch), targetRef = source_branch === target_branch ? sourceRef : branch(target_branch);
     const currentRef = git(["symbolic-ref", "--quiet", "HEAD"]).trim();
     const refs = [...new Set([sourceRef, targetRef, "HEAD"])];
-    const resolved = git(["rev-parse", ...refs]).trimEnd().split(/\r?\n/);
+    const paths = [sourceRef + ".lock", "logs/HEAD", "logs/" + targetRef];
+    // The ref OIDs and Git-owned path names come from one synchronous sample.
+    // Lock presence and reflog bytes still require independent physical reads.
+    const observations = git(["rev-parse", ...refs, ...paths.flatMap(name => ["--git-path", name])]).trimEnd().split(/\r?\n/);
+    const resolved = observations.slice(0, refs.length);
     if (resolved.length !== refs.length || resolved.some(value => !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(value))) fail("WORKFLOW_BRANCH_GIT_REFS_INVALID");
     const heads = new Map(refs.map((ref, index) => [ref, resolved[index]]));
     const sourceHead = heads.get(sourceRef), targetHead = heads.get(targetRef);
@@ -95,7 +97,9 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
     const sourceSymbolic = spawnSync(gitExecutable, [...fixed, "symbolic-ref", "--quiet", sourceRef], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1;
     const targetSymbolic = targetRef === sourceRef ? sourceSymbolic
       : spawnSync(gitExecutable, [...fixed, "symbolic-ref", "--quiet", targetRef], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1;
-    const [sourceLockPath, headLogPath, targetLogPath] = gitPaths([sourceRef + ".lock", "logs/HEAD", "logs/" + targetRef]);
+    const resolvedPaths = observations.slice(refs.length);
+    if (resolvedPaths.length !== paths.length) fail("WORKFLOW_BRANCH_GIT_PATHS_INVALID");
+    const [sourceLockPath, headLogPath, targetLogPath] = resolvedPaths.map(physicalGitPath);
     return { source_branch, target_branch, source_ref: sourceRef, target_ref: targetRef, source_head: sourceHead, target_head: targetHead,
       current_ref: currentRef, head: heads.get("HEAD"), index_sha256: indexHash(), clean: status === "", lock_present: fs.existsSync(lock),
       filter_context_sha256: filterContextSha256,
