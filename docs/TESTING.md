@@ -195,6 +195,14 @@ checks and a disposable real-PostgreSQL comparison of the exact preview,
 expiry, and pre/postimage observations. The nominal fixture keeps its
 300-second freshness ceiling and its separate terminal verdict.
 
+For a PostgreSQL topology observation, compare the complete session and cycle
+records against the individual canonical reads, including their order and
+source. Check that duplicate numeric identities are refused and that a new
+observation sees a later canonical change. In a disposable PostgreSQL
+readiness comparison, count artifact worker calls separately for each fresh
+context read and compare complete context hashes. A context comparison covers
+neither signed nominal history nor the full freshness budget.
+
 ## Adjacent installation-record scans, 2026-11-06
 
 The activation fixture retains all earlier assertions and adds four checks for

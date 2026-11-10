@@ -256,32 +256,62 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
       fail("STANDARD_ARTIFACT_INVENTORY_AMBIGUOUS");
     return { source: selected.database ? selected.backend : "files", binding_sha256: shadowHash(selected), rows };
   }
-  function sessions() {
-    let names;
-    if (describe().database) {
-      const store = open(true); try { const rows = store.listArtifacts(10000); if (rows.length >= 10000) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED"); names = rows.map(row => row.path); } finally { store.close(); }
-    } else {
-      const folder = agentRunPhysicalPath(path.join(root, "docs/audit/sessions"), { missing: true });
-      names = fs.existsSync(folder) ? fs.readdirSync(folder).map(name => "sessions/" + name) : [];
-    }
-    const result = names.map(name => [name, /^sessions\/(S\d+)(?:[-_.][^/]*)?\.md$/.exec(name)]).filter(([, match]) => match)
-      .map(([name, match]) => ({ ...read(name, { required: true }), session_id: match[1] })).sort((a, b) => a.session_id.localeCompare(b.session_id, "en", { numeric: true }));
-    if (new Set(result.map(row => BigInt(row.session_id.slice(1)).toString())).size !== result.length) fail("STANDARD_SESSION_ID_AMBIGUOUS");
+  function listDatabaseArtifacts(expectedBackend) {
+    const store = open(true);
+    try {
+      if (expectedBackend && store.backend !== expectedBackend) fail("STANDARD_CANONICAL_BACKEND_CONFLICT");
+      const rows = store.listArtifacts(10000);
+      if (rows.length >= 10000) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED");
+      return rows;
+    } finally { store.close(); }
+  }
+  function selectTopology(names, readRequired, pattern, idKey, ambiguity) {
+    const result = names.map(name => [name, pattern.exec(name)]).filter(([, match]) => match)
+      .map(([name, match]) => ({ ...readRequired(name), [idKey]: match[1] }))
+      .sort((a, b) => a[idKey].localeCompare(b[idKey], "en", { numeric: true }));
+    if (new Set(result.map(row => BigInt(row[idKey].slice(1)).toString())).size !== result.length) fail(ambiguity);
     return result;
+  }
+  const selectSessions = (names, readRequired) => selectTopology(names, readRequired,
+    /^sessions\/(S\d+)(?:[-_.][^/]*)?\.md$/, "session_id", "STANDARD_SESSION_ID_AMBIGUOUS");
+  const selectCycles = (names, readRequired) => selectTopology(names, readRequired,
+    /^cycles\/(C\d+)[^/]*\/status\.md$/, "cycle_id", "STANDARD_CYCLE_ID_AMBIGUOUS");
+  const readRequired = name => read(name, { required: true });
+
+  function postgresTopology(selected) {
+    const rows = listDatabaseArtifacts("postgres");
+    if (shadowHash(describe()) !== shadowHash(selected)) fail("STANDARD_CANONICAL_BACKEND_CONFLICT");
+    const byPath = new Map(rows.map(row => [row.path, row]));
+    if (byPath.size !== rows.length) fail("STANDARD_ARTIFACT_INVENTORY_AMBIGUOUS");
+    const names = [...byPath.keys()];
+    const readObserved = name => readRow(relative(name), byPath.get(name), selected, true);
+    return {
+      sessions: () => selectSessions(names, readObserved),
+      cycles: () => selectCycles(names, readObserved),
+    };
+  }
+  // A caller may select both kinds from one inventory transaction. Later
+  // observations acquire a new inventory, including under an effect fence.
+  function observeTopology() {
+    const selected = describe();
+    return selected.backend === "postgres" ? postgresTopology(selected) : { sessions, cycles };
+  }
+  function sessions() {
+    const selected = describe();
+    if (selected.backend === "postgres") return postgresTopology(selected).sessions();
+    if (selected.database) return selectSessions(listDatabaseArtifacts().map(row => row.path), readRequired);
+    const folder = agentRunPhysicalPath(path.join(root, "docs/audit/sessions"), { missing: true });
+    const names = fs.existsSync(folder) ? fs.readdirSync(folder).map(name => "sessions/" + name) : [];
+    return selectSessions(names, readRequired);
   }
   function cycles() {
-    let names;
-    if (describe().database) {
-      const store = open(true); try { const rows = store.listArtifacts(10000); if (rows.length >= 10000) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED"); names = rows.map(row => row.path); } finally { store.close(); }
-    } else {
-      const directory = agentRunPhysicalPath(path.join(root, "docs/audit/cycles"), { missing: true });
-      names = fs.existsSync(directory) ? fs.readdirSync(directory).filter(name => /^C\d+[^/]*$/.test(name)).map(name => `cycles/${name}/status.md`) : [];
-    }
-    const result = names.map(name => [name, /^cycles\/(C\d+)[^/]*\/status\.md$/.exec(name)]).filter(([, match]) => match)
-      .map(([name, match]) => ({ ...read(name, { required: true }), cycle_id: match[1] })).sort((a, b) => a.cycle_id.localeCompare(b.cycle_id, "en", { numeric: true }));
-    if (new Set(result.map(row => BigInt(row.cycle_id.slice(1)).toString())).size !== result.length) fail("STANDARD_CYCLE_ID_AMBIGUOUS");
-    return result;
+    const selected = describe();
+    if (selected.backend === "postgres") return postgresTopology(selected).cycles();
+    if (selected.database) return selectCycles(listDatabaseArtifacts().map(row => row.path), readRequired);
+    const directory = agentRunPhysicalPath(path.join(root, "docs/audit/cycles"), { missing: true });
+    const names = fs.existsSync(directory) ? fs.readdirSync(directory).filter(name => /^C\d+[^/]*$/.test(name)).map(name => `cycles/${name}/status.md`) : [];
+    return selectCycles(names, readRequired);
   }
-  return Object.freeze({ root, describe, read, readMany, inventory, observeInventory, sessions, cycles, metadataHash, compareAndSwapPreservingMetadata, compareAndSwap, project, withLocalEffectOwner, assertLocalEffectOwner,
+  return Object.freeze({ root, describe, read, readMany, inventory, observeInventory, observeTopology, sessions, cycles, metadataHash, compareAndSwapPreservingMetadata, compareAndSwap, project, withLocalEffectOwner, assertLocalEffectOwner,
     resourceFence: () => fence(), localOwnerPending: () => fs.existsSync(lock()), ownerPending: () => fs.existsSync(lock()) || fence().read().record?.state === "held" });
 }

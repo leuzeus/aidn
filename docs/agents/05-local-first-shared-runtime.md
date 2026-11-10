@@ -45,6 +45,13 @@ preparation, preimages and postimages each use their own fresh content and
 metadata observation for the two material artifacts. The authorization,
 freshness checks and CAS stay in their original order.
 
+Each STANDARD drift or cycle-plan context reads the PostgreSQL session and
+cycle topology from one bounded, read-only canonical inventory. Selected
+rows still pass path, content hash, and identity ambiguity checks. The drift
+observation and the subsequent cycle-plan observation each acquire their own
+inventory. No topology observation carries across an authorization or effect
+boundary.
+
 ## Do Not Move Implicitly
 
 ADR-0013 defines an explicit migration of standard AIDN executable assets to a

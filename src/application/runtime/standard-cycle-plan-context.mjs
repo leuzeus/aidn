@@ -13,8 +13,9 @@ export async function readStandardCyclePlanContext(options) {
     || source.git.other_changes.count !== 0) fail("STANDARD_CYCLE_PLAN_CONTEXT_REQUIRED");
   const artifacts = createStandardWorkflowArtifacts({ targetRoot: options.targetRoot, env: options.environment });
   const current = artifacts.read("CURRENT-STATE.md", { required: true }), fields = analyzeStructuredArtifact(current.content).key_values;
-  const cycle = artifacts.cycles().find(row => row.cycle_id === source.cycle_id), status = analyzeStructuredArtifact(cycle.content).key_values;
-  const session = artifacts.sessions().find(row => row.session_id === source.session_id);
+  const topology = artifacts.observeTopology();
+  const cycle = topology.cycles().find(row => row.cycle_id === source.cycle_id), status = analyzeStructuredArtifact(cycle.content).key_values;
+  const session = topology.sessions().find(row => row.session_id === source.session_id);
   const match = /^cycles\/(C[0-9]{3,6})-([a-z]+)-[A-Za-z0-9._-]+\/status\.md$/.exec(cycle.path);
   if (!match || match[1] !== source.cycle_id || !["COMMITTING", "EXPLORING"].includes(fields.mode) || parseSessionMetadata(session.content).mode !== fields.mode
     || status.scope_frozen !== (source.cycle_state === "OPEN" ? "false" : "true") || status.dor_state !== (source.cycle_state === "OPEN" ? "NOT_READY" : "READY") || status.dor_override_reason !== "none"

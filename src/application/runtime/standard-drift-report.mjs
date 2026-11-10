@@ -44,12 +44,13 @@ export async function readStandardDriftContext({ targetRoot, productSha256, prod
   if (Object.keys(environment).some(key => /^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|CONFIG(?:_.*)?)$/i.test(key))) fail("STANDARD_GIT_ENV_SCOPE_CONFLICT");
   const artifacts = createStandardWorkflowArtifacts({ targetRoot, env: environment }), project = readWorkflowProjectAuthority({ targetRoot });
   const current = artifacts.read("CURRENT-STATE.md", { required: true }), fields = analyzeStructuredArtifact(current.content).key_values;
-  const session = artifacts.sessions().find(row => row.session_id === fields.active_session);
+  const topology = artifacts.observeTopology();
+  const session = topology.sessions().find(row => row.session_id === fields.active_session);
   if (!session) fail("STANDARD_DRIFT_SESSION_REQUIRED");
   const mode = parseSessionMetadata(session.content).mode;
   if (!["THINKING", "EXPLORING", "COMMITTING"].includes(mode) || mode !== fields.mode)
     fail("STANDARD_DRIFT_MODE_CHANGED");
-  const cycles = artifacts.cycles(), activeCycleId = fields.active_cycle && fields.active_cycle !== "none" ? fields.active_cycle : null;
+  const cycles = topology.cycles(), activeCycleId = fields.active_cycle && fields.active_cycle !== "none" ? fields.active_cycle : null;
   let cycleId = activeCycleId, cycle = cycleId ? cycles.find(row => row.cycle_id === cycleId) : null, completion = null;
   if (cycleId && !cycle) fail("STANDARD_DRIFT_CYCLE_REQUIRED");
   const cycleState = row => row ? analyzeStructuredArtifact(row.content).key_values.state : null;
