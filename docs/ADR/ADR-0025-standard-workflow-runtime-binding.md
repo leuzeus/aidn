@@ -2054,7 +2054,11 @@ The fixed finalizer runs the actual cycle-close hook with its supported run
 identity, explicit authorization, canonical terminal admission and fresh gating.
 The wrapper forwards this identity without adding a new public flag. A wrapper
 success alone is insufficient: the nested checkpoint, non-skipped gate and exact
-checkpoint-summary event must agree.
+checkpoint-summary event must agree. With the effect owner held, the finalizer
+checks the write grant before a fresh exact preparation. That preparation
+reads the terminal source, gate, context and preimages. The final objective
+and grant checks, process and time fences and event-log check still precede
+the hook. Checkpoint and suffix effects retain their own fences.
 
 The terminal recorder captures a bounded reviewed Git-checkpoint manifest using
 the existing drift-recovery protocol. An explicit external commit may advance

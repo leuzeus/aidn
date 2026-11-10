@@ -142,13 +142,11 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
         };
         let before;
         try {
+          await assertAuthorized();
+          // Reprepare under ownership after the grant check. The exact plan
+          // already binds the freshly read source, open gate and preimages.
           const fresh = await prepare(instance, plan.input, plan.operation_id, plan.prepared_at_ms, true);
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_PREVIEW_CHANGED");
-          await assertAuthorized();
-          const current = await source(instance, plan.input);
-          if (current.observed.context_sha256 !== plan.context_sha256 || shadowHash(current.selected.plan) !== plan.record_plan_sha256
-            || shadowHash(current.selected.output) !== plan.record_output_sha256 || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256
-            || !openGate(await gate(instance, plan.scope.cycle_id)) || now() - plan.prepared_at_ms > 300000) fail("STANDARD_CYCLE_CLOSE_HOOK_SOURCE_CHANGED");
           before = events(); if (before.length !== plan.event_log.bytes || artifactContentHash(before) !== plan.event_log.sha256) fail("STANDARD_PREVIEW_CHANGED");
           await assertEffectAuthorized();
           before = events(); if (before.length !== plan.event_log.bytes || artifactContentHash(before) !== plan.event_log.sha256) fail("STANDARD_PREVIEW_CHANGED");

@@ -217,6 +217,23 @@ try {
         await assert.rejects(hook.apply(instance, hookPlan, { write: true, expectPlan: hookPlan.plan_sha256, assertAuthorized: () => { throw Object.assign(Error('fixture denied'), { code: 'FIXTURE_GRANT_DENIED' }); } }), { code: 'FIXTURE_GRANT_DENIED' });
         assert.deepEqual(fs.readFileSync(eventFile), beforeHook); assert.equal(artifacts.ownerPending(), false);
         if (process.argv.includes("--delayed-hook-fences")) {
+          let readsBeforeEffect = 0, grantChecks = 0;
+          const lateRefusal = Object.assign(Error("fixture grant lost after locked preparation"), { code: "FIXTURE_GRANT_LOST_AFTER_PREPARE" });
+          const fenced = createStandardCycleCloseHook({ targetRoot: root,
+            readRecorded: async () => {
+              assert.equal(grantChecks, 1);
+              readsBeforeEffect++;
+              return { record_operation_id: op, plan: preview.plan, output: result };
+            },
+            observeContext, readCurrent: () => instance });
+          await assert.rejects(fenced.apply(instance, hookPlan, { write: true, expectPlan: hookPlan.plan_sha256,
+            assertAuthorized: () => { if (++grantChecks === 2) throw lateRefusal; } }),
+          { code: "FIXTURE_GRANT_LOST_AFTER_PREPARE", effect_status: "no_effect" });
+          assert.equal(grantChecks, 2);
+          assert.equal(readsBeforeEffect, 1);
+          assert.deepEqual(fs.readFileSync(eventFile), beforeHook);
+          assert.equal(artifacts.ownerPending(), false);
+          pass("one authenticated locked preparation precedes the independent final grant check");
           for (const fault of ["revoked", "expired"]) {
             let clock = Date.now(), lost = false;
             const probe = createStandardCycleCloseHook({ targetRoot: root, readRecorded: async () => ({ record_operation_id: op, plan: preview.plan, output: result }),

@@ -500,8 +500,10 @@ other signals, STOP/L3 and event authorization. Working-source preflight passed
 with observation/artifact doubles; frozen qualification is separate.
 
 `verify-standard-cycle-close-record-fixtures.mjs --mode=files --final-hook
---delayed-hook-fences` adds no-effect delayed revocation/expiry before checkpoint.
-The grant_after fault uses observed event growth and must retain UNKNOWN.
+--delayed-hook-fences` checks one exact preparation under ownership and
+an independent final grant check. It also covers delayed revocation and
+expiry before checkpoint. The grant_after fault uses observed event growth
+and must retain UNKNOWN.
 
 `verify-agentic-process-execution-fixtures.mjs --cycle-close-finalize-mode=files
 --cycle-close-objective-completion --retain-always` selects a new scenario graph
