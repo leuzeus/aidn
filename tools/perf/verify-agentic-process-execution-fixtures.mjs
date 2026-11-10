@@ -3489,6 +3489,80 @@ if (process.argv[2] === "--mixed-continue") {
     }
   });
   await check("historical diagnostic: public mixed port preserves authenticated old bindings and current effect fences", verifyStandardHistoricalDiagnosticFixtures);
+
+  await check("historical diagnostic: mixed reconciliation observes unresolved Native without effect admission", async () => {
+    const f = mixedFixture("files"), host = f.open(), key = f.key;
+    const [{ createNativeAllocationJournalStore }, { createProcessOperationJournalStore },
+      { nativeJournalId }, { createOperationJournalSigner }, { assertProcessReconciliationInventory }] = await Promise.all([
+      import("../../src/adapters/runtime/native-allocation-journal-store.mjs"),
+      import("../../src/adapters/runtime/process-operation-journal-store.mjs"),
+      import("../../src/core/workflow/native-allocation-journal.mjs"),
+      import("../../src/core/workflow/process-operation-journal.mjs"),
+      import("../../src/core/workflow/process-reconciliation-inventory.mjs"),
+    ]);
+    const initial = host.initialize({});
+    host.initialize({ write: true, expectedResultSha256: initial.record.instance_sha256 });
+    const preview = await host.prepareOperation({ expectedSha256: initial.record.instance_sha256, occurrenceId: initial.cursor.ready[0] });
+    const staged = await host.stageOperation(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
+    const instance = host.inspect().record, options = { targetRoot: f.configuration.target_root, stateMode: "files" };
+    const signer = createOperationJournalSigner(() => key), operations = createProcessOperationJournalStore(options);
+    const original = operations.read(staged.operation_id);
+    const dispatching = signer.seal({ ...original.record, phase: "dispatching", revision: original.record.revision + 1,
+      owner: { generation: "11111111-1111-1111-1111-111111111111", pid: process.pid } });
+    operations.compareAndSwap(dispatching, original.content_sha256);
+    const journalId = nativeJournalId(instance), configSha = shadowHash(f.configuration);
+    const limits = { configuration_sha256: configSha, authorized_at_ms: 1, global_deadline_ms: 100,
+      workflow_deadline_ms: 100, max_turn_ms: 10, max_responses: 1, max_bytes: 1048576 };
+    const allocation = { generation: 1, owner_id: "fixture_retained", configuration_sha256: configSha,
+      authorization_sha256: "a".repeat(64), initial_instance_sha256: instance.instance_sha256, limits, phase: "reserved",
+      owned_result_sha256: null, tree_proof_sha256: null, tree_closed: false, owned_status: null, first_failure: null,
+      checkpoint: null, consumption: null, closure_ref: null };
+    const native = createNativeAllocationJournalStore(options);
+    const reserved = signer.seal({ contract_version: "native-allocation-journal.v1", journal_id: journalId, instance_id: instance.instance_id,
+      scope_id: instance.scope_id, model_sha256: instance.model_sha256, revision: 1, allocations: [allocation] });
+    native.compareAndSwap(reserved, null);
+    const expected = { expectedSha256: instance.instance_sha256 };
+    const witness = () => diagnosticFixtureWitness(f.configuration);
+    const verifyInventory = phase => {
+      const before = witness(), retained = native.read(journalId).record;
+      const inventory = assertProcessReconciliationInventory(signer.verify(host.prepareReconciliationInventory(expected)));
+      assert.equal(inventory.instance_sha256, instance.instance_sha256);
+      assert.equal(inventory.accounting.native_known, false);
+      assert.equal(inventory.accounting.unresolved_native_allocations, 1);
+      assert.equal(inventory.accounting.unknown_operations, 1);
+      assert.equal(inventory.resources.find(row => row.kind === "native_allocation").details.phase, phase);
+      assert.equal(inventory.written, false);
+      assert.equal(inventory.permits_effects, false);
+      assert.equal(inventory.complete_resource_closure, false);
+      assert.equal(host.prepareProcessOwnerObservation({ ...expected, operationId: staged.operation_id }).observation.owner_status, "unresolved");
+      assert.throws(() => host.inspect(), { code: "STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE" });
+      assert.throws(() => host.prepareOperationDisposition(staged.operation_id, expected), { code: "STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE" });
+      assert.deepEqual(native.read(journalId).record, retained);
+      assert.deepEqual(witness(), before);
+      assert.equal(f.t.sessions.length, 0);
+      return inventory;
+    };
+    assert.equal(verifyInventory("reserved").accounting.storage_debit_bytes_minimum, 0);
+
+    const state = { contract_version: "native-host-state.v1", authority_id: "fixture_retained", instance,
+      parent_closed: true, resources: [], results: [], native_usage: null };
+    const evidence = { state, responses_observed: 0, response_sha256: [], authorized_budget_sha256: allocation.authorization_sha256,
+      authorized_limits: limits, resume_authority: "NOT_ESTABLISHED_SUPERVISOR_AND_AUTHENTICATED_JOURNAL_REQUIRED" };
+    const checkpoint = put(f.configuration.control_root, instance.instance_id + "/00001-native-host-state.json", JSON.stringify(evidence));
+    const closure = { status: "FAILED", first_failure: "FIXTURE_NATIVE_FAILURE", process_tree: { termination_state: "confirmed", termination_proof: { active_processes: 0 } } };
+    const closureFile = put(f.configuration.control_root, instance.instance_id + "-CLOSURE.json", JSON.stringify(closure));
+    const failed = signer.seal({ ...reserved, revision: 2, allocations: [{ ...allocation, phase: "failed",
+      owned_result_sha256: shadowHash(closure), tree_proof_sha256: shadowHash(closure.process_tree), tree_closed: true,
+      owned_status: "FAILED", first_failure: closure.first_failure,
+      checkpoint: { path: checkpoint, sha256: sha(fs.readFileSync(checkpoint)), state_sha256: shadowHash(state), instance_sha256: instance.instance_sha256 },
+      closure_ref: { path: closureFile, sha256: sha(fs.readFileSync(closureFile)) },
+      consumption: { responses_observed: 0, response_sha256: [], storage_debit_bytes: 7, native_usage_sha256: null } }] });
+    native.compareAndSwap(failed, native.read(journalId).content_sha256);
+    assert.equal(verifyInventory("failed").accounting.storage_debit_bytes_minimum, 7);
+    fs.appendFileSync(checkpoint, "\n");
+    assert.throws(() => host.prepareReconciliationInventory(expected), { code: "NATIVE_ALLOCATION_EVIDENCE_CHANGED" });
+  });
+
   completed = true;
   console.log(JSON.stringify({ ok: true, checks, proof_class: "offline-production-composition-with-fake-native-wire", model_calls: 0, native_client: "NOT_RUN", native_process_tree: "NOT_RUN" }));
 } finally {

@@ -1014,6 +1014,28 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     authenticateState(value);
     return { instance: record, ...observed };
   }
+  function inspectDiagnostic(id) {
+    if (!processAuthority) fail("STANDARD_HOST_DIAGNOSTIC_AUTHORITY_REQUIRED");
+    const value = service.inspect(id);
+    return { ...value, native: processAuthority.inspectDiagnostic(value.record) };
+  }
+  function observeReadOnlyReconciliationSubject(id) {
+    try {
+      return observeReconciliationSubject(id);
+    } catch (error) {
+      if (!processAuthority || error.code !== "STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE") throw error;
+    }
+    // Only the read-only ports may use diagnostic authentication. Disposition
+    // still uses observeReconciliationSubject with the execution exclusion.
+    const { record, native } = inspectDiagnostic(id);
+    const { authority, context } = observeBoundary();
+    const entry = native.journal?.allocations.at(-1);
+    if (!entry || entry.phase === "closed" || record.scope_id !== authority.scope_id || record.model_sha256 !== authority.model_sha256
+      || shadowHash(record.policy_pins) !== shadowHash(authority.policy_pins)) fail("PROCESS_RECONCILIATION_OBSERVATION_CHANGED");
+    const diagnosticJournalSha256 = shadowHash(native.journal);
+    return { instance: record, authority, diagnosticJournalSha256,
+      context: { ...context, diagnostic_native_journal_sha256: diagnosticJournalSha256 } };
+  }
   function requireWrite(write, expected, actual) { if (write !== true || expected !== actual) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED"); }
   function observeControlRequest({ instanceId, expectedSha256, occurrenceId }) {
     if (!activeControlSource) fail("PROCESS_CONTROL_AUTHORITY_UNAVAILABLE");
@@ -1170,7 +1192,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   const reconciliationInventory = createStandardReconciliationInventory({ targetRoot, signer, now,
     configuration: reconciliationConfiguration, modelSource: source,
-    readInstance: id => current(id).record, readAuthority, readContext: snapshot, readSubject: observeReconciliationSubject });
+    readInstance: id => current(id).record, readAuthority, readContext: snapshot, readSubject: observeReconciliationSubject,
+    readDiagnosticSubject: processAuthority ? observeReadOnlyReconciliationSubject : undefined });
   disposition = createStandardOperationDisposition({ targetRoot, stateMode: initial.stateMode, signer, artifacts, now,
     readOperation: retained, readInstance: id => current(id).record, readAuthority, readContext: snapshot, observeBoundary,
     inventory: reconciliationInventory, dispositionSource, onBoundary: dispatchCheckpoint,
@@ -1253,13 +1276,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     prepareProcessOwnerObservation: (id, input) => reconciliationInventory.prepareProcessOwnerObservation(id, input),
     prepareOperationDisposition: (id, input) => disposition.prepare(id, input),
     applyOperationDisposition: (plan, input) => disposition.apply(plan, input),
-    inspectDiagnostic(id) {
-      if (!processAuthority) fail("STANDARD_HOST_DIAGNOSTIC_AUTHORITY_REQUIRED");
-      const value = service.inspect(id);
-      // This dedicated historical port authenticates the complete retained
-      // scope/model/history. Current operation admission still uses scope().
-      return { ...value, native: processAuthority.inspectDiagnostic(value.record) };
-    },
+    inspectDiagnostic,
     prepareDecision(id) {
       const { record } = retained(id);
       if (postMergeRecoveryResult(record)) fail("STANDARD_PR_POST_MERGE_QUESTION_DISPOSED");

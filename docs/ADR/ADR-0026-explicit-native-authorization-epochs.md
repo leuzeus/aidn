@@ -178,6 +178,13 @@ absence of a business effect. This port cannot release an owner, append a result
 grant admission, renew authority or rerun an operation. Missing/changed records
 and unsupported/truncated local inventories fail without a partial success.
 General disposition and actual crash/concurrent recovery remain required.
+When the mixed host refuses execution because the latest Native allocation
+is unresolved, the two read-only reconciliation ports may authenticate the
+retained prefix using diagnostic history. They still require current host
+authority and bind the unresolved journal to the observed context. Reserved
+and failed allocations keep their owners, phase and known debit minima.
+Normal inspection for execution and preparation or application of disposition
+retain the original Native exclusion.
 
 The internal `prepareProcessOwnerObservation` port selects an exact unknown
 operation by instance digest and operation ID. Two reads of the original

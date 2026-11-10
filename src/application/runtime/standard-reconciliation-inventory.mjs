@@ -26,8 +26,10 @@ const prefixFor = (instance, intent) => agenticProcessPrefixSha256(instance, int
 // Only trusted host capabilities supply these readers. Authored JSON cannot
 // select a discoverer, verifier or effect observer. This port has no writer.
 export function createStandardReconciliationInventory({ targetRoot, signer, readInstance, readAuthority, readContext, readSubject,
-  configuration = null, modelSource = null, now = Date.now }) {
+  readDiagnosticSubject, configuration = null, modelSource = null, now = Date.now }) {
   const artifacts = createStandardWorkflowArtifacts({ targetRoot });
+  const readRetainedSubject = readSubject ?? (id => ({ instance: readInstance(id), authority: readAuthority(), context: readContext() }));
+  const readObservationSubject = readDiagnosticSubject ?? readRetainedSubject;
   function observe(instance) {
     assertAgenticProcessInstance(instance);
     const observed = artifacts.observeInventory(), resources = [], operations = [], records = new Map(), prefixes = new Map(), dispatches = [];
@@ -234,11 +236,13 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
     return { operation_id: operationId, operation_record_sha256: operation.record_sha256,
       dispatch_sha256: dispatch?.sha256 ?? null, process_identity_sha256: identity ? shadowHash(identity) : null, owner_status: status };
   }
-  function capture(instanceId, expectedSha256, requireExpected, operationId = null) {
-      const subject = () => readSubject ? readSubject(instanceId) : { instance: readInstance(instanceId), authority: readAuthority(), context: readContext() };
-      const { instance: before, authority, context } = subject(); assertAgenticProcessInstance(before);
+  function capture(readSubject, instanceId, expectedSha256, requireExpected, operationId = null) {
+      const { instance: before, authority, context, diagnosticJournalSha256 } = readSubject(instanceId); assertAgenticProcessInstance(before);
       if (requireExpected && expectedSha256 !== before.instance_sha256) fail("PROCESS_REVISION_CONFLICT");
-      const first = observe(before), started = operationId === null ? null : now();
+      const first = observe(before);
+      if (diagnosticJournalSha256 !== undefined && !first.resources.some(row => row.kind === "native_journal" && row.sha256 === diagnosticJournalSha256))
+        fail("PROCESS_RECONCILIATION_OBSERVATION_CHANGED");
+      const started = operationId === null ? null : now();
       const owner = operationId === null ? null : observeOwner(first, operationId);
       const second = observe(before);
       if (shadowHash(first) !== shadowHash(second)) fail("PROCESS_RECONCILIATION_OBSERVATION_CHANGED");
@@ -246,7 +250,7 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
       if (owner && shadowHash(owner) !== shadowHash(observeOwner(second, operationId)))
         fail("PROCESS_RECONCILIATION_OBSERVATION_CHANGED");
       const sampled = owner ? now() : null;
-      const after = subject();
+      const after = readSubject(instanceId);
       if (after.instance.instance_sha256 !== before.instance_sha256
         || shadowHash(after.authority) !== shadowHash(authority) || shadowHash(after.context) !== shadowHash(context))
         fail("PROCESS_RECONCILIATION_OBSERVATION_CHANGED");
@@ -267,14 +271,14 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
       return { inventory, observation };
   }
   return Object.freeze({
-    prepare(instanceId, { expectedSha256 } = {}) { return capture(instanceId, expectedSha256, true).inventory; },
+    prepare(instanceId, { expectedSha256 } = {}) { return capture(readObservationSubject, instanceId, expectedSha256, true).inventory; },
     prepareProcessOwnerObservation(instanceId, { expectedSha256, operationId } = {}) {
       if (typeof operationId !== "string" || !/^op_[a-f0-9]{40}$/.test(operationId)) fail("PROCESS_OWNER_OBSERVATION_OPERATION_INVALID");
-      return capture(instanceId, expectedSha256, true, operationId);
+      return capture(readObservationSubject, instanceId, expectedSha256, true, operationId);
     },
     // Return the instance authenticated twice by this very capture, rather than
     // make callers perform another full authority read just to name its prefix.
     // This internal compound observation has no cross-call state or permission.
-    observeSubject(instanceId) { return capture(instanceId, null, false); },
+    observeSubject(instanceId) { return capture(readRetainedSubject, instanceId, null, false); },
   });
 }

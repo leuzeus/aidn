@@ -399,9 +399,15 @@ receipt remain byte-identical, with no authorization. The injected journal
 is a fixture. The direct-child observation does not cover descendants or a
 business-effect disposition.
 
-## Historical mixed diagnostic boundary, 2026-11-05
+## Historical mixed diagnostic and reconciliation boundary, 2026-11-05
 
 `node tools/perf/verify-agentic-process-execution-fixtures.mjs --historical-diagnostic-only` selects the signed historical diagnostic regression in the existing execution gate. It calls the public mixed port and tests old implementation pins, expired retained previews, scope/instance/HMAC/binding/result/configuration substitution, missing or changed checkpoints, unchanged physical witnesses and current effect refusal despite untrusted diagnostic options. Its allocation/checkpoint corpus is synthetic and invokes no Native, human or provider. It supplies no resource closure, general reconciliation or productive-resume proof. Exact-source qualification and an unchanged read of a retained historical corpus are recorded separately; no old failure is reclassified.
+
+The same selector covers the mixed read-only inventory and process-owner
+observation with a signed reserved allocation, then a signed failed allocation
+with retained debit. The fixture checks ordinary inspection and disposition
+refusal, checkpoint tamper rejection, physical non-mutation, and zero Native
+calls. The allocation and closure evidence is synthetic.
 
 ## Published binding alignment after implementation changes, 2026-11-05
 
