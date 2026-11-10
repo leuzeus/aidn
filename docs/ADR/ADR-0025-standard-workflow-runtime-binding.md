@@ -1740,8 +1740,10 @@ mapping. An explicit reviewed grant authorizes exactly the cycle status and
 CURRENT-STATE transition: OPEN/NOT_READY/unfrozen becomes
 IMPLEMENTING/READY/frozen. Canonical content and metadata preimages, actual
 projections, the process identity and the unchanged surrounding context are
-checked under the existing local effect owner. Partial writes and unconfirmed
-projections retain ownership and require reconciliation. A retained receipt
+checked under the existing local effect owner. The 300000 ms plan freshness
+limit is checked again after the final context and preimage observations, before
+the first canonical write. Partial writes and unconfirmed projections retain
+ownership and require reconciliation. A retained receipt
 prevents an implicit repeat after restart.
 
 The frozen plan remains unchanged. Every subsequent native product modification

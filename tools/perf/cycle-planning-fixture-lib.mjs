@@ -19,6 +19,7 @@ import { assertStandardCyclePlan, renderStandardCyclePlan, CYCLE_PLAN_CONTRACT }
 import { assertNativeActivityAnswer, nativeActivityAnswerSchema } from "../../src/core/workflow/native-activity-output.mjs";
 import { evaluateStandardCyclePlan } from "../../src/application/runtime/standard-cycle-plan-context.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
+import { createStandardCycleImplementation } from "../../src/application/runtime/standard-cycle-implementation.mjs";
 import { evaluateStandardCycleReadiness } from "../../src/core/workflow/standard-cycle-readiness.mjs";
 import { evaluateCurrentStateConsistency } from "./verify-current-state-consistency.mjs";
 import { CYCLE_WORK_CONTRACT, CYCLE_TASK_WORK_CONTRACT } from "../../src/core/workflow/standard-cycle-work.mjs";
@@ -113,7 +114,7 @@ export async function verifyCyclePlanningContracts(check) {
   });
 }
 
-export async function verifyCycleReadinessContracts(check) {
+export async function verifyCycleReadinessContracts(check, { createFixture }) {
   const base = { context_sha256: "a".repeat(64), context: { session_id: "S001", cycle_id: "C001", cycle_type: "feature", mode: "COMMITTING",
     original_objective: "Local change", allowed_product_files: ["product/app.mjs"] }, evidence_refs: [{ ref: "audit:SPEC.md", sha256: "b".repeat(64) }] };
   function run(proposal, overrides = {}, change = () => {}) {
@@ -137,6 +138,39 @@ export async function verifyCycleReadinessContracts(check) {
     const shared = { ...proposal, surface: "shared", usage_matrix: [...proposal.usage_matrix, { ...proposal.usage_matrix[0], kind: "alternate" }] };
     assert.equal(run(shared).outcome, "blocked");
     shared.usage_matrix.push({ ...shared.usage_matrix[0], kind: "context" }); assert.equal(run(shared).outcome, "completed");
+  });
+  await check("cycle readiness contract: plan expiry during final context observation refuses before effects", async () => {
+    const root = createFixture();
+    const artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
+    const cyclePath = "cycles/C001-feature-readiness-expiry";
+    const cycleStatus = cyclePath + "/status.md";
+    const statusFile = path.join(root, "docs/audit", cycleStatus);
+    fs.mkdirSync(path.dirname(statusFile), { recursive: true });
+    const template = fs.readFileSync(new URL("../../scaffold/docs_audit/cycles/TEMPLATE_STATUS.md", import.meta.url), "utf8");
+    fs.writeFileSync(statusFile, template + "\nupdated_at: 2026-11-10T00:00:00Z\n");
+    const paths = [cycleStatus, "CURRENT-STATE.md"];
+    const fingerprints = () => paths.map(name => artifacts.read(name, { required: true }).sha256);
+    const before = fingerprints();
+    const context = { cycle_path: cyclePath, cycle_state: "OPEN", documents: [], metadata_pins: [] };
+    const observation = { context, context_sha256: shadowHash(context) };
+    const instance = { instance_id: "fixture", instance_sha256: "a".repeat(64) };
+    const preparedAt = Date.parse("2026-11-10T00:00:00Z");
+    let now = preparedAt, granted = false;
+    const operation = createStandardCycleImplementation({ targetRoot: root, now: () => now, readCurrent: () => instance,
+      readEvaluation: async () => ({ ...observation, evaluation_sha256: "b".repeat(64),
+        output: { facts: { cycle_readiness_satisfied: true }, observations: { scope_sha256: "c".repeat(64) } } }),
+      observeContext: async () => {
+        await Promise.resolve();
+        if (granted) now = preparedAt + 300001;
+        return observation;
+      } });
+    const preview = await operation.prepare(instance, { evaluation_operation_id: "op_" + "d".repeat(40) });
+    assert.deepEqual(fingerprints(), before);
+    await assert.rejects(operation.apply(instance, preview, { write: true, expectPlan: preview.plan_sha256,
+      assertAuthorized: async () => { granted = true; now = preparedAt + 300000; } }),
+      { code: "STANDARD_CYCLE_READINESS_SOURCE_STALE", effect_status: "no_effect" });
+    assert.deepEqual(fingerprints(), before);
+    assert.equal(artifacts.ownerPending(), false);
   });
 }
 

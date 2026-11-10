@@ -1281,7 +1281,10 @@ These checks do not qualify a real native provider or deterministic code tests.
 
 `--cycle-readiness-mode=contract|files|dual|db-only|partial|projection|refusal|stale`
 in the agentic execution corpus selects deterministic DoR and explicit phase
-transition checks. The integrated cases reuse authenticated native planning,
+transition checks. The contract selector also advances an injected clock past
+the plan limit during the final context observation and checks that the writer
+refuses before changing either artifact or retaining an owner. The integrated
+cases reuse authenticated native planning,
 real canonical/branch/admission ports, refused grants, cold Node continuation,
 partial writes, missing projection and common-reducer simulation. The native
 transport and granting identity remain fixture capabilities; they do not prove

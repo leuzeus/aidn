@@ -1709,7 +1709,7 @@ if (process.argv[2] === "--mixed-continue") {
   await verifyCycleVerificationContracts(check, cyclePlanProposal({ context_sha256: "a".repeat(64), context: { session_id: "S001", cycle_id: "C001", cycle_type: "feature", mode: "COMMITTING", original_objective: "Update the product", allowed_product_files: ["product/app.mjs"] }, evidence_refs: [{ ref: "audit:SPEC.md", sha256: "b".repeat(64) }] }));
   await verifyCyclePlanningContracts(check);
   await verifyCycleWorkContracts(check, { mixedFixture });
-  await verifyCycleReadinessContracts(check);
+  await verifyCycleReadinessContracts(check, { createFixture: () => createFreshStandardWorkflowFixture("files", businessRoots) });
   await check("cycle plan contract refuses a writable native planning profile before any session", async () => {
     const f = mixedFixture("files", { planning: true }), model = structuredClone(f.model);
     const node = model.nodes.find(row => row.id === "analyze"); model.policies.find(row => row.id === node.policy_ref).allowed_permissions.push("write:product");

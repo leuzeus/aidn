@@ -68,7 +68,9 @@ export function createStandardCycleImplementation({ targetRoot, readEvaluation, 
             || (await observeContext()).context_sha256 !== plan.context_sha256) fail("STANDARD_CYCLE_READINESS_SOURCE_STALE");
           for (const row of plan.changes) if (artifacts.read(row.path).sha256 !== row.before_sha256 || artifacts.metadataHash(row.path) !== row.before_metadata_sha256) fail("STANDARD_PREVIEW_CHANGED");
           projections(plan.changes).forEach((file, index) => { if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== plan.changes[index].before_sha256) fail("STANDARD_CYCLE_READINESS_PROJECTION_STALE"); });
-          if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_CYCLE_READINESS_SOURCE_STALE");
+          const current = readCurrent(instance.instance_id), age = now() - plan.prepared_at_ms;
+          if (current.instance_sha256 !== instance.instance_sha256 || !Number.isSafeInteger(age) || age < 0 || age > 300000)
+            fail("STANDARD_CYCLE_READINESS_SOURCE_STALE");
         } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         const committed = [], metadata = [];
         try {
