@@ -2738,8 +2738,10 @@ The common operation disposition can adopt a confirmed original checkpoint
 return from a signed dispatch v2 capsule after the owner has terminated and its
 matching local lease is recorded as released. It rechecks the accepted PR
 successor, exact commit parent, operation/plan trailers, changed blob bytes and
-modes, and the reconciled index and worktree. The return and its evidence hashes
-must match that proof. A commit by itself, an absent return, an active owner or
+modes, and the reconciled index and worktree. Multi-path mode reads share one observation
+per immutable commit tree within that boundary. Ambiguous samples use the
+original per-path Git reads, and each blob and mode still has an exact
+postcondition. The return and its evidence hashes must match that proof. A commit by itself, an absent return, an active owner or
 an unconfirmed output remains UNKNOWN. The disposition and receipt acceptance
 require their own current scoped authorizations and fenced CAS. They reuse the
 original output and do not authorize another checkpoint or a Native allocation.

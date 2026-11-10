@@ -122,8 +122,30 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
   }
   const title = profile === "session-metadata" ? "chore: checkpoint governed session metadata" : "chore: checkpoint approved terminal cycle";
   const message = plan => `${title}\n\nAIDN-Operation: ${plan.operation_id}\nAIDN-Plan: ${plan.plan_sha256}\n`;
-  function gitMode(plan, name) {
-    const mode = run(["ls-tree", "--format=%(objectmode)", plan.observed.head, "--", name]).trim();
+  function sampleTreeModes(head, names) {
+    if (names.length < 2) return null;
+    let rows;
+    try {
+      rows = run(["ls-tree", "-z", "--format=%(objectmode)%x09%(path)", head, "--", ...names]).split("\0");
+    } catch (cause) {
+      if (cause.code !== "WORKFLOW_GIT_COMMAND_FAILED") throw cause;
+      return null;
+    }
+    if (rows.pop() !== "") return null;
+    const modes = new Map(), requested = new Set(names);
+    for (const row of rows) {
+      const match = /^([0-7]{6})\t(.+)$/.exec(row);
+      if (!match || !requested.has(match[2]) || modes.has(match[2])) return null;
+      modes.set(match[2], match[1]);
+    }
+    return modes;
+  }
+  function treeMode(head, name, sample) {
+    if (sample) return sample.get(name) ?? "";
+    return run(["ls-tree", "--format=%(objectmode)", head, "--", name]).trim();
+  }
+  function gitMode(plan, name, sample) {
+    const mode = treeMode(plan.observed.head, name, sample);
     if (mode) { if (!["100644", "100755"].includes(mode)) fail("WORKFLOW_GIT_FILE_MODE_UNSUPPORTED"); return mode; }
     const physical = agentRunPhysicalPath(path.join(root, name));
     return process.platform !== "win32" && fs.statSync(physical).mode & 0o111 ? "100755" : "100644";
@@ -139,10 +161,13 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
     const paths = run(["diff-tree", "--no-commit-id", "--name-only", "-r", "-z", head]).split("\0").filter(Boolean).sort();
     if (parent.length !== 2 || parent[1] !== plan.observed.head || body.trimEnd() !== message(plan).trimEnd()
       || exact(paths) !== exact(plan.files.map(row => row.path).sort())) return { status: "not_confirmed", reason_code: "WORKFLOW_GIT_COMMIT_AMBIGUOUS" };
+    const names = plan.files.map(row => row.path);
+    let modes;
     for (const row of plan.files) {
       if (hash(run(["show", `${head}:${row.path}`], { binary: true })) !== row.sha256)
         return { status: "not_confirmed", reason_code: "WORKFLOW_GIT_COMMIT_POSTIMAGE_MISMATCH" };
-      if (run(["ls-tree", "--format=%(objectmode)", head, "--", row.path]).trim() !== gitMode(plan, row.path))
+      modes ??= [sampleTreeModes(head, names), sampleTreeModes(plan.observed.head, names)];
+      if (treeMode(head, row.path, modes[0]) !== gitMode(plan, row.path, modes[1]))
         return { status: "not_confirmed", reason_code: "WORKFLOW_GIT_COMMIT_MODE_MISMATCH" };
     }
     const workspace = inspect(), ready = workspace.ref === plan.observed.ref && workspace.head === head && workspace.index_clean && workspace.changes.length === 0;
@@ -162,7 +187,8 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
       if (typeof assertAuthorized !== "function") fail("WORKFLOW_GIT_AUTHORIZATION_REQUIRED");
       assertFresh(plan); await assertAuthorized(); assertFresh(plan);
       if (!plan.files.length) return { status: "no_change", head: plan.observed.head, effect_status: "no_effect" };
-      const modes = new Map(plan.files.map(row => [row.path, gitMode(plan, row.path)]));
+      const sampledModes = sampleTreeModes(plan.observed.head, plan.files.map(row => row.path));
+      const modes = new Map(plan.files.map(row => [row.path, gitMode(plan, row.path, sampledModes)]));
       lockToken = JSON.stringify({ operation_id: plan.operation_id, plan_sha256: plan.plan_sha256, token: randomUUID() });
       try { lockFd = fs.openSync(lockPath, "wx"); } catch { fail("WORKFLOW_GIT_INDEX_LOCKED"); }
       attempted = true; fs.writeFileSync(lockFd, lockToken); fs.fsyncSync(lockFd);

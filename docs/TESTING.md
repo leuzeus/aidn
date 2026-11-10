@@ -4080,6 +4080,10 @@ invocation per inspection. The port fixture covers the existing unborn and
 detached HEAD refusals, and `verify-retained-workflow-git-binding-fixtures.mjs`
 checks refusal after a same-content gitfile redirection. Each inspection uses
 a fresh observation across provider, authorization and effect boundaries.
+Multi-path checkpoints sample modes together per commit tree. The terminal
+profile checks executable modes, absent parent entries and literal path names
+with spaces and brackets. Single-path reads and the fallback retain the
+original Git mode command.
 
 The same fixture proves that a configured reference-transaction hook and clean
 filter actually execute under ordinary Git, then requires the adapter's inspect,

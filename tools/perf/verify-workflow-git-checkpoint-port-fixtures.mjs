@@ -127,8 +127,8 @@ try {
     assert.equal(git(f.root, "rev-parse", "HEAD"), f.plan.observed.head);
   });
   await test("terminal profile commits exactly captured product/metadata paths and preserves an executable Git mode", async () => {
-    const f = fixture(), goal = "docs/audit/cycles/C001-feature-example/goal.md", literal = "product/item[1].mjs";
-    write(f.root, "product/item1.mjs", "unchanged neighbour\n"); git(f.root, "add", "product/item1.mjs");
+    const f = fixture(), goal = "docs/audit/cycles/C001-feature-example/goal.md", literal = "product/item [1].mjs";
+    write(f.root, "product/item 1.mjs", "unchanged neighbour\n"); git(f.root, "add", "product/item 1.mjs");
     git(f.root, "update-index", "--chmod=+x", "app.mjs"); fs.chmodSync(path.join(f.root, "app.mjs"), 0o755);
     git(f.root, "commit", "-m", "fixture executable and neighbour");
     write(f.root, "app.mjs", "export const value = 2;\n"); write(f.root, goal, "approved cycle\n"); write(f.root, literal, "approved literal file\n");
@@ -138,7 +138,7 @@ try {
     const proof = await port.commit(plan, { assertAuthorized() {} }); assert.equal(proof.status, "confirmed");
     assert.equal(git(f.root, "ls-tree", "--format=%(objectmode)", "HEAD", "--", "app.mjs"), "100755");
     assert.deepEqual(git(f.root, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD").split("\n").sort(), approvedPaths.sort());
-    assert.equal(fs.readFileSync(path.join(f.root, "product/item1.mjs"), "utf8"), "unchanged neighbour\n");
+    assert.equal(fs.readFileSync(path.join(f.root, "product/item 1.mjs"), "utf8"), "unchanged neighbour\n");
     const reopened = createLocalWorkflowGitCheckpoint({ targetRoot: f.root }, { profile: "cycle-terminal", approvedPaths });
     assert.equal(reopened.inspectCommit(plan).status, "confirmed"); assert.equal(git(f.root, "status", "--porcelain"), "");
   });
