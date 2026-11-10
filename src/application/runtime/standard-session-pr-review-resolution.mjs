@@ -1,7 +1,8 @@
 import { assertGithubPrReviewResolutionResult, githubPrReviewResolutionBasis } from '../../adapters/git-provider/github-pr-review-resolution.mjs';
 import { assertStandardOperationOutput } from '../../core/workflow/standard-operation-contracts.mjs';
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
-import { createStandardPrReviewEffectsReader } from './standard-session-pr-review-effects.mjs';
+import { createStandardPrReviewEffectsReader, reviewEffectsOutputVersion } from './standard-session-pr-review-effects.mjs';
+import { assertMergeQualificationProof, mergeQualificationProofVersion } from '../../core/workflow/standard-pr-merge-consent.mjs';
 import { assertResolutionExceptionSubject, resolutionExceptionMaxAgeMs, resolutionExceptionOperation, resolutionExceptionQuestion } from '../../core/workflow/standard-pr-resolution-exception.mjs';
 
 const select = 'session_pr_review_resolution_select';
@@ -19,8 +20,8 @@ function output(operation, outcome, effect_status, facts, observations, evidence
 export function createStandardPrReviewResolution({ readAcceptedResolutions, ...ports }) {
   const reader = createStandardPrReviewEffectsReader(ports), port = ports.reviewPort?.resolution;
 
-  async function inspect(instance, source, input, signal) {
-    const observed = await reader.observe(instance, source, { signal });
+  async function inspect(instance, source, input, signal, openBaseOid) {
+    const observed = await reader.observe(instance, source, { signal, openBaseOid });
     if (observed.reason) return observed;
     if (observed.missing.length) return { reason: 'STANDARD_PR_EFFECTS_REPLY_REQUIRED' };
     const prior = readAcceptedResolutions(instance, input.triage_operation_id);
@@ -107,7 +108,7 @@ export function createStandardPrReviewResolution({ readAcceptedResolutions, ...p
   }
 
   return Object.freeze({
-    async readGate(instance, input, { signal, beforeReview }) {
+    async readGate(instance, input, { signal, beforeReview, qualifyBase = false }) {
       const readLatest = binding => {
         const id = instance.events.findLast(row => row.kind === 'operation_intent' && row.intent.binding_ref === binding)?.intent.operation_id;
         if (!id) fail('STANDARD_PR_RESOLUTION_GATE_REQUIRED');
@@ -117,11 +118,19 @@ export function createStandardPrReviewResolution({ readAcceptedResolutions, ...p
       if (selection.record.preview.input.triage_operation_id !== input.triage_operation_id)
         fail('STANDARD_PR_RESOLUTION_GATE_REQUIRED');
       const source = reader.source(instance, input);
-      const before = await beforeReview(source.pullRequest);
-      const observed = await inspect(instance, source, input, signal);
+      const p = source.pullRequest;
+      const { base_oid: baseOid = p.base_oid, base_ahead_by: ahead = 0, ...before } = await beforeReview(p);
+      const advanced = baseOid !== p.base_oid;
+      if (!/^[a-f0-9]{40}$/.test(baseOid) || !Number.isSafeInteger(ahead) || ahead < 0
+        || ahead > 2147483647 || advanced !== (ahead > 0) || advanced && !qualifyBase)
+        fail('STANDARD_PR_TARGET_ADVANCE_UNPROVEN');
+      if (advanced && selection.output.facts.session_pr_resolution_exception_required === true)
+        fail('STANDARD_PR_RESOLUTION_EXCEPTION_BASE_CHANGED');
+      const observed = await inspect(instance, source, input, signal, advanced ? baseOid : undefined);
       if (observed.reason) fail(observed.reason);
-      let accepted, expires = null;
+      let accepted, qualificationProof, expires = null;
       if (observed.exceptionRequired) {
+        if (advanced) fail('STANDARD_PR_RESOLUTION_EXCEPTION_BASE_CHANGED');
         accepted = readLatest(resolutionExceptionOperation);
         const question = resolutionExceptionQuestion(accepted.record), subject = exceptionSubject(source, observed);
         expires = question.expires_at_ms;
@@ -137,11 +146,24 @@ export function createStandardPrReviewResolution({ readAcceptedResolutions, ...p
         accepted = readLatest('session_pr_review_effects_verify');
         const proof = accepted.output.observations.proof;
         if (accepted.output.facts.session_pr_review_effects_verified !== true || proof.triage_operation_id !== input.triage_operation_id
-          || proof.source_sha256 !== source.sha256 || proof.thread_observation_sha256 !== observed.last.observation_sha256
-          || proof.review_evidence_sha256 !== observed.evidence.evidence_sha256 || proof.reply_proof_sha256 !== shadowHash(observed.replies))
+          || proof.source_sha256 !== source.sha256 || proof.reply_proof_sha256 !== shadowHash(observed.replies))
           fail('STANDARD_PR_RESOLUTION_PROOF_CHANGED');
+        if (qualifyBase && accepted.output.contract_version === reviewEffectsOutputVersion) {
+          const threadsSha = shadowHash(observed.last.threads), reviewsSha = shadowHash(observed.evidence.reviews);
+          if (proof.base_oid !== p.base_oid || proof.head_oid !== p.head_oid || proof.repository_id !== p.repository_id
+            || proof.pull_request_id !== p.node_id || proof.update_operation_id !== source.updateId
+            || proof.threads_sha256 !== threadsSha || proof.reviews_sha256 !== reviewsSha)
+            fail('STANDARD_PR_RESOLUTION_PROOF_CHANGED');
+          qualificationProof = assertMergeQualificationProof({ contract_version: mergeQualificationProofVersion, prior_base_oid: p.base_oid,
+            observed_base_oid: baseOid, base_ahead_by: ahead, threads_sha256: threadsSha, reviews_sha256: reviewsSha,
+            reply_proof_sha256: proof.reply_proof_sha256, thread_observation_sha256: observed.last.observation_sha256,
+            review_evidence_sha256: observed.evidence.evidence_sha256 });
+        } else if (advanced || proof.thread_observation_sha256 !== observed.last.observation_sha256
+          || proof.review_evidence_sha256 !== observed.evidence.evidence_sha256) {
+          fail('STANDARD_PR_RESOLUTION_PROOF_CHANGED');
+        }
       }
-      return { source, observed, before, decision: expires === null ? null : accepted.record, operationId: accepted.record.operation_id,
+      return { source, observed, before, qualificationProof, decision: expires === null ? null : accepted.record, operationId: accepted.record.operation_id,
         receiptSha256: shadowHash(accepted.record.results.at(-1).receipt), expires };
     },
     prepareSelection(instance, input) {

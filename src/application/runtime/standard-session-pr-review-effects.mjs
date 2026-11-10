@@ -6,6 +6,7 @@ import { assertStandardOperationInput, assertStandardOperationOutput } from '../
 import { createStandardPrAcceptedReviewSource } from './standard-session-pr-review-source.mjs';
 
 const operation = 'session_pr_review_effects_verify';
+export const reviewEffectsOutputVersion = 'standard-session-pr-review-effects-output.v2';
 const sourceChanged = 'STANDARD_PR_EFFECTS_SOURCE_CHANGED';
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: 'no_effect' }); };
 
@@ -62,11 +63,12 @@ export function createStandardPrReviewEffectsReader({ readAccepted, readAccepted
     return { ...review, notBefore: Math.max(preparedAt, review.preMergeObservedUntil),
       sha256: shadowHash([review.sha256, preparedAt]) };
   }
-  async function observe(instance, before, { signal } = {}) {
+  async function observe(instance, before, { signal, openBaseOid } = {}) {
     const active = () => { if (signal?.aborted) fail('STANDARD_PR_EFFECTS_ABORTED'); };
     if (signal !== undefined && !(signal instanceof AbortSignal)) fail('STANDARD_PR_EFFECTS_SIGNAL_INVALID');
     active();
-    const p = before.pullRequest, start = now();
+    const p = openBaseOid === undefined ? before.pullRequest : { ...before.pullRequest, base_oid: openBaseOid };
+    const start = now();
     if (!Number.isSafeInteger(start) || start < before.notBefore) fail('STANDARD_PR_EFFECTS_STALE_OBSERVATION');
     const { dispositions } = before.triage.output.observations;
     if (before.correctionsRequired || dispositions.some(item => ['valid', 'uncertain'].includes(item.disposition)))
@@ -76,7 +78,7 @@ export function createStandardPrReviewEffectsReader({ readAccepted, readAccepted
     const actor = reviewPort?.reviewEffectActor;
     if (!actor?.node_id || !actor.login || typeof reviewPort.observePrReviewEffects !== 'function'
       || typeof reviewPort.observeReviewContent !== 'function') return { reason: 'STANDARD_PR_EFFECTS_PROVIDER_REQUIRED' };
-    await verifyEvent(before.capture, { signal });
+    await verifyEvent(before.capture, { signal, openBaseOid });
     active();
     const request = prObservationRequest(p);
     const url = new URL(p.url);
@@ -96,7 +98,7 @@ export function createStandardPrReviewEffectsReader({ readAccepted, readAccepted
     const reviewRequest = { ...request, contract_version: 'github-review-evidence-request.v1' };
     const evidence = checkSubject(assertGithubReviewContent(await reviewPort.observeReviewContent(reviewRequest, { signal })));
     const last = await readThreads();
-    await verifyEvent(before.capture, { signal });
+    await verifyEvent(before.capture, { signal, openBaseOid });
     active();
     const end = now();
     if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || source(instance, { triage_operation_id: before.triage.record.operation_id }).sha256 !== before.sha256)
@@ -121,8 +123,8 @@ export function createStandardPrReviewEffectsReader({ readAccepted, readAccepted
 
 export function createStandardPrReviewEffectsVerification(ports) {
   const reader = createStandardPrReviewEffectsReader(ports);
-  function emit(outcome, reason, proof) {
-    return assertStandardOperationOutput({ contract_version: 'standard-session-pr-review-effects-output.v1', operation_ref: operation,
+  function emit(version, outcome, reason, proof) {
+    return assertStandardOperationOutput({ contract_version: version, operation_ref: operation,
       outcome, effect_status: 'no_effect', facts: proof ? { session_pr_review_effects_verified: true } : {},
       observations: proof ? { proof } : { reason_code: reason },
       evidence_refs: proof ? [{ ref: 'github:pr-review-effects/' + proof.pull_request_id, sha256: shadowHash(proof) }] : [] });
@@ -135,21 +137,23 @@ export function createStandardPrReviewEffectsVerification(ports) {
     prepare(instance, input) {
       return { can_apply: true, input, source_sha256: source(instance, input).sha256 };
     },
-    async observe(instance, input, { signal, sourceSha256 } = {}) {
+    async observe(instance, input, { signal, sourceSha256, outputContract = 'standard-session-pr-review-effects-output.v1' } = {}) {
+      const emitResult = (outcome, reason, proof) => emit(outputContract, outcome, reason, proof);
       try {
         const before = source(instance, input), p = before.pullRequest;
         if (before.sha256 !== sourceSha256) fail(sourceChanged);
         const { reason, first, last, evidence, replies, missing, unresolved } = await reader.observe(instance, before, { signal });
-        if (reason) return emit('deferred', reason);
-        if (missing.length) return emit('deferred', 'STANDARD_PR_EFFECTS_REPLY_REQUIRED');
-        if (unresolved) return emit('deferred', 'STANDARD_PR_EFFECTS_RESOLUTION_REQUIRED');
-        return emit('completed', null, { triage_operation_id: input.triage_operation_id, update_operation_id: before.updateId,
+        if (reason) return emitResult('deferred', reason);
+        if (missing.length) return emitResult('deferred', 'STANDARD_PR_EFFECTS_REPLY_REQUIRED');
+        if (unresolved) return emitResult('deferred', 'STANDARD_PR_EFFECTS_RESOLUTION_REQUIRED');
+        return emitResult('completed', null, { triage_operation_id: input.triage_operation_id, update_operation_id: before.updateId,
           source_sha256: before.sha256, repository_id: p.repository_id, pull_request_id: p.node_id, head_oid: p.head_oid, base_oid: p.base_oid,
           observed_from: first.observed_from, observed_until: last.observed_until, thread_observation_sha256: last.observation_sha256,
           review_evidence_sha256: evidence.evidence_sha256, reply_proof_sha256: shadowHash(replies),
-          reply_count: replies.length, resolved_thread_count: last.threads.length });
+          reply_count: replies.length, resolved_thread_count: last.threads.length,
+          ...(outputContract === reviewEffectsOutputVersion ? { threads_sha256: shadowHash(last.threads), reviews_sha256: shadowHash(evidence.reviews) } : {}) });
       } catch (cause) {
-        return emit('blocked', /^[A-Z][A-Z0-9_]{0,127}$/.test(cause?.code ?? '') ? cause.code : 'STANDARD_PR_EFFECTS_UNAVAILABLE');
+        return emitResult('blocked', /^[A-Z][A-Z0-9_]{0,127}$/.test(cause?.code ?? '') ? cause.code : 'STANDARD_PR_EFFECTS_UNAVAILABLE');
       }
     },
   });

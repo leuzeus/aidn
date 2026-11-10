@@ -1,3 +1,4 @@
+import qualificationProofSchema from '../contracts/workflow-definition/standard-pr-merge-qualification-proof.v1.schema.json' with { type: 'json' };
 import questionSchema from '../contracts/workflow-definition/standard-pr-merge-consent-question.v1.schema.json' with { type: 'json' };
 import currentQuestionSchema from '../contracts/workflow-definition/standard-pr-merge-consent-question.v2.schema.json' with { type: 'json' };
 import currentConsentSchema from '../contracts/workflow-definition/standard-pr-merge-consent-output.v2.schema.json' with { type: 'json' };
@@ -23,6 +24,14 @@ export function assertMergeQualification(subject) {
   if (!valid(subject, subjectSchema) || subject.checks.some((check, i, rows) => i > 0 && rows[i - 1].name >= check.name)
     || new Set(subject.checks.map(row => row.result_id)).size !== subject.checks.length)
     fail('STANDARD_PR_CHECK_SUBJECT_INVALID');
+}
+
+export const mergeQualificationProofVersion = 'standard-pr-merge-qualification-proof.v1';
+
+export function assertMergeQualificationProof(proof) {
+  if (!valid(proof, qualificationProofSchema) || (proof.prior_base_oid === proof.observed_base_oid) !== (proof.base_ahead_by === 0))
+    fail('STANDARD_PR_MERGE_QUALIFICATION_PROOF_INVALID');
+  return proof;
 }
 
 export function mergeApprovalSubject({ repository_id, pull_request_id, pull_request_number, head_oid, base_ref }) {

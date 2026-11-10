@@ -84,7 +84,12 @@ operation ID within the same call scope.
 `github-pr-merge-plan.v2` pins the protected method and actor, exact PR
 preimage and provider correlation marker. The private execution preview
 binds the plan to fresh R08 qualification and the accepted decision and
-check receipt hashes. `github-pr-merge-plan.v1` retains its expiry field and
+check receipt hashes. `standard-session-pr-review-effects-output.v2` adds
+separate digests for verified thread and review content. The private
+`standard-pr-merge-qualification-proof.v1` records the prior and observed
+base, the size of the verified advance and the current R08 observation
+digests. The original resolution receipt and question stay in the audit trail.
+`github-pr-merge-plan.v1` retains its expiry field and
 historical reader. The v2 merge reader adds the provider actor and commit
 body digest to the v1 facts. The private merge execute input v1 and output
 v2 separate acknowledged confirmation, observed recovery and UNKNOWN.

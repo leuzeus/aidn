@@ -1,10 +1,10 @@
 import { assertGithubPrMergePlan, assertGithubPrMergePostimage, githubPrMergePlanVersion } from '../../adapters/git-provider/github-pr-merge.mjs';
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
-import { assertMergeQualification, checksOperation, mergeApprovalSubject, mergeConsentOperation, mergeConsentQuestion,
+import { assertMergeQualification, assertMergeQualificationProof, checksOperation, mergeApprovalSubject, mergeConsentOperation, mergeConsentQuestion,
   mergeConsentQuestionVersion } from '../../core/workflow/standard-pr-merge-consent.mjs';
 import { assertMergeExecuteOutput, assertPostMergeWaitOutput, mergeCompletedFact, mergeExecuteOperation, mergeExecuteOutputVersion,
   mergeSendWindowExhausted, postMergeWaitOperation } from '../../core/workflow/standard-pr-merge-execute.mjs';
-import { createStandardPrReviewEffectsReader, prObservationRequest } from './standard-session-pr-review-effects.mjs';
+import { createStandardPrReviewEffectsReader, prObservationRequest, reviewEffectsOutputVersion } from './standard-session-pr-review-effects.mjs';
 
 const fail = (code, effect_status = 'no_effect') => { throw Object.assign(Error(code), { code, effect_status }); };
 const same = (left, right) => shadowHash(left) === shadowHash(right);
@@ -37,29 +37,39 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
       || current && !same(mergeApprovalSubject(qualification), question.subject)
       || !current && question.checks_operation_id !== input.checks_operation_id)
       fail('STANDARD_PR_MERGE_CONSENT_SUBJECT_CHANGED');
-    const b = { current, consent: consent.record, question, request: prObservationRequest(source.pullRequest), source,
+    const b = { current, consent: consent.record, question, source,
       consent_receipt_sha256: receiptHash(consent.record), checks_receipt_sha256: receiptHash(checks.record) };
     assertQualification(instance, input, b, qualification);
     return b;
   }
-  function assertQualification(instance, input, b, subject) {
+  function assertQualification(instance, input, b, subject, live) {
     assertMergeQualification(subject);
     const { source } = b, p = source.pullRequest;
     if (source.correctionsRequired || subject.triage_operation_id !== input.triage_operation_id
       || subject.source_sha256 !== source.sha256 || subject.update_operation_id !== source.updateId
       || subject.repository_id !== p.repository_id || subject.pull_request_id !== p.node_id || subject.pull_request_number !== p.number
-      || subject.head_oid !== p.head_oid || subject.base_oid !== p.base_oid || subject.head_ref !== p.head_branch || subject.base_ref !== p.base_branch)
+      || subject.head_oid !== p.head_oid || subject.head_ref !== p.head_branch || subject.base_ref !== p.base_branch
+      || live === undefined && subject.base_oid !== p.base_oid)
       fail('STANDARD_PR_MERGE_CONSENT_SUBJECT_CHANGED');
     const resolutionBinding = subject.resolution_expires_at_ms === null
       ? 'session_pr_review_effects_verify' : 'session_pr_review_resolution_exception';
     const resolution = readAccepted(instance, subject.resolution_operation_id, resolutionBinding);
     if (receiptHash(resolution.record) !== subject.resolution_receipt_sha256) fail('STANDARD_PR_MERGE_RESOLUTION_CHANGED');
+    if (live !== undefined) {
+      assertMergeQualificationProof(live);
+      const accepted = resolution.output.observations.proof;
+      if (!b.current || subject.resolution_expires_at_ms !== null || resolution.output.contract_version !== reviewEffectsOutputVersion
+        || live.prior_base_oid !== p.base_oid || live.observed_base_oid !== subject.base_oid
+        || live.threads_sha256 !== accepted.threads_sha256 || live.reviews_sha256 !== accepted.reviews_sha256
+        || live.reply_proof_sha256 !== accepted.reply_proof_sha256) fail('STANDARD_PR_MERGE_RESOLUTION_CHANGED');
+    }
   }
   async function observeQualification(instance, input, b, signal) {
-    const { subject } = await observeMergeQualification(instance, input, signal);
-    assertQualification(instance, input, b, subject);
-    return subject;
+    const observed = await observeMergeQualification(instance, input, signal);
+    assertQualification(instance, input, b, observed.subject, observed.qualificationProof);
+    return observed;
   }
+  const requestFor = (b, qualification) => prObservationRequest({ ...b.source.pullRequest, base_oid: qualification.base_oid });
   function assertContext(instance) {
     if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail('STANDARD_PR_MERGE_CONTEXT_CHANGED');
   }
@@ -82,16 +92,16 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
   }
   function assertProvider(provider, b, id, qualification) {
     const plan = assertGithubPrMergePlan(provider?.plan);
-    const url = new URL(b.source.pullRequest.url);
+    const url = new URL(b.source.pullRequest.url), request = requestFor(b, qualification);
     if (url.origin !== 'https://github.com' || url.pathname.toLowerCase() !==
-      ('/' + plan.repository.owner + '/' + plan.repository.name + '/pull/' + b.request.pull_request_number).toLowerCase())
+      ('/' + plan.repository.owner + '/' + plan.repository.name + '/pull/' + request.pull_request_number).toLowerCase())
       fail('STANDARD_PR_MERGE_REPOSITORY_CHANGED');
     if (provider.can_apply !== true || provider.plan_sha256 !== shadowHash(plan) || plan.operation_id !== id
       || (plan.contract_version === githubPrMergePlanVersion) !== b.current
       || plan.repository.node_id !== b.question.subject.repository_id
       || plan.actor.node_id !== qualification.actor_id
       || plan.prepared_at_ms < b.question.issued_at_ms || plan.expires_at_ms !== b.question.expires_at_ms
-      || !same(plan.request, b.request)) fail('STANDARD_PR_MERGE_PLAN_CHANGED');
+      || !same(plan.request, request)) fail('STANDARD_PR_MERGE_PLAN_CHANGED');
   }
   function checked(instance, input, prepared, id) {
     const plan = prepared?.plan, b = basis(instance, input);
@@ -99,7 +109,7 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
       || plan.consent_receipt_sha256 !== b.consent_receipt_sha256 || plan.checks_receipt_sha256 !== b.checks_receipt_sha256)
       fail('STANDARD_PR_MERGE_PLAN_CHANGED');
     const qualification = b.current ? plan.qualification : b.question.subject;
-    if (b.current) assertQualification(instance, input, b, qualification);
+    if (b.current) assertQualification(instance, input, b, qualification, plan.qualification_proof);
     if (plan.provider !== null) assertProvider(plan.provider, b, id, qualification);
     return { plan, b };
   }
@@ -119,18 +129,20 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
         fail('STANDARD_PR_MERGE_METHOD_AUTHORITY_REQUIRED');
       const b = basis(instance, input);
       let provider = null;
-      const qualification = b.current ? await observeQualification(instance, input, b) : b.question.subject;
+      const { subject: qualification, qualificationProof } = b.current
+        ? await observeQualification(instance, input, b) : { subject: b.question.subject };
       if (!consentExpired(b)) {
         await verifyFreshDecision(b.consent);
         if (!consentExpired(b)) {
-          try { provider = await port.prepare(b.request, id, { expiresAt: b.question.expires_at_ms }); }
+          try { provider = await port.prepare(requestFor(b, qualification), id, { expiresAt: b.question.expires_at_ms }); }
           catch (cause) { if (!expiredBeforeSend(cause, b)) throw cause; }
           if (provider !== null) assertProvider(provider, b, id, qualification);
         }
       }
       assertContext(instance);
       const plan = { input: structuredClone(input), consent_receipt_sha256: b.consent_receipt_sha256,
-        checks_receipt_sha256: b.checks_receipt_sha256, ...(b.current ? { qualification } : {}), provider };
+        checks_receipt_sha256: b.checks_receipt_sha256, ...(b.current ? { qualification } : {}),
+        ...(qualificationProof ? { qualification_proof: qualificationProof } : {}), provider };
       return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
     },
     async apply(instance, input, prepared, { signal, assertAuthorized, operationId }) {
@@ -143,7 +155,8 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
           assertReviewFresh: async () => {
             if (b.current) {
               const fresh = await observeQualification(instance, input, b, signal);
-              if (!same(fresh, plan.qualification)) fail('STANDARD_PR_MERGE_QUALIFICATION_CHANGED');
+              if (!same(fresh.subject, plan.qualification) || !same(fresh.qualificationProof ?? null, plan.qualification_proof ?? null))
+                fail('STANDARD_PR_MERGE_QUALIFICATION_CHANGED');
               return;
             }
             assertAge(b);

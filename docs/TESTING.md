@@ -1517,6 +1517,12 @@ published child call sites, synthetic upstream receipts, real FILES host,
 inbox, CAS and journal, a fixture signer and doubled GitHub transport.
 The recovery case retains UNKNOWN for an open PR and an uncorrelated
 merge, then accepts the exact postimage and opens R09 with a single send.
+`--case=merge-consent-target-advanced` refuses a divergent base, another
+target and edited review content. It stages a plan for the original tip,
+observes a no-effect refusal after the advance and prepares a new plan
+using the retained signed approval. Its oracle is one send, the new base
+as first merge parent and an accepted R09 basis. The inventory fixture
+covers the bounded provider comparison separately.
 
 `--case=merge-consent-elapsed` waits more than five minutes after the question
 and dispatches with the original signed approval. `--case=merge-consent-transport`

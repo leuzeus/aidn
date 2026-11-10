@@ -60,13 +60,19 @@ export function createStandardPrReviewControlSource({ readEvent, verifyEvent, re
     evidence_refs: [{ ref: 'github:review-event/' + event.source_event_id, sha256: shadowHash(event) },
       { ref: 'github:review-content/' + event.pull_request_id + '/' + event.head_oid, sha256: shadowHash(payload) }] });
   return Object.freeze({
-    async verifyCapturedEvent({ source, payload, request, source_ref: sourceRef, phase }, { signal } = {}) {
+    async verifyCapturedEvent({ source, payload, request, source_ref: sourceRef, phase }, { signal, openBaseOid } = {}) {
       assertControlReviewPayload(payload, source, request);
       const { evidence, threads } = payload.observation.observations;
       const subject = subjectFor(payload.observation);
-      if (phase === 'delivered') subject.pre_merge_observed_until_ms = Math.max(Date.parse(evidence.observed_until), Date.parse(threads.observed_until));
+      if (openBaseOid !== undefined) {
+        if (phase !== 'delivered' || !/^[a-f0-9]{40}$/.test(openBaseOid)) fail('PROCESS_CONTROL_PR_EVENT_CHANGED');
+        subject.base_oid = openBaseOid;
+      } else if (phase === 'delivered') {
+        subject.pre_merge_observed_until_ms = Math.max(Date.parse(evidence.observed_until), Date.parse(threads.observed_until));
+      }
       const event = await withReads(signal, ports => eventFor(ports, request, sourceRef, signal, { retained: true, subject }));
-      if (event === null || shadowHash(event) !== shadowHash(payload.event)) fail('PROCESS_CONTROL_PR_EVENT_CHANGED');
+      const expected = openBaseOid === undefined ? payload.event : { ...payload.event, base_oid: openBaseOid };
+      if (event === null || shadowHash(event) !== shadowHash(expected)) fail('PROCESS_CONTROL_PR_EVENT_CHANGED');
     },
     async readReview({ request, sourceRef, signal }) {
       const context = await contextFor(request, signal);

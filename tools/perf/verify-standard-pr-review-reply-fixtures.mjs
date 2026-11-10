@@ -47,7 +47,7 @@ const pretriageTarget = published.call_targets.find(row => row.model_id === 'aid
 const externalRef = 'aidn:external-merge';
 const eventRef = 'REVIEW_fixture';
 const response = 'Technical reply from the accepted fixture triage.';
-const mergeOid = 'c'.repeat(40), baseTip = 'd'.repeat(40);
+const mergeOid = 'c'.repeat(40), baseTip = 'd'.repeat(40), advancedBase = 'f'.repeat(40);
 const dummy = 'op_' + 'a'.repeat(40);
 const pin = path => ({ path, sha256: createHash('sha256').update(fs.readFileSync(path)).digest('hex') });
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -181,7 +181,7 @@ function open(base, { initializeKey = false, providerNow } = {}) {
       if (args[0] === 'auth') return ok('fixture-only-token');
       if (args.at(-1) === 'user') return ok({ node_id: binding.actor.node_id, login: binding.actor.login });
       if (args.at(-1) === 'repos/fixture/repository') return ok({ node_id: pr.repository_id, full_name: 'fixture/repository' });
-      const endpoint = args.at(-1);
+      const endpoint = args.at(-1), currentBase = state.currentBase ?? pr.base_oid, target = state.currentTarget ?? pr.base_branch;
       if (args[0] === 'api' && args[1] === '--hostname') {
         assert.deepEqual(args.slice(0, -1), ['api', '--hostname', 'github.com', '--method', 'GET']);
         const commit = 'repos/fixture/repository/commits/' + pr.head_oid;
@@ -192,10 +192,14 @@ function open(base, { initializeKey = false, providerNow } = {}) {
           return ok({ total_count: runs.length, check_runs: runs });
         }
         if (endpoint === commit + '/status?per_page=100') return ok({ sha: pr.head_oid, total_count: 0, statuses: [] });
+        if (endpoint === 'repos/fixture/repository/compare/' + pr.base_oid + '...' + currentBase + '?per_page=1') {
+          return ok({ status: state.baseHistory ?? 'ahead', behind_by: state.baseHistory === 'diverged' ? 1 : 0, ahead_by: 2,
+            base_commit: { sha: pr.base_oid }, merge_base_commit: { sha: pr.base_oid } });
+        }
         assert.equal(endpoint, 'repos/fixture/repository/pulls/' + pr.number);
         return ok({ node_id: pr.node_id, number: pr.number, state: 'open', draft: false, merged: false,
           head: { ref: pr.head_branch, sha: state.wrongHead ?? pr.head_oid, repo: { node_id: pr.repository_id } },
-          base: { ref: pr.base_branch, sha: pr.base_oid, repo: { node_id: pr.repository_id } } });
+          base: { ref: target, sha: currentBase, repo: { node_id: pr.repository_id } } });
       }
       const { query, variables } = JSON.parse(options.input);
       const externalMerge = external && state.mergeVisible ? {
@@ -207,14 +211,14 @@ function open(base, { initializeKey = false, providerNow } = {}) {
       if (query.startsWith('query AidnPrMerge')) return ok({ data: { repository: {
         id: state.wrongRepo ?? pr.repository_id, nameWithOwner: 'fixture/repository',
         pullRequest: { id: pr.node_id, number: pr.number, headRefOid: state.wrongHead ?? pr.head_oid, headRefName: pr.head_branch,
-          baseRefName: pr.base_branch, headRepository: { id: pr.repository_id }, isDraft: false, state: 'OPEN',
+          baseRefName: target, headRepository: { id: pr.repository_id }, isDraft: false, state: 'OPEN',
           merged: false, mergedAt: null, mergeCommit: null, mergeable: 'MERGEABLE', mergeStateStatus: state.mergeStateStatus ?? 'CLEAN',
           mergeQueue: state.queued ? { url: 'https://example.com/queue' } : null,
-          autoMergeRequest: null, baseRef: { target: { oid: state.baseMoved ? baseTip : pr.base_oid } },
+          autoMergeRequest: null, baseRef: { target: { oid: state.baseMoved ? baseTip : currentBase } },
           ...(state.mergeVisible && !external ? { state: 'MERGED', merged: true, mergedAt: state.mergedAt,
             mergedBy: { id: binding.actor.node_id, login: binding.actor.login },
             mergeCommit: { oid: mergeOid, messageBody: state.external ? 'External merge' : state.mergeBody,
-              parents: connection([{ oid: pr.base_oid }, { oid: pr.head_oid }]) },
+              parents: connection([{ oid: state.mergedFromBase ?? pr.base_oid }, { oid: pr.head_oid }]) },
             baseRef: { target: { oid: baseTip } } } : {}),
           ...(state.closed ? { state: 'CLOSED' } : {}), ...externalMerge },
       } } });
@@ -222,19 +226,25 @@ function open(base, { initializeKey = false, providerNow } = {}) {
         assert.deepEqual(variables, { id: eventRef });
         return ok({ data: { node: { __typename: 'PullRequestReview', ...review, isMinimized: false,
           repository: { id: pr.repository_id, nameWithOwner: 'fixture/repository' },
-          pullRequest: { id: pr.node_id, number: pr.number, headRefOid: pr.head_oid, baseRefOid: pr.base_oid,
-            headRefName: pr.head_branch, baseRefName: pr.base_branch, isDraft: false, state: 'OPEN', merged: false, mergedAt: null, mergeCommit: null,
-            baseRef: { target: { oid: pr.base_oid } }, headRepository: { id: pr.repository_id }, baseRepository: { id: pr.repository_id }, ...externalMerge },
+          pullRequest: { id: pr.node_id, number: pr.number, headRefOid: pr.head_oid, baseRefOid: currentBase,
+            headRefName: pr.head_branch, baseRefName: target, isDraft: false, state: 'OPEN', merged: false, mergedAt: null, mergeCommit: null,
+            baseRef: { target: { oid: currentBase } }, headRepository: { id: pr.repository_id }, baseRepository: { id: pr.repository_id }, ...externalMerge },
         } } });
       }
       fixture.state.threads = roots.map((root, index) => ({
         id: 'T_' + root.id, path: 'product.mjs', line: index + 1, isResolved: state.resolved || state.resolvedThreads?.includes('T_' + root.id) === true, isOutdated: false,
         comments: connection([root, ...state.replies.filter(reply => reply.replyTo.id === root.id)]),
       }));
+      fixture.state.checks[0].id = state.checkId ?? 'CHECK_fixture';
       const result = fixture.run(binary, args, options), value = JSON.parse(result.stdout);
       if (state.reviewChanged && value.data.repository.pullRequest.reviews)
         value.data.repository.pullRequest.reviews.nodes[0].body += ' changed';
-      value.data.repository.pullRequest.headRepository = { id: pr.repository_id };
+      const observed = value.data.repository.pullRequest;
+      if (Object.hasOwn(observed, 'baseRefOid')) observed.baseRefOid = currentBase;
+      if (Object.hasOwn(observed, 'baseRefName')) observed.baseRefName = target;
+      if (currentBase !== pr.base_oid && Object.hasOwn(observed, 'updatedAt'))
+        observed.updatedAt = new Date(Date.parse(submittedAt) + 1000).toISOString();
+      observed.headRepository = { id: pr.repository_id };
       return ok(value);
     },
     async runGithubMerge(binary, args, options) {
@@ -254,10 +264,12 @@ function open(base, { initializeKey = false, providerNow } = {}) {
       assert.deepEqual(input, { pullRequestId: pr.node_id, expectedHeadOid: pr.head_oid, mergeMethod: 'MERGE',
         commitBody: 'AIDN-Merge: ' + plan.correlation_id, clientMutationId: plan.correlation_id });
       assert.deepEqual(state.mergeSends, []);
+      assert.equal(plan.request.expected_base_oid, state.currentBase ?? pr.base_oid);
       state.mergeSends.push(input.clientMutationId);
+      state.mergedFromBase = plan.request.expected_base_oid;
       state.mergedAt = new Date().toISOString();
       state.mergeBody = input.commitBody;
-      state.mergeVisible = ['merge-consent-session', 'merge-consent-elapsed', 'merge-consent-transport'].includes(behavior);
+      state.mergeVisible = ['merge-consent-session', 'merge-consent-elapsed', 'merge-consent-transport', 'merge-consent-target-advanced'].includes(behavior);
       save(providerFile, state);
       if (!state.mergeVisible) throw Error('Fixture lost the merge acknowledgement');
       return ok({ data: { mergePullRequest: { clientMutationId: input.clientMutationId,
@@ -525,7 +537,7 @@ function arrange(prefix, behavior) {
     git: pin(gitPath), gh: pin(fs.realpathSync(process.platform === 'win32' ? path.join(process.env.SystemRoot, 'System32', 'where.exe') : '/usr/bin/env')) };
   if (behavior.includes('consent') || behavior === 'merge-refusals' || behavior === 'external-checks') binding.required_checks = { contract_version: 'standard-github-required-checks.v1',
     base_ref: pr.base_branch, entries: [{ name: 'Required CI', kind: 'check_run', producer_id: 'A_ci' }] };
-  if (['merge-consent-session', 'merge-consent-correction', 'merge-consent-elapsed', 'merge-consent-transport', 'merge-consent-grant-expired',
+  if (['merge-consent-session', 'merge-consent-correction', 'merge-consent-elapsed', 'merge-consent-transport', 'merge-consent-grant-expired', 'merge-consent-target-advanced',
     'merge-refusals', 'exception-merge-consent-correction', 'external-checks'].includes(behavior)) binding.merge_method = 'MERGE';
   const key = shadowHash({ target: process.platform === 'win32' ? targetRoot.toLowerCase() : targetRoot, instance: configuration.instance_id });
   fs.mkdirSync(path.join(dirs.host, key + '.github'));
@@ -821,11 +833,11 @@ async function qualifyConsent(base, privateKey, authority_id, { exceptionSource,
     publish({ ...body, payload: { ...claim, subject_sha256: shadowHash({ ...question.subject, head_oid: 'e'.repeat(40) }) } });
     await assert.rejects(deliver, { code: 'PROCESS_HUMAN_QUESTION_CHANGED' });
     publish();
-    f.state.checkDetails = 'https://example.com/changed';
-    await assert.rejects(deliver, { code: 'STANDARD_PR_MERGE_CONSENT_SUBJECT_CHANGED' });
+    f.state.pendingCheck = true;
+    await assert.rejects(deliver, { code: 'STANDARD_PR_CHECK_PENDING' });
     assert.equal(f.inbox.read(decisionInboxId(claim)).record, null);
     assert.equal(f.host.readJournal(id).phase, 'staged');
-    delete f.state.checkDetails;
+    delete f.state.pendingCheck;
   } else publish();
   save(f.providerFile, f.state);
   const approved = choice === 'approve_merge';
@@ -870,7 +882,8 @@ async function qualifyConsent(base, privateKey, authority_id, { exceptionSource,
 
 async function qualifyMerge(f, { base, id, checks, question, behavior, privateKey, sourceFile }) {
   const elapsed = behavior === 'merge-consent-elapsed', transport = behavior === 'merge-consent-transport';
-  const initial = behavior === 'merge-consent-session' || elapsed || transport, refusals = behavior === 'merge-refusals';
+  const advance = behavior === 'merge-consent-target-advanced';
+  const initial = behavior === 'merge-consent-session' || elapsed || transport || advance, refusals = behavior === 'merge-refusals';
   const grantExpired = behavior === 'merge-consent-grant-expired';
   let finalClock = null, sampled = false;
   if (transport || grantExpired) {
@@ -890,7 +903,25 @@ async function qualifyMerge(f, { base, id, checks, question, behavior, privateKe
     assert.ok(['RUNNING', 'WAITING'].includes(cursor.occurrences.find(row => row.node_id.endsWith('_pr_effects_pending')).status));
     assert.ok(!cursor.occurrences.some(row => row.status === 'READY' && row.node_id.includes('cycle')));
   };
-  const preview = await f.preview();
+  let preview = await f.preview();
+  if (advance) {
+    assert.equal(preview.prepared.plan.qualification.base_oid, question.qualification.base_oid);
+    f.state.currentBase = advancedBase;
+    f.state.baseHistory = 'diverged';
+    await assert.rejects(f.preview, { code: 'STANDARD_PR_TARGET_ADVANCE_UNPROVEN' });
+    delete f.state.baseHistory;
+    f.state.currentTarget = 'main';
+    await assert.rejects(f.preview, { code: 'STANDARD_PR_CHECK_SUBJECT_CHANGED' });
+    delete f.state.currentTarget;
+    f.state.reviewChanged = true;
+    await assert.rejects(f.preview, { code: 'STANDARD_PR_EFFECTS_REVIEW_CHANGED' });
+    delete f.state.reviewChanged;
+    const stale = (await f.run(preview)).results[0].output;
+    assert.equal(stale.effect_status, 'no_effect');
+    assert.equal(stale.observations.reason_code, 'STANDARD_PR_MERGE_QUALIFICATION_CHANGED');
+    assert.deepEqual(f.state.mergeSends, []);
+    preview = await f.preview();
+  }
   if (refusals) waiting();
   if (refusals) {
     await assert.rejects(f.stage(preview), { code: 'STANDARD_HOST_EXACT_OPERATION_REQUIRED' });
@@ -985,7 +1016,20 @@ async function qualifyMerge(f, { base, id, checks, question, behavior, privateKe
   assert.equal(plan.consent_receipt_sha256, shadowHash(acceptedConsent.receipt));
   assert.equal(acceptedConsent.output.observations.grant_sha256, shadowHash(json(sourceFile)));
   assert.equal(plan.checks_receipt_sha256, shadowHash(checks.results[0].receipt));
-  assert.equal(provider.request.expected_base_oid, question.qualification.base_oid);
+  const plannedBase = advance ? advancedBase : question.qualification.base_oid;
+  assert.equal(provider.request.expected_base_oid, plannedBase);
+  if (advance) {
+    const { qualification, qualification_proof: proof } = plan;
+    assert.equal(qualification.base_oid, plannedBase);
+    assert.equal(proof.prior_base_oid, question.qualification.base_oid);
+    assert.equal(proof.observed_base_oid, plannedBase);
+    assert.equal(proof.base_ahead_by, 2);
+    const prior = f.host.readJournal(qualification.resolution_operation_id).results.at(-1).output.observations.proof;
+    assert.equal(proof.threads_sha256, prior.threads_sha256);
+    assert.equal(proof.reviews_sha256, prior.reviews_sha256);
+    assert.notEqual(proof.thread_observation_sha256, prior.thread_observation_sha256);
+    assert.notEqual(proof.review_evidence_sha256, prior.review_evidence_sha256);
+  }
   assert.equal(f.state.mergeSends.length, 1);
   if (initial) {
     assert.equal(outcome.outcome, 'completed');
@@ -1018,14 +1062,19 @@ async function qualifyMerge(f, { base, id, checks, question, behavior, privateKe
   assert.deepEqual(result.facts, { session_pr_merge_completed: true });
   assert.equal(merge.provider.pull_request.merge_oid, mergeOid);
   assert.equal(merge.provider.pull_request.observed_base_tip_oid, baseTip);
-  assert.deepEqual(merge.provider.pull_request.merge_parent_oids, [question.qualification.base_oid, question.subject.head_oid]);
+  assert.deepEqual(merge.provider.pull_request.merge_parent_oids, [plannedBase, question.subject.head_oid]);
   assert.throws(() => assertStandardOperationOutput({ ...result, effect_status: 'unknown' }), { code: 'STANDARD_OPERATION_OUTPUT_INVALID' });
   assert.equal(resumed.inspect().cursor.occurrences.find(row => row.status === 'READY').node_id, 'pr_merge_basis');
   assert.equal(resumed.calls(), 0);
   replay(resumed);
+  if (advance) {
+    const basis = (await resumed.run()).results[0].output;
+    assert.equal(basis.observations.merge_operation_id, applied.operation_id);
+    assert.equal(resumed.inspect().cursor.occurrences.find(row => row.status === 'READY').node_id, 'pr_post_merge_fetch');
+  }
   assert.equal(resumed.state.mergeSends.length, 1);
   console.log('PASS published R08 merge ' + (initial ? 'acknowledged' : 'observed after lost ACK and cold recovery' + (question.qualification.resolution_expires_at_ms ? ' with documented exception' : ''))
-    + (elapsed ? ' after five minutes' : transport ? ' without legacy transport margin' : '')
+    + (elapsed ? ' after five minutes' : transport ? ' without legacy transport margin' : advance ? ' on an advanced target with the original consent' : '')
     + ', exact postimage and R09 fetch ready, no second send');
 }
 
@@ -2029,7 +2078,7 @@ if (process.argv[2] === '--deliver-pretriage') {
   await qualifyPostMergeFetch(mode === 'correction' ? 'correction' : 'session',
     ['session', 'correction'].includes(mode) ? 'reconcile' : mode);
 } else if (['--case=merge-consent-session', '--case=merge-consent-correction', '--case=merge-consent-elapsed',
-  '--case=merge-consent-transport', '--case=merge-consent-grant-expired', '--case=merge-refusals'].includes(process.argv[2])) {
+  '--case=merge-consent-transport', '--case=merge-consent-grant-expired', '--case=merge-consent-target-advanced', '--case=merge-refusals'].includes(process.argv[2])) {
   await qualifyNominalConsent(process.argv[2].endsWith('correction') ? 'correction' : 'session', 'approve_merge', process.argv[2].slice('--case='.length));
 } else if (process.argv[2] === '--case=exception-merge-consent-correction') {
   await qualifyException('exception-merge-consent-correction');

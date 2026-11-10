@@ -19,13 +19,15 @@ const status = { node_id: 'S_result', context: 'Legacy CI', creator: { node_id: 
 const pr = { node_id: 'PR_subject', number: 7, state: 'open', draft: false, merged: false,
   head: { sha: head, ref: 'session', repo: { node_id: 'R_repo' } }, base: { sha: base, ref: 'dev', repo: { node_id: 'R_repo' } } };
 
-function fixture(change = () => {}, suppliedPolicy = policy) {
+function fixture(change = () => {}, suppliedPolicy = policy, { qualifyBase = false, comparison } = {}) {
   const responses = structuredClone([{ total_count: 1, check_runs: [run] }, { sha: head, total_count: 1, statuses: [status] }, pr]);
   change(...responses);
   const calls = [];
-  return { calls, observe: () => observeGithubRequiredChecks({ repository, policy: assertGithubRequiredChecksPolicy(suppliedPolicy), request,
+  if (comparison !== undefined) responses.push(comparison);
+  const expected = comparison === undefined ? endpoints : [...endpoints, 'repos/fixture/repository/compare/' + base + '...' + responses[2].base.sha + '?per_page=1'];
+  return { calls, observe: () => observeGithubRequiredChecks({ repository, policy: assertGithubRequiredChecksPolicy(suppliedPolicy), request, qualifyBase,
     async get(endpoint) {
-      assert.equal(endpoint, endpoints[calls.length]);
+      assert.equal(endpoint, expected[calls.length]);
       calls.push(endpoint);
       return responses[calls.length - 1];
     } }) };
@@ -39,6 +41,18 @@ assert.deepEqual(checks, [{ ...entries[1], result_id: 'S_result', result_sha256:
 const changedEvidence = await fixture(runs => { runs.check_runs[0].details_url = 'https://example.com/changed'; }).observe();
 assert.notEqual(changedEvidence[1].result_sha256, checks[1].result_sha256);
 let passed = 1;
+const successor = '3'.repeat(40), moved = (_runs, _statuses, pull) => { pull.base.sha = successor; };
+const advance = { status: 'ahead', ahead_by: 2, behind_by: 0, base_commit: { sha: base }, merge_base_commit: { sha: base } };
+assert.deepEqual(await fixture(undefined, policy, { qualifyBase: true }).observe(), { checks, base_oid: base, base_ahead_by: 0 });
+assert.deepEqual(await fixture(moved, policy, { qualifyBase: true, comparison: advance }).observe(),
+  { checks, base_oid: successor, base_ahead_by: 2 });
+await assert.rejects(fixture(moved).observe, { code: 'STANDARD_PR_CHECK_SUBJECT_CHANGED' });
+passed += 3;
+for (const comparison of [{ ...advance, status: 'diverged' }, { ...advance, behind_by: 1 }, { ...advance, ahead_by: 0 },
+  { ...advance, merge_base_commit: { sha: successor } }, null]) {
+  await assert.rejects(fixture(moved, policy, { qualifyBase: true, comparison }).observe, { code: 'STANDARD_PR_TARGET_ADVANCE_UNPROVEN' });
+  passed++;
+}
 for (const [code, change] of [
   ['INVENTORY_INVALID', runs => { runs.total_count = 2; }],
   ['INVENTORY_INVALID', runs => { runs.check_runs[0].head_sha = base; }],

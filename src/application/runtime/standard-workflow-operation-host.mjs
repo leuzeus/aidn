@@ -1589,7 +1589,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
               throw Object.assign(Error("STANDARD_PR_REVIEW_EFFECT_OWNER_CHANGED"), { code: "STANDARD_PR_REVIEW_EFFECT_OWNER_CHANGED", effect_status: "no_effect" });
           } });
         else if (record.intent.binding_ref === "session_pr_review_effects_verify") output = await sessionPrEffects.observe(state.record, record.preview.input,
-          { signal, sourceSha256: record.preview.prepared.source_sha256 });
+          { signal, sourceSha256: record.preview.prepared.source_sha256, outputContract: record.preview.binding.output_contract });
         else if (record.intent.binding_ref === "session_pr_review_event_route") {
           const selected = pretriageRoute(state, record.intent.occurrence_id);
           if (shadowHash(selected) !== shadowHash(record.preview.prepared)) fail("STANDARD_PR_REVIEW_WAIT_CHANGED");

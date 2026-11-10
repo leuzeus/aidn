@@ -1,5 +1,5 @@
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
-import { assertRequiredChecksOutput, checksOperation, mergeConsentMaxAgeMs } from '../../core/workflow/standard-pr-merge-consent.mjs';
+import { assertRequiredChecksOutput, checksOperation, mergeApprovalSubject, mergeConsentMaxAgeMs } from '../../core/workflow/standard-pr-merge-consent.mjs';
 import { prObservationRequest } from './standard-session-pr-review-effects.mjs';
 
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: 'no_effect' }); };
@@ -8,13 +8,13 @@ const unavailable = 'STANDARD_PR_CHECKS_UNAVAILABLE';
 const reasonCode = cause => /^[A-Z][A-Z0-9_]{0,127}$/.test(cause?.code ?? '') ? cause.code : unavailable;
 
 export function createStandardPrMergeConsent({ now, reviewPort, resolution, readAccepted, readCurrent, verifyFreshDecision }) {
-  async function observe(instance, input, signal) {
+  async function observe(instance, input, signal, { qualifyBase = false } = {}) {
     const started = now();
     if (!Number.isSafeInteger(started) || signal?.aborted) fail(unavailable);
     if (typeof reviewPort?.observeRequiredChecks !== 'function') fail('STANDARD_PR_CHECK_POLICY_REQUIRED');
     // The two inventory samples surround a fresh observation of the exact R08 proof.
-    const { source, observed, before, decision, operationId, receiptSha256, expires } = await resolution.readGate(instance, input, {
-      signal, beforeReview: p => reviewPort.observeRequiredChecks(prObservationRequest(p), { signal }),
+    const { source, observed, before, qualificationProof, decision, operationId, receiptSha256, expires } = await resolution.readGate(instance, input, {
+      signal, qualifyBase, beforeReview: p => reviewPort.observeRequiredChecks(prObservationRequest(p), { signal, qualifyBase }),
     });
     const second = await reviewPort.observeRequiredChecks(observed.request, { signal });
     if (decision) await verifyFreshDecision(decision, signal);
@@ -26,20 +26,22 @@ export function createStandardPrMergeConsent({ now, reviewPort, resolution, read
       fail('STANDARD_PR_CHECK_EVIDENCE_CHANGED');
     const p = source.pullRequest;
     const subject = { triage_operation_id: input.triage_operation_id, update_operation_id: source.updateId, source_sha256: source.sha256,
-      repository_id: p.repository_id, pull_request_id: p.node_id, pull_request_number: p.number, head_oid: p.head_oid, base_oid: p.base_oid,
+      repository_id: p.repository_id, pull_request_id: p.node_id, pull_request_number: p.number, head_oid: p.head_oid, base_oid: observed.request.expected_base_oid,
       head_ref: p.head_branch, base_ref: p.base_branch, actor_id: second.actor_id, resolution_operation_id: operationId,
       resolution_receipt_sha256: receiptSha256, resolution_expires_at_ms: expires, policy_sha256: second.policy_sha256, checks: second.checks };
-    return { subject, observed_at_ms: end };
+    return { subject, observed_at_ms: end, ...(qualificationProof ? { qualificationProof } : {}) };
   }
 
-  async function consentBasis(instance, input, signal) {
+  async function consentBasis(instance, input, signal, { legacy }) {
     const accepted = readAccepted(instance, input.checks_operation_id, checksOperation);
     const basis = accepted.output.observations;
     if (accepted.output.facts.session_pr_required_checks_accepted !== true || basis.subject.triage_operation_id !== input.triage_operation_id)
       fail('STANDARD_PR_CHECK_ACCEPTANCE_REQUIRED');
-    const fresh = await observe(instance, input, signal);
-    if (shadowHash(basis.subject) !== shadowHash(fresh.subject)) fail('STANDARD_PR_MERGE_CONSENT_SUBJECT_CHANGED');
-    return fresh;
+    const fresh = await observe(instance, input, signal, { qualifyBase: !legacy });
+    const approved = legacy ? basis.subject : mergeApprovalSubject(basis.subject);
+    const current = legacy ? fresh.subject : mergeApprovalSubject(fresh.subject);
+    if (shadowHash(approved) !== shadowHash(current)) fail('STANDARD_PR_MERGE_CONSENT_SUBJECT_CHANGED');
+    return { subject: basis.subject, observed_at_ms: fresh.observed_at_ms };
   }
 
   return Object.freeze({
@@ -56,9 +58,9 @@ export function createStandardPrMergeConsent({ now, reviewPort, resolution, read
           observations: { reason_code: reason }, evidence_refs: [] });
       }
     },
-    observeForMerge: observe,
+    observeForMerge: (instance, input, signal) => observe(instance, input, signal, { qualifyBase: true }),
     async prepare(instance, input, { legacy = false, signal } = {}) {
-      const { subject, observed_at_ms: observedAt } = await consentBasis(instance, input, signal);
+      const { subject, observed_at_ms: observedAt } = await consentBasis(instance, input, signal, { legacy });
       return { can_apply: true, subject, prepared_at_ms: observedAt,
         ...(legacy ? { expires_at_ms: Math.min(observedAt + mergeConsentMaxAgeMs, subject.resolution_expires_at_ms ?? Infinity) } : {}) };
     },
@@ -70,7 +72,7 @@ export function createStandardPrMergeConsent({ now, reviewPort, resolution, read
           fail('STANDARD_PR_MERGE_CONSENT_EXPIRED');
       }
       assertAge();
-      const { subject } = await consentBasis(instance, input, signal);
+      const { subject } = await consentBasis(instance, input, signal, { legacy: Object.hasOwn(prepared, 'expires_at_ms') });
       if (shadowHash(subject) !== shadowHash(prepared.subject)) fail('STANDARD_PR_MERGE_CONSENT_SUBJECT_CHANGED');
       assertAge();
     },

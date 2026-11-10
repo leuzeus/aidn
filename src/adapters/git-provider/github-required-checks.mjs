@@ -14,10 +14,10 @@ export function assertGithubRequiredChecksPolicy(policy) {
   return policy;
 }
 
-export async function observeGithubRequiredChecks({ get, repository, policy, request }) {
+export async function observeGithubRequiredChecks({ get, repository, policy, request, qualifyBase = false }) {
   if (policy.base_ref !== request.expected_base_ref) fail('STANDARD_PR_CHECK_POLICY_BASE_REQUIRED');
   const head = request.expected_head_oid, number = request.pull_request_number;
-  if (!oid.test(head) || !Number.isSafeInteger(number) || number < 1) fail('STANDARD_PR_CHECK_SUBJECT_CHANGED');
+  if (!oid.test(head) || !oid.test(request.expected_base_oid) || !Number.isSafeInteger(number) || number < 1) fail('STANDARD_PR_CHECK_SUBJECT_CHANGED');
   const endpoint = 'repos/' + repository.owner + '/' + repository.name;
   const runs = await get(endpoint + '/commits/' + head + '/check-runs?filter=all&per_page=100');
   const statuses = await get(endpoint + '/commits/' + head + '/status?per_page=100');
@@ -30,10 +30,20 @@ export async function observeGithubRequiredChecks({ get, repository, policy, req
   const pr = await get(endpoint + '/pulls/' + number);
   if (pr?.node_id !== request.expected_pull_request_id || pr.number !== number || pr.state !== 'open'
     || pr.draft !== false || pr.merged !== false || pr.head?.repo?.node_id !== repository.node_id
-    || pr.base?.repo?.node_id !== repository.node_id || pr.head.sha !== head || pr.base.sha !== request.expected_base_oid
+    || pr.base?.repo?.node_id !== repository.node_id || pr.head.sha !== head || !oid.test(pr.base.sha)
+    || !qualifyBase && pr.base.sha !== request.expected_base_oid
     || pr.head.ref !== request.expected_head_ref || pr.base.ref !== request.expected_base_ref)
     fail('STANDARD_PR_CHECK_SUBJECT_CHANGED');
 
+  let ahead = 0;
+  if (pr.base.sha !== request.expected_base_oid) {
+    const comparison = await get(endpoint + '/compare/' + request.expected_base_oid + '...' + pr.base.sha + '?per_page=1');
+    if (comparison?.status !== 'ahead' || comparison.behind_by !== 0 || !Number.isSafeInteger(comparison.ahead_by)
+      || comparison.ahead_by < 1 || comparison.ahead_by > 2147483647
+      || comparison.base_commit?.sha !== request.expected_base_oid || comparison.merge_base_commit?.sha !== request.expected_base_oid)
+      fail('STANDARD_PR_TARGET_ADVANCE_UNPROVEN');
+    ahead = comparison.ahead_by;
+  }
   const accepted = [];
   for (const requirement of policy.entries) {
     const checkRuns = runs.check_runs.filter(row => row.name === requirement.name);
@@ -48,5 +58,6 @@ export async function observeGithubRequiredChecks({ get, repository, policy, req
     if (checkShadowJson(row)) fail('STANDARD_PR_CHECK_INVENTORY_INVALID');
     accepted.push({ ...requirement, result_id: row.node_id, result_sha256: shadowHash(row) });
   }
-  return accepted.sort((a, b) => a.name < b.name ? -1 : 1);
+  const checks = accepted.sort((a, b) => a.name < b.name ? -1 : 1);
+  return qualifyBase ? { checks, base_oid: pr.base.sha, base_ahead_by: ahead } : checks;
 }

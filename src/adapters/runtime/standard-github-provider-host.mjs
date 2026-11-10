@@ -231,7 +231,7 @@ export function createStandardGithubProviderHost({ configuration, home, identity
       return result;
     };
   }
-  async function observeRequiredChecks(request, { signal } = {}) {
+  async function observeRequiredChecks(request, { signal, qualifyBase = false } = {}) {
     const guard = transportGuard();
     const authenticated = await driveGithubObservationAsync(authenticate(guard), runGithubRead, signal);
     const run = guardedRun(guard, runGithubRead);
@@ -243,9 +243,9 @@ export function createStandardGithubProviderHost({ configuration, home, identity
         || Buffer.byteLength(result.stdout) > options.maxBuffer) fail("STANDARD_PR_CHECK_INVENTORY_UNAVAILABLE");
       try { return JSON.parse(result.stdout); } catch { fail("STANDARD_PR_CHECK_INVENTORY_INVALID"); }
     };
-    const checks = await observeGithubRequiredChecks({ get, repository: repo, policy: requiredChecks, request });
+    const observed = await observeGithubRequiredChecks({ get, repository: repo, policy: requiredChecks, request, qualifyBase });
     return { policy_sha256: shadowHash({ manifest_sha256: snapshot.sha256, policy: requiredChecks }),
-      actor_id: actor.node_id, checks };
+      actor_id: actor.node_id, ...(qualifyBase ? observed : { checks: observed }) };
   }
   const content = readPort(createGithubPrContentAsyncAdapter, "observePullRequest");
   const evidence = readPort(createGithubReviewContentAsyncAdapter, "observeReviewEvidence");

@@ -3538,11 +3538,23 @@ check receipt hashes, the freshly observed qualification and a unique commit
 body marker. The existing journal CAS claims dispatch before the provider
 mutation.
 
-The v2 plan has no automatic consent deadline. A rerun of required checks can
-qualify a new plan on the same approved HEAD and target. Before dispatch, the
-host revalidates the plan's review evidence and check results, the signed
-consent and its authority, and the open PR and expected base. The exception
-keeps its own deadline. A queue or active auto-merge blocks direct execution.
+The v2 plan has no automatic consent deadline. A rerun of required checks or
+an advance of the same target branch can qualify a new plan for the approved
+HEAD. The protected host compares the old and new base commits and requires
+the original base as their merge base. At the new tip it verifies the original
+delivered review event, then reads live reviews, threads, replies and required
+checks. The v2 resolution receipt binds separate review and thread content
+digests. The fresh qualification proof records the current observations and
+the advance. Historical v1 resolution receipts require the original base and
+their exact observation digests. A documented exception binds its own base
+and deadline. An advance that makes the exception inapplicable requires new
+R08 authority.
+
+Before dispatch, the host revalidates the plan's qualification, the signed
+consent and its authority, and the open PR and expected base. A change in
+qualification before the provider call produces a no-effect refusal. A fresh
+plan requires its own authorization. A queue or active auto-merge blocks
+direct execution.
 The same protected PR read requires a determinate, mergeable GitHub status
 at preparation and dispatch. The manifest pins the required check producers.
 GitHub evaluates its branch rules and any pre-receive hooks on the mutation.

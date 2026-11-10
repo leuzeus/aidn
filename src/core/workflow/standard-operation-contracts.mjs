@@ -59,6 +59,7 @@ import { assertPostMergeMeasureOutput, postMergeMeasureOperation, assertPostMerg
 import { assertPostMergeFastForwardInput, assertPostMergeFastForwardOutput, postMergeFastForwardOperation } from "./standard-pr-post-merge-fast-forward.mjs";
 import { assertPostMergeCompleteInput, assertPostMergeCompleteOutput, postMergeCompleteOperation } from "./standard-pr-post-merge-complete.mjs";
 import { assertMergeExecuteInput, assertMergeExecuteOutput, assertPostMergeWaitOutput, mergeExecuteOperation, postMergeWaitOperation } from "./standard-pr-merge-execute.mjs";
+import prReviewEffectsOutputV2 from "../contracts/workflow-definition/standard-session-pr-review-effects-output.v2.schema.json" with { type: "json" };
 import prReviewEffectsOutput from "../contracts/workflow-definition/standard-session-pr-review-effects-output.v1.schema.json" with { type: "json" };
 import prMergeProvider from "../contracts/workflow-definition/github-pr-merge-observation.v1.schema.json" with { type: "json" };
 import prMergeInput from "../contracts/workflow-definition/standard-session-pr-merge-observe-input.v1.schema.json" with { type: "json" };
@@ -417,8 +418,9 @@ export function assertStandardOperationOutput(value) {
       || evidence_refs[0].sha256 !== shadowHash(resolution)) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
   }
-  if (value?.contract_version === "standard-session-pr-review-effects-output.v1") {
-    if (checkShadowJson(value) || validateJsonSchema(value, prReviewEffectsOutput, "$", { contractKind: "workflow-definition" }).length)
+  if (["standard-session-pr-review-effects-output.v1", "standard-session-pr-review-effects-output.v2"].includes(value?.contract_version)) {
+    const schema = value.contract_version === "standard-session-pr-review-effects-output.v2" ? prReviewEffectsOutputV2 : prReviewEffectsOutput;
+    if (checkShadowJson(value) || validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length)
       fail("STANDARD_OPERATION_OUTPUT_INVALID");
     const { proof } = value.observations;
     if (value.outcome === "completed" ? !proof || value.facts.session_pr_review_effects_verified !== true
