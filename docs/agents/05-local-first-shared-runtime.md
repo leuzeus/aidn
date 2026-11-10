@@ -52,6 +52,11 @@ observation and the subsequent cycle-plan observation each acquire their own
 inventory. No topology observation carries across an authorization or effect
 boundary.
 
+Each STANDARD host precondition snapshot observes scope before reading its six
+required documents. PostgreSQL reads the documents in a fresh bounded batch,
+preserving the order and content hashes in the signed snapshot. Staging and
+dispatch still acquire their own snapshots at their existing boundaries.
+
 ## Do Not Move Implicitly
 
 ADR-0013 defines an explicit migration of standard AIDN executable assets to a

@@ -203,6 +203,11 @@ readiness comparison, count artifact worker calls separately for each fresh
 context read and compare complete context hashes. A context comparison covers
 neither signed nominal history nor the full freshness budget.
 
+For STANDARD host preconditions on PostgreSQL, compare the complete signed
+snapshot input with individual document reads and count artifact worker
+calls. Change a required document in a disposable target and verify that both
+read paths observe the new hash.
+
 ## Adjacent installation-record scans, 2026-11-06
 
 The activation fixture retains all earlier assertions and adds four checks for

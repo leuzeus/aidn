@@ -100,9 +100,9 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   }
   function snapshot(productSha256 = readProductSha256?.()) {
     if (!/^[a-f0-9]{64}$/.test(productSha256 ?? "")) fail("STANDARD_PROCESS_PRODUCT_OBSERVATION_REQUIRED");
+    const documentPaths = ["CURRENT-STATE.md", "SPEC.md", "WORKFLOW.md", "WORKFLOW-KERNEL.md", "baseline/current.md", "snapshots/context-snapshot.md"];
     return { ...(source ? { model_source: source } : {}), context: operations.observeScope(),
-      documents: ["CURRENT-STATE.md", "SPEC.md", "WORKFLOW.md", "WORKFLOW-KERNEL.md", "baseline/current.md", "snapshots/context-snapshot.md"]
-        .map(path => ({ path, sha256: artifacts.read(path, { required: true }).sha256 })),
+      documents: artifacts.readMany(documentPaths, { required: documentPaths }).map(({ path, sha256 }) => ({ path, sha256 })),
       native: { configuration_sha256: shadowHash(configuration), product_sha256: productSha256 } };
   }
   function authenticate(instance, options = {}) {
