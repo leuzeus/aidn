@@ -5292,3 +5292,61 @@ presents the signed R08 incident question and then reuses the R09 suffix,
 including the canonical completion lock. Other pre-triage activities,
 human waits, already reserved expired captures, committed or UNKNOWN
 owners and other provider postimages remain separate recovery cases.
+
+
+## Addendum R08/R09 — validité du consentement à la fusion
+
+Décision du propriétaire, 2026-11-09 (Toronto). Statut **décision adoptée,
+implémentation et qualification à aligner**. Cette décision porte sur les
+nouveaux consentements du parcours STANDARD. Elle remplace la fenêtre
+automatique de cinq minutes introduite par `782bd14c` et le refus d'envoi
+fondé sur les dix secondes restantes. Les contrats actuellement exécutés
+portent encore ces limites.
+
+Le sujet approuvé lie le dépôt, la PR, le SHA exact du HEAD et la branche
+cible. L'hôte authentifie l'accord encore en vigueur, vérifie son autorité
+et tient compte d'une révocation, d'un remplacement ou de l'expiration
+propre à son autorisation. Les délais des exceptions de revue, des autres
+grants et des opérations distinctes conservent leur propre autorité. Un
+nouveau HEAD ou une autre cible exige un nouvel accord. L'effet conserve un
+plan et une autorisation explicites, séparés de la décision humaine.
+
+Les protections applicables, contrôles requis et preuves R08 sont vérifiés
+au moment de l'effet. Une preuve absente, ambiguë, expirée ou liée à un autre
+sujet bloque l'envoi. Le modèle doit distinguer le sujet stable du
+consentement et les observations de qualification actualisées. Un rerun des
+checks ou l'avancement de la pointe de la même branche cible exige de
+revérifier les preuves et le plan d'effet applicable. L'accord sur la PR,
+son HEAD et sa cible demeure utilisable si son autorité reste valide.
+L'effet envoie toujours le SHA approuvé comme précondition fournisseur. Le
+plan d'effet lie la pointe de base observée et la preuve de postimage exige
+la parenté exacte. Le timeout réseau borne le transport indépendamment du
+consentement.
+
+Un refus observé avant l'appel fournisseur reste sans effet. Dès qu'un envoi
+est possible, conserver l'état incertain, l'identité du propriétaire et
+l'essai original. La récupération relit la postimage protégée, notamment
+l'identité, les références, les parents et la corrélation de la mutation.
+Une PR ouverte au même HEAD laisse l'issue incertaine. Toute répétition
+exige une disposition justifiée par la réconciliation. Une postimage
+confirmée alimente le suffixe R09 existant.
+
+**Travail ASSURED.** Versionner les contrats qui portent la durée retirée.
+Aligner la question et le reçu humains, la capture et sa revalidation,
+le plan et le port fournisseur, les deux parcours R08 publiés et les
+lecteurs R09. Conserver les lecteurs, les octets et les verdicts
+historiques. Le nominal 220 garde son effet UNKNOWN après un envoi et
+le nominal 222 garde ses refus sans envoi. Régénérer les pins des
+composants et vérifier les références des modèles publiés. Aligner
+l'ADR-0025, le guide des contrats et les sélecteurs de tests avec le code.
+
+**Critères à prouver.** Un consentement valide permet l'unique envoi
+après cinq minutes et sans marge minimale liée au timeout réseau.
+Un HEAD ou une cible différents, une révocation, un remplacement,
+une preuve requise devenue invalide et une exception expirée bloquent
+chacun l'envoi. Après perte d'ACK, la postimage exacte peut être acceptée
+sans second envoi, tandis qu'une PR ouverte au même HEAD garde le
+dossier en réconciliation. Vérifier les lecteurs de l'ancien format,
+la composition des deux sites et le passage à R09. Les preuves avec
+transport doublé et la qualification fournisseur réelle restent
+identifiées séparément.
