@@ -150,7 +150,12 @@ The common operation/mixed host exposes the internal read-only
 `prepareReconciliationInventory` port. Canonical artifact enumeration discovers
 journals staged before their intent event, inbox captures reserved before
 delivery, every retained receipt and Native allocation, and local effect owners
-and unreferenced evidence. DB modes use canonical content and metadata from one
+and unreferenced evidence. Review-wait reservations are unresolved resources
+in their own right, including when the selected capture has yet to be written.
+An accepted control event binds the exact captured delivery, its prior prefix,
+the acknowledgement prefix if present, and the selected reservation where
+the wait requires one. A matching reserved capture still accounts for the
+interruption after event acceptance and before acknowledgement. DB modes use canonical content and metadata from one
 list statement per observation; visible projections remain non-authoritative.
 Exact scope/model/prefix/binding/input/grant links and host MACs are checked.
 For a reusable call, the reconstructed prefix identifies the occurrence's

@@ -163,7 +163,11 @@ canonical runtime, exact instance prefix, model/source/configuration, historical
 owners/results and observed accounting minima. All external-discovery domains
 remain unresolved; the envelope grants no closure, disposition, authority,
 budget refund or effect. It adds no public CLI output or durable record and does
-not convert historical journals. See ADR-0026.
+not convert historical journals. A review-wait reservation uses the
+`control-reservation:<id>` resource ref with capture, selection and request identities.
+A control event requires its exact captured delivery and any required
+reservation, with a delivered acknowledgement bound to the accepted prefix.
+See ADR-0026.
 
 The inventory validates an embedded operation against the model identity of
 its reducer occurrence and that model's operation pin. Its signed intent

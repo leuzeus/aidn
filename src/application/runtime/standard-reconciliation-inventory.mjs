@@ -6,7 +6,8 @@ import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.m
 import { assertOperationJournal, operationJournalId } from "../../core/workflow/process-operation-journal.mjs";
 import { assertProcessOperationIntent, assertProcessOperationBinding } from "../../core/workflow/process-operation-contracts.mjs";
 import { assertDecisionInbox } from "../../core/workflow/process-decision-inbox.mjs";
-import { assertControlInbox } from "../../core/workflow/process-control-inbox.mjs";
+import { assertControlInbox, controlInboxPath, controlReservationId, controlSelectionDigest } from "../../core/workflow/process-control-inbox.mjs";
+import { externalMergeEventKey } from "../../core/workflow/standard-pr-external-merge.mjs";
 import { assertNativeAllocationJournal } from "../../core/workflow/native-allocation-journal.mjs";
 import { assertAgenticProcessInstance, agenticProcessPrefixSha256, inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
 import { processFrameModel } from "../../core/workflow/process-call-model.mjs";
@@ -139,17 +140,36 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
       signer.verify(record);
       if (!decision && (record.request.scope_id !== instance.scope_id || record.request.model_sha256 !== instance.model_sha256))
         fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
+      if (record.contract_version === "process-control-reservation.v1") {
+        add("control-reservation:" + record.inbox_id, "control_capture", shadowHash(record), {
+          phase: "reserved", source_ref: record.source_ref, request_sha256: shadowHash(record.request),
+          capture_id: record.capture_id, selection_sha256: record.selection_sha256 });
+        continue;
+      }
       add((decision ? "decision:" : "control:") + record.inbox_id, decision ? "human_capture" : "control_capture", shadowHash(record), {
         phase: record.phase, source_ref: record.source_ref, source_sha256: shadowHash(record.source),
         operation_id: decision ? record.operation_id : null, request_sha256: decision ? null : shadowHash(record.request) });
     }
     // Every accepted intent/result/control must have an authenticated retained
     // resource, including receipts preceding a later UNKNOWN/result.
-    for (const event of instance.events) {
+    for (const [index, event] of instance.events.entries()) {
       if (event.kind === "operation_intent" && shadowHash(records.get(event.intent.operation_id)?.intent) !== shadowHash(event.intent)
-        || event.kind === "operation_result" && !records.get(event.receipt.operation_id)?.results.some(row => shadowHash(row.receipt) === shadowHash(event.receipt))
-        || event.kind === "control" && !resources.some(row => row.ref === "control:" + event.delivery.delivery_id))
+        || event.kind === "operation_result" && !records.get(event.receipt.operation_id)?.results.some(row => shadowHash(row.receipt) === shadowHash(event.receipt)))
         fail("PROCESS_RECONCILIATION_HISTORY_UNAVAILABLE");
+      if (event.kind !== "control") continue;
+      const capture = records.get(controlInboxPath(event.delivery.delivery_id))?.record;
+      if (!capture?.delivery || shadowHash(capture.delivery) !== shadowHash(event.delivery)
+        || capture.request.instance_sha256 !== agenticProcessPrefixSha256(instance, index)
+        || capture.phase === "delivered" && capture.delivered_instance_sha256 !== agenticProcessPrefixSha256(instance, index + 1))
+        fail("PROCESS_RECONCILIATION_HISTORY_UNAVAILABLE");
+      if (capture.request.event_keys.includes(externalMergeEventKey)) {
+        const reservation = records.get(controlInboxPath(controlReservationId(capture.request)))?.record;
+        if (reservation?.contract_version !== "process-control-reservation.v1"
+          || shadowHash(reservation.request) !== shadowHash(capture.request)
+          || reservation.source_ref !== capture.source_ref || reservation.capture_id !== capture.inbox_id
+          || reservation.selection_sha256 !== controlSelectionDigest(capture))
+          fail("PROCESS_RECONCILIATION_HISTORY_UNAVAILABLE");
+      }
     }
     const physical = (directory, label, ownerFile = false) => {
       const root = agentRunPhysicalPath(directory, { missing: true }); let entries = 0, total = 0;

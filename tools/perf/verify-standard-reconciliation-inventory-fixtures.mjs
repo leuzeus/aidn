@@ -21,6 +21,9 @@ import { createProcessDispatchRecordStore } from "../../src/adapters/runtime/pro
 import { observeLocalProcess } from "../../src/adapters/runtime/local-process-identity.mjs";
 import { exactFileIdentity } from "../../src/lib/fs/exact-file-identity.mjs";
 import { processModelIdentity } from "../../src/core/workflow/process-call-model.mjs";
+import { createProcessControlInboxStore } from "../../src/adapters/runtime/process-control-inbox-store.mjs";
+import { controlInboxId, controlReservationId } from "../../src/core/workflow/process-control-inbox.mjs";
+import { externalMergeEventKey } from "../../src/core/workflow/standard-pr-external-merge.mjs";
 
 // Fault-injected journal states below qualify discovery/authentication only.
 // They are not real process-death, external closure or disposition evidence.
@@ -191,6 +194,68 @@ export async function verifyStandardReconciliationInventory(mode, pass, { proces
       assert.equal(authorizations, 0);
       pass(`${mode}: after real direct-child exit the same original identity is absent and the effect stays unknown`);
     }
+
+    const controlId = "control-inventory", sourceRef = "fixture_review";
+    const controlModel = { ...model, model_id: "inventory-control-fixture", entry: "wait",
+      nodes: [{ id: "wait", kind: "event", participant_ref: "project", branches: [
+        { flow_id: "review", node_id: "reload", event_key: "review_snapshot" },
+        { flow_id: "external", node_id: "merge", event_key: externalMergeEventKey }] },
+      ...model.nodes, { ...model.nodes[0], id: "merge" }] };
+    let sourceCalls = 0;
+    const claimFor = request => ({ contract_version: "process-control-source.v1", source_kind: "external",
+      authority_id: "fixture_provider", source_event_id: "fixture_review_event", request_sha256: shadowHash(request),
+      subject_sha256: H, event_key: "review_snapshot", payload_sha256: H, evidence_refs: [{ ref: "fixture:provider/event", sha256: H }] });
+    const openControl = () => createStandardWorkflowOperationHost({ targetRoot: root, model: controlModel,
+      readSigningKey: () => key, authorize: () => { authorizations++; throw Error("UNEXPECTED_AUTHORIZATION"); },
+      controlSource: {
+        read: ({ request }) => { sourceCalls++; return claimFor(request); },
+        verify: ({ source }) => { sourceCalls++; return { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) }; },
+      } });
+    const control = openControl(), controlInitial = control.initialize({ instanceId: controlId });
+    control.initialize({ instanceId: controlId, write: true, expectedResultSha256: controlInitial.record.instance_sha256 });
+    const input = { instanceId: controlId, expectedSha256: controlInitial.record.instance_sha256, occurrenceId: "root" };
+    const request = control.prepareControl(input), claim = claimFor(request), captureId = controlInboxId(claim);
+    const reservationId = controlReservationId(request), reservationRef = "control-reservation:" + reservationId;
+    const inbox = createProcessControlInboxStore({ targetRoot: root, stateMode: mode });
+    const reservation = signer.seal({ contract_version: "process-control-reservation.v1", inbox_id: reservationId,
+      request, source_ref: sourceRef, capture_id: captureId, selection_sha256: shadowHash(claim) });
+    // The reservation can be durable before the capture is stored.
+    inbox.compareAndSwap(reservation, null);
+    const controlInventory = instanceSha256 => {
+      const canonical = artifacts.observeInventory(), calls = sourceCalls;
+      try {
+        const result = openControl().prepareReconciliationInventory(controlId, { expectedSha256: instanceSha256 });
+        assertProcessReconciliationInventory(signer.verify(result));
+        return result;
+      } finally {
+        assert.deepEqual(artifacts.observeInventory(), canonical);
+        assert.equal(sourceCalls, calls);
+        assert.equal(authorizations, 0);
+      }
+    };
+    const priorCapture = controlInventory(controlInitial.record.instance_sha256);
+    assert.equal(priorCapture.resources.find(row => row.ref === reservationRef).sha256, shadowHash(reservation));
+    assert.ok(!priorCapture.resources.some(row => row.ref === "control:" + captureId));
+    const captured = await control.captureControl({ ...input, sourceRef, write: true });
+    assert.equal(captured.inbox_id, captureId);
+    const reservedCapture = inbox.read(captureId).record;
+    const acceptedControl = await control.deliverControl(captureId, { write: true });
+    const controlSha = acceptedControl.record.instance_sha256;
+    // Fault injection after canonical event acceptance and before acknowledgement.
+    inbox.compareAndSwap(reservedCapture, inbox.read(captureId).content_sha256);
+    const acceptedBeforeAck = controlInventory(controlSha);
+    assert.equal(acceptedBeforeAck.resources.find(row => row.ref === "control:" + captureId).details.phase, "reserved");
+    const repairedAck = await openControl().deliverControl(captureId, { write: true });
+    assert.equal(repairedAck.retained, true);
+    assert.equal(repairedAck.record.instance_sha256, controlSha);
+    const afterAck = controlInventory(controlSha);
+    assert.equal(afterAck.resources.find(row => row.ref === "control:" + captureId).details.phase, "delivered");
+    pass(mode + ": the signed control reservation and capture remain distinct across acceptance and acknowledgement");
+
+    const substitutedReservation = signer.seal({ ...reservation, selection_sha256: "b".repeat(64) });
+    inbox.compareAndSwap(substitutedReservation, inbox.read(reservationId).content_sha256);
+    assert.throws(() => controlInventory(controlSha), { code: "PROCESS_RECONCILIATION_HISTORY_UNAVAILABLE" });
+    pass(mode + ": a validly signed reservation for another selection cannot authenticate the accepted control");
 
     const native = { contract_version: "native-allocation-journal.v1", journal_id: nativeJournalId(before.record), instance_id: id,
       scope_id: before.record.scope_id, model_sha256: before.record.model_sha256, revision: 1, allocations: [{

@@ -1,4 +1,4 @@
-import { assertControlRequest, assertControlSource, assertControlReviewPayload, controlInboxId, controlDelivery, controlReservationId } from "../../core/workflow/process-control-inbox.mjs";
+import { assertControlRequest, assertControlSource, assertControlReviewPayload, controlInboxId, controlDelivery, controlReservationId, controlSelectionDigest } from "../../core/workflow/process-control-inbox.mjs";
 import { assertExternalMergeControl, externalMergeEventKey } from "../../core/workflow/standard-pr-external-merge.mjs";
 import { checkShadowJson, shadowHash } from "../../core/workflow/shadow-json.mjs";
 
@@ -52,10 +52,8 @@ export function createStandardControlInbox({ store, signer, source, projectionRe
       || record.source_ref !== sourceRef) fail("PROCESS_CONTROL_CAPTURE_RECONCILIATION_REQUIRED");
     return record;
   }
-  const selectionDigest = record => record.contract_version === "process-control-inbox.v3"
-    ? record.source.subject_sha256 : shadowHash(record.source);
   function assertWinner(record, reservation) {
-    if (!reservation || reservation.capture_id !== record.inbox_id || reservation.selection_sha256 !== selectionDigest(record))
+    if (!reservation || reservation.capture_id !== record.inbox_id || reservation.selection_sha256 !== controlSelectionDigest(record))
       fail("PROCESS_CONTROL_CAPTURE_RECONCILIATION_REQUIRED");
   }
   async function reserve(request, sourceRef, { signal, expectedSubjectSha256, assertCurrent } = {}, kind = "claim") {
@@ -99,7 +97,7 @@ export function createStandardControlInbox({ store, signer, source, projectionRe
       const reservation = reservedFor(request, sourceRef);
       if (reservation) assertWinner(body, reservation);
       else persist({ contract_version: "process-control-reservation.v1", inbox_id: controlReservationId(request),
-        request, source_ref: sourceRef, capture_id: body.inbox_id, selection_sha256: selectionDigest(body) }, null);
+        request, source_ref: sourceRef, capture_id: body.inbox_id, selection_sha256: controlSelectionDigest(body) }, null);
     }
     if (before.record) {
       if (projectionRequired) store.materialize(body.inbox_id, { write: true });

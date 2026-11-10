@@ -380,6 +380,10 @@ non-adoption. Bigint physical identities distinguish adjacent values above
 The embedded-operation check stages a child operation whose node ID matches
 the parent call. It verifies the child's operation pin and the absence of
 inventory writes or effect authorization after reopening the host.
+The control case distinguishes a reserved review wait from its captured event.
+It checks a reservation before capture, a reserved capture after reducer
+acceptance, an exact delivered acknowledgement and refusal of a substituted
+selection. Read-only inventory preserves each canonical snapshot.
 The same checks join the existing required host fixture case; no previous gate
 case or argv is removed. Fault-injected journal/Native states are fixtures,
 not real crashes, external closure, a disposition or the full STANDARD model.

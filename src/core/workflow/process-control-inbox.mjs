@@ -47,6 +47,9 @@ export function controlDelivery(request, source) {
 export const controlReservationId = ({ scope_id, instance_id, model_sha256, occurrence_id }) =>
   "control_" + shadowHash({ kind: "review-wait", scope_id, instance_id, model_sha256, occurrence_id }).slice(0, 40);
 
+export const controlSelectionDigest = capture => capture.contract_version === "process-control-inbox.v3"
+  ? capture.source.subject_sha256 : shadowHash(capture.source);
+
 export function assertControlInbox(value) {
   if (value?.contract_version === "process-control-reservation.v1") {
     schema(value, reservationSchema, "PROCESS_CONTROL_INBOX_INVALID");
