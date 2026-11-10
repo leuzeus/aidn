@@ -63,6 +63,7 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
         || live.threads_sha256 !== accepted.threads_sha256 || live.reviews_sha256 !== accepted.reviews_sha256
         || live.reply_proof_sha256 !== accepted.reply_proof_sha256) fail('STANDARD_PR_MERGE_RESOLUTION_CHANGED');
     }
+    return resolution.record;
   }
   async function observeQualification(instance, input, b, signal) {
     const observed = await observeMergeQualification(instance, input, signal);
@@ -109,9 +110,9 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
       || plan.consent_receipt_sha256 !== b.consent_receipt_sha256 || plan.checks_receipt_sha256 !== b.checks_receipt_sha256)
       fail('STANDARD_PR_MERGE_PLAN_CHANGED');
     const qualification = b.current ? plan.qualification : b.question.subject;
-    if (b.current) assertQualification(instance, input, b, qualification, plan.qualification_proof);
+    const resolution = b.current ? assertQualification(instance, input, b, qualification, plan.qualification_proof) : null;
     if (plan.provider !== null) assertProvider(plan.provider, b, id, qualification);
-    return { plan, b };
+    return { plan, b, resolution };
   }
   function output(prepared, value, confirmation) {
     const providerPlan = prepared.plan.provider.plan;
@@ -146,10 +147,11 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
       return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
     },
     async apply(instance, input, prepared, { signal, assertAuthorized, operationId }) {
-      const { plan, b } = checked(instance, input, prepared, operationId);
+      const { plan, b, resolution } = checked(instance, input, prepared, operationId);
       if (consentExpired(b)) return renewal();
       if (plan.provider === null) fail('STANDARD_PR_MERGE_PLAN_CHANGED');
       let value, consentGrantExpiresAt;
+      let exceptionExpiresAt = plan.qualification?.resolution_expires_at_ms ?? null;
       try {
         value = await port.apply(plan.provider, { write: true, expectPlan: plan.provider.plan_sha256, signal, assertAuthorized,
           assertReviewFresh: async () => {
@@ -166,6 +168,11 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
           },
           ...(b.current ? {
             assertConsentCurrent: async () => {
+              if (exceptionExpiresAt !== null) {
+                const exception = await verifyFreshDecision(resolution, signal);
+                if (!Number.isSafeInteger(exception?.grant_expires_at_ms)) fail('STANDARD_PR_RESOLUTION_EXCEPTION_STALE');
+                exceptionExpiresAt = Math.min(exceptionExpiresAt, exception.grant_expires_at_ms);
+              }
               const proof = await verifyFreshDecision(b.consent, signal);
               consentGrantExpiresAt = proof.grant_expires_at_ms;
               assertContext(instance);
@@ -173,8 +180,7 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
             assertGrantsCurrent: time => {
               if (!Number.isSafeInteger(consentGrantExpiresAt) || time >= consentGrantExpiresAt)
                 fail('STANDARD_PR_MERGE_CONSENT_GRANT_EXPIRED');
-              const expires = plan.qualification.resolution_expires_at_ms;
-              if (expires !== null && time >= expires) fail('STANDARD_PR_RESOLUTION_EXCEPTION_STALE');
+              if (exceptionExpiresAt !== null && time >= exceptionExpiresAt) fail('STANDARD_PR_RESOLUTION_EXCEPTION_STALE');
             },
           } : {}) });
       } catch (cause) {

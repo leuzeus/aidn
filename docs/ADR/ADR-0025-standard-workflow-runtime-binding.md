@@ -3548,7 +3548,9 @@ digests. The fresh qualification proof records the current observations and
 the advance. Historical v1 resolution receipts require the original base and
 their exact observation digests. A documented exception binds its own base
 and deadline. An advance that makes the exception inapplicable requires new
-R08 authority.
+R08 authority. The host authenticates the exception again before sending.
+The exception question and its signed authority envelope must both be current
+at the final send check.
 
 Before dispatch, the host revalidates the plan's qualification, the signed
 consent and its authority, and the open PR and expected base. A change in

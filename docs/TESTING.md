@@ -1512,7 +1512,11 @@ For the merge executor, run the same standalone script with
 check rerun and `--case=merge-consent-correction` for lost acknowledgement
 and cold recovery. `--case=merge-refusals` exercises pre-send refusals.
 `--case=exception-merge-consent-correction` exercises the corrective route
-with a documented exception and its own validity. These cases use the two
+with a documented exception and its own validity.
+`--case=exception-merge-consent-correction-grant-expired` moves the final
+transport clock to expiry of the signed exception envelope while the
+exception question and consent grant are still valid. It expects zero sends.
+These cases use the two
 published child call sites, synthetic upstream receipts, real FILES host,
 inbox, CAS and journal, a fixture signer and doubled GitHub transport.
 The recovery case retains UNKNOWN for an open PR and an uncorrelated

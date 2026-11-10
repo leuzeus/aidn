@@ -106,12 +106,15 @@ export function createStandardHostAuthority({ configuration, environment = proce
     const check = input => {
       const envelope = capture(kind, input.sourceRef, subject(input), input.historical !== true);
       const value = envelope?.payload, claim = value?.source ?? value;
-      const mergeConsent = kind === "human" && subject(input).contract_version === mergeConsentQuestionVersion;
+      const questionVersion = kind === "human" ? subject(input).contract_version : null;
+      const mergeConsent = questionVersion === mergeConsentQuestionVersion;
+      const resolutionException = questionVersion === "standard-pr-review-resolution-exception-question.v1";
       if (!value || shadowHash(claim) !== shadowHash(input.source ?? input.grant)
         || input.payload !== undefined && shadowHash(value.payload) !== shadowHash(input.payload)) fail("STANDARD_HOST_SOURCE_CHANGED");
       return { outcome: "verified", authority_id: claim.authority_id, source_sha256: shadowHash(claim),
         ...(kind === "native-renewal" ? { grant_sha256: shadowHash(claim), evidence_class: claim.closure?.evidence_class } : {}),
-        ...(mergeConsent ? { grant_sha256: shadowHash(envelope), grant_expires_at_ms: envelope.expires_at_ms } : {}) };
+        ...(mergeConsent ? { grant_sha256: shadowHash(envelope) } : {}),
+        ...(mergeConsent || resolutionException ? { grant_expires_at_ms: envelope.expires_at_ms } : {}) };
     };
     return Object.freeze({ read, verify: check });
   }
