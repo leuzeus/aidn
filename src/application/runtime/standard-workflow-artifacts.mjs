@@ -59,15 +59,23 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     }
     return readRow(name, row, selected, required);
   }
-  function readMany(names, { required = [] } = {}) {
+  function readMany(names, { required = [], includeMetadata = false } = {}) {
     const requiredNames = new Set(required), selected = describe();
-    if (selected.backend !== "postgres") return names.map(name => read(name, { required: requiredNames.has(name) }));
+    if (selected.backend !== "postgres") {
+      return names.map(name => {
+        const observed = read(name, { required: requiredNames.has(name) });
+        return includeMetadata ? { ...observed, metadata_sha256: metadataHash(name) } : observed;
+      });
+    }
     const paths = names.map(relative), store = open(true);
     try {
       if (store.backend !== "postgres") fail("STANDARD_CANONICAL_BACKEND_CONFLICT");
       const rows = store.getArtifacts(paths);
       if (shadowHash(describe()) !== shadowHash(selected)) fail("STANDARD_CANONICAL_BACKEND_CONFLICT");
-      return paths.map((name, index) => readRow(name, rows[index], selected, requiredNames.has(name)));
+      return paths.map((name, index) => {
+        const row = rows[index], observed = readRow(name, row, selected, requiredNames.has(name));
+        return includeMetadata ? { ...observed, metadata_sha256: row ? artifactMetadataHash(row) : null } : observed;
+      });
     } finally { store.close(); }
   }
   function compareAndSwap(change) {

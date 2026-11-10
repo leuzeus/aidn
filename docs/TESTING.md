@@ -3528,6 +3528,11 @@ context and evidence on PostgreSQL, missing required artifacts, optional
 omissions, and fresh reads after a later canonical revision. This comparison
 measures that context read only.
 
+The cycle checkpoint's PostgreSQL document comparison covers the same ordered
+paths, content fingerprints and metadata fingerprints as individual canonical
+reads. A later metadata revision must appear in the next observation. The
+checkpoint retains its separate preparation, authorization and effect checks.
+
 The project artifact command fixture checks bounded PostgreSQL journal reads
 with a doubled SQL transport. It covers canonical scope selection, requested
 order, missing paths, invalid requests, bounded output and a failed worker.

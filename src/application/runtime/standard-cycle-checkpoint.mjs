@@ -43,15 +43,21 @@ export function createStandardCycleCheckpoint({ artifacts, scope, session, audit
     && value.levels?.level2?.required === false && value.levels?.level3?.required === false;
   function documents(observed, checked) {
     const cycle = checked.cycle.path.replace(/\/status\.md$/, "");
-    return [...names.map(name => `${cycle}/${name}.md`), observed.row.path, "CURRENT-STATE.md", "snapshots/context-snapshot.md", "baseline/current.md", "SPEC.md", "WORKFLOW.md", "WORKFLOW-KERNEL.md"]
-      .map(name => {
-        const row = artifacts.read(name, { required: true });
-        if (artifacts.describe().state_mode === "dual") {
-          const file = agentRunPhysicalPath(path.join(root, "docs/audit", name));
-          if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== row.sha256) fail("STANDARD_CYCLE_CHECKPOINT_PROJECTION_STALE");
-        }
-        return { path: name, sha256: row.sha256, metadata_sha256: artifacts.metadataHash(name) };
-      });
+    const paths = [...names.map(name => `${cycle}/${name}.md`), observed.row.path, "CURRENT-STATE.md",
+      "snapshots/context-snapshot.md", "baseline/current.md", "SPEC.md", "WORKFLOW.md", "WORKFLOW-KERNEL.md"];
+    const selected = artifacts.describe();
+    const batch = selected.backend === "postgres" ? artifacts.readMany(paths, { required: paths, includeMetadata: true }) : null;
+    if (batch && (batch.some(row => row.source !== "postgres") || shadowHash(artifacts.describe()) !== shadowHash(selected)))
+      fail("STANDARD_CANONICAL_BACKEND_CONFLICT");
+    return paths.map((name, index) => {
+      const row = batch ? batch[index] : artifacts.read(name, { required: true });
+      const mode = batch ? selected.state_mode : artifacts.describe().state_mode;
+      if (mode === "dual") {
+        const file = agentRunPhysicalPath(path.join(root, "docs/audit", name));
+        if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== row.sha256) fail("STANDARD_CYCLE_CHECKPOINT_PROJECTION_STALE");
+      }
+      return { path: name, sha256: row.sha256, metadata_sha256: batch ? row.metadata_sha256 : artifacts.metadataHash(name) };
+    });
   }
   function events() {
     const file = agentRunPhysicalPath(path.join(root, eventRelative), { missing: true });

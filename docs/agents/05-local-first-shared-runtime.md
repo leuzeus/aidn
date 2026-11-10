@@ -34,6 +34,10 @@ reads when PostgreSQL owns the artifacts. It reuses the bounded read-only
 artifact port and checks content integrity and required paths in request order.
 A later diagnostic or effect boundary acquires its own observation.
 
+The cycle checkpoint reads content and metadata fingerprints together from
+the configured PostgreSQL artifact rows. Every checkpoint document check
+opens a fresh bounded observation. Dual mode also checks the visible bytes.
+
 ## Do Not Move Implicitly
 
 ADR-0013 defines an explicit migration of standard AIDN executable assets to a

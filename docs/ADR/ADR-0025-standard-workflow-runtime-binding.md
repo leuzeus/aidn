@@ -54,6 +54,10 @@ PostgreSQL observation after the closure-admission check. The same ordered
 required and optional documents feed the diagnostic digest. Integrity and
 backend selection are checked before returning the document observation. A
 separate preparation, dispatch or effect fence still reads fresh evidence.
+The cycle checkpoint uses the same bounded PostgreSQL reader for the ordered
+document set. It fingerprints content and metadata from the same canonical
+rows, checks dual projections, and repeats the observation at each existing
+checkpoint boundary.
 
 History authentication uses the cursor from its initial full replay and
 resolves frames against the frozen component hashes. FILES record reads use
