@@ -10,6 +10,7 @@ import { loadStandardWorkflowAssets } from "../../src/application/runtime/standa
 import { closureHumanSource } from "./cycle-closure-fixture-lib.mjs";
 import { createStandardProcessAuthority } from "../../src/application/runtime/standard-process-authority.mjs";
 import { MODE_WORK_CONTRACT } from "../../src/core/workflow/standard-mode-work.mjs";
+import { assertSpikeReview, spikeConversionChoices } from "../../src/core/workflow/standard-spike-decision.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 
 // The production mixed host, shipped model, ports and journals are used here.
@@ -99,6 +100,30 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
           await f.open().acceptOperation(result.operation_id, { write: true });
           if (closureChoice !== "close") break;
           continue;
+        }
+        if (record.intent.binding_ref === "spike_conversion_decision") {
+          assert.equal(sessionMode, "EXPLORING");
+          assert.equal(disposition, "retain_requested");
+          assert.equal(record.phase, "staged");
+          assert.deepEqual(record.results, []);
+          const { review, choices } = record.preview.prepared;
+          assertSpikeReview(review);
+          assert.deepEqual(choices, spikeConversionChoices);
+          const reviewId = record.preview.input.review_operation_id;
+          const observed = f.open().readOperation(reviewId);
+          assert.equal(observed.intent.binding_ref, "mode_work_observe");
+          const observation = observed.results.at(-1).output;
+          assert.equal(observation.effect_status, "no_effect");
+          assert.deepEqual(review.analysis, observation.observations.review);
+          const admitted = state.record.events.findLast(row => row.intent?.binding_ref === "spike_conversion_admit");
+          assert.ok(admitted);
+          const admission = f.open().readOperation(admitted.intent.operation_id);
+          assert.equal(admission.preview.input.review_operation_id, reviewId);
+          assert.equal(admission.results.at(-1).output.facts.mode_work_spike_requested, true);
+          evaluation = observation.observations.evaluation;
+          assert.equal(evaluation.outcome, "blocked");
+          assert.deepEqual(evaluation.facts, {});
+          break;
         }
         if (record.intent.binding_ref === "mode_work_continue_decision") {
           evaluation = record.preview.prepared.review;
