@@ -74,8 +74,10 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
     storage_mode: storageMode, session_mode: sessionMode, disposition, close_session: closeSession, closure_choice: closureChoice, authorization: auth,
   }));
   const originalAuthority = shadowHash(auth), originalProduct = fs.readFileSync(path.join(f.configuration.product_root, "app.mjs"), "utf8");
-  const originalHead = execFileSync("git", ["-C", f.configuration.target_root, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
-  let evaluation, closure;
+  const git = (...args) => execFileSync("git", ["--no-optional-locks", "-C", f.configuration.target_root, ...args],
+    { encoding: "utf8", windowsHide: true }).trim();
+  const originalHead = git("rev-parse", "HEAD");
+  let expectedHead = originalHead, evaluation, closure;
   for (let step = 0; step < (closeSession ? 40 : 20); step++) {
     const state = f.open().inspect();
     if (state.cursor.status === "COMPLETED") break;
@@ -121,6 +123,21 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
       }
       const record = f.open().readOperation(result.operation_id), output = record.results.at(-1)?.output;
       console.log(JSON.stringify({ mode_analysis_step: record.intent.binding_ref, outcome: output?.outcome, native_sessions: f.t.sessions.length }));
+      if (record.intent.binding_ref === "session_git_checkpoint" && output.facts.session_git_checkpoint_created) {
+        assert.equal(sessionMode, "EXPLORING");
+        assert.equal(expectedHead, originalHead, "Only one session metadata checkpoint is expected");
+        assert.equal(output.effect_status, "confirmed");
+        assert.equal(output.facts.session_git_ready_for_cycle, true);
+        const { git: checkpoint, committed_paths: paths } = output.observations;
+        const allowed = ["docs/audit/CURRENT-STATE.md", "docs/audit/RUNTIME-STATE.md", "docs/audit/sessions/S001.md"];
+        assert.ok(paths.length > 0 && paths.every(file => allowed.includes(file)));
+        assert.equal(checkpoint.parent_sha, originalHead);
+        assert.equal(git("rev-parse", "HEAD"), checkpoint.commit_sha);
+        assert.equal(git("show", "-s", "--format=%P", checkpoint.commit_sha), originalHead);
+        const changed = git("diff-tree", "--no-commit-id", "--name-only", "-r", checkpoint.commit_sha).split(/\r?\n/);
+        assert.deepEqual(changed.sort(), [...paths].sort());
+        expectedHead = checkpoint.commit_sha;
+      }
       if (record.intent.binding_ref === "mode_work_evaluate") { evaluation = output; if (!closeSession) break; }
       if (record.intent.binding_ref === "session_close_finalize") { closure = output; break; }
       assert.equal(output?.outcome, "completed");
@@ -133,7 +150,7 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
   assert.equal(shadowHash(auth), originalAuthority);
   assert.equal(f.t.sessions.length, closeSession ? 2 : 1); assert.ok(f.t.sessions.every(row => row.closed));
   assert.equal(fs.readFileSync(path.join(f.configuration.product_root, "app.mjs"), "utf8"), originalProduct);
-  if (!closeSession || closureChoice !== "close") assert.equal(execFileSync("git", ["-C", f.configuration.target_root, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim(), originalHead);
+  if (!closeSession || closureChoice !== "close") assert.equal(git("rev-parse", "HEAD"), expectedHead);
   if (closeSession && closureChoice === "close") {
     assert.equal(closure?.effect_status, "confirmed"); assert.equal(closure.facts.session_close_completed, true);
     assert.equal(closure.observations.event.mode, sessionMode);

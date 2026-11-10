@@ -1210,8 +1210,11 @@ select compatible new cases. Native transport and human authentication remain
 fixture capabilities; artifact, SQLite, Git, admission and dispatcher ports are
 real. The fixture rejects missing/malformed product snapshots with a typed code
 before Native allocation. The accepted mode result must retain context, product
-output and native-result evidence. The fixture preserves product/HEAD, checks D/H and missing-answer polling
-allocate no Native, then tests read-only polling in a new Node and common-reducer
+output and native-result evidence. The fixture preserves the product. If
+EXPLORING creates its governed session metadata checkpoint, the fixture checks
+its receipt, parent and paths against Git and pins the resulting HEAD. It
+checks D/H and missing-answer polling allocate no Native, then tests read-only
+polling in a new Node and common-reducer
 replay/simulation with canonical/product/Git/allocation/journal witnesses.
 Read-only cold polling is not continuation after a new decision, SPIKE admission,
 session closure, installed behavior or genuine Native/Human qualification.
