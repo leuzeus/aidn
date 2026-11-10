@@ -1734,6 +1734,10 @@ task, constraints/risks, adaptive depth and planned cross-usage coverage. A
 shared/high-risk matrix needs the nominal, alternate and context classes stated
 in SPEC-R04's minimum structure; an incomplete recorded proposal stays blocked.
 No model call or canonical readiness write is needed for this evaluation.
+The PostgreSQL cycle-plan context validates the current state, workflow kernel,
+session and cycle in its own canonical inventory, separate from the preceding
+drift observation. The later metadata observations still bind the content
+hashes in the readiness context.
 
 `cycle_implementation_enter` consumes the accepted evaluation through IR data
 mapping. An explicit reviewed grant authorizes exactly the cycle status and

@@ -200,8 +200,11 @@ records against the individual canonical reads, including their order and
 source. Check that duplicate numeric identities are refused and that a new
 observation sees a later canonical change. In a disposable PostgreSQL
 readiness comparison, count artifact worker calls separately for each fresh
-context read and compare complete context hashes. A context comparison covers
-neither signed nominal history nor the full freshness budget.
+context read and compare complete context hashes. Include the current state
+and workflow kernel from the cycle-plan inventory, then change a required
+document in the disposable PostgreSQL target and repeat the observation.
+A context comparison covers neither signed nominal history nor the full
+freshness budget.
 
 For STANDARD host preconditions on PostgreSQL, compare the complete signed
 snapshot input with individual document reads and count artifact worker

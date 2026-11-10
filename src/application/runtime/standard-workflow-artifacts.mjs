@@ -286,6 +286,7 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     const names = [...byPath.keys()];
     const readObserved = name => readRow(relative(name), byPath.get(name), selected, true);
     return {
+      readRequired: readObserved,
       sessions: () => selectSessions(names, readObserved),
       cycles: () => selectCycles(names, readObserved),
     };
@@ -294,7 +295,7 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
   // observations acquire a new inventory, including under an effect fence.
   function observeTopology() {
     const selected = describe();
-    return selected.backend === "postgres" ? postgresTopology(selected) : { sessions, cycles };
+    return selected.backend === "postgres" ? postgresTopology(selected) : { readRequired, sessions, cycles };
   }
   function sessions() {
     const selected = describe();
