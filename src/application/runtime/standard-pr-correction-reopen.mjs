@@ -126,13 +126,15 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
         || !Number.isSafeInteger(age) || age < 0 || plan.changes.some(row => artifactContentHash(text(row)) !== row.after_sha256))
         fail('STANDARD_PR_CORRECTION_EXPLICIT_WRITE_REQUIRED');
       if (age > 300000) fail('STANDARD_PLAN_EXPIRED');
+      const committed = [];
+      let attempted = false;
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
           active(signal); await assertAuthorized();
           const fresh = await prepare(instance, plan.input, plan.prepared_at_ms, true, signal);
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail('STANDARD_PR_CORRECTION_PREVIEW_CHANGED');
         } catch (cause) { cause.effect_status = 'no_effect'; throw cause; }
-        const committed = []; let attempted = false, pushIdentity = null;
+        let pushIdentity = null;
         function local(localView, readInstance = readCurrent) {
           observeLocal(instance, plan, committed, { signal, readInstance, assertOwner: () => artifacts.assertLocalEffectOwner(expectPlan) });
           if (localView) {
@@ -170,6 +172,11 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
           return emit(attempted ? 'reconciliation_required' : 'blocked', attempted ? 'unknown' : 'no_effect',
             { reason_code: /^[A-Z][A-Z0-9_]+$/.test(cause.code ?? '') ? cause.code : 'STANDARD_PR_CORRECTION_UNCONFIRMED', committed });
         }
+      }).catch(cause => {
+        // A changed owner at finalization can supersede the callback result.
+        // The owner guard has refused release, so retain the observed prefix.
+        if (!attempted || cause.code !== 'STANDARD_EFFECT_OWNER_CHANGED') throw cause;
+        return emit('reconciliation_required', 'unknown', { reason_code: cause.code, committed });
       });
     } });
 }

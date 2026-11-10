@@ -4763,7 +4763,9 @@ await and a changed authenticated prior receipt at the same instance prefix
 after the second remote read. Both must refuse before the first CAS. This
 subset cannot qualify the full matrix. Each case derives a fresh plan normally;
 expiry cannot stand in for the injected refusal. Partial failures retain their
-owner and UNKNOWN, and cold preparation refuses to replay them.
+owner and UNKNOWN, and cold preparation refuses to replay them. The owner
+injection checks that finalization preserves the confirmed prefix when it
+refuses to release the changed owner.
 
 Projection fault injection applies to FILES and DUAL only. DB-only reports both
 projection probes as N/A, separately from passing checks, and asserts the

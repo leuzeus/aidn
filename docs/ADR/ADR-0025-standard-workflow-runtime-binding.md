@@ -910,7 +910,9 @@ current event, complete fresh provider bodies and local/remote heads. Over the
 owned canonical transition it keeps immutable source authentication separate
 from exact admitted document pre/postimages, and retains a causal observation.
 Changed remote content, product, source or head/base refuses continuation;
-partial writes retain unknown state and ownership. This bridge covers only
+partial writes retain unknown state and ownership. If finalization observes a
+changed owner after a CAS attempt, the reopening reports UNKNOWN with the
+confirmed postimage prefix and leaves ownership for reconciliation. This bridge covers only
 these canonical writes. It is not permission to reuse triage after a provider
 mutation, product correction or a new HEAD.
 
