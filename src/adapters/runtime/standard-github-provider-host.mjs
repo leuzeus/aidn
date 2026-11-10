@@ -221,11 +221,12 @@ export function createStandardGithubProviderHost({ configuration, home, identity
     return createGithubPullRequestOpen({ ...github, hostContextSha256: contextSha }, { run });
   }
   function readPort(factory, method) {
-    return async (request, { signal } = {}) => {
+    return async (request, readOptions = {}) => {
+      const { signal } = readOptions;
       const guard = transportGuard();
       const authenticated = await driveGithubObservationAsync(authenticate(guard), runGithubRead, signal);
       const result = await factory({ ...github, reviewer, environment: authenticated },
-        { run: guardedRun(guard, runGithubRead) })[method](request, { signal });
+        { run: guardedRun(guard, runGithubRead) })[method](request, readOptions);
       guard();
       return result;
     };

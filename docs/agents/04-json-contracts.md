@@ -62,7 +62,8 @@ GitHub host manifest. `standard-pr-checks-accept-{input,output}.v1` retains the
 exact R08 receipt, delivery and PR subject, policy digest and successful check
 result identities. `standard-pr-merge-consent-input.v1` and the v2 question
 and output bind that acceptance to a separate `human-pr-merge-consent.v1`
-signed source in `process-decision-inbox.v14`. The question separates the
+signed source in `process-decision-inbox.v18`. The inbox and receipt bind the
+signed authority envelope by digest. The question separates the
 approved repository, PR, exact HEAD and target branch from the evidence
 observed at intake. The v2 no-effect receipt binds the subject, question and
 signed source. Historical v1 questions and outputs carry the consent deadline

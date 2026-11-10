@@ -122,7 +122,7 @@ export function createComposedGithubR09ProviderFixture({ targetRoot, controlRoot
     const observation = result.data.repository.pullRequest;
     observation.headRepository = observation.baseRepository = { id: repository.node_id };
     observation.baseRef = { target: { oid: baseTip } };
-    Object.assign(observation, { mergeQueue: null, autoMergeRequest: null, mergedAt: merged?.at ?? null,
+    Object.assign(observation, { mergeQueue: null, autoMergeRequest: null, mergeable: "MERGEABLE", mergeStateStatus: "CLEAN", mergedAt: merged?.at ?? null,
       mergedBy: merged ? { id: actor.node_id, login: actor.login } : null,
       mergeCommit: merged ? { oid: merged.oid, messageBody: bare('show', '-s', '--format=%b', merged.oid),
         parents: { totalCount: parents.length, nodes: parents.map(oid => ({ oid })), pageInfo: { hasNextPage: false } } } : null });

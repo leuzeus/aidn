@@ -137,7 +137,7 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
       const { plan, b } = checked(instance, input, prepared, operationId);
       if (consentExpired(b)) return renewal();
       if (plan.provider === null) fail('STANDARD_PR_MERGE_PLAN_CHANGED');
-      let value;
+      let value, consentGrantExpiresAt;
       try {
         value = await port.apply(plan.provider, { write: true, expectPlan: plan.provider.plan_sha256, signal, assertAuthorized,
           assertReviewFresh: async () => {
@@ -153,10 +153,13 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
           },
           ...(b.current ? {
             assertConsentCurrent: async () => {
-              await verifyFreshDecision(b.consent, signal);
+              const proof = await verifyFreshDecision(b.consent, signal);
+              consentGrantExpiresAt = proof.grant_expires_at_ms;
               assertContext(instance);
             },
-            assertReviewGrantCurrent: time => {
+            assertGrantsCurrent: time => {
+              if (!Number.isSafeInteger(consentGrantExpiresAt) || time >= consentGrantExpiresAt)
+                fail('STANDARD_PR_MERGE_CONSENT_GRANT_EXPIRED');
               const expires = plan.qualification.resolution_expires_at_ms;
               if (expires !== null && time >= expires) fail('STANDARD_PR_RESOLUTION_EXCEPTION_STALE');
             },

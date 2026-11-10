@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { assertGithubRequiredChecksPolicy, observeGithubRequiredChecks } from '../../src/adapters/git-provider/github-required-checks.mjs';
 import { createStandardPrMergeConsent } from '../../src/application/runtime/standard-session-pr-merge-consent.mjs';
 import { assertMergeConsentOutput, assertRequiredChecksOutput, mergeConsentOutput, mergeConsentQuestion } from '../../src/core/workflow/standard-pr-merge-consent.mjs';
+import { assertDecisionInbox, decisionInboxId } from '../../src/core/workflow/process-decision-inbox.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 
 const sha = 'a'.repeat(64), head = '1'.repeat(40), base = '2'.repeat(40), op = 'op_' + 'c'.repeat(40);
@@ -107,4 +108,23 @@ for (const [choice, outcome] of [['approve_merge', 'completed'], ['refused', 're
     { code: 'PROCESS_HUMAN_QUESTION_CHANGED' });
   passed++;
 }
+const current = mergeConsentQuestion({ ...record, preview: { input: record.preview.input,
+  binding: { output_contract: 'standard-pr-merge-consent-output.v2' }, prepared: { prepared_at_ms: 2000, subject } } });
+assert.equal(current.contract_version, 'standard-pr-merge-consent-question.v2');
+assert.equal(Object.hasOwn(current, 'expires_at_ms'), false);
+assert.deepEqual(current.subject, { repository_id: 'R_repo', pull_request_id: 'PR_subject', pull_request_number: 7,
+  head_oid: head, base_ref: 'dev' });
+assert.deepEqual(current.qualification, subject);
+const currentSource = { ...source, choice: 'approve_merge', question_sha256: shadowHash(current), subject_sha256: shadowHash(current.subject) };
+const currentCapture = { contract_version: 'process-decision-inbox.v18', operation_id: op, inbox_id: decisionInboxId(currentSource),
+  source: currentSource, source_ref: 'fixture', grant_sha256: sha, phase: 'reserved', receipt_sha256: null,
+  key_id: sha, authentication: sha };
+assert.deepEqual(assertDecisionInbox(currentCapture), currentCapture);
+const currentOutput = mergeConsentOutput(current, currentCapture);
+assert.equal(currentOutput.observations.grant_sha256, sha);
+assert.equal(Object.hasOwn(currentOutput.observations, 'expires_at_ms'), false);
+const { grant_sha256, ...withoutGrant } = currentCapture;
+assert.throws(() => assertDecisionInbox(withoutGrant), { code: 'PROCESS_DECISION_INBOX_INVALID' });
+assert.throws(() => mergeConsentOutput(current, withoutGrant), { code: 'STANDARD_OPERATION_OUTPUT_INVALID' });
+passed++;
 console.log(JSON.stringify({ status: 'PASS', checks: passed, scope: 'offline-provider-inventory-and-consent-contract' }));

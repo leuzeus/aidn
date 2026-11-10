@@ -98,17 +98,20 @@ export function createStandardHostAuthority({ configuration, environment = proce
     if (!principal || !verify(null, Buffer.from(shadowHash(body)), createPublicKey(principal.public_key), Buffer.from(signature, "base64"))) fail("STANDARD_HOST_SOURCE_NOT_AUTHENTICATED");
     const claim = envelope.payload?.source ?? envelope.payload;
     if (claim?.authority_id !== envelope.authority_id) fail("STANDARD_HOST_SOURCE_AUTHOR_CHANGED");
-    return envelope.payload;
+    return envelope;
   }
   function source(kind) {
     const subject = input => input.question ?? input.request;
-    const read = input => capture(kind, input.sourceRef, subject(input), true);
+    const read = input => capture(kind, input.sourceRef, subject(input), true)?.payload ?? null;
     const check = input => {
-      const value = capture(kind, input.sourceRef, subject(input), input.historical !== true), claim = value?.source ?? value;
+      const envelope = capture(kind, input.sourceRef, subject(input), input.historical !== true);
+      const value = envelope?.payload, claim = value?.source ?? value;
+      const mergeConsent = kind === "human" && subject(input).contract_version === mergeConsentQuestionVersion;
       if (!value || shadowHash(claim) !== shadowHash(input.source ?? input.grant)
         || input.payload !== undefined && shadowHash(value.payload) !== shadowHash(input.payload)) fail("STANDARD_HOST_SOURCE_CHANGED");
       return { outcome: "verified", authority_id: claim.authority_id, source_sha256: shadowHash(claim),
-        ...(kind === "native-renewal" ? { grant_sha256: shadowHash(claim), evidence_class: claim.closure?.evidence_class } : {}) };
+        ...(kind === "native-renewal" ? { grant_sha256: shadowHash(claim), evidence_class: claim.closure?.evidence_class } : {}),
+        ...(mergeConsent ? { grant_sha256: shadowHash(envelope), grant_expires_at_ms: envelope.expires_at_ms } : {}) };
     };
     return Object.freeze({ read, verify: check });
   }

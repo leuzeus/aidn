@@ -1522,7 +1522,10 @@ merge, then accepts the exact postimage and opens R09 with a single send.
 and dispatches with the original signed approval. `--case=merge-consent-transport`
 advances the final provider clock sample into the old ten-second margin
 and checks that the approved merge sends once with the ten-second transport
-timeout. These cases run outside the required family. The historical
+timeout. `--case=merge-consent-grant-expired` moves that same clock sample to
+the expiry of the signed authority envelope and expects zero sends. The refusal
+fixture also exercises a GitHub blocked state and a newly signed envelope
+with unchanged decision contents. These cases run outside the required family. The historical
 `--case=merge-consent-renewal` and `--case=merge-consent-send-window` selectors
 belong to the archived v1 model and its matching checkout. Use the composition
 and historical merge-reader fixtures for binding and reader regressions.

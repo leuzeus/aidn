@@ -23,6 +23,7 @@ import inboxV17 from "../contracts/workflow-definition/process-decision-inbox.v1
 import { assertHumanRecoveryCycleSelection } from "./standard-drift-recovery-cycle-selection.mjs";
 import inboxV15 from "../contracts/workflow-definition/process-decision-inbox.v15.schema.json" with { type: "json" };
 import { assertHumanPostMergeDecision } from "./standard-pr-post-merge-decision.mjs";
+import inboxV18 from "../contracts/workflow-definition/process-decision-inbox.v18.schema.json" with { type: "json" };
 import inboxV14 from "../contracts/workflow-definition/process-decision-inbox.v14.schema.json" with { type: "json" };
 import { assertHumanMergeConsent } from "./standard-pr-merge-consent.mjs";
 import inboxV13 from "../contracts/workflow-definition/process-decision-inbox.v13.schema.json" with { type: "json" };
@@ -101,9 +102,10 @@ export function assertDecisionInbox(value) {
       fail("PROCESS_DECISION_INBOX_BINDING_CHANGED");
     return value;
   }
-  if (["process-decision-inbox.v13", "process-decision-inbox.v14"].includes(value?.contract_version)) {
-    const consent = value.contract_version === "process-decision-inbox.v14";
-    if (checkShadowJson(value) || validateJsonSchema(value, consent ? inboxV14 : inboxV13, "$", { contractKind: "workflow-definition" }).length)
+  if (["process-decision-inbox.v13", "process-decision-inbox.v14", "process-decision-inbox.v18"].includes(value?.contract_version)) {
+    const consent = value.contract_version !== "process-decision-inbox.v13";
+    const definition = value.contract_version === "process-decision-inbox.v18" ? inboxV18 : consent ? inboxV14 : inboxV13;
+    if (checkShadowJson(value) || validateJsonSchema(value, definition, "$", { contractKind: "workflow-definition" }).length)
       fail("PROCESS_DECISION_INBOX_INVALID");
     if (consent) assertHumanMergeConsent(value.source); else assertHumanResolutionException(value.source);
     if (value.inbox_id !== decisionInboxId(value.source) || (value.phase === "receipted") !== (value.receipt_sha256 !== null)) fail("PROCESS_DECISION_INBOX_BINDING_CHANGED");

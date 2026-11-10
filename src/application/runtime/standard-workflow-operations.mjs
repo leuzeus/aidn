@@ -80,7 +80,7 @@ const files = ["standard-session-pr-external-merge.mjs", "standard-session-pr-pr
   new URL("../../adapters/git-provider/github-required-checks.mjs", import.meta.url),
   ...["standard-github-required-checks.v1", "standard-pr-premerge-observe-output.v1", "standard-pr-checks-accept-input.v1",
     "standard-pr-checks-accept-output.v1", "standard-pr-merge-consent-input.v1", "standard-pr-merge-consent-question.v1",
-    "standard-pr-merge-consent-question.v2", "standard-pr-merge-consent-output.v1", "standard-pr-merge-consent-output.v2", "human-pr-merge-consent.v1", "process-decision-inbox.v14"]
+    "standard-pr-merge-consent-question.v2", "standard-pr-merge-consent-output.v1", "standard-pr-merge-consent-output.v2", "human-pr-merge-consent.v1", "process-decision-inbox.v14", "process-decision-inbox.v18"]
     .map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
   ...["standard-pr-review-resolution-select-output.v2", "standard-pr-review-resolution-exception-input.v1",
     "standard-pr-review-resolution-exception-question.v1", "standard-pr-review-resolution-exception-output.v1",

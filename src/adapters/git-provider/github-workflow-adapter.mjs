@@ -51,7 +51,7 @@ const mergeQuery = `query AidnPrMerge($owner:String!,$name:String!,$number:Int!)
   repository(owner:$owner,name:$name) { id nameWithOwner pullRequest(number:$number) { ${mergeFields} } }
 }`;
 const mergeEffectQuery = mergeQuery.replace("query AidnPrMerge(", "query AidnPrMergeEffect(")
-  .replace("mergedAt", "mergedAt mergedBy { login ... on Node { id } } mergeQueue { url } autoMergeRequest { enabledAt }")
+  .replace("mergedAt", "mergedAt mergeable mergeStateStatus mergedBy { login ... on Node { id } } mergeQueue { url } autoMergeRequest { enabledAt }")
   .replace("mergeCommit { oid", "mergeCommit { oid messageBody");
 const reviewEventQuery = `query AidnPrReviewEvent($id:ID!) {
   node(id:$id) {
@@ -194,7 +194,7 @@ function createGithubWorkflowProtocol({ executable, executableSha256, workingDir
       || !fs.statSync(cwd).isDirectory() || sha(fs.readFileSync(binary)) !== executableSha256) fail("GITHUB_PR_HOST_PIN_CHANGED");
   }
   pinned();
-  return function* observePullRequest(request) {
+  return function* observePullRequest(request, { requireDirectEligibility = false } = {}) {
     const start = now(), mono = performance.now(); let requests = 0, threadPages = 0, commentPages = 0, totalComments = 0, totalBytes = 0;
     if (!Number.isSafeInteger(start) || start < 0) fail("GITHUB_PR_OBSERVATION_CLOCK_INVALID");
     function* call(kind, variables) {
@@ -245,6 +245,9 @@ function createGithubWorkflowProtocol({ executable, executableSha256, workingDir
       const pr = identity.pull_request;
       if (mergeEffect && pr.state === "OPEN" && (p.mergeQueue !== null || p.autoMergeRequest !== null))
         fail("GITHUB_PR_MERGE_DIRECT_REQUIRED");
+      if (mergeEffect && requireDirectEligibility && pr.state === "OPEN"
+        && (p.mergeable !== "MERGEABLE" || !["CLEAN", "UNSTABLE", "HAS_HOOKS"].includes(p.mergeStateStatus)))
+        fail("GITHUB_PR_MERGE_ELIGIBILITY_UNCONFIRMED");
       if (pr.head_ref !== request.expected_head_ref || pr.base_ref !== request.expected_base_ref)
         fail("GITHUB_PR_SOURCE_CHANGED");
       pinned();
@@ -327,7 +330,8 @@ export function createGithubPrMergeAsyncAdapter(configuration, { run = runGithub
 
 export function createGithubPrMergeEffectAsyncAdapter(configuration, { run = runGithubObservationCommand, now = Date.now } = {}) {
   const observe = createGithubWorkflowProtocol(configuration, { run, now }, "merge-effect");
-  return Object.freeze({ observePrMerge: (request, { signal } = {}) => driveGithubObservationAsync(observe(request), run, signal) });
+  return Object.freeze({ observePrMerge: (request, { signal, requireDirectEligibility } = {}) =>
+    driveGithubObservationAsync(observe(request, { requireDirectEligibility }), run, signal) });
 }
 
 export function createGithubPrReviewEventAsyncAdapter(configuration, { run = runGithubObservationCommand, now = Date.now } = {}) {

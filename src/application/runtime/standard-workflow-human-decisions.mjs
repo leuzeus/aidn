@@ -92,7 +92,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
       return structuredClone(value);
     } finally { clearTimeout(timer); combined.removeEventListener("abort", onAbort); stop.abort(); }
   }
-  async function verify(claim, sourceRef, request, signal, historical = false) {
+  async function verify(claim, sourceRef, request, signal, historical = false, expectedGrant) {
     if (request.contract_version === recoveryCycleQuestionVersion) assertHumanRecoveryCycleSelection(claim, request);
     else if (request.contract_version === "standard-spike-question.v1") assertHumanSpikeDecision(claim, request);
     else if (request.contract_version === "standard-mode-work-question.v1") assertHumanModeWorkDecision(claim, request);
@@ -110,6 +110,11 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     if (!request.choices.includes(claim.choice)) fail("PROCESS_HUMAN_CHOICE_NOT_OFFERED");
     const proof = await bounded("verify", { source: claim, sourceRef, question: request, historical }, signal);
     if (proof?.outcome !== "verified" || proof.authority_id !== claim.authority_id || proof.source_sha256 !== shadowHash(claim)) fail("PROCESS_HUMAN_NOT_AUTHENTICATED");
+    if (request.contract_version === mergeConsentQuestionVersion
+      && (!/^[a-f0-9]{64}$/.test(proof.grant_sha256 ?? "") || !Number.isSafeInteger(proof.grant_expires_at_ms)
+        || proof.grant_expires_at_ms <= request.issued_at_ms || expectedGrant !== undefined && proof.grant_sha256 !== expectedGrant))
+      fail("STANDARD_PR_MERGE_CONSENT_GRANT_CHANGED");
+    return proof;
   }
   function captured(record) {
     const result = record.results.at(-1), observation = result?.output?.observations;
@@ -117,12 +122,13 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     const retained = read(observation.inbox_id).record;
     if (retained.operation_id !== record.operation_id || retained.source.question_sha256 !== shadowHash(question(record))
       || observation.source_ref !== retained.source_ref || observation.source_sha256 !== shadowHash(retained.source) || observation.choice !== retained.source.choice
+      || observation.grant_sha256 !== retained.grant_sha256
       || record.decision_claim_sha256 !== undefined && record.decision_claim_sha256 !== shadowHash({ source_ref: retained.source_ref, source: retained.source })
       || retained.phase === "receipted" && retained.receipt_sha256 !== shadowHash(result.receipt)) fail("PROCESS_HUMAN_CAPTURE_CHANGED");
     return retained;
   }
   return Object.freeze({ question, captured,
-    verifyReserved: (record, capture, signal) => verify(capture.source, capture.source_ref, question(record), signal),
+    verifyReserved: (record, capture, signal) => verify(capture.source, capture.source_ref, question(record), signal, false, capture.grant_sha256),
     readSource(ref) {
       const match = /^aidn:decision-source\/(decision_[a-f0-9]{40})$/.exec(ref);
       if (!match) fail("PROCESS_HUMAN_SOURCE_REF_INVALID");
@@ -132,23 +138,26 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
       if (typeof sourceRef !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$/.test(sourceRef)) fail("PROCESS_HUMAN_SOURCE_REF_INVALID");
       const request = question(record), claim = await bounded("read", { sourceRef, question: request }, signal);
       if (claim === null) return null;
-      await verify(claim, sourceRef, request, signal);
+      const proof = await verify(claim, sourceRef, request, signal);
+      const currentMergeConsent = request.contract_version === mergeConsentQuestionVersion;
       await assertCurrent?.();
       const id = decisionInboxId(claim), before = inbox.read(id);
       if (before.record) {
         signer.verify(before.record);
-        if (before.record.operation_id !== record.operation_id || shadowHash(before.record.source) !== shadowHash(claim)) fail("PROCESS_HUMAN_SOURCE_ALREADY_USED");
+        if (before.record.operation_id !== record.operation_id || shadowHash(before.record.source) !== shadowHash(claim)
+          || currentMergeConsent && before.record.grant_sha256 !== proof.grant_sha256) fail("PROCESS_HUMAN_SOURCE_ALREADY_USED");
         claimDecision?.(claim);
         if (projectionRequired) inbox.materialize(id, { write: true });
         return before.record;
       }
-      const version = record.intent.binding_ref === recoveryCycleSelection ? "process-decision-inbox.v17"
+      const version = currentMergeConsent ? "process-decision-inbox.v18"
+        : record.intent.binding_ref === recoveryCycleSelection ? "process-decision-inbox.v17"
         : record.intent.binding_ref === externalMergeDisposition ? "process-decision-inbox.v16"
         : record.intent.binding_ref === postMergeDecisionOperation ? "process-decision-inbox.v15"
         : record.intent.binding_ref === mergeConsentOperation ? "process-decision-inbox.v14" : resolutionException(record) ? "process-decision-inbox.v13" : spike(record) ? "process-decision-inbox.v11" : modeWork(record) ? "process-decision-inbox.v10" : correction(record) ? (claim.contract_version === "human-pr-correction-decision.v3" ? "process-decision-inbox.v9" : claim.contract_version === "human-pr-correction-decision.v2" ? "process-decision-inbox.v8" : "process-decision-inbox.v7") : integration(record) ? "process-decision-inbox.v6" : sessionClosure(record) ? "process-decision-inbox.v5" : promotion(record) ? "process-decision-inbox.v4" : closure(record) ? "process-decision-inbox.v3" : recovery(record) ? (claim.contract_version === "human-drift-recovery-decision.v2" ? "process-decision-inbox.v12" : "process-decision-inbox.v2") : "process-decision-inbox.v1";
       claimDecision?.(claim);
       return write({ contract_version: version, inbox_id: id, operation_id: record.operation_id, source_ref: sourceRef,
-        source: claim, phase: "reserved", receipt_sha256: null }, null);
+        source: claim, ...(currentMergeConsent ? { grant_sha256: proof.grant_sha256 } : {}), phase: "reserved", receipt_sha256: null }, null);
     },
     acknowledge(id, receipt) {
       const before = read(id), record = before.record;
@@ -163,7 +172,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     async verifyCaptured(record, signal, { historical = false, acknowledged = false } = {}) {
       const value = captured(record);
       if (acknowledged && value.phase !== "receipted") fail("PROCESS_HUMAN_CAPTURE_MISSING");
-      await verify(value.source, value.source_ref, question(record), signal, historical);
+      return verify(value.source, value.source_ref, question(record), signal, historical, value.grant_sha256);
     },
     output(record, capture) {
       const request = question(record);

@@ -3513,7 +3513,8 @@ triage and resolution receipt, exact repository and PR, HEAD/base/refs,
 protected policy, provider actor, and the identities and digests of the check
 results. The v2 question separates that qualification from the approved
 repository, PR, exact HEAD and target branch. The protected host authenticates
-the signed source and its own validity and observes the qualification again
+the exact signed authority envelope, checks its validity and observes the
+qualification again
 before reserving the decision and before accepting its receipt. Missing
 source, refusal, deferral, cancellation and stale evidence have distinct
 outcomes. A signed approval is a no-effect record. Historical v1 questions
@@ -3542,6 +3543,9 @@ qualify a new plan on the same approved HEAD and target. Before dispatch, the
 host revalidates the plan's review evidence and check results, the signed
 consent and its authority, and the open PR and expected base. The exception
 keeps its own deadline. A queue or active auto-merge blocks direct execution.
+The same protected PR read requires a determinate, mergeable GitHub status
+at preparation and dispatch. The manifest pins the required check producers.
+GitHub evaluates its branch rules and any pre-receive hooks on the mutation.
 The ten-second transport timeout bounds the GitHub request. The historical
 v1 plan retains its former deadline and minimum remaining send window.
 

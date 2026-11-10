@@ -53,10 +53,10 @@ export function createGithubPrMerge({ repository, actor, method, hostContextSha2
       fail('STANDARD_PLAN_EXPIRED');
     return time;
   }
-  async function read(plan, signal) {
+  async function read(plan, signal, { requireDirectEligibility = false } = {}) {
     active(signal);
     const request = plan.request, start = now();
-    const value = assertGithubPrMergeEffectObservation(await observe(request, { signal }));
+    const value = assertGithubPrMergeEffectObservation(await observe(request, { signal, requireDirectEligibility }));
     active(signal);
     const pr = value.pull_request, end = now();
     if (!same(value.repository, repo) || pr.head_repository_id !== repo.node_id || pr.node_id !== request.expected_pull_request_id
@@ -69,7 +69,7 @@ export function createGithubPrMerge({ repository, actor, method, hostContextSha2
     return value;
   }
   async function assertOpen(plan, signal) {
-    const { pull_request: pr } = await read(plan, signal);
+    const { pull_request: pr } = await read(plan, signal, { requireDirectEligibility: !legacyPlan(plan) });
     if (pr.state !== 'OPEN' || pr.merged || pr.observed_base_tip_oid !== plan.request.expected_base_oid)
       fail('GITHUB_PR_MERGE_PREIMAGE_CHANGED');
   }
@@ -92,12 +92,12 @@ export function createGithubPrMerge({ repository, actor, method, hostContextSha2
     async recover(prepared, { expectPlan, signal } = {}) {
       return postimage(checked(prepared, expectPlan), signal);
     },
-    async apply(prepared, { write = false, expectPlan, assertAuthorized, assertReviewFresh, assertConsentCurrent, assertReviewGrantCurrent, signal } = {}) {
+    async apply(prepared, { write = false, expectPlan, assertAuthorized, assertReviewFresh, assertConsentCurrent, assertGrantsCurrent, signal } = {}) {
       if (write !== true || typeof assertAuthorized !== 'function' || typeof assertReviewFresh !== 'function')
         fail('GITHUB_PR_MERGE_EXPLICIT_EFFECT_REQUIRED');
       const plan = checked(prepared, expectPlan), { request, correlation_id: nonce } = plan;
       const legacy = legacyPlan(plan);
-      if (!legacy && (typeof assertConsentCurrent !== 'function' || typeof assertReviewGrantCurrent !== 'function'))
+      if (!legacy && (typeof assertConsentCurrent !== 'function' || typeof assertGrantsCurrent !== 'function'))
         fail('GITHUB_PR_MERGE_EXPLICIT_EFFECT_REQUIRED');
       active(signal);
       fresh(plan);
@@ -108,7 +108,7 @@ export function createGithubPrMerge({ repository, actor, method, hostContextSha2
         { signal, assertSendFresh: timeout => {
           const time = fresh(plan);
           if (!legacy) {
-            assertReviewGrantCurrent(time);
+            assertGrantsCurrent(time);
             return;
           }
           if (!Number.isSafeInteger(timeout) || timeout <= 0) fail('GITHUB_PR_MERGE_SEND_WINDOW_INVALID');

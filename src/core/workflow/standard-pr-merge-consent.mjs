@@ -66,7 +66,7 @@ export function mergeConsentOutput(question, capture) {
     operation_ref: mergeConsentOperation, outcome: outcomeFor(source.choice), effect_status: 'no_effect', facts: factsFor(source.choice),
     observations: { question_sha256: source.question_sha256, subject_sha256: source.subject_sha256, source_sha256: sourceHash,
       choice: source.choice, inbox_id: capture.inbox_id, source_ref: capture.source_ref,
-      ...(current ? {} : { expires_at_ms: question.expires_at_ms }) },
+      ...(current ? { grant_sha256: capture.grant_sha256 } : { expires_at_ms: question.expires_at_ms }) },
     evidence_refs: [{ ref: 'aidn:decision-source/' + capture.inbox_id, sha256: sourceHash }, ...source.evidence_refs] });
 }
 
