@@ -76,11 +76,11 @@ const files = ["standard-session-pr-external-merge.mjs", "standard-session-pr-pr
     new URL(`../../core/contracts/workflow-definition/standard-pr-post-merge-${operation}-${kind}.v1.schema.json`, import.meta.url))),
   new URL("../../core/workflow/standard-pr-merge-execute.mjs", import.meta.url),
   new URL("../../adapters/git-provider/github-pr-merge.mjs", import.meta.url),
-  ...["github-pr-merge-observation.v2", "github-pr-merge-plan.v1", "standard-pr-merge-execute-input.v1", "standard-pr-merge-execute-output.v1", "standard-pr-merge-execute-output.v2", "standard-pr-post-merge-wait-input.v1", "standard-pr-post-merge-wait-output.v1"].map(name => new URL("../../core/contracts/workflow-definition/" + name + ".schema.json", import.meta.url)),
+  ...["github-pr-merge-observation.v2", "github-pr-merge-plan.v1", "github-pr-merge-plan.v2", "standard-pr-merge-execute-input.v1", "standard-pr-merge-execute-output.v1", "standard-pr-merge-execute-output.v2", "standard-pr-post-merge-wait-input.v1", "standard-pr-post-merge-wait-output.v1"].map(name => new URL("../../core/contracts/workflow-definition/" + name + ".schema.json", import.meta.url)),
   new URL("../../adapters/git-provider/github-required-checks.mjs", import.meta.url),
   ...["standard-github-required-checks.v1", "standard-pr-premerge-observe-output.v1", "standard-pr-checks-accept-input.v1",
     "standard-pr-checks-accept-output.v1", "standard-pr-merge-consent-input.v1", "standard-pr-merge-consent-question.v1",
-    "standard-pr-merge-consent-output.v1", "human-pr-merge-consent.v1", "process-decision-inbox.v14"]
+    "standard-pr-merge-consent-question.v2", "standard-pr-merge-consent-output.v1", "standard-pr-merge-consent-output.v2", "human-pr-merge-consent.v1", "process-decision-inbox.v14"]
     .map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
   ...["standard-pr-review-resolution-select-output.v2", "standard-pr-review-resolution-exception-input.v1",
     "standard-pr-review-resolution-exception-question.v1", "standard-pr-review-resolution-exception-output.v1",
@@ -212,7 +212,7 @@ const definitions = [
   ["session_pr_review_event_route", "pr-orchestrate", "read-only", ["SPEC-R08", "SPEC-R10"], "standard-empty-input.v1", "deterministic", "standard-pr-review-event-route-output.v1"],
   ["session_pr_merge_basis", "pr-orchestrate", "read-only", ["SPEC-R09"], "standard-pr-external-merge-disposition-input.v2", "deterministic", "standard-pr-merge-basis-output.v1"],
   ["session_pr_external_merge_disposition", "pr-orchestrate", "read-only", ["SPEC-R08", "SPEC-R09", "SPEC-R10"], "standard-pr-external-merge-disposition-input.v2", "human", "standard-pr-external-merge-disposition-output.v1"],
-  ["session_pr_merge_consent", "pr-orchestrate", "read-only", ["SPEC-R08", "SPEC-R11"], "standard-pr-merge-consent-input.v1", "human", "standard-pr-merge-consent-output.v1"],
+  ["session_pr_merge_consent", "pr-orchestrate", "read-only", ["SPEC-R08", "SPEC-R11"], "standard-pr-merge-consent-input.v1", "human", "standard-pr-merge-consent-output.v2"],
   ["session_pr_merge_execute", "pr-orchestrate", "executor", ["SPEC-R08", "SPEC-R11"], "standard-pr-merge-execute-input.v1", "deterministic", "standard-pr-merge-execute-output.v2"],
   ["session_pr_post_merge_fetch", "pr-orchestrate", "executor", ["SPEC-R09", "SPEC-R11"], "standard-pr-post-merge-fetch-input.v1", "deterministic", "standard-pr-post-merge-fetch-output.v1"],
   ["session_pr_post_merge_alignment", "pr-orchestrate", "read-only", ["SPEC-R09"], "standard-pr-post-merge-alignment-input.v1", "deterministic", "standard-pr-post-merge-alignment-output.v1"],

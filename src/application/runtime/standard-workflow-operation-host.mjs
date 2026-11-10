@@ -617,6 +617,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const assertMergeConsentFresh = (instance, record, signal) => sessionPrConsent.assertFresh(
     instance, record.preview.input, record.preview.prepared, signal);
   const sessionPrMergeEffect = createStandardPrMergeExecute({ ...acceptedReviewPorts, assertConsentFresh: assertMergeConsentFresh,
+    observeMergeQualification: sessionPrConsent.observeForMerge,
     verifyFreshDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
   const postMerge = createStandardSessionPrPostMergeFetch(acceptedReviewPorts);
   const postMergeScope = () => postMergeProjectScope(targetRoot);
@@ -943,7 +944,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       }
       if (record.intent.binding_ref === mergeConsentOperation) {
-        if (now() >= record.preview.prepared.expires_at_ms) fail("STANDARD_PR_MERGE_CONSENT_EXPIRED");
+        if (Object.hasOwn(record.preview.prepared, "expires_at_ms") && Object.hasOwn(record.preview.prepared, "expires_at_ms")
+          && now() >= record.preview.prepared.expires_at_ms)
+          fail("STANDARD_PR_MERGE_CONSENT_EXPIRED");
         if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       }
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(instance, record.preview.prepared.plan);
@@ -1411,7 +1414,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === externalMergeDisposition ? externalDisposition.prepare(state.record, input, occurrenceId)
         : binding.id === checksOperation ? (checksMayObserveMerge(input)
           ? sessionPrPremerge.prepare(state.record, mergeObservationInput(input)) : { can_apply: true })
-        : binding.id === mergeConsentOperation ? await sessionPrConsent.prepare(state.record, input)
+        : binding.id === mergeConsentOperation ? await sessionPrConsent.prepare(state.record, input, { legacy: binding.output_contract === "standard-pr-merge-consent-output.v1" })
         : binding.id === "session_pr_merge_observe" ? sessionPrMerge.prepare(state.record, input)
         : binding.id === "session_pr_review_receive" ? await sessionPrReviewReceiver?.prepare(state.record, input) ?? fail("STANDARD_PR_RECEIVE_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_content_observe" ? await sessionPrReviewContent?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED")

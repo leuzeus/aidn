@@ -1,6 +1,7 @@
-import { assertGithubPrMergePlan, assertGithubPrMergePostimage } from '../../adapters/git-provider/github-pr-merge.mjs';
+import { assertGithubPrMergePlan, assertGithubPrMergePostimage, githubPrMergePlanVersion } from '../../adapters/git-provider/github-pr-merge.mjs';
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
-import { checksOperation, mergeConsentOperation, mergeConsentQuestion } from '../../core/workflow/standard-pr-merge-consent.mjs';
+import { assertMergeQualification, checksOperation, mergeApprovalSubject, mergeConsentOperation, mergeConsentQuestion,
+  mergeConsentQuestionVersion } from '../../core/workflow/standard-pr-merge-consent.mjs';
 import { assertMergeExecuteOutput, assertPostMergeWaitOutput, mergeCompletedFact, mergeExecuteOperation, mergeExecuteOutputVersion,
   mergeSendWindowExhausted, postMergeWaitOperation } from '../../core/workflow/standard-pr-merge-execute.mjs';
 import { createStandardPrReviewEffectsReader, prObservationRequest } from './standard-session-pr-review-effects.mjs';
@@ -9,7 +10,7 @@ const fail = (code, effect_status = 'no_effect') => { throw Object.assign(Error(
 const same = (left, right) => shadowHash(left) === shadowHash(right);
 const receiptHash = record => shadowHash(record.results.at(-1).receipt);
 
-export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, readCurrent, verifyFreshDecision, assertConsentFresh, ...ports }) {
+export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, readCurrent, verifyFreshDecision, assertConsentFresh, observeMergeQualification, ...ports }) {
   const { source: readSource } = createStandardPrReviewEffectsReader({ ...ports, now, reviewPort, readAccepted, readCurrent });
   const port = reviewPort?.merge;
   function basis(instance, input) {
@@ -20,15 +21,31 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
     const consent = readAccepted(instance, input.consent_operation_id, mergeConsentOperation);
     const checks = readAccepted(instance, input.checks_operation_id, checksOperation);
     const question = mergeConsentQuestion(consent.record), source = readSource(instance, input);
-    const { subject } = question, p = source.pullRequest;
+    const current = question.contract_version === mergeConsentQuestionVersion;
+    const approved = current ? question.qualification : question.subject;
+    const approvedChecks = question.checks_operation_id === input.checks_operation_id
+      ? checks : readAccepted(instance, question.checks_operation_id, checksOperation);
+    const qualification = checks.output.observations.subject;
     if (consent.output.facts.session_pr_merge_consent_accepted !== true
       || consent.output.observations.choice !== 'approve_merge'
       || consent.output.observations.question_sha256 !== shadowHash(question)
-      || consent.output.observations.subject_sha256 !== shadowHash(subject)
+      || consent.output.observations.subject_sha256 !== shadowHash(question.subject)
       || consent.output.observations.expires_at_ms !== question.expires_at_ms
-      || question.checks_operation_id !== input.checks_operation_id
-      || checks.output.facts.session_pr_required_checks_accepted !== true || !same(checks.output.observations.subject, subject)
-      || source.correctionsRequired || subject.triage_operation_id !== input.triage_operation_id
+      || approvedChecks.output.facts.session_pr_required_checks_accepted !== true
+      || !same(approvedChecks.output.observations.subject, approved)
+      || checks.output.facts.session_pr_required_checks_accepted !== true
+      || current && !same(mergeApprovalSubject(qualification), question.subject)
+      || !current && question.checks_operation_id !== input.checks_operation_id)
+      fail('STANDARD_PR_MERGE_CONSENT_SUBJECT_CHANGED');
+    const b = { current, consent: consent.record, question, request: prObservationRequest(source.pullRequest), source,
+      consent_receipt_sha256: receiptHash(consent.record), checks_receipt_sha256: receiptHash(checks.record) };
+    assertQualification(instance, input, b, qualification);
+    return b;
+  }
+  function assertQualification(instance, input, b, subject) {
+    assertMergeQualification(subject);
+    const { source } = b, p = source.pullRequest;
+    if (source.correctionsRequired || subject.triage_operation_id !== input.triage_operation_id
       || subject.source_sha256 !== source.sha256 || subject.update_operation_id !== source.updateId
       || subject.repository_id !== p.repository_id || subject.pull_request_id !== p.node_id || subject.pull_request_number !== p.number
       || subject.head_oid !== p.head_oid || subject.base_oid !== p.base_oid || subject.head_ref !== p.head_branch || subject.base_ref !== p.base_branch)
@@ -37,13 +54,19 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
       ? 'session_pr_review_effects_verify' : 'session_pr_review_resolution_exception';
     const resolution = readAccepted(instance, subject.resolution_operation_id, resolutionBinding);
     if (receiptHash(resolution.record) !== subject.resolution_receipt_sha256) fail('STANDARD_PR_MERGE_RESOLUTION_CHANGED');
-    return { consent: consent.record, question, request: prObservationRequest(p), source,
-      consent_receipt_sha256: receiptHash(consent.record), checks_receipt_sha256: receiptHash(checks.record) };
+  }
+  async function observeQualification(instance, input, b, signal) {
+    const { subject } = await observeMergeQualification(instance, input, signal);
+    assertQualification(instance, input, b, subject);
+    return subject;
+  }
+  function assertContext(instance) {
+    if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail('STANDARD_PR_MERGE_CONTEXT_CHANGED');
   }
   function consentExpired(b) {
     const time = now();
     if (!Number.isSafeInteger(time) || time < b.question.issued_at_ms) fail('STANDARD_PLAN_EXPIRED');
-    return time >= b.question.expires_at_ms;
+    return !b.current && time >= b.question.expires_at_ms;
   }
   function assertAge(b) {
     if (consentExpired(b)) fail('STANDARD_PLAN_EXPIRED');
@@ -57,14 +80,16 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
       outcome: 'completed', effect_status: 'no_effect', facts: { [mergeCompletedFact]: false },
       observations: { reason_code: reason }, evidence_refs: [] });
   }
-  function assertProvider(provider, b, id) {
+  function assertProvider(provider, b, id, qualification) {
     const plan = assertGithubPrMergePlan(provider?.plan);
     const url = new URL(b.source.pullRequest.url);
     if (url.origin !== 'https://github.com' || url.pathname.toLowerCase() !==
       ('/' + plan.repository.owner + '/' + plan.repository.name + '/pull/' + b.request.pull_request_number).toLowerCase())
       fail('STANDARD_PR_MERGE_REPOSITORY_CHANGED');
     if (provider.can_apply !== true || provider.plan_sha256 !== shadowHash(plan) || plan.operation_id !== id
-      || plan.repository.node_id !== b.question.subject.repository_id || plan.actor.node_id !== b.question.subject.actor_id
+      || (plan.contract_version === githubPrMergePlanVersion) !== b.current
+      || plan.repository.node_id !== b.question.subject.repository_id
+      || plan.actor.node_id !== qualification.actor_id
       || plan.prepared_at_ms < b.question.issued_at_ms || plan.expires_at_ms !== b.question.expires_at_ms
       || !same(plan.request, b.request)) fail('STANDARD_PR_MERGE_PLAN_CHANGED');
   }
@@ -73,7 +98,9 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
     if (prepared?.can_apply !== true || prepared.plan_sha256 !== shadowHash(plan) || !same(plan.input, input)
       || plan.consent_receipt_sha256 !== b.consent_receipt_sha256 || plan.checks_receipt_sha256 !== b.checks_receipt_sha256)
       fail('STANDARD_PR_MERGE_PLAN_CHANGED');
-    if (plan.provider !== null) assertProvider(plan.provider, b, id);
+    const qualification = b.current ? plan.qualification : b.question.subject;
+    if (b.current) assertQualification(instance, input, b, qualification);
+    if (plan.provider !== null) assertProvider(plan.provider, b, id, qualification);
     return { plan, b };
   }
   function output(prepared, value, confirmation) {
@@ -92,17 +119,18 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
         fail('STANDARD_PR_MERGE_METHOD_AUTHORITY_REQUIRED');
       const b = basis(instance, input);
       let provider = null;
+      const qualification = b.current ? await observeQualification(instance, input, b) : b.question.subject;
       if (!consentExpired(b)) {
         await verifyFreshDecision(b.consent);
         if (!consentExpired(b)) {
           try { provider = await port.prepare(b.request, id, { expiresAt: b.question.expires_at_ms }); }
           catch (cause) { if (!expiredBeforeSend(cause, b)) throw cause; }
-          if (provider !== null) assertProvider(provider, b, id);
+          if (provider !== null) assertProvider(provider, b, id, qualification);
         }
       }
-      if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail('STANDARD_PR_MERGE_CONTEXT_CHANGED');
+      assertContext(instance);
       const plan = { input: structuredClone(input), consent_receipt_sha256: b.consent_receipt_sha256,
-        checks_receipt_sha256: b.checks_receipt_sha256, provider };
+        checks_receipt_sha256: b.checks_receipt_sha256, ...(b.current ? { qualification } : {}), provider };
       return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
     },
     async apply(instance, input, prepared, { signal, assertAuthorized, operationId }) {
@@ -113,11 +141,26 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
       try {
         value = await port.apply(plan.provider, { write: true, expectPlan: plan.provider.plan_sha256, signal, assertAuthorized,
           assertReviewFresh: async () => {
+            if (b.current) {
+              const fresh = await observeQualification(instance, input, b, signal);
+              if (!same(fresh, plan.qualification)) fail('STANDARD_PR_MERGE_QUALIFICATION_CHANGED');
+              return;
+            }
             assertAge(b);
             await assertConsentFresh(instance, b.consent, signal);
             await verifyFreshDecision(b.consent, signal);
             assertAge(b);
-          } });
+          },
+          ...(b.current ? {
+            assertConsentCurrent: async () => {
+              await verifyFreshDecision(b.consent, signal);
+              assertContext(instance);
+            },
+            assertReviewGrantCurrent: time => {
+              const expires = plan.qualification.resolution_expires_at_ms;
+              if (expires !== null && time >= expires) fail('STANDARD_PR_RESOLUTION_EXCEPTION_STALE');
+            },
+          } : {}) });
       } catch (cause) {
         if (cause.effect_status === 'no_effect' && cause.code === mergeSendWindowExhausted) return renewal(cause.code);
         if (expiredBeforeSend(cause, b)) return renewal();

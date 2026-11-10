@@ -258,8 +258,7 @@ export function createStandardGithubProviderHost({ configuration, home, identity
       guard();
       if (signal?.aborted) fail(kind + "_ABORTED");
       request = { ...options, env: authenticated, input: JSON.stringify(payload), signal };
-      // No awaited work or repository observation can consume the remaining
-      // consent window between this final check and the transport invocation.
+      // The final synchronous check runs immediately before transport invocation.
       assertSendFresh?.(request.timeout);
     } catch (cause) {
       fail(/^[A-Z][A-Z0-9_]{0,127}$/.test(cause?.code ?? "") ? cause.code : kind + "_PRECONDITION_REQUIRED");

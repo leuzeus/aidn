@@ -5,14 +5,18 @@ import { mergeSendWindowExhausted } from '../../core/workflow/standard-pr-merge-
 import { assertGithubPrMergeEffectObservation } from './github-workflow-adapter.mjs';
 import planSchema from '../../core/contracts/workflow-definition/github-pr-merge-plan.v1.schema.json' with { type: 'json' };
 
+import currentPlanSchema from '../../core/contracts/workflow-definition/github-pr-merge-plan.v2.schema.json' with { type: 'json' };
+
+export const githubPrMergePlanVersion = 'github-pr-merge-plan.v2';
+const legacyPlan = plan => plan?.contract_version === 'github-pr-merge-plan.v1';
 const query = 'mutation AidnMergePullRequest($input:MergePullRequestInput!) { mergePullRequest(input:$input) { clientMutationId pullRequest { id merged mergeCommit { oid } } } }';
 const commitBody = plan => 'AIDN-Merge: ' + plan.correlation_id;
 const fail = (code, effect_status = 'no_effect') => { throw Object.assign(Error(code), { code, effect_status }); };
 const same = (left, right) => shadowHash(left) === shadowHash(right);
 
 export function assertGithubPrMergePlan(plan) {
-  if (checkShadowJson(plan) || validateJsonSchema(plan, planSchema, '$', { contractKind: 'workflow-definition' }).length
-    || plan.expires_at_ms <= plan.prepared_at_ms || plan.expires_at_ms - plan.prepared_at_ms > 300000)
+  if (checkShadowJson(plan) || validateJsonSchema(plan, legacyPlan(plan) ? planSchema : currentPlanSchema, '$', { contractKind: 'workflow-definition' }).length
+    || legacyPlan(plan) && (plan.expires_at_ms <= plan.prepared_at_ms || plan.expires_at_ms - plan.prepared_at_ms > 300000))
     fail('GITHUB_PR_MERGE_PLAN_INVALID');
   return plan;
 }
@@ -25,7 +29,7 @@ export function assertGithubPrMergePostimage(plan, observation) {
     || !same(pr.merge_parent_oids, [request.expected_base_oid, request.expected_head_oid]) || !same(pr.merged_by, plan.actor)
     || pr.commit_body_sha256 !== createHash('sha256').update(commitBody(plan)).digest('hex')
     || Date.parse(pr.merged_at) < Math.floor(plan.prepared_at_ms / 1000) * 1000
-    || Date.parse(pr.merged_at) >= plan.expires_at_ms)
+    || legacyPlan(plan) && Date.parse(pr.merged_at) >= plan.expires_at_ms)
     fail('GITHUB_PR_MERGE_POSTIMAGE_UNCONFIRMED');
   return value;
 }
@@ -45,7 +49,7 @@ export function createGithubPrMerge({ repository, actor, method, hostContextSha2
   }
   function fresh(plan) {
     const time = now();
-    if (!Number.isSafeInteger(time) || time < plan.prepared_at_ms || time >= plan.expires_at_ms)
+    if (!Number.isSafeInteger(time) || time < plan.prepared_at_ms || legacyPlan(plan) && time >= plan.expires_at_ms)
       fail('STANDARD_PLAN_EXPIRED');
     return time;
   }
@@ -77,9 +81,9 @@ export function createGithubPrMerge({ repository, actor, method, hostContextSha2
   }
   return Object.freeze({
     async prepare(request, operationId, { expiresAt, signal } = {}) {
-      const plan = assertGithubPrMergePlan({ contract_version: 'github-pr-merge-plan.v1', request: structuredClone(request),
+      const plan = assertGithubPrMergePlan({ contract_version: expiresAt === undefined ? githubPrMergePlanVersion : 'github-pr-merge-plan.v1', request: structuredClone(request),
         operation_id: operationId, repository: structuredClone(repo), actor: structuredClone(principal), method,
-        prepared_at_ms: now(), expires_at_ms: expiresAt, host_context_sha256: hostContextSha256,
+        prepared_at_ms: now(), ...(expiresAt === undefined ? {} : { expires_at_ms: expiresAt }), host_context_sha256: hostContextSha256,
         correlation_id: randomBytes(16).toString('hex') });
       await assertOpen(plan, signal);
       fresh(plan);
@@ -88,10 +92,13 @@ export function createGithubPrMerge({ repository, actor, method, hostContextSha2
     async recover(prepared, { expectPlan, signal } = {}) {
       return postimage(checked(prepared, expectPlan), signal);
     },
-    async apply(prepared, { write = false, expectPlan, assertAuthorized, assertReviewFresh, signal } = {}) {
+    async apply(prepared, { write = false, expectPlan, assertAuthorized, assertReviewFresh, assertConsentCurrent, assertReviewGrantCurrent, signal } = {}) {
       if (write !== true || typeof assertAuthorized !== 'function' || typeof assertReviewFresh !== 'function')
         fail('GITHUB_PR_MERGE_EXPLICIT_EFFECT_REQUIRED');
       const plan = checked(prepared, expectPlan), { request, correlation_id: nonce } = plan;
+      const legacy = legacyPlan(plan);
+      if (!legacy && (typeof assertConsentCurrent !== 'function' || typeof assertReviewGrantCurrent !== 'function'))
+        fail('GITHUB_PR_MERGE_EXPLICIT_EFFECT_REQUIRED');
       active(signal);
       fresh(plan);
       let acknowledged = false;
@@ -99,12 +106,18 @@ export function createGithubPrMerge({ repository, actor, method, hostContextSha2
         const response = await runMutation({ query, variables: { input: { pullRequestId: request.expected_pull_request_id,
           expectedHeadOid: request.expected_head_oid, mergeMethod: plan.method, commitBody: commitBody(plan), clientMutationId: nonce } } },
         { signal, assertSendFresh: timeout => {
+          const time = fresh(plan);
+          if (!legacy) {
+            assertReviewGrantCurrent(time);
+            return;
+          }
           if (!Number.isSafeInteger(timeout) || timeout <= 0) fail('GITHUB_PR_MERGE_SEND_WINDOW_INVALID');
-          if (plan.expires_at_ms - fresh(plan) <= timeout) fail(mergeSendWindowExhausted);
+          if (plan.expires_at_ms - time <= timeout) fail(mergeSendWindowExhausted);
         }, assertAuthorized: async () => {
           await assertReviewFresh();
           await assertOpen(plan, signal);
           await assertAuthorized();
+          if (!legacy) await assertConsentCurrent();
           active(signal);
           fresh(plan);
         } });

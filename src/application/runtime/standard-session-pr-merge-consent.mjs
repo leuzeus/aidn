@@ -3,6 +3,7 @@ import { assertRequiredChecksOutput, checksOperation, mergeConsentMaxAgeMs } fro
 import { prObservationRequest } from './standard-session-pr-review-effects.mjs';
 
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: 'no_effect' }); };
+const maxObservationMs = 300000;
 const unavailable = 'STANDARD_PR_CHECKS_UNAVAILABLE';
 const reasonCode = cause => /^[A-Z][A-Z0-9_]{0,127}$/.test(cause?.code ?? '') ? cause.code : unavailable;
 
@@ -18,7 +19,7 @@ export function createStandardPrMergeConsent({ now, reviewPort, resolution, read
     const second = await reviewPort.observeRequiredChecks(observed.request, { signal });
     if (decision) await verifyFreshDecision(decision, signal);
     const end = now();
-    if (signal?.aborted || !Number.isSafeInteger(end) || end < started || end - started >= mergeConsentMaxAgeMs
+    if (signal?.aborted || !Number.isSafeInteger(end) || end < started || end - started >= maxObservationMs
       || expires !== null && end >= expires || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256)
       fail('STANDARD_PR_CHECK_CONTEXT_CHANGED');
     if (second.actor_id !== observed.actor.node_id || shadowHash(before) !== shadowHash(second))
@@ -55,15 +56,17 @@ export function createStandardPrMergeConsent({ now, reviewPort, resolution, read
           observations: { reason_code: reason }, evidence_refs: [] });
       }
     },
-    async prepare(instance, input, signal) {
+    observeForMerge: observe,
+    async prepare(instance, input, { legacy = false, signal } = {}) {
       const { subject, observed_at_ms: observedAt } = await consentBasis(instance, input, signal);
       return { can_apply: true, subject, prepared_at_ms: observedAt,
-        expires_at_ms: Math.min(observedAt + mergeConsentMaxAgeMs, subject.resolution_expires_at_ms ?? Infinity) };
+        ...(legacy ? { expires_at_ms: Math.min(observedAt + mergeConsentMaxAgeMs, subject.resolution_expires_at_ms ?? Infinity) } : {}) };
     },
     async assertFresh(instance, input, prepared, signal) {
       function assertAge() {
         const time = now();
-        if (!Number.isSafeInteger(time) || time < prepared.prepared_at_ms || time >= prepared.expires_at_ms)
+        if (!Number.isSafeInteger(time) || time < prepared.prepared_at_ms
+          || Object.hasOwn(prepared, 'expires_at_ms') && time >= prepared.expires_at_ms)
           fail('STANDARD_PR_MERGE_CONSENT_EXPIRED');
       }
       assertAge();

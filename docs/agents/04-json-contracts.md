@@ -60,10 +60,13 @@ keep their existing authorities and storage.
 `standard-github-required-checks.v1` is a private policy within the protected
 GitHub host manifest. `standard-pr-checks-accept-{input,output}.v1` retains the
 exact R08 receipt, delivery and PR subject, policy digest and successful check
-result identities. `standard-pr-merge-consent-{input,question,output}.v1`
-binds that acceptance to a separate `human-pr-merge-consent.v1` signed source
-in `process-decision-inbox.v14`. The no-effect receipt carries the decision
-and question deadline. Earlier inbox versions retain their readers.
+result identities. `standard-pr-merge-consent-input.v1` and the v2 question
+and output bind that acceptance to a separate `human-pr-merge-consent.v1`
+signed source in `process-decision-inbox.v14`. The question separates the
+approved repository, PR, exact HEAD and target branch from the evidence
+observed at intake. The v2 no-effect receipt binds the subject, question and
+signed source. Historical v1 questions and outputs carry the consent deadline
+and retain their readers.
 `standard-pr-premerge-observe-output.v1` preserves the provider fact of an
 already merged PR on a deferred receipt with empty routing facts. Historical
 merge observation retains its v1 contract. The published pre-merge and checks
@@ -77,15 +80,16 @@ operation ID within the same call scope.
 
 ## R08 merge execution contracts
 
-`github-pr-merge-plan.v1` pins the protected method and actor, exact PR
-subject, consent expiry and provider correlation marker. The v2 merge reader
-adds the provider actor and commit body digest to the v1 facts. The private
-`standard-pr-merge-execute-{input,output}.v1` records the accepted decision and
-check receipt hashes and separates acknowledged confirmation, observed
-recovery, and UNKNOWN. The private `standard-pr-post-merge-wait-{input,output}.v1`
-links the R09 wait to the accepted merge receipt. These contracts reuse the
-existing operation journal and preserve the earlier inbox and observation
-readers.
+`github-pr-merge-plan.v2` pins the protected method and actor, exact PR
+preimage and provider correlation marker. The private execution preview
+binds the plan to fresh R08 qualification and the accepted decision and
+check receipt hashes. `github-pr-merge-plan.v1` retains its expiry field and
+historical reader. The v2 merge reader adds the provider actor and commit
+body digest to the v1 facts. The private merge execute input v1 and output
+v2 separate acknowledged confirmation, observed recovery and UNKNOWN.
+The private `standard-pr-post-merge-wait-{input,output}.v1` links the R09
+wait to the accepted merge receipt. The same operation journal retains the
+older execution outputs and observations.
 
 ## R09 fetch contracts
 

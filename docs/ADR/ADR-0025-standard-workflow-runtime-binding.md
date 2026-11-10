@@ -3502,7 +3502,7 @@ read. Each includes a final PR identity and open-state read. Full first pages
 and ambiguous names, including collisions between the two kinds, are refused.
 Check runs must be completed and successful. Commit statuses must be
 successful on that exact commit. A rerun with a new identity changes the
-subject. The policy is deliberately conservative when historical check runs
+qualification evidence. The policy is deliberately conservative when historical check runs
 share a required name. Profile admission does not discover or override GitHub
 branch protection rules.
 
@@ -3511,13 +3511,13 @@ documented exception and its still-valid signature, against live thread,
 reply and review evidence. Acceptance binds the latest delivery, accepted
 triage and resolution receipt, exact repository and PR, HEAD/base/refs,
 protected policy, provider actor, and the identities and digests of the check
-results. The question
-binds that accepted operation and the same subject. The window is at most five
-minutes and ends no later than the retained exception question. The host
-checks the signed source's issue time and expiry, and observes the subject
-again before reserving the decision and before accepting its receipt. Missing
-source, refusal, deferral, cancellation and stale evidence preserve distinct
-outcomes. A signed approval is a no-effect record for this subject and window.
+results. The v2 question separates that qualification from the approved
+repository, PR, exact HEAD and target branch. The protected host authenticates
+the signed source and its own validity and observes the qualification again
+before reserving the decision and before accepting its receipt. Missing
+source, refusal, deferral, cancellation and stale evidence have distinct
+outcomes. A signed approval is a no-effect record. Historical v1 questions
+and receipts retain their five-minute window and exception deadline.
 The separate provider observer can record a merge fact with empty routing
 facts, regardless of consent.
 
@@ -3533,25 +3533,32 @@ unexpired documented exception. A protected per-instance GitHub manifest opts
 into direct merge with `merge_method: "MERGE"` and a required check policy.
 The exact reviewed action and separate host grant bind this method, the pinned
 actor and repository, the PR number and node ID, HEAD/base/refs, the consent and
-check receipt hashes, the consent deadline and a unique commit body marker.
-The existing journal CAS claims the dispatch before any provider mutation.
+check receipt hashes, the freshly observed qualification and a unique commit
+body marker. The existing journal CAS claims dispatch before the provider
+mutation.
 
-The transport revalidates review evidence, checks, signed consent and an open
-PR with the expected base immediately before invoking GitHub. A queue or active
-auto-merge blocks direct execution. GraphQL `expectedHeadOid` supplies the
-provider's atomic HEAD precondition. The base is checked by observation and
-then by parentage. Two fresh reads must agree on the merged PR, actor, marker and ordered
-parents [accepted base, accepted HEAD]. The observed remote tip is retained
-separately from the merge OID and may differ. Confirmation also matches the
-mutation acknowledgement to the observed merge OID.
+The v2 plan has no automatic consent deadline. A rerun of required checks can
+qualify a new plan on the same approved HEAD and target. Before dispatch, the
+host revalidates the plan's review evidence and check results, the signed
+consent and its authority, and the open PR and expected base. The exception
+keeps its own deadline. A queue or active auto-merge blocks direct execution.
+The ten-second transport timeout bounds the GitHub request. The historical
+v1 plan retains its former deadline and minimum remaining send window.
+
+GraphQL `expectedHeadOid` supplies the provider's atomic HEAD precondition.
+The base is checked by observation and then by parentage. Two fresh reads
+must agree on the merged PR, actor, marker and ordered parents [planned
+base, approved HEAD]. The observed remote tip is retained separately from
+the merge OID and may differ. Confirmation also matches the mutation
+acknowledgement to the observed merge OID.
 
 An uncertain dispatch retains UNKNOWN and its original owner and grant.
-Recovery repeats only the protected reads, even after the consent window, and
-requires the original plan's exact correlated postimage. A recovered receipt
-records an observation with no effect in the recovery action. The original
-marker is mandatory even when an external merge has the same actor and parents.
-External observations carry provider facts only. Consent comes from the signed
-inbox. The historical v1 reader remains available.
+Recovery repeats the protected reads and requires the original plan's exact
+correlated postimage. An open PR at the same HEAD leaves the dispatch
+uncertain. A recovered receipt records an observation with no effect in the
+recovery action. The original marker is mandatory even when an external merge
+has the same actor and parents. External observations carry provider facts.
+Consent comes from the signed inbox. Historical readers remain available.
 
 A separate deferred R09 operation consumes the accepted merge receipt and
 holds the call open. The canonical session remains at the PR gate until local

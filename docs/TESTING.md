@@ -1508,32 +1508,24 @@ when its provider fixture lacks that port. Provider, Native,
 PostgreSQL and installed behavior require separate qualification.
 
 For the merge executor, run the same standalone script with
-`--case=merge-consent-session` for the acknowledged merge and
-`--case=merge-consent-correction` for lost acknowledgement and cold recovery.
-`--case=merge-refusals` exercises pre-send refusals.
+`--case=merge-consent-session` for an acknowledged merge after a required
+check rerun and `--case=merge-consent-correction` for lost acknowledgement
+and cold recovery. `--case=merge-refusals` exercises pre-send refusals.
 `--case=exception-merge-consent-correction` exercises the corrective route
-with a documented exception and its original five-minute bound.
-They use the two published child call sites, synthetic upstream receipts,
-real FILES host, inbox, CAS and journal, a fixture signer and doubled GitHub
-transport. The cases cover direct merge after the exact checks and consent,
-substitutions and refusal before dispatch, missing postimage and lost
-acknowledgement, read-only recovery in a new process, and the ready R09
-fetch operation. These cases run outside the required family and preserve the
-five-minute consent and exception limits. Use the composition and historical
-merge-reader fixtures for binding and reader regressions.
-Run `--case=merge-consent-renewal` to stage an exact merge and let its
-original five-minute consent expire before dispatch. The FILES fixture checks
-that the first attempt sends nothing, a reopened host rejects the expired
-source, a fresh signed answer admits one merge and the R09 basis uses only
-that accepted merge. This case waits for the actual expiry and retains the
-earlier question and receipt for replay. It uses a reduced graph, a signed
-synthetic upstream prefix and a doubled GitHub transport.
-Run `--case=merge-consent-send-window` for the protected transport boundary.
-It advances the final provider clock sample to leave 9,999 ms before expiry
-while the host retains its signed consent. The existing 10,000 ms transport timeout no longer
-fits. The oracle is zero sends, a typed no-effect receipt and the next consent
-question through the same reducer. The controlled clock qualifies the branch,
-with elapsed-time qualification kept separate.
+with a documented exception and its own validity. These cases use the two
+published child call sites, synthetic upstream receipts, real FILES host,
+inbox, CAS and journal, a fixture signer and doubled GitHub transport.
+The recovery case retains UNKNOWN for an open PR and an uncorrelated
+merge, then accepts the exact postimage and opens R09 with a single send.
+
+`--case=merge-consent-elapsed` waits more than five minutes after the question
+and dispatches with the original signed approval. `--case=merge-consent-transport`
+advances the final provider clock sample into the old ten-second margin
+and checks that the approved merge sends once with the ten-second transport
+timeout. These cases run outside the required family. The historical
+`--case=merge-consent-renewal` and `--case=merge-consent-send-window` selectors
+belong to the archived v1 model and its matching checkout. Use the composition
+and historical merge-reader fixtures for binding and reader regressions.
 The elapsed-time nominal case reads the fixture check evidence before issuing
 the question. Missing-source probes remain in the focused consent and R09 cases.
 Run `verify-cycle-create-admission-fixtures.mjs --pr-continuity` separately

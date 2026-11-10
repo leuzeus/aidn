@@ -188,13 +188,13 @@ function open(base, { initializeKey = false, providerNow } = {}) {
         if (endpoint === commit + '/check-runs?filter=all&per_page=100') {
           const runs = [{ name: 'Required CI', node_id: state.checkId ?? 'CR_ci',
             head_sha: pr.head_oid, app: { node_id: 'A_ci' }, details_url: state.checkDetails ?? 'https://example.com/ci',
-            status: state.pendingCheck ? 'in_progress' : 'completed', conclusion: state.pendingCheck ? null : 'success' }];
+            status: state.pendingCheck ? 'in_progress' : 'completed', conclusion: state.pendingCheck ? null : state.failedCheck ? 'failure' : 'success' }];
           return ok({ total_count: runs.length, check_runs: runs });
         }
         if (endpoint === commit + '/status?per_page=100') return ok({ sha: pr.head_oid, total_count: 0, statuses: [] });
         assert.equal(endpoint, 'repos/fixture/repository/pulls/' + pr.number);
         return ok({ node_id: pr.node_id, number: pr.number, state: 'open', draft: false, merged: false,
-          head: { ref: pr.head_branch, sha: pr.head_oid, repo: { node_id: pr.repository_id } },
+          head: { ref: pr.head_branch, sha: state.wrongHead ?? pr.head_oid, repo: { node_id: pr.repository_id } },
           base: { ref: pr.base_branch, sha: pr.base_oid, repo: { node_id: pr.repository_id } } });
       }
       const { query, variables } = JSON.parse(options.input);
@@ -241,6 +241,7 @@ function open(base, { initializeKey = false, providerNow } = {}) {
       assert.deepEqual(args, ['api', 'graphql', '--hostname', 'github.com', '--input', '-']);
       const { query, variables: { input } } = JSON.parse(options.input);
       assert.match(query, /^mutation AidnMergePullRequest/);
+      assert.equal(options.timeout, 10000);
       const active = inspect().cursor.occurrences.filter(row => row.node_id === 'pr_merge_execute'
         && row.status === 'WAITING' && row.operation?.intent && !row.operation.receipt);
       assert.equal(active.length, 1);
@@ -255,7 +256,7 @@ function open(base, { initializeKey = false, providerNow } = {}) {
       state.mergeSends.push(input.clientMutationId);
       state.mergedAt = new Date().toISOString();
       state.mergeBody = input.commitBody;
-      state.mergeVisible = ['merge-consent-session', 'merge-consent-renewal'].includes(behavior);
+      state.mergeVisible = ['merge-consent-session', 'merge-consent-elapsed', 'merge-consent-transport'].includes(behavior);
       save(providerFile, state);
       if (!state.mergeVisible) throw Error('Fixture lost the merge acknowledgement');
       return ok({ data: { mergePullRequest: { clientMutationId: input.clientMutationId,
@@ -523,7 +524,7 @@ function arrange(prefix, behavior) {
     git: pin(gitPath), gh: pin(fs.realpathSync(process.platform === 'win32' ? path.join(process.env.SystemRoot, 'System32', 'where.exe') : '/usr/bin/env')) };
   if (behavior.includes('consent') || behavior === 'merge-refusals' || behavior === 'external-checks') binding.required_checks = { contract_version: 'standard-github-required-checks.v1',
     base_ref: pr.base_branch, entries: [{ name: 'Required CI', kind: 'check_run', producer_id: 'A_ci' }] };
-  if (['merge-consent-session', 'merge-consent-correction', 'merge-consent-renewal', 'merge-consent-send-window',
+  if (['merge-consent-session', 'merge-consent-correction', 'merge-consent-elapsed', 'merge-consent-transport',
     'merge-refusals', 'exception-merge-consent-correction', 'external-checks'].includes(behavior)) binding.merge_method = 'MERGE';
   const key = shadowHash({ target: process.platform === 'win32' ? targetRoot.toLowerCase() : targetRoot, instance: configuration.instance_id });
   fs.mkdirSync(path.join(dirs.host, key + '.github'));
@@ -791,15 +792,18 @@ async function qualifyConsent(base, privateKey, authority_id, { exceptionSource,
   const { status, question } = await f.host.dispatch(id, { write: true });
   assert.equal(status, 'waiting_for_human');
   assert.equal(question.checks_operation_id, checks.operation_id);
-  assert.deepEqual(question.subject, evidence.observations.subject);
-  for (const [key, value] of Object.entries({ head_oid: pr.head_oid, base_oid: pr.base_oid, head_ref: pr.head_branch,
-    base_ref: pr.base_branch, repository_id: pr.repository_id, pull_request_id: pr.node_id, actor_id: 'U_actor' }))
-    assert.equal(question.subject[key], value);
-  assert.deepEqual(question.subject.checks.map(({ result_sha256, ...check }) => {
+  assert.equal(question.contract_version, 'standard-pr-merge-consent-question.v2');
+  assert.equal(Object.hasOwn(question, 'expires_at_ms'), false);
+  assert.deepEqual(question.subject, { repository_id: pr.repository_id, pull_request_id: pr.node_id,
+    pull_request_number: pr.number, head_oid: pr.head_oid, base_ref: pr.base_branch });
+  assert.deepEqual(question.qualification, evidence.observations.subject);
+  for (const [key, value] of Object.entries({ base_oid: pr.base_oid, head_ref: pr.head_branch, actor_id: 'U_actor' }))
+    assert.equal(question.qualification[key], value);
+  assert.deepEqual(question.qualification.checks.map(({ result_sha256, ...check }) => {
     assert.match(result_sha256, /^[a-f0-9]{64}$/);
     return check;
   }), [{ name: 'Required CI', kind: 'check_run', producer_id: 'A_ci', result_id: 'CR_ci' }]);
-  assert.equal(question.subject.resolution_expires_at_ms !== null, Boolean(exceptionSource));
+  assert.equal(question.qualification.resolution_expires_at_ms !== null, Boolean(exceptionSource));
   const claim = { contract_version: 'human-pr-merge-consent.v1', source_kind: 'human', authority_id,
     source_event_id: 'r08_fixture_merge_consent', question_sha256: shadowHash(question), subject_sha256: shadowHash(question.subject),
     choice, rationale: 'I reviewed the exact published checks and R08 proof.',
@@ -807,7 +811,7 @@ async function qualifyConsent(base, privateKey, authority_id, { exceptionSource,
   const deliver = () => f.host.receiveDecision(id, { sourceRef, write: true });
   if (!binding.merge_method) assert.equal((await deliver()).status, 'waiting_for_human');
   const body = { contract_version: 'standard-host-source.v1', kind: 'human', authority_id, source_ref: sourceRef,
-    subject_sha256: shadowHash(question), payload: claim, issued_at_ms: Date.now(), expires_at_ms: question.expires_at_ms };
+    subject_sha256: shadowHash(question), payload: claim, issued_at_ms: Date.now(), expires_at_ms: Date.now() + 7200000 };
   const publish = (value = body) => save(path.join(authorityInbox, sourceRef + '.json'),
     { ...value, signature: sign(null, Buffer.from(shadowHash(value)), privateKey).toString('base64') });
   if (!binding.merge_method) {
@@ -833,14 +837,6 @@ async function qualifyConsent(base, privateKey, authority_id, { exceptionSource,
     await f.host.accept(id, { write: true });
   }
   if (approved && binding.merge_method) {
-    if (behavior === 'merge-consent-send-window') {
-      await qualifyMergeSendWindow(base);
-      return;
-    }
-    if (behavior === 'merge-consent-renewal') {
-      await qualifyMergeRenewal(f, { base, id, checks, question, sourceRef, authority_id, privateKey, authorityInbox });
-      return;
-    }
     await qualifyMerge(f, { base, id, checks, question, behavior, sourceFile: path.join(authorityInbox, sourceRef + '.json') });
     return;
   }
@@ -852,7 +848,8 @@ async function qualifyConsent(base, privateKey, authority_id, { exceptionSource,
   assert.equal(result.output.outcome, approved ? 'completed' : 'rejected');
   assert.deepEqual(result.output.facts, approved ? { session_pr_merge_consent_accepted: true } : {});
   assert.equal(result.output.effect_status, 'no_effect');
-  assert.equal(result.output.observations.expires_at_ms, question.expires_at_ms);
+  assert.equal(result.output.contract_version, 'standard-pr-merge-consent-output.v2');
+  assert.equal(Object.hasOwn(result.output.observations, 'expires_at_ms'), false);
   const state = resumed.inspect();
   assert.equal(state.cursor.occurrences.some(row => row.node_id === 'pr_merge_execute' && row.status === 'READY'), approved);
   await resumed.host.accept(id, { write: true });
@@ -869,93 +866,21 @@ async function qualifyConsent(base, privateKey, authority_id, { exceptionSource,
   console.log('PASS published R08 exact checks and signed ' + choice + ' at ' + prefix + ', FILES, GitHub transport doubled');
 }
 
-async function qualifyMergeSendWindow(base) {
-  const wallClock = Date.now;
-  let atSend = null, sampled = false;
-  const f = open(base, { providerNow: () => {
-    if (atSend !== null && /\bassertSendFresh\b/.test(new Error().stack)) {
-      sampled = true;
-      return atSend;
-    }
-    return wallClock();
-  } });
-  const preview = await f.preview();
-  const { expires_at_ms } = preview.prepared.plan.provider.plan;
-  // Move the last clock observation only. Earlier GitHub observations use the
-  // wall clock and must still agree with the host's freshness checks.
-  atSend = expires_at_ms - 9999;
-  const output = (await f.run(preview)).results[0].output;
-  assert.equal(sampled, true);
-  assert.equal(output.outcome, 'completed');
-  assert.equal(output.effect_status, 'no_effect');
-  assert.equal(output.observations.reason_code, 'GITHUB_PR_MERGE_SEND_WINDOW_EXHAUSTED');
-  assert.deepEqual(output.facts, { session_pr_merge_completed: false });
-  assert.deepEqual(f.state.mergeSends, []);
-  const frame = f.inspect().cursor.occurrences.find(row => row.status === 'READY');
-  assert.equal(frame.node_id, 'pr_merge_consent');
-  replay(f);
-  console.log('PASS protected merge declines a remaining window shorter than its transport timeout, without sending');
-}
-
-async function qualifyMergeRenewal(f, { base, id, checks, question, sourceRef, authority_id, privateKey, authorityInbox }) {
-  const original = f.host.readJournal(id);
-  const first = await f.preview();
-  f.allow(shadowHash(first));
-  const { operation_id: attempt } = await f.stage(first);
-  const remaining = question.expires_at_ms - Date.now();
-  assert.ok(remaining > 0 && remaining <= 300000);
-  await new Promise(resolve => setTimeout(resolve, remaining + 20));
-  const refused = await f.host.dispatch(attempt, { write: true });
-  assert.equal(refused.receipt.effect_status, 'no_effect');
-  await f.host.accept(attempt, { write: true });
-  const expired = f.host.readJournal(attempt);
-  const output = expired.results[0].output;
-  assert.equal(output.observations.reason_code, 'STANDARD_PLAN_EXPIRED');
-  assert.deepEqual(output.facts, { session_pr_merge_completed: false });
-  assert.deepEqual(f.state.mergeSends, []);
-  assert.throws(() => assertStandardOperationOutput({ ...output, facts: { session_pr_merge_completed: true } }),
-    { code: 'STANDARD_OPERATION_OUTPUT_INVALID' });
-
-  const cold = open(base);
-  const prepared = await cold.preview();
-  assert.equal(prepared.binding.id, 'session_pr_merge_consent');
-  const { operation_id: renewed } = await cold.stage(prepared);
-  const wait = await cold.host.dispatch(renewed, { write: true });
-  assert.equal(wait.status, 'waiting_for_human');
-  const next = wait.question;
-  assert.notEqual(renewed, id);
-  assert.notEqual(shadowHash(next), shadowHash(question));
-  assert.ok(next.issued_at_ms >= question.expires_at_ms);
-  assert.deepEqual(next.subject, question.subject);
-  await assert.rejects(cold.host.receiveDecision(renewed, { sourceRef, write: true }),
-    { code: 'STANDARD_HOST_SOURCE_INVALID' });
-  assert.deepEqual(cold.state.mergeSends, []);
-
-  const nextRef = 'merge_consent_renewed';
-  const claim = { contract_version: 'human-pr-merge-consent.v1', source_kind: 'human', authority_id, source_event_id: nextRef,
-    question_sha256: shadowHash(next), subject_sha256: shadowHash(next.subject), choice: 'approve_merge',
-    rationale: 'I approve the fresh question for the exact reviewed PR.',
-    evidence_refs: checks.results[0].output.evidence_refs };
-  const envelope = { contract_version: 'standard-host-source.v1', kind: 'human', authority_id, source_ref: nextRef,
-    subject_sha256: shadowHash(next), payload: claim, issued_at_ms: Date.now(), expires_at_ms: next.expires_at_ms };
-  const sourceFile = path.join(authorityInbox, nextRef + '.json');
-  save(sourceFile, { ...envelope, signature: sign(null, Buffer.from(shadowHash(envelope)), privateKey).toString('base64') });
-  assert.equal((await cold.host.receiveDecision(renewed, { sourceRef: nextRef, write: true })).status, 'receipted');
-  await cold.host.accept(renewed, { write: true });
-  await qualifyMerge(cold, { base, id: renewed, checks, question: next, behavior: 'merge-consent-session', sourceFile });
-  const final = open(base);
-  const basis = (await final.run()).results[0].output;
-  assert.equal(basis.outcome, 'completed');
-  assert.notEqual(basis.observations.merge_operation_id, attempt);
-  assert.deepEqual(final.host.readJournal(id), original);
-  assert.deepEqual(final.host.readJournal(attempt), expired);
-  assert.equal(final.state.mergeSends.length, 1);
-  replay(final);
-  console.log('PASS expired merge dispatched no effect, cold host accepted a fresh signed choice, one send and exact merge basis');
-}
-
 async function qualifyMerge(f, { base, id, checks, question, behavior, sourceFile }) {
-  const initial = behavior === 'merge-consent-session', refusals = behavior === 'merge-refusals';
+  const elapsed = behavior === 'merge-consent-elapsed', transport = behavior === 'merge-consent-transport';
+  const initial = behavior === 'merge-consent-session' || elapsed || transport, refusals = behavior === 'merge-refusals';
+  let finalClock = null, sampled = false;
+  if (transport) {
+    const wallClock = Date.now;
+    f = open(base, { providerNow: () => {
+      if (finalClock !== null && /\bassertSendFresh\b/.test(new Error().stack)) {
+        sampled = true;
+        return finalClock;
+      }
+      return wallClock();
+    } });
+  }
+  if (behavior === 'merge-consent-session') f.state.checkId = 'CR_rerun';
   const waiting = () => {
     const { cursor } = f.inspect();
     assert.notEqual(cursor.status, 'COMPLETED');
@@ -978,7 +903,7 @@ async function qualifyMerge(f, { base, id, checks, question, behavior, sourceFil
     f.state.checkId = 'CR_replaced';
     const changed = (await f.run(preview)).results[0].output;
     assert.equal(changed.effect_status, 'no_effect');
-    assert.equal(changed.observations.reason_code, 'STANDARD_PR_MERGE_CONSENT_SUBJECT_CHANGED');
+    assert.equal(changed.observations.reason_code, 'STANDARD_PR_MERGE_QUALIFICATION_CHANGED');
     delete f.state.checkId;
 
     const beforeBase = await f.preview();
@@ -988,22 +913,54 @@ async function qualifyMerge(f, { base, id, checks, question, behavior, sourceFil
     assert.equal(moved.observations.reason_code, 'GITHUB_PR_SOURCE_CHANGED');
     delete f.state.baseMoved;
 
+    const beforeQueue = await f.preview();
     f.state.queued = true;
-    await assert.rejects(f.preview, { code: 'GITHUB_PR_MERGE_DIRECT_REQUIRED' });
+    assert.equal((await f.run(beforeQueue)).results[0].output.observations.reason_code, 'GITHUB_PR_MERGE_DIRECT_REQUIRED');
     delete f.state.queued;
+
+    const beforeFailure = await f.preview();
+    f.state.failedCheck = true;
+    assert.equal((await f.run(beforeFailure)).results[0].output.observations.reason_code, 'STANDARD_PR_CHECK_FAILED');
+    delete f.state.failedCheck;
+
+    const beforeHead = await f.preview();
+    f.state.wrongHead = 'e'.repeat(40);
+    assert.equal((await f.run(beforeHead)).results[0].output.effect_status, 'no_effect');
+    delete f.state.wrongHead;
+
+    const beforeRevocation = await f.preview();
+    fs.renameSync(sourceFile, sourceFile + '.revoked');
+    try {
+      const revoked = (await f.run(beforeRevocation)).results[0].output;
+      assert.equal(revoked.effect_status, 'no_effect');
+      assert.equal(revoked.observations.reason_code, 'STANDARD_HOST_SOURCE_CHANGED');
+    } finally { fs.renameSync(sourceFile + '.revoked', sourceFile); }
     assert.deepEqual(f.state.mergeSends, []);
     replay(f);
     console.log('PASS published R08 refused substituted plan, grant, signed consent, checks, base and queued merge with zero sends');
     return;
   }
+  if (elapsed) {
+    const after = question.issued_at_ms + 300001;
+    await new Promise(resolve => setTimeout(resolve, Math.max(after - Date.now() + 10, 0)));
+    assert.ok(Date.now() >= after);
+  }
+  // A legacy plan would have under ten seconds at the transport boundary.
+  if (transport) finalClock = question.issued_at_ms + 290001;
   const applied = await f.run(preview), outcome = applied.results[0].output;
+  if (transport) assert.equal(sampled, true);
   const plan = preview.prepared.plan, provider = plan.provider.plan;
   assert.equal(preview.input.consent_operation_id, id);
   assert.equal(preview.input.checks_operation_id, checks.operation_id);
-  assert.equal(provider.expires_at_ms, question.expires_at_ms);
+  assert.equal(provider.contract_version, 'github-pr-merge-plan.v2');
+  assert.equal(Object.hasOwn(provider, 'expires_at_ms'), false);
+  if (behavior === 'merge-consent-session') {
+    assert.equal(plan.qualification.checks[0].result_id, 'CR_rerun');
+    assert.equal(question.qualification.checks[0].result_id, 'CR_ci');
+  }
   assert.equal(plan.consent_receipt_sha256, shadowHash(f.host.readJournal(id).results[0].receipt));
   assert.equal(plan.checks_receipt_sha256, shadowHash(checks.results[0].receipt));
-  assert.equal(provider.request.expected_base_oid, question.subject.base_oid);
+  assert.equal(provider.request.expected_base_oid, question.qualification.base_oid);
   assert.equal(f.state.mergeSends.length, 1);
   if (initial) {
     assert.equal(outcome.outcome, 'completed');
@@ -1036,13 +993,14 @@ async function qualifyMerge(f, { base, id, checks, question, behavior, sourceFil
   assert.deepEqual(result.facts, { session_pr_merge_completed: true });
   assert.equal(merge.provider.pull_request.merge_oid, mergeOid);
   assert.equal(merge.provider.pull_request.observed_base_tip_oid, baseTip);
-  assert.deepEqual(merge.provider.pull_request.merge_parent_oids, [question.subject.base_oid, question.subject.head_oid]);
+  assert.deepEqual(merge.provider.pull_request.merge_parent_oids, [question.qualification.base_oid, question.subject.head_oid]);
   assert.throws(() => assertStandardOperationOutput({ ...result, effect_status: 'unknown' }), { code: 'STANDARD_OPERATION_OUTPUT_INVALID' });
   assert.equal(resumed.inspect().cursor.occurrences.find(row => row.status === 'READY').node_id, 'pr_merge_basis');
   assert.equal(resumed.calls(), 0);
   replay(resumed);
   assert.equal(resumed.state.mergeSends.length, 1);
-  console.log('PASS published R08 merge ' + (initial ? 'acknowledged' : 'observed after lost ACK and cold recovery' + (question.subject.resolution_expires_at_ms ? ' with documented exception' : ''))
+  console.log('PASS published R08 merge ' + (initial ? 'acknowledged' : 'observed after lost ACK and cold recovery' + (question.qualification.resolution_expires_at_ms ? ' with documented exception' : ''))
+    + (elapsed ? ' after five minutes' : transport ? ' without legacy transport margin' : '')
     + ', exact postimage and R09 fetch ready, no second send');
 }
 
@@ -2045,8 +2003,8 @@ if (process.argv[2] === '--deliver-pretriage') {
   const mode = process.argv[2].slice('--case=post-merge-fetch-'.length);
   await qualifyPostMergeFetch(mode === 'correction' ? 'correction' : 'session',
     ['session', 'correction'].includes(mode) ? 'reconcile' : mode);
-} else if (['--case=merge-consent-session', '--case=merge-consent-correction', '--case=merge-consent-renewal',
-  '--case=merge-consent-send-window', '--case=merge-refusals'].includes(process.argv[2])) {
+} else if (['--case=merge-consent-session', '--case=merge-consent-correction', '--case=merge-consent-elapsed',
+  '--case=merge-consent-transport', '--case=merge-refusals'].includes(process.argv[2])) {
   await qualifyNominalConsent(process.argv[2].endsWith('correction') ? 'correction' : 'session', 'approve_merge', process.argv[2].slice('--case='.length));
 } else if (process.argv[2] === '--case=exception-merge-consent-correction') {
   await qualifyException('exception-merge-consent-correction');

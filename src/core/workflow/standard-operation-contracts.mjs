@@ -52,7 +52,7 @@ import checksAcceptInputV2 from "../contracts/workflow-definition/standard-pr-ch
 import prMergeInputV2 from "../contracts/workflow-definition/standard-session-pr-merge-observe-input.v2.schema.json" with { type: "json" };
 import premergeOpen from "../contracts/workflow-definition/standard-pr-premerge-observe-output.v2.schema.json" with { type: "json" };
 import premergeOutput from "../contracts/workflow-definition/standard-pr-premerge-observe-output.v1.schema.json" with { type: "json" };
-import { assertMergeConsentOutput, assertRequiredChecksOutput, checksOperation, mergeConsentOperation } from "./standard-pr-merge-consent.mjs";
+import { assertMergeConsentOutput, assertRequiredChecksOutput, checksOperation, mergeConsentOperation, mergeConsentOutputVersion } from "./standard-pr-merge-consent.mjs";
 import postMergeDecisionInput from "../contracts/workflow-definition/standard-pr-post-merge-decision-input.v1.schema.json" with { type: "json" };
 import { assertPostMergeDecisionOutput, assertPostMergeRecoveryOutput, postMergeDecisionOperation, postMergeRecoveryOutputVersion } from "./standard-pr-post-merge-decision.mjs";
 import { assertPostMergeMeasureOutput, postMergeMeasureOperation, assertPostMergeAlignmentInput, assertPostMergeAlignmentOutput, assertPostMergeFetchInput, assertPostMergeFetchOutput, postMergeAlignmentOperation, postMergeFetchOperation } from "./standard-pr-post-merge-fetch.mjs";
@@ -376,7 +376,7 @@ export function assertStandardOperationOutput(value) {
       || evidence_refs[0].sha256 !== shadowHash(reply)) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
   }
-  if (value?.contract_version === "standard-pr-merge-consent-output.v1") return assertMergeConsentOutput(value);
+  if ([mergeConsentOutputVersion, "standard-pr-merge-consent-output.v1"].includes(value?.contract_version)) return assertMergeConsentOutput(value);
   if (["standard-pr-merge-execute-output.v1", "standard-pr-merge-execute-output.v2"].includes(value?.contract_version)) return assertMergeExecuteOutput(value);
   if (value?.contract_version === postMergeRecoveryOutputVersion) return assertPostMergeRecoveryOutput(value);
   if (value?.contract_version === "standard-pr-post-merge-decision-output.v1") return assertPostMergeDecisionOutput(value);
