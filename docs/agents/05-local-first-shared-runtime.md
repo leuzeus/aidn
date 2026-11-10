@@ -38,6 +38,13 @@ The cycle checkpoint reads content and metadata fingerprints together from
 the configured PostgreSQL artifact rows. Every checkpoint document check
 opens a fresh bounded observation. Dual mode also checks the visible bytes.
 
+PostgreSQL cycle readiness reads the metadata pins of the observed documents
+in one bounded batch. Each returned content hash must match the observed
+document before its metadata can enter the context hash. Implementation
+preparation, preimages and postimages each use their own fresh content and
+metadata observation for the two material artifacts. The authorization,
+freshness checks and CAS stay in their original order.
+
 ## Do Not Move Implicitly
 
 ADR-0013 defines an explicit migration of standard AIDN executable assets to a

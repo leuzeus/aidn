@@ -498,7 +498,21 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     return { authenticated, context, selection, evidence_refs: [authenticated.reference, retained.ref, observed.ref] };
   }
   function readinessContext(observed) {
-    const context = { ...observed.context, metadata_pins: observed.context.documents.map(row => ({ ref: row.ref, sha256: artifacts.metadataHash(row.ref.slice(6)) })) };
+    const documents = observed.context.documents;
+    const selected = artifacts.describe();
+    const paths = documents.map(row => row.ref.slice(6));
+    let metadataPins;
+    if (selected.backend === "postgres") {
+      const rows = artifacts.readMany(paths, { includeMetadata: true });
+      if (rows.some(row => row.source !== "postgres") || shadowHash(artifacts.describe()) !== shadowHash(selected))
+        fail("STANDARD_CANONICAL_BACKEND_CONFLICT");
+      if (rows.some((row, index) => row.path !== paths[index] || row.sha256 !== documents[index].sha256))
+        fail("STANDARD_CYCLE_READINESS_SOURCE_STALE");
+      metadataPins = documents.map((row, index) => ({ ref: row.ref, sha256: rows[index].metadata_sha256 }));
+    } else {
+      metadataPins = documents.map((row, index) => ({ ref: row.ref, sha256: artifacts.metadataHash(paths[index]) }));
+    }
+    const context = { ...observed.context, metadata_pins: metadataPins };
     return { ...observed, context, context_sha256: shadowHash(context) };
   }
   async function evaluateCycleReadiness(instance, input) {

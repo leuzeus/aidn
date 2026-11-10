@@ -28,12 +28,22 @@ export function createStandardCycleImplementation({ targetRoot, readEvaluation, 
     if (artifacts.describe().database && artifacts.describe().state_mode === "db-only") return [];
     return changes.map(row => agentRunPhysicalPath(path.join(root, "docs/audit", row.path)));
   }
+  function postgresMaterial(names, required = false) {
+    const selected = artifacts.describe();
+    if (selected.backend !== "postgres") return null;
+    const rows = artifacts.readMany(names, { required: required ? names : [], includeMetadata: true });
+    if (rows.some(row => row.source !== "postgres") || shadowHash(artifacts.describe()) !== shadowHash(selected))
+      fail("STANDARD_CANONICAL_BACKEND_CONFLICT");
+    return rows;
+  }
   async function prepare(instance, input, preparedAt, acquired = false) {
+
     assertStandardOperationInput("cycle_implementation_enter", input);
     if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
     const verified = await readEvaluation(instance, input), context = verified.context, cyclePath = context.cycle_path;
     if (verified.output.facts.cycle_readiness_satisfied !== true) fail("STANDARD_CYCLE_READINESS_EVALUATION_REQUIRED");
-    const rows = paths(cyclePath).map(name => artifacts.read(name, { required: true }));
+    const names = paths(cyclePath), batch = postgresMaterial(names, true);
+    const rows = batch ?? names.map(name => artifacts.read(name, { required: true }));
     const at = new Date(preparedAt).toISOString();
     let status = rows[0].content;
     for (const [key, value] of Object.entries({ state: "IMPLEMENTING", dor_state: "READY", dor_last_check: at, dor_checked_by: "standard-cycle-readiness",
@@ -42,7 +52,9 @@ export function createStandardCycleImplementation({ targetRoot, readEvaluation, 
     let current = rows[1].content;
     for (const [key, value] of Object.entries({ dor_state: "READY", updated_at: at })) current = field(current, key, value);
     const contents = { [rows[0].path]: status, [rows[1].path]: current };
-    const changes = rows.map(row => ({ path: row.path, before_sha256: row.sha256, before_metadata_sha256: artifacts.metadataHash(row.path), after: contents[row.path], after_sha256: artifactContentHash(contents[row.path]) }));
+    const changes = rows.map(row => ({ path: row.path, before_sha256: row.sha256,
+      before_metadata_sha256: batch ? row.metadata_sha256 : artifacts.metadataHash(row.path),
+      after: contents[row.path], after_sha256: artifactContentHash(contents[row.path]) }));
     projections(changes).forEach((file, index) => { if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== changes[index].before_sha256) fail("STANDARD_CYCLE_READINESS_PROJECTION_STALE"); });
     const plan = assertPlan({ contract_version: "standard-cycle-implementation-plan.v1", operation_ref: "cycle_implementation_enter", input, prepared_at_ms: preparedAt,
       evaluation_sha256: verified.evaluation_sha256, context_sha256: verified.context_sha256, scope_sha256: verified.output.observations.scope_sha256,
@@ -66,7 +78,12 @@ export function createStandardCycleImplementation({ targetRoot, readEvaluation, 
           await assertAuthorized();
           if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || now() - plan.prepared_at_ms > 300000
             || (await observeContext()).context_sha256 !== plan.context_sha256) fail("STANDARD_CYCLE_READINESS_SOURCE_STALE");
-          for (const row of plan.changes) if (artifacts.read(row.path).sha256 !== row.before_sha256 || artifacts.metadataHash(row.path) !== row.before_metadata_sha256) fail("STANDARD_PREVIEW_CHANGED");
+          const preimages = postgresMaterial(plan.changes.map(row => row.path));
+          for (const [index, row] of plan.changes.entries()) {
+            const current = preimages?.[index] ?? artifacts.read(row.path);
+            if (current.sha256 !== row.before_sha256 || (preimages ? current.metadata_sha256 : artifacts.metadataHash(row.path)) !== row.before_metadata_sha256)
+              fail("STANDARD_PREVIEW_CHANGED");
+          }
           projections(plan.changes).forEach((file, index) => { if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== plan.changes[index].before_sha256) fail("STANDARD_CYCLE_READINESS_PROJECTION_STALE"); });
           const current = readCurrent(instance.instance_id), age = now() - plan.prepared_at_ms;
           if (current.instance_sha256 !== instance.instance_sha256 || !Number.isSafeInteger(age) || age < 0 || age > 300000)
@@ -76,7 +93,12 @@ export function createStandardCycleImplementation({ targetRoot, readEvaluation, 
         try {
           for (const change of plan.changes) { metadata.push(artifacts.compareAndSwapPreservingMetadata(change).metadata_sha256); committed.push(change.path); }
           const projection = artifacts.project(committed);
-          for (const [index, change] of plan.changes.entries()) if (artifacts.read(change.path).sha256 !== change.after_sha256 || artifacts.metadataHash(change.path) !== metadata[index]) fail("STANDARD_CYCLE_READINESS_POSTCONDITION_FAILED");
+          const postimages = postgresMaterial(committed);
+          for (const [index, change] of plan.changes.entries()) {
+            const current = postimages?.[index] ?? artifacts.read(change.path);
+            if (current.sha256 !== change.after_sha256 || (postimages ? current.metadata_sha256 : artifacts.metadataHash(change.path)) !== metadata[index])
+              fail("STANDARD_CYCLE_READINESS_POSTCONDITION_FAILED");
+          }
           for (const [index, file] of projections(plan.changes).entries()) if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== plan.changes[index].after_sha256) fail("STANDARD_CYCLE_READINESS_PROJECTION_UNCONFIRMED");
           const after = await observeContext();
           if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || boundary(after.context, plan.cycle_path) !== plan.boundary_sha256) fail("STANDARD_CYCLE_READINESS_POSTCONDITION_FAILED");

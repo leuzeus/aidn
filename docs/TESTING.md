@@ -186,6 +186,15 @@ operation, metadata/source-of-truth and published loader gates; report each
 actual execution separately. Do not transfer a candidate's result to the
 published STANDARD extraction or a different source HEAD.
 
+## PostgreSQL readiness document observations
+
+The readiness fence uses fresh PostgreSQL batches for the context metadata
+and for the two implementation artifacts. Check that metadata pins are bound
+to the content hashes already observed. Run the existing readiness contract
+checks and a disposable real-PostgreSQL comparison of the exact preview,
+expiry, and pre/postimage observations. The nominal fixture keeps its
+300-second freshness ceiling and its separate terminal verdict.
+
 ## Adjacent installation-record scans, 2026-11-06
 
 The activation fixture retains all earlier assertions and adds four checks for
