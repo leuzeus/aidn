@@ -1250,6 +1250,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         ...owner, observation, written: false };
     },
     prepareReconciliationInventory: (id, input) => reconciliationInventory.prepare(id, input),
+    prepareProcessOwnerObservation: (id, input) => reconciliationInventory.prepareProcessOwnerObservation(id, input),
     prepareOperationDisposition: (id, input) => disposition.prepare(id, input),
     applyOperationDisposition: (plan, input) => disposition.apply(plan, input),
     inspectDiagnostic(id) {

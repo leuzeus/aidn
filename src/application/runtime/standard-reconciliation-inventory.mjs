@@ -10,12 +10,13 @@ import { assertControlInbox } from "../../core/workflow/process-control-inbox.mj
 import { assertNativeAllocationJournal } from "../../core/workflow/native-allocation-journal.mjs";
 import { assertAgenticProcessInstance, agenticProcessPrefixSha256, inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
 import { processFrameModel } from "../../core/workflow/process-call-model.mjs";
-import { assertProcessReconciliationInventory, RECONCILIATION_DISCOVERY_DOMAINS } from "../../core/workflow/process-reconciliation-inventory.mjs";
+import { assertProcessOwnerObservation, assertProcessReconciliationInventory, RECONCILIATION_DISCOVERY_DOMAINS } from "../../core/workflow/process-reconciliation-inventory.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import ownerSchema from "../../core/contracts/workflow-definition/process-local-effect-owner.v1.schema.json" with { type: "json" };
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { exactFileIdentity } from "../../lib/fs/exact-file-identity.mjs";
 import { assertProcessDispatchRecord, dispatchRecordPath } from "../../core/workflow/process-dispatch-record.mjs";
+import { observeLocalProcessOwner } from "../../adapters/runtime/local-process-identity.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
@@ -194,12 +195,39 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
     resources.sort((a, b) => a.ref.localeCompare(b.ref, "en"));
     return { resources, operations, accounting, runtime_binding_sha256: observed.binding_sha256 };
   }
-  function capture(instanceId, expectedSha256, requireExpected) {
+  function observeOwner(material, operationId) {
+    const operation = material.operations.find(row => row.operation_id === operationId);
+    if (operation?.effect_status !== "unknown") fail("PROCESS_OWNER_OBSERVATION_UNKNOWN_REQUIRED");
+    const dispatch = material.resources.find(row => row.ref === "dispatch:" + operationId);
+    const identity = dispatch?.details.process_identity;
+    let status = "unresolved";
+    if (dispatch) {
+      if (!identity || identity.pid !== operation.owner?.pid) fail("PROCESS_OWNER_OBSERVATION_SUBJECT_CHANGED");
+      try {
+        const current = observeLocalProcessOwner(identity);
+        if (current === "active") status = "original_process_active";
+        if (current === "terminated") status = "original_process_absent";
+      } catch (error) {
+        if (error.code !== "PROCESS_IDENTITY_UNAVAILABLE") throw error;
+      }
+    }
+    return { operation_id: operationId, operation_record_sha256: operation.record_sha256,
+      dispatch_sha256: dispatch?.sha256 ?? null, process_identity_sha256: identity ? shadowHash(identity) : null, owner_status: status };
+  }
+  function capture(instanceId, expectedSha256, requireExpected, operationId = null) {
       const subject = () => readSubject ? readSubject(instanceId) : { instance: readInstance(instanceId), authority: readAuthority(), context: readContext() };
       const { instance: before, authority, context } = subject(); assertAgenticProcessInstance(before);
       if (requireExpected && expectedSha256 !== before.instance_sha256) fail("PROCESS_REVISION_CONFLICT");
-      const first = observe(before), second = observe(before), after = subject();
-      if (shadowHash(first) !== shadowHash(second) || after.instance.instance_sha256 !== before.instance_sha256
+      const first = observe(before), started = operationId === null ? null : now();
+      const owner = operationId === null ? null : observeOwner(first, operationId);
+      const second = observe(before);
+      if (shadowHash(first) !== shadowHash(second)) fail("PROCESS_RECONCILIATION_OBSERVATION_CHANGED");
+      // Read the same identity again after reobserving the canonical records.
+      if (owner && shadowHash(owner) !== shadowHash(observeOwner(second, operationId)))
+        fail("PROCESS_RECONCILIATION_OBSERVATION_CHANGED");
+      const sampled = owner ? now() : null;
+      const after = subject();
+      if (after.instance.instance_sha256 !== before.instance_sha256
         || shadowHash(after.authority) !== shadowHash(authority) || shadowHash(after.context) !== shadowHash(context))
         fail("PROCESS_RECONCILIATION_OBSERVATION_CHANGED");
       const inventory = assertProcessReconciliationInventory(signer.seal({ contract_version: "process-reconciliation-inventory.v1",
@@ -210,10 +238,20 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
         authority_sha256: shadowHash(authority), context_sha256: shadowHash(context), observed_at_ms: now(),
         ...first, discovery: RECONCILIATION_DISCOVERY_DOMAINS.map(domain => ({ domain, status: "independent_observation_required" })),
         complete_resource_closure: false, permits_effects: false, written: false }));
-      return { instance: before, inventory };
+      if (!owner) return { instance: before, inventory };
+      const observation = assertProcessOwnerObservation(signer.seal({ contract_version: "process-owner-observation.v1",
+        instance_id: before.instance_id, instance_sha256: before.instance_sha256, inventory_sha256: shadowHash(inventory),
+        ...owner, first_sample_started_at_ms: started, last_sample_completed_at_ms: sampled, observed_at_ms: inventory.observed_at_ms,
+        business_effect: "unknown", process_tree_closure: "not_observed",
+        complete_resource_closure: false, permits_effects: false, written: false }), inventory);
+      return { inventory, observation };
   }
   return Object.freeze({
     prepare(instanceId, { expectedSha256 } = {}) { return capture(instanceId, expectedSha256, true).inventory; },
+    prepareProcessOwnerObservation(instanceId, { expectedSha256, operationId } = {}) {
+      if (typeof operationId !== "string" || !/^op_[a-f0-9]{40}$/.test(operationId)) fail("PROCESS_OWNER_OBSERVATION_OPERATION_INVALID");
+      return capture(instanceId, expectedSha256, true, operationId);
+    },
     // Return the instance authenticated twice by this very capture, rather than
     // make callers perform another full authority read just to name its prefix.
     // This internal compound observation has no cross-call state or permission.

@@ -4,7 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
+import { once } from "node:events";
 import { createStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
 import { createStandardWorkflowOperationHost } from "../../src/application/runtime/standard-workflow-operation-host.mjs";
 import { standardWorkflowOperationBindings } from "../../src/application/runtime/standard-workflow-operations.mjs";
@@ -15,13 +16,15 @@ import { createAgenticProcessStore } from "../../src/adapters/runtime/agentic-pr
 import { createOperationJournalSigner, operationOutputRef } from "../../src/core/workflow/process-operation-journal.mjs";
 import { nativeJournalId } from "../../src/core/workflow/native-allocation-journal.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
-import { assertProcessReconciliationInventory } from "../../src/core/workflow/process-reconciliation-inventory.mjs";
+import { assertProcessOwnerObservation, assertProcessReconciliationInventory } from "../../src/core/workflow/process-reconciliation-inventory.mjs";
+import { createProcessDispatchRecordStore } from "../../src/adapters/runtime/process-dispatch-record-store.mjs";
+import { observeLocalProcess } from "../../src/adapters/runtime/local-process-identity.mjs";
 import { exactFileIdentity } from "../../src/lib/fs/exact-file-identity.mjs";
 import { processModelIdentity } from "../../src/core/workflow/process-call-model.mjs";
 
 // Fault-injected journal states below qualify discovery/authentication only.
 // They are not real process-death, external closure or disposition evidence.
-export async function verifyStandardReconciliationInventory(mode, pass) {
+export async function verifyStandardReconciliationInventory(mode, pass, { processOwnerObservation = false } = {}) {
   const owned = [], root = createStandardWorkflowFixture(mode, owned), key = randomBytes(32);
   const signer = createOperationJournalSigner(() => key), H = "a".repeat(64), id = "inventory";
   const binding = standardWorkflowOperationBindings().find(row => row.id === "context_reload");
@@ -34,6 +37,7 @@ export async function verifyStandardReconciliationInventory(mode, pass) {
   const artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
   const journals = createProcessOperationJournalStore({ targetRoot: root, stateMode: mode });
   const instances = createAgenticProcessStore({ targetRoot: root, stateMode: mode });
+  let child = null, childClosed;
   try {
     const stat = { dev: 1n, ino: 9007199254740992n, size: 0n, nlink: 1n, mode: 33188n, mtimeNs: 1n, ctimeNs: 1n };
     const adjacent = { ...stat, ino: stat.ino + 1n };
@@ -107,7 +111,14 @@ export async function verifyStandardReconciliationInventory(mode, pass) {
 
     // The same immutable intent is discoverable both before a receipt and after
     // an UNKNOWN receipt. Preserve the original owner and every result identity.
-    const owner = { generation: randomUUID(), pid: process.pid };
+    if (processOwnerObservation) {
+      // The child owns no product resources. Its real OS identity is linked
+      // to the retained fault-injected operation for this observation fixture.
+      child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 90000)"], { windowsHide: true, stdio: "ignore" });
+      childClosed = once(child, "close");
+      await once(child, "spawn");
+    }
+    const owner = { generation: randomUUID(), pid: child?.pid ?? process.pid };
     let record = signer.seal({ ...stagedRecord.record, phase: "dispatching", revision: 2, owner });
     journals.compareAndSwap(record, journals.read(record.operation_id).content_sha256);
     let observed = open().prepareReconciliationInventory(id, { expectedSha256: before.record.instance_sha256 });
@@ -125,6 +136,61 @@ export async function verifyStandardReconciliationInventory(mode, pass) {
     assert.deepEqual(observed.operations[0].owner, owner);
     assert.equal(shadowHash(journals.read(record.operation_id).record), shadowHash(record));
     pass(`${mode}: dispatching/no-receipt and receipted/UNKNOWN retain exact owners/results and do not become completed`);
+
+    if (processOwnerObservation) {
+      const subject = { expectedSha256: before.record.instance_sha256, operationId: record.operation_id };
+      const readOwner = () => open().prepareProcessOwnerObservation(id, subject);
+      const check = result => {
+        signer.verify(result.inventory);
+        signer.verify(result.observation);
+        assertProcessOwnerObservation(result.observation, result.inventory);
+        assert.equal(result.observation.operation_record_sha256, shadowHash(record));
+        assert.equal(result.observation.business_effect, "unknown");
+        assert.equal(result.observation.process_tree_closure, "not_observed");
+        assert.equal(result.observation.complete_resource_closure, false);
+        assert.equal(result.observation.permits_effects, false);
+        assert.equal(result.observation.written, false);
+        return result.observation;
+      };
+      const unavailable = check(readOwner());
+      assert.equal(unavailable.owner_status, "unresolved");
+      assert.equal(unavailable.dispatch_sha256, null);
+      assert.equal(unavailable.process_identity_sha256, null);
+      pass(`${mode}: a retained PID without an authenticated dispatch identity stays unresolved`);
+
+      const identity = observeLocalProcess(child.pid);
+      assert.ok(identity);
+      const dispatchStore = createProcessDispatchRecordStore({ targetRoot: root, stateMode: mode });
+      const dispatch = signer.seal({ contract_version: "process-dispatch-record.v1", operation_id: record.operation_id,
+        revision: 1, phase: "running", instance_id: id, scope_id: before.record.scope_id, model_sha256: before.record.model_sha256,
+        intent_sha256: shadowHash(record.intent), preview_sha256: shadowHash(record.preview), authority_sha256: observed.authority_sha256,
+        runtime_sha256: shadowHash(artifacts.describe()), physical_root_sha256: shadowHash(artifacts.root),
+        operation_owner_sha256: shadowHash(owner), process_identity: identity, context_before_sha256: observed.context_sha256,
+        context_after_sha256: null, leases: [], output: null, output_sha256: null });
+      dispatchStore.compareAndSwap(dispatch, null);
+      const unchanged = artifacts.observeInventory();
+      const active = readOwner(), activeObservation = check(active);
+      assert.equal(activeObservation.owner_status, "original_process_active");
+      assert.equal(activeObservation.process_identity_sha256, shadowHash(identity));
+      assert.equal(activeObservation.dispatch_sha256, shadowHash(dispatch));
+      assert.throws(() => assertProcessOwnerObservation({ ...activeObservation, inventory_sha256: H }, active.inventory),
+        { code: "PROCESS_OWNER_OBSERVATION_SUBJECT_CHANGED" });
+      assert.throws(() => assertProcessOwnerObservation({ ...activeObservation, complete_resource_closure: true }, active.inventory),
+        { code: "PROCESS_OWNER_OBSERVATION_INVALID" });
+      assert.deepEqual(artifacts.observeInventory(), unchanged);
+      pass(`${mode}: two real OS observations bind the live original process to the signed inventory`);
+
+      assert.ok(child.kill());
+      await childClosed;
+      const absent = check(readOwner());
+      assert.equal(absent.owner_status, "original_process_absent");
+      assert.equal(absent.dispatch_sha256, activeObservation.dispatch_sha256);
+      assert.equal(absent.process_identity_sha256, activeObservation.process_identity_sha256);
+      assert.deepEqual(artifacts.observeInventory(), unchanged);
+      assert.deepEqual(journals.read(record.operation_id).record, record);
+      assert.equal(authorizations, 0);
+      pass(`${mode}: after real direct-child exit the same original identity is absent and the effect stays unknown`);
+    }
 
     const native = { contract_version: "native-allocation-journal.v1", journal_id: nativeJournalId(before.record), instance_id: id,
       scope_id: before.record.scope_id, model_sha256: before.record.model_sha256, revision: 1, allocations: [{
@@ -166,6 +232,8 @@ export async function verifyStandardReconciliationInventory(mode, pass) {
       { code: "PROCESS_RECONCILIATION_RESOURCE_CHANGED" });
     pass(`${mode}: an orphan with a substituted grant fails binding authentication before any disposition`);
   } finally {
+    if (child && child.exitCode === null && child.signalCode === null) child.kill();
+    if (childClosed) await childClosed;
     for (const directory of owned.reverse()) {
       const physical = fs.realpathSync(directory), temporary = fs.realpathSync(os.tmpdir());
       if (path.dirname(physical) !== temporary || !path.basename(physical).startsWith("aidn-standard-ports-")) throw Error("INVENTORY_FIXTURE_CLEANUP_OUT_OF_SCOPE");
@@ -177,6 +245,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const mode = process.argv[2];
   if (!["files", "dual", "db-only"].includes(mode)) throw Error("INVENTORY_FIXTURE_MODE_REQUIRED");
   let checks = 0;
-  await verifyStandardReconciliationInventory(mode, name => { checks++; console.log("PASS " + name); });
+  await verifyStandardReconciliationInventory(mode, name => { checks++; console.log("PASS " + name); },
+    { processOwnerObservation: process.argv.includes("--process-owner-observation") });
   console.log(JSON.stringify({ status: "PASS", checks, mode, resource_disposition: "NOT_IMPLEMENTED", whole_goal_complete: false }));
 }

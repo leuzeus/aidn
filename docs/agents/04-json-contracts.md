@@ -169,6 +169,13 @@ The inventory validates an embedded operation against the model identity of
 its reducer occurrence and that model's operation pin. Its signed intent
 still binds the containing instance and exact prefix.
 
+The private `process-owner-observation.v1` binds one unknown operation to the
+signed inventory and, when present, the exact dispatch and process identity.
+It records the interval and whether the original identity was active,
+absent or unresolved. Process-tree closure is unobserved and the business
+effect remains unknown. This response grants no effect, disposition or
+resource closure and creates no retained record.
+
 ## Close expiry continuation contracts
 
 The renewal plan embeds the closed hook-input data shape and its contract-version

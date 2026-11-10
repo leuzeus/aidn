@@ -173,6 +173,21 @@ absence of a business effect. This port cannot release an owner, append a result
 grant admission, renew authority or rerun an operation. Missing/changed records
 and unsupported/truncated local inventories fail without a partial success.
 General disposition and actual crash/concurrent recovery remain required.
+
+The internal `prepareProcessOwnerObservation` port selects an exact unknown
+operation by instance digest and operation ID. Two reads of the original
+process creation identity bracket a new canonical inventory read. The original
+dispatch and operation must be authenticated and name the same owner PID.
+The signed `process-owner-observation.v1` links the inventory, operation,
+dispatch and process identity digests, plus the observation interval. Missing
+dispatch evidence or an unavailable local observation leaves the status
+unresolved. Changed status or canonical evidence refuses the observation.
+
+An original process can be absent after exit or PID reuse. This is evidence
+about that process identity. Process-tree closure stays unobserved and the
+business effect stays unknown. Native resources, external actors and provider
+effects require their respective authorities. The observation performs no
+write and grants no authority to release an owner, accept a result or replay.
 This foundation does not complete L4 or the standard workflow plan.
 
 ## Status
