@@ -55,6 +55,7 @@ try {
     git(f.root, "symbolic-ref", initial.source_ref, f.plan.observed.target_ref);
     const symbolic = f.port.inspect(equal);
     assert.equal(symbolic.source_symbolic, true); assert.equal(symbolic.target_symbolic, true);
+    assert.equal(symbolic.current_ref, f.plan.observed.target_ref);
   });
   await check("distinct source and target retain fresh symbolic-ref refusals", async () => {
     const f = fixture();

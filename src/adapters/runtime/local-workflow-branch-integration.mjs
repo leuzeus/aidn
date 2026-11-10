@@ -63,6 +63,17 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
     if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,191}$/.test(value)) fail("WORKFLOW_BRANCH_IDENTITY_INVALID");
     git(["check-ref-format", "refs/heads/" + value]); return "refs/heads/" + value;
   }
+  function sampleSymbolicRefs(refs, options = []) {
+    const sample = spawnSync(gitExecutable, [...fixed, "for-each-ref", ...options, "--format=%(refname)%09%(symref)", ...refs],
+      { env, encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" });
+    if (sample.status !== 0 || sample.stderr !== "") return null;
+    const rows = sample.stdout.split(/\r?\n/);
+    if (rows.length !== refs.length + 1 || rows.at(-1) !== "") return null;
+    const entries = rows.slice(0, -1).map(row => row.split("\t"));
+    if (!entries.every(pair => pair.length === 2)) return null;
+    const byRef = new Map(entries);
+    return refs.every(ref => byRef.has(ref)) ? byRef : null;
+  }
   function symbolicBranches(sourceRef, targetRef) {
     const isSymbolic = ref => spawnSync(gitExecutable, [...fixed, "symbolic-ref", "--quiet", ref],
       { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1;
@@ -70,17 +81,8 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
       const symbolic = isSymbolic(sourceRef);
       return [symbolic, symbolic];
     }
-    const sample = spawnSync(gitExecutable, [...fixed, "for-each-ref", "--format=%(refname)%09%(symref)", sourceRef, targetRef],
-      { env, encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" });
-    if (sample.status === 0 && sample.stderr === "") {
-      const rows = sample.stdout.split(/\r?\n/);
-      if (rows.length === 3 && rows[2] === "") {
-        const entries = rows.slice(0, 2).map(row => row.split("\t"));
-        const refs = new Map(entries);
-        if (entries.every(pair => pair.length === 2) && refs.has(sourceRef) && refs.has(targetRef))
-          return [refs.get(sourceRef) !== "", refs.get(targetRef) !== ""];
-      }
-    }
+    const sample = sampleSymbolicRefs([sourceRef, targetRef]);
+    if (sample) return [sample.get(sourceRef) !== "", sample.get(targetRef) !== ""];
     // Enumeration can omit broken symbolic refs or fail on an unavailable store.
     return [isSymbolic(sourceRef), isSymbolic(targetRef)];
   }
@@ -102,7 +104,9 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
     // Equal references share one observation inside this synchronous inspect;
     // nothing is reused across calls or an awaited authorization/provider.
     const sourceRef = branch(source_branch), targetRef = source_branch === target_branch ? sourceRef : branch(target_branch);
-    const currentRef = git(["symbolic-ref", "--quiet", "HEAD"]).trim();
+    const sameBranchSample = sourceRef === targetRef ? sampleSymbolicRefs(["HEAD", sourceRef], ["--include-root-refs"]) : null;
+    const headTarget = sameBranchSample?.get("HEAD");
+    const currentRef = headTarget || git(["symbolic-ref", "--quiet", "HEAD"]).trim();
     const refs = [...new Set([sourceRef, targetRef, "HEAD"])];
     const paths = [sourceRef + ".lock", "logs/HEAD", "logs/" + targetRef];
     // The ref OIDs and Git-owned path names come from one synchronous sample.
@@ -115,7 +119,9 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
     const ancestor = spawnSync(gitExecutable, [...fixed, "merge-base", "--is-ancestor", targetHead, sourceHead], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" });
     if (![0, 1].includes(ancestor.status)) fail("WORKFLOW_BRANCH_ANCESTRY_UNAVAILABLE");
     const rows = worktrees(), status = git(["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
-    const [sourceSymbolic, targetSymbolic] = symbolicBranches(sourceRef, targetRef);
+    const sameBranchSymbolic = headTarget ? sameBranchSample.get(sourceRef) !== "" : null;
+    const [sourceSymbolic, targetSymbolic] = sameBranchSymbolic === null
+      ? symbolicBranches(sourceRef, targetRef) : [sameBranchSymbolic, sameBranchSymbolic];
     const resolvedPaths = observations.slice(refs.length);
     if (resolvedPaths.length !== paths.length) fail("WORKFLOW_BRANCH_GIT_PATHS_INVALID");
     const [sourceLockPath, headLogPath, targetLogPath] = resolvedPaths.map(physicalGitPath);

@@ -657,9 +657,11 @@ preserved source55 gate timings motivated this bounded change; no timing rerun o
 complete 193-case result is implied.
 
 Inspection of distinct branch references batches the symbolic-ref observation.
-The same inspection reads HEAD separately and uses independent Git probes if the
-enumeration fails, warns, or lacks two exact rows. The port fixture checks both
-directions of symbolic aliasing and verifies refusal before a write.
+It reads HEAD separately on that path. Equal source and target can share a
+fresh enumeration with HEAD. Exercise both paths, including a chained alias,
+detached HEAD, a missing row, warnings and Git versions without root-reference
+enumeration. The port fixture checks both directions of symbolic aliasing and
+verifies refusal before a write.
 
 The [dated component record](qualification/standard-workflow/console-and-branch-observation-2026-11-05.json)
 separates the actual 14-call public-console PASS on ancestor `f9899b41` from the

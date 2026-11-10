@@ -2516,8 +2516,10 @@ transaction over independent worktrees or filesystem writers.
 
 A distinct source/target pair can be read together at the symbolic-ref fence.
 The adapter falls back to the individual Git probes when enumeration fails,
-warns or omits either exact ref. The HEAD observation and authority boundaries
-keep their existing order.
+warns or omits either exact ref. When the source and target coincide, the HEAD
+observation may include the single branch in the same enumeration. A detached
+HEAD or incomplete, unavailable or warned enumeration uses the original
+commands in their order. Each authority boundary acquires its own observation.
 
 Confirmation requires the exact appended target/HEAD reflog records bound to
 the operation and plan, preserved reflog prefixes, source tip, index and worktree
