@@ -155,7 +155,12 @@ in their own right, including when the selected capture has yet to be written.
 An accepted control event binds the exact captured delivery, its prior prefix,
 the acknowledgement prefix if present, and the selected reservation where
 the wait requires one. A matching reserved capture still accounts for the
-interruption after event acceptance and before acknowledgement. DB modes use canonical content and metadata from one
+interruption after event acceptance and before acknowledgement.
+A human capture linked to a retained operation binds the question rebuilt
+from its signed preview and intent, an offered choice and any reserved claim
+on that operation. An acknowledged capture must identify the exact retained
+receipt that names it. A matching reserved capture remains observable before
+the operation receipt is written, without calling the human source. DB modes use canonical content and metadata from one
 list statement per observation; visible projections remain non-authoritative.
 Exact scope/model/prefix/binding/input/grant links and host MACs are checked.
 For a reusable call, the reconstructed prefix identifies the occurrence's

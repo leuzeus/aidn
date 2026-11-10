@@ -15,57 +15,59 @@ import { recoveryCycleSelection, recoveryCycleQuestionVersion, recoveryCycleQues
   recoveryCycleSelectionOutput } from "../../core/workflow/standard-drift-recovery-cycle-selection.mjs";
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const choices = ["THINKING", "EXPLORING", "COMMITTING", "refused", "deferred", "cancelled"];
-export function createStandardHumanDecisions({ inbox, signer, source, projectionRequired }) {
-  const spike = record => record.intent.binding_ref === "spike_conversion_decision";
-  const modeWork = record => record.intent.binding_ref === "mode_work_continue_decision";
-  const correction = record => record.intent.binding_ref === "session_pr_correction_decision";
-  const integration = record => record.intent.binding_ref === "session_branch_integration_decision";
-  const sessionClosure = record => record.intent.binding_ref === "session_closure_decision";
-  const recovery = record => ["drift_recovery_decision", "drift_completion_decision"].includes(record.intent.binding_ref);
-  const promotion = record => record.intent.binding_ref === "baseline_promotion_decision";
-  const closure = record => record.intent.binding_ref === "cycle_closure_decision";
-  const resolutionException = record => record.intent.binding_ref === resolutionExceptionOperation;
-  const question = record => {
-    if (record.intent.binding_ref === recoveryCycleSelection) return recoveryCycleQuestion(record);
-    if (record.intent.binding_ref === externalMergeDisposition) return externalMergeQuestion(record);
-    if (record.intent.binding_ref === postMergeDecisionOperation) return postMergeDecisionQuestion(record);
-    if (record.intent.binding_ref === mergeConsentOperation) return mergeConsentQuestion(record);
-    if (resolutionException(record)) return resolutionExceptionQuestion(record);
-    if (!["spike_conversion_decision", "mode_work_continue_decision", "session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "drift_completion_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
-    if (spike(record)) return assertSpikeQuestion({ contract_version: "standard-spike-question.v1", operation_id: record.operation_id,
-      instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
-      session_id: record.preview.prepared.review.analysis.session_id, review_operation_id: record.preview.input.review_operation_id,
-      review: structuredClone(record.preview.prepared.review), choices: [...record.preview.prepared.choices] });
-    if (modeWork(record)) return assertModeWorkQuestion({ contract_version: "standard-mode-work-question.v1", operation_id: record.operation_id,
-      instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
-      session_id: record.preview.prepared.review.session_id, review_operation_id: record.preview.input.review_operation_id,
-      review: structuredClone(record.preview.prepared.review), choices: [...record.preview.prepared.choices] });
-    if (correction(record)) return assertPrCorrectionQuestion({ contract_version: record.preview.prepared.plan.contract_version === "standard-pr-correction-review-plan.v3" ? "standard-pr-correction-question.v3" : record.preview.prepared.plan.contract_version === "standard-pr-correction-review-plan.v2" ? "standard-pr-correction-question.v2" : "standard-pr-correction-question.v1",
-      ...(record.preview.prepared.plan.contract_version === "standard-pr-correction-review-plan.v3" ? { cycle_constraints: structuredClone(record.preview.prepared.plan.cycle_constraints) } : {}),
-      ...(record.preview.prepared.plan.contract_version === "standard-pr-correction-review-plan.v2" ? { candidate_cycle: structuredClone(record.preview.prepared.plan.candidate_cycle) } : {}), operation_id: record.operation_id,
-      instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
-      session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
-    if (integration(record)) return assertSessionBranchIntegrationQuestion({ contract_version: "standard-session-branch-integration-question.v1", operation_id: record.operation_id,
-      instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
-      session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
-    if (sessionClosure(record)) return assertSessionClosureQuestion({ contract_version: "standard-session-closure-question.v1", operation_id: record.operation_id,
-      instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
-      session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
-    if (promotion(record)) return assertBaselinePromotionQuestion({ contract_version: "standard-baseline-promotion-question.v1", operation_id: record.operation_id,
-      instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
-      session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
-    if (closure(record)) return assertCycleClosureQuestion({ contract_version: "standard-cycle-closure-question.v1", operation_id: record.operation_id,
-      instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
-      session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
-    return recovery(record) ? assertRecoveryQuestion({ contract_version: ["standard-drift-recovery-plan.v2", "standard-drift-recovery-plan.v3"].includes(record.preview.prepared.plan.contract_version)
-      ? "standard-drift-recovery-question.v2" : "standard-drift-recovery-question.v1", operation_id: record.operation_id,
+const spike = record => record.intent.binding_ref === "spike_conversion_decision";
+const modeWork = record => record.intent.binding_ref === "mode_work_continue_decision";
+const correction = record => record.intent.binding_ref === "session_pr_correction_decision";
+const integration = record => record.intent.binding_ref === "session_branch_integration_decision";
+const sessionClosure = record => record.intent.binding_ref === "session_closure_decision";
+const recovery = record => ["drift_recovery_decision", "drift_completion_decision"].includes(record.intent.binding_ref);
+const promotion = record => record.intent.binding_ref === "baseline_promotion_decision";
+const closure = record => record.intent.binding_ref === "cycle_closure_decision";
+const resolutionException = record => record.intent.binding_ref === resolutionExceptionOperation;
+export function standardHumanDecisionQuestion(record) {
+  if (record.intent.binding_ref === recoveryCycleSelection) return recoveryCycleQuestion(record);
+  if (record.intent.binding_ref === externalMergeDisposition) return externalMergeQuestion(record);
+  if (record.intent.binding_ref === postMergeDecisionOperation) return postMergeDecisionQuestion(record);
+  if (record.intent.binding_ref === mergeConsentOperation) return mergeConsentQuestion(record);
+  if (resolutionException(record)) return resolutionExceptionQuestion(record);
+  if (!["spike_conversion_decision", "mode_work_continue_decision", "session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "drift_completion_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+  if (spike(record)) return assertSpikeQuestion({ contract_version: "standard-spike-question.v1", operation_id: record.operation_id,
     instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
-    session_id: record.preview.prepared.plan.session_id, review: structuredClone(record.preview.prepared.plan),
-    choices: [...(record.preview.prepared.plan.choices ?? record.preview.prepared.plan.options.map(row => row.choice)), "refused", "deferred", "cancelled"] })
-    : assertModeQuestion({ contract_version: "standard-mode-question.v1", operation_id: record.operation_id, instance_id: record.intent.instance_id,
-    scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
-    session_id: record.preview.input.session_id, choices: [...choices] });
-  };
+    session_id: record.preview.prepared.review.analysis.session_id, review_operation_id: record.preview.input.review_operation_id,
+    review: structuredClone(record.preview.prepared.review), choices: [...record.preview.prepared.choices] });
+  if (modeWork(record)) return assertModeWorkQuestion({ contract_version: "standard-mode-work-question.v1", operation_id: record.operation_id,
+    instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
+    session_id: record.preview.prepared.review.session_id, review_operation_id: record.preview.input.review_operation_id,
+    review: structuredClone(record.preview.prepared.review), choices: [...record.preview.prepared.choices] });
+  if (correction(record)) return assertPrCorrectionQuestion({ contract_version: record.preview.prepared.plan.contract_version === "standard-pr-correction-review-plan.v3" ? "standard-pr-correction-question.v3" : record.preview.prepared.plan.contract_version === "standard-pr-correction-review-plan.v2" ? "standard-pr-correction-question.v2" : "standard-pr-correction-question.v1",
+    ...(record.preview.prepared.plan.contract_version === "standard-pr-correction-review-plan.v3" ? { cycle_constraints: structuredClone(record.preview.prepared.plan.cycle_constraints) } : {}),
+    ...(record.preview.prepared.plan.contract_version === "standard-pr-correction-review-plan.v2" ? { candidate_cycle: structuredClone(record.preview.prepared.plan.candidate_cycle) } : {}), operation_id: record.operation_id,
+    instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
+    session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
+  if (integration(record)) return assertSessionBranchIntegrationQuestion({ contract_version: "standard-session-branch-integration-question.v1", operation_id: record.operation_id,
+    instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
+    session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
+  if (sessionClosure(record)) return assertSessionClosureQuestion({ contract_version: "standard-session-closure-question.v1", operation_id: record.operation_id,
+    instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
+    session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
+  if (promotion(record)) return assertBaselinePromotionQuestion({ contract_version: "standard-baseline-promotion-question.v1", operation_id: record.operation_id,
+    instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
+    session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
+  if (closure(record)) return assertCycleClosureQuestion({ contract_version: "standard-cycle-closure-question.v1", operation_id: record.operation_id,
+    instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
+    session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
+  return recovery(record) ? assertRecoveryQuestion({ contract_version: ["standard-drift-recovery-plan.v2", "standard-drift-recovery-plan.v3"].includes(record.preview.prepared.plan.contract_version)
+    ? "standard-drift-recovery-question.v2" : "standard-drift-recovery-question.v1", operation_id: record.operation_id,
+  instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
+  session_id: record.preview.prepared.plan.session_id, review: structuredClone(record.preview.prepared.plan),
+  choices: [...(record.preview.prepared.plan.choices ?? record.preview.prepared.plan.options.map(row => row.choice)), "refused", "deferred", "cancelled"] })
+  : assertModeQuestion({ contract_version: "standard-mode-question.v1", operation_id: record.operation_id, instance_id: record.intent.instance_id,
+  scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
+  session_id: record.preview.input.session_id, choices: [...choices] });
+}
+
+export function createStandardHumanDecisions({ inbox, signer, source, projectionRequired }) {
+  const question = standardHumanDecisionQuestion;
   function read(id) {
     const value = inbox.read(id); if (!value.record) fail("PROCESS_DECISION_SOURCE_NOT_FOUND");
     signer.verify(value.record); return value;

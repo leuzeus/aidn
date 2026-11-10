@@ -24,6 +24,7 @@ import { processModelIdentity } from "../../src/core/workflow/process-call-model
 import { createProcessControlInboxStore } from "../../src/adapters/runtime/process-control-inbox-store.mjs";
 import { controlInboxId, controlReservationId } from "../../src/core/workflow/process-control-inbox.mjs";
 import { externalMergeEventKey } from "../../src/core/workflow/standard-pr-external-merge.mjs";
+import { createProcessDecisionInboxStore } from "../../src/adapters/runtime/process-decision-inbox-store.mjs";
 
 // Fault-injected journal states below qualify discovery/authentication only.
 // They are not real process-death, external closure or disposition evidence.
@@ -256,6 +257,75 @@ export async function verifyStandardReconciliationInventory(mode, pass, { proces
     inbox.compareAndSwap(substitutedReservation, inbox.read(reservationId).content_sha256);
     assert.throws(() => controlInventory(controlSha), { code: "PROCESS_RECONCILIATION_HISTORY_UNAVAILABLE" });
     pass(mode + ": a validly signed reservation for another selection cannot authenticate the accepted control");
+
+    {
+      const humanId = "human-inventory", humanBinding = standardWorkflowOperationBindings().find(row => row.id === "mode_decision");
+      const humanModel = { ...model, model_id: "inventory-human-fixture", operation_pins: { mode_decision: shadowHash(humanBinding) },
+        nodes: [{ ...model.nodes[0], binding_ref: "mode_decision" }] };
+      let reads = 0;
+      const humanSource = {
+        read({ question }) { reads++; return { contract_version: "human-mode-decision.v1", source_kind: "human",
+          authority_id: "fixture_human", source_event_id: "fixture_mode_event", subject_sha256: H, question_sha256: shadowHash(question),
+          choice: "THINKING", evidence_refs: [{ ref: "fixture:operator/mode", sha256: H }] }; },
+        verify({ source }) { reads++; return { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) }; },
+      };
+      const openHuman = () => createStandardWorkflowOperationHost({ targetRoot: root, model: humanModel, humanSource,
+        readSigningKey: () => key, authorize: async () => { authorizations++; throw Error("UNEXPECTED_AUTHORIZATION"); } });
+      const human = openHuman(), humanInitial = human.initialize({ instanceId: humanId });
+      human.initialize({ instanceId: humanId, write: true, expectedResultSha256: humanInitial.record.instance_sha256 });
+      const humanPreview = await human.preview({ instanceId: humanId, expectedSha256: humanInitial.record.instance_sha256,
+        occurrenceId: "root", input: { session_id: "S001" } });
+      const humanStage = await human.stage(humanPreview, { write: true, expectedPreviewSha256: shadowHash(humanPreview) });
+      assert.equal((await human.dispatch(humanStage.operation_id, { write: true })).status, "waiting_for_human");
+      const stagedHumanRecord = journals.read(humanStage.operation_id).record, stagedHumanInstance = human.inspect(humanId).record;
+      const selected = await human.receiveDecision(humanStage.operation_id, { write: true, sourceRef: "mode" });
+      const humanAccepted = await human.accept(humanStage.operation_id, { write: true });
+      const receipt = selected.receipt, output = human.readOutput(receipt.evidence_refs[0].ref);
+      const capture = output.observations.inbox_id, decisions = createProcessDecisionInboxStore({ targetRoot: root, stateMode: mode });
+      const retainedDecision = decisions.read(capture).record;
+      const readHuman = (expectedSha256 = humanAccepted.record.instance_sha256) => {
+        const beforeRead = artifacts.observeInventory(), beforeCalls = reads;
+        try { return openHuman().prepareReconciliationInventory(humanId, { expectedSha256 }); }
+        finally {
+          assert.deepEqual(artifacts.observeInventory(), beforeRead);
+          assert.equal(reads, beforeCalls);
+          assert.equal(authorizations, 0);
+        }
+      };
+      const inventoryDecision = readHuman();
+      assert.equal(inventoryDecision.resources.find(row => row.ref === "decision:" + capture).sha256, shadowHash(retainedDecision));
+      assert.equal(retainedDecision.receipt_sha256, shadowHash(receipt));
+      const reservedDecision = signer.seal({ ...retainedDecision, phase: "reserved", receipt_sha256: null });
+      decisions.compareAndSwap(reservedDecision, decisions.read(capture).content_sha256);
+      assert.equal(readHuman().resources.find(row => row.ref === "decision:" + capture).details.phase, "reserved");
+      pass(mode + ": human decision inventory preserves a signed capture before and after acknowledgement");
+
+      const differentChoice = signer.seal({ ...retainedDecision, source: { ...retainedDecision.source, choice: "EXPLORING" } });
+      decisions.compareAndSwap(differentChoice, decisions.read(capture).content_sha256);
+      assert.throws(readHuman, { code: "PROCESS_HUMAN_CAPTURE_CHANGED" });
+      const differentReceipt = signer.seal({ ...retainedDecision, receipt_sha256: "b".repeat(64) });
+      decisions.compareAndSwap(differentReceipt, decisions.read(capture).content_sha256);
+      assert.throws(readHuman, { code: "PROCESS_HUMAN_CAPTURE_CHANGED" });
+      decisions.compareAndSwap(retainedDecision, decisions.read(capture).content_sha256);
+      assert.equal(readHuman().resources.find(row => row.ref === "decision:" + capture).sha256, shadowHash(retainedDecision));
+      pass(mode + ": an accepted human decision refuses separately signed substituted choice or acknowledgement");
+
+      // Recreate the durable window after the capture write and before the
+      // operation receipt. All writes here are fixture-only fault injection.
+      instances.compareAndSwap(stagedHumanInstance, instances.read(humanId).content_sha256);
+      journals.compareAndSwap(stagedHumanRecord, journals.read(humanStage.operation_id).content_sha256);
+      decisions.compareAndSwap(reservedDecision, decisions.read(capture).content_sha256);
+      const pending = () => readHuman(stagedHumanInstance.instance_sha256);
+      assert.equal(pending().resources.find(row => row.ref === "decision:" + capture).sha256, shadowHash(reservedDecision));
+      const anotherQuestion = signer.seal({ ...reservedDecision, source: { ...reservedDecision.source, question_sha256: "b".repeat(64) } });
+      decisions.compareAndSwap(anotherQuestion, decisions.read(capture).content_sha256);
+      assert.throws(pending, { code: "PROCESS_RECONCILIATION_RESOURCE_CHANGED" });
+      decisions.compareAndSwap(retainedDecision, decisions.read(capture).content_sha256);
+      assert.throws(pending, { code: "PROCESS_RECONCILIATION_HISTORY_UNAVAILABLE" });
+      decisions.compareAndSwap(reservedDecision, decisions.read(capture).content_sha256);
+      assert.equal(pending().resources.find(row => row.ref === "decision:" + capture).details.phase, "reserved");
+      pass(mode + ": a reserved human capture needs the retained question and an acknowledgement needs the retained receipt");
+    }
 
     const native = { contract_version: "native-allocation-journal.v1", journal_id: nativeJournalId(before.record), instance_id: id,
       scope_id: before.record.scope_id, model_sha256: before.record.model_sha256, revision: 1, allocations: [{

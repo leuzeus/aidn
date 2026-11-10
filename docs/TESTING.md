@@ -383,7 +383,10 @@ inventory writes or effect authorization after reopening the host.
 The control case distinguishes a reserved review wait from its captured event.
 It checks a reservation before capture, a reserved capture after reducer
 acceptance, an exact delivered acknowledgement and refusal of a substituted
-selection. Read-only inventory preserves each canonical snapshot.
+selection. The human case also verifies a retained reservation before the
+operation receipt exists. A separately signed question substitution or a
+premature acknowledgement fails. Read-only inventory preserves each
+canonical snapshot and invokes no human source.
 The same checks join the existing required host fixture case; no previous gate
 case or argv is removed. Fault-injected journal/Native states are fixtures,
 not real crashes, external closure, a disposition or the full STANDARD model.

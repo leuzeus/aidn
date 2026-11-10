@@ -3,6 +3,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { readAgentRunFile, agentRunPhysicalPath } from "./agent-run-configuration-service.mjs";
 import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.mjs";
+import { standardHumanDecisionQuestion } from "./standard-workflow-human-decisions.mjs";
 import { assertOperationJournal, operationJournalId } from "../../core/workflow/process-operation-journal.mjs";
 import { assertProcessOperationIntent, assertProcessOperationBinding } from "../../core/workflow/process-operation-contracts.mjs";
 import { assertDecisionInbox } from "../../core/workflow/process-decision-inbox.mjs";
@@ -140,8 +141,20 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
       const { record, decision } = entry;
       if (decision ? !records.has(record.operation_id) : record.request.instance_id !== instance.instance_id) continue;
       signer.verify(record);
-      if (!decision && (record.request.scope_id !== instance.scope_id || record.request.model_sha256 !== instance.model_sha256))
+      if (decision) {
+        const operation = records.get(record.operation_id);
+        if (operation.preview.binding.executor_kind !== "human") fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
+        const question = standardHumanDecisionQuestion(operation);
+        if (record.source.question_sha256 !== shadowHash(question) || !question.choices.includes(record.source.choice)
+          || operation.decision_claim_sha256 !== undefined
+            && operation.decision_claim_sha256 !== shadowHash({ source_ref: record.source_ref, source: record.source }))
+          fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
+        if (record.phase === "receipted" && !operation.results.some(({ receipt, output }) =>
+          output.observations?.inbox_id === record.inbox_id && shadowHash(receipt) === record.receipt_sha256))
+          fail("PROCESS_RECONCILIATION_HISTORY_UNAVAILABLE");
+      } else if (record.request.scope_id !== instance.scope_id || record.request.model_sha256 !== instance.model_sha256) {
         fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
+      }
       if (record.contract_version === "process-control-reservation.v1") {
         add("control-reservation:" + record.inbox_id, "control_capture", shadowHash(record), {
           phase: "reserved", source_ref: record.source_ref, request_sha256: shadowHash(record.request),
