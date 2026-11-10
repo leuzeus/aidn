@@ -56,6 +56,25 @@ try {
     const symbolic = f.port.inspect(equal);
     assert.equal(symbolic.source_symbolic, true); assert.equal(symbolic.target_symbolic, true);
   });
+  await check("distinct source and target retain fresh symbolic-ref refusals", async () => {
+    const f = fixture();
+    const { source_ref, target_ref } = f.plan.observed;
+    git(f.root, "symbolic-ref", target_ref, source_ref);
+    const target = f.port.inspect(scope);
+    assert.equal(target.source_symbolic, false);
+    assert.equal(target.target_symbolic, true);
+    await assert.rejects(f.port.integrate({ ...f.plan, observed: target }, grant),
+      { code: "WORKFLOW_BRANCH_PRECONDITIONS_REQUIRED", effect_status: "no_effect" });
+
+    git(f.root, "symbolic-ref", "-d", target_ref);
+    git(f.root, "update-ref", target_ref, f.plan.observed.target_head);
+    git(f.root, "symbolic-ref", source_ref, target_ref);
+    const source = f.port.inspect(scope);
+    assert.equal(source.source_symbolic, true);
+    assert.equal(source.target_symbolic, false);
+    await assert.rejects(f.port.integrate({ ...f.plan, observed: source }, grant),
+      { code: "WORKFLOW_BRANCH_PRECONDITIONS_REQUIRED", effect_status: "no_effect" });
+  });
   await check("a missing source or target refuses without trusting rev-parse's unresolved text", () => {
     const f = fixture();
     for (const missing of [{ ...scope, source_branch: "missing-source" }, { ...scope, target_branch: "missing-target" }])

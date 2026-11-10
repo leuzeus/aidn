@@ -2514,6 +2514,11 @@ symbolic-reference transaction has no sequential fallback. Concurrent external
 Git changes still require observation; this port does not claim a universal
 transaction over independent worktrees or filesystem writers.
 
+A distinct source/target pair can be read together at the symbolic-ref fence.
+The adapter falls back to the individual Git probes when enumeration fails,
+warns or omits either exact ref. The HEAD observation and authority boundaries
+keep their existing order.
+
 Confirmation requires the exact appended target/HEAD reflog records bound to
 the operation and plan, preserved reflog prefixes, source tip, index and worktree
 registration. Matching refs alone are insufficient. Lost confirmation or a

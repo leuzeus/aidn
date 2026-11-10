@@ -63,6 +63,27 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
     if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,191}$/.test(value)) fail("WORKFLOW_BRANCH_IDENTITY_INVALID");
     git(["check-ref-format", "refs/heads/" + value]); return "refs/heads/" + value;
   }
+  function symbolicBranches(sourceRef, targetRef) {
+    const isSymbolic = ref => spawnSync(gitExecutable, [...fixed, "symbolic-ref", "--quiet", ref],
+      { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1;
+    if (sourceRef === targetRef) {
+      const symbolic = isSymbolic(sourceRef);
+      return [symbolic, symbolic];
+    }
+    const sample = spawnSync(gitExecutable, [...fixed, "for-each-ref", "--format=%(refname)%09%(symref)", sourceRef, targetRef],
+      { env, encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" });
+    if (sample.status === 0 && sample.stderr === "") {
+      const rows = sample.stdout.split(/\r?\n/);
+      if (rows.length === 3 && rows[2] === "") {
+        const entries = rows.slice(0, 2).map(row => row.split("\t"));
+        const refs = new Map(entries);
+        if (entries.every(pair => pair.length === 2) && refs.has(sourceRef) && refs.has(targetRef))
+          return [refs.get(sourceRef) !== "", refs.get(targetRef) !== ""];
+      }
+    }
+    // Enumeration can omit broken symbolic refs or fail on an unavailable store.
+    return [isSymbolic(sourceRef), isSymbolic(targetRef)];
+  }
   function indexHash() { const row = fs.lstatSync(index); if (!row.isFile() || row.nlink !== 1 || row.size > 4194304) fail("WORKFLOW_BRANCH_INDEX_INVALID"); return hash(fs.readFileSync(index)); }
   function worktrees() {
     const rows = []; let current = null;
@@ -94,9 +115,7 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
     const ancestor = spawnSync(gitExecutable, [...fixed, "merge-base", "--is-ancestor", targetHead, sourceHead], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" });
     if (![0, 1].includes(ancestor.status)) fail("WORKFLOW_BRANCH_ANCESTRY_UNAVAILABLE");
     const rows = worktrees(), status = git(["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
-    const sourceSymbolic = spawnSync(gitExecutable, [...fixed, "symbolic-ref", "--quiet", sourceRef], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1;
-    const targetSymbolic = targetRef === sourceRef ? sourceSymbolic
-      : spawnSync(gitExecutable, [...fixed, "symbolic-ref", "--quiet", targetRef], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1;
+    const [sourceSymbolic, targetSymbolic] = symbolicBranches(sourceRef, targetRef);
     const resolvedPaths = observations.slice(refs.length);
     if (resolvedPaths.length !== paths.length) fail("WORKFLOW_BRANCH_GIT_PATHS_INVALID");
     const [sourceLockPath, headLogPath, targetLogPath] = resolvedPaths.map(physicalGitPath);
