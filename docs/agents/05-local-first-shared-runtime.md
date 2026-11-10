@@ -45,6 +45,11 @@ preparation, preimages and postimages each use their own fresh content and
 metadata observation for the two material artifacts. The authorization,
 freshness checks and CAS stay in their original order.
 
+PostgreSQL task advancement reads the three material artifacts with their
+metadata in a fresh batch at preparation, before CAS, and after CAS. The
+preview and locked re-preparation each make their own observation. Existing
+source, owner, projection, and freshness guards retain their boundaries.
+
 Each STANDARD drift or cycle-plan context reads the PostgreSQL session and
 cycle topology from one bounded, read-only canonical inventory. Selected
 rows still pass path, content hash, and identity ambiguity checks. The drift

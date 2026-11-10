@@ -31,6 +31,14 @@ export function createStandardCycleTaskAdvance({ targetRoot, readEvaluation, obs
     if (artifacts.describe().database && artifacts.describe().state_mode === "db-only") return [];
     return changes.map(row => agentRunPhysicalPath(path.join(root, "docs/audit", row.path)));
   }
+  function postgresMaterial(names, { required = false } = {}) {
+    const selected = artifacts.describe();
+    if (selected.backend !== "postgres") return null;
+    const rows = artifacts.readMany(names, { required: required ? names : [], includeMetadata: true });
+    if (rows.some(row => row.source !== "postgres") || shadowHash(artifacts.describe()) !== shadowHash(selected))
+      fail("STANDARD_CANONICAL_BACKEND_CONFLICT");
+    return rows;
+  }
   async function prepare(instance, input, preparedAt, acquired = false) {
     assertStandardOperationInput("cycle_task_advance", input);
     if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
@@ -43,7 +51,9 @@ export function createStandardCycleTaskAdvance({ targetRoot, readEvaluation, obs
     if (!task.test_refs.length || task.test_refs.some(id => !passed.has(id))) return { can_apply: false, reason_code: "STANDARD_TASK_VALIDATION_REQUIRED" };
     const admission = await preWriteAdmit({ targetRoot: root, skill: "start-session" });
     if (admission.ok !== true || !["admitted", "admitted_with_warnings"].includes(admission.admission_status)) return { can_apply: false, reason_code: "STANDARD_TASK_PROGRESS_ADMISSION_BLOCKED" };
-    const rows = paths(cyclePath).map(name => artifacts.read(name, { required: true })), completed = [...selected.completed_task_ids, task.id];
+    const names = paths(cyclePath), batch = postgresMaterial(names, { required: true });
+    const rows = batch ?? names.map(name => artifacts.read(name, { required: true }));
+    const completed = [...selected.completed_task_ids, task.id];
     const ordinal = selected.ordinal, nextTask = source.proposal.tasks[ordinal] ?? null, finished = nextTask === null;
     const at = new Date(preparedAt).toISOString(), next = nextTask?.task ?? "Run final verification and audit before explicit closure";
     const brief = context.documents.find(row => row.ref === "audit:" + cyclePath + "/brief.md");
@@ -53,7 +63,7 @@ export function createStandardCycleTaskAdvance({ targetRoot, readEvaluation, obs
     let status = field(rows[1].content, "next step", "\n  - " + next); status = field(field(status, "last updated", at), "updated_at", at);
     const current = field(field(rows[2].content, "first_plan_step", next), "updated_at", at);
     const contents = { [rows[0].path]: advancedPlan, [rows[1].path]: status, [rows[2].path]: current };
-    const changes = rows.map(row => ({ path: row.path, before_sha256: row.sha256, before_metadata_sha256: artifacts.metadataHash(row.path), after: contents[row.path], after_sha256: artifactContentHash(contents[row.path]) }));
+    const changes = rows.map(row => ({ path: row.path, before_sha256: row.sha256, before_metadata_sha256: batch ? row.metadata_sha256 : artifacts.metadataHash(row.path), after: contents[row.path], after_sha256: artifactContentHash(contents[row.path]) }));
     projections(changes).forEach((file, index) => { if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== changes[index].before_sha256) fail("STANDARD_TASK_PROGRESS_PROJECTION_STALE"); });
     const plan = assertPlan({ contract_version: "standard-cycle-task-advance-plan.v1", operation_ref: "cycle_task_advance", input, prepared_at_ms: preparedAt,
       evaluation_sha256: verified.evaluation_sha256, context_sha256: verified.context_sha256, scope_sha256: verified.output.observations.scope_sha256,
@@ -80,7 +90,12 @@ export function createStandardCycleTaskAdvance({ targetRoot, readEvaluation, obs
           await assertAuthorized();
           if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || now() - plan.prepared_at_ms > 300000
             || (await observeContext()).context_sha256 !== plan.context_sha256) fail("STANDARD_TASK_PROGRESS_SOURCE_STALE");
-          for (const row of plan.changes) if (artifacts.read(row.path).sha256 !== row.before_sha256 || artifacts.metadataHash(row.path) !== row.before_metadata_sha256) fail("STANDARD_PREVIEW_CHANGED");
+          const preimages = postgresMaterial(plan.changes.map(row => row.path));
+          for (const [index, row] of plan.changes.entries()) {
+            const current = preimages?.[index] ?? artifacts.read(row.path);
+            if (current.sha256 !== row.before_sha256 || (preimages ? current.metadata_sha256 : artifacts.metadataHash(row.path)) !== row.before_metadata_sha256)
+              fail("STANDARD_PREVIEW_CHANGED");
+          }
           projections(plan.changes).forEach((file, index) => { if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== plan.changes[index].before_sha256) fail("STANDARD_TASK_PROGRESS_PROJECTION_STALE"); });
           if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_TASK_PROGRESS_SOURCE_STALE");
         } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
@@ -88,7 +103,12 @@ export function createStandardCycleTaskAdvance({ targetRoot, readEvaluation, obs
         try {
           for (const change of plan.changes) { metadata.push(artifacts.compareAndSwapPreservingMetadata(change).metadata_sha256); committed.push(change.path); }
           const projection = artifacts.project(committed);
-          for (const [index, change] of plan.changes.entries()) if (artifacts.read(change.path).sha256 !== change.after_sha256 || artifacts.metadataHash(change.path) !== metadata[index]) fail("STANDARD_TASK_PROGRESS_POSTCONDITION_FAILED");
+          const postimages = postgresMaterial(committed);
+          for (const [index, change] of plan.changes.entries()) {
+            const current = postimages?.[index] ?? artifacts.read(change.path);
+            if (current.sha256 !== change.after_sha256 || (postimages ? current.metadata_sha256 : artifacts.metadataHash(change.path)) !== metadata[index])
+              fail("STANDARD_TASK_PROGRESS_POSTCONDITION_FAILED");
+          }
           for (const [index, file] of projections(plan.changes).entries()) if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== plan.changes[index].after_sha256) fail("STANDARD_TASK_PROGRESS_PROJECTION_UNCONFIRMED");
           const after = await observeContext();
           if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || boundary(after.context, plan.cycle_path) !== plan.boundary_sha256) fail("STANDARD_TASK_PROGRESS_POSTCONDITION_FAILED");

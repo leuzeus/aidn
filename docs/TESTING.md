@@ -195,6 +195,12 @@ checks and a disposable real-PostgreSQL comparison of the exact preview,
 expiry, and pre/postimage observations. The nominal fixture keeps its
 300-second freshness ceiling and its separate terminal verdict.
 
+For PostgreSQL task advancement, compare the three ordered content and metadata
+observations against individual reads. Verify a fresh preimage after locked
+re-preparation and a separate postimage after CAS. Retain a metadata-only
+change, a stale plan or context, and any partial write as distinct outcomes.
+An isolated observation or transition is insufficient for a nominal verdict.
+
 For a PostgreSQL topology observation, compare the complete session and cycle
 records against the individual canonical reads, including their order and
 source. Check that duplicate numeric identities are refused and that a new

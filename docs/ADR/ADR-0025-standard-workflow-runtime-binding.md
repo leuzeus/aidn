@@ -1885,6 +1885,11 @@ CAS. The ordered task list gains checked markers and a progress record; the
 frozen scope JSON remains unchanged. Partial writes or missing projections
 retain unknown effects and their owner instead of authorizing another task.
 
+PostgreSQL reads task advancement material in separate batches at preview,
+locked re-preparation, preimage and postimage checks. Each batch binds content
+and metadata in request order and keeps the same scope, freshness, and CAS
+requirements. The local projections keep their existing checks.
+
 The final task runs all planned cycle tests against the final product snapshot.
 Earlier intermediate checks cannot satisfy final coverage. Validation-evaluation
 input v2 optionally names the accepted progress operation to bridge only its
