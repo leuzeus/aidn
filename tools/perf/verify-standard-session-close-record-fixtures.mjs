@@ -23,6 +23,8 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7) ?? "files";
 const agedCheckpoint = process.argv.includes("--aged-checkpoint"), agedDelivery = process.argv.includes("--aged-delivery");
+const agedHook = process.argv.includes("--aged-hook");
+if (agedHook && !process.argv.includes("--final-hook")) throw Error("FIXTURE_AGED_HOOK_ARGUMENT_INVALID");
 if (agedCheckpoint && !process.argv.includes("--checkpoint") || agedDelivery && !process.argv.includes("--delivery-checkpoint")) throw Error("FIXTURE_AGED_CHECKPOINT_ARGUMENT_INVALID");
 if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
 const finalFault = process.argv.find(arg => arg.startsWith("--final-hook-fault="))?.slice("--final-hook-fault=".length);
@@ -136,7 +138,8 @@ try {
       if (process.argv.includes("--final-hook")) {
         const selected = { record_operation_id: id(5), checkpoint_operation_id: id(6), session_id: "S001", session_path: "sessions/S001.md", mode: "COMMITTING",
           branch: beforeGit.branch, start_output: started, checkpoint_output: cpResult };
-        const finalizer = createStandardSessionCloseHook({ targetRoot: root, readSource: () => structuredClone(selected), readCurrent: () => instance });
+        let hookClock = agedHook ? Date.now() - 86400000 : null;
+        const finalizer = createStandardSessionCloseHook({ targetRoot: root, readSource: () => structuredClone(selected), readCurrent: () => instance, now: () => hookClock ?? Date.now() });
         const finalInput = { record_operation_id: id(5), checkpoint_operation_id: id(6) }, finalPlan = await finalizer.prepare(instance, finalInput, id(8));
         if (policyFault) {
           assert.equal(finalPlan.can_apply, false); assert.equal(finalPlan.reason_code, "STANDARD_SESSION_CLOSE_CONSTRAINT_PROJECTION_POLICY_REQUIRED");
@@ -144,6 +147,7 @@ try {
           pass("missing telemetry ignore policy refuses before final hook or run consumption");
         } else {
         assert.equal(finalPlan.can_apply, true, JSON.stringify(finalPlan));
+        if (agedHook) { hookClock = null; assert.ok(Date.now() - finalPlan.plan.prepared_at_ms >= 86400000); }
         const runFile = path.join(root, ".aidn/runtime/perf/current-run-id.txt"), runBytes = fs.readFileSync(runFile);
         fs.writeFileSync(runFile, "foreign_run\n"); await assert.rejects(() => finalizer.prepare(instance, finalInput, id(8))); fs.writeFileSync(runFile, runBytes);
         pass("changed start run refuses without invoking the final hook");
@@ -165,6 +169,7 @@ try {
           pass("actual " + finalFault + " failure after run consumption retains unknown owner and empty facts without repeating hook");
         } else {
         assert.equal(final.outcome, "completed", JSON.stringify(final)); assert.equal(final.facts.session_close_completed, true);
+        if (agedHook) pass("day-old session finalization plan confirms the actual start-correlated close hook and canonical completion");
         assert.equal(final.observations.run_id, started.observations.hook.payload.workflow_hook.run_id);
         assert.equal(fs.existsSync(path.join(root, ".aidn/runtime/perf/current-run-id.txt")), false); assert.equal(artifacts.ownerPending(), false);
         assert.match(artifacts.read("sessions/S001.md").content, /^state: CLOSED$/m); assert.match(artifacts.read("sessions/S001.md").content, /- \[x\] Yes/);

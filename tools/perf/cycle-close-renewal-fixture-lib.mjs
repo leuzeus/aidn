@@ -27,19 +27,22 @@ export async function verifyCycleCloseRenewalBoundary({ targetRoot, instance, in
   };
   let checks = 0;
   const pass = name => { unchanged(); checks++; console.log("PASS renewal boundary " + name); };
-  let clock = prepared.plan.prepared_at_ms, code = "STANDARD_OBJECTIVE_DISPOSITION_EXPIRED", historicalFailure = false, processChanged = false;
+  let clock = prepared.plan.prepared_at_ms - 86400000, code = "STANDARD_OBJECTIVE_DISPOSITION_EXPIRED", historicalFailure = false, processChanged = false;
   const open = () => createStandardCycleCloseHook({ targetRoot, readRecorded, observeContext, now: () => clock,
     readCurrent: () => processChanged ? { ...instance, instance_sha256: "b".repeat(64) } : instance,
     readObjectiveCompletion: async () => { await new Promise(resolve => setImmediate(resolve)); if (code) throw Object.assign(Error(code), { code }); return null; },
     readHistoricalCompletion: async () => { if (historicalFailure) throw Object.assign(Error("changed report"), { code: "STANDARD_OBJECTIVE_COMPLETION_REPORT_CHANGED" }); return structuredClone(anchor); } });
   const renewal = await open().prepare(instance, input, operationId);
   assert.equal(renewal.plan.contract_version, "standard-cycle-close-renewal-plan.v1");
-  pass("expired preparation is a nonmutating typed review request");
+  pass("expired completion is a nonmutating typed review request");
+  clock = prepared.plan.prepared_at_ms;
+  assert.ok(clock - renewal.plan.prepared_at_ms >= 86400000);
   const result = await open().apply(instance, renewal, { write: true, expectPlan: renewal.plan_sha256, assertAuthorized() {} });
   assertStandardOperationOutput(result); assert.equal(result.effect_status, "no_effect");
   assert.deepEqual(result.facts, { cycle_close_completed: false, drift_completion_reviewed: false });
   assert.deepEqual(result.observations.previous_completion, anchor);
   pass("independently reconstructed port returns no closure success");
+  pass("original day-old renewal plan retains no-effect routing under unchanged current source and grant");
   const late = await open().apply(instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() {} });
   assert.deepEqual(late, result);
   const released = fence.read();

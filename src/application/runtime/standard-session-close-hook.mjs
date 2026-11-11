@@ -92,9 +92,9 @@ export function createStandardSessionCloseHook({ targetRoot, readSource, readCur
   }
   return Object.freeze({ prepare: (instance, input, id) => prepare(instance, input, id, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
-      const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
+      const plan = prepared?.plan;
       if (!valid(plan, planSchema) || !prepared?.can_apply || write !== true || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan
-        || typeof assertAuthorized !== "function" || !Number.isSafeInteger(age) || age < 0 || age > 300000)
+        || typeof assertAuthorized !== "function")
         throw Object.assign(Error("STANDARD_SESSION_CLOSE_HOOK_EXPLICIT_EFFECT_REQUIRED"), { code: "STANDARD_SESSION_CLOSE_HOOK_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" });
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
@@ -157,7 +157,7 @@ export function createStandardSessionCloseHook({ targetRoot, readSource, readCur
             if (artifacts.read(row.path).sha256 !== row.after_sha256 || artifacts.metadataHash(row.path) !== metadata[i]) fail("STANDARD_SESSION_CLOSE_COMPLETION_UNCONFIRMED");
             if (plan.state_mode !== "db-only" && readAgentRunFile(physical("docs/audit/" + row.path), { json: false, maxBytes: 1048576 }).sha256 !== row.after_sha256) fail("STANDARD_SESSION_CLOSE_COMPLETION_UNCONFIRMED");
           }
-          if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || now() - plan.prepared_at_ms > 300000) fail("STANDARD_SESSION_CLOSE_HOOK_POSTCONDITION_FAILED");
+          if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_SESSION_CLOSE_HOOK_POSTCONDITION_FAILED");
           return emit("completed", "confirmed", { hook, sync, event, event_offset: matches[0].offset, event_file: eventRelative, committed, run_id: plan.run_id },
             { session_close_completed: true }, [{ ref: "aidn:session-close/" + plan.run_id, sha256: shadowHash(event) }, ...evidence,
               ...changes.map(row => ({ ref: "docs/audit/" + row.path, sha256: row.after_sha256 }))]);

@@ -581,8 +581,8 @@ with observation/artifact doubles; frozen qualification is separate.
 
 `verify-standard-cycle-close-record-fixtures.mjs --mode=files --final-hook
 --delayed-hook-fences` checks one exact preparation under ownership and
-an independent final grant check. It also covers delayed revocation and
-expiry before checkpoint. The grant_after fault uses observed event growth
+an independent final grant check. It also covers delayed revocation and a
+current process revision change before checkpoint. The grant_after fault uses observed event growth
 and must retain UNKNOWN.
 
 `verify-agentic-process-execution-fixtures.mjs --cycle-close-finalize-mode=files
@@ -3949,6 +3949,15 @@ also reject unsafe timestamps before their live grant or Git mutation.
 the original day-old preclose plan across its selected backend, retaining
 exact-plan, explicit effect, live-grant, foreign-path and canonical-source
 refusals. `--grant-after-git` retains UNKNOWN after a real commit loses its grant.
+
+The cycle, session and baseline port components accept `--aged-hook` with their
+existing final-hook selectors. Preparation uses a past private clock until the
+final successful preview; application restores real time and uses that original
+day-old plan with actual fixed hook/event/CAS ports. Post-effect confirmation
+loss retains UNKNOWN and prohibits repeating the hook. The cycle renewal
+component also applies an original day-old typed review-return plan under an
+unchanged current completion-expiry double; it produces no hook or completion
+success. These clocks do not prove wall-time or genuine Human/Native execution.
 
 The final checkpoint component extends the terminal-record component selector
 with `--final-hook`. It runs the actual cycle-close hook after explicit Git,

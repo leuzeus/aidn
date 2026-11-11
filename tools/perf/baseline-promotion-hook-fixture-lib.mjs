@@ -10,11 +10,12 @@ import { baselinePromotionPaths } from "../../src/core/workflow/standard-baselin
 import { runPromoteBaselineCheckpointUseCase } from "../../src/application/runtime/promote-baseline-checkpoint-use-case.mjs";
 import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
-export async function verifyBaselinePromotionHook({ root, mode, artifacts, promotion, instance, preview, result, git, fault, promotionCheckpoint = false, checkpointFault, agedCheckpoint = false }) {
+export async function verifyBaselinePromotionHook({ root, mode, artifacts, promotion, instance, preview, result, git, fault, promotionCheckpoint = false, checkpointFault, agedCheckpoint = false, agedHook = false }) {
   const recordId = "op_" + "c".repeat(40), hookId = "op_" + "d".repeat(40), input = { record_operation_id: recordId };
   const eventFile = path.join(root, ".aidn/runtime/perf/workflow-events.ndjson"), events = () => fs.existsSync(eventFile) ? fs.readFileSync(eventFile) : Buffer.alloc(0);
   let checkpointCalls = 0; const write = fs.writeFileSync;
-  const hook = createStandardBaselinePromotionHook({ targetRoot: root, promotion, readCurrent: () => instance,
+  let hookClock = agedHook ? Date.now() - 86400000 : null;
+  const hook = createStandardBaselinePromotionHook({ targetRoot: root, promotion, readCurrent: () => instance, now: () => hookClock ?? Date.now(),
     readRecorded: async () => ({ record_operation_id: recordId, plan: preview.plan, output: result }) }, { checkpoint: async args => {
       checkpointCalls++; const prefix = events(), observed = await runPromoteBaselineCheckpointUseCase(args);
       assert.equal(observed.checkpoint?.ok, true, JSON.stringify(observed));
@@ -92,6 +93,7 @@ export async function verifyBaselinePromotionHook({ root, mode, artifacts, promo
     prepared = await hook.prepare(instance, input, hookId);
   }
   assert.equal(prepared.can_apply, true, JSON.stringify(prepared));
+  if (agedHook) { hookClock = null; assert.ok(Date.now() - prepared.plan.prepared_at_ms >= 86400000); }
   const beforeEvents = events(), beforeDocuments = baselinePromotionPaths.map(name => artifacts.read(name));
   await assert.rejects(hook.apply(instance, prepared, { write: true, expectPlan: prepared.plan_sha256,
     assertAuthorized: () => { throw Object.assign(Error("fixture denied"), { code: "FIXTURE_GRANT_DENIED" }); } }), { code: "FIXTURE_GRANT_DENIED" });

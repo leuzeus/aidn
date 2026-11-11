@@ -107,8 +107,7 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
     const fresh = await renewal(instance, plan.input, plan.operation_id, plan.prepared_at_ms, cause);
     if (fresh.plan_sha256 !== prepared.plan_sha256) fail("STANDARD_PREVIEW_CHANGED");
     await assertAuthorized();
-    if (now() < plan.prepared_at_ms || now() - plan.prepared_at_ms > 300000
-      || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_CYCLE_CLOSE_HOOK_SOURCE_CHANGED");
+    if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_CYCLE_CLOSE_HOOK_SOURCE_CHANGED");
     return emit("completed", "no_effect", { reason_code: cause.code, previous_completion: plan.previous_completion },
       { cycle_close_completed: false, drift_completion_reviewed: false });
   }
@@ -124,7 +123,7 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
       const plan = prepared?.plan;
       try { if (!valid(plan, plan.contract_version === "standard-cycle-close-renewal-plan.v1" ? renewalSchema : planSchema) || write !== true || !prepared.can_apply || shadowHash(plan) !== expectPlan || prepared.plan_sha256 !== expectPlan
-        || typeof assertAuthorized !== "function" || now() < plan.prepared_at_ms || now() - plan.prepared_at_ms > 300000) fail("STANDARD_CYCLE_CLOSE_HOOK_EXPLICIT_EFFECT_REQUIRED"); }
+        || typeof assertAuthorized !== "function") fail("STANDARD_CYCLE_CLOSE_HOOK_EXPLICIT_EFFECT_REQUIRED"); }
       catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       if (plan.contract_version === "standard-cycle-close-renewal-plan.v1") {
         try { return await returnToReview(instance, prepared, assertAuthorized); }
@@ -133,11 +132,10 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
       try { return await artifacts.withLocalEffectOwner(expectPlan, async () => {
         const assertEffectAuthorized = async () => {
           // Observation/authentication may yield. The operation grant is checked
-          // last, then synchronous TTL/process fences precede the next effect.
+          // last; current process identity is checked before the next effect.
           if (readObjectiveCompletion !== null) await readObjectiveCompletion(instance);
           await assertAuthorized();
-          if (now() < plan.prepared_at_ms || now() - plan.prepared_at_ms > 300000
-            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256)
+          if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256)
             fail("STANDARD_CYCLE_CLOSE_HOOK_SOURCE_CHANGED");
         };
         let before;
@@ -161,8 +159,7 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
               readObjectiveCompletion: async () => {
                 const completed = await readObjectiveCompletion(instance);
                 await assertAuthorized();
-                if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256
-                  || now() < plan.prepared_at_ms || now() - plan.prepared_at_ms > 300000) fail("STANDARD_CYCLE_CLOSE_HOOK_SOURCE_CHANGED");
+                if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_CYCLE_CLOSE_HOOK_SOURCE_CHANGED");
                 return completed;
               } });
             hook = { ok: payload.ok, skill: "cycle-close", tool: "cycle-close-hook.mjs", mode: "COMMITTING", target: root,
@@ -184,7 +181,7 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
             || event.ts !== checkpoint.ts || !Number.isFinite(Date.parse(event.ts)) || Date.parse(event.ts) < started || Date.parse(event.ts) > now()) fail("STANDARD_CYCLE_CLOSE_HOOK_EVENT_UNCONFIRMED");
           await assertAuthorized();
           const current = await source(instance, plan.input);
-          if (now() - plan.prepared_at_ms > 300000 || current.observed.context_sha256 !== plan.context_sha256 || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || !openGate(await gate(instance, plan.scope.cycle_id))) fail("STANDARD_CYCLE_CLOSE_HOOK_POSTCONDITION_FAILED");
+          if (current.observed.context_sha256 !== plan.context_sha256 || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || !openGate(await gate(instance, plan.scope.cycle_id))) fail("STANDARD_CYCLE_CLOSE_HOOK_POSTCONDITION_FAILED");
           // Only after the actual checkpoint is confirmed may current metadata
           // stop asking for that hook. An interrupted suffix retains ownership;
           // the already executed checkpoint must not be run again automatically.

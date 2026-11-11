@@ -106,6 +106,15 @@ remains uncertain, and DB-only state is never exported merely to make a commit.
 The timestamp must still be a safe nonnegative integer. Mode/start and terminal
 checkpoint entry preserve this numeric validation independently of elapsed age.
 
+Cycle, baseline-promotion and session finalization hooks apply the same
+current-state validity rule. Their plan has no preparation-age ceiling at entry,
+after awaited authorization or after the real hook. Accepted source, process,
+grant, canonical preimages/postimages and unique correlated events remain
+required. The actual event must fall within this hook invocation; that proves
+causality rather than setting an age limit on the plan. A typed cycle return to
+review still reconstructs the current completion opinion and historical anchor.
+These changes do not decide the separate human-opinion or drift-event windows.
+
 Cycle validation reconstructs the work, product snapshot, profile and boundary
 descriptor under its owner and current authorization before running checks.
 These observations establish plan validity. The profile's command budget

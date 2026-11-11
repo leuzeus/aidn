@@ -81,7 +81,7 @@ export function createStandardBaselinePromotionHook({ targetRoot, readRecorded, 
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
       const plan = prepared?.plan;
       try { assertPlan(plan); if (write !== true || !prepared.can_apply || shadowHash(plan) !== expectPlan || prepared.plan_sha256 !== expectPlan
-        || typeof assertAuthorized !== "function" || now() < plan.prepared_at_ms || now() - plan.prepared_at_ms > 300000) fail("STANDARD_PROMOTION_HOOK_EXPLICIT_EFFECT_REQUIRED"); }
+        || typeof assertAuthorized !== "function") fail("STANDARD_PROMOTION_HOOK_EXPLICIT_EFFECT_REQUIRED"); }
       catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         let before;
@@ -90,7 +90,7 @@ export function createStandardBaselinePromotionHook({ targetRoot, readRecorded, 
           const fresh = await prepare(instance, plan.input, plan.operation_id, plan.prepared_at_ms, true);
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_PREVIEW_CHANGED");
           before = events();
-          if (before.length !== plan.event_log.bytes || artifactContentHash(before) !== plan.event_log.sha256 || now() < plan.prepared_at_ms || now() - plan.prepared_at_ms > 300000) fail("STANDARD_PROMOTION_HOOK_SOURCE_CHANGED");
+          if (before.length !== plan.event_log.bytes || artifactContentHash(before) !== plan.event_log.sha256) fail("STANDARD_PROMOTION_HOOK_SOURCE_CHANGED");
         } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         let result = null; const committed = [];
         try {
@@ -115,8 +115,7 @@ export function createStandardBaselinePromotionHook({ targetRoot, readRecorded, 
           const current = await source(instance, plan.input);
           if (shadowHash(current.selected.plan) !== plan.record_plan_sha256 || shadowHash(current.selected.output) !== plan.record_output_sha256
             || current.observed.completion_boundary_sha256 !== plan.boundary_sha256
-            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || !openGate(await gate(plan.completion_cycle_id))
-            || now() - plan.prepared_at_ms > 300000) fail("STANDARD_PROMOTION_HOOK_POSTCONDITION_FAILED");
+            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || !openGate(await gate(plan.completion_cycle_id))) fail("STANDARD_PROMOTION_HOOK_POSTCONDITION_FAILED");
           const documents = plan.completion_preimages.map(row => {
             const document = artifacts.read(row.path, { required: true });
             if (document.sha256 !== row.sha256 || artifacts.metadataHash(row.path) !== row.metadata_sha256) fail("STANDARD_PROMOTION_HOOK_POSTIMAGE_CHANGED"); return document;

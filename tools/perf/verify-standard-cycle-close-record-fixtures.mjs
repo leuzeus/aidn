@@ -24,6 +24,8 @@ import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
 const selected = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "files";
 const agedPlan = process.argv.includes("--aged-plan");
+const agedHook = process.argv.includes("--aged-hook");
+if (agedHook && !process.argv.includes("--final-hook")) throw Error("CLOSE_AGED_HOOK_ARGUMENT_INVALID");
 if (!["files", "dual", "db-only", "partial", "projection", "stale", "slow-authority", "expired"].includes(selected)) throw Error("CLOSE_RECORD_FIXTURE_MODE_INVALID");
 const mode = selected === "partial" ? "db-only" : selected === "projection" ? "dual" : ["stale", "slow-authority", "expired"].includes(selected) ? "files" : selected;
 const choice = process.argv.find(value => value.startsWith("--choice="))?.slice(9) ?? "retain";
@@ -153,7 +155,8 @@ try {
       await assert.rejects(writer.apply(instance, preview, { write: true, expectPlan: preview.plan_sha256, assertAuthorized: async () => {} }), cause => ["STANDARD_PREVIEW_CHANGED", "STANDARD_CYCLE_CLOSE_SOURCE_STALE"].includes(cause.code) && cause.effect_status === "no_effect");
       assert.equal((await observeContext()).context_sha256, after); assert.equal(artifacts.ownerPending(), false); pass("a repeated raw apply cannot repeat confirmed metadata effects");
       if (process.argv.includes('--final-hook')) {
-        const hook = createStandardCycleCloseHook({ targetRoot: root, readRecorded: async () => ({ record_operation_id: op, plan: preview.plan, output: result }), observeContext, readCurrent: () => instance });
+        let hookClock = agedHook ? Date.now() - 86400000 : null;
+        const hook = createStandardCycleCloseHook({ targetRoot: root, readRecorded: async () => ({ record_operation_id: op, plan: preview.plan, output: result }), observeContext, readCurrent: () => instance, now: () => hookClock ?? Date.now() });
         const hookInput = { closure_operation_id: op }, hookId = 'op_' + 'b'.repeat(40);
         let hookPlan = await hook.prepare(instance, hookInput, hookId);
         if (!hookPlan.can_apply || terminalCheckpoint) {
@@ -224,6 +227,7 @@ try {
           hookPlan = await hook.prepare(instance, hookInput, hookId);
         }
         assert.equal(hookPlan.can_apply, true, JSON.stringify(hookPlan));
+        if (agedHook) { hookClock = null; assert.ok(Date.now() - hookPlan.plan.prepared_at_ms >= 86400000); }
         if (selected === "files" && !finalFault && process.argv.includes("--late-objective-expiry")) {
           const renewalProof = await verifyCycleCloseRenewalBoundary({ targetRoot: root, instance, input: hookInput, operationId: hookId, prepared: hookPlan,
             readRecorded: async () => ({ record_operation_id: op, plan: preview.plan, output: result }), observeContext });
@@ -250,12 +254,11 @@ try {
           assert.deepEqual(fs.readFileSync(eventFile), beforeHook);
           assert.equal(artifacts.ownerPending(), false);
           pass("one authenticated locked preparation precedes the independent final grant check");
-          for (const fault of ["revoked", "expired"]) {
-            let clock = Date.now(), lost = false;
+          for (const fault of ["revoked", "process"]) {
+            let lost = false;
             const probe = createStandardCycleCloseHook({ targetRoot: root, readRecorded: async () => ({ record_operation_id: op, plan: preview.plan, output: result }),
-              observeContext, readCurrent: () => instance, now: () => clock,
-              readObjectiveCompletion: async () => { await new Promise(resolve => setImmediate(resolve)); lost = true;
-                if (fault === "expired") clock = hookPlan.plan.prepared_at_ms + 300001; return null; } });
+              observeContext, readCurrent: () => lost && fault === "process" ? { ...instance, instance_sha256: "b".repeat(64) } : instance,
+              readObjectiveCompletion: async () => { await new Promise(resolve => setImmediate(resolve)); lost = true; return null; } });
             await assert.rejects(probe.apply(instance, hookPlan, { write: true, expectPlan: hookPlan.plan_sha256,
               assertAuthorized: () => { if (lost && fault === "revoked") throw Error("fixture delayed grant revoked"); } }),
               error => error.effect_status === "no_effect" && (fault === "revoked" ? /delayed grant revoked/.test(error.message) : error.code === "STANDARD_CYCLE_CLOSE_HOOK_SOURCE_CHANGED"));
@@ -287,11 +290,18 @@ try {
           assert.equal(finalized.outcome, 'reconciliation_required', JSON.stringify(finalized)); assert.equal(finalized.effect_status, 'unknown'); assert.deepEqual(finalized.facts, {});
           assert.ok(finalized.observations.hook.payload.checkpoint); assert.equal(artifacts.ownerPending(), true);
           assert.equal(finalized.observations.committed.length, finalFault === 'projection' ? 3 : 0);
-          await assert.rejects(hook.apply(instance, hookPlan, { write: true, expectPlan: hookPlan.plan_sha256, assertAuthorized: () => {} }), { code: 'STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED' });
+          const retainedFence = artifacts.resourceFence().read();
+          assert.equal(retainedFence.record.state, 'held');
+          const ownerFile = path.join(root, '.aidn/runtime/standard-workflow/effects.lock'), retainedOwner = fs.readFileSync(ownerFile);
+          await assert.rejects(hook.apply(instance, hookPlan, { write: true, expectPlan: hookPlan.plan_sha256, assertAuthorized: () => {} }),
+            { code: 'STANDARD_RESOURCE_FENCE_RECONCILIATION_REQUIRED', effect_status: 'no_effect' });
+          assert.deepEqual(artifacts.resourceFence().read(), retainedFence);
+          assert.deepEqual(fs.readFileSync(ownerFile), retainedOwner);
           assert.deepEqual(fs.readFileSync(eventFile), afterHook);
           pass('lost hook or completion confirmation retains unknown effects and prohibits a repeated checkpoint');
         } else {
           assert.equal(finalized.outcome, 'completed', JSON.stringify(finalized)); assert.equal(finalized.effect_status, 'confirmed');
+          if (agedHook) pass("day-old cycle finalization plan confirms the actual correlated hook under current source and grant");
           assert.deepEqual(finalized.facts, { cycle_close_completed: true, cycle_retained: choice === 'retain' }); assert.equal(finalized.observations.committed.length, 3);
           assert.ok(finalized.observations.hook.payload.checkpoint); assert.equal(finalized.observations.event.event, 'checkpoint_summary');
           assert.ok(!artifacts.read('CURRENT-STATE.md').content.includes('Finalize the cycle-close hook'));

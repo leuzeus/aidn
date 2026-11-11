@@ -157,6 +157,19 @@ mode/start and terminal checkpoint entries. A schema's integer type alone does
 not establish JavaScript safe-integer precision. Invalid numeric provenance
 refuses before ownership; valid old timestamps do not receive an age ceiling.
 
+`cycle_close_finalize`, `baseline_promotion_finalize`, `session_close_finalize`
+and the typed cycle-close renewal plan also supersede their preparation-age
+clauses. Those age guards lacked a semantic implementation justification and
+added refusal/repreparation paths that complicated project progress. Current
+accepted source, authorization, process identity, canonical material and event
+prefix/correlation establish validity at their existing boundaries. A confirmed
+hook does not become uncertain solely because time has elapsed since preparing
+its plan. Genuine source/grant/postimage or confirmation loss retains the
+existing UNKNOWN and ownership semantics. The event interval within the actual
+invocation remains a causal proof; preparation time remains provenance and
+closed safe numeric data. Current completion-expiry readers and their no-effect
+return-to-review route remain separate, without endorsing their own windows.
+
 ## Eligible occurrence lookup, 2026-11-06
 
 After the common service validates the complete cursor, the mixed host checks

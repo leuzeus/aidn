@@ -5437,3 +5437,13 @@ plafond d'âge ajouté. Un effet Git confirmé suivi d'une perte d'autorisation
 reste incertain. DB-only ne crée pas de projection pour obtenir un commit.
 La preuve sur composants installés depuis la source reste distincte de celle
 du modèle complet, des acteurs réels et de l'archive livrable.
+
+Le retrait des gardes d'âge répond à l'absence de justification de leur
+implémentation et à la complexité qu'elles ajoutaient à l'avancement du projet.
+Les hooks de fin de cycle, de promotion de baseline et de clôture de session
+suivent donc aussi la validité de la source et de l'autorisation actuelles,
+sans plafond d'âge du plan. Les événements doivent toujours prouver leur
+corrélation avec l'appel réel. Le retour typé en revue reconstruit son opinion
+et son ancrage courant ; les fenêtres propres aux opinions humaines et aux
+observations restent à examiner séparément. Une perte réelle de confirmation
+après effet conserve UNKNOWN et interdit un nouvel essai implicite.
