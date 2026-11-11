@@ -236,6 +236,14 @@ for (const linked of [false, true]) {
       : reader.read(instance, { evaluation_operation_id: id }, verified);
     const before = await read(), original = shadowHash(f.record);
     assert.equal(before.prepared_at_ms, 1);
+    // Only an authenticated accepted primary fact uses the owning reader's
+    // historical capability. Current linked permission still rejects future issuance.
+    Date.now = () => at - 1000;
+    if (linked) await assert.rejects(read(), { code: "STANDARD_HOST_SOURCE_INVALID" });
+    else assert.deepEqual(await read(), before);
+    assert.equal(shadowHash(f.record), original);
+    assert.deepEqual(fs.readFileSync(sourceFile), sourceBytes);
+    Date.now = () => at;
     Date.now = () => realNow() + 120000;
     if (linked) await assert.rejects(read(), { code: 'STANDARD_HOST_SOURCE_INVALID' });
     else assert.deepEqual(await read(), before);

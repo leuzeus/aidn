@@ -85,8 +85,8 @@ export function createStandardHostAuthority({ configuration, environment = proce
     if (!exact(envelope, ["contract_version", "kind", "authority_id", "source_ref", "subject_sha256", "payload", "issued_at_ms", "expires_at_ms", "signature"])
       || envelope.contract_version !== "standard-host-source.v1" || envelope.kind !== kind || envelope.source_ref !== sourceRef
       || envelope.subject_sha256 !== shadowHash(subject) || !Number.isSafeInteger(envelope.issued_at_ms) || !Number.isSafeInteger(envelope.expires_at_ms)
-      || envelope.issued_at_ms > Date.now() || envelope.expires_at_ms <= envelope.issued_at_ms
-      || envelope.expires_at_ms - envelope.issued_at_ms > 10800000 || fresh && envelope.expires_at_ms <= Date.now()
+      || envelope.expires_at_ms <= envelope.issued_at_ms
+      || fresh && (envelope.issued_at_ms > Date.now() || envelope.expires_at_ms <= Date.now())
       || !/^[A-Za-z0-9+/]{86}==$/.test(envelope.signature ?? "")) fail("STANDARD_HOST_SOURCE_INVALID");
     if (kind === "human" && ["standard-pr-merge-consent-question.v1", postMergeQuestionVersion, externalMergeQuestionVersion].includes(subject.contract_version)
       && (envelope.issued_at_ms < subject.issued_at_ms || envelope.issued_at_ms >= subject.expires_at_ms

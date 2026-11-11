@@ -1,5 +1,14 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Signed source validity candidate, 2026-11-11
+
+The source adapter removes its extra three-hour duration ceiling and separates
+historical authenticity from current issuance/expiry checks. Original issuer
+expiry and principal/role/subject/signature controls remain; Native epoch grants
+keep their original finite bounds. Source and typed R05 components require fresh
+qualification. They establish no genuine H/Native, canonical-host clock-regression
+journey, complete L1-L8/A1-A10, installed archive or dev integration by themselves.
+
 ## Exact-current disposition validity candidate, 2026-11-11
 
 Generic disposition removes the host's sixty-second plan-age and local-grant

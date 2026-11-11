@@ -1,5 +1,22 @@
 # Testing Guide
 
+## Signed source issuer validity and historical clock movement, 2026-11-11
+
+The protected host-source fixture checks issuer-selected durations longer than
+the removed three-hour blanket ceiling. For each source kind, current verification
+still refuses future issuance and the unchanged issuer expiry; historical
+verification retains original bytes across clock regression and expiry, and
+still rejects a removed principal role. These transport claims are deliberately
+untyped fixtures, not Native epoch or human workflow authorization evidence.
+
+The R05 recovery fixture additionally uses its actual typed human router,
+protected source adapter and fixture Ed25519 principal. Its accepted primary
+history remains authentic after clock regression; current linked permission
+refuses future issuance. Existing expiry, revocation, exact evaluation/context
+and receipt checks remain. Accepted instance/inbox capabilities in that component
+are fixtures. Canonical-host journey, genuine actors and installed qualification
+are reported separately; no component verdict replaces them.
+
 ## Exact-current disposition consent, 2026-11-11
 
 The existing original-return disposition selector exercises an old signed plan

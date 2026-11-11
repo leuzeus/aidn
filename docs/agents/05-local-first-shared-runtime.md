@@ -1,5 +1,11 @@
 # 05 Local-First Shared Runtime
 
+Protected signed sources use their original issuer expiry without a blanket host
+maximum duration. Current permission rejects future issuance and actual expiry.
+Authenticated accepted/delivered history verifies original signature, source,
+subject and current principal without comparing provenance dates to today's
+clock. Native epoch grants and finite allocation budgets remain independent.
+
 Disposition plans reobserve their exact current subject without an elapsed-age
 ceiling. Local exact-action grants use v2 without a host-generated expiry.
 Legacy v1 issuer expiry, explicit permit/source checks, owner/fence and CAS

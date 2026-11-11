@@ -1,5 +1,27 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Amendment — signed source issuer validity and historical facts, 2026-11-11
+
+The protected source transport no longer adds a three-hour maximum duration to
+independently signed human, control or Native-renewal envelopes. The issuer's
+original expiry remains binding for current permission. Current reads and
+verification reject future issuance or actual expiry, and retain the exact
+source reference, subject, signature, payload author and current principal role.
+
+Historical verification authenticates the original signed fact without comparing
+its issue/expiry times to the current clock. Its original integer timestamps and
+strict issue-before-expiry relation remain unchanged. The owning host derives
+this capability from an authenticated accepted receipt, or a delivered control
+record; a CLI JSON field cannot select it. Current linked permission and Native
+epoch authorization use current verification. Typed Native grants retain their
+original finite expiry, cumulative budgets and closure/admission requirements.
+
+No source, question, receipt or journal is rewritten, no role is inferred from a
+MAC key, and no new contract, authority or migration is introduced. Component
+fixtures use fixture principals and typed fixture history. They do not establish
+genuine actors, a canonical-host clock-regression journey, full STANDARD or an
+installed archive; these retain their actual qualification scope.
+
 ## Amendment — recovery cycle question validity, 2026-11-11
 
 The private recovery cycle selection no longer invents a five-minute expiry.

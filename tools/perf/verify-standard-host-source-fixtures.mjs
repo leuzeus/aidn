@@ -49,7 +49,44 @@ check("fresh signed wrong subject refuses", () => { put({ subject_sha256: "f".re
 check("fresh signed wrong source reference refuses", () => { put({ source_ref: "other" }); refuses("STANDARD_HOST_SOURCE_INVALID"); });
 check("fresh signed wrong kind refuses", () => { put({ kind: "control" }); refuses("STANDARD_HOST_SOURCE_INVALID"); });
 check("future issuance refuses", () => { put({ issued_at_ms: Date.now() + 30000 }); refuses("STANDARD_HOST_SOURCE_INVALID"); });
-check("excessive duration refuses", () => { put({ expires_at_ms: Date.now() + 10800000 }); refuses("STANDARD_HOST_SOURCE_INVALID"); });
+check("issuer-chosen lifetime is preserved without an additional host ceiling", () => {
+  put({ expires_at_ms: Date.now() + 86400000 });
+  assert.deepEqual(host.humanSource.read(input), source);
+  assert.equal(host.humanSource.verify(input).outcome, "verified");
+});
+// These deliberately untyped claims isolate the protected transport for each
+// source kind. Native epoch budgets and typed human decisions have their own tests.
+for (const kind of ["human", "control", "native-renewal"]) {
+  check(kind + " signed issuer expiry and current permission remain distinct from historical authenticity", () => {
+    const realNow = Date.now, originalRegistry = fs.readFileSync(registryFile);
+    const ref = "long-boundary-" + kind, file = path.join(dirs.authority, "inbox", ref + ".json");
+    const body = { contract_version: "standard-host-source.v1", kind, authority_id: "fixture_human", source_ref: ref,
+      subject_sha256: shadowHash(question), payload: source, issued_at_ms: realNow() - 1000, expires_at_ms: realNow() + 172800000 };
+    fs.writeFileSync(file, JSON.stringify({ ...body, signature: sign(null, Buffer.from(shadowHash(body)), privateKey).toString("base64") }));
+    const originalSource = fs.readFileSync(file);
+    const principal = structuredClone(registry);
+    principal.principals[0].kinds = ["human", "control", "native-renewal"];
+    const adapter = kind === "human" ? host.humanSource : kind === "control" ? host.controlSource : host.nativeAuthorizationSource;
+    const selected = { sourceRef: ref, source, ...(kind === "human" ? { question } : { request: question }) };
+    try {
+      fs.writeFileSync(registryFile, JSON.stringify(principal));
+      assert.deepEqual(adapter.read(selected), source);
+      assert.equal(adapter.verify(selected).outcome, "verified");
+      Date.now = () => body.issued_at_ms - 1;
+      assert.throws(() => adapter.read(selected), { code: "STANDARD_HOST_SOURCE_INVALID" });
+      assert.throws(() => adapter.verify(selected), { code: "STANDARD_HOST_SOURCE_INVALID" });
+      assert.equal(adapter.verify({ ...selected, historical: true }).outcome, "verified");
+      Date.now = () => body.expires_at_ms;
+      assert.throws(() => adapter.read(selected), { code: "STANDARD_HOST_SOURCE_INVALID" });
+      assert.throws(() => adapter.verify(selected), { code: "STANDARD_HOST_SOURCE_INVALID" });
+      assert.equal(adapter.verify({ ...selected, historical: true }).outcome, "verified");
+      principal.principals[0].kinds = principal.principals[0].kinds.filter(value => value !== kind);
+      fs.writeFileSync(registryFile, JSON.stringify(principal));
+      assert.throws(() => adapter.verify({ ...selected, historical: true }), { code: "STANDARD_HOST_SOURCE_NOT_AUTHENTICATED" });
+      assert.deepEqual(fs.readFileSync(file), originalSource);
+    } finally { Date.now = realNow; fs.writeFileSync(registryFile, originalRegistry); }
+  });
+}
 check("fresh unknown principal refuses authentication", () => { put({ authority_id: "unknown" }); refuses("STANDARD_HOST_SOURCE_NOT_AUTHENTICATED"); });
 check("signed payload author must match signer", () => { put({ payload: { ...source, authority_id: "other" } }); refuses("STANDARD_HOST_SOURCE_AUTHOR_CHANGED"); });
 check("trust role changes are observed on the next read", () => { put(); registry.principals[0].kinds = ["control"];
