@@ -50,10 +50,10 @@ export function createStandardSessionPrRecord({ targetRoot, readSource, readCurr
   }
   return Object.freeze({ prepare: (instance, input) => prepare(instance, input, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
-      const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
+      const plan = prepared?.plan;
       if (!prepared?.can_apply || !valid(plan, planSchema) || write !== true || typeof assertAuthorized !== 'function'
         || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || shadowHash(plan.source) !== plan.source_sha256
-        || !Number.isSafeInteger(age) || age < 0 || age > 300000 || plan.changes.some(row => artifactContentHash(text(row)) !== row.after_sha256)) fail('STANDARD_PR_RECORD_EXPLICIT_WRITE_REQUIRED');
+        || plan.changes.some(row => artifactContentHash(text(row)) !== row.after_sha256)) fail('STANDARD_PR_RECORD_EXPLICIT_WRITE_REQUIRED');
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
           await assertAuthorized(); const fresh = await prepare(instance, plan.input, plan.prepared_at_ms, true);
@@ -73,7 +73,7 @@ export function createStandardSessionPrRecord({ targetRoot, readSource, readCurr
           const view = git(plan.source).inspect(), expected = plan.state_mode === 'db-only' ? [] : plan.changes.filter(row => row.before_sha256 !== row.after_sha256).map(row => 'docs/audit/' + row.path).sort();
           if (gitIdentity(view) !== plan.git_identity_sha256 || shadowHash(view.changes.map(row => row.path).sort()) !== shadowHash(expected)
             || view.changes.some(row => row.status !== ' M') || shadowHash(await readSource(instance, plan.input)) !== plan.source_sha256
-            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || now() - plan.prepared_at_ms > 300000) throw Error('STANDARD_PR_RECORD_POSTCONDITION_CHANGED');
+            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) throw Error('STANDARD_PR_RECORD_POSTCONDITION_CHANGED');
           await assertAuthorized();
           const postimages = plan.changes.map((row, index) => ({ path: row.path, sha256: row.after_sha256, metadata_sha256: metadata[index] }));
           return emit('completed', 'confirmed', { open_operation_id: plan.input.open_operation_id, session_id: plan.source.session_id, postimages, checkpoint: 'pending', push: 'pending', review: 'pending' },

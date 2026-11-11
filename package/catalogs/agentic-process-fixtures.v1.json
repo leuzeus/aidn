@@ -47,7 +47,8 @@
       "tools/perf/verify-standard-session-branch-integration-authority-fixtures.mjs"
     ],
     [
-      "tools/perf/verify-standard-session-branch-integration-port-fixtures.mjs"
+      "tools/perf/verify-standard-session-branch-integration-port-fixtures.mjs",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-session-pr-admission-fixtures.mjs",
@@ -63,30 +64,36 @@
     ],
     [
       "tools/perf/verify-standard-session-push-fixtures.mjs",
-      "--mode=files"
+      "--mode=files",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-session-push-fixtures.mjs",
-      "--mode=dual"
+      "--mode=dual",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-session-push-fixtures.mjs",
-      "--mode=db-only"
+      "--mode=db-only",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-github-pr-open-fixtures.mjs"
     ],
     [
       "tools/perf/verify-standard-session-pr-open-fixtures.mjs",
-      "--mode=files"
+      "--mode=files",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-session-pr-open-fixtures.mjs",
-      "--mode=dual"
+      "--mode=dual",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-session-pr-open-fixtures.mjs",
-      "--mode=db-only"
+      "--mode=db-only",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-github-review-evidence-fixtures.mjs"
@@ -102,35 +109,42 @@
     ],
     [
       "tools/perf/verify-standard-pr-correction-cycle-ports-fixtures.mjs",
-      "--mode=files"
-    ],
-    [
-      "tools/perf/verify-standard-pr-correction-cycle-ports-fixtures.mjs",
-      "--mode=dual"
-    ],
-    [
-      "tools/perf/verify-standard-pr-correction-cycle-ports-fixtures.mjs",
-      "--mode=db-only"
+      "--mode=files",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-pr-correction-cycle-ports-fixtures.mjs",
       "--mode=dual",
-      "--late-metadata=provider"
+      "--aged-plan"
+    ],
+    [
+      "tools/perf/verify-standard-pr-correction-cycle-ports-fixtures.mjs",
+      "--mode=db-only",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-pr-correction-cycle-ports-fixtures.mjs",
       "--mode=dual",
-      "--late-metadata=authorization"
+      "--late-metadata=provider",
+      "--aged-plan"
+    ],
+    [
+      "tools/perf/verify-standard-pr-correction-cycle-ports-fixtures.mjs",
+      "--mode=dual",
+      "--late-metadata=authorization",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-pr-correction-cycle-ports-fixtures.mjs",
       "--mode=db-only",
-      "--late-metadata=provider"
+      "--late-metadata=provider",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-pr-correction-cycle-ports-fixtures.mjs",
       "--mode=db-only",
-      "--late-metadata=authorization"
+      "--late-metadata=authorization",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-cycle-context-metadata-fixtures.mjs",
@@ -236,15 +250,18 @@
     ],
     [
       "tools/perf/verify-standard-session-pr-successor-fixtures.mjs",
-      "--mode=files"
+      "--mode=files",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-session-pr-successor-fixtures.mjs",
-      "--mode=dual"
+      "--mode=dual",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-session-pr-successor-fixtures.mjs",
-      "--mode=db-only"
+      "--mode=db-only",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-process-binding-input-fixtures.mjs"
@@ -254,15 +271,18 @@
     ],
     [
       "tools/perf/verify-standard-session-pr-record-fixtures.mjs",
-      "--mode=files"
+      "--mode=files",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-session-pr-record-fixtures.mjs",
-      "--mode=dual"
+      "--mode=dual",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-session-pr-record-fixtures.mjs",
-      "--mode=db-only"
+      "--mode=db-only",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-session-preclose-checkpoint-fixtures.mjs",
@@ -298,7 +318,8 @@
       "--mode=files",
       "--final-hook",
       "--promotion-checkpoint",
-      "--keep-cycle-branch"
+      "--keep-cycle-branch",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs",
@@ -306,20 +327,23 @@
       "--final-hook",
       "--promotion-checkpoint",
       "--keep-cycle-branch",
-      "--promotion-checkpoint-fault=grant_after_git"
-    ],
-    [
-      "tools/perf/verify-standard-cycle-close-record-fixtures.mjs",
-      "--mode=files",
-      "--final-hook",
-      "--terminal-checkpoint"
+      "--promotion-checkpoint-fault=grant_after_git",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-cycle-close-record-fixtures.mjs",
       "--mode=files",
       "--final-hook",
       "--terminal-checkpoint",
-      "--terminal-checkpoint-fault=grant_after_git"
+      "--aged-hook"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-close-record-fixtures.mjs",
+      "--mode=files",
+      "--final-hook",
+      "--terminal-checkpoint",
+      "--terminal-checkpoint-fault=grant_after_git",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-composed-preflight-fixtures.mjs"
@@ -463,7 +487,8 @@
       "--mode=db-only"
     ],
     [
-      "tools/perf/verify-drift-recovery-fixtures.mjs"
+      "tools/perf/verify-drift-recovery-fixtures.mjs",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-workflow-model-fixtures.mjs"
@@ -532,43 +557,50 @@
     [
       "tools/perf/verify-standard-cycle-close-record-fixtures.mjs",
       "--mode=files",
-      "--final-hook"
+      "--final-hook",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-cycle-close-record-fixtures.mjs",
       "--mode=db-only",
       "--choice=no_go",
-      "--final-hook"
+      "--final-hook",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-cycle-close-record-fixtures.mjs",
       "--mode=dual",
       "--choice=drop",
-      "--final-hook"
+      "--final-hook",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-cycle-close-record-fixtures.mjs",
       "--mode=files",
       "--final-hook",
-      "--final-hook-fault=event"
+      "--final-hook-fault=event",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-cycle-close-record-fixtures.mjs",
       "--mode=db-only",
       "--final-hook",
-      "--final-hook-fault=suffix"
+      "--final-hook-fault=suffix",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-cycle-close-record-fixtures.mjs",
       "--mode=dual",
       "--final-hook",
-      "--final-hook-fault=projection"
+      "--final-hook-fault=projection",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-cycle-close-record-fixtures.mjs",
       "--mode=files",
       "--final-hook",
-      "--final-hook-fault=grant_after"
+      "--final-hook-fault=grant_after",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-baseline-promotion-decision-fixtures.mjs"
@@ -583,55 +615,63 @@
       "tools/perf/verify-standard-session-close-record-fixtures.mjs",
       "--checkpoint",
       "--final-hook",
-      "--delivery-checkpoint"
+      "--delivery-checkpoint",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-session-close-record-fixtures.mjs",
       "--mode=dual",
       "--checkpoint",
       "--final-hook",
-      "--delivery-checkpoint"
+      "--delivery-checkpoint",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-session-close-record-fixtures.mjs",
       "--mode=db-only",
       "--checkpoint",
       "--final-hook",
-      "--delivery-checkpoint"
+      "--delivery-checkpoint",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-session-close-record-fixtures.mjs",
       "--checkpoint",
       "--final-hook",
       "--delivery-checkpoint",
-      "--delivery-grant-after-git"
+      "--delivery-grant-after-git",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-session-close-record-fixtures.mjs",
       "--checkpoint",
       "--final-hook",
-      "--final-hook-fault=grant_after_hook"
+      "--final-hook-fault=grant_after_hook",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-session-close-record-fixtures.mjs",
       "--mode=db-only",
       "--checkpoint",
       "--final-hook",
-      "--final-hook-fault=suffix"
+      "--final-hook-fault=suffix",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-session-close-record-fixtures.mjs",
       "--mode=dual",
       "--checkpoint",
       "--final-hook",
-      "--final-hook-fault=constraints"
+      "--final-hook-fault=constraints",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-session-close-record-fixtures.mjs",
       "--mode=dual",
       "--checkpoint",
       "--final-hook",
-      "--constraint-policy-fault"
+      "--constraint-policy-fault",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-session-close-record-fixtures.mjs",
@@ -656,41 +696,48 @@
     [
       "tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs",
       "--mode=files",
-      "--final-hook"
-    ],
-    [
-      "tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs",
-      "--mode=dual",
-      "--final-hook"
-    ],
-    [
-      "tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs",
-      "--mode=db-only",
-      "--final-hook"
-    ],
-    [
-      "tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs",
-      "--mode=files",
       "--final-hook",
-      "--final-hook-fault=event"
-    ],
-    [
-      "tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs",
-      "--mode=db-only",
-      "--final-hook",
-      "--final-hook-fault=suffix"
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs",
       "--mode=dual",
       "--final-hook",
-      "--final-hook-fault=projection"
+      "--aged-hook"
+    ],
+    [
+      "tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs",
+      "--mode=db-only",
+      "--final-hook",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs",
       "--mode=files",
       "--final-hook",
-      "--final-hook-fault=grant_after"
+      "--final-hook-fault=event",
+      "--aged-hook"
+    ],
+    [
+      "tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs",
+      "--mode=db-only",
+      "--final-hook",
+      "--final-hook-fault=suffix",
+      "--aged-hook"
+    ],
+    [
+      "tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs",
+      "--mode=dual",
+      "--final-hook",
+      "--final-hook-fault=projection",
+      "--aged-hook"
+    ],
+    [
+      "tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs",
+      "--mode=files",
+      "--final-hook",
+      "--final-hook-fault=grant_after",
+      "--aged-hook"
     ],
     [
       "tools/perf/verify-github-pr-observation-fixtures.mjs"
@@ -846,11 +893,13 @@
       "--mode=db-only"
     ],
     [
-      "tools/perf/verify-standard-spike-wrapper-preconditions.mjs"
+      "tools/perf/verify-standard-spike-wrapper-preconditions.mjs",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-spike-wrapper-preconditions.mjs",
-      "--metadata-tamper"
+      "--metadata-tamper",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
@@ -859,19 +908,23 @@
     ],
     [
       "tools/perf/verify-standard-spike-wrapper-preconditions.mjs",
-      "--metadata-stage=before-authorization"
+      "--metadata-stage=before-authorization",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-spike-wrapper-preconditions.mjs",
-      "--metadata-stage=after-hook"
+      "--metadata-stage=after-hook",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-spike-wrapper-preconditions.mjs",
-      "--dual-nominal"
+      "--dual-nominal",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-standard-spike-wrapper-preconditions.mjs",
-      "--db-only-nominal"
+      "--db-only-nominal",
+      "--aged-plan"
     ],
     [
       "tools/perf/verify-node-fixture-runner-fixtures.mjs"
@@ -893,6 +946,20 @@
     [
       "tools/perf/verify-standard-ordinary-entry-fixtures.mjs",
       "--mode=db-only"
+    ],
+    [
+      "tools/perf/verify-standard-drift-rollback-fixtures.mjs",
+      "--aged-plan"
+    ],
+    [
+      "tools/perf/verify-drift-recovery-fixtures.mjs",
+      "--cycle-port-mode=files",
+      "--aged-plan"
+    ],
+    [
+      "tools/perf/verify-standard-pr-redelivery-fixtures.mjs",
+      "--mode=files",
+      "--aged-plan"
     ]
   ]
 }

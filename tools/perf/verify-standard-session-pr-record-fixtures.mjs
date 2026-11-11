@@ -13,6 +13,8 @@ import { assertStandardOperationOutput } from '../../src/core/workflow/standard-
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 const temporary = fs.realpathSync(os.tmpdir()), owned = [], H = 'a'.repeat(64), operation = 'op_' + '1'.repeat(40);
 const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files';
+const agedPlan = process.argv.includes('--aged-plan');
+let planClock = null;
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
 let checks = 0;
 const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + name); };
@@ -37,7 +39,8 @@ async function fixture(selectedMode) {
       head_oid: head, base_oid: git(root, 'rev-parse', 'HEAD^'), state: 'OPEN', draft: false, url: 'https://github.com/fixture/repository/pull/1', title_sha256: H, body_sha256: H },
     documents: names.map(name => ({ path: name, sha256: artifacts.read(name, { required: true }).sha256, metadata_sha256: artifacts.metadataHash(name) })) };
   const instance = { instance_id: 'pr-record-fixture', instance_sha256: H }, input = { contract_version: 'standard-session-pr-record-input.v1', open_operation_id: operation };
-  const port = createStandardSessionPrRecord({ targetRoot: root, readSource: async () => structuredClone(source), readCurrent: () => instance });
+  const port = createStandardSessionPrRecord({ targetRoot: root, readSource: async () => structuredClone(source), readCurrent: () => instance,
+    now: () => planClock ?? Date.now() });
   return { root, artifacts, source, instance, input, port, head, names };
 }
 try {
@@ -57,15 +60,27 @@ try {
     assert.equal(prepared.can_apply, true); assert.equal(shadowHash(f.source), before); assert.deepEqual(physical(), files); assert.equal(f.artifacts.ownerPending(), false);
   });
   await test('wrong exact grant or a changed delivery preimage refuses before canonical writes', async () => {
+    const malformed = structuredClone(prepared); malformed.plan.prepared_at_ms = Number.MAX_SAFE_INTEGER + 1;
+    malformed.plan_sha256 = shadowHash(malformed.plan); let grants = 0;
+    await assert.rejects(f.port.apply(f.instance, malformed, { write: true, expectPlan: malformed.plan_sha256, assertAuthorized() { grants++; } }),
+      { code: 'STANDARD_PR_RECORD_EXPLICIT_WRITE_REQUIRED', effect_status: 'no_effect' });
+    assert.equal(grants, 0); assert.equal(f.artifacts.ownerPending(), false);
     await assert.rejects(f.port.apply(f.instance, prepared, { write: true, expectPlan: 'b'.repeat(64), assertAuthorized() {} }));
     const original = f.source.documents[0].sha256; f.source.documents[0].sha256 = 'c'.repeat(64);
     await assert.rejects(f.port.apply(f.instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() {} })); f.source.documents[0].sha256 = original;
     assert.equal(f.artifacts.read(f.names[0], { required: true }).sha256, original); assert.equal(f.artifacts.ownerPending(), false);
   });
-  await test('actual canonical CAS/project writes PR lifecycle with CLOSED retained and no Git checkpoint or push', async () => {
-    const files = physical(), sourceHash = shadowHash(f.source); prepared = await f.port.prepare(f.instance, f.input);
+  await test(agedPlan ? 'original day-old PR-record plan confirms exact canonical postimages under current source and grant'
+    : 'actual canonical CAS/project writes PR lifecycle with CLOSED retained and no Git checkpoint or push', async () => {
+    const files = physical(), sourceHash = shadowHash(f.source);
+    planClock = agedPlan ? Date.now() - 86400000 : null;
+    try { prepared = await f.port.prepare(f.instance, f.input); }
+    finally { planClock = null; }
+    if (agedPlan) assert.ok(Date.now() - prepared.plan.prepared_at_ms >= 86400000);
+    const original = structuredClone(prepared);
     const result = await f.port.apply(f.instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() {} });
     assert.equal(result.outcome, 'completed', JSON.stringify(result)); assertStandardOperationOutput(result);
+    assert.deepEqual(prepared, original);
     assert.deepEqual(result.facts, { session_pr_lifecycle_recorded: true, session_pr_checkpoint_required: true });
     const session = f.artifacts.read(f.names[0], { required: true }).content, current = f.artifacts.read('CURRENT-STATE.md', { required: true }).content;
     assert.match(session, /^state: CLOSED$/m); assert.match(session, /pr_status: open/); assert.match(session, /pr_review_status: pending/);

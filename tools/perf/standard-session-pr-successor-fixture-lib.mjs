@@ -14,7 +14,7 @@ import { createStandardSessionPrUpdatePush } from '../../src/application/runtime
 import { createLocalWorkflowSessionPush } from '../../src/adapters/runtime/local-workflow-session-push.mjs';
 const H = 'a'.repeat(64), operation = 'op_' + '1'.repeat(40);
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
-export async function createPrSuccessorFixture(selectedMode, owned, temporary) {
+export async function createPrSuccessorFixture(selectedMode, owned, temporary, { now = Date.now } = {}) {
   const root = createFreshStandardWorkflowFixture(selectedMode, owned), ops = createStandardWorkflowOperations({ targetRoot: root }), artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
   let prepared = await ops.prepareSession({ session_id: 'S001', session_branch: 'S001-record', objective: 'Record the explicit fixture PR lifecycle' });
   assert.equal((await ops.initializeSession(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, 'completed');
@@ -43,7 +43,7 @@ export async function createPrSuccessorFixture(selectedMode, owned, temporary) {
   const openPlan = await provider.port.prepare(request, operation);
   const openResult = await provider.port.apply(openPlan, { write: true, expectPlan: openPlan.plan_sha256, assertAuthorized() {} });
   source.pull_request = openResult.pull_request;
-  const port = createStandardSessionPrRecord({ targetRoot: root, readSource: async () => structuredClone(source), readCurrent: () => instance });
+  const port = createStandardSessionPrRecord({ targetRoot: root, readSource: async () => structuredClone(source), readCurrent: () => instance, now });
   prepared = await port.prepare(instance, input); const output = await port.apply(instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() {} });
   assert.equal(output.outcome, 'completed', JSON.stringify(output));
   const recordId = 'op_' + '2'.repeat(40), checkpointId = 'op_' + '3'.repeat(40);
@@ -54,9 +54,9 @@ export async function createPrSuccessorFixture(selectedMode, owned, temporary) {
   const authority = createStandardSessionPrSuccessorAuthority({ targetRoot: root, readAcceptedOperation(_instance, id, binding) {
     const selected = records.get(id); if (selected?.record.intent.binding_ref !== binding) throw Error('accepted source unavailable'); return structuredClone(selected);
   }, historyAuthority: { readHistory() { return structuredClone(history); } } });
-  const checkpoint = createStandardSessionPrCheckpoint({ targetRoot: root, readSource: authority.readSource, readCurrent: () => instance });
+  const checkpoint = createStandardSessionPrCheckpoint({ targetRoot: root, readSource: authority.readSource, readCurrent: () => instance, now });
   const pushPort = createLocalWorkflowSessionPush({ targetRoot: root, remoteRoot: remote });
-  const update = extra => createStandardSessionPrUpdatePush({ targetRoot: root, readCheckpoint: authority.readCheckpoint, readCurrent: () => instance, pushPort, pullRequestPort: provider.port, ...extra });
+  const update = extra => createStandardSessionPrUpdatePush({ targetRoot: root, readCheckpoint: authority.readCheckpoint, readCurrent: () => instance, pushPort, pullRequestPort: provider.port, now, ...extra });
   return { root, artifacts, source, instance, input, port, head, names, records, recorded, history, authority, checkpoint, recordId, checkpointId, provider, remote, pushPort, update,
     checkpointInput: { record_operation_id: recordId }, updateInput: { contract_version: 'standard-session-pr-update-push-input.v1', checkpoint_operation_id: checkpointId } };
 }

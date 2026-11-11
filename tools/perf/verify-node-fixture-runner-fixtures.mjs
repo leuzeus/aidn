@@ -8,14 +8,31 @@ import manifest from "../../package/catalogs/agentic-process-fixtures.v1.json" w
 import { runNodeFixtureCases } from "../verify/node-fixture-runner-lib.mjs";
 import { verifyWindowsVerificationTree } from "./verification-windows-tree-fixture-lib.mjs";
 
-// Accepted febbb020 argv prefix, including the merge fixture and bounded
-// composed stop points added in 81b1783e. Later cases remain explicit below.
-assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 188))).digest("hex"),
+// Preserve the accepted febbb020/81b1783e prefix and six supplemental cases,
+// modulo the explicit 2026-11-11 private age-validity selectors. The current
+// exact argv is pinned separately, so removing a new selector still fails.
+const originalCases = manifest.cases.slice(0, 194).map(args => args.filter(arg => !["--aged-plan", "--aged-hook"].includes(arg)));
+assert.equal(createHash("sha256").update(JSON.stringify(originalCases.slice(0, 188))).digest("hex"),
   "c14ad5423a7644ee7a7098b58f1400443d059191329a22b5a3d0066658aad555");
-assert.deepEqual(manifest.cases.slice(188), [["tools/perf/verify-node-fixture-runner-fixtures.mjs"],
+assert.deepEqual(originalCases.slice(188), [["tools/perf/verify-node-fixture-runner-fixtures.mjs"],
   ["tools/perf/verify-standard-host-source-fixtures.mjs"], ["tools/perf/verify-workflow-execution-authority-fixtures.mjs"],
   ...["files", "dual", "db-only"].map(mode => ["tools/perf/verify-standard-ordinary-entry-fixtures.mjs", "--mode=" + mode])]);
-console.log("PASS accepted 188-case prefix and six exact supplemental cases");
+assert.deepEqual(manifest.cases.slice(194), [
+  ["tools/perf/verify-standard-drift-rollback-fixtures.mjs", "--aged-plan"],
+  ["tools/perf/verify-drift-recovery-fixtures.mjs", "--cycle-port-mode=files", "--aged-plan"],
+  ["tools/perf/verify-standard-pr-redelivery-fixtures.mjs", "--mode=files", "--aged-plan"],
+]);
+console.log("PASS accepted194 cases retain their original argv and order modulo explicit age selectors with three exact additions");
+assert.equal(manifest.cases.length, 197);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases)).digest("hex"),
+  "47b229353b3929aa0b52623f688b46296517e513a331a68060c4c5a0190c62f4");
+assert.equal(manifest.cases.filter(args => args.includes("--aged-plan") || args.includes("--aged-hook")).length, 56);
+console.log("PASS current197 exact argv pins all53 selector changes and three new age-validity components");
+if (process.argv.includes("--manifest-only")) {
+  console.log(JSON.stringify({ status: "PASS", checks: 2, scope: "ordered manifest and age-selector regression only",
+    manifest_cases: 197, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
+  process.exit(0);
+}
 
 const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn fixture runner "));
 const log = path.join(base, "events.jsonl"), script = path.join(base, "child with spaces.mjs");

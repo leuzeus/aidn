@@ -14,6 +14,13 @@ import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-sche
 import { assertStandardOperationInput, assertStandardOperationOutput } from '../../src/core/workflow/standard-operation-contracts.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 const temporary = fs.realpathSync(os.tmpdir()), owned = [], H = 'a'.repeat(64), op = x => 'op_' + x.repeat(40);
+const agedPlan = process.argv.includes('--aged-plan');
+let planClock = null;
+async function prepareOriginal(fn) {
+  planClock = agedPlan ? Date.now() - 86400000 : null;
+  try { const prepared = await fn(); if (agedPlan) assert.ok(Date.now() - prepared.plan.prepared_at_ms >= 86400000); return prepared; }
+  finally { planClock = null; }
+}
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
 function checkoutSnapshot(root, expectedWrites) {
   const rows = [];
@@ -63,7 +70,8 @@ try {
     observations: { session_id: 'S001', session_branch: 'S001-push', head } } };
   const port = createLocalWorkflowSessionPush({ targetRoot: root, remoteRoot: bare });
   const input = { contract_version: 'standard-session-push-input.v1', admission_operation_id: op('1') };
-  const service = extra => createStandardSessionPush({ targetRoot: root, readAdmission: async () => structuredClone(accepted), readCurrent: () => instance, pushPort: port, ...extra });
+  const service = extra => createStandardSessionPush({ targetRoot: root, readAdmission: async () => structuredClone(accepted), readCurrent: () => instance, pushPort: port,
+    now: () => planClock ?? Date.now(), ...extra });
   const readRemote = () => port.inspect('S001-push').remote_head;
   let plan;
   await test('preview reads real Git and pins absent remote head without creating a branch', async () => {
@@ -105,9 +113,12 @@ try {
     await assert.rejects(service().apply(instance, plan, { write: true, expectPlan: plan.plan_sha256, assertAuthorized() {} })); accepted.output.observations.head = head;
     assert.equal(readRemote(), null); assert.equal(artifacts.ownerPending(), false);
   });
-  await test('expired preview cannot renew authority or produce a push', async () => {
-    const expired = service({ now: () => plan.plan.prepared_at_ms + 300001 });
-    await assert.rejects(expired.apply(instance, plan, { write: true, expectPlan: plan.plan_sha256, assertAuthorized() {} }), { code: 'STANDARD_SESSION_PUSH_EXPLICIT_EFFECT_REQUIRED' });
+  await test('unsafe timestamp refuses before ownership authorization or remote push', async () => {
+    const malformed = structuredClone(plan); malformed.plan.prepared_at_ms = Number.MAX_SAFE_INTEGER + 1;
+    malformed.plan_sha256 = shadowHash(malformed.plan); let grants = 0;
+    await assert.rejects(service().apply(instance, malformed, { write: true, expectPlan: malformed.plan_sha256, assertAuthorized() { grants++; } }),
+      { code: 'STANDARD_SESSION_PUSH_EXPLICIT_EFFECT_REQUIRED', effect_status: 'no_effect' });
+    assert.equal(grants, 0);
     assert.equal(readRemote(), null); assert.equal(artifacts.ownerPending(), false);
   });
   await test('dirty tree and URL rewrite are refused by real transport preview', () => {
@@ -115,7 +126,8 @@ try {
     git(root, 'config', 'url.file:///wrong/.insteadOf', 'file:///'); assert.throws(() => port.inspect('S001-push'), { code: 'WORKFLOW_PUSH_URL_REWRITE_UNSUPPORTED' });
     git(root, 'config', '--remove-section', 'url.file:///wrong/'); assert.equal(readRemote(), null);
   });
-  await test('actual push changes only the expected remote ref, with no checkout pre-push hook', async () => {
+  await test(agedPlan ? 'original day-old push plan confirms current admission grant and exact remote ref'
+    : 'actual push changes only the expected remote ref, with no checkout pre-push hook', async () => {
     const marker = path.join(root, '.git/PUSH_HOOK_EXECUTED'), hook = path.join(root, '.git/hooks/pre-push');
     fs.writeFileSync(hook, '#!/bin/sh\necho executed > "' + marker.replaceAll('\\', '/') + '"\n'); fs.chmodSync(hook, 0o755);
     git(root, 'push', '--dry-run', '--', bare, 'HEAD:refs/heads/control-probe');
@@ -133,9 +145,11 @@ try {
     }
     const before = checkoutSnapshot(root, expectedWrites);
     const refs = git(root, 'show-ref'), index = fs.readFileSync(path.join(root, '.git/index'));
-    plan = await service().prepare(instance, input, op('2'));
+    plan = await prepareOriginal(() => service().prepare(instance, input, op('2')));
+    const original = structuredClone(plan);
     const result = await service().apply(instance, plan, { write: true, expectPlan: plan.plan_sha256, assertAuthorized() {} });
     assert.equal(result.outcome, 'completed', JSON.stringify(result)); assert.equal(result.effect_status, 'confirmed'); assertStandardOperationOutput(result);
+    assert.deepEqual(plan, original);
     assert.equal(readRemote(), head); assert.equal(git(bare, 'for-each-ref', '--format=%(refname)'), 'refs/heads/S001-push');
     assert.equal(git(root, 'show-ref'), refs); assert.deepEqual(fs.readFileSync(path.join(root, '.git/index')), index);
     assert.equal(fs.existsSync(marker), false); assert.equal(artifacts.ownerPending(), false);

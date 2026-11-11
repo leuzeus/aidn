@@ -9,8 +9,16 @@ import { createStandardSessionPrOpen } from '../../src/application/runtime/stand
 import { createStandardWorkflowArtifacts } from '../../src/application/runtime/standard-workflow-artifacts.mjs';
 import { assertStandardOperationInput, assertStandardOperationOutput } from '../../src/core/workflow/standard-operation-contracts.mjs';
 import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-schema-validator.mjs';
+import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 const temporary = fs.realpathSync(os.tmpdir()), owned = [], H = 'a'.repeat(64), op = x => 'op_' + x.repeat(40);
 const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files';
+const agedPlan = process.argv.includes('--aged-plan');
+let planClock = null;
+async function prepareOriginal(fn) {
+  planClock = agedPlan ? Date.now() - 86400000 : null;
+  try { const prepared = await fn(); if (agedPlan) assert.ok(Date.now() - prepared.plan.prepared_at_ms >= 86400000); return prepared; }
+  finally { planClock = null; }
+}
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
 let checks = 0;
 const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + name); };
@@ -41,22 +49,30 @@ try {
     observations: { session_id: 'S001', git: { branch: 'S001-example', head, remote_head: head } } },
     admission: { outcome: 'completed', facts: { session_pr_admitted: true }, observations: { session_id: 'S001', session_branch: 'S001-example', head, admission: { source_branch: 'dev' } } } };
   const input = { contract_version: 'standard-session-pr-open-input.v1', push_operation_id: op('1') }, provider = createGithubPrOpenTransportFixture({ remoteRoot: remote, controlRoot: base });
-  const service = extra => createStandardSessionPrOpen({ targetRoot: root, readPush: async () => structuredClone(source), readCurrent: () => instance, pullRequestPort: provider.port, ...extra });
+  const service = extra => createStandardSessionPrOpen({ targetRoot: root, readPush: async () => structuredClone(source), readCurrent: () => instance, pullRequestPort: provider.port,
+    now: () => planClock ?? Date.now(), ...extra });
   let ready;
   await test('preparation reads actual remote heads through the provider adapter without POST or owner', async () => {
     ready = await service().prepare(instance, input, op('2')); assert.equal(ready.can_apply, true); assert.equal(provider.read().posts, 0); assert.equal(artifacts.ownerPending(), false);
   });
-  await test('changed source, expired plan or missing exact permission refuse before provider effect', async () => {
+  await test('changed source, unsafe timestamp or missing exact permission refuse before provider effect', async () => {
     await assert.rejects(service().apply(instance, ready, { write: false, expectPlan: ready.plan_sha256, assertAuthorized() {} }));
-    await assert.rejects(service({ now: () => ready.plan.prepared_at_ms + 300001 }).apply(instance, ready, { write: true, expectPlan: ready.plan_sha256, assertAuthorized() {} }));
+    const malformed = structuredClone(ready); malformed.plan.prepared_at_ms = Number.MAX_SAFE_INTEGER + 1;
+    malformed.plan_sha256 = shadowHash(malformed.plan); let grants = 0;
+    await assert.rejects(service().apply(instance, malformed, { write: true, expectPlan: malformed.plan_sha256, assertAuthorized() { grants++; } }),
+      { code: 'STANDARD_SESSION_PR_OPEN_EXPLICIT_EFFECT_REQUIRED', effect_status: 'no_effect' });
+    assert.equal(grants, 0);
     source.output.effect_status = 'unknown'; await assert.rejects(service().apply(instance, ready, { write: true, expectPlan: ready.plan_sha256, assertAuthorized() {} })); source.output.effect_status = 'confirmed';
     assert.equal(provider.read().posts, 0); assert.equal(artifacts.ownerPending(), false);
   });
-  await test('application creates one remote PR through the actual adapter and emits only the open fact', async () => {
-    ready = await service().prepare(instance, input, op('2'));
+  await test(agedPlan ? 'original day-old PR-open plan confirms current source grant and one actual adapter create'
+    : 'application creates one remote PR through the actual adapter and emits only the open fact', async () => {
+    ready = await prepareOriginal(() => service().prepare(instance, input, op('2')));
+    const original = structuredClone(ready);
     const result = await service().apply(instance, ready, { write: true, expectPlan: ready.plan_sha256, assertAuthorized() {} });
     assert.equal(result.outcome, 'completed', JSON.stringify(result)); assert.equal(result.effect_status, 'confirmed'); assert.equal(result.observations.pull_request.head_oid, head);
     assertStandardOperationOutput(result); assert.deepEqual(result.facts, { session_pr_open_confirmed: true }); assert.equal(provider.read().posts, 1); assert.equal(artifacts.ownerPending(), false);
+    assert.deepEqual(ready, original);
   });
   await test('fresh explicit recovery observes the same PR without another create or checkout change', async () => {
     const status = git(root, 'status', '--porcelain'), refs = git(root, 'show-ref');

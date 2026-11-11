@@ -125,6 +125,15 @@ existing effect boundaries. A lost grant or confirmation after an actual effect
 still retains UNKNOWN and its owner; elapsed time alone creates no such result.
 SPIKE records still grant no product authority or successful experiment result.
 
+Session branch integration, initial push, PR opening/recording/checkpoint and
+initial or corrective PR update push also use current-state plan validity.
+Their safe nonnegative timestamp remains signed provenance without an age
+ceiling. Accepted closure/decision/admission, exact local and remote Git state,
+canonical content/metadata, protected provider subject and current grant remain
+required at the existing boundaries. A real transport, source, grant or
+confirmation loss after an effect retains UNKNOWN and its owner. A confirmed
+push or open PR still does not imply successful checks, review, merge or sync.
+
 Cycle validation reconstructs the work, product snapshot, profile and boundary
 descriptor under its owner and current authorization before running checks.
 These observations establish plan validity. The profile's command budget

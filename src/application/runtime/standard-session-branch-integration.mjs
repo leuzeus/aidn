@@ -57,9 +57,9 @@ export function createStandardSessionBranchIntegration({ targetRoot, readSource,
     },
     prepare: (instance, input, id) => prepare(instance, input, id, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
-      const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
+      const plan = prepared?.plan;
       if (!valid(plan, effectPlan) || !prepared?.can_apply || write !== true || typeof assertAuthorized !== 'function'
-        || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || !Number.isSafeInteger(age) || age < 0 || age > 300000)
+        || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan)
         throw Object.assign(Error('STANDARD_SESSION_INTEGRATION_EXPLICIT_EFFECT_REQUIRED'), { code: 'STANDARD_SESSION_INTEGRATION_EXPLICIT_EFFECT_REQUIRED', effect_status: 'no_effect' });
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
@@ -75,7 +75,7 @@ export function createStandardSessionBranchIntegration({ targetRoot, readSource,
             delivery_operation_id: plan.review.delivery_operation_id, closure_operation_id: plan.review.closure_operation_id });
           const { git: observed, ...reviewSource } = plan.review;
           if (git.inspectIntegration(gitPlan).status !== 'confirmed' || shadowHash(source) !== shadowHash(reviewSource)
-            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || now() - plan.prepared_at_ms > 300000)
+            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256)
             fail('STANDARD_SESSION_INTEGRATION_UNCONFIRMED');
           await assertAuthorized();
           return emit('completed', 'confirmed', { decision_operation_id: plan.input.decision_operation_id, git: result },

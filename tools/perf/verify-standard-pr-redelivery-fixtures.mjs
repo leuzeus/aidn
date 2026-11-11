@@ -11,6 +11,8 @@ import { createStandardSessionPrReviewAuthority } from '../../src/application/ru
 import { assertStandardOperationInput, assertStandardOperationOutput } from '../../src/core/workflow/standard-operation-contracts.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 const owned = [], mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files';
+const agedPlan = process.argv.includes('--aged-plan');
+let planClock = null;
 const op = n => 'op_' + n.repeat(40), git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
 const grant = prepared => ({ write: true, expectPlan: prepared.plan_sha256, assertAuthorized() {} });
 let checks = 0;
@@ -47,7 +49,7 @@ try {
     readAcceptedUpdate: (state, id) => accepted(state, id, 'session_pr_update_push'), readIntegration: async () => structuredClone(integrated), inspectIntegration: () => local.inspectIntegration(localPlan) });
   const input = { contract_version: 'standard-session-pr-redelivery-push-input.v1', integration_operation_id: op('6'), cycle_operation_id: op('7') };
   const app = createStandardSessionPrUpdatePush({ targetRoot: f.root, redelivery: true, readCheckpoint: authority.readSource,
-    readCurrent: () => instance, pushPort: f.pushPort, pullRequestPort: f.provider.port });
+    readCurrent: () => instance, pushPort: f.pushPort, pullRequestPort: f.provider.port, now: () => planClock ?? Date.now() });
   await test('new contract accepts only separate corrective integration and admitted cycle identities', () => {
     assertStandardOperationInput('session_pr_redelivery_push', input);
     assert.throws(() => assertStandardOperationInput('session_pr_update_push', input));
@@ -64,7 +66,12 @@ try {
     cycle.record.preview.prepared.plan.origin.pull_request.head_oid = '0'.repeat(40); await assert.rejects(authority.readSource(instance, input));
     cycle.record.preview.prepared.plan.origin.pull_request.head_oid = initialOutput.observations.review_head;
   });
-  const prepared = await app.prepare(instance, input, op('8'));
+  planClock = agedPlan ? Date.now() - 86400000 : null;
+  let prepared;
+  try { prepared = await app.prepare(instance, input, op('8')); }
+  finally { planClock = null; }
+  if (agedPlan) assert.ok(Date.now() - prepared.plan.prepared_at_ms >= 86400000);
+  const original = structuredClone(prepared);
   await test('preview and missing authorization leave real remote and local owner unchanged', async () => {
     const head = f.pushPort.inspect('S001-record').remote_head;
     await assert.rejects(app.apply(instance, prepared, { ...grant(prepared), write: false }));
@@ -72,8 +79,10 @@ try {
     assert.equal(f.pushPort.inspect('S001-record').remote_head, head); assert.equal(f.artifacts.ownerPending(), false);
   });
   let delivered;
-  await test('actual corrective push binds the new PR HEAD and resets checks and review', async () => {
+  await test(agedPlan ? 'original day-old redelivery plan binds current corrective source grant and exact new PR head'
+    : 'actual corrective push binds the new PR HEAD and resets checks and review', async () => {
     delivered = await app.apply(instance, prepared, grant(prepared)); assert.equal(delivered.outcome, 'completed', JSON.stringify(delivered));
+    assert.deepEqual(prepared, original);
     assertStandardOperationOutput(delivered); assert.equal(delivered.observations.review_head, observed.head);
     assert.equal(delivered.observations.integration_operation_id, op('6')); assert.equal(delivered.observations.previous_update_operation_id, op('4'));
     assert.equal(delivered.observations.inherited_review_evidence, 'none'); assert.equal(delivered.observations.checks, 'pending');

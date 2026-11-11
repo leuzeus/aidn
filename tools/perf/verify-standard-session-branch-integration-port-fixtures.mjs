@@ -8,6 +8,8 @@ import { createStandardWorkflowArtifacts } from '../../src/application/runtime/s
 import { LOCAL_ARTIFACT_FENCE_PATH } from '../../src/application/runtime/local-artifact-resource-fence.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 const temp = fs.realpathSync(os.tmpdir()), roots = [], H = 'a'.repeat(64), op = x => 'op_' + x.repeat(40);
+const agedPlan = process.argv.includes('--aged-plan');
+let planClock = null;
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
 const put = (root, name, content) => { const file = path.join(root, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, content); };
 const fenceIgnore = '/docs/audit/' + LOCAL_ARTIFACT_FENCE_PATH;
@@ -30,6 +32,7 @@ function fixture() {
     delivery_operation_id: op('a'), delivery_output_sha256: H, closure_operation_id: op('b'), closure_output_sha256: H, material_sha256: H, delivery_head: head,
     documents: names.map(name => ({ ref: 'audit:' + name, sha256: artifacts.read(name, { required: true }).sha256, metadata_sha256: artifacts.metadataHash(name) })) });
   const make = () => createStandardSessionBranchIntegration({ targetRoot: root, readSource, readCurrent: () => instance,
+    now: () => planClock ?? Date.now(),
     readDecision: async () => ({ decision_operation_id: op('d'), choice, source_sha256: H, plan: decisionPlan }) });
   return { root, artifacts, instance, head, source, target, make, readSource, setPlan: plan => { decisionPlan = plan; }, setChoice: value => { choice = value; },
     reviewInput: { contract_version: 'standard-session-branch-integration-review-input.v1', delivery_operation_id: op('a'), closure_operation_id: op('b') },
@@ -49,9 +52,17 @@ try {
   await test('retain, promotion, refusal, report and cancellation cannot substitute integration consent', async () => {
     for (const choice of ['retain', 'promote', 'refused', 'deferred', 'cancelled']) { f.setChoice(choice);
       await assert.rejects(service.prepare(f.instance, f.effectInput, op('e')), { code: 'STANDARD_SESSION_INTEGRATION_DECISION_REQUIRED' }); }
-    f.setChoice('integrate-to-session'); prepared = await service.prepare(f.instance, f.effectInput, op('e'));
+    f.setChoice('integrate-to-session'); planClock = agedPlan ? Date.now() - 86400000 : null;
+    try { prepared = await service.prepare(f.instance, f.effectInput, op('e')); }
+    finally { planClock = null; }
+    if (agedPlan) assert.ok(Date.now() - prepared.plan.prepared_at_ms >= 86400000);
   });
   await test('explicit write, exact preview and fresh grant are required before integration', async () => {
+    const malformed = structuredClone(prepared); malformed.plan.prepared_at_ms = Number.MAX_SAFE_INTEGER + 1;
+    malformed.plan_sha256 = shadowHash(malformed.plan); let grants = 0;
+    await assert.rejects(service.apply(f.instance, malformed, { write: true, expectPlan: malformed.plan_sha256, assertAuthorized() { grants++; } }),
+      { code: 'STANDARD_SESSION_INTEGRATION_EXPLICIT_EFFECT_REQUIRED', effect_status: 'no_effect' });
+    assert.equal(grants, 0); assert.equal(f.artifacts.ownerPending(), false);
     await assert.rejects(service.apply(f.instance, prepared, { expectPlan: prepared.plan_sha256, assertAuthorized() {} }), { code: 'STANDARD_SESSION_INTEGRATION_EXPLICIT_EFFECT_REQUIRED', effect_status: 'no_effect' });
     await assert.rejects(service.apply(f.instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() { throw Object.assign(Error('denied'), { code: 'DENIED' }); } }), { code: 'DENIED', effect_status: 'no_effect' });
     assert.equal(git(f.root, 'symbolic-ref', 'HEAD'), 'refs/heads/' + f.source); assert.equal(f.artifacts.ownerPending(), false);
@@ -61,10 +72,13 @@ try {
     await assert.rejects(service.apply(f.instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() {} }), { code: 'STANDARD_SESSION_INTEGRATION_REVIEW_INVALID', effect_status: 'no_effect' });
     assert.equal(git(f.root, 'symbolic-ref', 'HEAD'), 'refs/heads/' + f.source); assert.equal(f.artifacts.ownerPending(), false); fs.writeFileSync(file, before);
   });
-  await test('cold application performs the actual bounded FF/ref/HEAD transaction and preserves every document and index byte', async () => {
+  await test(agedPlan ? 'original day-old integration plan confirms current source grant and actual finite Git transaction'
+    : 'cold application performs the actual bounded FF/ref/HEAD transaction and preserves every document and index byte', async () => {
     const index = fs.readFileSync(path.join(f.root, '.git/index')), source = await f.readSource();
+    const original = structuredClone(prepared);
     const result = await f.make().apply(f.instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() {} });
     assert.equal(result.outcome, 'completed', JSON.stringify(result)); assert.equal(result.effect_status, 'confirmed'); assert.deepEqual(result.facts, { session_branch_integrated: true });
+    assert.deepEqual(prepared, original);
     assert.equal(git(f.root, 'symbolic-ref', 'HEAD'), 'refs/heads/' + f.target); assert.equal(git(f.root, 'rev-parse', f.target), f.head);
     assert.deepEqual(fs.readFileSync(path.join(f.root, '.git/index')), index); assert.equal(shadowHash(await f.readSource()), shadowHash(source));
     assert.equal(git(f.root, 'status', '--porcelain'), ''); assert.equal(f.artifacts.ownerPending(), false);

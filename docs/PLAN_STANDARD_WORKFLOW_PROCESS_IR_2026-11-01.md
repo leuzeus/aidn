@@ -5460,3 +5460,20 @@ résultats d'expiration restent conservés séparément. Les composants install�
 depuis la source, y compris le vrai wrapper SPIKE, ne prouvent ni le modèle
 complet ni les acteurs réels ni l'archive livrable. Leur qualification reste à
 exécuter avant toute annonce de validation du lot.
+
+Cette validité actuelle couvre aussi les six ports de livraison : intégration
+de branche de session, push initial, ouverture/enregistrement/checkpoint PR et
+push de mise à jour initiale ou corrective. Le plan d'origine conserve son
+timestamp sûr et ses postimages datées sans plafond d'âge supplémentaire. Les
+sources acceptées, autorisations et états exacts Git/canoniques/fournisseur
+restent nécessaires ; une vraie perte de confirmation après effet conserve
+UNKNOWN et le propriétaire. La qualification doit exercer les vrais ports
+locaux et le fournisseur doublé dans leurs modes supportés, sans annoncer de
+preuve d'acteurs réels ni de checks/revue/fusion ou synchronisation réussis.
+
+Le manifeste de régression doit aussi exercer les plans anciens : les cas
+existants concernés activent leur sélecteur privé et trois composants FILES
+manquants sont ajoutés, sans retirer ni réordonner les194 cas antérieurs.
+L'inventaire protégé conserve la même liste exacte. Les197 cas requis restent
+à exécuter ; cette cohérence de sélection ne transforme pas les anciens FAIL
+ni les qualifications manuelles en réussite de la famille entière.

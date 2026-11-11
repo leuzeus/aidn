@@ -4599,7 +4599,7 @@ the actual application/owner protocol and provider adapter. Its doubled REST
 transport reads actual local bare Git refs and retains fake provider records
 outside the checkout. Accepted push/admission/current-instance capabilities are
 injected, so these components do not authenticate the standard host chain.
-Original preview expiry, source changes, exact grants, recovery and unknown-owner
+Malformed timestamps, source changes, exact grants, recovery and unknown-owner
 retention are verified independently. The composed fixture supplies the real
 signed upstream chain on a separate frozen source. A new source branch is seeded
 on its remote during fixture arrangement; only later session delivery is a
@@ -4902,6 +4902,43 @@ configured PostgreSQL or exact installed-package acceptance.
 
 ### Real-port correction observation preflight
 
+For the 2026-11-11 delivery plan-validity decision, add `--aged-plan` to
+`verify-standard-session-branch-integration-port-fixtures.mjs` for actual FILES
+finite Git integration. Add `--mode=files|dual|db-only --aged-plan` to each of
+`verify-standard-session-push-fixtures.mjs`,
+`verify-standard-session-pr-open-fixtures.mjs`,
+`verify-standard-session-pr-record-fixtures.mjs`,
+`verify-standard-session-pr-successor-fixtures.mjs` and
+`verify-standard-pr-redelivery-fixtures.mjs` for their actual ports. Successor
+cases include both the finite checkpoint and initial update; redelivery covers
+the shared corrective update path. Each selected effect prepares its original
+plan with a private past business clock, restores current time before applying,
+and preserves the exact plan/hash. Provider observations and authorization stay
+current; literal day-long execution is not measured. Invalid timestamps refuse
+before owner/grant/effect, while actual late grant/source loss still retains
+UNKNOWN and its owner. Initial/corrective HEAD qualification leaves checks and
+review pending and inherits no previous-head approval. FILES integration does
+not establish a three-backend integration proof. The synthetic accepted sources
+and doubled REST do not qualify genuine actors, PostgreSQL, installed archives
+or the full STANDARD journey. Selected suites require terminal capture before
+any PASS claim.
+
+The required agentic manifest now selects the private past-preparation mode in
+its existing affected hook, recovery, SPIKE and delivery entries. It retains
+all194 prior cases in order, with the explicit selector added, and appends one
+FILES rollback, one FILES context/checkpoint/cycle recovery and one FILES
+corrective redelivery case (197 total). The existing protected command inventory
+must match that exact argv/order and still rejects omitted or duplicate
+coverage. This registry change grants no family PASS: selected component proofs
+and the gate-catalog policy check remain separate from executing all197 cases.
+
+`verify-node-fixture-runner-fixtures.mjs --manifest-only` checks the preserved
+188-case historical prefix and six supplemental cases after removing only the
+declared age selectors, then independently checks the current197-case exact argv
+digest and three new entries. Missing selectors still fail the current digest.
+This selector runs no child-execution protocol; the existing default case keeps
+its ordering, fail-first, cancellation and Windows tree-closure checks.
+
 For the 2026-11-11 recovery/correction/SPIKE plan-validity decision, use the
 actual changed adapters rather than the generic SPIKE initializer alone:
 
@@ -5055,8 +5092,8 @@ human/provider/native/OS/PostgreSQL/installed qualification is implied. Publishe
 composition checks the separate correction content/event/triage occurrences.
 A component PASS does not qualify the complete new-C2 or dispatcher UNKNOWN chain.
 
-The shared initial/corrective push port rechecks its source, current instance and
-plan age after the final awaited authorization. A changed context after an actual
+The shared initial/corrective push port rechecks its source and current instance
+after the final awaited authorization. A changed context after an actual
 push retains UNKNOWN, empty positive facts and the effect owner. This component
 refusal is separate from the production dispatcher acknowledgement-loss chain.
 

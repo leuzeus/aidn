@@ -208,6 +208,24 @@ Separate objective-opinion, authenticated event, upstream grant and execution
 resource windows require their own review; this decision supplies no blanket
 justification for them. Original expiry FAIL/UNKNOWN receipts remain immutable.
 
+Session branch integration, initial push, PR opening, lifecycle recording,
+successor checkpoint and initial/corrective update push use the same decision.
+The original plan is valid under current accepted source, process, authorization
+and exact Git/canonical/provider material; elapsed preparation time alone is no
+refusal or reason to turn a confirmed effect into UNKNOWN. The existing closed
+plan validators retain safe nonnegative numeric timestamps. No provider budget,
+upstream grant expiry, historical receipt or commit provenance is renewed.
+Actual source/grant or confirmation loss keeps the original uncertain-effect
+handling and retained owner. Opening or updating a PR still leaves its separate
+checks, review, merge and post-merge synchronization obligations pending.
+
+Ordinary regression selection must exercise this age-validity decision. The
+agentic fixture manifest adds the private past-preparation selectors to existing
+affected cases and appends three missing FILES components. Its protected exact
+command inventory remains synchronized, with original coverage/order preserved.
+Registry consistency and selected manual source proofs do not qualify the whole
+required family or any genuine actor and installed-archive boundary.
+
 ## Eligible occurrence lookup, 2026-11-06
 
 After the common service validates the complete cursor, the mixed host checks
@@ -3426,8 +3444,8 @@ R09 fetch/divergence/sync remain outstanding.
 The observer uses the existing operation journal and establishes no new
 canonical PR lifecycle state. Historical readers and scope remain versioned.
 
-The shared initial/corrective push port rechecks its source, current instance and
-plan age after the final awaited authorization. A changed context after an actual
+The shared initial/corrective push port rechecks its source and current instance
+after the final awaited authorization. A changed context after an actual
 push retains UNKNOWN, empty positive facts and the effect owner. This component
 refusal is separate from the production dispatcher acknowledgement-loss chain.
 

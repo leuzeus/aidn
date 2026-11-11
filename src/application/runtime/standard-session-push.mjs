@@ -32,9 +32,9 @@ export function createStandardSessionPush({ targetRoot, readAdmission, readCurre
   }
   return Object.freeze({ prepare: (instance, input, id) => prepare(instance, input, id, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
-      const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
+      const plan = prepared?.plan;
       if (!prepared?.can_apply || !valid(plan, planSchema) || write !== true || typeof assertAuthorized !== 'function'
-        || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || !Number.isSafeInteger(age) || age < 0 || age > 300000)
+        || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan)
         fail('STANDARD_SESSION_PUSH_EXPLICIT_EFFECT_REQUIRED');
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
@@ -51,7 +51,7 @@ export function createStandardSessionPush({ targetRoot, readAdmission, readCurre
           // Canonical closure/admission and the instance must remain current
           // after transport. The original admission is not reissued or patched.
           if (shadowHash(await readAdmission(instance, plan.input)) !== plan.admission_sha256
-            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || now() - plan.prepared_at_ms > 300000)
+            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256)
             throw Error('STANDARD_SESSION_PUSH_CONTEXT_CHANGED');
           await assertAuthorized();
           return emit('completed', result.effect_status, { admission_operation_id: plan.input.admission_operation_id, session_id: plan.session_id, git: result },

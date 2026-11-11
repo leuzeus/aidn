@@ -44,9 +44,9 @@ export function createStandardSessionPrUpdatePush({ targetRoot, readCheckpoint, 
   }
   return Object.freeze({ prepare: (instance, input, id) => prepare(instance, input, id, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
-      const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
+      const plan = prepared?.plan;
       if (!prepared?.can_apply || !valid(plan, planContract) || write !== true || typeof assertAuthorized !== 'function'
-        || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || !Number.isSafeInteger(age) || age < 0 || age > 300000)
+        || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan)
         fail('STANDARD_PR_UPDATE_EXPLICIT_EFFECT_REQUIRED');
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
@@ -63,13 +63,13 @@ export function createStandardSessionPrUpdatePush({ targetRoot, readCheckpoint, 
             || result.local_sha256 !== plan.git.local_sha256 || result.profile !== plan.git.profile) throw Error('STANDARD_PR_UPDATE_UNCONFIRMED');
           const pull_request = await observe(source, result.head, plan.operation_id);
           if (shadowHash(await readCheckpoint(instance, plan.input)) !== plan.source_sha256
-            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || now() - plan.prepared_at_ms > 300000)
+            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256)
             throw Object.assign(Error('STANDARD_PR_UPDATE_CONTEXT_CHANGED'), { code: 'STANDARD_PR_UPDATE_CONTEXT_CHANGED' });
           await assertAuthorized();
           // Authorization can await a remote authority. Authenticate the source
           // and current instance again after that boundary before completion.
           if (shadowHash(await readCheckpoint(instance, plan.input)) !== plan.source_sha256
-            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || now() - plan.prepared_at_ms > 300000)
+            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256)
             throw Object.assign(Error('STANDARD_PR_UPDATE_CONTEXT_CHANGED'), { code: 'STANDARD_PR_UPDATE_CONTEXT_CHANGED' });
           // Consumers must bind review/checks to this head. No approval/check
           // from the previous SHA is carried as acceptance for this revision.

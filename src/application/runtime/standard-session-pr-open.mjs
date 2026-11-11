@@ -34,9 +34,9 @@ export function createStandardSessionPrOpen({ targetRoot, readPush, readCurrent,
   }
   return Object.freeze({ prepare: (instance, input, id) => prepare(instance, input, id, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
-      const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
+      const plan = prepared?.plan;
       if (!prepared?.can_apply || !valid(plan, planSchema) || write !== true || typeof assertAuthorized !== 'function'
-        || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || !Number.isSafeInteger(age) || age < 0 || age > 300000)
+        || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan)
         fail('STANDARD_SESSION_PR_OPEN_EXPLICIT_EFFECT_REQUIRED');
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
@@ -53,7 +53,7 @@ export function createStandardSessionPrOpen({ targetRoot, readPush, readCurrent,
             || link.base_oid !== plan.provider.plan.observed.base_oid || link.repository_id !== plan.provider.plan.observed.repository.node_id || link.state !== 'OPEN' || link.draft)
             throw Error('STANDARD_SESSION_PR_OPEN_UNCONFIRMED');
           if (shadowHash(await readPush(instance, plan.input)) !== plan.push_source_sha256
-            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || now() - plan.prepared_at_ms > 300000)
+            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256)
             throw Error('STANDARD_SESSION_PR_OPEN_CONTEXT_CHANGED');
           await assertAuthorized();
           return emit('completed', result.effect_status, { push_operation_id: plan.input.push_operation_id, session_id: plan.session_id, action: result.action, pull_request: link },
