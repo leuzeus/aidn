@@ -76,7 +76,7 @@ export function createStandardCycleValidation({ targetRoot, profileRef, readWork
       const plan = prepared?.plan;
       try {
         if (checkShadowJson(plan) || validateJsonSchema(plan, planSchema, "$", { contractKind: "workflow-definition" }).length || !prepared.can_apply || write !== true || typeof assertAuthorized !== "function" || prepared.plan_sha256 !== expectPlan
-          || shadowHash(plan) !== expectPlan || !Number.isSafeInteger(now() - plan.prepared_at_ms) || now() - plan.prepared_at_ms < 0 || now() - plan.prepared_at_ms > 300000) fail("STANDARD_VALIDATION_EXPLICIT_EFFECT_REQUIRED");
+          || shadowHash(plan) !== expectPlan) fail("STANDARD_VALIDATION_EXPLICIT_EFFECT_REQUIRED");
       } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         let work, materials;
@@ -85,7 +85,7 @@ export function createStandardCycleValidation({ targetRoot, profileRef, readWork
           const fresh = await prepare(instance, plan.input, plan.prepared_at_ms, true, (observed, available) => { work = observed; materials = available; });
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_VALIDATION_PREVIEW_CHANGED");
           if (work.evaluation_sha256 !== plan.work_sha256 || shadowHash(work.files) !== plan.product_sha256 || shadowHash(materials.profile) !== plan.profile_sha256
-            || materials.descriptor_sha256 !== plan.descriptor_sha256 || now() - plan.prepared_at_ms > 300000
+            || materials.descriptor_sha256 !== plan.descriptor_sha256
             || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_VALIDATION_SOURCE_STALE");
         } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         const stop = new AbortController(), began = performance.now();

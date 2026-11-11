@@ -5386,3 +5386,16 @@ l'âge de l'aperçu est retiré. Vérifier cette entrée ordinaire après un jou
 avec le même sujet, ainsi que les refus sur contexte modifié, révocation et
 préfixe devenu différent. Les reçus historiques d'expiration gardent leur
 lecteur et leur provenance.
+
+La revue s'étend à l'enregistrement du plan de cycle, à l'exécution des
+vérifications et à l'entrée en VERIFYING. Leur application exige les
+observations actuelles de l'autorité, du travail, du profil, du contexte,
+des préimages et du préfixe selon l'opération. L'âge du plan seul cesse de
+les invalider. La qualification vérifie également le changement d'une
+évaluation reconstruite et l'issue incertaine après une écriture partielle.
+
+Le budget du profil de vérification borne les commandes exécutées et leur
+protocole d'arrêt à partir d'une horloge monotone. Les cas de commande
+non terminante et d'arrêt non confirmé établissent son rôle dans la gestion
+des ressources. Le timestamp du plan reste sa provenance. Les autres
+limites candidates du parcours demandent leur examen propre.

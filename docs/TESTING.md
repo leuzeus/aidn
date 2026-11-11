@@ -192,8 +192,9 @@ The readiness fence uses fresh PostgreSQL batches for the context metadata
 and for the two implementation artifacts. Check that metadata pins are bound
 to the content hashes already observed. Run the existing readiness contract
 checks and a disposable real-PostgreSQL comparison of the exact preview,
-invalidation, and pre/postimage observations. Entry into implementation and
-task advancement accept elapsed plans when their current authority, rebuilt
+invalidation, and pre/postimage observations. Plan recording, entry into
+implementation or verification and task advancement accept elapsed plans
+when their current authority, rebuilt
 plan, context, prefix and preimages still match. Test an application beyond
 the former 300-second age, revocation and actual source changes separately.
 The nominal fixture retains its separate terminal verdict.
@@ -204,6 +205,16 @@ changed context, current authorization refusal and a changed process prefix,
 then verifies the retained staged journal. Authorization is controlled by the
 fixture. Business dispatch, PostgreSQL and installed qualification have their
 own evidence. The existing expired-plan fixture also runs these staging cases.
+
+The readiness contract fixture also exercises plan recording and verification
+entry after the former age, including a changed rebuilt evaluation, revocation,
+context, prefix, content and metadata changes, and a partial conditional write.
+Its artifact and admission ports are controlled. The validation fixture moves
+the plan clock past the former age before apply and by another day during
+authorization, then runs the actual controlled Node check. It separately
+checks authority, process-prefix and work changes before any check invocation.
+Existing unresponsive and nonterminating command cases exercise the profile's
+execution budget and uncertain-stop handling.
 
 For PostgreSQL task advancement, compare the three ordered content and metadata
 observations against individual reads. Verify a fresh preimage after locked

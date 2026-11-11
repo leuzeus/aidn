@@ -56,7 +56,8 @@ metadata in a fresh batch at preparation, before CAS, and after CAS. The
 preview and locked re-preparation each make their own observation. Existing
 source, owner, projection, and freshness guards retain their boundaries.
 
-Task advancement and entry into implementation validate their prepared plans
+Cycle plan recording, task advancement and entry into implementation or
+verification validate their prepared plans
 through fresh authority, locked reconstruction, context and prefix checks,
 content and metadata preimages, and conditional writes. Elapsed wall time
 alone does not invalidate these plans. Their preparation timestamp remains
@@ -68,6 +69,14 @@ snapshot, resolved input and current authorization. Its preparation timestamp
 records provenance. Staging does not impose a separate elapsed-age limit.
 Dispatch applies the current authorization and operation-specific validity
 checks before its business effect.
+
+Cycle validation reconstructs the work, product snapshot, profile and boundary
+descriptor under its owner and current authorization before running checks.
+These observations establish plan validity. The profile's command budget
+limits execution with a monotonic clock and invokes the stop protocol when
+exhausted. Its purpose is to bound potentially nonterminating commands and
+account for their resources. The plan's preparation timestamp records its
+provenance independently of that execution budget.
 
 Each STANDARD drift or cycle-plan context reads the PostgreSQL session and
 cycle topology from one bounded, read-only canonical inventory. Selected

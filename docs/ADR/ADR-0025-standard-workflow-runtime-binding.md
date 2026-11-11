@@ -74,13 +74,14 @@ effect authorization each acquire their own evidence.
 
 ## Prepared-plan validity decision, 2026-11-11
 
-For `cycle_task_advance` and `cycle_implementation_enter`, this decision
-supersedes earlier elapsed-age restrictions in this ADR. Both operations
+For `cycle_plan_record`, `cycle_task_advance`, `cycle_implementation_enter`
+and `cycle_verification_enter`, this decision supersedes earlier elapsed-age
+restrictions in this ADR. These operations
 reconstruct the same plan under the effect owner, revalidate authorization,
 compare the current process prefix and context, and check content and metadata
 preimages before conditional writes. These observations establish the current
 validity of the proposed effect. The five-minute age limit supplies no
-independent invalidation condition and is removed from these two operations.
+independent invalidation condition and is removed from these operations.
 
 The preparation timestamp remains in the existing plan schema and hash.
 Historical plans and results retain their readers. A revoked grant, changed
@@ -88,6 +89,16 @@ prefix, context or preimage still refuses the effect. An interruption after
 the first conditional write retains its uncertain outcome and committed
 prefix. Authorization intervals, resource leases and execution budgets retain
 their own authorities and require a separate justification for any change.
+
+`cycle_validation_execute` establishes plan validity by reconstructing the
+accepted work, product files, selected profile and boundary descriptor under
+the owner, checking the current authorization and process prefix before test
+execution. Elapsed plan age supplies no further invalidation condition.
+The profile's execution budget bounds potentially nonterminating commands
+with a monotonic timer and a stop protocol. The fixtures exercise that budget
+with unresponsive and nonterminating checks while advancing the separate
+plan clock for the valid-plan case. Unconfirmed termination retains its
+uncertain result and owner for reconciliation.
 
 ## Signed-preview staging validity, 2026-11-11
 

@@ -16,7 +16,13 @@ const owned = [], H = "a".repeat(64), hash = value => createHash("sha256").updat
 let count = 0;
 function pass(name) { console.log("PASS " + name); count++; }
 try {
-  for (const [selected, options] of [["passed", {}], ["failed", { status: "failed" }], ["negative-code", {}], ["unavailable", { mode: "malformed" }], ["changed", { mode: "mutate" }], ["timeout", { mode: "hang", duration: 100 }], ["node-timeout", { mode: "node-timeout", duration: 1000 }], ["refused", {}], ["stale", {}], ["writable-control", { writableControl: true }], ["grant-race", {}]]) {
+  const scenarios = [["passed", {}], ["failed", { status: "failed" }], ["negative-code", {}],
+    ["unavailable", { mode: "malformed" }], ["changed", { mode: "mutate" }],
+    ["timeout", { mode: "hang", duration: 100 }], ["node-timeout", { mode: "node-timeout", duration: 1000 }],
+    ["refused", {}], ["stale", {}], ["writable-control", { writableControl: true }], ["grant-race", {}],
+    ["elapsed", {}], ["elapsed-refused", {}], ["elapsed-prefix", {}], ["elapsed-work", {}]];
+  const refusals = ["refused", "stale", "grant-race", "elapsed-refused", "elapsed-prefix", "elapsed-work"];
+  for (const [selected, options] of scenarios) {
     const root = createStandardWorkflowFixture("files", owned), base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-validation-fixture-")); owned.push(base);
     const f = createValidationProfileFixture(base, options), product = path.join(root, "product"); fs.mkdirSync(product); const file = path.join(product, "app.mjs"); fs.writeFileSync(file, "export const value = " + (selected === "negative-code" ? "1" : "2") + ";\n");
     const bytes = fs.readFileSync(file), files = [{ path: "app.mjs", present: true, bytes: bytes.length, sha256: hash(bytes) }];
@@ -24,11 +30,15 @@ try {
     const instance = { instance_id: "fixture", instance_sha256: H }, input = { work_operation_id: "op_" + "b".repeat(40) };
     // Authentication source is doubled here; the mixed-host corpus covers its
     // actual signed journal/native-evidence chain separately.
-    const readWork = async () => ({ output: workOutput, evaluation_sha256: shadowHash(workOutput), product_root: product, files });
-    const adapter = createStandardCycleValidation({ targetRoot: root, profileRef: f.profileRef, readWork, readCurrent: () => instance }, { boundaryFactory: fixtureValidationBoundary });
+    const readWork = async () => ({ output: workOutput, evaluation_sha256: shadowHash(workOutput), product_root: product, files: structuredClone(files) });
+    let clock = Date.now(), prefixChanged = false;
+    const adapter = createStandardCycleValidation({ targetRoot: root, profileRef: f.profileRef, readWork,
+      now: () => selected.startsWith("elapsed") ? clock : Date.now(),
+      readCurrent: () => prefixChanged ? { ...instance, instance_sha256: "c".repeat(64) } : instance }, { boundaryFactory: fixtureValidationBoundary });
     if (selected === "writable-control") { await assert.rejects(adapter.prepare(instance, input), { code: "STANDARD_VALIDATION_WRITABLE_CONTROL_ROOT" });
       assert.equal(f.calls(), 0); assert.equal(createStandardWorkflowArtifacts({ targetRoot: root }).ownerPending(), false); pass(selected + ": no control data in writable sandbox scratch"); continue; }
     const plan = await adapter.prepare(instance, input); assert.equal(plan.can_apply, true);
+    if (selected.startsWith("elapsed")) clock = plan.plan.prepared_at_ms + 375948;
     if (selected === "passed") {
       const preflight = await preflightValidationProfileFixture(f, { testRefs: ["TEST:VALUE"] });
       assert.equal(preflight.native, false); assert.equal(preflight.product_validation, "NOT_RUN");
@@ -48,19 +58,22 @@ try {
     if (selected === "stale") fs.appendFileSync(f.profileRef.path, "\n");
     let result;
     try { result = await adapter.apply(instance, plan, { write: true, expectPlan: plan.plan_sha256, assertAuthorized: async () => {
-      if (selected === "refused") throw Object.assign(new Error("refused"), { code: "FIXTURE_REFUSED" });
+      if (selected.startsWith("elapsed")) clock += 86400000;
+      if (["refused", "elapsed-refused"].includes(selected)) throw Object.assign(new Error("refused"), { code: "FIXTURE_REFUSED" });
       if (selected === "grant-race") workOutput.observations.task.test_refs = ["UNKNOWN"];
+      if (selected === "elapsed-prefix") prefixChanged = true;
+      if (selected === "elapsed-work") files[0].sha256 = "d".repeat(64);
     } }); }
-    catch (error) { assert.ok(["refused", "stale", "grant-race"].includes(selected), error.stack); assert.equal(error.effect_status, "no_effect"); }
+    catch (error) { assert.ok(refusals.includes(selected), error.stack); assert.equal(error.effect_status, "no_effect"); }
     const artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
-    if (["refused", "stale", "grant-race"].includes(selected)) { assert.equal(result, undefined); assert.equal(f.calls(), 0); assert.equal(artifacts.ownerPending(), false); }
+    if (refusals.includes(selected)) { assert.equal(result, undefined); assert.equal(f.calls(), 0); assert.equal(artifacts.ownerPending(), false); }
     else {
       assertStandardOperationOutput(result); assert.equal(result.observations.proof_class, "fixture");
       if (["changed", "timeout", "node-timeout"].includes(selected)) { assert.equal(result.outcome, "reconciliation_required", JSON.stringify(result)); assert.deepEqual(result.facts, {}); assert.equal(artifacts.ownerPending(), true);
         assert.equal(f.calls(), 1); if (selected === "timeout") assert.equal(result.observations.reason_code, "STANDARD_VALIDATION_STOP_UNCONFIRMED");
         assert.equal((await adapter.prepare(instance, input)).can_apply, false); }
-      else { assert.equal(result.outcome, "completed", JSON.stringify(result)); assert.equal(result.observations.status, selected === "negative-code" ? "failed" : selected);
-        assert.equal(result.facts.cycle_validation_passed, selected === "passed"); assert.equal(result.facts.cycle_validation_available, selected !== "unavailable"); assert.equal(f.calls(), 1);
+      else { assert.equal(result.outcome, "completed", JSON.stringify(result)); assert.equal(result.observations.status, selected === "elapsed" ? "passed" : selected === "negative-code" ? "failed" : selected);
+        assert.equal(result.facts.cycle_validation_passed, ["passed", "elapsed"].includes(selected)); assert.equal(result.facts.cycle_validation_available, selected !== "unavailable"); assert.equal(f.calls(), 1);
         assert.equal(artifacts.ownerPending(), false); const manifest = result.evidence_refs[0], record = path.join(f.profile.evidence_root, ...manifest.ref.split("/").slice(1));
         assert.equal(hash(fs.readFileSync(record)), manifest.sha256); assert.equal(JSON.parse(fs.readFileSync(record)).checks.length, 1);
         const source = { record: { intent: { binding_ref: "cycle_validation_execute" }, preview: { input, prepared: plan } }, output: result, work: await readWork() };

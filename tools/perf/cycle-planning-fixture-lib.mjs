@@ -2,6 +2,7 @@ import { verifyCycleClosureExecution } from "./cycle-closure-fixture-lib.mjs";
 import { cycleAuditProposal } from "./cycle-audit-fixture-lib.mjs";
 import { taskProgressProposal, taskProgressValidationProfile, verifyTaskProgressExecution } from "./cycle-task-progress-fixture-lib.mjs";
 import { verifyCycleVerificationEntry } from "./cycle-verification-fixture-lib.mjs";
+import { verifyCyclePreparedPlanValidity } from "./cycle-plan-validity-fixture-lib.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -190,6 +191,7 @@ export async function verifyCycleReadinessContracts(check, { createFixture }) {
       assert.equal(artifacts.ownerPending(), false);
     });
   }
+  await verifyCyclePreparedPlanValidity(check, cyclePlanProposal);
 }
 
 export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script, readiness = false, work = false, validation = false, verification = false, taskProgress = false, audit = false, closure = false, closeRecord = false, closeFinalize = false }) {
