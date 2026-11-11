@@ -201,6 +201,12 @@ re-preparation and a separate postimage after CAS. Retain a metadata-only
 change, a stale plan or context, and any partial write as distinct outcomes.
 An isolated observation or transition is insufficient for a nominal verdict.
 
+For the PostgreSQL cycle validation subject, compare the complete selected
+plan and work result with individual authenticated reads. Check an altered
+journal and altered native evidence, and verify that another subject read
+observes a later change. Record the number of history authentications
+separately from wall time and from the full nominal result.
+
 For a PostgreSQL topology observation, compare the complete session and cycle
 records against the individual canonical reads, including their order and
 source. Check that duplicate numeric identities are refused and that a new

@@ -196,7 +196,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
         // authority, effect, resource allocation or accounting reset.
       } else fail("STANDARD_PROCESS_HISTORY_NOT_AUTHENTICATED");
     }
-    return { native, journal };
+    return { native, journal, cursor, records: seen };
   }
   function inspectDiagnostic(instance) {
     const { native, journal } = authenticateHistory(instance, {}, true);
@@ -324,10 +324,11 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment }),
       admission: { status: admission.admission_status, observation_sha256: shadowHash(admission) } };
   }
-  function readActivityOutput(instance, occurrenceId, contractRef = DRIFT_REPORT_CONTRACT, authenticationOptions = {}) {
-    const state = authenticate(instance, authenticationOptions), event = instance.events.find(row => row.kind === "result" && row.occurrence_id === occurrenceId);
+  function readActivityOutput(instance, occurrenceId, contractRef = DRIFT_REPORT_CONTRACT, authenticationOptions = {}, history = null) {
+    const state = history ? history.native : authenticate(instance, authenticationOptions);
+    const event = instance.events.find(row => row.kind === "result" && row.occurrence_id === occurrenceId);
     if (!state || !event || event.result.outcome !== "completed") fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
-    const frame = inspectAgenticProcess(instance).occurrences.find(row => row.occurrence_id === occurrenceId), node = frame && processFrameNode(model, frame);
+    const frame = (history?.cursor ?? inspectAgenticProcess(instance)).occurrences.find(row => row.occurrence_id === occurrenceId), node = frame && processFrameNode(model, frame);
     if (configuration.activity_outputs?.[node?.id] !== contractRef) fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
     const retained = state.results.find(row => row.result.result_id === event.result.result_id);
     if (!retained || shadowHash(retained.result) !== shadowHash(event.result)) fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
@@ -444,9 +445,11 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (shadowHash(output) !== shadowHash(result.output)) fail("STANDARD_DRIFT_EVALUATION_STALE");
     return { output, evaluation_sha256: shadowHash(result.output), context: context.context, context_sha256: context.context_sha256 };
   }
-  function acceptedOperation(instance, id, binding, authenticationOptions = {}) {
-    authenticate(instance, authenticationOptions);
-    const record = operationStore.read(id).record; signer.verify(record);
+  function acceptedOperation(instance, id, binding, authenticationOptions = {}, history = null) {
+    const observed = history?.records.get(id);
+    if (!observed) authenticate(instance, authenticationOptions);
+    const record = observed ?? operationStore.read(id).record;
+    signer.verify(record);
     const result = record.results.at(-1);
     if (record.intent.binding_ref !== binding || record.intent.scope_id !== instance.scope_id || record.intent.instance_id !== instance.instance_id
       || record.phase !== "receipted" || result?.receipt.outcome !== "completed"
@@ -678,20 +681,25 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     return work;
   }
   function cycleValidationSubject(instance, work, auth = {}) {
-    const phaseId = work.output.observations.implementation_operation_id, phase = acceptedOperation(instance, phaseId, "cycle_implementation_enter", auth);
-    const ready = acceptedOperation(instance, phase.record.preview.input.evaluation_operation_id, "cycle_readiness_evaluate", auth);
-    const recorded = acceptedOperation(instance, ready.record.preview.input.record_operation_id, "cycle_plan_record", auth);
-    const evaluated = acceptedOperation(instance, recorded.record.preview.input.evaluation_operation_id, "cycle_plan_evaluate", auth);
-    const proposal = readActivityOutput(instance, evaluated.record.preview.input.report_occurrence_id, CYCLE_PLAN_CONTRACT, auth).report;
+    const phaseId = work.output.observations.implementation_operation_id;
+    // Use the records verified by one PostgreSQL history observation for this
+    // synchronous subject. Context and effect callers take their own reads.
+    const history = operationStore.readMany ? authenticateHistory(instance, auth) : null;
+    const phase = acceptedOperation(instance, phaseId, "cycle_implementation_enter", auth, history);
+    const ready = acceptedOperation(instance, phase.record.preview.input.evaluation_operation_id, "cycle_readiness_evaluate", auth, history);
+    const recorded = acceptedOperation(instance, ready.record.preview.input.record_operation_id, "cycle_plan_record", auth, history);
+    const evaluated = acceptedOperation(instance, recorded.record.preview.input.evaluation_operation_id, "cycle_plan_evaluate", auth, history);
+    const proposal = readActivityOutput(instance, evaluated.record.preview.input.report_occurrence_id, CYCLE_PLAN_CONTRACT, auth, history).report;
     const observedTasks = new Set();
     for (const event of instance.events.filter(row => row.kind === "operation_intent" && ["cycle_work_evaluate", "cycle_task_work_evaluate"].includes(row.intent.binding_ref))) {
       const accepted = instance.events.some(row => row.kind === "operation_result" && row.receipt.operation_id === event.intent.operation_id && row.receipt.outcome === "completed");
       if (!accepted) continue;
-      const prior = acceptedOperation(instance, event.intent.operation_id, event.intent.binding_ref, auth), facts = prior.output;
+      const prior = acceptedOperation(instance, event.intent.operation_id, event.intent.binding_ref, auth, history), facts = prior.output;
       if (facts.facts.cycle_work_observed !== true || facts.observations.implementation_operation_id !== phaseId || facts.observations.scope_sha256 !== work.output.observations.scope_sha256) continue;
       const task = proposal.tasks.find(row => row.id === facts.observations.task.id);
       if (!task || shadowHash(task) !== shadowHash(facts.observations.task)) fail("STANDARD_VERIFICATION_TASK_SOURCE_CHANGED");
-      const report = readActivityOutput(instance, prior.record.preview.input.report_occurrence_id, event.intent.binding_ref === "cycle_task_work_evaluate" ? CYCLE_TASK_WORK_CONTRACT : CYCLE_WORK_CONTRACT, auth);
+      const report = readActivityOutput(instance, prior.record.preview.input.report_occurrence_id,
+        event.intent.binding_ref === "cycle_task_work_evaluate" ? CYCLE_TASK_WORK_CONTRACT : CYCLE_WORK_CONTRACT, auth, history);
       if (report.report.task !== task.task || shadowHash(report.producer) !== shadowHash(facts.observations.producer)) fail("STANDARD_VERIFICATION_TASK_SOURCE_CHANGED");
       observedTasks.add(task.id);
     }

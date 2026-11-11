@@ -66,6 +66,12 @@ during that walk yields a missing record. Redirects, aliases and changes
 during the protected read still fail, and each journal signature is checked
 against freshly read bytes.
 
+On PostgreSQL, one synchronous cycle validation subject selects the plan and
+work receipts from the records authenticated in that call. The subject still
+checks the latest completed receipt and each native evidence digest. The
+observation ends with the subject. Context checks, locked preparation and
+effect authorization each acquire their own evidence.
+
 ## Eligible occurrence lookup, 2026-11-06
 
 After the common service validates the complete cursor, the mixed host checks

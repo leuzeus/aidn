@@ -29,6 +29,12 @@ read-only transaction. Journal validation and signature checks still run for
 every referenced record. No batch result carries across authentication calls
 or effect boundaries.
 
+The synchronous PostgreSQL cycle validation subject selects its plan lineage
+and completed work from one authenticated history observation. Each selected
+journal still matches its accepted receipt, and native evidence is read and
+checked by digest. A subsequent subject, context check or effect admission
+reads fresh authority. FILES and SQLite keep their individual journal reads.
+
 The STANDARD R05 context reader groups the fixed post-admission document
 reads when PostgreSQL owns the artifacts. It reuses the bounded read-only
 artifact port and checks content integrity and required paths in request order.
