@@ -6,6 +6,7 @@ import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { observeStandardCycleTaskWork, observeStandardCycleWork, assertStandardCycleTaskWorkReport } from "../../src/core/workflow/standard-cycle-work.mjs";
 import { assertNativeActivityAnswer, nativeActivityOutputInstructions } from "../../src/core/workflow/native-activity-output.mjs";
+import { verifyTaskAdvancePlanValidity } from "./standard-task-advance-validity-fixture-lib.mjs";
 const H = char => char.repeat(64), op = char => "op_" + char.repeat(40);
 const proposal = cyclePlanProposal({ context_sha256: H("a"), context: { session_id: "S001", cycle_id: "C001", cycle_type: "feature", mode: "COMMITTING", original_objective: "Complete two bounded tasks", allowed_product_files: ["product/app.mjs"] }, evidence_refs: [{ ref: "audit:SPEC.md", sha256: H("b") }] });
 proposal.tasks.push({ ...structuredClone(proposal.tasks[0]), id: "TASK-002", task: "Complete the second bounded task" });
@@ -41,4 +42,5 @@ const unchanged = structuredClone(args); unchanged.after = unchanged.context.pro
 const observed = observeStandardCycleTaskWork(unchanged); assert.equal(observed.observations.work_outcome, "unchanged"); assert.equal(observed.facts.cycle_validation_required, true);
 const wrongTask = structuredClone(args); wrongTask.report.task_id = "TASK-002"; assert.throws(() => observeStandardCycleTaskWork(wrongTask));
 const implicit = structuredClone(unchanged.report); implicit.notes = []; assert.throws(() => assertStandardCycleTaskWorkReport(implicit)); pass("an explicit observed no-change remains subject to validation; foreign tasks and implicit success refuse");
-console.log(JSON.stringify({ status: "PASS", checks, proof: "pure-progress-and-parser", application_ports: "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN" }));
+await verifyTaskAdvancePlanValidity(pass);
+console.log(JSON.stringify({ status: "PASS", checks, proof: "progress-parser-and-task-advance-validity", application_ports: "controlled-port-fixture", native: "NOT_RUN", installed_archive: "NOT_RUN" }));

@@ -139,39 +139,57 @@ export async function verifyCycleReadinessContracts(check, { createFixture }) {
     assert.equal(run(shared).outcome, "blocked");
     shared.usage_matrix.push({ ...shared.usage_matrix[0], kind: "context" }); assert.equal(run(shared).outcome, "completed");
   });
-  await check("cycle readiness contract: plan expiry during final context observation refuses before effects", async () => {
-    const root = createFixture();
-    const artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
-    const cyclePath = "cycles/C001-feature-readiness-expiry";
-    const cycleStatus = cyclePath + "/status.md";
-    const statusFile = path.join(root, "docs/audit", cycleStatus);
-    fs.mkdirSync(path.dirname(statusFile), { recursive: true });
-    const template = fs.readFileSync(new URL("../../scaffold/docs_audit/cycles/TEMPLATE_STATUS.md", import.meta.url), "utf8");
-    fs.writeFileSync(statusFile, template + "\nupdated_at: 2026-11-10T00:00:00Z\n");
-    const paths = [cycleStatus, "CURRENT-STATE.md"];
-    const fingerprints = () => paths.map(name => artifacts.read(name, { required: true }).sha256);
-    const before = fingerprints();
-    const context = { cycle_path: cyclePath, cycle_state: "OPEN", documents: [], metadata_pins: [] };
-    const observation = { context, context_sha256: shadowHash(context) };
-    const instance = { instance_id: "fixture", instance_sha256: "a".repeat(64) };
-    const preparedAt = Date.parse("2026-11-10T00:00:00Z");
-    let now = preparedAt, granted = false;
-    const operation = createStandardCycleImplementation({ targetRoot: root, now: () => now, readCurrent: () => instance,
-      readEvaluation: async () => ({ ...observation, evaluation_sha256: "b".repeat(64),
-        output: { facts: { cycle_readiness_satisfied: true }, observations: { scope_sha256: "c".repeat(64) } } }),
-      observeContext: async () => {
-        await Promise.resolve();
-        if (granted) now = preparedAt + 300001;
-        return observation;
-      } });
-    const preview = await operation.prepare(instance, { evaluation_operation_id: "op_" + "d".repeat(40) });
-    assert.deepEqual(fingerprints(), before);
-    await assert.rejects(operation.apply(instance, preview, { write: true, expectPlan: preview.plan_sha256,
-      assertAuthorized: async () => { granted = true; now = preparedAt + 300000; } }),
-      { code: "STANDARD_CYCLE_READINESS_SOURCE_STALE", effect_status: "no_effect" });
-    assert.deepEqual(fingerprints(), before);
-    assert.equal(artifacts.ownerPending(), false);
-  });
+  for (const invalidation of ["none", "authorization", "prefix", "context"]) {
+    await check("cycle readiness contract: elapsed plan with " + invalidation + " invalidation", async () => {
+      const root = createFixture();
+      const artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
+      const cyclePath = "cycles/C001-feature-readiness-expiry";
+      const cycleStatus = cyclePath + "/status.md";
+      const statusFile = path.join(root, "docs/audit", cycleStatus);
+      fs.mkdirSync(path.dirname(statusFile), { recursive: true });
+      const template = fs.readFileSync(new URL("../../scaffold/docs_audit/cycles/TEMPLATE_STATUS.md", import.meta.url), "utf8");
+      fs.writeFileSync(statusFile, template + "\nupdated_at: 2026-11-10T00:00:00Z\n");
+      const paths = [cycleStatus, "CURRENT-STATE.md"];
+      const fingerprints = () => paths.map(name => artifacts.read(name, { required: true }).sha256);
+      const before = fingerprints();
+      const context = { cycle_path: cyclePath, cycle_state: "OPEN", documents: [], metadata_pins: [] };
+      const observation = { context, context_sha256: shadowHash(context) };
+      const instance = { instance_id: "fixture", instance_sha256: "a".repeat(64) };
+      const preparedAt = Date.parse("2026-11-10T00:00:00Z");
+      let now = preparedAt, granted = false;
+      const operation = createStandardCycleImplementation({ targetRoot: root, now: () => now,
+        readCurrent: () => granted && invalidation === "prefix" ? { ...instance, instance_sha256: "e".repeat(64) } : instance,
+        readEvaluation: async () => ({ ...observation, evaluation_sha256: "b".repeat(64),
+          output: { facts: { cycle_readiness_satisfied: true }, observations: { scope_sha256: "c".repeat(64) } } }),
+        observeContext: async () => {
+          await Promise.resolve();
+          if (granted) {
+            now = preparedAt + 86400000;
+            if (invalidation === "context") return { ...observation, context_sha256: "f".repeat(64) };
+          }
+          return observation;
+        } });
+      const preview = await operation.prepare(instance, { evaluation_operation_id: "op_" + "d".repeat(40) });
+      assert.deepEqual(fingerprints(), before);
+      now = preparedAt + 375948;
+      const applying = operation.apply(instance, preview, { write: true, expectPlan: preview.plan_sha256,
+        assertAuthorized: async () => {
+          granted = true;
+          if (invalidation === "authorization") throw Object.assign(new Error("AUTHORIZATION_REVOKED"), { code: "AUTHORIZATION_REVOKED" });
+        } });
+      if (invalidation === "none") {
+        const result = await applying;
+        assert.equal(result.outcome, "completed");
+        assert.equal(result.effect_status, "confirmed");
+        assert.equal(result.observations.committed.length, 2);
+        assert.notDeepEqual(fingerprints(), before);
+      } else {
+        await assert.rejects(applying, { code: invalidation === "authorization" ? "AUTHORIZATION_REVOKED" : "STANDARD_CYCLE_READINESS_SOURCE_STALE", effect_status: "no_effect" });
+        assert.deepEqual(fingerprints(), before);
+      }
+      assert.equal(artifacts.ownerPending(), false);
+    });
+  }
 }
 
 export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script, readiness = false, work = false, validation = false, verification = false, taskProgress = false, audit = false, closure = false, closeRecord = false, closeFinalize = false }) {

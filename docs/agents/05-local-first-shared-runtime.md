@@ -56,6 +56,13 @@ metadata in a fresh batch at preparation, before CAS, and after CAS. The
 preview and locked re-preparation each make their own observation. Existing
 source, owner, projection, and freshness guards retain their boundaries.
 
+Task advancement and entry into implementation validate their prepared plans
+through fresh authority, locked reconstruction, context and prefix checks,
+content and metadata preimages, and conditional writes. Elapsed wall time
+alone does not invalidate these plans. Their preparation timestamp remains
+part of their signed provenance. Authorization revocation and resource leases
+are checked by their respective authorities.
+
 Each STANDARD drift or cycle-plan context reads the PostgreSQL session and
 cycle topology from one bounded, read-only canonical inventory. Selected
 rows still pass path, content hash, and identity ambiguity checks. The drift

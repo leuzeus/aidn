@@ -5350,3 +5350,31 @@ dossier en réconciliation. Vérifier les lecteurs de l'ancien format,
 la composition des deux sites et le passage à R09. Les preuves avec
 transport doublé et la qualification fournisseur réelle restent
 identifiées séparément.
+
+## Addendum du 11 novembre 2026 — Validité actuelle des plans préparés
+
+La décision du propriétaire exige une justification technique précise pour
+chaque limite temporelle. Une durée fixe sans risque indépendant identifié
+doit être retirée. La limite de 300000 ms a bloqué le nominal 263 à 375948 ms
+sur l'avancement de tâche alors que les deux plans reconstruits, le préfixe
+et les contextes concordaient. Le résultat historique reste FAIL.
+
+La première correction concerne l'avancement de tâche et l'entrée en
+implémentation. Leur validité repose sur l'autorité courante, la
+reconstruction sous propriétaire, les observations du contexte et du préfixe,
+les préimages de contenu et de métadonnées et les écritures conditionnelles.
+Le temps écoulé seul cesse d'invalider ces plans. Le timestamp de préparation
+reste dans leur provenance signée et leurs lecteurs historiques.
+
+Les contrôles analogues du parcours doivent être examinés selon le risque
+réel couvert. L'ancienneté d'une règle ou son inscription dans un ADR ne
+constitue pas cette justification. Les échéances d'autorisations et de
+leases, les délais de transport et les budgets d'exécution explicites sont
+évalués dans leur périmètre propre.
+
+La qualification doit prouver une application après l'ancien âge lorsque
+l'autorité et les données restent valides, puis le refus effectif d'une
+révocation, d'un changement de contexte, de préfixe ou de préimage. Une
+interruption après une première écriture conserve son issue incertaine.
+La qualification native et celle du nominal complet gardent leurs preuves
+propres. Le brouillon d'optimisation 264 reste distinct de cette correction.

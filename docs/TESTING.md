@@ -192,8 +192,11 @@ The readiness fence uses fresh PostgreSQL batches for the context metadata
 and for the two implementation artifacts. Check that metadata pins are bound
 to the content hashes already observed. Run the existing readiness contract
 checks and a disposable real-PostgreSQL comparison of the exact preview,
-expiry, and pre/postimage observations. The nominal fixture keeps its
-300-second freshness ceiling and its separate terminal verdict.
+invalidation, and pre/postimage observations. Entry into implementation and
+task advancement accept elapsed plans when their current authority, rebuilt
+plan, context, prefix and preimages still match. Test an application beyond
+the former 300-second age, revocation and actual source changes separately.
+The nominal fixture retains its separate terminal verdict.
 
 For PostgreSQL task advancement, compare the three ordered content and metadata
 observations against individual reads. Verify a fresh preimage after locked
