@@ -502,7 +502,7 @@ test("corrective redelivery and review select fresh integration, cycle and updat
 });
 test("the published recovery call routes confirmed findings to the selected CR, checkpoint or rollback port", () => {
   for (const contract of ["standard-drift-recovery-cycle-selection-input.v1", "standard-drift-recovery-cycle-subject.v1",
-    "standard-drift-recovery-cycle-question.v1", "human-drift-recovery-cycle-decision.v1",
+    "standard-drift-recovery-cycle-question.v1", "standard-drift-recovery-cycle-question.v2", "human-drift-recovery-cycle-decision.v1",
     "standard-drift-recovery-cycle-selection-output.v1", "process-decision-inbox.v17",
     "standard-drift-rollback-input.v1", "standard-drift-rollback-plan.v1", "standard-drift-rollback-output.v1"]) {
     const schema = JSON.parse(read(`src/core/contracts/workflow-definition/${contract}.schema.json`));

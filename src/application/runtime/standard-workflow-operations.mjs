@@ -39,7 +39,7 @@ const correctionFiles = ["standard-reconciliation-inventory.mjs",
   ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-pr-correction-reopen-${kind}.v1.schema.json`, import.meta.url))];
 const files = ["standard-session-pr-external-merge.mjs", "standard-session-pr-pretriage-merge.mjs",
   new URL("../../core/workflow/standard-drift-recovery-cycle-selection.mjs", import.meta.url),
-  ...["standard-drift-recovery-cycle-selection-input.v1", "standard-drift-recovery-cycle-subject.v1", "standard-drift-recovery-cycle-question.v1",
+  ...["standard-drift-recovery-cycle-selection-input.v1", "standard-drift-recovery-cycle-subject.v1", "standard-drift-recovery-cycle-question.v1", "standard-drift-recovery-cycle-question.v2",
     "standard-drift-recovery-cycle-selection-output.v1", "human-drift-recovery-cycle-decision.v1", "process-decision-inbox.v17"]
     .map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
   new URL("../../core/workflow/standard-pr-external-merge.mjs", import.meta.url),

@@ -1,7 +1,9 @@
 # 04 JSON Contracts
 
-The private STANDARD drift recovery cycle question binds the confirmed Git
-checkpoint, revised objective and canonical cycle inventory. A signed
+The private STANDARD drift recovery cycle question v2 binds the confirmed Git
+checkpoint, revised objective and canonical cycle inventory without a host-generated
+expiry. Original preparations carrying an expiry reconstruct the exact retained
+v1 question; no stored question or source is converted. A signed
 `human-drift-recovery-cycle-decision.v1` is retained in
 `process-decision-inbox.v17`. Its accepted no-effect receipt supplies the
 fresh cycle fields to the existing separately authorized initializer.

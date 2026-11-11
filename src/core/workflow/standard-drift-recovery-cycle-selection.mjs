@@ -1,12 +1,14 @@
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { checkShadowJson, shadowHash } from "./shadow-json.mjs";
 import subjectSchema from "../contracts/workflow-definition/standard-drift-recovery-cycle-subject.v1.schema.json" with { type: "json" };
-import questionSchema from "../contracts/workflow-definition/standard-drift-recovery-cycle-question.v1.schema.json" with { type: "json" };
+import legacyQuestionSchema from "../contracts/workflow-definition/standard-drift-recovery-cycle-question.v1.schema.json" with { type: "json" };
+import questionSchema from "../contracts/workflow-definition/standard-drift-recovery-cycle-question.v2.schema.json" with { type: "json" };
 import sourceSchema from "../contracts/workflow-definition/human-drift-recovery-cycle-decision.v1.schema.json" with { type: "json" };
 import outputSchema from "../contracts/workflow-definition/standard-drift-recovery-cycle-selection-output.v1.schema.json" with { type: "json" };
 
 export const recoveryCycleSelection = "drift_recovery_cycle_decision";
-export const recoveryCycleQuestionVersion = "standard-drift-recovery-cycle-question.v1";
+export const recoveryCycleQuestionVersion = "standard-drift-recovery-cycle-question.v2";
+const legacyQuestionVersion = "standard-drift-recovery-cycle-question.v1";
 const choices = ["select_cycle", "refused", "deferred", "cancelled"];
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length;
@@ -17,10 +19,12 @@ export function assertRecoveryCycleSubject(value) {
 }
 
 export function recoveryCycleQuestion(record) {
-  const { subject, expires_at_ms } = record.preview.prepared;
-  const value = { contract_version: recoveryCycleQuestionVersion, operation_id: record.operation_id, intent_sha256: shadowHash(record.intent),
-    subject: structuredClone(subject), expires_at_ms, choices: [...choices] };
-  if (!valid(value, questionSchema)) fail("STANDARD_RECOVERY_CYCLE_QUESTION_INVALID");
+  const prepared = record.preview.prepared, legacy = Object.hasOwn(prepared, "expires_at_ms");
+  // Historical question bytes are reconstructed from their original retained
+  // preparation. New questions impose no host-invented wall-clock expiry.
+  const value = { contract_version: legacy ? legacyQuestionVersion : recoveryCycleQuestionVersion, operation_id: record.operation_id, intent_sha256: shadowHash(record.intent),
+    subject: structuredClone(prepared.subject), ...(legacy ? { expires_at_ms: prepared.expires_at_ms } : {}), choices: [...choices] };
+  if (!valid(value, legacy ? legacyQuestionSchema : questionSchema)) fail("STANDARD_RECOVERY_CYCLE_QUESTION_INVALID");
   return value;
 }
 

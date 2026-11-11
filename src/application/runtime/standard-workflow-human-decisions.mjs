@@ -95,7 +95,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     } finally { clearTimeout(timer); combined.removeEventListener("abort", onAbort); stop.abort(); }
   }
   async function verify(claim, sourceRef, request, signal, historical = false, expectedGrant) {
-    if (request.contract_version === recoveryCycleQuestionVersion) assertHumanRecoveryCycleSelection(claim, request);
+    if ([recoveryCycleQuestionVersion, "standard-drift-recovery-cycle-question.v1"].includes(request.contract_version)) assertHumanRecoveryCycleSelection(claim, request);
     else if (request.contract_version === "standard-spike-question.v1") assertHumanSpikeDecision(claim, request);
     else if (request.contract_version === "standard-mode-work-question.v1") assertHumanModeWorkDecision(claim, request);
     else if ([externalMergeQuestionVersion, externalMergePretriageQuestionVersion].includes(request.contract_version)) assertHumanExternalMergeDisposition(claim, request);

@@ -1020,6 +1020,11 @@
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--cycle-close-finalize-mode=db-only",
       "--cycle-close-objective-completion"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--drift-cycle-mode=files",
+      "--drift-cycle-published-selection"
     ]
   ]
 }

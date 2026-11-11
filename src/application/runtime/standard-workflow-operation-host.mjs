@@ -1174,9 +1174,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       minimum_cycle_number: Math.max(0, ...numbers) + 1 });
   }
   async function assertRecoveryCycleSelectionFresh(instance, record, signal) {
-    const { subject, expires_at_ms } = record.preview.prepared;
-    if (now() >= expires_at_ms || shadowHash(await recoveryCycleSubject(instance, record.preview.input, signal)) !== shadowHash(subject)
-      || now() >= expires_at_ms) fail("STANDARD_RECOVERY_CYCLE_SELECTION_STALE");
+    const { subject } = record.preview.prepared;
+    if (shadowHash(await recoveryCycleSubject(instance, record.preview.input, signal)) !== shadowHash(subject)) fail("STANDARD_RECOVERY_CYCLE_SELECTION_STALE");
   }
   async function commitIntent(id, { write = false } = {}) {
     if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
@@ -1458,7 +1457,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "cycle_closure_decision" ? await closureReview?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CLOSURE_AUDIT_AUTHORITY_REQUIRED")
         : binding.id === "drift_completion_select" ? await driftRoute?.completion(state.record) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_completion_decision" ? await recovery?.prepareRenewal(state.record, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
-        : binding.id === recoveryCycleSelection ? { can_apply: true, subject: await recoveryCycleSubject(state.record, input), expires_at_ms: now() + 300000 }
+        : binding.id === recoveryCycleSelection ? { can_apply: true, subject: await recoveryCycleSubject(state.record, input) }
         : binding.id === "drift_recovery_decision" ? await recovery?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_recovery_record" ? await (async () => { const body = { ...await recoveryDecision(state.record, input), prepared_at_ms: now() };
           return { ...body, can_apply: true, plan_sha256: shadowHash(body) }; })()

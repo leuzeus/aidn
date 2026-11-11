@@ -1,5 +1,22 @@
 # Testing Guide
 
+## Recovery cycle question validity, 2026-11-11
+
+The private recovery cycle selection question v2 has no host-generated expiry.
+Original v1 preparations reconstruct the same original question and digest;
+readers do not rewrite them into v2. The recovery component fixture checks
+fixed v1 snapshots, v1/v2 routing through the actual human component, inbox17,
+exact question/subject/cycle minimum, wrong authority and current source
+revocation after capture. Source, inbox and receipt capabilities remain fixtures.
+
+The published recovery-call selector prepares its original H question with a
+previous-day explicit host clock before source capture. It then captures and
+accepts at the current clock and initializes a cycle through the existing
+separately authorized port. Context, checkpoint, inventory, authority and CAS
+checks remain in place. This scenario is appended as command210 after the
+unchanged209-command manifest prefix. Full210 and genuine actor qualification
+remain separate requirements. Unexpected failures retain their original realms.
+
 ## Retained objective review across R03 cache refresh, 2026-11-11
 
 The focused recovery component builds an actual DUAL project, session and

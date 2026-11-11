@@ -1,5 +1,17 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Recovery cycle question validity candidate, 2026-11-11
+
+The private recovery cycle question no longer has an internally generated
+five-minute expiry. New questions are v2; retained preparations reconstruct
+original v1 questions without rewriting signed history. The source contract
+and inbox17 stay unchanged. Exact recovery checkpoint, context/HEAD, canonical
+cycle inventory, H/source permission, CAS and separate initializer authority
+remain required. Focused components and the original-old published recovery
+selection are required; the unchanged209-command prefix gains one case. This
+candidate alone does not establish full210, required60, genuine actors,
+PostgreSQL, an exact installed archive or delivery. L1-L8/A1-A10 stays incomplete.
+
 ## Current R05/objective validity candidate, 2026-11-11
 
 This candidate removes internally imposed five-minute objective opinion/review/

@@ -1825,7 +1825,9 @@ if (process.argv[2] === "--mixed-continue") {
       verify: ({ source, sourceRef }) => claims.has(sourceRef) && shadowHash(claims.get(sourceRef)) === shadowHash(source)
         ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" } };
     const withCr = mode === "dual";
+    let preparingRecoveryCycleSelection = false;
     const f = mixedFixture(mode, { drift: true, recovery: true, recoveryCycle: !publishedRecoverySelection,
+      ...(publishedRecoverySelection ? { now: () => Date.now() - (preparingRecoveryCycleSelection ? 86400000 : 0) } : {}),
       publishedRecoveryCall: publishedRecoverySelection, changeRequest: withCr, humanSource, answer({ params }) {
       const context = JSON.parse(params.input[0].text.split("\n").at(-1));
       return { outcome: "completed", summary: "Cycle recovery diagnostic fixture.", report: { contract_version: "standard-drift-report.v1", context_sha256: context.context_sha256,
@@ -1874,10 +1876,18 @@ if (process.argv[2] === "--mixed-continue") {
     console.log(`STEP drift cycle ${mode}: external checkpoint observed`);
     let selectedCycle = f.cycleParameters;
     if (publishedRecoverySelection) {
-      const waitingSelection = await f.open().step({ write: true });
+      let waitingSelection;
+      // Original preparation is old before any H source is captured; the
+      // existing explicit clock capability was supplied before bootstrap.
+      preparingRecoveryCycleSelection = true;
+      try { waitingSelection = await f.open().step({ write: true }); } finally { preparingRecoveryCycleSelection = false; }
       assert.equal(waitingSelection.status, "waiting_for_human");
+      const originalSelection = f.open().readOperation(waitingSelection.operation_id);
+      assert.ok(Date.now() - originalSelection.preview.prepared_at_ms >= 86400000);
+      assert.equal(Object.hasOwn(originalSelection.preview.prepared, "expires_at_ms"), false);
       const { question } = waitingSelection;
-      assert.equal(question.contract_version, "standard-drift-recovery-cycle-question.v1");
+      assert.equal(question.contract_version, "standard-drift-recovery-cycle-question.v2");
+      assert.equal(Object.hasOwn(question, "expires_at_ms"), false);
       assert.equal(question.subject.checkpoint_operation_id, checked.operation_id);
       assert.equal(checkpointOutput.observations.causal_transition.after_head, git("rev-parse", "HEAD"));
       assert.equal(question.subject.head, git("rev-parse", "HEAD"));

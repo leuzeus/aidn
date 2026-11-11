@@ -1,5 +1,20 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Amendment — recovery cycle question validity, 2026-11-11
+
+The private recovery cycle selection no longer invents a five-minute expiry.
+New questions use v2 without `expires_at_ms`; retained preparations with that
+field reconstruct their exact original v1 question and digest. No historical
+question, source, inbox or receipt is rewritten. The signed H source and
+inbox17 shapes remain unchanged and need no storage migration.
+
+Current H/source authentication, the accepted recovery checkpoint, exact
+context/HEAD, cycle inventory, process revision and separately authorized
+initializer remain required. This removes elapsed-time-only invalidation; it
+does not make a changed subject current or confer Native/Git authority. The
+source components and published recovery-call fixture remain distinct from
+genuine actors, full STANDARD and installed/archive qualification.
+
 ## Amendment — R03 cache stability during R05 revalidation, 2026-11-11
 
 Revalidation of a retained primary or linked objective review always rereads
@@ -42,8 +57,9 @@ receipts and linked-question contracts retain their readers and original bytes.
 
 Focused source fixtures cover these boundaries separately. This amendment does
 not qualify genuine actors, complete STANDARD, configured PostgreSQL or an exact
-installed archive. Generic disposition horizons, recovery-cycle question expiry
-and provider observation/decision windows remain separate unresolved reviews.
+installed archive. Generic disposition horizons and provider observation/decision windows
+remain separate unresolved reviews. Recovery-cycle question expiry is superseded
+by the amendment above.
 
 ## Amendment — returned UNKNOWN correction reopening, 2026-11-11
 

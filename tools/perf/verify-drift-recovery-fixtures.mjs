@@ -28,6 +28,7 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { createStandardObjectiveDisposition } from "../../src/application/runtime/standard-drift-objective-disposition.mjs";
 import { verifyObjectiveCompletion } from "./objective-completion-fixture-lib.mjs";
 import { verifyRecoveryReviewCache } from "./recovery-review-cache-fixture-lib.mjs";
+import { verifyRecoveryCycleSelectionBoundaries } from "./recovery-cycle-selection-fixture-lib.mjs";
 
 const H = "a".repeat(64), id = "op_" + "a".repeat(40), key = Buffer.alloc(32, 7), signer = createOperationJournalSigner(() => key);
 const context = { session_id: "S001", cycle_id: null, documents: [{ ref: "audit:CURRENT-STATE.md", sha256: H, content: "before" }], git: {} };
@@ -315,6 +316,7 @@ for (const fault of ["none", "context-revocation", "context-aged", "wrong-link",
 }
 await verifyObjectiveCompletion(pass);
 await verifyRecoveryReviewCache(pass);
+await verifyRecoveryCycleSelectionBoundaries(pass);
 forwardFixtureOutput(execFileSync(process.execPath, [fileURLToPath(new URL("./verify-standard-drift-route-fixtures.mjs", import.meta.url))], { encoding: "utf8", windowsHide: true, timeout: 15000, maxBuffer: 1048576 }));
 if (process.argv.includes("--objective-disposition-only")) {
   console.log(JSON.stringify({ status: "PASS", checks, proof: "synthetic-authenticated-disposition-and-human-component-with-production-effect-fences",

@@ -14,6 +14,10 @@ completions retain their exact report/event/receipt witnesses without an age
 limit. Internal gates impose no elapsed default; explicit caller thresholds are
 separate policy. Historical fact authentication, current linked/source permission,
 issuer expiry and the original finite Native grant keep distinct boundaries.
+The private recovery cycle selection also reobserves its exact checkpoint,
+context and cycle inventory around H authentication without a host-invented
+question expiry. Historical v1 question bytes and issuer/source permissions
+retain their own boundaries.
 
 - PostgreSQL is optional
 - once `runtime.persistence.backend=postgres` is configured, runtime continuity reads use PostgreSQL as the canonical backend and stop on unavailable or ambiguous canonical context
