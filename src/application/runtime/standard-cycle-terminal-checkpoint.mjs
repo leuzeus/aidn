@@ -13,7 +13,7 @@ import { runCycleCloseAdmitUseCase } from "./cycle-close-admit-use-case.mjs";
 import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
-const valid = plan => !validateJsonSchema(plan, schema, "$", { contractKind: "workflow-definition" }).length;
+const valid = plan => Number.isSafeInteger(plan?.prepared_at_ms) && !validateJsonSchema(plan, schema, "$", { contractKind: "workflow-definition" }).length;
 const cacheRelative = ".aidn/runtime/cache/reload-state.json";
 const emit = (outcome, effect_status, observations, facts = {}, evidence_refs = []) => assertStandardOperationOutput({
   contract_version: "standard-cycle-terminal-checkpoint-output.v1", operation_ref: "cycle_terminal_checkpoint", outcome, effect_status, observations, facts, evidence_refs });
@@ -67,9 +67,9 @@ export function createStandardCycleTerminalCheckpoint({ targetRoot, readRecorded
   }
   return Object.freeze({ prepare: (instance, input, id) => prepare(instance, input, id, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
-      const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
+      const plan = prepared?.plan;
       if (write !== true || !prepared?.can_apply || !valid(plan) || typeof assertAuthorized !== "function"
-        || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || !Number.isSafeInteger(age) || age < 0 || age > 300000)
+        || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan)
         throw Object.assign(new Error("STANDARD_TERMINAL_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED"), { code: "STANDARD_TERMINAL_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" });
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {

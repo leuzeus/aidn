@@ -22,6 +22,8 @@ import { createStandardSessionDeliveryCheckpoint } from "../../src/application/r
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7) ?? "files";
+const agedCheckpoint = process.argv.includes("--aged-checkpoint"), agedDelivery = process.argv.includes("--aged-delivery");
+if (agedCheckpoint && !process.argv.includes("--checkpoint") || agedDelivery && !process.argv.includes("--delivery-checkpoint")) throw Error("FIXTURE_AGED_CHECKPOINT_ARGUMENT_INVALID");
 if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
 const finalFault = process.argv.find(arg => arg.startsWith("--final-hook-fault="))?.slice("--final-hook-fault=".length);
 const policyFault = process.argv.includes("--constraint-policy-fault");
@@ -103,12 +105,14 @@ try {
     const postimages = result.observations.postimages, git = createLocalWorkflowGitCheckpoint({ targetRoot: root }, { profile: "cycle-terminal", approvedPaths: postimages.map(row => "docs/audit/" + row.path) });
     const beforeGit = git.inspect(), checkpointSource = { record_operation_id: id(5), session_id: "S001", material_sha256: shadowHash({ prepared, result }),
       branch: beforeGit.branch, parent_head: beforeGit.head, completion_cycle_id: null, postimages };
-    const checkpoint = createStandardSessionCloseCheckpoint({ targetRoot: root, readSource: () => structuredClone(checkpointSource), readCurrent: () => instance });
+    let checkpointClock = agedCheckpoint ? Date.now() - 86400000 : null;
+    const checkpoint = createStandardSessionCloseCheckpoint({ targetRoot: root, readSource: () => structuredClone(checkpointSource), readCurrent: () => instance, now: () => checkpointClock ?? Date.now() });
     const cpInput = { record_operation_id: id(5) }, foreign = path.join(root, "foreign-close.txt");
     fs.writeFileSync(foreign, "Foreign change must never be captured.\n");
     await assert.rejects(() => checkpoint.prepare(instance, cpInput, id(6))); fs.unlinkSync(foreign);
     assert.equal(git.inspect().head, beforeGit.head); pass("finite checkpoint refuses foreign worktree change before Git mutation");
     const cp = await checkpoint.prepare(instance, cpInput, id(6)); assert.equal(cp.can_apply, true, JSON.stringify(cp));
+    if (agedCheckpoint) { checkpointClock = null; assert.ok(Date.now() - cp.plan.prepared_at_ms >= 86400000); }
     await assert.rejects(() => checkpoint.apply(instance, cp, { expectPlan: cp.plan_sha256, assertAuthorized: async () => {} }));
     assert.equal(git.inspect().head, beforeGit.head); pass("checkpoint requires explicit write and retained plan");
     const fault = process.argv.includes("--checkpoint-fault=grant_after_git");
@@ -128,6 +132,7 @@ try {
       assert.equal(cpResult.observations.reload.head_commit, git.inspect().head); assert.equal(artifacts.ownerPending(), false);
       assert.match(artifacts.read("sessions/S001.md").content, /^state: OPEN$/m);
       pass("actual finite Git commit and reload confirm checkpoint while session completion remains pending");
+      if (agedCheckpoint) pass("day-old session close checkpoint applies with current postimages, Git and live grant");
       if (process.argv.includes("--final-hook")) {
         const selected = { record_operation_id: id(5), checkpoint_operation_id: id(6), session_id: "S001", session_path: "sessions/S001.md", mode: "COMMITTING",
           branch: beforeGit.branch, start_output: started, checkpoint_output: cpResult };
@@ -177,9 +182,11 @@ try {
           const cacheFile = path.join(root, ".aidn/runtime/cache/reload-state.json"), cacheBytes = fs.readFileSync(cacheFile);
           const source = { finalization_operation_id: id(9), session_id: "S001", session_path: "sessions/S001.md", branch: finalPlan.plan.branch, parent_head: parent,
             material_sha256: shadowHash(final), postimages: names.map(name => ({ path: name, sha256: artifacts.read(name).sha256, metadata_sha256: artifacts.metadataHash(name) })) };
-          const port = createStandardSessionDeliveryCheckpoint({ targetRoot: root, readSource: async () => structuredClone(source), readCurrent: () => instance });
+          let deliveryClock = agedDelivery ? Date.now() - 86400000 : null;
+          const port = createStandardSessionDeliveryCheckpoint({ targetRoot: root, readSource: async () => structuredClone(source), readCurrent: () => instance, now: () => deliveryClock ?? Date.now() });
           const deliveryId = "op_" + "d".repeat(40), input = { finalization_operation_id: id(9) }, preview = await port.prepare(instance, input, deliveryId);
           assert.equal(preview.can_apply, true); assert.equal(preview.plan.git.files.length, mode === "db-only" ? 0 : 3);
+          if (agedDelivery) { deliveryClock = null; assert.ok(Date.now() - preview.plan.prepared_at_ms >= 86400000); }
           await assert.rejects(port.apply(instance, preview, { expectPlan: preview.plan_sha256, assertAuthorized() {} }), { effect_status: "no_effect" });
           pass("delivery schemas and preview require the three final canonical postimages and explicit intent");
           const foreign = path.join(root, "delivery-foreign.txt"); fs.writeFileSync(foreign, "foreign\n");
@@ -199,6 +206,7 @@ try {
             if (mode === "db-only") assert.equal(result.observations.git.head, parent);
             else assert.equal(result.observations.git.parent_sha, parent);
             pass("delivery checkpoints actual final closure writes while DB-only preserves HEAD");
+            if (agedDelivery) pass("day-old session delivery plan applies with current finalization, canonical postimages and Git");
           }
           assert.deepEqual(fs.readFileSync(eventFile), eventBytes); assert.deepEqual(fs.readFileSync(cacheFile), cacheBytes);
           for (const row of source.postimages) { assert.equal(artifacts.read(row.path).sha256, row.sha256); assert.equal(artifacts.metadataHash(row.path), row.metadata_sha256); }

@@ -96,6 +96,16 @@ and postimages at their existing boundaries. Elapsed preparation time alone
 does not invalidate these plans. Recording a terminal state, report or baseline
 still leaves its separate final hook pending; partial writes remain uncertain.
 
+The finite cycle-terminal, baseline-promotion, session-preclose, session-close
+and session-delivery Git checkpoints also validate their current accepted source, canonical
+postimages, branch/HEAD/index and live grant without a preparation-age ceiling.
+Their timestamp stays in the signed plan and Git provenance. Reload/cache
+verification remains required where the operation provides it; delivery still
+preserves the final hook's existing cache and events. A lost grant after Git
+remains uncertain, and DB-only state is never exported merely to make a commit.
+The timestamp must still be a safe nonnegative integer. Mode/start and terminal
+checkpoint entry preserve this numeric validation independently of elapsed age.
+
 Cycle validation reconstructs the work, product snapshot, profile and boundary
 descriptor under its owner and current authorization before running checks.
 These observations establish plan validity. The profile's command budget

@@ -5427,3 +5427,13 @@ préfixes et préimages/postimages restent requis. Le timestamp conserve sa
 provenance sans plafond d'âge supplémentaire. Enregistrer un état terminal,
 un rapport ou une baseline ne termine pas son hook séparé. La qualification
 doit garder les refus réels et l'incertitude après des écritures partielles.
+
+Les checkpoints Git finis de fin de cycle, de promotion, de préclôture et de
+clôture de session, puis de livraison finale, appliquent aussi cette validité
+actuelle. Le plan signé
+conserve son timestamp et sa source acceptée ; les postimages canoniques, l'état
+Git, l'autorisation et les vérifications après effet restent nécessaires sans
+plafond d'âge ajouté. Un effet Git confirmé suivi d'une perte d'autorisation
+reste incertain. DB-only ne crée pas de projection pour obtenir un commit.
+La preuve sur composants installés depuis la source reste distincte de celle
+du modèle complet, des acteurs réels et de l'archive livrable.

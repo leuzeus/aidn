@@ -143,6 +143,20 @@ reporting and baseline recording still retain separate pending finalization
 facts. Partial CAS or required projection loss remains uncertain. This decision
 does not discharge a human question or alter resource/transport authorities.
 
+The finite terminal Git checkpoints for cycle closure, baseline promotion,
+session preclosure, session closure and final session delivery supersede their
+elapsed-plan-age restrictions through the same current-state rule. Their original signed
+timestamp and exact accepted source remain. Locked reconstruction verifies
+the approved canonical postimages and current Git state before effect;
+post-effect Git/cache/context and authorization checks retain their existing
+semantics, including UNKNOWN after a confirmed commit loses its grant.
+DB-only remains an admitted no-visible-file checkpoint where applicable.
+This change grants no final hook, provider, merge or delivery acceptance.
+Safe nonnegative timestamp validation remains a separate requirement at the
+mode/start and terminal checkpoint entries. A schema's integer type alone does
+not establish JavaScript safe-integer precision. Invalid numeric provenance
+refuses before ownership; valid old timestamps do not receive an age ceiling.
+
 ## Eligible occurrence lookup, 2026-11-06
 
 After the common service validates the complete cursor, the mixed host checks

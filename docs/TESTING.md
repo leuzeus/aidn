@@ -3929,6 +3929,27 @@ start-finalization plans. Human-source authentication is a fixture capability;
 the effect ports and fixed start hook are actual, with real hook time progressing.
 The question's own intake protocol is unchanged by these prepared-effect tests.
 
+The canonical cycle/session record fixtures and baseline-promotion ports fixture
+accept `--aged-checkpoint` together with their existing terminal, close or
+promotion checkpoint selector. The session fixture also accepts `--aged-delivery`
+with `--delivery-checkpoint`. Each clock applies only while preparing that
+original checkpoint; application and any later fixed hook use real current time.
+The components verify actual finite Git effects (or admitted DB-only no-effect),
+current postimages, live grant and the existing cache/reload behavior. Foreign
+work and lost authorization retain their refusal or uncertainty assertions.
+These clocks provide no wall-time, Native, full-model or exact-archive proof.
+The mode fixture also exercises safe nonnegative timestamp validation before a
+controlled ownership boundary; `--timestamp-shape-only` runs those checks without
+a project or effect. `--startup-effects-only` retains the ordinary installed
+startup and exact simulation while selecting out the separate human-only cases.
+The full default fixture retains those cases. Terminal Git checkpoint components
+also reject unsafe timestamps before their live grant or Git mutation.
+
+`verify-standard-session-preclose-checkpoint-fixtures.mjs --aged-plan` exercises
+the original day-old preclose plan across its selected backend, retaining
+exact-plan, explicit effect, live-grant, foreign-path and canonical-source
+refusals. `--grant-after-git` retains UNKNOWN after a real commit loses its grant.
+
 The final checkpoint component extends the terminal-record component selector
 with `--final-hook`. It runs the actual cycle-close hook after explicit Git,
 reload and R05 fixture preconditions, checks the correlated checkpoint event and

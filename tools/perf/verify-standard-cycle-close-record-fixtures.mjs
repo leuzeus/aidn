@@ -31,6 +31,8 @@ if (!["retain", "no_go", "drop"].includes(choice)) throw Error("CLOSE_RECORD_FIX
 const finalFault = process.argv.find(value => value.startsWith("--final-hook-fault="))?.slice("--final-hook-fault=".length);
 if (finalFault && !["event", "suffix", "projection", "grant_after"].includes(finalFault)) throw Error("CLOSE_HOOK_FIXTURE_FAULT_INVALID");
 const terminalCheckpoint = process.argv.includes("--terminal-checkpoint");
+const agedCheckpoint = process.argv.includes("--aged-checkpoint");
+if (agedCheckpoint && !terminalCheckpoint) throw Error("CLOSE_AGED_CHECKPOINT_ARGUMENT_INVALID");
 if (terminalCheckpoint && (!process.argv.includes("--final-hook") || !["files", "dual", "db-only"].includes(selected)))
   throw Error("TERMINAL_CHECKPOINT_FIXTURE_REQUIRES_PHYSICAL_FINAL_HOOK_CASE");
 const terminalGrantFault = process.argv.includes("--terminal-checkpoint-fault=grant_after_git");
@@ -160,8 +162,9 @@ try {
           // automatic acknowledgment or the full process model's diagnostic.
           // Explicit real Git checkpoint, verified against the immutable recorded postimages.
           if (terminalCheckpoint) {
+            let checkpointClock = agedCheckpoint ? Date.now() - 86400000 : null;
             const checkpoint = createStandardCycleTerminalCheckpoint({ targetRoot: root,
-              readRecorded: async () => ({ record_operation_id: op, plan: preview.plan, output: result }), observeContext, readCurrent: () => instance });
+              readRecorded: async () => ({ record_operation_id: op, plan: preview.plan, output: result }), observeContext, readCurrent: () => instance, now: () => checkpointClock ?? Date.now() });
             const checkpointPlan = await checkpoint.prepare(instance, hookInput, "op_" + "c".repeat(40));
             if (!checkpointPlan.can_apply) {
               const admission = await preWriteAdmit({ targetRoot: root, skill: "cycle-close" });
@@ -169,6 +172,13 @@ try {
                 blocking_reasons: admission.blocking_reasons, warnings: admission.warnings } }));
             }
             const beforeHead = git("rev-parse", "HEAD"), beforeCheckpointContext = (await observeContext()).context_sha256;
+            if (agedCheckpoint) { checkpointClock = null; assert.ok(Date.now() - checkpointPlan.plan.prepared_at_ms >= 86400000); }
+            const malformed = structuredClone(checkpointPlan); malformed.plan.prepared_at_ms = Number.MAX_SAFE_INTEGER + 1;
+            malformed.plan_sha256 = shadowHash(malformed.plan); let malformedGrantCalls = 0;
+            await assert.rejects(checkpoint.apply(instance, malformed, { write: true, expectPlan: malformed.plan_sha256,
+              assertAuthorized() { malformedGrantCalls++; } }), { code: "STANDARD_TERMINAL_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" });
+            assert.equal(malformedGrantCalls, 0); assert.equal(artifacts.ownerPending(), false);
+            pass("unsafe terminal checkpoint timestamp refuses before owner grant or Git mutation");
             await assert.rejects(checkpoint.apply(instance, checkpointPlan, { expectPlan: checkpointPlan.plan_sha256 }), { code: "STANDARD_TERMINAL_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" });
             await assert.rejects(checkpoint.apply(instance, checkpointPlan, { write: true, expectPlan: checkpointPlan.plan_sha256,
               assertAuthorized: () => { throw Object.assign(Error("denied"), { code: "FIXTURE_GRANT_DENIED" }); } }), { code: "FIXTURE_GRANT_DENIED", effect_status: "no_effect" });
@@ -188,6 +198,7 @@ try {
               throw expectedTerminalGrantFault;
             }
             assert.equal(checkpointResult.outcome, "completed", JSON.stringify(checkpointResult));
+            if (agedCheckpoint) pass("day-old terminal cycle checkpoint applies with current recorded source, admission, Git and grant");
             assert.equal(checkpointResult.facts.cycle_terminal_checkpoint_completed, true); assert.equal(checkpointResult.facts.cycle_close_completed, false);
             assert.equal(checkpointResult.observations.reload.cache_written, true); assert.equal(git("status", "--porcelain"), "");
             const count = git("rev-list", "--count", "HEAD");

@@ -82,9 +82,9 @@ export function createStandardSessionPrecloseCheckpoint({ targetRoot, readSource
   }
   return Object.freeze({ prepare: (instance, input, id) => prepare(instance, input, id, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
-      const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
+      const plan = prepared?.plan;
       if (!valid(plan, planSchema) || !prepared?.can_apply || write !== true || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan
-        || typeof assertAuthorized !== "function" || !Number.isSafeInteger(age) || age < 0 || age > 300000)
+        || typeof assertAuthorized !== "function")
         throw Object.assign(Error("STANDARD_SESSION_PRECLOSE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED"), { code: "STANDARD_SESSION_PRECLOSE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" });
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {

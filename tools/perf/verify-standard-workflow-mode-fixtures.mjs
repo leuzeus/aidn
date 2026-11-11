@@ -15,6 +15,7 @@ import { parseSessionMetadata } from "../../src/lib/workflow/session-context-lib
 import { analyzeStructuredArtifact } from "../../src/lib/workflow/structured-artifact-parser-lib.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
+import { verifyStandardPreparedTimestampShapes } from "./standard-prepared-timestamp-fixture-lib.mjs";
 const H = "a".repeat(64), temp = fs.realpathSync(os.tmpdir()), owned = [];
 const agedPlan = process.argv.includes("--aged-plan"); let preparationClock = null;
 const inputs = { session_initialize: { session_id: "S001", session_branch: "S001-start", objective: "Start a governed session through the common process IR" },
@@ -53,9 +54,11 @@ if (process.argv[2] === "--accept") {
 } else {
 let passed = 0;
 try {
+  passed += (await verifyStandardPreparedTimestampShapes()).checks;
+  const timestampOnly = process.argv.includes("--timestamp-shape-only");
   const selectedMode = process.argv.find(value => value.startsWith("--mode="))?.slice(7);
   if (selectedMode && !["files", "dual", "db-only"].includes(selectedMode)) throw Error("STARTUP_FIXTURE_MODE_INVALID");
-  const scenarios = process.argv.includes("--source-installed") ? (selectedMode ? [selectedMode] : ["files", "dual", "db-only"]).map(mode => ({ mode, fresh: true }))
+  const scenarios = timestampOnly ? [] : process.argv.includes("--source-installed") ? (selectedMode ? [selectedMode] : ["files", "dual", "db-only"]).map(mode => ({ mode, fresh: true }))
     : process.argv.includes("--fresh-only") ? [{ mode: "db-only", fresh: true }]
     : [...["files", "dual", "db-only"].map(mode => ({ mode, fresh: false })), { mode: "db-only", fresh: true }];
   for (const { mode, fresh } of scenarios) {
@@ -156,6 +159,7 @@ try {
       policyPins: final.record.policy_pins, scopeId: final.record.scope_id, events: final.record.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, final.record.instance_sha256);
     process.stdout.write(`PASS ${label}: exact simulation of human choice and ${unresolved ? "unresolved startup" : "real completed startup"}\n`); passed++;
+    if (process.argv.includes("--startup-effects-only")) continue;
     const business = createStandardWorkflowArtifacts({ targetRoot: root }), beforeBusiness = [business.read("CURRENT-STATE.md").sha256, business.read("sessions/S001.md").sha256];
     const capture = async (name, choice, reusedId = null) => {
       const host = openHost(root, keyFile, true), initial = host.initialize({ instanceId: name });
@@ -207,7 +211,7 @@ try {
     assert.deepEqual([business.read("CURRENT-STATE.md").sha256, business.read("sessions/S001.md").sha256], beforeBusiness);
     process.stdout.write(`PASS ${label}: source identity cannot be reused; human protocol never reapplies business effects\n`); passed++;
   }
-  process.stdout.write(JSON.stringify({ status: "PASS", checks: passed, startup_model: "shipped-json-component", human_authority: "fixture-source-adapter", native: "NOT_RUN", full_standard_workflow: "NOT_YET_DELIVERED" }) + "\n");
+  process.stdout.write(JSON.stringify({ status: "PASS", checks: passed, startup_model: timestampOnly ? "NOT_RUN" : "shipped-json-component", human_authority: timestampOnly ? "NOT_RUN" : "fixture-source-adapter", timestamp_shape: "controlled-pre-owner-component", native: "NOT_RUN", full_standard_workflow: "NOT_YET_DELIVERED" }) + "\n");
 } finally {
   for (const root of owned) { const real = fs.realpathSync(root); if (path.dirname(real) !== temp || !path.basename(real).startsWith("aidn-standard-")) throw Error("FIXTURE_CLEANUP_SCOPE_INVALID"); fs.rmSync(real, { recursive: true, force: true }); }
 }

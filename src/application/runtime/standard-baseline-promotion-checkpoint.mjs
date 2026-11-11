@@ -76,9 +76,9 @@ export function createStandardBaselinePromotionCheckpoint({ targetRoot, readSour
   }
   return Object.freeze({ prepare: (instance, input, id) => prepare(instance, input, id, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
-      const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
+      const plan = prepared?.plan;
       if (write !== true || !prepared?.can_apply || !valid(plan) || typeof assertAuthorized !== "function" || prepared.plan_sha256 !== expectPlan
-        || shadowHash(plan) !== expectPlan || !Number.isSafeInteger(age) || age < 0 || age > 300000)
+        || shadowHash(plan) !== expectPlan)
         throw Object.assign(Error("STANDARD_PROMOTION_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED"), { code: "STANDARD_PROMOTION_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" });
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {

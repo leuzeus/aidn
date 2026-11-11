@@ -12,6 +12,7 @@ import { runGatingEvaluateUseCase } from "../../src/application/runtime/gating-e
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7) ?? "files";
 const fault = process.argv.includes("--grant-after-git");
+const agedPlan = process.argv.includes("--aged-plan");
 if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
 const owned = [], temp = fs.realpathSync(os.tmpdir()), H = "a".repeat(64), id = n => "op_" + String(n).repeat(40);
 const git = (root, ...args) => execFileSync("git", ["-C", root, "-c", "core.hooksPath=NUL", ...args], { encoding: "utf8", windowsHide: true, stdio: "pipe" }).trim();
@@ -43,15 +44,21 @@ try {
   const parent = git(root, "rev-parse", "HEAD"), branch = git(root, "branch", "--show-current");
   let source = { closure_operation_id: input.closure_operation_id, session_id: "S001", branch, parent_head: parent, completion_cycle_id: null,
     material_sha256: H, postimages: names.map(name => ({ path: name, sha256: artifacts.read(name).sha256, metadata_sha256: artifacts.metadataHash(name) })) };
-  const checkpoint = createStandardSessionPrecloseCheckpoint({ targetRoot: root, readCurrent: () => instance, readSource: async () => structuredClone(source) });
+  let preparationClock = agedPlan ? Date.now() - 86400000 : null;
+  const checkpoint = createStandardSessionPrecloseCheckpoint({ targetRoot: root, readCurrent: () => instance, readSource: async () => structuredClone(source), now: () => preparationClock ?? Date.now() });
   const cacheFile = path.join(root, ".aidn/runtime/cache/reload-state.json"), priorCache = fs.existsSync(cacheFile) ? fs.readFileSync(cacheFile) : null;
   const beforeDocuments = source.postimages.map(row => ({ ...row }));
   const before = await checkpoint.prepare(instance, input, id(2)); assert.equal(before.can_apply, true);
+  if (agedPlan) { preparationClock = null; assert.ok(Date.now() - before.plan.prepared_at_ms >= 86400000); }
   assert.equal(git(root, "rev-parse", "HEAD"), parent); assert.equal(artifacts.ownerPending(), false);
   assert.equal(before.plan.git.files.length, mode === "db-only" ? 0 : names.length);
   pass("preview derives only the finite canonical postimage set and performs no Git effect");
   await assert.rejects(checkpoint.apply(instance, before, { write: true, expectPlan: H, assertAuthorized() {} }), { effect_status: "no_effect" });
   pass("wrong exact plan refuses before mutation");
+  await assert.rejects(checkpoint.apply(instance, before, { expectPlan: before.plan_sha256, assertAuthorized() {} }), { code: "STANDARD_SESSION_PRECLOSE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" });
+  await assert.rejects(checkpoint.apply(instance, before, { write: true, expectPlan: before.plan_sha256, assertAuthorized() { throw Object.assign(Error("fixture denied"), { code: "FIXTURE_PRECLOSE_DENIED" }); } }), { code: "FIXTURE_PRECLOSE_DENIED", effect_status: "no_effect" });
+  assert.equal(git(root, "rev-parse", "HEAD"), parent); assert.equal(artifacts.ownerPending(), false);
+  pass("missing effect intent and denied live grant leave Git and ownership unchanged");
   const rogue = path.join(root, "foreign.txt"); fs.writeFileSync(rogue, "foreign\n");
   await assert.rejects(checkpoint.prepare(instance, input, id(2)), { code: "STANDARD_SESSION_PRECLOSE_CHECKPOINT_FOREIGN_CHANGE" });
   fs.unlinkSync(rogue); pass("foreign untracked paths cannot enter the checkpoint");
@@ -70,6 +77,7 @@ try {
   } else {
     assert.equal(result.outcome, "completed", JSON.stringify(result)); assert.equal(result.facts.session_preclose_checkpoint_completed, true);
     assert.equal(result.facts.session_close_completed, false); assert.equal(artifacts.ownerPending(), false);
+    if (agedPlan) pass("day-old session preclose checkpoint applies with current accepted source, canonical postimages and grant");
     assert.equal(git(root, "status", "--porcelain"), "");
     const nextHead = git(root, "rev-parse", "HEAD");
     if (mode === "db-only") { assert.equal(nextHead, parent); assert.equal(result.observations.git.status, "no_change"); }

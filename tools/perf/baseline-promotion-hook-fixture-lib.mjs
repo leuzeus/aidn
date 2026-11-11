@@ -10,7 +10,7 @@ import { baselinePromotionPaths } from "../../src/core/workflow/standard-baselin
 import { runPromoteBaselineCheckpointUseCase } from "../../src/application/runtime/promote-baseline-checkpoint-use-case.mjs";
 import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
-export async function verifyBaselinePromotionHook({ root, mode, artifacts, promotion, instance, preview, result, git, fault, promotionCheckpoint = false, checkpointFault }) {
+export async function verifyBaselinePromotionHook({ root, mode, artifacts, promotion, instance, preview, result, git, fault, promotionCheckpoint = false, checkpointFault, agedCheckpoint = false }) {
   const recordId = "op_" + "c".repeat(40), hookId = "op_" + "d".repeat(40), input = { record_operation_id: recordId };
   const eventFile = path.join(root, ".aidn/runtime/perf/workflow-events.ndjson"), events = () => fs.existsSync(eventFile) ? fs.readFileSync(eventFile) : Buffer.alloc(0);
   let checkpointCalls = 0; const write = fs.writeFileSync;
@@ -38,7 +38,8 @@ export async function verifyBaselinePromotionHook({ root, mode, artifacts, promo
     const material = { request: preview.plan.request, session_id: "S001", source_material_sha256: shadowHash({ plan: preview.plan, output: result }),
       record_context_sha256: result.observations.causal_transition.after_context_sha256,
       completion_boundary_sha256: result.observations.causal_transition.completion_boundary_sha256, parent_head: git("rev-parse", "HEAD"), approved_postimages: approved };
-    const checkpoint = createStandardBaselinePromotionCheckpoint({ targetRoot: root, promotion, readCurrent: () => instance, readSource: async () => structuredClone(material) });
+    let checkpointClock = agedCheckpoint ? Date.now() - 86400000 : null;
+    const checkpoint = createStandardBaselinePromotionCheckpoint({ targetRoot: root, promotion, readCurrent: () => instance, readSource: async () => structuredClone(material), now: () => checkpointClock ?? Date.now() });
     const cachePath = path.join(root, ".aidn/runtime/cache/reload-state.json"), cacheBytes = () => fs.existsSync(cachePath) ? fs.readFileSync(cachePath) : null;
     const beforeHead = git("rev-parse", "HEAD"), beforeCache = cacheBytes();
     if (checkpointFault === "foreign_parent" || checkpointFault === "foreign_path") {
@@ -54,6 +55,7 @@ export async function verifyBaselinePromotionHook({ root, mode, artifacts, promo
     }
     const preparedCheckpoint = await checkpoint.prepare(instance, checkpointInput, id);
     assert.equal(preparedCheckpoint.can_apply, true, JSON.stringify(preparedCheckpoint));
+    if (agedCheckpoint) { checkpointClock = null; assert.ok(Date.now() - preparedCheckpoint.plan.prepared_at_ms >= 86400000); }
     assert.equal(git("rev-parse", "HEAD"), beforeHead); assert.deepEqual(cacheBytes(), beforeCache);
     await assert.rejects(checkpoint.apply(instance, preparedCheckpoint, { write: true, expectPlan: preparedCheckpoint.plan_sha256,
       assertAuthorized: () => { throw Object.assign(Error("fixture denied checkpoint"), { code: "FIXTURE_CHECKPOINT_DENIED" }); } }), { code: "FIXTURE_CHECKPOINT_DENIED" });
@@ -70,6 +72,7 @@ export async function verifyBaselinePromotionHook({ root, mode, artifacts, promo
     }
     assert.equal(checked.outcome, "completed", JSON.stringify(checked));
     assert.equal(checked.facts.baseline_checkpoint_completed, true); assert.equal(checked.facts.baseline_promotion_completed, false);
+    if (agedCheckpoint) assert.ok(Date.now() - preparedCheckpoint.plan.prepared_at_ms >= 86400000);
     assert.equal(artifacts.ownerPending(), false); assert.equal(git("status", "--porcelain"), "");
     const confirmedHead = git("rev-parse", "HEAD");
     await assert.rejects(checkpoint.apply(instance, preparedCheckpoint, { write: true, expectPlan: preparedCheckpoint.plan_sha256, assertAuthorized() {} }));

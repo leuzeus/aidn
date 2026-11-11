@@ -49,6 +49,7 @@ export function createStandardSessionModeOperations({ artifacts, scope, admissio
   }
   function explicit(prepared, write, expected) {
     if (write !== true || !prepared?.can_apply || prepared.plan_sha256 !== expected || shadowHash(prepared.plan) !== expected) fail("STANDARD_EXPLICIT_EFFECT_REQUIRED");
+    if (!Number.isSafeInteger(prepared.plan?.prepared_at_ms) || prepared.plan.prepared_at_ms < 0) fail("STANDARD_EXPLICIT_EFFECT_REQUIRED");
   }
   async function postMode(plan) {
     const observed = session(plan.input.session_id), admitted = await admission(plan.input.mode), context = scope();

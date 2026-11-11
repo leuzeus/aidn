@@ -55,9 +55,9 @@ export function createStandardSessionDeliveryCheckpoint({ targetRoot, readSource
   }
   return Object.freeze({ prepare: (instance, input, id) => prepare(instance, input, id, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
-      const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
+      const plan = prepared?.plan;
       if (!valid(plan, planSchema) || !prepared?.can_apply || write !== true || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan
-        || typeof assertAuthorized !== "function" || !Number.isSafeInteger(age) || age < 0 || age > 300000)
+        || typeof assertAuthorized !== "function")
         throw Object.assign(Error("STANDARD_SESSION_DELIVERY_EXPLICIT_EFFECT_REQUIRED"), { code: "STANDARD_SESSION_DELIVERY_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" });
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
@@ -72,8 +72,7 @@ export function createStandardSessionDeliveryCheckpoint({ targetRoot, readSource
           const view = git.inspect(), head = result.commit_sha ?? result.head;
           if (!view.index_clean || view.lock_present || view.changes.length || view.head !== head || view.branch !== value.branch
             || plan.git.files.length && git.inspectCommit(gitPlan).status !== "confirmed" || !plan.git.files.length && head !== plan.git.observed.head
-            || shadowHash(await source(instance, plan.input)) !== plan.source_sha256 || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256
-            || now() - plan.prepared_at_ms > 300000)
+            || shadowHash(await source(instance, plan.input)) !== plan.source_sha256 || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256)
             fail("STANDARD_SESSION_DELIVERY_UNCONFIRMED");
           await assertAuthorized();
           return emit("completed", result.effect_status, { finalization_operation_id: plan.input.finalization_operation_id, git: result },
