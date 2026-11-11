@@ -39,15 +39,32 @@ const log = path.join(base, "events.jsonl"), script = path.join(base, "child wit
 fs.writeFileSync(script, `import fs from 'node:fs'; fs.appendFileSync(process.argv[2],JSON.stringify(process.argv.slice(3))+'\\n'); process.exitCode=Number(process.argv[3]);\n`);
 const first = [script, log, "0", "one two", "literal & no shell", "$(literal)"];
 const failing = [script, log, "23"], forbidden = [script, log, "0", "must never start"];
-let result = await runNodeFixtureCases([first, failing, forbidden], { cwd: base, stdio: "pipe" });
+const evidenceRoot = fs.mkdtempSync(path.join(path.dirname(base), "aidn-dispatcher-deadline-"));
+const env = { ...process.env }; delete env.AIDN_VERIFICATION_DEADLINE_AT;
+let result = await runNodeFixtureCases([first, failing, forbidden], { cwd: base, env, evidenceRoot, stdio: "pipe" });
 assert.deepEqual(result, { exit_code: 23, signal: null, completed: 1 });
 assert.deepEqual(fs.readFileSync(log, "utf8").trim().split("\n").map(JSON.parse), [first.slice(2), failing.slice(2)]);
 console.log("PASS argv/paths with spaces and shell literals survive; failing second child prevents third and preserves exit 23");
+const firstEvidence = path.join(evidenceRoot, fs.readdirSync(evidenceRoot).find(name => name.startsWith("aidn-verification-")));
+assert.equal(JSON.parse(fs.readFileSync(path.join(firstEvidence, "cases.json"))).deadline_at, null);
+if (process.platform === "win32") for (const name of ["001", "002"]) {
+  const observed = JSON.parse(fs.readFileSync(path.join(firstEvidence, name, "result.json")));
+  assert.equal(observed.deadline_at, null); assert.equal(observed.deadline_exceeded, false); assert.equal(observed.cleanup.proof.active_processes, 0);
+}
+console.log("PASS default dispatcher invents no aggregate or case deadline and preserves each observed closure");
 fs.writeFileSync(log, "");
-result = await runNodeFixtureCases([first, forbidden], { cwd: base, stdio: "pipe" });
+const deadlineAt = Date.now() + 60000, prior = new Set(fs.readdirSync(evidenceRoot));
+result = await runNodeFixtureCases([first, forbidden], { cwd: base, env, evidenceRoot, deadlineAt, stdio: "pipe" });
 assert.deepEqual(result, { exit_code: 0, signal: null, completed: 2 });
 assert.deepEqual(fs.readFileSync(log, "utf8").trim().split("\n").map(JSON.parse), [first.slice(2), forbidden.slice(2)]);
 console.log("PASS successful children execute in their declared order");
+const secondEvidence = path.join(evidenceRoot, fs.readdirSync(evidenceRoot).find(name => !prior.has(name)));
+assert.equal(JSON.parse(fs.readFileSync(path.join(secondEvidence, "cases.json"))).deadline_at, new Date(deadlineAt).toISOString());
+if (process.platform === "win32") for (const name of ["001", "002"]) {
+  const observed = JSON.parse(fs.readFileSync(path.join(secondEvidence, name, "result.json")));
+  assert.equal(observed.deadline_at, new Date(deadlineAt).toISOString()); assert.equal(observed.cleanup.proof.active_processes, 0);
+}
+console.log("PASS an explicit caller deadline is identical across both cases without renewal");
 const ready = path.join(base, "ready"), waiting = path.join(base, "waiting.mjs"), parent = path.join(base, "parent.mjs");
 fs.writeFileSync(waiting, `import fs from 'node:fs'; fs.writeFileSync(process.argv[2],String(process.pid)); setInterval(()=>{},1000);\n`);
 const library = new URL("../verify/node-fixture-runner-lib.mjs", import.meta.url).href;

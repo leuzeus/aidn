@@ -33,6 +33,7 @@ function initializeRepository(repoRoot) {
     scripts: {
       "fixture:pass": "node fixture-pass.mjs",
       "fixture:dirty": "node fixture-dirty.mjs",
+      "perf:verify-agentic-process": "node fixture-pass.mjs",
     },
   }, null, 2), "utf8");
   fs.writeFileSync(path.join(repoRoot, "tracked.txt"), "tracked baseline\n", "utf8");
@@ -148,6 +149,24 @@ function main() {
       assert(actualCommand.results[0].verification_process.cleanup.state === "confirmed", "Windows actual npm gate must prove full owned Job closure");
       assert(actualCommand.results[0].verification_process.cleanup.proof.active_processes === 0, "no descendants after successful actual npm gate");
     }
+
+    const packageJson = JSON.parse(fs.readFileSync(path.join(tempRoot, "package.json"), "utf8"));
+    const aggregateGate = { id: "runtime-agentic-process", script: "perf:verify-agentic-process" };
+    const aggregate = runGateFamily({ repoRoot: tempRoot, catalog: makeCatalog(aggregateGate), packageJson,
+      requested: "synthetic", context: "dev", env: cleanEnvironment(), json: true });
+    assert(aggregate.ok, JSON.stringify(aggregate));
+    if (process.platform === "win32") {
+      assert(aggregate.results[0].verification_process.deadline_at === null, "manifest aggregate must have no invented execution deadline");
+      assert(aggregate.results[0].verification_process.cleanup.proof.active_processes === 0, "aggregate still proves owned Job closure");
+    }
+    const budgets = [];
+    for (const [gate, options] of [[aggregateGate, {}], [aggregateGate, { timeoutMs: 4321 }], [{ id: "single-command" }, {}]]) {
+      const inspected = runGateFamily({ repoRoot: tempRoot, catalog: makeCatalog(gate), packageJson,
+        requested: "synthetic", context: "dev", env: cleanEnvironment(), json: true, ...options,
+        commandRunner(input) { budgets.push(input.timeoutMs); return successfulCommand(); } });
+      assert(inspected.ok, "budget selection must not change ordinary gate accounting");
+    }
+    assert(JSON.stringify(budgets) === JSON.stringify([null, 4321, 900000]), "only the declared aggregate loses its default cap; explicit caller budgets remain exact");
 
     const cleanGate = runFixtureGate(tempRoot, { id: "clean-pass" });
     assert(cleanGate.ok, "clean synthetic gate should pass");
@@ -410,6 +429,8 @@ function main() {
         cleanliness_script_executed_clean_and_dirty: true,
         failed_command_exit_signal_tails_preserved: true,
         signalled_command_error_code_preserved: true,
+        declared_manifest_has_no_default_aggregate_deadline: true,
+        explicit_caller_budget_preserved: true,
       },
       final_repository_clean: true,
     };

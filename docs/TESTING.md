@@ -1,5 +1,51 @@
 # Testing Guide
 
+## Complete fixture supervision, 2026-11-11
+
+The `runtime-agentic-process` gate still executes the declared
+`perf:verify-agentic-process` npm script and its exact ordered manifest. Neither
+the gate wrapper nor the dispatcher supplies an implicit wall-clock cutoff for
+that aggregation or its cases. The former900000ms cutoff interrupted valid
+work as the corpus accumulated; it is removed rather than enlarged. Other
+single-command gate defaults are outside this change.
+
+An explicit caller deadline remains exact through nested supervision and all
+cases; no case renews it. On Windows, verification-only construction explicitly
+permits supervision without a deadline. The helper still assigns the owned Job
+before resume, stops on cancellation or supervisor pipe loss, watches the exact
+synchronous caller identity, and records observed closure. A null
+`deadline_at` in verification evidence means no execution deadline was supplied;
+it does not mean that closure was inferred. Output and protocol limits remain.
+The default process controller used by Native execution still refuses an absent
+or null duration; Native request validation and authenticated resource grants
+are unchanged.
+
+`verify-node-fixture-runner-fixtures.mjs` tests exact argv/order, fail-first,
+default absence of a deadline, fixed explicit deadline across two cases and
+cancellation. Its real Windows tree checks include the explicit deadline
+control plus cancellation, caller death and supervisor death without an
+invented execution cap, preserving an unrelated spectator process.
+`verify-gate-runner-fixtures.mjs` executes the actual npm/Windows wrapper with
+and without a deadline and verifies explicit override selection. The portable
+process-tree fixtures separately reject missing Native durations before spawn
+and verify that optional verification supervision installs no execution timer.
+The generic real Windows process-tree and Codex-executor fixtures cover the
+unchanged finite path. These controls do not qualify actual Codex work,
+business-resource disposition, the full197 cases, L7 or an installed archive.
+
+The real process-tree fixture keeps its original600ms and700ms fixed-deadline
+controls separate from preparation, stdout and descendant readiness. Callback
+and descendant controls use the existing ordinary10000ms fixture request and
+shorten it through `timeoutSignal` only after their observed milestone. The
+closed-helper control observes both actual stdout and the real helper's close
+event before timing out its unsettled callback. Shutdown measurements start at
+the observed stop, independently of startup latency. The fixture retains each
+complete controller result before assertions. This changes its observation
+protocol, not a Native grant or runtime deadline.
+
+Original failed and interrupted attempts remain separate evidence. A successful
+component rerun never rewrites their original deadline, exit or UNKNOWN effect.
+
 ## Current interrupted correction reopening, 2026-11-11
 
 The FILES reopening/disposition fixture produces an actual post-effect grant

@@ -6,14 +6,15 @@ import { verificationEvidenceDirectory, verificationWindowsController, runWindow
 // argv is passed directly to Node, including paths/arguments containing spaces.
 // No shell expansion, npm recursion, output buffering or timeout replacement.
 export async function runNodeFixtureCases(cases, { cwd, env = process.env, stdio = "inherit", signal,
-  evidenceRoot = env.AIDN_FIXTURE_EVIDENCE_ROOT, deadlineAt = Number(env.AIDN_VERIFICATION_DEADLINE_AT) || Date.now() + 900000 } = {}) {
+  evidenceRoot = env.AIDN_FIXTURE_EVIDENCE_ROOT,
+  deadlineAt = env.AIDN_VERIFICATION_DEADLINE_AT === undefined ? null : Number(env.AIDN_VERIFICATION_DEADLINE_AT) } = {}) {
   if (!Array.isArray(cases) || !cases.length || cases.some(args => !Array.isArray(args) || !args.length
     || args.some(arg => typeof arg !== "string" || !arg || arg.includes("\0")))) throw Error("NODE_FIXTURE_CASES_INVALID");
-  if (!Number.isSafeInteger(deadlineAt) || deadlineAt <= 0) throw Error("NODE_FIXTURE_DEADLINE_INVALID");
+  if (deadlineAt !== null && (!Number.isSafeInteger(deadlineAt) || deadlineAt <= 0)) throw Error("NODE_FIXTURE_DEADLINE_INVALID");
   const evidence = verificationEvidenceDirectory(cwd, evidenceRoot);
   process.stderr.write(`Node fixture evidence: ${evidence}\n`);
   fs.writeFileSync(path.join(evidence, "cases.json"), JSON.stringify({ contract_version: "node-fixture-observation.v1",
-    pid: process.pid, cwd, started_at: new Date().toISOString(), deadline_at: new Date(deadlineAt).toISOString(), cases }, null, 2), { flag: "wx" });
+    pid: process.pid, cwd, started_at: new Date().toISOString(), deadline_at: deadlineAt === null ? null : new Date(deadlineAt).toISOString(), cases }, null, 2), { flag: "wx" });
   let active = null, requestedSignal = null;
   const cancellation = new AbortController();
   const stop = name => { requestedSignal ??= name; cancellation.abort(); if (active) active.kill(name); };
@@ -22,13 +23,15 @@ export async function runNodeFixtureCases(cases, { cwd, env = process.env, stdio
   signal?.addEventListener("abort", abort, { once: true });
   let completed = 0;
   const windows = process.platform === "win32" ? verificationWindowsController(evidence, env) : null;
-  const timer = setTimeout(() => stop("SIGTERM"), Math.max(1, deadlineAt - Date.now()));
+  // A coordinator invents no wall-clock budget. Preserve a caller's explicit
+  // deadline exactly, including across nested cases, without renewing it.
+  const timer = deadlineAt === null ? null : setTimeout(() => stop("SIGTERM"), Math.max(1, deadlineAt - Date.now()));
   const finish = result => { fs.writeFileSync(path.join(evidence, "summary.json"), JSON.stringify({ ...result,
     ended_at: new Date().toISOString(), required: cases.length }), { flag: "wx" }); return result; };
   try {
     if (signal?.aborted) abort();
     for (const args of cases) {
-      if (Date.now() >= deadlineAt) stop("SIGTERM");
+      if (deadlineAt !== null && Date.now() >= deadlineAt) stop("SIGTERM");
       if (requestedSignal) return finish({ exit_code: null, signal: requestedSignal, completed });
       const index = completed + 1, folder = path.join(evidence, String(index).padStart(3, "0")); fs.mkdirSync(folder);
       const started = new Date().toISOString();

@@ -172,7 +172,7 @@ function defaultCommandRunner({
     cwd: repoRoot,
     env,
     encoding: "utf8",
-    timeout: timeoutMs,
+    ...(timeoutMs === null ? {} : { timeout: timeoutMs }),
     maxBuffer,
     shell: false,
   });
@@ -219,7 +219,7 @@ export function runGateFamily({
   commandRunner = defaultCommandRunner,
   stdoutWriter = (value) => process.stdout.write(value),
   stderrWriter = (value) => process.stderr.write(value),
-  timeoutMs = 900000,
+  timeoutMs,
   maxBuffer = 30 * 1024 * 1024,
 }) {
   const selected = catalog.gates.filter(
@@ -306,7 +306,12 @@ export function runGateFamily({
           ...env,
           AIDN_GATE_CONTEXT: context,
         },
-        timeoutMs,
+        // This declared manifest coordinates individually supervised fixtures.
+        // Its length is not an execution deadline. Explicit caller budgets
+        // remain exact; ordinary single-command gates keep their default.
+        timeoutMs: timeoutMs === undefined
+          ? gate.id === "runtime-agentic-process" && gate.script === "perf:verify-agentic-process" ? null : 900000
+          : timeoutMs,
         maxBuffer,
       });
     } catch (error) {

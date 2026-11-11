@@ -77,30 +77,31 @@ export function verificationWindowsController(evidenceDir, env = process.env) {
     : buildAgentProcessHelper({ outputDir: path.join(evidenceDir, "helper") });
   return { manifest, controller: createWindowsProcessTreeController({ helperPath: manifest.helper_path,
     helperSha256: manifest.helper_sha256, helperSourceSha256: manifest.source_sha256,
-    candidateSha256: hash(fileURLToPath(import.meta.url)) }) };
+    candidateSha256: hash(fileURLToPath(import.meta.url)), allowNoDeadline: true }) };
 }
 
 export async function runWindowsVerificationCommand({ command, args, cwd, env = process.env, deadlineAt,
   maxOutputBytes, controller, evidenceDir, signal, onEvent = () => {} }) {
-  const started = now(), remaining = deadlineAt - Date.now();
-  const identity = { command, args, cwd, started_at: started, deadline_at: new Date(deadlineAt).toISOString() };
+  if (deadlineAt !== null && (!Number.isSafeInteger(deadlineAt) || deadlineAt <= 0)) throw Error("VERIFICATION_DEADLINE_INVALID");
+  const started = now(), remaining = deadlineAt === null ? null : deadlineAt - Date.now();
+  const identity = { command, args, cwd, started_at: started, deadline_at: deadlineAt === null ? null : new Date(deadlineAt).toISOString() };
   fs.writeFileSync(path.join(evidenceDir, "started.json"), JSON.stringify(identity, null, 2), { flag: "wx" });
   let result;
-  if (remaining <= 0 || signal?.aborted) result = { outcome: signal?.aborted ? "cancelled" : "timed_out",
+  if (remaining !== null && remaining <= 0 || signal?.aborted) result = { outcome: signal?.aborted ? "cancelled" : "timed_out",
     reason_code: signal?.aborted ? "PROCESS_CANCELLED_BEFORE_START" : "PROCESS_TIMEOUT_BEFORE_START",
     termination_state: "not_started", exit_code: null, runner: null, termination_proof: null };
   else {
-    const timeout = new AbortController(), timer = setTimeout(() => timeout.abort(), remaining);
+    const timeout = new AbortController(), timer = remaining === null ? null : setTimeout(() => timeout.abort(), remaining);
     try { result = await controller.run({ runnerId: "verification." + randomUUID(), executable: command,
       executableSha256: hash(command), args, cwd, env: Object.fromEntries(Object.entries(env).filter(([, v]) => typeof v === "string")),
       stdin: "", maxDurationMs: remaining, maxOutputBytes, stopTimeoutMs: 5000 }, { signal, timeoutSignal: timeout.signal, onEvent: event => {
-        if (Date.now() >= deadlineAt) timeout.abort();
+        if (deadlineAt !== null && Date.now() >= deadlineAt) timeout.abort();
         if (event.type === "prepared" || event.type === "resumed") fs.appendFileSync(path.join(evidenceDir, "events.jsonl"), JSON.stringify({ at: now(), ...event }) + "\n");
         return onEvent(event);
       } });
     } finally { clearTimeout(timer); }
   }
-  const receipt = { ...identity, ended_at: now(), deadline_exceeded: Date.now() >= deadlineAt, result,
+  const receipt = { ...identity, ended_at: now(), deadline_exceeded: deadlineAt !== null && Date.now() >= deadlineAt, result,
     cleanup: { state: result.termination_state, proof: result.termination_proof },
     transcripts: Object.fromEntries(["stdout", "stderr"].map(name => {
       const file = path.join(evidenceDir, name + ".log"), sha256 = fs.existsSync(file) ? hash(file) : null;
@@ -114,15 +115,16 @@ export async function runWindowsVerificationCommand({ command, args, cwd, env = 
 // Keep the synchronous family API. The supervisor owns the Job's lifetime pipe;
 // if it dies, EOF reaches the helper (never inherited by the command's children).
 export function runOwnedVerificationCommandSync({ command, args, cwd, env, timeoutMs, maxBuffer }) {
+  if (timeoutMs !== null && (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0)) throw Error("VERIFICATION_TIMEOUT_INVALID");
   const evidenceDir = verificationEvidenceDirectory(cwd, env.AIDN_VERIFICATION_EVIDENCE_ROOT);
-  const deadlineAt = Date.now() + timeoutMs;
+  const deadlineAt = timeoutMs === null ? null : Date.now() + timeoutMs;
   const caller = verificationCallerIdentity();
   const request = { command, args, cwd, deadlineAt, maxOutputBytes: maxBuffer, evidenceDir, caller };
   const outer = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--supervise"], {
     cwd, env, input: JSON.stringify(request), encoding: "utf8", shell: false, windowsHide: true,
     // The command retains its original deadline. This separate allowance only
     // collects closure evidence; the helper independently enforces the deadline.
-    timeout: timeoutMs + 15000, maxBuffer,
+    ...(timeoutMs === null ? {} : { timeout: timeoutMs + 15000 }), maxBuffer,
   });
   let receipt;
   try { receipt = JSON.parse(fs.readFileSync(path.join(evidenceDir, "result.json"), "utf8")); } catch { /* retain unknown */ }
@@ -131,7 +133,7 @@ export function runOwnedVerificationCommandSync({ command, args, cwd, env, timeo
   const error = ok ? null : Object.assign(new Error(stopped?.reason_code ?? "VERIFICATION_TERMINATION_UNCONFIRMED"),
     { code: stopped?.outcome === "timed_out" ? "ETIMEDOUT" : outer.error?.code ?? stopped?.reason_code ?? "VERIFICATION_TERMINATION_UNCONFIRMED" });
   return { ...outer, status: ok ? 0 : stopped?.exit_code ?? outer.status, error,
-    verification_process: { evidence_dir: evidenceDir, deadline_at: new Date(deadlineAt).toISOString(),
+    verification_process: { evidence_dir: evidenceDir, deadline_at: deadlineAt === null ? null : new Date(deadlineAt).toISOString(),
       outcome: stopped?.outcome ?? "indeterminate", cleanup: receipt?.cleanup ?? { state: "unknown", proof: null } } };
 }
 
@@ -147,8 +149,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   try {
     const { controller, manifest } = verificationWindowsController(request.evidenceDir);
     const env = { ...process.env, AIDN_VERIFICATION_HELPER_MANIFEST: manifest.manifest_path,
-      AIDN_VERIFICATION_DEADLINE_AT: String(request.deadlineAt), AIDN_FIXTURE_EVIDENCE_ROOT: request.evidenceDir,
+      AIDN_FIXTURE_EVIDENCE_ROOT: request.evidenceDir,
       AIDN_VERIFICATION_SUPERVISOR_PID: String(process.pid) };
+    if (request.deadlineAt === null) delete env.AIDN_VERIFICATION_DEADLINE_AT;
+    else env.AIDN_VERIFICATION_DEADLINE_AT = String(request.deadlineAt);
     descriptors = ["stdout", "stderr"].map(name => fs.openSync(path.join(request.evidenceDir, name + ".log"), "wx"));
     const result = await runWindowsVerificationCommand({ ...request, controller, env, signal: cancellation.signal,
       onEvent(event) { if (["stdout", "stderr"].includes(event.type)) {

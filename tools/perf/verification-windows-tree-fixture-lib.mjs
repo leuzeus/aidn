@@ -72,7 +72,7 @@ process.exitCode=result.exit_code||1;\n`);
       } else if (mode === "synchronous_caller_death") {
         const callerFile = path.join(base, "synchronous caller.mjs");
         fs.writeFileSync(callerFile, `import {runOwnedVerificationCommandSync} from ${JSON.stringify(new URL("../verify/owned-verification-process-lib.mjs", import.meta.url).href)};
-const result=runOwnedVerificationCommandSync({command:process.execPath,args:['relative-dispatcher.mjs',...process.argv.slice(2,5)],cwd:process.cwd(),env:{...process.env,AIDN_VERIFICATION_EVIDENCE_ROOT:process.argv[5]},timeoutMs:30000,maxBuffer:1048576});
+const result=runOwnedVerificationCommandSync({command:process.execPath,args:['relative-dispatcher.mjs',...process.argv.slice(2,5)],cwd:process.cwd(),env:{...process.env,AIDN_VERIFICATION_EVIDENCE_ROOT:process.argv[5]},timeoutMs:null,maxBuffer:1048576});
 process.exitCode=result.error?1:0;\n`);
         const caller = spawn(process.execPath, [callerFile, log, ready, forbidden, dir], { cwd: base, stdio: "ignore", shell: false, windowsHide: true });
         const closed = new Promise(resolve => caller.once("close", resolve));
@@ -87,7 +87,7 @@ process.exitCode=result.error?1:0;\n`);
         const supervisor = spawn(process.execPath, [source, "--supervise"], { cwd: base, stdio: ["pipe", "ignore", "pipe"], windowsHide: true });
         const closed = new Promise(resolve => supervisor.once("close", resolve));
         supervisor.stdin.end(JSON.stringify({ command: process.execPath, args: ["relative-dispatcher.mjs", log, ready, forbidden], cwd: base,
-          deadlineAt: Date.now() + 30000, maxOutputBytes: 1048576, evidenceDir, caller: verificationCallerIdentity() }));
+          deadlineAt: null, maxOutputBytes: 1048576, evidenceDir, caller: verificationCallerIdentity() }));
         try { await waitFor(ready, supervisor); }
         finally { supervisor.kill(); await closed; }
         receipt = { evidence_dir: evidenceDir, supervisor_pid: supervisor.pid, supervisor_death: true, cleanup: "observe_exact_identities_below" };

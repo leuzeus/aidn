@@ -1,5 +1,27 @@
 # ADR-0010 - Adaptive Repository Governance
 
+## Verification supervision amendment, 2026-11-11
+
+The complete agentic fixture corpus has no implicit aggregate execution
+deadline, including at the npm gate wrapper. Its dispatcher also invents no
+per-case wall-clock deadline. The former900000ms default is removed for this
+aggregation because it accumulated unrelated fixture durations and interrupted
+otherwise valid work. It is not replaced by a larger deadline or a renewal
+requirement. Explicit caller deadlines remain fixed and are still enforced.
+
+Windows verification keeps atomic Job assignment before resume, cancellation,
+exact retained caller identity, supervisor pipe ownership, output bounds and
+observed process-tree closure. A private explicit verification construction may
+supervise completion and cancellation with a null deadline. Default Native
+construction cannot select that behavior: it still requires its authenticated
+finite execution duration. The original Native grants and resource accounting
+are unchanged. Other single-command verification defaults are not assessed by
+this amendment.
+
+Exact manifest coverage and all delivery gates remain required. Removing the
+orchestration cutoff grants no business effect and upgrades no old failure,
+UNKNOWN outcome or component proof into full-corpus acceptance.
+
 ## Status
 
 Accepted
