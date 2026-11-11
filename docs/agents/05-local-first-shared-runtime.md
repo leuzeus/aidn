@@ -70,6 +70,15 @@ records provenance. Staging does not impose a separate elapsed-age limit.
 Dispatch applies the current authorization and operation-specific validity
 checks before its business effect.
 
+Cycle checkpoint and drift finalization reconstruct their prepared plans under
+the effect owner and repeat current authority, prefix, document, gate and
+objective checks at their existing boundaries. Their preparation timestamp
+does not impose an elapsed-age limit, including after the drift report write.
+Hook event correlation still verifies the unique run, unchanged event prefix,
+matching subject and timestamp inside the observed hook invocation. A revoked
+capability or changed context still refuses; loss after an effect retains an
+uncertain outcome.
+
 Cycle validation reconstructs the work, product snapshot, profile and boundary
 descriptor under its owner and current authorization before running checks.
 These observations establish plan validity. The profile's command budget

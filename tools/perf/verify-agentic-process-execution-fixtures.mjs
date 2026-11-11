@@ -14,6 +14,7 @@ import { attachCycleClosureModel, closureHumanSource } from "./cycle-closure-fix
 import { attachCycleAuditModel, cycleAuditProposal } from "./cycle-audit-fixture-lib.mjs";
 import { CYCLE_AUDIT_CONTRACT } from "../../src/core/workflow/standard-cycle-audit.mjs";
 import { verifyCycleVerificationContracts } from "./cycle-verification-fixture-lib.mjs";
+import { verifyDriftPreparedPlanValidity } from "./drift-plan-validity-fixture-lib.mjs";
 import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
 import assert from "node:assert/strict";
 import { attachComposedR09Provider } from "./standard-composed-r09-provider-fixture-lib.mjs";
@@ -719,6 +720,7 @@ function mixedFixture(stateMode = "files", options = {}) {
   if (options.r09) f.r09 = attachComposedR09Provider({ configuration: f.configuration, remoteRoot: f.sessionPushRemoteRoot, initialize: true });
   const compose = () => observe((options.standardModel ? createStandardWorkflowExecution : createStandardWorkflowMixedHost)({ configuration: f.configuration,
     readSigningKey: f.r09?.authority.readKey ?? (() => key), ...(f.r09 ? { environment: f.r09.environment } : {}),
+    ...(options.now ? { now: options.now } : {}),
     authorize: f.r09 ? input => f.r09.authority.authorizeOperation(input, input.preview_sha256) : options.authorize ?? (async () => grant),
     controlSource: options.controlSource, humanSource: f.r09?.authority.humanSource ?? options.humanSource,
     validationProfile: f.validationProfile, nativeAuthorizationSource: options.nativeAuthorizationSource,
@@ -762,17 +764,27 @@ async function bootstrapMixed(f) {
     const result = await f.open().step({ write: true, input: count === 2 && !f.model.data_bindings ? input : {} });
     assert.equal(result.kind, "operation"); assert.notEqual(result.cursor.status, "FAILED");
   }
+  if (f.sessionMode) {
+    const operations = createStandardWorkflowOperations({ targetRoot: f.configuration.target_root });
+    const prepared = await operations.prepareMode({ session_id: input.session_id, mode: f.sessionMode });
+    assert.equal(prepared.can_apply, true, JSON.stringify(prepared));
+    assert.equal((await operations.applyMode(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
+  }
   const auth = f.authorize(); auth.global_deadline_ms += 1800000; auth.workflow_deadline_ms += 1800000;
   return auth;
 }
 function finalizationFixture(mode = "files", options = {}) {
-  return mixedFixture(mode, { drift: true, finalize: true, ...options, answer({ params }) {
+  const f = mixedFixture(mode, { drift: true, finalize: true, ...options, answer({ params }) {
     const context = JSON.parse(params.input[0].text.split("\n").at(-1));
     return { outcome: "completed", summary: "Scoped diagnostic fixture.", report: { contract_version: "standard-drift-report.v1", context_sha256: context.context_sha256,
       original_objective: context.context.original_objective, current_objective: context.context.original_objective, drift_level: "none", objective_changed: false,
       changes: [], keep: ["Current scope"], discard: [], split_recommendation: { new_cycle: false, new_branch: false, change_request_required: false, impact: "none" },
       recommendation: "continue", rationale: "Fixture native wire only; application finalization is real.", evidence_refs: context.evidence_refs } };
   } });
+  // A diagnostic requires an explicit admitted mode. UNKNOWN remains blocked
+  // by the production context reader; this fixture supplies its own choice.
+  f.sessionMode = "THINKING";
+  return f;
 }
 async function readyFinalization(f) {
   const auth = await bootstrapMixed(f), native = await f.open().step({ write: true, authorization: auth });
@@ -2385,16 +2397,20 @@ if (process.argv[2] === "--mixed-continue") {
       { drift_present: false, drift_context_complete: true, drift_recovery_required: true },
     ]) {
       const finalizer = createStandardDriftFinalization({ targetRoot: f.configuration.target_root,
-        readEvaluation: async () => ({ output: { facts } }), readCurrent: () => { throw Error("UNEXPECTED_EFFECT"); } });
+        readEvaluation: async () => ({ context: { contract_version: "standard-drift-context.v2", mode: "COMMITTING" }, output: { facts } }),
+        readCurrent: () => { throw Error("UNEXPECTED_EFFECT"); } });
       const prepared = await finalizer.prepare({}, { evaluation_operation_id: id }, id);
       assert.equal(prepared.can_apply, false); assert.equal(prepared.reason_code, "STANDARD_DRIFT_RECOVERY_REQUIRED");
     }
   });
-  for (const mode of ["files", "dual", "db-only"]) await check(`drift finalize ${mode}: real report persistence and own R05 hook close the model without another model call`, async () => {
-    let deny = false;
-    const f = finalizationFixture(mode, { authorize: async ({ binding }) => deny && binding.id === "drift_check_finalize" ? { authorized: false }
+  await verifyDriftPreparedPlanValidity(check);
+  for (const mode of ["files", "dual", "db-only"]) await check(`drift finalize ${mode}: aged plan persists its real report and own R05 hook without another model call`, async () => {
+    let deny = false, preparedClock = null;
+    const f = finalizationFixture(mode, { now: () => preparedClock ?? Date.now(), authorize: async ({ binding }) => deny && binding.id === "drift_check_finalize" ? { authorized: false }
       : { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) } });
-    const { evaluated, input } = await readyFinalization(f), preview = await f.open().step({ input });
+    const { evaluated, input } = await readyFinalization(f);
+    preparedClock = Date.now() - 86400000;
+    const preview = await f.open().step({ input });
     assert.equal(preview.preview.prepared.can_apply, true, JSON.stringify(preview.preview.prepared));
     const events = path.join(f.configuration.target_root, ".aidn/runtime/perf/workflow-events.ndjson"), before = fs.existsSync(events) ? fs.readFileSync(events) : null;
     if (mode === "files") {
@@ -2407,7 +2423,14 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(f.open().inspect().record.instance_sha256, evaluated.record.instance_sha256);
       assert.equal(fs.existsSync(events), before !== null);
     }
-    const completed = await f.open().step({ write: true, input }); assert.equal(completed.cursor.status, "COMPLETED", JSON.stringify(completed));
+    // Prepare and sign in the past, then dispatch with the real progressing
+    // clock so independent hook-event provenance remains meaningful.
+    const staged = await f.open().stageOperation(preview.preview, { write: true, expectedPreviewSha256: shadowHash(preview.preview) });
+    preparedClock = null;
+    assert.ok(Date.now() - preview.preview.prepared.plan.prepared_at_ms >= 86400000);
+    assert.equal((await f.open().dispatchOperation(staged.operation_id, { write: true })).receipt.outcome, "completed");
+    const completed = { ...await f.open().acceptOperation(staged.operation_id, { write: true }), operation_id: staged.operation_id };
+    assert.equal(completed.cursor.status, "COMPLETED", JSON.stringify(completed));
     const output = f.open().readOperation(completed.operation_id).results.at(-1).output;
     assert.equal(output.facts.drift_check_completed, true); assert.equal(output.observations.hook.payload.result, "ok");
     const artifact = createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root }).read(output.observations.report_path, { required: true });

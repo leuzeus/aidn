@@ -17,7 +17,7 @@ import { createLocalProcessAdapter } from "../../src/adapters/runtime/local-proc
 const here = fileURLToPath(import.meta.url), temporary = fs.realpathSync(os.tmpdir()), actualNow = Date.now;
 const H = "a".repeat(64), hash = value => createHash("sha256").update(value).digest("hex");
 let clockFile = null;
-// Only the selected host operation's TTL clock is injected. A normal hook uses
+// Only the selected host operation's preparation clock is injected. A normal hook uses
 // real wall time, including its independently emitted checkpoint event time.
 const clockNow = () => {
   const value = clockFile === null ? null : JSON.parse(fs.readFileSync(clockFile, "utf8"));
@@ -51,7 +51,8 @@ if (process.argv[2] === "--prepare") {
   console.log(JSON.stringify({ preview, counters }));
 } else {
   const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "files";
-  const expireCheckpoint = process.argv.includes("--expire-checkpoint");
+  // Keep the old fixture selector as an alias; it now proves current validity.
+  const agedCheckpoint = process.argv.includes("--aged-checkpoint") || process.argv.includes("--expire-checkpoint");
   if (!["files", "dual", "db-only"].includes(mode)) throw Error("CYCLE_EXPIRED_PREFIX_MODE_INVALID");
   const owned = [], counters = { grants: 0 }, assets = loadStandardWorkflowCycleAssets();
   let checks = 0, success = false;
@@ -106,12 +107,14 @@ if (process.argv[2] === "--prepare") {
           active_signals: drift.payload?.levels?.level2?.active_signals })); assert.equal(drift.payload.result, "ok");
         pass("external real R05 hook supplies the component checkpoint precondition without a native/model call");
       }
-      const expires = ["refresh_before", "initialize", ...(expireCheckpoint ? ["checkpoint"] : []), "refresh_after"].includes(nodeId);
+      const expires = ["refresh_before", "initialize", "refresh_after"].includes(nodeId);
+      const aged = agedCheckpoint && nodeId === "checkpoint";
       // Prepare the original expiring intent in the past, then observe its
       // expiry at the present. The accepted refusal therefore remains expired
       // when cold preparation returns to the real hook's progressing clock.
       // No original plan, journal or accepted event is edited or renewed.
       if (expires) fs.writeFileSync(clockFile, JSON.stringify(actualNow() - 300001));
+      if (aged) fs.writeFileSync(clockFile, JSON.stringify(actualNow() - 86400000));
       const bytes = snapshot(target), grants = counters.grants;
       let preview = await host.preview({ instanceId: "cycle-expiry", expectedSha256: state.record.instance_sha256, occurrenceId: frame.occurrence_id });
       assert.deepEqual(snapshot(target), bytes); assert.equal(counters.grants, grants); assert.ok(preview.input_resolution);
@@ -123,18 +126,6 @@ if (process.argv[2] === "--prepare") {
         const runtimeBefore = mode === "files" ? snapshot(path.join(target, ".aidn/runtime")) : null;
         fs.writeFileSync(clockFile, JSON.stringify(preview.prepared.plan.prepared_at_ms + 300001));
         assert.equal(clockNow() - preview.prepared.plan.prepared_at_ms, 300001);
-        if (nodeId === "checkpoint") {
-          // Observe the real adapter separately from the dispatch journal's
-          // intentional writes. This includes physical SQLite/runtime bytes in
-          // DB-backed modes, not only the canonical business artifact view.
-          const direct = createStandardWorkflowOperations({ targetRoot: target, now: clockNow }), allBytes = snapshot(target);
-          let callbacks = 0;
-          await assert.rejects(direct.finalizeCycleCheckpoint(preview.prepared, { write: true, expectPlan: preview.prepared.plan_sha256,
-            assertAuthorized: async () => { callbacks++; }, assertCurrent: async () => { callbacks++; } }),
-          error => error.code === "STANDARD_PLAN_EXPIRED" && error.effect_status === "no_effect");
-          assert.equal(callbacks, 0); assert.deepEqual(snapshot(target), allBytes);
-          pass("checkpoint: direct expired adapter preserves every physical checkout byte/directory, including SQLite/runtime, before dispatch journaling");
-        }
         const refused = await host.dispatch(id, { write: true }), original = host.readJournal(id);
         assert.equal(refused.receipt.outcome, "blocked"); assert.equal(refused.receipt.effect_status, "no_effect");
         assert.equal(original.results.at(-1).output.observations.reason_code, "STANDARD_PLAN_EXPIRED");
@@ -170,6 +161,10 @@ if (process.argv[2] === "--prepare") {
         originals.push({ id, record: original }); expiredNodes.push(nodeId);
         pass(`${nodeId}: explicit stage obtains a distinct fresh grant and intent; old history remains immutable`);
       }
+      if (aged) {
+        fs.writeFileSync(clockFile, "null");
+        assert.ok(actualNow() - preview.prepared.plan.prepared_at_ms >= 86400000);
+      }
       const dispatched = await host.dispatch(staged.operation_id, { write: true });
       const observations = host.readJournal(staged.operation_id).results.at(-1).output.observations;
       assert.equal(dispatched.receipt.outcome, "completed", JSON.stringify({ nodeId, reason_code: observations.reason_code,
@@ -178,23 +173,17 @@ if (process.argv[2] === "--prepare") {
       assert.equal((await host.dispatch(staged.operation_id, { write: true })).status, "retained_result");
       assert.equal(host.inspect("cycle-expiry").record.instance_sha256, accepted.record.instance_sha256); assert.deepEqual(snapshot(target), stable);
       pass(`${nodeId}: actual successor succeeds once; retained redispatch preserves every checkout byte`);
+      if (aged) pass("checkpoint: original day-old plan succeeds with the actual hook, one intent and current authorization");
     }
     const final = host.inspect("cycle-expiry"), bytes = snapshot(target);
     assert.equal(final.cursor.status, "COMPLETED");
-    assert.deepEqual(expiredNodes, ["refresh_before", "initialize", ...(expireCheckpoint ? ["checkpoint"] : []), "refresh_after"]);
+    assert.deepEqual(expiredNodes, ["refresh_before", "initialize", "refresh_after"]);
     const checkpointIntents = final.record.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "cycle_checkpoint_finalize");
-    assert.equal(checkpointIntents.length, expireCheckpoint ? 2 : 1);
+    assert.equal(checkpointIntents.length, 1);
     const checkpointJournals = checkpointIntents.map(row => host.readJournal(row.intent.operation_id));
     const confirmed = checkpointJournals.filter(row => row.results.at(-1).receipt.outcome === "completed"
       && row.results.at(-1).receipt.effect_status === "confirmed" && row.results.at(-1).output.facts.cycle_checkpoint_completed === true);
     assert.equal(confirmed.length, 1, "exactly one checkpoint intent must have a confirmed hook result");
-    if (expireCheckpoint) {
-      const refused = checkpointJournals.filter(row => row !== confirmed[0]); assert.equal(refused.length, 1);
-      assert.equal(refused[0].results.length, 1); assert.equal(refused[0].results[0].receipt.outcome, "blocked");
-      assert.equal(refused[0].results[0].receipt.effect_status, "no_effect");
-      assert.equal(refused[0].results[0].output.observations.reason_code, "STANDARD_PLAN_EXPIRED");
-      assert.ok(originals.some(row => row.id === refused[0].operation_id && shadowHash(row.record) === shadowHash(refused[0])));
-    }
     for (const row of originals) assert.deepEqual(host.readJournal(row.id), row.record);
     assert.equal(final.record.model_sha256, assets.source.model_sha256);
     const simulation = simulateAgenticProcess({ instanceId: final.record.instance_id, model: final.record.model, parameters: final.record.initial_parameters,
@@ -205,11 +194,12 @@ if (process.argv[2] === "--prepare") {
     success = true;
     console.log(JSON.stringify({ status: "PASS", checks, state_mode: mode, model_revision: assets.model.revision, model_sha256: assets.source.model_sha256,
       scope: "source-installed-published-cycle-component", expired_nodes: expiredNodes,
-      expired_bindings: ["cycle_context_refresh", "cycle_initialize", ...(expireCheckpoint ? ["cycle_checkpoint_finalize"] : [])],
+      expired_bindings: ["cycle_context_refresh", "cycle_initialize"],
+      aged_checkpoint: agedCheckpoint,
       physical_runtime_bytes: mode === "files" ? "all-bytes-and-directories-unchanged-on-expiry" : "NOT_QUALIFIED",
-      direct_checkpoint_expiry_physical_bytes: expireCheckpoint ? "all-checkout-bytes-and-directories-including-SQLite-runtime-unchanged" : "NOT_RUN",
+      direct_checkpoint_expiry_physical_bytes: "HISTORICAL_ONLY",
       clock: "isolated-host-operation-TTL-probes; real-wall-time-for-hook", authorization: "fixture-capability", native_allocations: 0, model_calls: 0,
-      checkpoint: expireCheckpoint ? "actual-fixed-hook-after-accepted-expired-no-effect-and-fresh-grant" : "actual-fixed-hook-completed-not-expired",
+      checkpoint: agedCheckpoint ? "original-day-old-plan-actual-fixed-hook-one-intent" : "actual-fixed-hook-current-plan",
       external_r05_precondition: "actual-fixed-drift-hook", external_session_git_checkpoint: "actual-Git-before-cycle-admission",
       mixed_facade: "NOT_USED", native: "NOT_RUN", installed_archive: "NOT_RUN", full_standard_workflow: "NOT_COMPLETE" }));
   } finally {

@@ -110,6 +110,17 @@ in the signed preview and journal. Dispatch continues through grant
 verification and the operation's current effect admission. Historical expiry
 receipts and their recovery reader retain their recorded semantics.
 
+`cycle_checkpoint_finalize` and `drift_check_finalize` follow the same validity
+decision, superseding their earlier five-minute plan restrictions in this ADR.
+Locked reconstruction, current authority and prefix, document fingerprints,
+gate constraints and objective completion/alignment remain the admission and
+effect boundaries. Drift finalization repeats these checks after writing its
+report and at the objective-alignment capability callback. Elapsed preparation
+age supplies no independent invalidation condition at any of these fences.
+The hook event still has to match its unique run, subject, unchanged log prefix
+and observed invocation interval. This causal correlation is distinct from a
+maximum preparation age. An unconfirmed effect remains uncertain.
+
 ## Eligible occurrence lookup, 2026-11-06
 
 After the common service validates the complete cursor, the mixed host checks

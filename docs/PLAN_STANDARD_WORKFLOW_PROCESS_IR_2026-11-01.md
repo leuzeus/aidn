@@ -5399,3 +5399,12 @@ protocole d'arrêt à partir d'une horloge monotone. Les cas de commande
 non terminante et d'arrêt non confirmé établissent son rôle dans la gestion
 des ressources. Le timestamp du plan reste sa provenance. Les autres
 limites candidates du parcours demandent leur examen propre.
+
+La même décision couvre la finalisation du checkpoint de cycle et du contrôle
+de dérive. Leurs plans sont reconstruits sous propriétaire et leurs frontières
+d'autorité, de préfixe, de documents, de gate et d'objectifs restent observées.
+L'âge de préparation seul cesse de refuser l'effet, y compris après l'écriture
+du rapport de dérive. La corrélation de l'événement au run et à l'intervalle
+réel du hook reste requise. La qualification distingue un plan ancien valide,
+un délai après le rapport, les invalidations réelles et les issues incertaines
+après effet. Les contrôles d'âge des autres opérations restent à examiner.

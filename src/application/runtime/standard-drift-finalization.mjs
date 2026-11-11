@@ -69,9 +69,9 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
   return Object.freeze({
     prepare: (instance, input, operationId) => prepare(instance, input, operationId, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
-      const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
-      if (write !== true || typeof assertAuthorized !== "function" || !prepared.can_apply || shadowHash(plan) !== expectPlan || prepared.plan_sha256 !== expectPlan
-        || !Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_DRIFT_EXPLICIT_EFFECT_REQUIRED");
+      const plan = prepared?.plan;
+      if (write !== true || typeof assertAuthorized !== "function" || !prepared?.can_apply || shadowHash(plan) !== expectPlan || prepared.plan_sha256 !== expectPlan)
+        fail("STANDARD_DRIFT_EXPLICIT_EFFECT_REQUIRED");
       if (validateJsonSchema(plan, schemaFor(plan), "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_DRIFT_PLAN_INVALID");
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         const assertCurrent = () => { if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_DRIFT_PROCESS_CHANGED"); };
@@ -90,7 +90,6 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_DRIFT_PREVIEW_CHANGED");
           await assertContext();
           await assertAuthorized(); assertCurrent();
-          if (now() - plan.prepared_at_ms > 300000) fail("STANDARD_DRIFT_PLAN_EXPIRED");
           file = eventPath(); beforeSize = fs.existsSync(file) ? fs.statSync(file).size : 0;
           if (fs.existsSync(file) && !fs.statSync(file).isFile()) fail("STANDARD_DRIFT_EVENT_LOG_INVALID");
           if (beforeSize > 0) {
@@ -116,7 +115,6 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
                 thresholdFiles: 3, thresholdMinutes: 45, mode: planMode(plan), runId, reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: true, completeDriftCheck: true },
               verifyObjectiveAlignment: async () => {
                 await assertContext(); await assertAuthorized(); assertCurrent();
-                if (now() < plan.prepared_at_ms || now() - plan.prepared_at_ms > 300000) fail("STANDARD_DRIFT_PLAN_EXPIRED");
                 return structuredClone(plan.objective_alignment);
               } });
             hook = { ok: payload.ok, skill: "drift-check", tool: "gating-evaluate.mjs", mode: planMode(plan), target: root,

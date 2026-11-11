@@ -93,11 +93,9 @@ export function createStandardCycleCheckpoint({ artifacts, scope, session, audit
     async finalizeCycleCheckpoint(prepared, { write = false, expectPlan, assertAuthorized, assertCurrent, readObjectiveCompletion = null } = {}) {
       let plan;
       try {
-        plan = assertPlan(prepared?.plan); const age = now() - plan.prepared_at_ms;
+        plan = assertPlan(prepared?.plan);
         if (write !== true || !prepared.can_apply || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan
-          || typeof assertAuthorized !== "function" || typeof assertCurrent !== "function"
-          || !Number.isSafeInteger(age) || age < 0) fail("STANDARD_CYCLE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED");
-        if (age > 300000) fail("STANDARD_PLAN_EXPIRED");
+          || typeof assertAuthorized !== "function" || typeof assertCurrent !== "function") fail("STANDARD_CYCLE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED");
       } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         const readBoundCompletion = plan.objective_completion_sha256 ? async () => {
@@ -109,15 +107,12 @@ export function createStandardCycleCheckpoint({ artifacts, scope, session, audit
         const assertEffectAuthorized = async () => {
           await readBoundCompletion?.();
           await assertAuthorized(); await assertCurrent();
-          const age = now() - plan.prepared_at_ms;
-          if (age < 0 || age > 300000) fail("STANDARD_PLAN_EXPIRED");
         };
         let before;
         try {
           const fresh = await prepare(plan.input, plan.prepared_at_ms, readObjectiveCompletion, true);
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_PREVIEW_CHANGED");
           await assertAuthorized(); await assertCurrent();
-          if (now() - plan.prepared_at_ms > 300000) fail("STANDARD_PLAN_EXPIRED");
           if (shadowHash(documents(session(plan.input.session_id), await auditCycle(plan.input))) !== shadowHash(plan.documents)) fail("STANDARD_PREVIEW_CHANGED");
           if (!openGate(await gate(plan.hook_mode, readBoundCompletion))) fail("STANDARD_CYCLE_CHECKPOINT_GATE_REQUIRED");
           if (readBoundCompletion) await assertEffectAuthorized();

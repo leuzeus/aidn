@@ -4737,7 +4737,35 @@ distinguishes these attempts from full component success. This is source-install
 fixture proof, with no mixed facade, model call, genuine native/provider/human or
 exact installed archive qualification. General expiry and L1-L8/A1-A10 remain open.
 
-The opt-in `--expire-checkpoint` probe extends this same component to expiry of
+The 2026-11-11 validity decision supersedes checkpoint and drift finalization
+preparation-age restrictions. Run
+`node tools/perf/verify-standard-cycle-checkpoint-expiry-guards-fixtures.mjs`
+for explicit intent, schema, signed hash and owner-boundary checks. Its legacy
+filename no longer means that a valid old plan must expire. Malformed timestamps
+remain schema errors; elapsed time and a backwards wall clock alone reach the
+owner boundary without granting an effect.
+
+Run `node tools/perf/verify-standard-cycle-expired-prefix-fixtures.mjs --mode=files --aged-checkpoint`
+and repeat with dual and db-only to exercise the actual fixed checkpoint hook
+from the original day-old plan, with one intent and current authorization.
+The old `--expire-checkpoint` spelling is an alias for this current behavior.
+Other cycle context/initialization expiry probes in this fixture remain
+separate pending their own validity review. Historical expiry receipts and
+their recovery readers keep their recorded semantics.
+
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --drift-finalize-contract-only`
+adds controlled v3 finalizer tests for a day-old plan, elapsed time after report
+write, pre-effect authority/prefix/context refusal, and post-report revocation,
+changed context/alignment or lost hook confirmation. These last cases remain
+uncertain with the written report retained. The gate, evaluation and
+artifact/owner ports are controlled in those v3 tests. The existing
+`--drift-finalize-mode=files|dual|db-only` selection instead executes real report
+persistence and the actual R05 hook with an old prepared plan. Prepare in the
+past, then use progressing real time during the hook so its independent event
+timestamp still proves correlation to the invocation. Neither selection proves
+a complete native or installed STANDARD workflow.
+
+The historical opt-in `--expire-checkpoint` probe extended this component to expiry of
 `cycle_checkpoint_finalize`. Its first files/dual/db-only runs are retained FAIL,
 after 13 passing checks each: the initial hook guard returns
 `blocked/no_effect/STANDARD_CYCLE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED` for expired
@@ -4745,26 +4773,26 @@ age, before the later specific `STANDARD_PLAN_EXPIRED` check. The explicit
 reprepare path cannot accept that generic reason. The
 [gap record](qualification/agentic-process/cycle-checkpoint-expiry-gap-2026-11-04.json)
 pins all three failed sources/logs. Those failures remain historical evidence.
-The adapter now checks explicit intent and clock validity before reporting
+That historical adapter checked explicit intent and clock validity before reporting
 otherwise-valid expired plans as `STANDARD_PLAN_EXPIRED`, with `no_effect`
-before owner acquisition. Run
+before owner acquisition. It used
 `node tools/perf/verify-standard-cycle-checkpoint-expiry-guards-fixtures.mjs`
-for the 18 pre-owner guard cases, including missing intent/callbacks, mismatched
-hashes, negative admission, malformed plans and future/invalid clocks. Valid
-ages through 300000 ms still reach the owner boundary. This isolated check
-does not exercise the hook or fresh continuation; rerun the same
-`--expire-checkpoint` component in each mode for that evidence. Earlier 20-check
+for 18 pre-owner guard cases, including missing intent/callbacks, mismatched
+hashes, negative admission, malformed plans and future/invalid clocks. At that
+revision valid ages through 300000 ms reached the owner boundary. This isolated
+check did not exercise the hook or fresh continuation; the historical
+`--expire-checkpoint` components supplied that evidence. Earlier 20-check
 results remain tied to their exact pre-option snapshots.
 
-The corrected opt-in probe now passes 25 checks per files/dual/db-only on the
+The corrected historical opt-in probe passed 25 checks per files/dual/db-only on the
 published cycle-131 component. It prepares the original expiring intention in
 the past and observes age 300001 ms before returning to the progressing real
 clock for cold preparation and the hook. Four original refusals remain accepted;
 each successor needs a distinct explicit grant and intent. The final assertion
 requires both checkpoint intentions, one retained expired no-effect result and
 exactly one confirmed checkpoint. Same-IR replay and simulation are exact.
-The existing cycle suite includes the 18 guard cases and passes 32 checks for
-FILES; the real operation-port suite passes 14 checks.
+At that revision the cycle suite included 18 guard cases and passed 32 checks for
+FILES; the real operation-port suite passed 14 checks.
 
 The direct expired checkpoint adapter also preserves every physical checkout
 byte and directory, including SQLite/runtime, in all three modes. This check
