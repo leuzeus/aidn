@@ -1,5 +1,10 @@
 # 04 JSON Contracts
 
+Private disposition authorization grant v2 omits an internally generated expiry.
+Its closed reader coexists with the original v1 grant and actual issuer expiry.
+Historical control-intent records retain the exact original version and bytes;
+there is no container conversion, migration or new information authority.
+
 The private STANDARD drift recovery cycle question v2 binds the confirmed Git
 checkpoint, revised objective and canonical cycle inventory without a host-generated
 expiry. Original preparations carrying an expiry reconstruct the exact retained

@@ -1,5 +1,11 @@
 # 05 Local-First Shared Runtime
 
+Disposition plans reobserve their exact current subject without an elapsed-age
+ceiling. Local exact-action grants use v2 without a host-generated expiry.
+Legacy v1 issuer expiry, explicit permit/source checks, owner/fence and CAS
+remain required; historical attempts remain evidence, not renewed permission.
+Native grants and allocation bounds retain their separate authorities.
+
 ## Purpose
 
 AIDN is local-first by default.

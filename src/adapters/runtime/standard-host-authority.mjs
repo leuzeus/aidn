@@ -118,7 +118,7 @@ export function createStandardHostAuthority({ configuration, environment = proce
     };
     return Object.freeze({ read, verify: check });
   }
-  function dispositionGrant(request, permit, issuedAt) {
+  function dispositionGrant(request, permit, issuedAt, legacy = false) {
     if (!permit || !["operation_disposition", "operation_disposition_accept"].includes(request.action) || request.action !== permit.action
       || !/^[a-f0-9]{64}$/.test(permit.key_id ?? "") || !/^[a-f0-9]{64}$/.test(permit.action_sha256 ?? "")
       || keyId() !== permit.key_id || trustSha() !== permit.trust_sha256)
@@ -130,16 +130,20 @@ export function createStandardHostAuthority({ configuration, environment = proce
       || apply && (request.plan?.assessment !== "confirmed_reopen" || shadowHash(request.plan) !== subject))
       fail("STANDARD_HOST_EXACT_DISPOSITION_REQUIRED");
     const principal = shadowHash({ host: keyId(), transport: "explicit-workflow-disposition" });
-    const body = { contract_version: "process-disposition-authorization-grant.v1", authority_id: "standard_local_operator",
-      authorized: true, request_sha256: shadowHash(request), principal_sha256: principal, observed_at_ms: issuedAt, expires_at_ms: issuedAt + 60000,
+    const body = { contract_version: legacy ? "process-disposition-authorization-grant.v1" : "process-disposition-authorization-grant.v2", authority_id: "standard_local_operator",
+      authorized: true, request_sha256: shadowHash(request), principal_sha256: principal, observed_at_ms: issuedAt,
+      ...(legacy ? { expires_at_ms: issuedAt + 60000 } : {}),
       evidence_refs: [{ ref: "standard:explicit-workflow-disposition", sha256: permit.action_sha256 }] };
     return { ...body, grant_sha256: createHmac("sha256", readKey()).update(shadowHash(body)).digest("hex") };
   }
   return Object.freeze({ home, keyId, readKey, ensureKey, trustSha, githubProvider,
     authorizeDisposition: (request, permit) => dispositionGrant(request, permit, Date.now()),
     verifyDisposition(request, grant, permit) {
-      if (!Number.isSafeInteger(grant?.observed_at_ms) || grant.observed_at_ms > Date.now() || grant.expires_at_ms <= Date.now()
-        || shadowHash(dispositionGrant(request, permit, grant.observed_at_ms)) !== shadowHash(grant))
+      const legacy = grant?.contract_version === "process-disposition-authorization-grant.v1";
+      if (!Number.isSafeInteger(grant?.observed_at_ms) || grant.observed_at_ms < 0
+        || !["process-disposition-authorization-grant.v1", "process-disposition-authorization-grant.v2"].includes(grant.contract_version)
+        || legacy && (grant.observed_at_ms > Date.now() || grant.expires_at_ms <= Date.now())
+        || shadowHash(dispositionGrant(request, permit, grant.observed_at_ms, legacy)) !== shadowHash(grant))
         fail("STANDARD_HOST_DISPOSITION_GRANT_CHANGED");
       return { outcome: "verified", authority_id: grant.authority_id, request_sha256: shadowHash(request), grant_sha256: shadowHash(grant) };
     },

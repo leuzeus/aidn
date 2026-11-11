@@ -1,5 +1,14 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Exact-current disposition validity candidate, 2026-11-11
+
+Generic disposition removes the host's sixty-second plan-age and local-grant
+expiry. New local grants are v2; original v1 issuer expiry and historical readers
+remain. Exact request/permit/trust, subject, owner/fence, source and canonical
+CAS still apply. This source candidate requires focused actual-host, crash,
+storage and published-binding checks. It does not establish full L1-L8/A1-A10,
+genuine actors, installed qualification or integration in dev.
+
 ## Recovery cycle question validity candidate, 2026-11-11
 
 The private recovery cycle question no longer has an internally generated

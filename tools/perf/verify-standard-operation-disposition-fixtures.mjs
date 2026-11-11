@@ -21,13 +21,15 @@ import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-
 import { WRITE_DISPOSITION_CASES, WRITE_OWNER_INTENTION_CASES, verifyStandardOperationWriteDisposition } from "./standard-operation-write-disposition-fixture-lib.mjs";
 
 const here = fileURLToPath(import.meta.url), H = "a".repeat(64);
-function source(calls = []) {
+function source(calls = [], { version = "v1", now = Date.now, lifetimeMs = 30000 } = {}) {
   return {
     async authorize({ request }) {
       calls.push(request);
       assert.ok(["operation_disposition", "operation_disposition_accept"].includes(request.action));
-      return { contract_version: "process-disposition-authorization-grant.v1", authority_id: "fixture_operator", authorized: true, request_sha256: shadowHash(request), principal_sha256: H,
-        grant_sha256: shadowHash({ request, fixture: "new-consent" }), observed_at_ms: Date.now(), expires_at_ms: Date.now() + 30000,
+      const observedAt = now();
+      return { contract_version: "process-disposition-authorization-grant." + version, authority_id: "fixture_operator", authorized: true, request_sha256: shadowHash(request), principal_sha256: H,
+        grant_sha256: shadowHash({ request, fixture: "new-consent" }), observed_at_ms: observedAt,
+        ...(version === "v1" ? { expires_at_ms: observedAt + lifetimeMs } : {}),
         evidence_refs: [{ ref: "fixture:new-explicit-disposition-consent", sha256: shadowHash(request) }] };
     },
     async verify({ request, grant }) {
@@ -41,7 +43,7 @@ function model() {
     roles: [], policies: [], operation_pins: { context_reload: shadowHash(binding) }, entry: "reload",
     nodes: [{ id: "reload", kind: "operation", participant_ref: "project", binding_ref: "context_reload" }] };
 }
-const open = (config, options = {}, authority = source()) => createStandardWorkflowOperationHost({ targetRoot: config.root, model: model(),
+const open = (config, options = {}, authority = source(), now = Date.now) => createStandardWorkflowOperationHost({ targetRoot: config.root, model: model(), now,
   readSigningKey: () => Buffer.from(config.key, "hex"), authorize: async () => { throw Error("OLD_EFFECT_AUTHORITY_MUST_NOT_BE_USED"); },
   dispositionSource: authority }, options);
 
@@ -131,7 +133,19 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
     }
     async function returnedCase(boundary) {
       const config = await setup(boundary ?? "redelivery"); await crash(config, "dispatch_returned");
-      let host = open(config), plan = prepare(host, config);
+      const day = 86400000, clock = { value: Date.now() - day }, now = () => clock.value;
+      let host = boundary ? open(config) : open(config, {}, source(), now), plan = prepare(host, config);
+      const originalPlanSha = shadowHash(plan), originalPreparedAt = plan.prepared_at_ms;
+      let advanced = false;
+      if (!boundary) {
+        clock.value = Date.now();
+        const base = source([], { version: "v2", now });
+        host = open(config, {}, { ...base, async verify(input) {
+          const result = await base.verify(input);
+          if (!advanced) { clock.value += day; advanced = true; }
+          return result;
+        } }, now);
+      }
       assert.equal(plan.assessment, "no_effect_original");
       const capsuleStore = createProcessDispatchRecordStore({ targetRoot: config.root, stateMode: mode });
       const original = capsuleStore.read(config.operation_id).record;
@@ -156,17 +170,27 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
         if (["disposition_recorded", "disposition_control_reserved", "disposition_fence_acquired"].includes(boundary)) { assert.equal(host.readJournal(config.operation_id).results.length, 0); plan = prepare(host, config); }
       }
       const receipt = (await apply(host, plan)).receipt;
+      if (!boundary) {
+        assert.equal(advanced, true); assert.equal(plan.prepared_at_ms, originalPreparedAt);
+        assert.equal(shadowHash(plan), originalPlanSha);
+        const control = JSON.parse(createStandardWorkflowArtifacts({ targetRoot: config.root })
+          .read(`workflows/operation-control-intents/${config.operation_id}.json`, { required: true }).content);
+        assert.equal(control.attempts[0].grant.grant.contract_version, "process-disposition-authorization-grant.v2");
+        assert.equal(Object.hasOwn(control.attempts[0].grant.grant, "expires_at_ms"), false);
+        assert.equal(shadowHash(control.attempts[0].plan), originalPlanSha);
+      }
       assert.equal(receipt.output_sha256, original.output_sha256);
       assert.equal(host.readJournal(config.operation_id).results.length, 1);
       assert.equal((await apply(open(config), plan)).receipt.receipt_id, receipt.receipt_id);
-      host = open(config); const accepted = await host.accept(config.operation_id, { write: true });
+      host = boundary ? open(config) : open(config, {}, source([], { now: () => Date.now() - day, lifetimeMs: 2 * day }));
+      const accepted = await host.accept(config.operation_id, { write: true });
       assert.equal(accepted.cursor.status, "COMPLETED");
       assert.equal(host.readJournal(config.operation_id).results.length, 1);
       assert.equal(capsuleStore.read(config.operation_id).record.output_sha256, original.output_sha256);
       const simulation = simulateAgenticProcess({ instanceId: accepted.record.instance_id, model: accepted.record.model,
         policyPins: accepted.record.policy_pins, scopeId: accepted.record.scope_id, events: accepted.record.events, facts: {} });
       assert.deepEqual(simulation.trace.at(-1).cursor, inspectAgenticProcess(accepted.record));
-      pass(`${mode}: ${boundary ?? "original return"} cold recovery, durable fresh consent, one receipt, no re-evaluation and exact common-reducer SIM`);
+      pass(`${mode}: ${boundary ?? "original old plan and v2 consent across clock advance, then old still-current v1 issuer grant"} cold recovery, durable fresh consent, one receipt, no re-evaluation and exact common-reducer SIM`);
     }
     for (const boundary of [null, "disposition_recorded", "disposition_receipted"]) {
       if (selected(boundary ?? "redelivery")) await returnedCase(boundary);

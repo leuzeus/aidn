@@ -1,5 +1,20 @@
 # Testing Guide
 
+## Exact-current disposition consent, 2026-11-11
+
+The existing original-return disposition selector exercises an old signed plan
+without refreshing its timestamp. Its v2 fixture grant crosses a controlled
+host-clock advance during awaited verification; cold control-history reads and
+receipt redelivery retain the original bytes. Its separate cold acceptance
+uses an old legacy v1 issuer grant whose declared lifetime exceeds the removed local
+sixty-second ceiling. Existing real issuer expiry, revocation, prefix CAS,
+foreign owner/fence and crash cases remain required in all three storage modes.
+
+The host-source fixture separately checks local v2 exact-action authorization,
+legacy v1 MAC compatibility and original expiry, including malformed and
+substituted permits. These use fixture principals or fixture consent and do
+not establish genuine H, Native, provider or complete published STANDARD.
+
 ## Recovery cycle question validity, 2026-11-11
 
 The private recovery cycle selection question v2 has no host-generated expiry.

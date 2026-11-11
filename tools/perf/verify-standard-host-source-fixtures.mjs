@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { generateKeyPairSync, sign } from "node:crypto";
+import { createHmac, generateKeyPairSync, sign } from "node:crypto";
 import { createStandardHostAuthority } from "../../src/adapters/runtime/standard-host-authority.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { runStandardWorkflowAction } from "../../src/application/runtime/standard-workflow-entry.mjs";
@@ -69,7 +69,28 @@ host.ensureKey();
   const compose = (_operation, disposition) => {
     async function checkGrant(request) {
       const grant = await disposition.authorize({ request });
+      assert.equal(grant.contract_version, "process-disposition-authorization-grant.v2");
+      assert.equal(Object.hasOwn(grant, "expires_at_ms"), false);
       assert.equal((await disposition.verify({ request, grant })).outcome, "verified");
+      const original = JSON.stringify(grant), realNow = Date.now;
+      const { grant_sha256, ...body } = grant;
+      const legacyBody = { ...body, contract_version: "process-disposition-authorization-grant.v1", expires_at_ms: grant.observed_at_ms + 60000 };
+      const legacy = { ...legacyBody, grant_sha256: createHmac("sha256", host.readKey()).update(shadowHash(legacyBody)).digest("hex") };
+      try {
+        Date.now = () => grant.observed_at_ms + 86400000;
+        assert.equal((await disposition.verify({ request, grant })).outcome, "verified");
+        await assert.rejects(async () => disposition.verify({ request, grant: legacy }), { code: "STANDARD_HOST_DISPOSITION_GRANT_CHANGED" });
+        Date.now = () => grant.observed_at_ms - 1000;
+        assert.equal((await disposition.verify({ request, grant })).outcome, "verified");
+        await assert.rejects(async () => disposition.verify({ request, grant: legacy }), { code: "STANDARD_HOST_DISPOSITION_GRANT_CHANGED" });
+        Date.now = () => grant.observed_at_ms + 1;
+        assert.equal((await disposition.verify({ request, grant: legacy })).outcome, "verified");
+      } finally { Date.now = realNow; }
+      assert.equal(JSON.stringify(grant), original);
+      await assert.rejects(async () => disposition.verify({ request, grant: { ...grant, expires_at_ms: realNow() + 60000 } }),
+        { code: "STANDARD_HOST_DISPOSITION_GRANT_CHANGED" });
+      await assert.rejects(async () => disposition.verify({ request, grant: { ...grant, contract_version: "process-disposition-authorization-grant.v3" } }),
+        { code: "STANDARD_HOST_DISPOSITION_GRANT_CHANGED" });
       await assert.rejects(async () => disposition.verify({ request, grant: { ...grant, principal_sha256: "e".repeat(64) } }),
         { code: "STANDARD_HOST_DISPOSITION_GRANT_CHANGED" });
       await assert.rejects(async () => disposition.authorize({ request: { ...request, action: "operation" } }),

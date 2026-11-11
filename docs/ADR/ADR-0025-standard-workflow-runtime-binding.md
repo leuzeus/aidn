@@ -57,8 +57,8 @@ receipts and linked-question contracts retain their readers and original bytes.
 
 Focused source fixtures cover these boundaries separately. This amendment does
 not qualify genuine actors, complete STANDARD, configured PostgreSQL or an exact
-installed archive. Generic disposition horizons and provider observation/decision windows
-remain separate unresolved reviews. Recovery-cycle question expiry is superseded
+installed archive. Generic disposition validity is covered by the ADR-0026 amendment;
+provider observation/decision windows remain a separate unresolved review. Recovery-cycle question expiry is superseded
 by the amendment above.
 
 ## Amendment — returned UNKNOWN correction reopening, 2026-11-11

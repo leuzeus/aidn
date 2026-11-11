@@ -1,5 +1,33 @@
 # ADR-0026 - Explicit native authorization epochs
 
+## Exact-current disposition consent without a host age ceiling, 2026-11-11
+
+A disposition plan binds the original operation, inventory, runtime, instance,
+journal, owner and fence. Elapsed preparation age no longer invalidates that
+unchanged subject. Preparation timestamps remain safe nonnegative provenance.
+Every awaited authorization and later write boundary still reobserves its
+current subject, verified grant, owner/fence and canonical CAS.
+
+New local exact-action consent uses private
+process-disposition-authorization-grant.v2 without a host-generated expiry.
+The host authenticates its exact request, explicit permit, protected key and
+current trust context on verification. An altered action, principal, request,
+scope, instance or permit remains a refusal. This is separate from Native
+allocation authorization and grants no resource closure or budget renewal.
+
+Original v1 grants retain their closed shape, exact MAC and issuer expiry.
+Current use still rejects future issuance or actual expiry. The generic
+consumer adds no sixty-second age or maximum issuer horizon. Historical
+control attempts validate either original grant shape and do not apply current
+expiry to stored proof. No retained plan, grant, control record or receipt is
+converted; storage and canonical authorities remain unchanged.
+
+Focused component and real-crash fixtures must qualify old unchanged plans,
+v2 consent across clock movement, legacy issuer expiry, revocation, changed
+subjects and mixed-version cold readers. Published model pins require explicit
+authoring. Full STANDARD, genuine actors, all-resource disposition and installed
+package qualification remain separate obligations.
+
 ## Embedded calls and authority, 2026-11-06
 
 The ADR-0022 call candidate introduces no authorization epoch, grant, owner,

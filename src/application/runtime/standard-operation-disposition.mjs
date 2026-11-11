@@ -15,6 +15,7 @@ import planSchema from "../../core/contracts/workflow-definition/process-operati
 import recordSchema from "../../core/contracts/workflow-definition/process-operation-disposition.v1.schema.json" with { type: "json" };
 import requestSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-request.v1.schema.json" with { type: "json" };
 import grantSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-grant.v1.schema.json" with { type: "json" };
+import currentGrantSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-grant.v2.schema.json" with { type: "json" };
 import controlSchema from "../../core/contracts/workflow-definition/process-operation-control-intent.v1.schema.json" with { type: "json" };
 import fenceSchema from "../../core/contracts/workflow-definition/local-artifact-resource-fence.v1.schema.json" with { type: "json" };
 import { assertProcessReconciliationInventory } from "../../core/workflow/process-reconciliation-inventory.mjs";
@@ -23,6 +24,7 @@ import { inspectInterruptedReopenLock, retireInterruptedReopenLock } from "./loc
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const bodyOf = ({ authentication, key_id, ...body }) => body;
 const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length;
+const validGrant = value => valid(value, value?.contract_version === "process-disposition-authorization-grant.v2" ? currentGrantSchema : grantSchema);
 const reopenAssessment = "confirmed_reopen";
 const isReopenPlan = plan => plan?.assessment === reopenAssessment;
 function validPlan(plan) {
@@ -124,7 +126,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
         || attempt.resource_fence.record.physical_root_sha256 !== attempt.plan.physical_root_sha256)
         fail("PROCESS_CONTROL_INTENT_SUBJECT_CHANGED");
       if (attempt.action === "disposition" && (!attempt.grant || !valid(attempt.grant.request, requestSchema)
-        || !valid(attempt.grant.grant, grantSchema) || attempt.grant.request.plan_sha256 !== shadowHash(attempt.plan)
+        || !validGrant(attempt.grant.grant) || attempt.grant.request.plan_sha256 !== shadowHash(attempt.plan)
         || shadowHash(attempt.grant.request.plan) !== shadowHash(attempt.plan)
         || attempt.grant.request.action !== "operation_disposition"
         || attempt.grant.grant.request_sha256 !== shadowHash(attempt.grant.request)
@@ -285,20 +287,19 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     return result;
   }
   function freshGrant(grant, request) {
-    const age = now() - grant?.observed_at_ms;
-    if (!grant || !valid(grant, grantSchema)
+    const legacy = grant?.contract_version === "process-disposition-authorization-grant.v1";
+    if (!grant || !validGrant(grant)
       || grant.authorized !== true || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(grant.authority_id ?? "")
       || ![grant.grant_sha256, grant.principal_sha256].every(value => /^[a-f0-9]{64}$/.test(value ?? ""))
-      || grant.request_sha256 !== shadowHash(request) || !Number.isSafeInteger(age) || age < 0 || age > 60000
-      || !Number.isSafeInteger(grant.expires_at_ms) || grant.expires_at_ms <= now() || grant.expires_at_ms > grant.observed_at_ms + 60000
+      || grant.request_sha256 !== shadowHash(request) || !Number.isSafeInteger(grant.observed_at_ms) || grant.observed_at_ms < 0
+      || legacy && (grant.observed_at_ms > now() || !Number.isSafeInteger(grant.expires_at_ms) || grant.expires_at_ms <= now())
       || !Array.isArray(grant.evidence_refs) || !grant.evidence_refs.length || grant.evidence_refs.length > 32
       || grant.evidence_refs.some(row => Object.keys(row).sort().join(",") !== "ref,sha256" || typeof row.ref !== "string" || !row.ref || row.ref.length > 256 || !/^[a-f0-9]{64}$/.test(row.sha256 ?? ""))) fail("PROCESS_DISPOSITION_AUTHORIZATION_REQUIRED");
   }
   function currentConsent(plan, captured, signal) {
     if (signal?.aborted) fail("PROCESS_DISPOSITION_ABORTED");
     freshGrant(captured.grant, captured.request);
-    const age = now() - plan.prepared_at_ms;
-    if (!Number.isSafeInteger(age) || age < 0 || age > 60000) fail("PROCESS_DISPOSITION_PLAN_EXPIRED");
+    if (!Number.isSafeInteger(plan.prepared_at_ms) || plan.prepared_at_ms < 0) fail("PROCESS_DISPOSITION_PLAN_INVALID");
   }
   async function currentGrant(subject, signal) {
     const request = { contract_version: "process-disposition-authorization-request.v1", ...subject, nonce: randomUUID(), requested_at_ms: now() };
@@ -461,8 +462,8 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
         }
       }
       const fresh = lease => {
-        const age = now() - plan.prepared_at_ms;
-        if (signal?.aborted || !Number.isSafeInteger(age) || age < 0 || age > 60000) fail("PROCESS_DISPOSITION_PLAN_EXPIRED");
+        if (signal?.aborted) fail("PROCESS_DISPOSITION_ABORTED");
+        if (!Number.isSafeInteger(plan.prepared_at_ms) || plan.prepared_at_ms < 0) fail("PROCESS_DISPOSITION_PLAN_INVALID");
         const observed = observation(plan.operation_id, plan.reopen?.output ?? null);
         if (lease) { artifacts.resourceFence().assert(lease); observed.fence_sha256 = lease.previous_sha256; }
         if (shadowHash(subject(observed)) !== shadowHash(Object.fromEntries(Object.entries(plan).filter(([key]) => !["contract_version", "prepared_at_ms", "nonce", "key_id", "authentication"].includes(key)))))
