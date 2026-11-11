@@ -1,4 +1,3 @@
-import { STANDARD_DRIFT_FRESHNESS_MINUTES } from "../../core/gating/gating-signal-policy.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { artifactContentHash } from "../../core/workflow/artifact-compare-swap.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
@@ -7,13 +6,14 @@ import planSchema from "../../core/contracts/workflow-definition/standard-drift-
 
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const eventFile = ".aidn/runtime/perf/workflow-events.ndjson";
+const timestamp = value => Number.isSafeInteger(value) && value >= 0;
 
 // Read-only admission primitive. The owning host supplies signed operation,
 // canonical report and physical event readers; model/CLI JSON supplies none.
 // This is deliberately distinct from consuming an accepted opinion: a closure
 // also needs an accepted, still-current, physically witnessed completion.
 export function createStandardObjectiveCompletion({ readOperation, readEvaluation, readDisposition,
-  readCurrent, readReport, readEvent, readHistoricalDisposition = null, readRenewedDisposition = null, now = Date.now }) {
+  readCurrent, readReport, readEvent, readHistoricalDisposition = null, readRenewedDisposition = null }) {
   if ([readOperation, readEvaluation, readDisposition, readCurrent, readReport, readEvent].some(value => typeof value !== "function"))
     fail("STANDARD_OBJECTIVE_COMPLETION_AUTHORITY_REQUIRED");
   async function inspect(instance, historical = false, evaluationOperationId = null) {
@@ -28,7 +28,8 @@ export function createStandardObjectiveCompletion({ readOperation, readEvaluatio
       // search backwards past the latest finalizer to reuse an older v3 result.
       const nominal = ["standard-drift-finalize-plan.v1", "standard-drift-finalize-plan.v2"].includes(plan?.contract_version);
       if (nominal && evaluationOperationId === null) return null;
-      if (!nominal && validateJsonSchema(plan, planSchema, "$", { contractKind: "workflow-definition" }).length)
+      if (!nominal && (!timestamp(plan?.prepared_at_ms) || !timestamp(plan?.objective_alignment?.prepared_at_ms)
+        || validateJsonSchema(plan, planSchema, "$", { contractKind: "workflow-definition" }).length))
         fail("STANDARD_OBJECTIVE_COMPLETION_PLAN_INVALID");
       const result = record.results.at(-1), receipt = result?.receipt, output = assertStandardOperationOutput(result?.output);
       if (record.operation_id !== id || plan.operation_id !== id || record.intent.binding_ref !== "drift_check_finalize"
@@ -84,22 +85,14 @@ export function createStandardObjectiveCompletion({ readOperation, readEvaluatio
         fail("STANDARD_OBJECTIVE_COMPLETION_EVENT_CHANGED");
         const eventTime = Date.parse(event.ts);
         if (!Number.isSafeInteger(eventTime)) fail("STANDARD_OBJECTIVE_COMPLETION_EVENT_CHANGED");
-        return { eventTime, report_sha256: report.sha256, event_sha256: shadowHash(event), event_offset: offset };
+        return { report_sha256: report.sha256, event_sha256: shadowHash(event), event_offset: offset };
       };
       const physical = witnesses();
-      const age = now() - alignment.prepared_at_ms;
-      if (!historical && (!Number.isSafeInteger(age) || age < 0 || age > 300000)) fail("STANDARD_OBJECTIVE_COMPLETION_EXPIRED");
       if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256)
         fail("STANDARD_OBJECTIVE_COMPLETION_PROCESS_CHANGED");
-      const { eventTime, ...anchorWitnesses } = physical;
       const anchor = { operation_id: id, receipt_sha256: shadowHash(receipt), plan_sha256: shadowHash(plan),
-        output_sha256: shadowHash(output), alignment_sha256: shadowHash(alignment), ...anchorWitnesses };
-      const alignmentAllowed = () => {
-        const eventAge = now() - eventTime;
-        if (!Number.isSafeInteger(eventAge) || eventAge < 0) fail("STANDARD_OBJECTIVE_COMPLETION_EVENT_CHANGED");
-        return eventAge <= STANDARD_DRIFT_FRESHNESS_MINUTES * 60000;
-      };
-      return { disposition: structuredClone(disposition), anchor, current, input: plan.input, alignmentAllowed, assertWitnesses() {
+        output_sha256: shadowHash(output), alignment_sha256: shadowHash(alignment), ...physical };
+      return { disposition: structuredClone(disposition), anchor, current, input: plan.input, assertWitnesses() {
         if (shadowHash(witnesses()) !== shadowHash(physical) || shadowHash(readOperation(id)) !== retainedSha256)
           fail("STANDARD_OBJECTIVE_COMPLETION_LINK_CHANGED");
         if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_OBJECTIVE_COMPLETION_PROCESS_CHANGED");
@@ -115,7 +108,7 @@ export function createStandardObjectiveCompletion({ readOperation, readEvaluatio
       const proof = await inspect(instance, true);
       if (!proof) fail("STANDARD_OBJECTIVE_COMPLETION_REQUIRED");
       proof.assertWitnesses();
-      return { anchor: structuredClone(proof.anchor), alignment_allowed: proof.alignmentAllowed() };
+      return { anchor: structuredClone(proof.anchor), alignment_allowed: true };
     },
     async read(instance, { evaluationOperationId = null } = {}) {
       const renewal = instance.events.findLast(event => event.kind === "operation_intent" && event.intent.binding_ref === "drift_completion_decision");
@@ -123,19 +116,14 @@ export function createStandardObjectiveCompletion({ readOperation, readEvaluatio
       const renew = renewal && instance.events.indexOf(renewal) > instance.events.indexOf(finalization);
       const proof = await inspect(instance, Boolean(renew), evaluationOperationId);
       if (!proof) return null;
-      if (!renew) {
-        if (!proof.alignmentAllowed()) fail("STANDARD_OBJECTIVE_COMPLETION_EXPIRED");
-        return proof.disposition;
-      }
+      if (!renew) return proof.disposition;
       if (typeof readRenewedDisposition !== "function") fail("STANDARD_OBJECTIVE_COMPLETION_RENEWAL_AUTHORITY_REQUIRED");
       const disposition = await readRenewedDisposition(instance, proof.input, proof.current, proof.anchor);
       if (!disposition) fail("STANDARD_OBJECTIVE_COMPLETION_RENEWAL_REQUIRED");
       // Renewed permission never rewrites the accepted completion. Reobserve
       // physical witnesses and process CAS after the current H authentication.
       proof.assertWitnesses();
-      if (!proof.alignmentAllowed()) fail("STANDARD_OBJECTIVE_COMPLETION_EXPIRED");
-      const age = now() - disposition.prepared_at_ms;
-      if (!Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_OBJECTIVE_COMPLETION_EXPIRED");
+      if (!timestamp(disposition?.prepared_at_ms)) fail("STANDARD_OBJECTIVE_COMPLETION_PLAN_INVALID");
       return structuredClone(disposition);
     },
   });

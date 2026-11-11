@@ -1,4 +1,3 @@
-import { STANDARD_DRIFT_FRESHNESS_MINUTES } from "../../core/gating/gating-signal-policy.mjs";
 import { verifyCycleCloseCheckpoint } from "./standard-cycle-close-checkpoint.mjs";
 import path from "node:path";
 import fs from "node:fs";
@@ -41,7 +40,7 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
     readObjectiveCompletion: readObjectiveCompletion === null ? null : () => readObjectiveCompletion(instance), args: {
     cache: ".aidn/runtime/cache/reload-state.json", eventFile: eventRelative, indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
     stateMode: artifacts.describe().state_mode, stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto",
-    thresholdFiles: 3, thresholdMinutes: STANDARD_DRIFT_FRESHNESS_MINUTES, mode: "COMMITTING", runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: false,
+    thresholdFiles: 3, thresholdMinutes: null, mode: "COMMITTING", runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: false,
   } });
   async function source(instance, input) {
     const selected = await readRecorded(instance, input), plan = selected.plan, output = assertStandardOperationOutput(selected.output);

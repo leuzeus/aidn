@@ -10,7 +10,15 @@ import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-
 // canonical writers, physical report/event readers and actual closure hook.
 // This does not establish the published graph or genuine actor qualification.
 export async function verifyObjectiveCompletionClosure({ f, artifacts, cyclePath, verifier, script }) {
+  const NativeDate = Date, day = 86400000;
+  let oldProducerClock = false;
+  globalThis.Date = class extends NativeDate {
+    constructor(...args) { super(...(args.length ? args : [NativeDate.now() - (oldProducerClock ? day : 0)])); }
+    static now() { return NativeDate.now() - (oldProducerClock ? day : 0); }
+  };
+  try {
   const targetRoot = f.configuration.target_root, sessions = f.t.sessions.length, checks = verifier.calls();
+  const originalAuthorization = shadowHash(f.objectiveCompletionAuthorization);
   // One warm host per phase; preserve the independent new Node reconstruction.
   // All host methods keep their own fresh context/authentication/CAS checks.
   const warm = f.open(), phaseStarted = performance.now();
@@ -30,10 +38,14 @@ export async function verifyObjectiveCompletionClosure({ f, artifacts, cyclePath
   assert.equal(native.journal_phase, "closed", JSON.stringify(native));
   const evaluation = await warm.step({ write: true });
   assert.equal(warm.readOperation(evaluation.operation_id).results.at(-1).output.facts.drift_present, false);
+  // Only the D/H review and completion producers use this old clock. Native
+  // diagnosis already closed under its unchanged original current grant.
+  oldProducerClock = true;
   const waiting = await warm.step({ write: true });
   assert.equal(waiting.status, "waiting_for_human"); assert.equal(waiting.question.contract_version, "standard-drift-recovery-question.v2");
   assert.equal(waiting.question.review.session_objective, "Learn through an explicitly admitted bounded SPIKE");
   assert.equal(waiting.question.review.cycle_objective, "Determine whether a bounded prototype is useful");
+  assert.ok(NativeDate.now() - waiting.question.review.prepared_at_ms >= day, "The original review must already be old before human capture or any finalization effect");
   const claim = { contract_version: "human-drift-recovery-decision.v2", source_kind: "human", authority_id: "fixture_operator",
     source_event_id: "fixture-objective-closure-1", subject_sha256: shadowHash(waiting.question.review), question_sha256: shadowHash(waiting.question),
     choice: "confirm_alignment", rationale: "Fixture operator reviews the exact terminal goals and complete clean diagnostic.",
@@ -42,8 +54,22 @@ export async function verifyObjectiveCompletionClosure({ f, artifacts, cyclePath
   fs.writeFileSync(f.closureSourceFile, JSON.stringify({ ...sources, objective: claim }));
   await warm.receiveDecision(waiting.operation_id, { write: true, sourceRef: "objective" });
   await warm.acceptOperation(waiting.operation_id, { write: true });
+  const preFinalizeEventFile = path.join(targetRoot, ".aidn/runtime/perf/workflow-events.ndjson");
+  const preFinalizeEvents = fs.existsSync(preFinalizeEventFile) ? fs.readFileSync(preFinalizeEventFile) : null;
+  const preFinalizeState = warm.inspect(), finalizationPreview = await warm.step({ write: false });
+  assert.equal(finalizationPreview.preview.binding.id, "drift_check_finalize");
+  assert.equal(finalizationPreview.preview.prepared.can_apply, true);
+  assert.ok(NativeDate.now() - finalizationPreview.preview.prepared.plan.prepared_at_ms >= day, "The finalizer must share the old producer clock before it writes");
+  assert.ok(NativeDate.now() - finalizationPreview.preview.prepared.plan.objective_alignment.prepared_at_ms >= day);
+  assert.equal(warm.inspect().record.instance_sha256, preFinalizeState.record.instance_sha256);
+  if (preFinalizeEvents === null) assert.equal(fs.existsSync(preFinalizeEventFile), false);
+  else assert.deepEqual(fs.readFileSync(preFinalizeEventFile), preFinalizeEvents);
   const finalized = await warm.step({ write: true }), completion = warm.readOperation(finalized.operation_id).results.at(-1).output;
   assert.equal(completion.effect_status, "confirmed", JSON.stringify(completion)); assert.equal(completion.facts.drift_check_completed, true);
+  oldProducerClock = false;
+  assert.ok(Date.now() - waiting.question.review.prepared_at_ms >= day);
+  assert.ok(Date.now() - Date.parse(completion.observations.observed_event.ts) >= day);
+  assert.equal(shadowHash(f.objectiveCompletionAuthorization), originalAuthorization);
   const eventFile = path.join(targetRoot, ".aidn/runtime/perf/workflow-events.ndjson"), eventBytes = fs.readFileSync(eventFile);
   const status = artifacts.read(cyclePath + "/status.md"), current = artifacts.read("CURRENT-STATE.md"), snapshot = artifacts.read("snapshots/context-snapshot.md");
   const before = warm.inspect(), preview = await warm.step({ write: false });
@@ -79,5 +105,7 @@ export async function verifyObjectiveCompletionClosure({ f, artifacts, cyclePath
   console.log(JSON.stringify({ proof: "fixture-actors-real-host-objective-completion-and-cycle-close", status: "PASS", target: targetRoot,
     phase_timings_ms: { warm_before_cold: beforeCold - phaseStarted, cold_and_verification: performance.now() - beforeCold },
     objective_finalization: finalized.operation_id, cycle_close_finalize: accepted.operation_id, cold_native_allocations: 0,
+    original_day_old_review_and_hook_event: true, original_native_grant_unchanged: true,
     preview: "nonmutating", redelivery: "retained_result", replay_and_simulation: "same-scenario-model-reducer", published_model: "NOT_RUN", full_standard: false }));
+  } finally { globalThis.Date = NativeDate; }
 }

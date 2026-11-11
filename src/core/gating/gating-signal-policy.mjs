@@ -1,5 +1,3 @@
-export const STANDARD_DRIFT_FRESHNESS_MINUTES = 45;
-
 export function buildNoChangeFastPath(reloadResult, changedFiles) {
   return reloadResult.decision === "incremental"
     && reloadResult.fallback !== true
@@ -23,6 +21,9 @@ export function detectGatingSignals({
   repairLayerOpenCount,
   noChangeFastPath,
 }) {
+  const hasTimeThreshold = thresholdMinutes !== undefined && thresholdMinutes !== null;
+  if (hasTimeThreshold && (!Number.isSafeInteger(thresholdMinutes) || thresholdMinutes < 0))
+    throw new Error("GATING_TIME_THRESHOLD_INVALID");
   const signal = {
     objective_delta: false,
     scope_growth: false,
@@ -55,7 +56,7 @@ export function detectGatingSignals({
   if (!noChangeFastPath && mode === "COMMITTING") {
     if (latestDriftMs == null) {
       signal.time_since_last_drift_check = true;
-    } else {
+    } else if (hasTimeThreshold) {
       const elapsedMinutes = (Date.now() - latestDriftMs) / (1000 * 60);
       signal.time_since_last_drift_check = elapsedMinutes > thresholdMinutes;
     }

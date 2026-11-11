@@ -1,5 +1,50 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Amendment — R03 cache stability during R05 revalidation, 2026-11-11
+
+Revalidation of a retained primary or linked objective review always rereads
+intent, including on the no-change fast path. A cache refresh from exactly
+`full/fallback/MISSING_CACHE` or `full/fallback/ARTIFACTS_CHANGED` to
+`incremental/no-fallback/no-reason` retains the original review constraint.
+The comparison still requires the exact evaluation, diagnostic, context,
+objective, other signals and level3 constraints. Other R03 changes and stop
+states are not normalized. Current H/source, process CAS and effect authority
+remain separate requirements. No stored review, source or receipt is rewritten.
+
+This prevents a checkpoint's cache refresh from invalidating an otherwise
+unchanged review during cold closure. It adds no time limit or renewal. The
+reduced SQLite component checks this boundary; full closure and genuine-actor
+qualification retain their own scope and verdicts.
+
+## Amendment — current R05 objective evidence, 2026-11-11
+
+This amendment supersedes the five-minute preparation-age ceilings for accepted
+objective opinions, linked completion reviews and diagnosis admission, and the
+45-minute ceiling on an accepted physical R05 completion. The generic R05
+detector, internal checkpoints and hooks impose no elapsed-age threshold by
+default. A caller can still explicitly select the existing integer
+`--threshold-minutes` policy. Missing proof, objective/scope changes, sensitive
+changes, canonical integrity and repair signals retain their own requirements.
+
+Preparation timestamps remain original provenance and must be safe nonnegative
+integers. No question, plan, receipt or event is rewritten to make it younger.
+Current accepted evidence is authenticated through its exact evaluation,
+question/source, accepted receipt, physical report/event bytes, metadata,
+context and process CAS. Causal event correlation retains its original
+invocation witnesses; elapsed time alone requests no renewal or diagnosis.
+
+The owning host still distinguishes authentication of an accepted primary or
+historical fact from current linked permission. The real signed-source adapter
+retains issuer expiry and current principal verification. New Native diagnosis
+still verifies current human permission, the context fence, original Native
+grant, allocation admission and resource accounting. Historical expiry/no-effect
+receipts and linked-question contracts retain their readers and original bytes.
+
+Focused source fixtures cover these boundaries separately. This amendment does
+not qualify genuine actors, complete STANDARD, configured PostgreSQL or an exact
+installed archive. Generic disposition horizons, recovery-cycle question expiry
+and provider observation/decision windows remain separate unresolved reviews.
+
 ## Amendment — returned UNKNOWN correction reopening, 2026-11-11
 
 This amendment supersedes the expiry-only eligibility condition of the

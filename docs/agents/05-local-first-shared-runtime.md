@@ -8,6 +8,13 @@ Shared runtime is opt-in and must not weaken checkout-bound auditability or loca
 
 ## Core Rules
 
+R05 objective opinions, linked completions and diagnosis requests use current
+authenticated material instead of a preparation-age ceiling. Accepted physical
+completions retain their exact report/event/receipt witnesses without an age
+limit. Internal gates impose no elapsed default; explicit caller thresholds are
+separate policy. Historical fact authentication, current linked/source permission,
+issuer expiry and the original finite Native grant keep distinct boundaries.
+
 - PostgreSQL is optional
 - once `runtime.persistence.backend=postgres` is configured, runtime continuity reads use PostgreSQL as the canonical backend and stop on unavailable or ambiguous canonical context
 - the asynchronous DB-first continuity reader defaults to the canonical backend even when an older client omitted `localProjectionPolicy`; a compatibility SQLite projection is never its implicit authority

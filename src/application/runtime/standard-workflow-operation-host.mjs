@@ -1,4 +1,5 @@
 import { createStandardDriftRoute } from "./standard-drift-route.mjs";
+import { assertObjectiveReview } from "../../core/workflow/standard-drift-objective-review.mjs";
 import { createStandardSpikeConversion } from "./standard-spike-conversion.mjs";
 import { createStandardPrCorrectionCycle } from "./standard-pr-correction-cycle.mjs";
 import { createStandardPrCorrectionReview } from "./standard-pr-correction-review.mjs";
@@ -1873,8 +1874,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       }
       if (record.intent.binding_ref === "drift_completion_decision") {
         await human.verifyReserved(record, capture, signal);
-        const review = record.preview.prepared.plan, age = now() - review.prepared_at_ms;
-        if (!Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_OBJECTIVE_DISPOSITION_EXPIRED");
+        assertObjectiveReview(record.preview.prepared.plan);
         if (current(record.intent.instance_id).record.instance_sha256 !== state.record.instance_sha256
           || shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       }

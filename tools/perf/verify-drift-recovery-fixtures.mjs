@@ -5,6 +5,8 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { generateKeyPairSync, sign } from "node:crypto";
+import { createStandardHostAuthority } from "../../src/adapters/runtime/standard-host-authority.mjs";
 import { createStandardHumanDecisions } from "../../src/application/runtime/standard-workflow-human-decisions.mjs";
 import { recoveryBoundary } from "../../src/application/runtime/standard-drift-recovery.mjs";
 import { createStandardDriftRecovery } from "../../src/application/runtime/standard-drift-recovery.mjs";
@@ -25,6 +27,7 @@ import { artifactContentHash } from "../../src/core/workflow/artifact-compare-sw
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { createStandardObjectiveDisposition } from "../../src/application/runtime/standard-drift-objective-disposition.mjs";
 import { verifyObjectiveCompletion } from "./objective-completion-fixture-lib.mjs";
+import { verifyRecoveryReviewCache } from "./recovery-review-cache-fixture-lib.mjs";
 
 const H = "a".repeat(64), id = "op_" + "a".repeat(40), key = Buffer.alloc(32, 7), signer = createOperationJournalSigner(() => key);
 const context = { session_id: "S001", cycle_id: null, documents: [{ ref: "audit:CURRENT-STATE.md", sha256: H, content: "before" }], git: {} };
@@ -58,12 +61,12 @@ for (const change of [p => p.changes.reverse(), p => p.changes[0].path = "baseli
   const bad = structuredClone(plan); change(bad); assert.throws(() => assertRecoveryPlan(bad));
 }
 pass("closed recovery plans bind replacement post-images and bounded append text under a context hash and fixed two-document footprint");
-function humanFixture(operationId = id, withDelta = false, reviewPlan = plan, binding = "drift_recovery_decision") {
+function humanFixture(operationId = id, withDelta = false, reviewPlan = plan, binding = "drift_recovery_decision", sourcePort = null) {
   const records = new Map(), sources = new Map();
   const inbox = { read: id => ({ record: records.get(id) ?? null, content_sha256: records.has(id) ? shadowHash(records.get(id)) : null }),
     compareAndSwap(record, before) { assertDecisionInbox(record); assert.equal(before, records.has(record.inbox_id) ? shadowHash(records.get(record.inbox_id)) : null);
       records.set(record.inbox_id, structuredClone(record)); return { projection: "not_requested" }; } };
-  const human = createStandardHumanDecisions({ inbox, signer, projectionRequired: false, source: {
+  const human = createStandardHumanDecisions({ inbox, signer, projectionRequired: false, source: sourcePort ?? {
     read: ({ sourceRef }) => sources.get(sourceRef) ?? null,
     verify: ({ source, sourceRef }) => sources.has(sourceRef) && sourceRef !== "unverified"
       ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" },
@@ -165,7 +168,7 @@ async function dispositionFixture(choice = "confirm_alignment") {
   const retained = await history();
   assert.equal(retained.review_sha256, shadowHash(f.review));
   assert.equal(f.freshCalls(), 0);
-  await assert.rejects(f.read(), /EXPIRED/);
+  await assert.rejects(f.read(), /canonical review changed/);
   f.verified.context_sha256 = "b".repeat(64);
   await assert.rejects(history(), /SUBJECT_CHANGED/);
   pass("historical objective opinion authenticates its exact evaluation without rebuilding a current review");
@@ -176,12 +179,78 @@ for (const [name, mutate, reason] of [
   ["changed evaluation", f => f.verified.evaluation_sha256 = "b".repeat(64), /SUBJECT_CHANGED/],
   ["changed context", f => f.verified.context_sha256 = "b".repeat(64), /SUBJECT_CHANGED/],
   ["later evaluation", f => f.instance.events.push({ kind: "operation_intent", intent: { binding_ref: "drift_report_evaluate", operation_id: "op_" + "c".repeat(40) } }), /SUBJECT_CHANGED/],
-  ["expired review", f => f.time(300002), /EXPIRED/],
   ["unverified retained source", f => f.sources.clear(), /NOT_AUTHENTICATED/],
   ["canonical CAS change", f => f.stale(), /canonical review changed/],
 ]) {
   const f = await dispositionFixture(); mutate(f); await assert.rejects(f.read(), reason);
   pass(`objective disposition refuses ${name} without granting an effect`);
+}
+for (const time of [300002, 86400001, 0]) {
+  const f = await dispositionFixture(), original = shadowHash(f.record), before = await f.read();
+  f.time(time);
+  assert.deepEqual(await f.read(), before); assert.equal(shadowHash(f.record), original);
+  f.sources.clear(); await assert.rejects(f.read(), /NOT_AUTHENTICATED/);
+  pass(`accepted objective opinion keeps its original bytes at clock${time} and still refuses a revoked source`);
+}
+// Real protected-source adapter and Ed25519 envelopes; accepted reducer/history
+// and inbox CAS are fixture capabilities. No genuine H or Native allocation.
+for (const linked of [false, true]) {
+  const temporary = fs.realpathSync(os.tmpdir()), base = fs.mkdtempSync(path.join(temporary, 'aidn-objective-source-'));
+  let completed = false;
+  const realNow = Date.now;
+  try {
+    const dirs = Object.fromEntries(['project', 'control', 'review', 'home', 'authority'].map(name => {
+      const folder = path.join(base, name); fs.mkdirSync(folder); return [name, folder];
+    }));
+    fs.mkdirSync(path.join(dirs.authority, 'inbox'));
+    const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+    const registry = { contract_version: 'standard-host-principals.v1', principals: [{ authority_id: 'fixture_user', kinds: ['human'], public_key: publicKey.export({ type: 'spki', format: 'pem' }) }] };
+    const registryFile = path.join(dirs.authority, 'principals.json'); fs.writeFileSync(registryFile, JSON.stringify(registry));
+    const host = createStandardHostAuthority({ environment: { AIDN_STANDARD_HOST_HOME: dirs.authority }, configuration: {
+      target_root: dirs.project, control_root: dirs.control, review_root: dirs.review, instance_id: 'fixture',
+      native: { home: dirs.home, tool_roots: [], protected_roots: [dirs.authority] } } }, { useProvider: false });
+    const anchor = { operation_id: 'op_' + 'e'.repeat(40), receipt_sha256: H, plan_sha256: H, output_sha256: H,
+      alignment_sha256: H, report_sha256: H, event_sha256: H, event_offset: 17 };
+    const review = linked ? { ...objectivePlan, contract_version: 'standard-drift-recovery-plan.v3', previous_completion: anchor } : objectivePlan;
+    const binding = linked ? 'drift_completion_decision' : 'drift_recovery_decision';
+    const f = humanFixture('op_' + 'f'.repeat(40), false, review, binding, host.humanSource);
+    const claim = { ...f.claim('confirm_alignment'), contract_version: 'human-drift-recovery-decision.v2',
+      subject_sha256: shadowHash(f.question.review), rationale: 'Fixture exact old review with separately current signed source.' };
+    const at = realNow(), body = { contract_version: 'standard-host-source.v1', kind: 'human', authority_id: 'fixture_user', source_ref: 'current',
+      subject_sha256: shadowHash(f.question), payload: claim, issued_at_ms: at - 1, expires_at_ms: at + 60000 };
+    const sourceFile = path.join(dirs.authority, 'inbox/current.json');
+    fs.writeFileSync(sourceFile, JSON.stringify({ ...body, signature: sign(null, Buffer.from(shadowHash(body)), privateKey).toString('base64') }));
+    const sourceBytes = fs.readFileSync(sourceFile);
+    const capture = await f.human.reserve(f.record, 'current'), output = f.human.output(f.record, capture);
+    const receipt = { operation_id: f.record.operation_id, outcome: output.outcome, output_sha256: shadowHash(output) };
+    f.record.preview.input = linked ? {} : { evaluation_operation_id: id }; f.record.phase = 'receipted'; f.record.results.push({ output, receipt });
+    f.human.acknowledge(capture.inbox_id, receipt);
+    const instance = { instance_id: 'fixture', scope_id: 'fixture', events: [
+      { kind: 'operation_intent', intent: { binding_ref: 'drift_report_evaluate', operation_id: id } },
+      { kind: 'operation_intent', intent: { binding_ref: binding, operation_id: f.record.operation_id } }, { kind: 'operation_result', receipt }] };
+    const verified = { context_sha256: H, evaluation_sha256: H, output: { observations: { report: review.report } } };
+    const reader = createStandardObjectiveDisposition({ readOperation: () => f.record, human: f.human,
+      async assertFresh(_instance, selected) { await new Promise(resolve => setImmediate(resolve)); assert.deepEqual(selected, f.question.review); } });
+    const read = () => linked ? reader.readRenewed(instance, { evaluation_operation_id: id }, verified, anchor)
+      : reader.read(instance, { evaluation_operation_id: id }, verified);
+    const before = await read(), original = shadowHash(f.record);
+    assert.equal(before.prepared_at_ms, 1);
+    Date.now = () => realNow() + 120000;
+    if (linked) await assert.rejects(read(), { code: 'STANDARD_HOST_SOURCE_INVALID' });
+    else assert.deepEqual(await read(), before);
+    await assert.rejects(f.human.verifyCaptured(f.record), { code: 'STANDARD_HOST_SOURCE_INVALID' });
+    Date.now = realNow;
+    registry.principals[0].kinds = ['control']; fs.writeFileSync(registryFile, JSON.stringify(registry));
+    await assert.rejects(read(), { code: 'STANDARD_HOST_SOURCE_NOT_AUTHENTICATED' });
+    assert.equal(shadowHash(f.record), original); assert.deepEqual(fs.readFileSync(sourceFile), sourceBytes);
+    assert.equal(host.keyId(), null); assert.deepEqual(fs.readdirSync(dirs.control), []);
+    completed = true;
+    pass(`real signed source ${linked ? 'current linked permission' : 'accepted primary fact'}: old review retained, issuer expiry and principal revocation remain separate`);
+  } finally {
+    Date.now = realNow;
+    assert.equal(path.dirname(fs.realpathSync(base)), temporary); assert.ok(path.basename(base).startsWith('aidn-objective-source-'));
+    if (completed) fs.rmSync(base, { recursive: true, force: true }); else console.error(JSON.stringify({ retained_objective_source_fixture: base }));
+  }
 }
 {
   const f = await dispositionFixture("request_diagnosis"); await assert.rejects(f.read(), /ALIGNMENT_NOT_CONFIRMED/);
@@ -205,7 +274,7 @@ for (const [name, mutate, reason] of [
   pass("diagnosis-only renewal refuses alignment and retains an authenticated no-effect diagnosis request");
 }
 // Current H authentication must follow the last awaited historical/context read.
-for (const fault of ["none", "context-revocation", "context-expiry", "wrong-link", "request_diagnosis", "refused", "deferred", "cancelled", "waiting"]) {
+for (const fault of ["none", "context-revocation", "context-aged", "wrong-link", "request_diagnosis", "refused", "deferred", "cancelled", "waiting"]) {
   const anchor = { operation_id: "op_" + "e".repeat(40), receipt_sha256: H, plan_sha256: H, output_sha256: H,
     alignment_sha256: H, report_sha256: H, event_sha256: H, event_offset: 17 };
   const review = { ...objectivePlan, contract_version: "standard-drift-recovery-plan.v3", previous_completion: anchor };
@@ -226,14 +295,14 @@ for (const fault of ["none", "context-revocation", "context-expiry", "wrong-link
       assert.equal(current, instance); assert.deepEqual(selectedReview, f.record.preview.prepared.plan);
       assert.deepEqual(witnessedCompletion, anchor);
       await new Promise(resolve => setImmediate(resolve));
-      if (fault === "context-revocation") f.sources.clear(); if (fault === "context-expiry") time = 300002; } });
+      if (fault === "context-revocation") f.sources.clear(); if (fault === "context-aged") time = 86400001; } });
   const verified = { context_sha256: H, evaluation_sha256: H, output: { observations: { report: review.report } } };
   const selected = fault === "wrong-link" ? { ...anchor, event_offset: 18 } : anchor;
   const read = () => reader.readRenewed(instance, { evaluation_operation_id: id }, verified, selected);
-  if (fault === "none") {
+  if (fault === "none" || fault === "context-aged") {
     const result = await read(); assert.equal(result.review_sha256, shadowHash(f.question.review));
     assert.deepEqual(output.facts, { drift_completion_reviewed: true });
-  } else await assert.rejects(read(), fault === "context-revocation" ? /NOT_AUTHENTICATED/ : fault === "context-expiry" ? /EXPIRED/ : fault === "wrong-link" ? /LINK_CHANGED/ : fault === "request_diagnosis" ? /ALIGNMENT_NOT_CONFIRMED/ : /NOT_ACCEPTED/);
+  } else await assert.rejects(read(), fault === "context-revocation" ? /NOT_AUTHENTICATED/ : fault === "wrong-link" ? /LINK_CHANGED/ : fault === "request_diagnosis" ? /ALIGNMENT_NOT_CONFIRMED/ : /NOT_ACCEPTED/);
   pass(`linked fresh completion review ${fault}: current authentication follows awaited context, no completion effect`);
 }
 {
@@ -245,6 +314,7 @@ for (const fault of ["none", "context-revocation", "context-expiry", "wrong-link
   forwardFixtureOutput(cacheFence);
 }
 await verifyObjectiveCompletion(pass);
+await verifyRecoveryReviewCache(pass);
 forwardFixtureOutput(execFileSync(process.execPath, [fileURLToPath(new URL("./verify-standard-drift-route-fixtures.mjs", import.meta.url))], { encoding: "utf8", windowsHide: true, timeout: 15000, maxBuffer: 1048576 }));
 if (process.argv.includes("--objective-disposition-only")) {
   console.log(JSON.stringify({ status: "PASS", checks, proof: "synthetic-authenticated-disposition-and-human-component-with-production-effect-fences",

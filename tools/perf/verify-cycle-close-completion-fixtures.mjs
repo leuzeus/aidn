@@ -37,7 +37,7 @@ function sync(root) {
   const result = run(root, 'tools/perf/index-sync.mjs', ['--store', 'sqlite']);
   assert.equal(result.status, 0);
 }
-function fixture(mode = 'files') {
+function fixture(mode = 'files', withDrift = true) {
   const root = copyFixtureToTmp(corpus, os.tmpdir(), 'aidn-close-completion', {
     filter: source => fs.statSync(source).isDirectory() || trackedCorpus.has(path.relative(repo, source).replaceAll('\\', '/')),
   });
@@ -52,13 +52,13 @@ function fixture(mode = 'files') {
   execFileSync('git', ['-C', root, 'add', '.'], { stdio: 'pipe' });
   execFileSync('git', ['-C', root, 'commit', '--amend', '--no-edit'], { stdio: 'pipe' });
   if (mode !== 'files') sync(root);
-  completeDriftCheckFixture(root);
+  if (withDrift) completeDriftCheckFixture(root);
   return root;
 }
 const close = root => run(root, 'tools/codex/run-json-hook.mjs', ['--skill', 'cycle-close', '--mode', 'COMMITTING', '--strict', '--fail-on-repair-block']);
 const drift = (root, mode = 'COMMITTING') => run(root, 'tools/codex/run-json-hook.mjs', ['--skill', 'drift-check', '--mode', mode, '--strict']);
 const eventPath = root => path.join(root, '.aidn/runtime/perf/workflow-events.ndjson');
-const events = root => fs.readFileSync(eventPath(root), 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
+const events = root => (fs.existsSync(eventPath(root)) ? fs.readFileSync(eventPath(root), 'utf8') : '').trim().split('\n').filter(Boolean).map(JSON.parse);
 const completed = root => events(root).filter(event => event.event === 'drift_check_completed').length;
 function hashes(root) {
   const result = {};
@@ -71,6 +71,38 @@ function hashes(root) {
   visit(root); return result;
 }
 try {
+  if (!process.argv.includes('--missing-proof-only')) {
+  const policy = { sessionObjective: 'finalize the selected feature', cycleGoal: 'finalize the selected feature', changedFiles: [],
+    mode: 'COMMITTING', thresholdFiles: 3, latestDriftMs: Date.now() - 86400000, reloadReasonCodes: [], noChangeFastPath: false };
+  for (const thresholdMinutes of [undefined, null]) assert.equal(detectGatingSignals({ ...policy, thresholdMinutes }).time_since_last_drift_check, false);
+  for (const thresholdMinutes of [0, 45]) assert.equal(detectGatingSignals({ ...policy, thresholdMinutes }).time_since_last_drift_check, true);
+  assert.equal(detectGatingSignals({ ...policy, latestDriftMs: null }).time_since_last_drift_check, true);
+  for (const thresholdMinutes of [-1, 0.5, Number.MAX_SAFE_INTEGER + 1, NaN, Infinity, '45'])
+    assert.throws(() => detectGatingSignals({ ...policy, thresholdMinutes }), /GATING_TIME_THRESHOLD_INVALID/);
+  assert.equal(detectGatingSignals({ ...policy, cycleGoal: 'replace the unrelated billing service' }).objective_delta, true);
+  assert.equal(detectGatingSignals({ ...policy, changedFiles: ['a', 'b', 'c', 'd'] }).scope_growth, true);
+  assert.equal(detectGatingSignals({ ...policy, repairLayerOpenCount: 1 }).repair_findings_open, true);
+  console.log('PASS R05 policy: no imposed age threshold, explicit caller choice, missing proof and material drift remain distinct');
+  for (const mode of ['files', 'dual', 'db-only']) {
+    const root = fixture(mode, false);
+    // Construct an original generic-event input for this fixture. It is not a
+    // signed objective-completion receipt or proof of an actual old invocation.
+    put(root, '.aidn/runtime/perf/workflow-events.ndjson', JSON.stringify({ skill: 'drift-check', event: 'drift_check_completed',
+      result: 'ok', mode: 'COMMITTING', branch: 'feature/C101-alpha', ts: '2000-01-01T00:00:00.000Z' }) + '\n');
+    const args = ['--mode', 'COMMITTING', '--no-emit-event', '--reload-decision', 'full', '--reload-fallback', 'false', '--reload-reason-codes', '[]'];
+    const before = hashes(root);
+    const implicit = run(root, 'tools/perf/gating-evaluate.mjs', args);
+    assert.equal(implicit.status, 0); assert.notEqual(implicit.result.levels.level1.decision, 'stop');
+    assert.equal(implicit.result.levels.level2.active_signals.includes('time_since_last_drift_check'), false);
+    const explicit = run(root, 'tools/perf/gating-evaluate.mjs', [...args, '--threshold-minutes', '45']);
+    assert.equal(explicit.status, 0); assert.notEqual(explicit.result.levels.level1.decision, 'stop');
+    assert.equal(explicit.result.levels.level2.active_signals.includes('time_since_last_drift_check'), true);
+    const unsafe = spawnSync(process.execPath, [path.join(repo, 'tools/perf/gating-evaluate.mjs'), '--target', root,
+      '--threshold-minutes', '9007199254740992', '--json'], { encoding: 'utf8', windowsHide: true });
+    assert.equal(unsafe.status, 1); assert.match(unsafe.stderr, /safe nonnegative integer/);
+    assert.deepEqual(hashes(root), before);
+    console.log(`PASS ${mode}: actual gating CLI keeps old generic event read-only by default and honors an explicit owner threshold`);
+  }
   for (const file of ['src/database/client.mjs', 'src/auth/login.ts', 'migrations/001.sql',
     'docs/audit/cycles/C101-migration-alpha/schema.sql', 'docs/audit/cycles/C101-migration-alpha/other.md']) {
     assert.equal(detectGatingSignals({ changedFiles: [file], reloadReasonCodes: [] }).cross_domain_touch, true, file);
@@ -174,35 +206,37 @@ try {
     assert.equal(warm.checkpoint.gate.skipped, false);
     assert.equal(warm.checkpoint.gate.result, 'ok', JSON.stringify(warm));
     const history = fs.readFileSync(eventPath(root), 'utf8');
-    for (const proofChange of ['expired', 'foreign-branch', 'wrong-mode', 'future']) {
+    for (const proofChange of ['elapsed', 'foreign-branch', 'wrong-mode', 'future']) {
       fs.writeFileSync(eventPath(root), history.trim().split('\n').map(line => {
         const event = JSON.parse(line);
         if (event.event === 'drift_check_completed') {
-          if (proofChange === 'expired') event.ts = new Date(Date.now() - 46 * 60000).toISOString();
+          if (proofChange === 'elapsed') event.ts = new Date(Date.now() - 46 * 60000).toISOString();
           if (proofChange === 'foreign-branch') event.branch = 'feature/C999-other';
           if (proofChange === 'wrong-mode') event.mode = 'THINKING';
           if (proofChange === 'future') event.ts = new Date(Date.now() + 60000).toISOString();
         }
         return JSON.stringify(event);
       }).join('\n') + '\n');
-      const refused = forcedClose();
-      assert.equal(refused.result, 'warn', proofChange);
-      assert(refused.checkpoint.gate.levels.level2.active_signals.includes('time_since_last_drift_check'), proofChange);
+      const observed = forcedClose();
+      assert.equal(observed.result, proofChange === 'elapsed' ? 'ok' : 'warn', proofChange);
+      assert.equal(observed.checkpoint.gate.levels.level2.active_signals.includes('time_since_last_drift_check'), proofChange !== 'elapsed', proofChange);
     }
     fs.writeFileSync(eventPath(root), history);
     assert.equal(forcedClose().checkpoint.gate.result, 'ok');
     assert.equal(run(root, 'tools/perf/reload-check.mjs').result.decision, 'stop');
     assert.match(fs.readFileSync(path.join(root, statusPath), 'utf8'), /^state: DONE$/m);
-    console.log(`PASS ${mode}: clean warm closure reads real recent drift proof; expired, foreign, wrong-mode and future proofs still warn`);
+    console.log(`PASS ${mode}: clean warm closure retains elapsed proof; foreign, wrong-mode and future proofs still warn`);
+  }
   }
   for (const mode of ['files', 'dual', 'db-only']) {
-    const root = fixture(mode);
+    const root = fixture(mode, false);
     put(root, statusPath, status('DONE'));
     fs.appendFileSync(path.join(root, 'docs/audit/sessions/S101-alpha.md'), '\nClosure reviewed.\n');
     fs.appendFileSync(path.join(root, 'docs/audit/snapshots/context-snapshot.md'), '\nCycle C101 closed.\n');
     if (mode !== 'files') sync(root);
-    const history = events(root).map(event => JSON.stringify({ ...event, ts: new Date(Date.now() - 46 * 60000).toISOString() })).join('\n') + '\n';
-    fs.writeFileSync(eventPath(root), history); // age only this owned fixture's proof
+    const initialEvents = events(root);
+    assert.equal(initialEvents.some(event => event.event === 'drift_check_completed'), false);
+    const history = initialEvents.map(event => JSON.stringify(event)).join('\n') + (initialEvents.length ? '\n' : '');
     const proofCount = completed(root);
     const warning = close(root).result;
     assert.equal(warning.ok, false);
@@ -222,6 +256,7 @@ try {
     const beforePreview = hashes(root);
     const preview = run(root, 'tools/perf/gating-evaluate.mjs', ['--mode', 'COMMITTING', '--complete-drift-check', '--no-emit-event']).result;
     assert.equal(preview.result, 'warn');
+    assert(preview.levels.level2.active_signals.includes('time_since_last_drift_check'));
     assert.equal(preview.levels.level2.changed_files_count, 3);
     assert(!preview.levels.level1.reason_codes.includes('MAPPING_MISSING'));
     assert.deepEqual(hashes(root), beforePreview, 'preview must not write a cache, event or project file');
@@ -244,7 +279,7 @@ try {
     if (mode !== 'files') sync(root);
     assert.equal(drift(root).result.result, 'warn');
     assert.equal(completed(root), proofCount + 1);
-    console.log(`PASS ${mode}: closure warning -> read-only preview -> explicit drift proof -> closure; ordinary work and unresolved objective still refused`);
+    console.log(`PASS ${mode}: missing-proof warning -> read-only preview -> explicit drift proof -> closure; ordinary work and unresolved objective still refused`);
   }
 } finally {
   for (const root of roots) {

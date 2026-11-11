@@ -1,4 +1,5 @@
 import { MODE_WORK_CONTRACT, evaluateStandardModeWork } from "../../core/workflow/standard-mode-work.mjs";
+import { assertObjectiveReview } from "../../core/workflow/standard-drift-objective-review.mjs";
 import { observeModeWorkReport, modeWorkContinuationChoices, assertModeWorkObservationOutput } from "../../core/workflow/standard-mode-work-continuation.mjs";
 import { readStandardModeWorkContext } from "./standard-mode-work-context.mjs";
 import { readStandardCycleCloseContext } from "./standard-cycle-close-context.mjs";
@@ -244,6 +245,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       authenticate(instance, auth);
       return;
     }
+    assertObjectiveReview(review);
     const evaluation = acceptedOperation(instance, review.evaluation_operation_id, "drift_report_evaluate", auth);
     if (!["standard-drift-recovery-plan.v2", "standard-drift-recovery-plan.v3"].includes(review.contract_version) || capture.source.choice !== "request_diagnosis"
       || !previous.some(row => row.occurrence_id === evaluation.record.preview.input.report_occurrence_id)
@@ -258,7 +260,6 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     // new allocation admission, and cumulative Native budget accounting.
     await human.verifyCaptured(selected.record);
     assertContextCurrent();
-    if (Date.now() < review.prepared_at_ms || Date.now() - review.prepared_at_ms > 300000) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_EXPIRED");
     authenticate(instance, auth);
   }
   async function admitReadyDriftDiagnosis(instance) {
@@ -277,6 +278,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const record = operationStore.read(request.operation_id).record; signer.verify(record); signer.verify(record.preview);
     if (!["drift_recovery_decision", "drift_completion_decision"].includes(record.intent.binding_ref)) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_REQUIRED");
     const capture = human.captured(record), review = record.preview.prepared.plan;
+    assertObjectiveReview(review);
     const instance = instances.read(journal.instance_id).record, result = record.results.at(-1);
     const latestReview = instance?.events.filter(row => row.kind === "operation_intent"
       && ["drift_recovery_decision", "drift_completion_decision"].includes(row.intent.binding_ref)).at(-1);
@@ -292,7 +294,6 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (shadowHash(current) !== shadowHash(journal) || shadowHash(operationStore.read(request.operation_id).record) !== shadowHash(record)
       || instances.read(journal.instance_id).record?.instance_sha256 !== instance.instance_sha256)
       fail("STANDARD_PROCESS_NATIVE_ALLOCATION_CHANGED");
-    if (Date.now() < review.prepared_at_ms || Date.now() - review.prepared_at_ms > 300000) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_EXPIRED");
   }
   async function admitNativeActivity(instance, occurrenceId) {
     if (inspectAgenticProcess(instance).occurrences.find(row => row.occurrence_id === occurrenceId)?.node_id === "closure_drift_report"

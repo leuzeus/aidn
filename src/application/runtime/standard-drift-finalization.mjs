@@ -25,7 +25,7 @@ export async function observeStandardDriftGate(artifacts, mode, { requireIntentS
   return runGatingEvaluateUseCase({ requireIntentSignals, targetRoot: artifacts.root, runtimeDir: fileURLToPath(new URL("../../../tools/perf/", import.meta.url)), args: {
     cache: ".aidn/runtime/cache/reload-state.json", eventFile: eventRelative, indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
     stateMode: artifacts.describe().state_mode, stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto",
-    thresholdFiles: 3, thresholdMinutes: 45, mode, runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: true,
+    thresholdFiles: 3, thresholdMinutes: null, mode, runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: true,
   } });
 }
 export function createStandardDriftFinalization({ targetRoot, readEvaluation, readCurrent, readObjectiveAlignment = null, now = Date.now }) {
@@ -112,7 +112,7 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
               runtimeDir: fileURLToPath(new URL("../../../tools/perf/", import.meta.url)), args: {
                 cache: ".aidn/runtime/cache/reload-state.json", eventFile: eventRelative, indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
                 stateMode: artifacts.describe().state_mode, stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto",
-                thresholdFiles: 3, thresholdMinutes: 45, mode: planMode(plan), runId, reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: true, completeDriftCheck: true },
+                thresholdFiles: 3, thresholdMinutes: null, mode: planMode(plan), runId, reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: true, completeDriftCheck: true },
               verifyObjectiveAlignment: async () => {
                 await assertContext(); await assertAuthorized(); assertCurrent();
                 return structuredClone(plan.objective_alignment);

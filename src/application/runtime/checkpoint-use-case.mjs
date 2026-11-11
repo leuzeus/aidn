@@ -134,7 +134,7 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
         indexFile: reloadIndex.indexFile,
         indexBackend: reloadIndex.indexBackend,
         thresholdFiles: 3,
-        thresholdMinutes: 45,
+        thresholdMinutes: null,
         mode: args.mode,
         runId: args.runId,
         reloadDecision: String(reload.decision ?? "incremental"),

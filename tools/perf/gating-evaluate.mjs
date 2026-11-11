@@ -20,7 +20,7 @@ function parseArgs(argv) {
     indexFile: ".aidn/runtime/index/workflow-index.sqlite",
     indexBackend: "auto",
     thresholdFiles: 3,
-    thresholdMinutes: 45,
+    thresholdMinutes: null,
     mode: "COMMITTING",
     runId: "",
     reloadDecision: "",
@@ -69,6 +69,7 @@ function parseArgs(argv) {
         throw new Error("--threshold-minutes must be an integer");
       }
       args.thresholdMinutes = Number(raw);
+      if (!Number.isSafeInteger(args.thresholdMinutes)) throw new Error("--threshold-minutes must be a safe nonnegative integer");
     } else if (token === "--mode") {
       args.mode = String(argv[i + 1] ?? "").toUpperCase();
       i += 1;
@@ -133,6 +134,7 @@ function printUsage() {
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client");
   console.log("  AIDN_STATE_MODE=db-only node tools/perf/gating-evaluate.mjs --target ../client");
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client --mode COMMITTING");
+  console.log("  --threshold-minutes <integer> is optional; no elapsed-age threshold is imposed by default.");
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client --index-sync-check-file .aidn/runtime/index/index-sync-check.json");
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client --state-mode db-only --index-file .aidn/runtime/index/workflow-index.sqlite");
   console.log("  node tools/perf/gating-evaluate.mjs --target ../client --run-id S072-20260301T1012Z");

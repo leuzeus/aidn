@@ -45,7 +45,7 @@ const alignment = { contract_version: "standard-drift-objective-disposition.v1",
 const eventFile = path.join(root, "events.ndjson"), prefix = Buffer.from('{"event":"preserved_prefix"}\n');
 const args = () => ({ cache: "cache.json", eventFile, indexSyncCheckFile: "sync.json", indexFile: "index.sqlite",
   indexBackend: "auto", stateMode: "files", stateModeExplicit: true, mode: "THINKING", thresholdFiles: 3,
-  thresholdMinutes: 45, reloadDecision: "incremental", reloadFallback: "false", reloadReasonCodes: "",
+  thresholdMinutes: null, reloadDecision: "incremental", reloadFallback: "false", reloadReasonCodes: "",
   emitEvent: true, completeDriftCheck: true, runId: "fixture_fence" });
 const observations = () => ({ sessionObjective: objectives.session_objective, cycleGoal: objectives.cycle_objective,
   changedFiles: [], latestDriftMs: null, noChangeFastPath: false, indexSyncCheckAbsolute: "fixture:sync",
@@ -60,11 +60,12 @@ try {
     { encoding: "utf8", windowsHide: true, timeout: 15000 });
   assert.equal(git.status, 0, git.stderr);
   if (!process.argv.includes("--report-only")) {
-    for (const scenario of ["nominal", "revoked", "expired", "replaced", "goals", "scope", "stop", "l3", "preview", "json-only"]) {
+    for (const scenario of ["nominal", "elapsed", "revoked", "source-expired", "replaced", "goals", "scope", "stop", "l3", "preview", "json-only"]) {
       const selected = process.argv.find(value => value.startsWith("--case="))?.slice(7);
       if (selected && scenario !== selected) continue;
       fs.writeFileSync(eventFile, prefix);
       let reads = 0, verifications = 0, authorized = true, clock = 100;
+      const sourceExpiresAt = 172800100;
       globalThis.objectiveFenceFixture = { async observe() {
         reads++;
         // A real asynchronous turn lets the observation settle after authority
@@ -73,7 +74,8 @@ try {
         const value = observations();
         if (reads === 2) {
           if (scenario === "revoked") authorized = false;
-          if (scenario === "expired") clock = 300101;
+          if (scenario === "source-expired") clock = sourceExpiresAt + 1;
+          if (scenario === "elapsed") clock = 86400100;
           if (scenario === "goals") value.cycleGoal = "A substituted independent goal";
           if (scenario === "scope") value.changedFiles = ["a", "b", "c", "d"];
           if (scenario === "stop") value.canonicalIntentFailureReason = "REQUIRED_ARTIFACT_MISSING";
@@ -84,7 +86,7 @@ try {
       const verifyObjectiveAlignment = async () => {
         verifications++;
         assert.equal(authorized, true, "fixture authorization revoked");
-        assert.ok(clock - alignment.prepared_at_ms <= 300000, "fixture disposition expired");
+        assert.ok(clock < sourceExpiresAt, "fixture current source expired");
         return { ...alignment, ...(scenario === "replaced" && reads === 2 ? { source_event_id: "replacement" } : {}) };
       };
       const input = args();
@@ -92,7 +94,7 @@ try {
       if (scenario === "json-only") input.objectiveAlignment = alignment;
       const run = () => runGatingEvaluateUseCase({ targetRoot: root, runtimeDir: root, args: input,
         ...(scenario === "json-only" ? {} : { verifyObjectiveAlignment }) });
-      if (scenario === "nominal") {
+      if (scenario === "nominal" || scenario === "elapsed") {
         const result = await run(); assert.equal(result.result, "ok"); assert.equal(reads, 2); assert.equal(verifications, 2);
         const bytes = fs.readFileSync(eventFile); assert.deepEqual(bytes.subarray(0, prefix.length), prefix);
         const event = JSON.parse(bytes.subarray(prefix.length));
@@ -101,27 +103,29 @@ try {
         const result = await run(); assert.equal(result.result, "warn"); assert.equal(verifications, 0);
         assert.equal(JSON.parse(fs.readFileSync(eventFile).subarray(prefix.length)).event, "drift_check_evaluated");
       } else {
-        const reason = scenario === "revoked" ? /authorization revoked/ : scenario === "expired" ? /disposition expired/ : /STANDARD_OBJECTIVE_ALIGNMENT_GATE_CHANGED/;
+        const reason = scenario === "revoked" ? /authorization revoked/ : scenario === "source-expired" ? /current source expired/ : /STANDARD_OBJECTIVE_ALIGNMENT_GATE_CHANGED/;
         let failure;
         try { await run(); } catch (error) { failure = error; }
         console.log(JSON.stringify({ scenario, reads, verifications, event_bytes: fs.statSync(eventFile).size,
           prefix_bytes: prefix.length, refusal: failure?.message ?? null }));
         assert.ok(failure, `Missing rejection; event bytes=${fs.statSync(eventFile).size}`);
         assert.match(failure.message, reason); assert.deepEqual(fs.readFileSync(eventFile), prefix);
-        if (["revoked", "expired", "replaced"].includes(scenario)) { assert.equal(reads, 2); assert.equal(verifications, 2); }
+        if (["revoked", "source-expired", "replaced"].includes(scenario)) { assert.equal(reads, 2); assert.equal(verifications, 2); }
       }
       pass(`owned evaluator ${scenario}: event effect and preserved prefix verified`);
     }
   }
-  for (const scenario of ["preview", "checkpoint", "missing", "revoked", "expired", "replaced", "goals", "scope", "stop", "l3", "json-only", "effect-revoked"]) {
+  for (const scenario of ["preview", "checkpoint", "elapsed", "missing", "revoked", "source-expired", "replaced", "goals", "scope", "stop", "l3", "json-only", "effect-revoked"]) {
     fs.writeFileSync(eventFile, prefix);
     let reads = 0, verifications = 0, authorized = true, clock = 100, effectChecks = 0;
+    const sourceExpiresAt = 172800100;
     globalThis.objectiveFenceFixture = { async observe() {
       reads++; await new Promise(resolve => setImmediate(resolve));
       const value = observations(); value.latestDriftMs = Date.now();
       if (reads === 2) {
         if (scenario === "revoked") authorized = false;
-        if (scenario === "expired") clock = 300101;
+        if (scenario === "source-expired") clock = sourceExpiresAt + 1;
+        if (scenario === "elapsed") clock = 86400100;
         if (scenario === "goals") value.cycleGoal = "Changed goal";
         if (scenario === "scope") value.changedFiles = ["a", "b", "c", "d"];
         if (scenario === "stop") value.canonicalIntentFailureReason = "REQUIRED_ARTIFACT_MISSING";
@@ -134,17 +138,17 @@ try {
     const run = () => runGatingEvaluateUseCase({ targetRoot: root, runtimeDir: root, args: input,
       ...(scenario === "json-only" ? {} : { readObjectiveCompletion: async () => {
         verifications++; assert.equal(authorized, true, "fixture completion revoked");
-        assert.ok(clock - alignment.prepared_at_ms <= 300000, "fixture completion expired");
+        assert.ok(clock < sourceExpiresAt, "fixture current source expired");
         return scenario === "missing" ? null : { ...alignment, ...(scenario === "replaced" && reads === 2 ? { source_event_id: "replacement" } : {}) };
       } }), assertEventAuthorized: () => { effectChecks++; assert.notEqual(scenario, "effect-revoked", "fixture effect authorization revoked"); } });
-    if (["preview", "checkpoint", "missing", "json-only"].includes(scenario)) {
+    if (["preview", "checkpoint", "elapsed", "missing", "json-only"].includes(scenario)) {
       const result = await run(); assert.equal(result.result, ["missing", "json-only"].includes(scenario) ? "warn" : "ok");
       if (scenario === "checkpoint") {
         const event = JSON.parse(fs.readFileSync(eventFile).subarray(prefix.length));
         assert.equal(event.event, "gating_summary"); assert.equal(event.skill, "gating-evaluate"); assert.equal(effectChecks, 1);
       } else { assert.deepEqual(fs.readFileSync(eventFile), prefix); assert.equal(effectChecks, 0); }
     } else {
-      await assert.rejects(run(), scenario === "revoked" ? /completion revoked/ : scenario === "expired" ? /completion expired/
+      await assert.rejects(run(), scenario === "revoked" ? /completion revoked/ : scenario === "source-expired" ? /current source expired/
         : scenario === "effect-revoked" ? /effect authorization revoked/ : /STANDARD_OBJECTIVE_COMPLETION_GATE_CHANGED/);
       assert.deepEqual(fs.readFileSync(eventFile), prefix);
     }

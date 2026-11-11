@@ -832,6 +832,13 @@ gate invocations do not record drift completion; `--no-emit-event` remains
 observational. This stays within the internal perf surface and does not change
 stable public JSON contracts or grant write admission.
 
+Internal `gating-evaluate` and `branch-cycle-audit-hook` have no default elapsed
+R05 threshold. Their optional `--threshold-minutes <integer>` selects an explicit
+safe nonnegative caller policy; missing proof and material drift remain signals.
+STANDARD checkpoints, closure and promotion do not supply an implicit45-minute
+policy. Accepted objective evidence still requires its current authenticated
+subject, exact physical witnesses and independent effect authorization.
+
 `bootstrap --authorize|--revoke` uses `codex-integration` scope and previews by default; application requires `--write --expect-plan PLAN_ID`. A revoked project stays revoked through repair, resume and rollback. Diagnostic and pre-write admission outputs include compact activation state before backend access. Native Codex trust is separate.
 
 Nominal bootstrap or upgrade accepts `--expect-plan PLAN_ID` from its matching preview. `--persistence-policy verify-only` checks existing backend compatibility without requesting migration, adoption or import; `adopt` retains declared installation effects. `--verify` remains the read-only verification option.

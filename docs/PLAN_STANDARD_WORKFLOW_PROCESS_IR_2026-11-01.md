@@ -1,5 +1,24 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Current R05/objective validity candidate, 2026-11-11
+
+This candidate removes internally imposed five-minute objective opinion/review/
+diagnosis ceilings and the45-minute R05 evidence default. Checkpoints, closure,
+promotion and developer wrappers do not reintroduce that default; explicit
+caller thresholds remain optional. Missing proof and actual material drift keep
+their controls. Original timestamps and signed historical bytes are retained.
+
+Accepted primary/history authentication remains distinct from current linked
+permission and new Native admission. Current source/principal/issuer permission,
+context/owner/CAS and original finite Native grants remain required at their
+existing boundaries. No mandatory review renewal is added for elapsed time.
+Existing linked and historical records retain their readers.
+
+The prepared source requires focused opinion/completion, actual signed-source,
+real CLI/storage, independent-worker and model checks. It does not establish
+full209, required60, genuine actors, PostgreSQL, installed execution or delivery.
+The complete L1-L8/A1-A10 objective remains active and incomplete.
+
 ## Portée du contrôle des espaces, 2026-11-06
 
 Le précédent contrôle du working tree excluait les trois modules alors non

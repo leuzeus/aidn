@@ -132,21 +132,24 @@ export function createStandardDriftRecovery({ targetRoot, readEvaluation, observ
       return afterMetadata;
     } finally { store.close(); }
   }
-  async function prepare(instance, input, operationId, at, { retainedRenewal = null, verifiedEvaluation = null } = {}) {
+  async function prepare(instance, input, operationId, at, { retainedRenewal = null, retainedReview = null, verifiedEvaluation = null } = {}) {
     projectionFiles();
     const verified = verifiedEvaluation ?? await readEvaluation(instance, input), report = verified.output.observations.report;
     if (verified.output.facts.drift_present === false && verified.output.facts.drift_context_complete === true
       && verified.output.facts.drift_recovery_required === false) {
       const context = verified.context, session = context.documents.find(row => /^audit:sessions\/S[0-9]{3,6}\.md$/.test(row.ref));
       const sessionObjective = session && analyzeStructuredArtifact(session.content).key_values.session_objective;
-      const gate = await observeStandardDriftGate(artifacts, context.mode ?? "COMMITTING", { requireIntentSignals: retainedRenewal !== null });
+      const retainedObjectiveReview = retainedRenewal ?? retainedReview;
+      const gate = await observeStandardDriftGate(artifacts, context.mode ?? "COMMITTING", { requireIntentSignals: retainedObjectiveReview !== null });
       const constraints = { level1: gate.levels.level1, level3: gate.levels.level3,
         other_signals: gate.levels.level2.active_signals.filter(value => value !== "time_since_last_drift_check") };
-      // A checkpoint fills the previously missing cache under its own grant.
-      // Keep the signed review bytes only for this expected R03 transition.
+      // A checkpoint refreshes the cache under its own grant. Revalidation
+      // reads intent even on the no-change fast path and keeps original review
+      // bytes across these cache-only R03 transitions.
       // Live objective and all other gate constraints still have to match.
-      const retainedGate = retainedRenewal?.gate_constraints;
-      if (retainedGate && shadowHash(retainedGate.level1) === shadowHash({ decision: "full", fallback: true, reason_codes: ["MISSING_CACHE"] })
+      const retainedGate = retainedObjectiveReview?.gate_constraints;
+      if (retainedGate && ["MISSING_CACHE", "ARTIFACTS_CHANGED"].some(reason =>
+        shadowHash(retainedGate.level1) === shadowHash({ decision: "full", fallback: true, reason_codes: [reason] }))
         && shadowHash(constraints.level1) === shadowHash({ decision: "incremental", fallback: false, reason_codes: [] }))
         constraints.level1 = retainedGate.level1;
       const plan = assertObjectiveReview({ contract_version: "standard-drift-recovery-plan.v2", review_kind: "objective_signal_disagreement",
@@ -210,7 +213,8 @@ export function createStandardDriftRecovery({ targetRoot, readEvaluation, observ
       const fresh = plan.contract_version === "standard-drift-recovery-plan.v3"
         ? await prepareRenewal(instance, plan.review_operation_id, plan.prepared_at_ms, witnessedCompletion,
           witnessedCompletion === null ? {} : { retainedRenewal: plan, verifiedEvaluation })
-        : await prepare(instance, { evaluation_operation_id: plan.evaluation_operation_id }, plan.review_operation_id, plan.prepared_at_ms);
+        : await prepare(instance, { evaluation_operation_id: plan.evaluation_operation_id }, plan.review_operation_id, plan.prepared_at_ms,
+          plan.contract_version === "standard-drift-recovery-plan.v2" ? { retainedReview: plan, verifiedEvaluation } : {});
       if (fresh.plan_sha256 !== shadowHash(plan)) fail("STANDARD_RECOVERY_REVIEW_STALE");
     },
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {

@@ -17,20 +17,86 @@ assert.equal(createHash("sha256").update(JSON.stringify(originalCases.slice(0, 1
 assert.deepEqual(originalCases.slice(188), [["tools/perf/verify-node-fixture-runner-fixtures.mjs"],
   ["tools/perf/verify-standard-host-source-fixtures.mjs"], ["tools/perf/verify-workflow-execution-authority-fixtures.mjs"],
   ...["files", "dual", "db-only"].map(mode => ["tools/perf/verify-standard-ordinary-entry-fixtures.mjs", "--mode=" + mode])]);
-assert.deepEqual(manifest.cases.slice(194), [
+assert.deepEqual(manifest.cases.slice(194, 197), [
   ["tools/perf/verify-standard-drift-rollback-fixtures.mjs", "--aged-plan"],
   ["tools/perf/verify-drift-recovery-fixtures.mjs", "--cycle-port-mode=files", "--aged-plan"],
   ["tools/perf/verify-standard-pr-redelivery-fixtures.mjs", "--mode=files", "--aged-plan"],
 ]);
 console.log("PASS accepted194 cases retain their original argv and order modulo explicit age selectors with three exact additions");
-assert.equal(manifest.cases.length, 197);
-assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases)).digest("hex"),
+assert.equal(manifest.cases.length, 209);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 197))).digest("hex"),
   "47b229353b3929aa0b52623f688b46296517e513a331a68060c4c5a0190c62f4");
+console.log("PASS accepted197 exact argv and order are preserved before twelve R05 objective components");
+assert.deepEqual(manifest.cases.slice(197), [
+  [
+    "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "--drift-worker-mode=nominal",
+    "--drift-worker-process"
+  ],
+  [
+    "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "--drift-worker-mode=revoked",
+    "--drift-worker-process"
+  ],
+  [
+    "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "--drift-worker-mode=expired",
+    "--drift-worker-process"
+  ],
+  [
+    "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "--drift-worker-mode=wrong-authority",
+    "--drift-worker-process"
+  ],
+  [
+    "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "--drift-worker-mode=wrong-subject",
+    "--drift-worker-process"
+  ],
+  [
+    "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "--drift-worker-mode=revoked-after-observe",
+    "--drift-worker-process"
+  ],
+  [
+    "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "--drift-worker-mode=expired-after-observe",
+    "--drift-worker-process"
+  ],
+  [
+    "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "--drift-worker-mode=head-last-human-await",
+    "--drift-worker-process"
+  ],
+  [
+    "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "--drift-worker-mode=context-last-human-await",
+    "--drift-worker-process"
+  ],
+  [
+    "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "--cycle-close-finalize-mode=files",
+    "--cycle-close-objective-completion"
+  ],
+  [
+    "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "--cycle-close-finalize-mode=dual",
+    "--cycle-close-objective-completion"
+  ],
+  [
+    "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "--cycle-close-finalize-mode=db-only",
+    "--cycle-close-objective-completion"
+  ]
+]);
+console.log("PASS twelve appended cases cover independent worker current permission and original old R05 closure in all three storage modes");
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases)).digest("hex"),
+  "d99daf15720f381660bf82e22ac3ad7b0cb0388430d7c0f6cfed14e4b33fbc84");
 assert.equal(manifest.cases.filter(args => args.includes("--aged-plan") || args.includes("--aged-hook")).length, 56);
-console.log("PASS current197 exact argv pins all53 selector changes and three new age-validity components");
+console.log("PASS current209 exact argv pins original age selectors and twelve appended R05 objective components");
 if (process.argv.includes("--manifest-only")) {
-  console.log(JSON.stringify({ status: "PASS", checks: 2, scope: "ordered manifest and age-selector regression only",
-    manifest_cases: 197, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
+  console.log(JSON.stringify({ status: "PASS", checks: 4, scope: "ordered manifest, original age selectors and appended R05 regressions only",
+    manifest_cases: 209, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
   process.exit(0);
 }
 

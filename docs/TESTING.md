@@ -1,5 +1,65 @@
 # Testing Guide
 
+## Retained objective review across R03 cache refresh, 2026-11-11
+
+The focused recovery component builds an actual DUAL project, session and
+cycle through source ports, then writes a valid process instance through the
+canonical store. It prepares the review with `ARTIFACTS_CHANGED`, refreshes the
+actual R03 cache and revalidates the original review on the incremental fast
+path. Business document bytes/metadata and original review bytes stay fixed.
+Evaluation/context capabilities remain fixtures; no Native process is used.
+
+Revalidation must explicitly reread intent. Only the exact missing/changed-cache
+to incremental transitions are normalized. Changed context, another R03 reason,
+stop and changed live intent remain refusals. This component result does not
+reconcile an earlier UNKNOWN closure or replace full FILES/DUAL/DB-only runs.
+
+## Current R05 objective validity, 2026-11-11
+
+The focused recovery/opinion and completion fixtures retain original old review,
+receipt and event bytes. They accept elapsed time or clock regression alone and
+still reject changed evaluation/context/report/event/receipt/CAS, incomplete or
+UNKNOWN completion and source revocation. Unsafe or negative preparation
+timestamps remain invalid independently of age. Linked legacy reviews retain
+their exact historical anchor and current permission boundary.
+
+The recovery fixture also uses the actual protected host source adapter and
+fixture Ed25519 principals. An old accepted primary fact remains authentic after
+the unchanged source envelope expires; current linked verification and direct
+current verification refuse that expiry, and both readers reject a revoked
+principal. These cases allocate no host key, Native process or worker evidence.
+Reducer history/inbox capabilities remain fixtures; this is not genuine H proof.
+
+The parent/independent-worker `expired` and `expired-after-observe` selectors are
+retained compatibility labels for positive day-old diagnosis reviews. Their
+producer clock supplies the old timestamp before signing; no accepted plan,
+source or original Native grant is rewritten. Wrong author/subject, revocation
+and context/HEAD changes during the final H await keep their negative controls.
+The real worker reconstructs in a separate Node process with fixture actors.
+
+The dedicated objective-closure selector produces its actual R05 report and
+event with a controlled previous-day producer clock, then resumes closure in a
+cold Node process at the current time. FILES, DUAL and DB-only retain the
+original signed material and Native authorization. Nine independent-worker
+cases and these three closure cases are appended to the CI manifest. The exact
+197-command prefix is unchanged; all 209 cases still require full execution.
+
+The retained host receives an explicit producer clock before bootstrap. The
+closure scenario verifies the old review before human capture and the old
+finalizer plan in a nonmutating preview before writing its report or event.
+The invocation/event causal window remains enforced. Unexpected execution
+fixture failures retain their owned temporary realms by default; retention
+preserves evidence and does not replay or reconcile an uncertain effect.
+
+The cycle-close completion fixture checks the production detector and actual
+FILES/DUAL/DB-only gating CLI. Original constructed old generic-event inputs do
+not trigger a default age signal; explicit caller thresholds still do, and
+missing proof/material drift remain signals. That generic input is not a signed
+objective-completion receipt. Read-only invocations preserve checkout bytes.
+The objective effect-fence fixture separates elapsed time from an actual denied
+or expired fixture-source grant. Full required gates, whole STANDARD, actual
+Native/provider/H, PostgreSQL and installed qualification remain separate.
+
 ## Complete fixture supervision, 2026-11-11
 
 The `runtime-agentic-process` gate still executes the declared
@@ -4973,15 +5033,17 @@ The required agentic manifest now selects the private past-preparation mode in
 its existing affected hook, recovery, SPIKE and delivery entries. It retains
 all194 prior cases in order, with the explicit selector added, and appends one
 FILES rollback, one FILES context/checkpoint/cycle recovery and one FILES
-corrective redelivery case (197 total). The existing protected command inventory
+corrective redelivery case (197-command prefix). Twelve R05/objective regression
+cases extend that unchanged prefix to209 commands. The protected command inventory
 must match that exact argv/order and still rejects omitted or duplicate
 coverage. This registry change grants no family PASS: selected component proofs
-and the gate-catalog policy check remain separate from executing all197 cases.
+and the gate-catalog policy check remain separate from executing all209 cases.
 
 `verify-node-fixture-runner-fixtures.mjs --manifest-only` checks the preserved
 188-case historical prefix and six supplemental cases after removing only the
-declared age selectors, then independently checks the current197-case exact argv
-digest and three new entries. Missing selectors still fail the current digest.
+declared age selectors, then independently checks the197-command prefix, its
+three supplemental entries and the current209-case exact argv digest and twelve
+R05/objective entries. Missing selectors still fail the current digest.
 This selector runs no child-execution protocol; the existing default case keeps
 its ordering, fail-first, cancellation and Windows tree-closure checks.
 

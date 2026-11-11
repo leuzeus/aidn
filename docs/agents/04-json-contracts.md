@@ -32,10 +32,11 @@ resource-closure proof or accepted result. Both versions reuse the existing
 operation-journal canonical CAS/projection surface. This adds no public CLI JSON
 root or backend fallback; exact-source crash qualification remains required.
 
-The private v3 linked drift review and v2 human question also admit a
-diagnosis-only choice set for an expired authenticated R05 event. The existing
-source still binds the exact review and question. The previous two-choice
-review and its captures retain their readers.
+The private v3 linked drift review and v2 human question retain the historical
+diagnosis-only choice set for an expired authenticated R05 event. Elapsed age
+alone no longer requires that route for unchanged current evidence. The source
+still binds the exact original review and question. Both choice sets and their
+captures retain their readers without converting stored records.
 
 ## R08 thread resolution contracts
 

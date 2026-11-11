@@ -6,7 +6,7 @@ import schema from "../../core/contracts/workflow-definition/standard-drift-obje
 const fail = code => { throw Object.assign(Error(code), { code }); };
 // All capabilities come from the owning host. A retained JSON opinion, or its
 // MAC alone, cannot authenticate a human or authorize a finalization effect.
-export function createStandardObjectiveDisposition({ readOperation, human, assertFresh, now = Date.now }) {
+export function createStandardObjectiveDisposition({ readOperation, human, assertFresh }) {
   if (typeof readOperation !== "function" || typeof human?.verifyCaptured !== "function" || typeof assertFresh !== "function")
     fail("STANDARD_OBJECTIVE_DISPOSITION_AUTHORITY_REQUIRED");
   async function read(instance, { evaluation_operation_id }, verified, { historicalId = null, previousCompletion = null } = {}) {
@@ -30,8 +30,6 @@ export function createStandardObjectiveDisposition({ readOperation, human, asser
         || (binding === "drift_recovery_decision" ? record.preview.input?.evaluation_operation_id !== evaluation_operation_id : Object.keys(record.preview.input ?? {}).length !== 0)
         || review.evaluation_sha256 !== verified.evaluation_sha256 || review.context_sha256 !== verified.context_sha256
         || shadowHash(review.report) !== shadowHash(verified.output.observations.report)) fail("STANDARD_OBJECTIVE_DISPOSITION_SUBJECT_CHANGED");
-      const age = now() - review.prepared_at_ms;
-      if (!historicalId && (!Number.isSafeInteger(age) || age < 0 || age > 300000)) fail("STANDARD_OBJECTIVE_DISPOSITION_EXPIRED");
       const capture = human.captured(record), question = human.question(record);
       if (capture.phase !== "receipted" || capture.source.contract_version !== "human-drift-recovery-decision.v2"
         || capture.source.question_sha256 !== shadowHash(question) || capture.source.subject_sha256 !== shadowHash(review)
@@ -41,10 +39,10 @@ export function createStandardObjectiveDisposition({ readOperation, human, asser
       // the old question against a present gate. A current opinion or renewal
       // still rebuilds its own review and checks its own live authority.
       if (historicalId === null) await assertFresh(instance, review, previousCompletion, verified);
-      // Authenticate current H permission AFTER every awaited canonical/historical
-      // observation. Only synchronous TTL/subject/output checks follow.
+      // Authenticate the accepted primary/history fact or the current linked
+      // permission after awaited context reads. Their host capability chooses
+      // the authentication mode; elapsed preparation time is not permission.
       await human.verifyCaptured(record, undefined, { historical: Boolean(historicalId) || !previousCompletion });
-      if (!historicalId && (now() - review.prepared_at_ms > 300000 || now() < review.prepared_at_ms)) fail("STANDARD_OBJECTIVE_DISPOSITION_EXPIRED");
       if (capture.source.choice !== "confirm_alignment") fail("STANDARD_OBJECTIVE_ALIGNMENT_NOT_CONFIRMED");
       const disposition = {
         contract_version: "standard-drift-objective-disposition.v1",

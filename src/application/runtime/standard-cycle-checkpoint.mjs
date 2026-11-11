@@ -36,7 +36,7 @@ export function createStandardCycleCheckpoint({ artifacts, scope, session, audit
     return runGatingEvaluateUseCase({ targetRoot: root, runtimeDir, readObjectiveCompletion, args: {
       cache: ".aidn/runtime/cache/reload-state.json", eventFile: eventRelative, indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
       stateMode: artifacts.describe().state_mode, stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto",
-      thresholdFiles: 3, thresholdMinutes: 45, mode, runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: false,
+      thresholdFiles: 3, thresholdMinutes: null, mode, runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: false,
     } });
   }
   const openGate = value => value?.result === "ok" && value.levels?.level1?.decision !== "stop"

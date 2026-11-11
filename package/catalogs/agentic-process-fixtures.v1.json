@@ -960,6 +960,66 @@
       "tools/perf/verify-standard-pr-redelivery-fixtures.mjs",
       "--mode=files",
       "--aged-plan"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--drift-worker-mode=nominal",
+      "--drift-worker-process"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--drift-worker-mode=revoked",
+      "--drift-worker-process"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--drift-worker-mode=expired",
+      "--drift-worker-process"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--drift-worker-mode=wrong-authority",
+      "--drift-worker-process"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--drift-worker-mode=wrong-subject",
+      "--drift-worker-process"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--drift-worker-mode=revoked-after-observe",
+      "--drift-worker-process"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--drift-worker-mode=expired-after-observe",
+      "--drift-worker-process"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--drift-worker-mode=head-last-human-await",
+      "--drift-worker-process"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--drift-worker-mode=context-last-human-await",
+      "--drift-worker-process"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--cycle-close-finalize-mode=files",
+      "--cycle-close-objective-completion"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--cycle-close-finalize-mode=dual",
+      "--cycle-close-objective-completion"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--cycle-close-finalize-mode=db-only",
+      "--cycle-close-objective-completion"
     ]
   ]
 }
