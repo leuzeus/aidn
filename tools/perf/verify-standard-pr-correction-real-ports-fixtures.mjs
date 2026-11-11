@@ -163,7 +163,6 @@ try {
         try { result = await f.port.apply(f.instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() {} }); } catch (cause) { error = cause; }
         save(f, 'before-' + kind, { kind, result: result ?? null, error: error?.code ?? error?.message ?? null });
         assert.ok(error || result?.outcome === 'blocked');
-        assert.ok(Date.now() - prepared.plan.prepared_at_ms < 300000, 'fault must not be explained by plan expiry');
         assert.notEqual(error?.code ?? result?.observations?.reason_code, 'STANDARD_PR_CORRECTION_EXPLICIT_WRITE_REQUIRED');
         if (result) assert.equal(result.effect_status, 'no_effect');
         assert.deepEqual(snapshot(f), before); assert.equal(f.artifacts.ownerPending(), false);

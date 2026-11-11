@@ -113,7 +113,8 @@ export async function runStandardWorkflowAction({ request, configuration, parame
         && frame.operation.receipt?.outcome === "reconciliation_required" && frame.operation.receipt.effect_status === "unknown");
       if (frames.length === 1) {
         const id = frames[0].operation.intent.operation_id, record = host.readOperation(id);
-        if (record.results[0]?.output.observations?.reason_code === "STANDARD_PLAN_EXPIRED") {
+        if (record.results[0]?.receipt?.outcome === "reconciliation_required"
+          && record.results[0]?.receipt?.effect_status === "unknown") {
           const plan = await host.prepareOperationDisposition(id, { expectedSha256: state.record.instance_sha256, signal });
           if (plan.assessment !== "confirmed_reopen") fail("STANDARD_ENTRY_DISPOSITION_PLAN_REQUIRED");
           if (record.results.length === 1) return { kind: "operation_disposition", payload: { disposition_plan: plan } };
@@ -134,7 +135,7 @@ export async function runStandardWorkflowAction({ request, configuration, parame
   if (supplied) {
     if (shadowHash(supplied.context) !== shadowHash(context)) fail("STANDARD_ENTRY_PRECONDITIONS_CHANGED");
     action = supplied;
-    // Stage revalidates the original exact prepared plan, age, bindings, CAS,
+    // Stage revalidates the original exact prepared plan, bindings, CAS,
     // live snapshot and resolved data. Do not regenerate its timestamps.
     const applyExternalMerge = execute && action.kind === "control" && action.payload.source_ref === externalMergeControlRef;
     if (applyExternalMerge) {

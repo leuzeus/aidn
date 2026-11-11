@@ -214,9 +214,9 @@ export function createStandardDriftRecovery({ targetRoot, readEvaluation, observ
       if (fresh.plan_sha256 !== shadowHash(plan)) fail("STANDARD_RECOVERY_REVIEW_STALE");
     },
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
-      const { review, choice, decision_operation_id, prepared_at_ms } = prepared ?? {}, age = now() - prepared_at_ms;
+      const { review, choice, decision_operation_id, prepared_at_ms } = prepared ?? {};
       if (write !== true || typeof assertAuthorized !== "function" || !prepared.can_apply || prepared.plan_sha256 !== expectPlan
-        || shadowHash({ review, choice, decision_operation_id, prepared_at_ms }) !== expectPlan || !Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_RECOVERY_EXPLICIT_EFFECT_REQUIRED");
+        || shadowHash({ review, choice, decision_operation_id, prepared_at_ms }) !== expectPlan || !Number.isSafeInteger(prepared_at_ms) || prepared_at_ms < 0) fail("STANDARD_RECOVERY_EXPLICIT_EFFECT_REQUIRED");
       assertRecoveryPlan(review);
       if (review.contract_version !== "standard-drift-recovery-plan.v1") fail("STANDARD_RECOVERY_CONFIRMED_FINDINGS_REQUIRED");
       if (!review.options.some(row => row.choice === choice)) fail("STANDARD_RECOVERY_CHOICE_REQUIRED");
@@ -229,7 +229,7 @@ export function createStandardDriftRecovery({ targetRoot, readEvaluation, observ
           const observed = await observeContext();
           if (observed.context_sha256 !== review.context_sha256) fail("STANDARD_RECOVERY_REVIEW_STALE");
           before = recoveryBoundary({ root: artifacts.root, context: observed.context, environment });
-          if (before !== review.boundary_sha256 || now() - prepared_at_ms > 300000) fail("STANDARD_RECOVERY_REVIEW_STALE");
+          if (before !== review.boundary_sha256) fail("STANDARD_RECOVERY_REVIEW_STALE");
         } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         const committed = [], afterMetadata = [];
         try {

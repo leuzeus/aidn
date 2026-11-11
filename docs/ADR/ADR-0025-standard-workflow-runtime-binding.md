@@ -1,5 +1,30 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Amendment — returned UNKNOWN correction reopening, 2026-11-11
+
+This amendment supersedes the expiry-only eligibility condition of the
+interrupted-reopening observer, disposition preparation and ordinary STANDARD
+entry selection. A returned UNKNOWN
+reopening can also follow loss of current operation permission after the three
+planned canonical postimages. The diagnostic reason alone neither proves those
+effects nor grants their confirmation.
+
+The owning host still authenticates the original returned signed dispatch,
+UNKNOWN receipt, terminated original process, exact owner/lock and held fence.
+Observation requires every planned content and metadata postimage, the existing
+projection and Git witnesses, current instance and current provider/source.
+Incomplete or changed images refuse. Read-only observation preserves the
+original UNKNOWN receipt and resource owner. Confirmation and receipt acceptance
+use the existing distinct disposition under a current separate grant. The
+ordinary entry previews those two separately authorized actions from the
+authenticated original UNKNOWN receipt, independently of its diagnostic cause; they
+never replay the reopening writes or confer cycle/Native admission.
+
+Historical expiry outputs remain readable with their original meaning and
+bytes. The legacy accepted no-effect expiry reprepare path is separate and
+unchanged. This bounded recovery does not establish general resource
+reconciliation, all storage variants, genuine actors or complete STANDARD.
+
 ## Session artifact delivered on a branch ahead of the FILES source, 2026-11-08
 
 Before source reconciliation, the session document may exist only in the
@@ -169,6 +194,19 @@ existing UNKNOWN and ownership semantics. The event interval within the actual
 invocation remains a causal proof; preparation time remains provenance and
 closed safe numeric data. Current completion-expiry readers and their no-effect
 return-to-review route remain separate, without endorsing their own windows.
+
+The same decision covers drift recovery recording, change requests,
+context/checkpoint/cycle recovery, rollback, PR correction reopening/checkpoint/
+cycle creation and SPIKE initialization/finalization. Each operation validates
+its current accepted evaluation or decision, process, grant and exact canonical
+or product/Git material at the existing boundaries. These private plans have no
+preparation-age ceiling. Safe nonnegative timestamps remain mandatory numeric
+provenance; removing an age predicate must not remove numeric validation.
+Rollback still verifies each exact physical replacement, and SPIKE completion
+still requires its actual hook and projection without admitting product work.
+Separate objective-opinion, authenticated event, upstream grant and execution
+resource windows require their own review; this decision supplies no blanket
+justification for them. Original expiry FAIL/UNKNOWN receipts remain immutable.
 
 ## Eligible occurrence lookup, 2026-11-06
 
@@ -3220,7 +3258,7 @@ partial write retains UNKNOWN and its owner. Each intermediate Git sample reads
 and validates the canonical instance through the reducer for prefix equality.
 The surrounding component checks authenticate the full history before and after
 the provider read. The final check still authenticates receipts and enforces
-authorization, plan age, ownership and exact postimages before a CAS.
+authorization, ownership and exact postimages before a CAS.
 
 The correction checkpoint derives its observation scope from the authenticated
 accepted reopen plan/output/postimages, including read-only cold preparation.
@@ -3232,19 +3270,23 @@ triage and fixture provider transport, and cannot establish the production nativ
 producer/dispatcher or whole standard workflow. See the current plan and testing
 guide for its required three-mode matrix and remaining qualification.
 
-### Correction business-plan expiry
+### Correction business-plan validity
 
-The reopen and correction-checkpoint adapters now distinguish a well-formed,
-explicit expired intention from an invalid request before owner acquisition:
-`STANDARD_PLAN_EXPIRED` carries `no_effect`. No intent, plan timestamp, grant,
-deadline or counter is rewritten. Missing intent or authorization callbacks,
-bad hashes and invalid clocks retain their original refusal. Expiry before the
-first canonical write may return a no-effect refusal; any attempted partial
-canonical or Git effect keeps the existing UNKNOWN handling and retained owner.
-Only an accepted authenticated expired no-effect receipt can enter the host's
-existing explicit same-subject repreparation. This correction adds no automatic
-retry, new authority, ordinary workflow selection or migration. Direct fixture
-guard proof remains separate from signed dispatcher/mixed-host continuation.
+The 2026-11-11 decision supersedes the earlier reopen and correction-checkpoint
+preparation-age restriction: it had no established justification and added
+complexity to project progress. An original old plan may apply when its current
+accepted source, protected provider observation, process prefix, grant,
+canonical metadata and exact product/Git preimages still match. These checks
+remain before effects and after awaited observations. Missing intent or
+authorization callbacks, bad hashes and malformed timestamps still refuse
+before ownership. Timestamp validation is independent of elapsed age.
+
+A real lost grant or confirmation after partial canonical or Git effects keeps
+UNKNOWN, the exact owner and the prohibition on replay. Historical expiry
+receipts and their explicit same-subject recovery reader remain readable; they
+do not require a new effect to expire. Direct application-port proof remains
+separate from signed dispatcher/mixed-host continuation, genuine actors and
+the installed archive.
 
 
 ### Accepted correction-cycle continuation

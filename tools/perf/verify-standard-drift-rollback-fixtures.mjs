@@ -10,6 +10,7 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { LOCAL_ARTIFACT_FENCE_PATH } from "../../src/application/runtime/local-artifact-resource-fence.mjs";
 
 const temp = fs.realpathSync(os.tmpdir()), owned = [];
+const agedPlan = process.argv.includes("--aged-plan");
 const hex = "a".repeat(64), operation = "op_" + "a".repeat(40);
 const input = { recovery_record_operation_id: operation }, instance = { instance_id: "case", instance_sha256: hex };
 const paths = ["product/added.txt", "product/change.txt", "product/removed.txt"];
@@ -55,13 +56,16 @@ function fixture() {
     return { context, context_sha256: shadowHash(context) };
   };
   let selected;
-  const rollback = createStandardDriftRollback({ targetRoot: root, observeContext, readCurrent: () => instance, readSource: async () => selected });
+  let planClock = agedPlan ? Date.now() - 86400000 : null;
+  const rollback = createStandardDriftRollback({ targetRoot: root, observeContext, readCurrent: () => instance, readSource: async () => selected, now: () => planClock ?? Date.now() });
   return { root, git, file, bytes, write, artifacts, head, branch, rollback,
     async prepare() {
       selected = { choice: "rollback", review: { cycle_id: "C001", session_id: "S001" }, productPaths: paths, deniedRoots: [],
         checkpoint: { operation_id: operation, receipt_sha256: hex, head: checkpoint, branch },
         transition: { after_context_sha256: (await observeContext()).context_sha256 } };
-      return rollback.prepare(instance, input);
+      const prepared = await rollback.prepare(instance, input);
+      if (agedPlan && prepared.can_apply && planClock !== null) { planClock = null; assert.ok(Date.now() - prepared.plan.prepared_at_ms >= 86400000); }
+      return prepared;
     } };
 }
 let checks = 0;
@@ -78,7 +82,14 @@ try {
     assert.deepEqual(fs.readFileSync(f.file(".git/index")), index);
     await assert.rejects(f.rollback.apply(instance, preview, { expectPlan: preview.plan_sha256 }), { effect_status: "no_effect" });
   });
-  await check("authorized rollback verifies exact product postimages and preserves index, branch, HEAD and continuity", async () => {
+  await check("malformed preparation time refuses before ownership or product writes", async () => {
+    const malformed = structuredClone(preview); malformed.plan.prepared_at_ms = Number.MAX_SAFE_INTEGER + 1;
+    malformed.plan_sha256 = shadowHash(malformed.plan);
+    await assert.rejects(apply(f, malformed), { code: "STANDARD_DRIFT_ROLLBACK_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" });
+    assert.equal(f.artifacts.ownerPending(), false); assert.equal(f.git("status", "--porcelain"), "");
+    assert.deepEqual(fs.readFileSync(f.file(".git/index")), index);
+  });
+  await check(agedPlan ? "day-old rollback plan verifies exact product postimages with current source and grant" : "authorized rollback verifies exact product postimages and preserves index, branch, HEAD and continuity", async () => {
     const result = await apply(f, preview);
     assert.equal(result.effect_status, "confirmed", JSON.stringify(result));
     assert.deepEqual(result.facts, { drift_recovery_rollback_applied: true, drift_check_completed: false });

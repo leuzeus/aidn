@@ -13,9 +13,11 @@ import { assertStandardOperationOutput, assertStandardOperationInput } from "../
 
 const H = "a".repeat(64), id = "op_" + "a".repeat(40), instance = { instance_id: "port_fixture", instance_sha256: H };
 const classification = row => Object.fromEntries(["kind", "family", "subtype", "session_id", "cycle_id", "classification_reason", "gate_relevance", "source_mode", "legacy_origin"].map(key => [key, row[key]]));
-export async function verifyDriftCyclePort({ mode, owned, pass }) {
+export async function verifyDriftCyclePort({ mode, owned, pass, agedPlan = false }) {
   const selected = mode === "partial" ? "files" : mode === "projection" ? "dual" : mode;
-  const targetRoot = createFreshStandardWorkflowFixture(selected, owned), operations = createStandardWorkflowOperations({ targetRoot });
+  const targetRoot = createFreshStandardWorkflowFixture(selected, owned);
+  let planClock = null;
+  const operations = createStandardWorkflowOperations({ targetRoot, now: () => planClock ?? Date.now() });
   const artifacts = createStandardWorkflowArtifacts({ targetRoot }), productRoot = path.join(targetRoot, "product");
   fs.mkdirSync(productRoot); fs.writeFileSync(path.join(productRoot, "app.mjs"), "// deterministic cycle fixture\n");
   const git = args => execFileSync("git", ["-C", targetRoot, "-c", "core.hooksPath=NUL", ...args], { encoding: "utf8", windowsHide: true, stdio: "pipe" });
@@ -38,14 +40,22 @@ export async function verifyDriftCyclePort({ mode, owned, pass }) {
   // Provenance alone is doubled here. The integrated mixed-host corpus checks
   // the retained MAC/native/human chain. All business observations/effects below
   // use actual application and canonical ports on the disposable client.
-  const port = createStandardDriftCycle({ targetRoot, operations, readCurrent: () => instance,
+  const port = createStandardDriftCycle({ targetRoot, operations, readCurrent: () => instance, now: () => planClock ?? Date.now(),
     observeContext: async () => { const context = await observe(); if (fault && context.context.cycle_id === "C001") throw Error("fixture post-effect observation unavailable"); return context; },
     readSource: (_instance, operation) => operation === "drift_recovery_context_refresh" ? selectedSource
       : { ...selectedSource, source_operation_id: id, transition: (operation === "drift_recovery_checkpoint_observe" ? refreshed : checkpointed).observations.causal_transition } });
   const input = { recovery_operation_id: id }, cycleInput = { checkpoint_operation_id: id, cycle_id: "C001", cycle_type: "spike", title: "scoped-recovery" };
+  const originalPrepare = port.prepare.bind(port, instance);
+  const prepare = async (...args) => {
+    planClock = agedPlan ? Date.now() - 86400000 : null;
+    try { const prepared = await originalPrepare(...args);
+      if (agedPlan && prepared.can_apply) assert.ok(Date.now() - prepared.plan.prepared_at_ms >= 86400000);
+      return prepared;
+    } finally { planClock = null; }
+  };
   for (const bad of [{ ...cycleInput, objective: "unapproved" }, { ...cycleInput, session_id: "S999" }, { ...cycleInput, module: "untrusted.mjs" }])
     assert.throws(() => assertStandardOperationInput("drift_recovery_cycle_initialize", bad));
-  const contextPlan = await port.prepare(instance, "drift_recovery_context_refresh", input);
+  const contextPlan = await prepare("drift_recovery_context_refresh", input);
   assert.equal(contextPlan.can_apply, true, JSON.stringify(contextPlan));
   await assert.rejects(port.apply(instance, contextPlan, { write: true, expectPlan: contextPlan.plan_sha256, assertAuthorized() { throw Error("DENIED"); } }), /DENIED/);
   assert.equal(artifacts.ownerPending(), false);
@@ -54,27 +64,29 @@ export async function verifyDriftCyclePort({ mode, owned, pass }) {
   assert.equal(refreshed.facts.drift_recovery_context_refreshed, true); assert.equal(refreshed.facts.drift_check_completed, false);
   assert.equal(refreshed.observations.causal_transition.before_context_sha256, original.context_sha256);
   pass(`cycle recovery ${mode}: admitted runtime refresh requires authorization and retains a causal context transition`);
+  if (agedPlan) pass(`cycle recovery ${mode}: original day-old context plan applies with current source and grant`);
   const checkpointInput = { context_operation_id: id };
-  let checkpointPlan = await port.prepare(instance, "drift_recovery_checkpoint_observe", checkpointInput);
+  let checkpointPlan = await prepare("drift_recovery_checkpoint_observe", checkpointInput);
   if (selected !== "db-only") {
     assert.equal(checkpointPlan.can_apply, false); assert.equal(checkpointPlan.reason_code, "STANDARD_RECOVERY_GIT_CHECKPOINT_REQUIRED");
     if (mode === "files") {
       const previous = git(["rev-parse", "HEAD"]).trim(), outside = path.join(targetRoot, "outside-fixture.txt");
       fs.writeFileSync(outside, "unexpected external commit\n"); git(["add", "."]);
       git(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "fixture unexpected external checkpoint"]);
-      await assert.rejects(port.prepare(instance, "drift_recovery_checkpoint_observe", checkpointInput), /STANDARD_RECOVERY_CHECKPOINT_SCOPE_CHANGED/);
+      await assert.rejects(prepare("drift_recovery_checkpoint_observe", checkpointInput), /STANDARD_RECOVERY_CHECKPOINT_SCOPE_CHANGED/);
       assert.ok(owned.includes(targetRoot)); assert.equal(fs.realpathSync(targetRoot), targetRoot);
       git(["reset", "--mixed", previous]); fs.unlinkSync(outside);
     }
     // Represents the external human Git action; the application only observes
     // this checkpoint and never runs an automatic add/commit on the project.
     git(["add", "."]); git(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "fixture external recovery checkpoint"]);
-    checkpointPlan = await port.prepare(instance, "drift_recovery_checkpoint_observe", checkpointInput);
+    checkpointPlan = await prepare("drift_recovery_checkpoint_observe", checkpointInput);
   }
   assert.equal(checkpointPlan.can_apply, true, JSON.stringify(checkpointPlan));
   checkpointed = await port.apply(instance, checkpointPlan, { write: true, expectPlan: checkpointPlan.plan_sha256, assertAuthorized() {} });
   assertStandardOperationOutput(checkpointed); assert.equal(checkpointed.effect_status, "no_effect"); assert.equal(checkpointed.facts.drift_recovery_checkpoint_verified, true);
-  let cyclePlan = await port.prepare(instance, "drift_recovery_cycle_initialize", cycleInput);
+  if (agedPlan) pass(`cycle recovery ${mode}: original day-old checkpoint plan observes current Git without effects`);
+  let cyclePlan = await prepare("drift_recovery_cycle_initialize", cycleInput);
   assert.equal(cyclePlan.can_apply, true, JSON.stringify(cyclePlan));
   assert.equal(cyclePlan.plan.inner.plan.contract_version, "standard-cycle-initialize-plan.v2");
   const branch = git(["branch", "--show-current"]).trim();
@@ -87,7 +99,7 @@ export async function verifyDriftCyclePort({ mode, owned, pass }) {
     assert.equal(git(["branch", "--show-current"]).trim(), branch); assert.equal(artifacts.ownerPending(), false);
     const restored = createProjectArtifactStore({ targetRoot, existingOnly: true });
     try { const row = restored.getArtifact("CURRENT-STATE.md"); restored.upsertArtifact({ ...row, classification_reason: expected.get("CURRENT-STATE.md").classification_reason }); } finally { restored.close(); }
-    cyclePlan = await port.prepare(instance, "drift_recovery_cycle_initialize", cycleInput);
+    cyclePlan = await prepare("drift_recovery_cycle_initialize", cycleInput);
   }
   if (mode === "partial") fault = true;
   const writeFile = fs.writeFileSync;
@@ -116,6 +128,7 @@ export async function verifyDriftCyclePort({ mode, owned, pass }) {
   }
   assert.equal(result.outcome, "completed", JSON.stringify(result)); assert.equal(result.effect_status, "confirmed");
   assert.equal(result.facts.drift_recovery_cycle_initialized, true); assert.equal(result.facts.cycle_dor_ready, false); assert.equal(result.facts.drift_check_completed, false);
+  if (agedPlan) pass(`cycle recovery ${mode}: original day-old initializer confirms canonical postimages under current source and grant`);
   assert.equal(result.observations.causal_transition.before_context_sha256, checkpointed.observations.causal_transition.after_context_sha256);
   assert.equal(artifacts.ownerPending(), false); assert.equal(git(["branch", "--show-current"]).trim(), "spike/C001-scoped-recovery");
   if (selected !== "files") {
@@ -123,6 +136,6 @@ export async function verifyDriftCyclePort({ mode, owned, pass }) {
     try { for (const [name, value] of expected) assert.deepEqual(classification(store.getArtifact(name)), value, name); } finally { store.close(); }
   }
   const after = await observe(); assert.equal(after.context.git.other_changes.count, 0);
-  await assert.rejects(port.prepare(instance, "drift_recovery_cycle_initialize", cycleInput), /STANDARD_RECOVERY_CYCLE_SOURCE_STALE/);
+  await assert.rejects(prepare("drift_recovery_cycle_initialize", cycleInput), /STANDARD_RECOVERY_CYCLE_SOURCE_STALE/);
   pass(`cycle recovery ${mode}: actual cycle creation preserves metadata/projections, leaves DoR and R05 pending and refuses stale reuse`);
 }

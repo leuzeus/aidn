@@ -23,8 +23,12 @@ import { createLocalProcessAdapter } from "../../src/adapters/runtime/local-proc
 const metadataStage = process.argv.find(arg => arg.startsWith("--metadata-stage="))?.split("=")[1] ?? null;
 if (metadataStage && !["before-authorization", "after-hook"].includes(metadataStage)) throw Error("SPIKE_METADATA_STAGE_INVALID");
 const portDiagnostic = process.argv.includes("--dual-port-diagnostic");
+const agedPlan = process.argv.includes("--aged-plan");
+let planClock = null, checks = 0;
+const planNow = () => planClock ?? Date.now();
+const pass = name => { checks++; console.log("PASS " + name); };
 const mode = process.argv.includes("--db-only-nominal") ? "db-only" : process.argv.includes("--metadata-tamper") || metadataStage || process.argv.includes("--dual-nominal") || portDiagnostic ? "dual" : "files", roots = [];
-const root = createFreshStandardWorkflowFixture(mode, roots), operations = createStandardWorkflowOperations({ targetRoot: root });
+const root = createFreshStandardWorkflowFixture(mode, roots), operations = createStandardWorkflowOperations({ targetRoot: root, now: planNow });
 console.log(JSON.stringify({ root, mode, proof_class: "wrapper-precondition-synthetic-accepted-sources", native_calls: 0 }));
 const artifacts = createStandardWorkflowArtifacts({ targetRoot: root }), H = "a".repeat(64), evidence = [{ ref: "fixture:analysis", sha256: H }];
 let prepared = await operations.prepareSession({ session_id: "S001", session_branch: "S001-spike", objective: "Verify real conversion wrapper fences" });
@@ -53,10 +57,11 @@ const instance = { instance_id: "fixture", instance_sha256: H }, analysisId = "o
 const signer = createOperationJournalSigner(() => Buffer.alloc(32, 7)), sources = new Map([[analysisId, { output: observed, record: { preview: { input: {} } } }]]);
 let verifications = 0;
 const wrapper = createStandardSpikeConversion({ targetRoot: root, operations, readAcceptedOperation: (_instance, id) => { assert.ok(sources.has(id)); return sources.get(id); },
-  observeModeWork: () => observed, verifyDecision: record => { signer.verify(record); verifications++; }, readCurrent: () => instance, observeProduct: () => H });
+  observeModeWork: () => observed, verifyDecision: record => { signer.verify(record); verifications++; }, readCurrent: () => instance, observeProduct: () => H, now: planNow });
 const input = { contract_version: "standard-spike-review-input.v1", review_operation_id: analysisId };
 const admitted = await wrapper.admit(instance, input);
 assert.equal(admitted.outcome, "completed", JSON.stringify(admitted));
+pass("ordinary SPIKE wrapper admission authenticates the current accepted analysis");
 const review = await wrapper.prepareDecision(instance, input);
 const question = { contract_version: "standard-spike-question.v1", operation_id: decisionId, instance_id: "fixture", scope_id: "scope", occurrence_id: "decision",
   intent_sha256: H, session_id: "S001", review_operation_id: analysisId, ...review };
@@ -66,12 +71,20 @@ const decision = { contract_version: "human-spike-decision.v1", source_kind: "hu
 sources.set(decisionId, { output: { ...observeHumanSpikeDecision({ question, decision }), observations: { ...observeHumanSpikeDecision({ question, decision }).observations,
   inbox_id: decisionInboxId(decision), source_ref: "fixture:decision" }, evidence_refs: evidence, contract_version: "standard-spike-decision-output.v1", operation_ref: "spike_conversion_decision" },
 record: signer.seal({ preview: { input, prepared: review } }) });
+planClock = agedPlan ? Date.now() - 86400000 : null;
 prepared = await wrapper.prepareInitialize(instance, { contract_version: "standard-spike-initialize-input.v1", decision_operation_id: decisionId });
 assert.equal(prepared.can_apply, true);
+planClock = null;
+if (agedPlan) assert.ok(Date.now() - prepared.plan.prepared_at_ms >= 86400000);
+const malformed = structuredClone(prepared); malformed.plan.prepared_at_ms = Number.MAX_SAFE_INTEGER + 1;
+malformed.plan_sha256 = shadowHash(malformed.plan);
+await assert.rejects(wrapper.initialize(instance, malformed, { write: true, expectPlan: malformed.plan_sha256, assertAuthorized() {} }), { code: "STANDARD_EXPLICIT_EFFECT_REQUIRED" });
+assert.equal(artifacts.ownerPending(), false); pass("invalid SPIKE timestamp refuses before ownership or cycle effects");
 const original = structuredClone(prepared); await new Promise(resolve => setTimeout(resolve, 1100));
 await assert.rejects(wrapper.initialize(instance, prepared, { expectPlan: prepared.plan_sha256, assertAuthorized: async () => {} }), { code: "STANDARD_EXPLICIT_EFFECT_REQUIRED" });
 const initialized = await wrapper.initialize(instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized: async () => {} });
 assert.equal(initialized.effect_status, "confirmed", JSON.stringify(initialized)); assert.deepEqual(prepared, original);
+pass(agedPlan ? "original day-old SPIKE initialization confirms current decision and unchanged dated postimages" : "actual SPIKE initialization confirms current decision and unchanged dated postimages");
 for (const row of original.plan.inner.plan.changes) assert.equal(artifacts.read(row.path).sha256, row.after_sha256);
 // Exercise the shared inventory with real initializer postimages and an
 // explicitly synthetic signed journal. Full mixed-host closure is separate.
@@ -106,8 +119,12 @@ for (const closing of [false, true]) {
 }
 console.log(JSON.stringify({ checkpoint_writer_inventory: "PASS", checks: writerChecks, postimages: initialized.evidence_refs.length,
   journal_authority: "signed-synthetic-component-only", canonical_initializer: "real-port", mixed_session_close: "NOT_RUN" }));
+pass("signed SPIKE writer inventory authenticates only the actual finite initializer postimages");
 sources.set(initializeId, { record: { preview: { prepared: original } }, output: initialized });
+planClock = agedPlan ? Date.now() - 86400000 : null;
 prepared = await wrapper.prepareFinalize(instance, { contract_version: "standard-spike-finalize-input.v1", initialize_operation_id: initializeId });
+planClock = null;
+if (agedPlan) assert.ok(Date.now() - prepared.plan.prepared_at_ms >= 86400000);
 let final;
 if (portDiagnostic) {
   // A new disposable diagnostic runs each real port exactly once. It does not
@@ -203,5 +220,8 @@ if (portDiagnostic) {
   }
 }
 assert.ok(verifications > 0);
-console.log(JSON.stringify({ ok: true, root, mode, final, prepared_at_ms: original.plan.prepared_at_ms,
-  metadata_stage: metadataStage, delay_ms: Date.now() - original.plan.prepared_at_ms, same_dated_postimages: true, native_calls: 0, mixed_model: "NOT_RUN", genuine_human: "NOT_RUN" }));
+if (portDiagnostic) pass("actual SPIKE ports retain a separate diagnostic without wrapper completion");
+else if (final?.outcome === "completed") pass(agedPlan ? "original day-old SPIKE finalization confirms current source and actual hook" : "actual SPIKE finalization confirms current source and actual hook");
+else pass(metadataStage === "after-hook" ? "SPIKE metadata change after real hook retains UNKNOWN and owner" : "changed SPIKE metadata refuses before hook effects");
+console.log(JSON.stringify({ ok: true, checks, root, mode, final, prepared_at_ms: original.plan.prepared_at_ms,
+  metadata_stage: metadataStage, delay_ms: Date.now() - original.plan.prepared_at_ms, private_preparation_clock: agedPlan, wall_time_proof: "NOT_MEASURED", same_dated_postimages: true, native_calls: 0, mixed_model: "NOT_RUN", genuine_human: "NOT_RUN" }));

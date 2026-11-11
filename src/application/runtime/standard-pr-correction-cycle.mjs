@@ -92,11 +92,10 @@ export function createStandardPrCorrectionCycle({ targetRoot, operations, readAc
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }
   return Object.freeze({ prepare, async apply(instance, prepared, { write = false, expectPlan, assertAuthorized, signal } = {}) {
-    const plan = assertPlan(prepared?.plan), age = now() - plan.prepared_at_ms;
+    const plan = assertPlan(prepared?.plan);
     if (write !== true || !prepared.can_apply || typeof assertAuthorized !== 'function'
-      || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || !Number.isSafeInteger(age) || age < 0)
+      || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan)
       fail('STANDARD_PR_CORRECTION_CYCLE_EXPLICIT_EFFECT_REQUIRED');
-    if (age > 300000) fail('STANDARD_PLAN_EXPIRED');
     active(instance, signal);
     if (shadowHash(decision(instance, plan.input)) !== shadowHash({ review: plan.review, origin: plan.origin, decision_sha256: plan.decision_sha256 })
       || shadowHash(await readCheckpoint(instance, { checkpoint_operation_id: plan.review.checkpoint_operation_id }, { signal })) !== shadowHash(plan.review))
@@ -106,8 +105,6 @@ export function createStandardPrCorrectionCycle({ targetRoot, operations, readAc
       if (shadowHash(decision(instance, plan.input)) !== shadowHash({ review: plan.review, origin: plan.origin, decision_sha256: plan.decision_sha256 })
         || observeProduct() !== plan.review.product_sha256 || git('rev-parse', 'HEAD') !== plan.review.head_oid
         || git('branch', '--show-current') !== (after ? plan.inner.plan.branch_name : plan.review.head_branch)) fail('STANDARD_PR_CORRECTION_CYCLE_SOURCE_CHANGED');
-      const age = now() - plan.prepared_at_ms;
-      if (!Number.isSafeInteger(age) || age < 0 || age > 300000) fail('STANDARD_PLAN_EXPIRED');
       const changes = git('status', '--porcelain=v1', '-z', '--untracked-files=all').split('\0').filter(Boolean);
       const allowed = after && plan.review.state_mode !== 'db-only' ? plan.inner.plan.changes.map(row => 'docs/audit/' + row.path) : [];
       if (changes.some(entry => !/^( M|\?\?)/.test(entry.slice(0, 2)) || !allowed.includes(entry.slice(3)))

@@ -115,6 +115,16 @@ causality rather than setting an age limit on the plan. A typed cycle return to
 review still reconstructs the current completion opinion and historical anchor.
 These changes do not decide the separate human-opinion or drift-event windows.
 
+Drift recovery recording, change requests, context/checkpoint/cycle recovery,
+rollback, PR correction reopening/checkpoint/cycle creation and SPIKE conversion
+also use current-state validity without a preparation-age ceiling. Their
+original timestamp remains safe nonnegative integer data and part of the plan
+hash. Current evaluation/decision, process prefix, authorization, canonical
+metadata and exact product/Git preimages and postimages remain required at the
+existing effect boundaries. A lost grant or confirmation after an actual effect
+still retains UNKNOWN and its owner; elapsed time alone creates no such result.
+SPIKE records still grant no product authority or successful experiment result.
+
 Cycle validation reconstructs the work, product snapshot, profile and boundary
 descriptor under its owner and current authorization before running checks.
 These observations establish plan validity. The profile's command budget

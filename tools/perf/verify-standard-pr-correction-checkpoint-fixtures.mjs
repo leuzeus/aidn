@@ -126,10 +126,13 @@ try {
     finally { fs.unlinkSync(file); }
     assert.equal(git(f.root, 'rev-parse', 'HEAD'), f.head);
   });
-  await test('expired preview and a lost provider before effect preserve HEAD and release owner', async () => {
-    f.state.now = prepared.plan.prepared_at_ms + 300001;
-    await assert.rejects(f.checkpoint.apply(f.instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() {} }));
-    delete f.state.now; f.state.externalChanged = true;
+  await test('invalid timestamp and a lost provider before effect preserve HEAD and release owner', async () => {
+    const malformed = structuredClone(prepared); malformed.plan.prepared_at_ms = Number.MAX_SAFE_INTEGER + 1;
+    malformed.plan_sha256 = shadowHash(malformed.plan); let grants = 0;
+    await assert.rejects(f.checkpoint.apply(f.instance, malformed, { write: true, expectPlan: malformed.plan_sha256, assertAuthorized() { grants++; } }),
+      { code: 'STANDARD_PR_CORRECTION_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED', effect_status: 'no_effect' });
+    assert.equal(grants, 0); assert.equal(f.artifacts.ownerPending(), false);
+    f.state.externalChanged = true;
     const result = await f.checkpoint.apply(f.instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() {} });
     assert.equal(result.outcome, 'blocked'); assert.equal(result.effect_status, 'no_effect'); assert.deepEqual(result.facts, {});
     f.state.externalChanged = false;
@@ -185,9 +188,9 @@ try {
       assert.equal(result.observations.reconciliation, 'observed-existing-commit');
       assert.equal(result.observations.git.commit_sha, head); assert.equal(result.observations.remote_head, f.head);
       assertStandardOperationOutput(result);
-      // Old effect TTL does not become a new dispatch. Only retrospective
-      // observation is possible, with the current authority checked separately.
-      f.state.now = prepared.plan.prepared_at_ms + 300001;
+      // Retrospective observation checks the current authority and exact
+      // retained postimages without dispatching a new effect.
+      f.state.now = prepared.plan.prepared_at_ms + 86400000;
       assert.equal((await f.checkpoint.reconcile(f.instance, id, { assertAuthorized() {} })).outcome, 'completed');
       delete f.state.now;
       const row = f.artifacts.read(f.names[0], { required: true }), filePath = path.join(f.root, 'docs/audit', f.names[0]);

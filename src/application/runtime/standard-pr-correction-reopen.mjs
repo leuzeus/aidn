@@ -49,15 +49,10 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
     for (const [index, row] of changes.entries()) if (readAgentRunFile(agentRunPhysicalPath(path.join(artifacts.root, 'docs/audit', row.path)), { json: false, maxBytes: 1048576 }).sha256
       !== (committed[index]?.sha256 ?? row.before_sha256)) fail('STANDARD_PR_CORRECTION_PROJECTION_CHANGED');
   }
-  function observeLocal(instance, plan, committed, { signal, assertOwner, readInstance = readCurrent, enforceExpiry = true }) {
+  function observeLocal(instance, plan, committed, { signal, assertOwner, readInstance = readCurrent }) {
     active(signal); assertOwner();
     if (artifacts.describe().state_mode !== plan.state_mode) fail('STANDARD_PR_CORRECTION_DOCUMENT_CHANGED');
     if (readInstance(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail('STANDARD_PR_CORRECTION_INSTANCE_CHANGED');
-    if (enforceExpiry) {
-      const age = now() - plan.prepared_at_ms;
-      if (!Number.isSafeInteger(age) || age < 0) fail('STANDARD_PR_CORRECTION_INSTANCE_CHANGED');
-      if (age > 300000) fail('STANDARD_PLAN_EXPIRED');
-    }
     assertDocuments(plan.changes, committed); projections(plan.changes, committed);
     const view = git(plan.source).inspect();
     const expected = plan.state_mode === 'db-only' ? [] : committed.map(row => 'docs/audit/' + row.path).sort();
@@ -98,14 +93,17 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
       const plan = prepared?.plan;
       if (typeof assertOwner !== 'function' || !prepared?.can_apply || !valid(plan, planSchema)
         || prepared.plan_sha256 !== shadowHash(plan) || plan.source_sha256 !== shadowHash(plan.source)
-        || !valid(output, outputSchema) || output.outcome !== 'reconciliation_required' || output.effect_status !== 'unknown'
-        || output.observations.reason_code !== 'STANDARD_PLAN_EXPIRED') fail('STANDARD_PR_CORRECTION_INTERRUPTED_RESULT_REQUIRED');
+        || !valid(output, outputSchema) || output.outcome !== 'reconciliation_required' || output.effect_status !== 'unknown')
+        fail('STANDARD_PR_CORRECTION_INTERRUPTED_RESULT_REQUIRED');
+      // The diagnostic cause is not confirmation authority. Both current grant
+      // loss and historical expiry need the same complete postimages, current
+      // source and owning-host fence below. This read never replays an effect.
       const committed = output.observations.committed;
       if (!Array.isArray(committed) || committed.length !== plan.changes.length
         || plan.changes.some((row, index) => committed[index]?.path !== row.path || committed[index]?.sha256 !== row.after_sha256))
         fail('STANDARD_PR_CORRECTION_POSTIMAGES_INCOMPLETE');
       const observe = (readInstance = readCurrent) => observeLocal(instance, plan, committed,
-        { signal, assertOwner, readInstance, enforceExpiry: false });
+        { signal, assertOwner, readInstance });
       const before = observe();
       let pushIdentity = null;
       const causal = await authority.verifySource(instance, plan.source, { signal, assertLocal(view) {
@@ -120,12 +118,11 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
         postimages: structuredClone(committed), causal, local_sha256: shadowHash(before), confirmation: confirmed(plan, committed, causal) };
     },
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized, signal } = {}) {
-      active(signal); const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
+      active(signal); const plan = prepared?.plan;
       if (!prepared?.can_apply || !valid(plan, planSchema) || write !== true || typeof assertAuthorized !== 'function'
         || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || shadowHash(plan.source) !== plan.source_sha256
-        || !Number.isSafeInteger(age) || age < 0 || plan.changes.some(row => artifactContentHash(text(row)) !== row.after_sha256))
+        || plan.changes.some(row => artifactContentHash(text(row)) !== row.after_sha256))
         fail('STANDARD_PR_CORRECTION_EXPLICIT_WRITE_REQUIRED');
-      if (age > 300000) fail('STANDARD_PLAN_EXPIRED');
       const committed = [];
       let attempted = false;
       return artifacts.withLocalEffectOwner(expectPlan, async () => {

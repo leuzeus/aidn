@@ -36,6 +36,22 @@ const plan = { contract_version: "standard-drift-recovery-plan.v1", review_opera
 let checks = 0;
 const skips = [];
 const pass = name => { checks++; console.log("PASS " + name); };
+const forwardFixtureOutput = output => {
+  // Child transcripts remain complete; include their named assertions in the
+  // parent's named-check total instead of losing them during aggregation.
+  checks += output.split(/\r?\n/).filter(line => line.startsWith("PASS ")).length;
+  process.stdout.write(output);
+};
+const agedPlan = process.argv.includes("--aged-plan");
+let preparationClock = null;
+const planNow = () => preparationClock ?? Date.now();
+async function originalPrepared(prepare) {
+  preparationClock = agedPlan ? Date.now() - 86400000 : null;
+  try { const prepared = await prepare();
+    if (agedPlan && prepared.can_apply) assert.ok(Date.now() - (prepared.plan?.prepared_at_ms ?? prepared.prepared_at_ms) >= 86400000);
+    return prepared;
+  } finally { preparationClock = null; }
+}
 assertRecoveryPlan(plan);
 for (const change of [p => p.changes.reverse(), p => p.changes[0].path = "baseline/current.md", p => p.changes[1].text_chunks[0] += "tampered",
   p => p.context = context, p => p.options.push(p.options[0]), p => p.module = "untrusted.mjs"]) {
@@ -223,13 +239,13 @@ for (const fault of ["none", "context-revocation", "context-expiry", "wrong-link
 {
   const fence = execFileSync(process.execPath, [fileURLToPath(new URL("./verify-gating-objective-fence-fixtures.mjs", import.meta.url))],
     { encoding: "utf8", windowsHide: true, timeout: 70000, maxBuffer: 1048576 });
-  process.stdout.write(fence);
+  forwardFixtureOutput(fence);
   const cacheFence = execFileSync(process.execPath, [fileURLToPath(new URL("./verify-reload-cache-fence-fixtures.mjs", import.meta.url))],
     { encoding: "utf8", windowsHide: true, timeout: 70000, maxBuffer: 1048576 });
-  process.stdout.write(cacheFence);
+  forwardFixtureOutput(cacheFence);
 }
 await verifyObjectiveCompletion(pass);
-process.stdout.write(execFileSync(process.execPath, [fileURLToPath(new URL("./verify-standard-drift-route-fixtures.mjs", import.meta.url))], { encoding: "utf8", windowsHide: true, timeout: 15000, maxBuffer: 1048576 }));
+forwardFixtureOutput(execFileSync(process.execPath, [fileURLToPath(new URL("./verify-standard-drift-route-fixtures.mjs", import.meta.url))], { encoding: "utf8", windowsHide: true, timeout: 15000, maxBuffer: 1048576 }));
 if (process.argv.includes("--objective-disposition-only")) {
   console.log(JSON.stringify({ status: "PASS", checks, proof: "synthetic-authenticated-disposition-and-human-component-with-production-effect-fences",
     event_append: "actual-temporary-fixture", canonical_effects: "NOT_RUN", full_standard_workflow: "NOT_YET_DELIVERED" }));
@@ -264,10 +280,13 @@ async function prepareFixtureMode(operations, label) {
 }
 const admissionMode = process.argv.find(arg => arg.startsWith("--cr-admission-mode="))?.slice("--cr-admission-mode=".length);
 const cycleMode = process.argv.find(arg => arg.startsWith("--cycle-port-mode="))?.slice("--cycle-port-mode=".length);
+const crWriteMode = process.argv.find(arg => arg.startsWith("--cr-write-mode="))?.slice("--cr-write-mode=".length);
 if (cycleMode !== undefined && !["files", "dual", "db-only", "partial", "projection"].includes(cycleMode)) throw Error("RECOVERY_CYCLE_FIXTURE_MODE_INVALID");
 if (admissionMode !== undefined && !["files", "dual", "db-only"].includes(admissionMode)) throw Error("CR_ADMISSION_FIXTURE_MODE_INVALID");
+if (crWriteMode !== undefined && !["files", "dual", "db-only"].includes(crWriteMode)) throw Error("CR_WRITE_FIXTURE_MODE_INVALID");
 try {
-  if (cycleMode) await verifyDriftCyclePort({ mode: cycleMode, owned, pass });
+  if (cycleMode) await verifyDriftCyclePort({ mode: cycleMode, owned, pass, agedPlan });
+  else if (crWriteMode) await verifyPartialChangeRequest(crWriteMode, false, true);
   else if (process.argv.includes("--cr-fault-only") || admissionMode) await verifyPartialChangeRequest(admissionMode ?? "files", Boolean(admissionMode));
   else {
   const targetRoot = createFreshStandardWorkflowFixture("dual", owned), operations = createStandardWorkflowOperations({ targetRoot });
@@ -290,7 +309,7 @@ try {
   const instance = { instance_id: "port_fixture", instance_sha256: H }, input = { evaluation_operation_id: id };
   // Only the evaluation authority is doubled here. Canonical CAS/projections,
   // context observations, authorization and ownership below are production ports.
-  const port = createStandardDriftRecovery({ targetRoot, observeContext, readCurrent: () => instance,
+  const port = createStandardDriftRecovery({ targetRoot, observeContext, readCurrent: () => instance, now: planNow,
     async readEvaluation() {
       const observed = await observeContext();
       return { ...observed, evaluation_sha256: H, output: { facts: { drift_present: true, drift_context_complete: true }, observations: {
@@ -299,12 +318,19 @@ try {
       } } };
     } });
   async function request(sequence) {
-    const p = await port.prepare(instance, input, "op_" + String(sequence).padStart(40, "0"));
-    const body = { review: p.plan, choice: "new_cycle", decision_operation_id: id, prepared_at_ms: Date.now() };
-    return { ...body, can_apply: true, plan_sha256: shadowHash(body) };
+    return originalPrepared(async () => {
+      const p = await port.prepare(instance, input, "op_" + String(sequence).padStart(40, "0"));
+      const body = { review: p.plan, choice: "new_cycle", decision_operation_id: id, prepared_at_ms: planNow() };
+      return { ...body, can_apply: true, plan_sha256: shadowHash(body) };
+    });
   }
   const first = await request(1), beforeParking = artifacts.read("parking-lot.md").sha256;
   assert.ok(first.review.changes[0].text_chunks.length > 1); assert.equal(Object.hasOwn(first.review, "context"), false);
+  const malformed = structuredClone(first); malformed.prepared_at_ms = Number.MAX_SAFE_INTEGER + 1;
+  malformed.plan_sha256 = shadowHash({ review: malformed.review, choice: malformed.choice, decision_operation_id: malformed.decision_operation_id, prepared_at_ms: malformed.prepared_at_ms });
+  await assert.rejects(port.apply(instance, malformed, { write: true, expectPlan: malformed.plan_sha256, assertAuthorized() {} }), { code: "STANDARD_RECOVERY_EXPLICIT_EFFECT_REQUIRED" });
+  assert.equal(artifacts.ownerPending(), false); assert.equal(artifacts.read("parking-lot.md").sha256, beforeParking);
+  pass("invalid recovery-record timestamp refuses before ownership and canonical effects");
   await assert.rejects(port.apply(instance, first, { write: true, expectPlan: first.plan_sha256, assertAuthorized() { throw Error("DENIED"); } }), /DENIED/);
   assert.equal(artifacts.read("parking-lot.md").sha256, beforeParking); assert.equal(artifacts.ownerPending(), false);
   const result = await port.apply(instance, first, { write: true, expectPlan: first.plan_sha256, assertAuthorized() {} });
@@ -313,6 +339,7 @@ try {
   const observedMetadata = createProjectArtifactStore({ targetRoot, existingOnly: true, readOnly: true });
   try { assert.deepEqual(classification(observedMetadata.getArtifact("parking-lot.md")), expectedParkingMetadata); } finally { observedMetadata.close(); }
   pass("real canonical recording supports bounded long append text, refuses missing authorization and preserves an explicit pending recovery");
+  if (agedPlan) pass("original day-old recovery record applies under current evaluation, context and grant");
   const changedMetadata = await request(2), alter = createProjectArtifactStore({ targetRoot, existingOnly: true });
   try { const row = alter.getArtifact("parking-lot.md"); alter.upsertArtifact({ ...row, classification_reason: "fixture-intervening-metadata" }); } finally { alter.close(); }
   await assert.rejects(port.apply(instance, changedMetadata, { write: true, expectPlan: changedMetadata.plan_sha256, assertAuthorized() {} }), /STANDARD_RECOVERY_REVIEW_STALE/);
@@ -337,14 +364,14 @@ try {
   let expectedCrMetadata;
   try { const row = crMetadata.getArtifact(crPath); crMetadata.upsertArtifact({ ...row, classification_reason: "fixture-CR-annotation" }); expectedCrMetadata = classification(crMetadata.getArtifact(crPath)); } finally { crMetadata.close(); }
   let choice = "requirements_delta";
-  const crInput = { recovery_record_operation_id: id }, crPort = createStandardDriftChangeRequest({ targetRoot, observeContext, readCurrent: () => instance,
+  const crInput = { recovery_record_operation_id: id }, crPort = createStandardDriftChangeRequest({ targetRoot, observeContext, readCurrent: () => instance, now: planNow,
     readRecovery: () => ({ record_operation_id: id, choice, review: { session_id: "S001", cycle_id: "C001", review_operation_id: id, evaluation_operation_id: id, evaluation_sha256: H },
       transition: { after_context_sha256: recoveredContext.context_sha256 }, report: { split_recommendation: { impact: "high" }, rationale: "Fixture recovery authority only." } }) });
   for (const bad of [{ ...crInput, path: "baseline/current.md" }, { ...crInput, module: "untrusted.mjs" }, { recovery_record_operation_id: "forged" }])
     assert.throws(() => assertStandardOperationInput("drift_change_request_record", bad), /STANDARD_OPERATION_INPUT_INVALID/);
   choice = "new_cycle"; await assert.rejects(crPort.prepare(instance, crInput), /STANDARD_CHANGE_REQUEST_RECOVERY_STALE/); choice = "requirements_delta";
   pass("CR activity refuses authored paths/code/identities and a recovery choice for another action");
-  const crPrepared = await crPort.prepare(instance, crInput);
+  const crPrepared = await originalPrepared(() => crPort.prepare(instance, crInput));
   assert.equal(crPrepared.plan.change_request_id, "CR-002"); assert.equal(artifacts.read(crPath).sha256, crBefore.sha256);
   await assert.rejects(crPort.apply(instance, crPrepared, { expectPlan: crPrepared.plan_sha256, assertAuthorized() {} }), cause => cause.code === "STANDARD_CHANGE_REQUEST_EXPLICIT_EFFECT_REQUIRED" && cause.effect_status === "no_effect");
   const substituted = structuredClone(crPrepared); substituted.plan.changes[0].path = "baseline/current.md";
@@ -359,7 +386,8 @@ try {
   pass("CR review is read-only; denied grants and metadata-only changes refuse before any effects");
   const restored = createProjectArtifactStore({ targetRoot, existingOnly: true });
   try { const row = restored.getArtifact(crPath); restored.upsertArtifact({ ...row, classification_reason: expectedCrMetadata.classification_reason }); } finally { restored.close(); }
-  const freshCr = await crPort.prepare(instance, crInput), writtenCr = await crPort.apply(instance, freshCr, { write: true, expectPlan: freshCr.plan_sha256, assertAuthorized() {} });
+  const freshCr = await originalPrepared(() => crPort.prepare(instance, crInput)), writtenCr = await crPort.apply(instance, freshCr, { write: true, expectPlan: freshCr.plan_sha256, assertAuthorized() {} });
+  if (agedPlan) { assert.equal(writtenCr.outcome, "completed"); pass("original day-old change request records canonical postimages under current recovery source and grant"); }
   assertStandardOperationOutput(writtenCr); assert.equal(writtenCr.effect_status, "confirmed", JSON.stringify(writtenCr)); assert.equal(writtenCr.facts.drift_check_completed, false);
   assert.equal(writtenCr.observations.decision, "pending"); assert.equal(writtenCr.observations.new_cycle_required, true);
   assert.ok(artifacts.read(crPath).content.startsWith(crBefore.content));
@@ -391,11 +419,14 @@ try {
   const observe = () => readStandardDriftContext({ targetRoot: projectedRoot, productRoot: projectedProduct, productFiles: ["app.mjs"], productSha256: H });
   assert.equal((await observe()).context.mode, "COMMITTING");
   pass("required projection fixture explicitly admits and applies its mode before its first drift-context read");
-  const projected = createStandardDriftRecovery({ targetRoot: projectedRoot, observeContext: observe, readCurrent: () => instance,
+  const projected = createStandardDriftRecovery({ targetRoot: projectedRoot, observeContext: observe, readCurrent: () => instance, now: planNow,
     async readEvaluation() { const row = await observe(); return { ...row, evaluation_sha256: H, output: { facts: { drift_present: true, drift_context_complete: true },
       observations: { report: { changes: ["Projection fixture finding."] } } } }; } });
-  const pp = await projected.prepare(instance, input, "op_" + "9".repeat(40));
-  const body = { review: pp.plan, choice: "new_cycle", decision_operation_id: id, prepared_at_ms: Date.now() }, projectionPlan = { ...body, can_apply: true, plan_sha256: shadowHash(body) };
+  const projectionPlan = await originalPrepared(async () => {
+    const pp = await projected.prepare(instance, input, "op_" + "9".repeat(40));
+    const body = { review: pp.plan, choice: "new_cycle", decision_operation_id: id, prepared_at_ms: planNow() };
+    return { ...body, can_apply: true, plan_sha256: shadowHash(body) };
+  });
   const destination = path.join(projectedRoot, "docs/audit/parking-lot.md"), originalWrite = fs.writeFileSync;
   let lost;
   fs.writeFileSync = function(file, ...args) { if (typeof file === "string" && path.resolve(file) === destination) return; return originalWrite.call(this, file, ...args); };
@@ -428,7 +459,7 @@ try {
 }
 console.log(JSON.stringify({ status: "PASS", checks, skips, proof: "offline-synthetic-human-capture-real-git-and-canonical-ports", real_human_channel: "NOT_RUN", native: "NOT_RUN", full_standard_workflow: "NOT_YET_DELIVERED" }));
 
-async function verifyPartialChangeRequest(mode = "files", admissionOnly = false) {
+async function verifyPartialChangeRequest(mode = "files", admissionOnly = false, positiveOnly = false) {
   const instance = { instance_id: "port_fixture", instance_sha256: H }, crInput = { recovery_record_operation_id: id };
   const faultRoot = createFreshStandardWorkflowFixture(mode, owned), faultOps = createStandardWorkflowOperations({ targetRoot: faultRoot });
   const faultArtifacts = createStandardWorkflowArtifacts({ targetRoot: faultRoot }), faultProduct = path.join(faultRoot, "product");
@@ -472,10 +503,20 @@ async function verifyPartialChangeRequest(mode = "files", admissionOnly = false)
     }
     pass(`requirements admission uses the actual canonical ${mode} cycle without a visible projection`); return;
   }
-  const faultPort = createStandardDriftChangeRequest({ targetRoot: faultRoot, observeContext: faultObserve, readCurrent: () => instance,
+  const faultPort = createStandardDriftChangeRequest({ targetRoot: faultRoot, observeContext: faultObserve, readCurrent: () => instance, now: planNow,
     readRecovery: () => ({ choice: "requirements_delta", review: { session_id: "S001", cycle_id: "C001", review_operation_id: id, evaluation_operation_id: id, evaluation_sha256: H },
       transition: { after_context_sha256: faultContext.context_sha256 }, report: { split_recommendation: { impact: "low" } } }) });
-  const faultPlan = await faultPort.prepare(instance, crInput), faultBefore = faultArtifacts.read(faultPath), faultCurrent = faultArtifacts.read("CURRENT-STATE.md");
+  const faultPlan = await originalPrepared(() => faultPort.prepare(instance, crInput)), faultBefore = faultArtifacts.read(faultPath), faultCurrent = faultArtifacts.read("CURRENT-STATE.md");
+  if (positiveOnly) {
+    await assert.rejects(faultPort.apply(instance, faultPlan, { write: true, expectPlan: faultPlan.plan_sha256, assertAuthorized() { throw Object.assign(Error("fixture denied"), { code: "FIXTURE_CR_DENIED" }); } }), { code: "FIXTURE_CR_DENIED" });
+    assert.equal(faultArtifacts.ownerPending(), false); assert.equal(faultArtifacts.read(faultPath).sha256, faultBefore.sha256);
+    const result = await faultPort.apply(instance, faultPlan, { write: true, expectPlan: faultPlan.plan_sha256, assertAuthorized() {} });
+    assert.equal(result.outcome, "completed", JSON.stringify(result)); assert.equal(result.effect_status, "confirmed"); assert.equal(result.facts.drift_check_completed, false);
+    for (const row of faultPlan.plan.changes) assert.equal(faultArtifacts.read(row.path).sha256, row.after_sha256);
+    assert.equal(faultArtifacts.ownerPending(), false);
+    pass(agedPlan ? `original day-old ${mode} change request records current canonical postimages and grant` : `actual ${mode} change request records current canonical postimages and grant`);
+    return;
+  }
   const renameFile = fs.renameSync;
   let partialCr;
   try {

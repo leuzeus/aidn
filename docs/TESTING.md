@@ -1,5 +1,24 @@
 # Testing Guide
 
+## Current interrupted correction reopening, 2026-11-11
+
+The FILES reopening/disposition fixture produces an actual post-effect grant
+loss after all three canonical postimages. The observer, disposition and
+ordinary entry selection no longer require a legacy expiry reason. Existing signed-dispatch, terminated
+owner, physical lock/fence, exact metadata/projection/Git and current provider
+checks remain mandatory. The fixture rejects a completed result supplied as an
+interruption, incomplete postimages, changed ownership/material and lost source.
+It observes the complete current UNKNOWN result without repeating a write,
+then exercises cold transfer/disposition and separate current authorization.
+
+A cloned legacy reason tests output-shape compatibility only; it leaves the
+original signed grant-loss result unchanged and does not qualify an old
+historical instance. Original failed qualification attempts remain retained.
+This source correction requires its focused reopening/disposition, generic
+disposition, public FILES CLI entry and published-model checks. Other complete storage variants,
+general resource reconciliation, actual Native/provider/H and exact installed
+archive execution remain separate requirements.
+
 ## External merge at the pre-triage review wait
 
 Run the targeted `--case=external-pretriage-session`,
@@ -604,15 +623,19 @@ synthetic. Temporary report/event bytes are real, and all reads leave them
 unchanged. The reader is not connected to closure admission, the checkpoint
 hook or the published route. These checks establish no successful closure.
 
-`node tools/perf/verify-gating-objective-fence-fixtures.mjs` runs twelve focused
+`node tools/perf/verify-gating-objective-fence-fixtures.mjs` runs focused
 checks with the production evaluator, signal policies, finalizer and temporary
 event append. Delayed observation and artifact capabilities are doubles. A
 revocation, expiry or replacement during the final collection must leave the
-existing event prefix unchanged. Revocation or expiry during the finalizer's
-context read must refuse before report CAS, projection or hook. Goal/signal
+existing event prefix unchanged. Revocation or an actual process change during
+the finalizer's context read must refuse before report CAS, projection or hook.
+Preparation age alone is not a finalizer refusal under the 2026-11-11 decision.
+Goal/signal
 changes, STOP, preview and inert JSON claims retain their guards. This suite is
 also included in the existing recovery fixture command, without changing the
-required dispatcher's ordered case list. Failed component arenas are retained.
+required dispatcher's ordered case list. The parent retains child transcripts
+and includes their named PASS assertions in its reported check total. Failed
+component arenas are retained.
 These components do not qualify canonical storage, actual actors, closure,
 the published review route or the whole STANDARD workflow.
 
@@ -4879,14 +4902,41 @@ configured PostgreSQL or exact installed-package acceptance.
 
 ### Real-port correction observation preflight
 
+For the 2026-11-11 recovery/correction/SPIKE plan-validity decision, use the
+actual changed adapters rather than the generic SPIKE initializer alone:
+
+- `verify-drift-recovery-fixtures.mjs --aged-plan` covers canonical DUAL recovery
+  recording and change-request writes, numeric validation and real late faults.
+  `--cycle-port-mode=files|dual|db-only --aged-plan` adds current context,
+  no-effect Git checkpoint observation and original cycle initialization.
+  `--cr-write-mode=files|dual|db-only --aged-plan` selects actual CR writes.
+- `verify-standard-drift-rollback-fixtures.mjs --aged-plan` covers actual FILES
+  product replacement, malformed timestamps, current source/grant refusals and
+  uncertainty after a partial effect. It is not a three-backend proof.
+- `verify-standard-pr-correction-expiry-fixtures.mjs --mode=files|dual|db-only`
+  now checks valid original old reopen/checkpoint plans; the filename is legacy.
+  `verify-standard-pr-correction-cycle-ports-fixtures.mjs --mode=files|dual|db-only
+  --aged-plan` covers the separate corrective cycle initializer.
+- `verify-standard-spike-wrapper-preconditions.mjs --aged-plan` covers the actual
+  FILES wrapper, with `--dual-nominal` or `--db-only-nominal` for canonical SQLite
+  modes. Add `--metadata-tamper --metadata-stage=before-authorization|after-hook`
+  on a DUAL case to retain before-effect refusal and post-hook UNKNOWN checks.
+
+These selectors prepare original immutable plans with a private past business
+clock and restore current time before applying them. They do not simulate an
+expired upstream grant or measure literal day-long execution. Genuine Native,
+human/provider, configured PostgreSQL, exact installed archive and complete
+STANDARD workflow qualification remain separate. An executed selector becomes
+PASS only after its raw terminal outcome and cleanup envelope are authenticated.
+
 `node tools/perf/verify-standard-pr-correction-real-ports-fixtures.mjs
 --mode=files|dual|db-only --retain-always` selects the new deterministic preflight.
 The default required family runs each mode once. `--positive-only` is a narrow
 positive diagnostic. `--grant-only` checks revocation during the provider
 await and a changed authenticated prior receipt at the same instance prefix
 after the second remote read. Both must refuse before the first CAS. This
-subset cannot qualify the full matrix. Each case derives a fresh plan normally;
-expiry cannot stand in for the injected refusal. Partial failures retain their
+subset cannot qualify the full matrix. Each case derives its own plan normally;
+the injected source/provider refusal is independent of plan age. Partial failures retain their
 owner and UNKNOWN, and cold preparation refuses to replay them. The owner
 injection checks that finalization preserves the confirmed prefix when it
 refuses to release the changed owner.
@@ -4916,27 +4966,24 @@ qualification remain required. `--retain-always` leaves projects and raw outcome
 for terminal capture; it is not a resource-closure assertion.
 
 `node tools/perf/verify-standard-pr-correction-expiry-fixtures.mjs
---mode=files|dual|db-only` isolates the two correction business adapters' expiry
-guards. Each case prepares its own original using an injected past adapter
-clock and observes present time without rewriting any plan, grant or budget.
-A valid expired explicit intent refuses as `STANDARD_PLAN_EXPIRED/no_effect`
-before acquiring an owner or consulting authorization. Missing intent/callbacks
-and a wrong digest preserve their specific refusal. Every physical project and
-remote file/directory is compared around those direct refusals, including DB
-bytes. Reopen expiry during provider verification before its first CAS returns
-blocked/no_effect and releases the owner. The oracle verifies the released
-fence separately and compares the remaining physical bytes and canonical rows.
-Cold fresh preparation reads the same
-subject without writes; it never executes a successor.
+--mode=files|dual|db-only` retains its legacy filename and now tests current
+validity of original day-old reopen and checkpoint plans. Each case prepares
+its original using an injected past business-adapter clock and restores present
+time before application without rewriting a plan, grant or budget. Protected
+provider and authorization clocks remain real. Both effects must complete under
+current source, process, grant and exact postimages. The remote remains
+unchanged; FILES/DUAL make only the finite local checkpoint and DB-only makes no
+commit. Missing intent/callbacks and a wrong digest preserve their specific
+pre-owner refusal, with every physical project and remote file/directory
+compared, including DB bytes. Cold preparation of the same subject is read-only.
 
-These are direct application-port guards with a signed synthetic accepted
-source and fixture provider. They do not prove an accepted expired dispatcher
-receipt, signed-host repréparation, a fresh human grant or the full correction
-workflow. Partial effects remain UNKNOWN and cannot use expired-no-effect
-repreparation. The existing host requires an accepted authenticated no-effect
-receipt, exact waiting occurrence and unchanged original history before making
-a read-only successor preview; staging still requires explicit intent and a
-fresh grant. Qualification results remain pending until terminal capture.
+These are direct application-port checks with a signed synthetic accepted
+source and fixture provider. They do not prove signed-host continuation, a
+genuine human grant or the full correction workflow. Partial effects remain
+UNKNOWN and retain their owner. Current reopen and disposition fault fixtures
+use actual post-effect grant loss rather than elapsed-only failure. Historical
+expiry receipts and their readers retain their original meaning and bytes.
+Qualification results remain pending until terminal capture.
 
 
 ### Accepted correction-cycle creation and planning entry
@@ -4946,7 +4993,7 @@ checks the new cycle port on a newly source-installed disposable project, with
 retained terminal projects. It uses the actual accepted checkpoint reader and
 ordinary cycle admissions/initializer/CAS/Git/SQLite. Accepted journal, human
 and provider capabilities are explicitly doubled. It checks closed contracts,
-refusal/corruption, initial continuity and NOT_READY plan state, expiry, provider
+refusal/corruption, initial continuity and NOT_READY plan state, provider
 refusal, cancellation and revoked grants before a positive ordinary creation.
 The runtime family selects each mode once. Absence of a terminal PASS footer
 leaves the suite unqualified; old failures and owners remain retained.

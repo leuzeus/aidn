@@ -359,7 +359,8 @@ finalization; `--verify` retains its read-only verification behavior.
     disposition of the previous intent. The next preview either prepares a
     new question or continues through the verified alignment and completion
     operations.
-    For an expired corrective reopening with all three exact postimages,
+    For an interrupted corrective reopening with an original UNKNOWN receipt
+    and all three exact postimages,
     STANDARD can preview an `operation_disposition` action. Applying its exact
     action file records one confirmed receipt and preserves the original
     UNKNOWN. The next preview is a separate `operation_disposition_accept`

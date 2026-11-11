@@ -7,9 +7,6 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createCorrectionRealPortFixture, bindCorrectionRealPorts, acceptFixtureReopen,
   correctionFixtureSigner as signer, fixtureOp } from './standard-pr-correction-real-port-fixture-lib.mjs';
-import { LOCAL_ARTIFACT_FENCE_PATH } from '../../src/application/runtime/local-artifact-resource-fence.mjs';
-import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
-import { resolveRuntimeSqliteFile } from '../../src/application/runtime/runtime-persistence-service.mjs';
 
 const here = fileURLToPath(import.meta.url), owned = [];
 const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'files';
@@ -36,14 +33,6 @@ function bytes(root, expectedWrites = new Set()) {
     }
   }
   walk(root); return rows;
-}
-function canonicalSnapshot(root) {
-  const store = createProjectArtifactStore({ targetRoot: root, readOnly: true, existingOnly: true });
-  try {
-    const rows = store.listArtifacts(1000);
-    assert.ok(rows.length < 1000, 'snapshot must include all canonical fixture rows');
-    return rows.filter(row => row.path !== LOCAL_ARTIFACT_FENCE_PATH).sort((a, b) => a.path.localeCompare(b.path));
-  } finally { store.close(); }
 }
 const evidenceDirectory = f => {
   const dir = path.join(f.root, '.aidn/runtime/standard-workflow/correction-expiry'); fs.mkdirSync(dir, { recursive: true }); return dir;
@@ -77,7 +66,6 @@ try {
     const apply = (p, options) => (action === 'reopen' ? bound.port : bound.checkpoint).apply(f.instance, p, options);
     const explicitCode = action === 'reopen' ? 'STANDARD_PR_CORRECTION_EXPLICIT_WRITE_REQUIRED' : 'STANDARD_PR_CORRECTION_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED';
     for (const [name, fault, expected] of [
-      ['expired valid plan', o => o, 'STANDARD_PLAN_EXPIRED'],
       ['missing write', o => ({ ...o, write: false }), explicitCode],
       ['nonboolean write', o => ({ ...o, write: 'true' }), explicitCode],
       ['wrong expected digest', o => ({ ...o, expectPlan: 'a'.repeat(64) }), explicitCode],
@@ -86,7 +74,7 @@ try {
       // Prepare each immutable original in the past using an injected adapter
       // clock, then observe real present time. Never edit a plan timestamp,
       // authorization deadline or allocation counter.
-      clock = Date.now() - 300001; const prepared = await prepare(); assert.equal(prepared.can_apply, true);
+      clock = Date.now() - 86400000; const prepared = await prepare(); assert.equal(prepared.can_apply, true);
       save(f, action + '-' + name.replaceAll(' ', '-'), { prepared, proof: 'direct-application-before-owner', native: 'NOT_RUN' });
       const before = bytes(f.root), remoteBefore = bytes(f.remoteRoot), original = structuredClone(prepared); let authorizations = 0;
       clock = Date.now();
@@ -97,46 +85,34 @@ try {
       pass(action + ' ' + name + ' refuses before owner/callback and preserves every physical file/directory');
     }
     const current = cold(f, action, input); assert.equal(current.can_apply, true);
-    assert.ok(Date.now() - current.plan.prepared_at_ms < 300000);
-    assert.deepEqual(current.plan.input, input); pass(action + ' cold fresh preparation preserves the same subject');
+    assert.ok(Number.isSafeInteger(current.plan.prepared_at_ms) && current.plan.prepared_at_ms >= 0);
+    assert.deepEqual(current.plan.input, input); pass(action + ' cold current preparation preserves the same subject');
+    // Legacy filename; this now qualifies original old plans under current
+    // source/authority, rather than requiring an elapsed-only refusal.
+    clock = Date.now() - 86400000;
+    const prepared = await prepare(); assert.equal(prepared.can_apply, true); assert.ok(Date.now() - prepared.plan.prepared_at_ms >= 86400000);
+    const original = structuredClone(prepared), remoteBefore = bytes(f.remoteRoot), head = git(f.root, 'rev-parse', 'HEAD');
+    let authorizations = 0, output;
+    clock = Date.now();
+    if (action === 'reopen') bound.state.beforeReview = () => { if (!bound.state.readingSource) clock = Date.now() + 86400000; };
+    try { output = await apply(prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() { authorizations++; } }); }
+    finally { bound.state.beforeReview = null; clock = Date.now(); }
+    assert.equal(output.outcome, 'completed', JSON.stringify(output));
+    assert.ok(authorizations > 0); assert.equal(f.artifacts.ownerPending(), false); assert.deepEqual(prepared, original);
+    assert.deepEqual(bytes(f.remoteRoot), remoteBefore);
     if (action === 'reopen') {
-      clock = Date.now();
-      const duringProvider = await prepare();
-      const fence = f.artifacts.resourceFence(), initialFence = fence.read().record;
-      const fencePath = path.join(f.root, 'docs/audit', LOCAL_ARTIFACT_FENCE_PATH);
-      const expectedWrites = new Set(mode === 'db-only' ? [] : [fencePath]);
-      let canonicalBefore;
-      if (mode !== 'files') {
-        const sqliteFile = resolveRuntimeSqliteFile({ targetRoot: f.root });
-        assert.ok(path.relative(f.root, sqliteFile).startsWith('.aidn' + path.sep));
-        for (const suffix of ['', '-shm', '-wal']) expectedWrites.add(sqliteFile + suffix);
-        canonicalBefore = canonicalSnapshot(f.root);
-      }
-      const before = bytes(f.root, expectedWrites), remoteBefore = bytes(f.remoteRoot);
-      bound.state.beforeReview = () => { if (!bound.state.readingSource) clock = duringProvider.plan.prepared_at_ms + 300001; };
-      const expired = await apply(duringProvider, { write: true, expectPlan: duringProvider.plan_sha256, assertAuthorized() {} });
-      assert.equal(expired.outcome, 'blocked'); assert.equal(expired.effect_status, 'no_effect');
-      assert.equal(expired.observations.reason_code, 'STANDARD_PLAN_EXPIRED'); assert.equal(f.artifacts.ownerPending(), false);
-      const released = fence.read().record;
-      assert.equal(released.state, 'released');
-      assert.equal(released.revision, (initialFence?.revision ?? 0) + 2);
-      assert.notEqual(released.token, initialFence?.token);
-      if (mode === 'db-only') assert.equal(fs.existsSync(fencePath), false);
-      else assert.deepEqual(JSON.parse(fs.readFileSync(fencePath, 'utf8')), released);
-      if (mode !== 'files') assert.deepEqual(canonicalSnapshot(f.root), canonicalBefore);
-      assert.equal(hash(JSON.stringify(bytes(f.root, expectedWrites))), hash(JSON.stringify(before)), 'business and checkout bytes changed');
-      assert.deepEqual(bytes(f.remoteRoot), remoteBefore);
-      save(f, 'expired-during-provider', { prepared: duringProvider, output: expired, fence: released });
-      pass('reopen expires during provider observation before first CAS and releases its owner without business writes');
-      bound.state.beforeReview = null; clock = Date.now(); const fresh = await prepare();
-      const output = await apply(fresh, { write: true, expectPlan: fresh.plan_sha256, assertAuthorized() {} });
-      assert.equal(output.outcome, 'completed'); assert.equal(output.effect_status, 'confirmed');
-      f.checkpointInput = acceptFixtureReopen(f, fresh, output);
-      save(f, 'accepted-reopen', { prepared: fresh, output, fixture: f.saved });
+      assert.equal(output.effect_status, 'confirmed'); assert.equal(git(f.root, 'rev-parse', 'HEAD'), head);
+      f.checkpointInput = acceptFixtureReopen(f, prepared, output);
+      save(f, 'accepted-aged-reopen', { prepared, output, fixture: f.saved });
+    } else {
+      if (mode === 'db-only') assert.equal(git(f.root, 'rev-parse', 'HEAD'), head);
+      else assert.notEqual(git(f.root, 'rev-parse', 'HEAD'), head);
+      save(f, 'accepted-aged-checkpoint', { prepared, output, fixture: f.saved });
     }
+    pass(action + ' original day-old plan applies with current protected provider, source and grant checks');
   }
   console.log(JSON.stringify({ status: 'PASS', checks, mode, roots: owned,
-    proof: 'real-application-pre-owner-expiry-guards-and-cold-same-subject-preparation',
+    proof: 'original-old-plans-current-state-validity-and-explicit-intent-refusals',
     canonical: mode === 'files' ? 'files' : 'SQLite', source: 'authenticated-synthetic-key127', provider: 'fixture',
     dispatcher_reprepare: 'NOT_RUN', accepted_expired_receipt: 'NOT_RUN', fresh_grant: 'NOT_RUN',
     model_calls: 0, native: 'NOT_RUN', genuine_human: 'NOT_RUN', postgres: 'NOT_RUN', installed_archive: 'NOT_RUN',

@@ -156,19 +156,19 @@ try {
   // schema/plan/owner flow and real Git ignore check run; no canonical DB claim.
   fs.mkdirSync(path.join(root, "docs/audit"), { recursive: true });
   fs.writeFileSync(path.join(root, ".gitignore"), "docs/audit/workflows/drift-reports/\n");
-  for (const scenario of ["context-revocation", "context-expiry"]) {
-    let reads = 0, authorized = true, time = 100, effects = 0, owners = 0;
+  for (const scenario of ["context-revocation", "context-process-change"]) {
+    let reads = 0, authorized = true, effects = 0, owners = 0, currentSha = H;
     globalThis.objectiveFenceFixture = { observe: async () => observations(), artifacts: {
       root, describe: () => ({ state_mode: "files" }), ownerPending: () => false,
       read: () => ({ sha256: null }), withLocalEffectOwner: async (_plan, callback) => { owners++; return callback(); },
       compareAndSwap: () => { effects++; }, project: () => { effects++; },
     } };
     const instance = { instance_id: "fixture", instance_sha256: H };
-    const port = createStandardDriftFinalization({ targetRoot: root, now: () => time, readCurrent: () => instance,
+    const port = createStandardDriftFinalization({ targetRoot: root, now: () => 100, readCurrent: () => ({ ...instance, instance_sha256: currentSha }),
       readObjectiveAlignment: async () => structuredClone(alignment),
       async readEvaluation() {
         reads++; await new Promise(resolve => setImmediate(resolve));
-        if (reads === 3) { if (scenario === "context-revocation") authorized = false; else time = 300101; }
+        if (reads === 3) { if (scenario === "context-revocation") authorized = false; else currentSha = "b".repeat(64); }
         return { context: { contract_version: "standard-drift-context.v2", mode: "THINKING", branch: "fixture", head: "a".repeat(40) },
           context_sha256: H, evaluation_sha256: H, output: { facts: { drift_present: false, drift_context_complete: true, drift_recovery_required: false },
             observations: { report: {}, producer: {} } } };
@@ -181,7 +181,7 @@ try {
     catch (error) { failure = error; }
     console.log(JSON.stringify({ scenario, reads, effects, refusal: failure?.message ?? null, output }));
     assert.ok(failure, "finalizer must refuse before report effects"); assert.equal(failure.effect_status, "no_effect");
-    assert.match(failure.message, scenario === "context-revocation" ? /authorization revoked/ : /STANDARD_DRIFT_PLAN_EXPIRED/);
+    assert.match(failure.message, scenario === "context-revocation" ? /authorization revoked/ : /STANDARD_DRIFT_PROCESS_CHANGED/);
     assert.equal(owners, 1); assert.equal(effects, 0); assert.equal(reads, 3);
     pass(`finalizer ${scenario}: no report CAS, projection or hook`);
   }

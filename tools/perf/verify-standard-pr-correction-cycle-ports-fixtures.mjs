@@ -17,6 +17,8 @@ import { createOperationJournalSigner } from '../../src/core/workflow/process-op
 const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files', owned = [];
 const decisionV2 = process.argv.includes('--decision-v2');
 const decisionV3 = process.argv.includes('--decision-v3');
+const agedPlan = process.argv.includes('--aged-plan');
+let planClock = null;
 assert.ok(!(decisionV2 && decisionV3));
 const candidate = { cycle_id: decisionV3 ? 'C017' : 'C001', title: decisionV3 ? 'chosen-by-person' : 'review-correction', objective: 'Correct the reviewed boundary through an ordinary governed cycle.' };
 const lateMetadata = process.argv.find(x => x.startsWith('--late-metadata='))?.slice(16) ?? null;
@@ -101,7 +103,7 @@ try {
   rows.set(op(3), human); assertStandardOperationOutput(human.output);
   let lateProbe = null;
   const make = (options = {}) => createStandardPrCorrectionCycle({ targetRoot: f.root, operations: f.ops, readAcceptedOperation,
-    readCheckpoint: checkpoint.readCompleted, observeProduct: () => product, readCurrent: () => f.instance,
+    readCheckpoint: checkpoint.readCompleted, observeProduct: () => product, readCurrent: () => f.instance, now: () => planClock ?? Date.now(),
     async verifyContinuationSource(instance, source, { assertLocal }) { assertLocal(); const result = await authority.verifyProviderSource(instance, source);
       if (lateMetadata === 'provider' && lateProbe) await lateProbe();
       assertLocal(); return result; }, ...options });
@@ -130,17 +132,19 @@ try {
     assert.ok(prepared.plan.inner.plan.changes.find(x => x.path.endsWith('/status.md')).after.includes('dor_state: NOT_READY'));
     assert.equal(git(f.root, 'rev-parse', 'HEAD'), head); assert.equal(f.artifacts.ownerPending(), false);
   });
-  await test('expiry, provider refusal, cancellation and grant revocation refuse before branch creation', async () => {
+  await test('provider refusal, cancellation and grant revocation refuse before branch creation', async () => {
     const options = { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() {} };
-    await assert.rejects(make({ now: () => prepared.plan.prepared_at_ms + 300001 }).apply(f.instance, prepared, options), { code: 'STANDARD_PLAN_EXPIRED' });
     provider = false; await assert.rejects(make().apply(f.instance, prepared, options), { code: 'FIXTURE_PROVIDER_CHANGED' }); provider = true;
     const abort = new AbortController(); abort.abort(); await assert.rejects(make().apply(f.instance, prepared, { ...options, signal: abort.signal }), { code: 'STANDARD_PR_CORRECTION_ABORTED' });
     await assert.rejects(make().apply(f.instance, prepared, { ...options, assertAuthorized() { throw Object.assign(Error('grant refused'), { code: 'FIXTURE_GRANT_REFUSED' }); } }), { code: 'FIXTURE_GRANT_REFUSED' });
     assert.equal(f.artifacts.ownerPending(), false); assert.equal(git(f.root, 'branch', '--show-current'), review.plan.review.head_branch);
   });
   await test(lateMetadata ? 'metadata-only change during post-CAS ' + lateMetadata + ' wait retains UNKNOWN and owner'
-    : 'actual ordinary initializer creates one mapped correction cycle without product or Git commit', async () => {
+    : agedPlan ? 'original day-old corrective cycle plan creates one mapped cycle under current source and grant' : 'actual ordinary initializer creates one mapped correction cycle without product or Git commit', async () => {
+    planClock = agedPlan ? Date.now() - 86400000 : null;
     const fresh = await make().prepare(f.instance, request);
+    planClock = null;
+    if (agedPlan) assert.ok(Date.now() - fresh.plan.prepared_at_ms >= 86400000);
     let reached = false, before, after;
     lateProbe = async () => {
       // Enter only after every real initializer CAS and the branch transition.

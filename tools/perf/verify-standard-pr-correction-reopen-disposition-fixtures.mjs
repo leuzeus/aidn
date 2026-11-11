@@ -54,7 +54,7 @@ function open(config, boundary = null, entryDispositionSource = null) {
   const readAuthority = () => ({ scope_id: "fixture:" + sha(artifacts.root), model_sha256: sha(model), policy_pins: {} });
   const readContext = () => ({ head: git(root, "rev-parse", "HEAD"), documents: names.map(name => artifacts.read(name).sha256) });
   const inventory = createStandardReconciliationInventory({ targetRoot: root, signer, readInstance, readAuthority, readContext });
-  let clock = config.prepared?.plan.prepared_at_ms ?? Date.now(), requests = 0;
+  let requests = 0;
   const faults = { provider: false, grant: null, revokeAfterRecord: false };
   const authority = {
     readSource: async () => structuredClone(source),
@@ -66,7 +66,7 @@ function open(config, boundary = null, entryDispositionSource = null) {
         canonical_transition: "verified-separately-by-exact-plan-postimages", fresh_observation_sha256: sha({ generation: randomUUID() }) };
     },
   };
-  const writer = createStandardPrCorrectionReopen({ targetRoot: root, readCurrent: readInstance, authority, now: () => clock });
+  const writer = createStandardPrCorrectionReopen({ targetRoot: root, readCurrent: readInstance, authority, now: Date.now });
   const makeReceipt = (record, output) => {
     const index = record.results.length, receipt_id = "receipt_" + record.operation_id.slice(3) + "_" + index;
     return { contract_version: "process-operation-receipt.v1", receipt_id, operation_id: record.operation_id,
@@ -123,7 +123,7 @@ function open(config, boundary = null, entryDispositionSource = null) {
   const accept = receipt => service.acceptOperation({ instanceId, expectedSha256: readInstance(instanceId).instance_sha256, occurrenceId,
     eventId: receipt.effect_status === "unknown" ? "original_unknown" : "confirmed_disposition", receiptId: receipt.receipt_id, write: true });
   return { artifacts, disposition, model, service, writer, reopen, signer, readOperation, readInstance, readContext, persist, appendResult, accept, faults,
-    requests: () => requests, expire: () => { clock += 300001; } };
+    requests: () => requests };
 }
 
 if (process.argv[2] === "--reopen-disposition-worker") {
@@ -136,9 +136,11 @@ if (process.argv[2] === "--reopen-disposition-worker") {
     owner: { generation: randomUUID(), pid: process.pid } }, before.content_sha256);
   let grants = 0;
   const output = await h.disposition.run(record, () => h.writer.apply(h.readInstance(instanceId), config.prepared,
-    { write: true, expectPlan: config.prepared.plan_sha256, assertAuthorized() { if (++grants === 8) h.expire(); } }));
+    { write: true, expectPlan: config.prepared.plan_sha256, assertAuthorized() {
+      if (++grants === 8) throw Object.assign(protocolError('FIXTURE_POST_EFFECT_GRANT_LOST'), { effect_status: 'no_effect' });
+    } }));
   assert.equal(output.effect_status, "unknown");
-  assert.equal(output.observations.reason_code, "STANDARD_PLAN_EXPIRED");
+  assert.equal(output.observations.reason_code, "FIXTURE_POST_EFFECT_GRANT_LOST");
   assert.equal(output.observations.committed.length, 3);
   await h.accept(h.appendResult(record, output));
 }
@@ -240,6 +242,7 @@ export async function verifyReopenDisposition() {
       { authority: operator, compose });
     const execute = preview => entry({ preparedAction: preview.preview, execute: true, expectPlan: preview.action_sha256 });
     const cold = open(config), entryPreview = await entry();
+    fs.writeFileSync(path.join(evidence, "entry-preview.json"), JSON.stringify(entryPreview, null, 2) + "\n", { flag: "wx" });
     assert.equal(entryPreview.preview.kind, "operation_disposition");
     assert.equal(entryPreview.written, false);
     const recovered = entryPreview.preview.payload.disposition_plan;

@@ -144,12 +144,12 @@ export function createStandardDriftRollback({ targetRoot, readSource, observeCon
       if (fs.existsSync(staged)) fs.unlinkSync(staged);
     }
   }
-  const expired = plan => !Number.isSafeInteger(plan?.prepared_at_ms) || now() < plan.prepared_at_ms || now() - plan.prepared_at_ms > 300000;
+  const validPreparedTimestamp = plan => Number.isSafeInteger(plan?.prepared_at_ms) && plan.prepared_at_ms >= 0;
   return Object.freeze({
     prepare: (instance, input) => prepare(instance, input, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
       const plan = prepared?.plan;
-      if (!prepared?.can_apply || write !== true || typeof assertAuthorized !== "function" || expired(plan)
+      if (!prepared?.can_apply || write !== true || typeof assertAuthorized !== "function" || !validPreparedTimestamp(plan)
         || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan
         || validateJsonSchema(plan, planSchema, "$", { contractKind: "workflow-definition" }).length)
         throw Object.assign(Error("STANDARD_DRIFT_ROLLBACK_EXPLICIT_EFFECT_REQUIRED"), { code: "STANDARD_DRIFT_ROLLBACK_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" });
@@ -165,7 +165,7 @@ export function createStandardDriftRollback({ targetRoot, readSource, observeCon
           const paths = plan.changes.map(change => change.path);
           for (const change of plan.changes) {
             await assertAuthorized();
-            if (expired(plan) || shadowHash(view(instance, observed.context, selected, paths)) !== shadowHash(plan.scope))
+            if (!validPreparedTimestamp(plan) || shadowHash(view(instance, observed.context, selected, paths)) !== shadowHash(plan.scope))
               fail("STANDARD_DRIFT_ROLLBACK_CONTEXT_CHANGED");
             const live = physical(change.path, selected.deniedRoots, change.before);
             if (live.sha256 !== change.before.sha256 || live.mode !== change.before.mode) fail("STANDARD_DRIFT_ROLLBACK_PRODUCT_PREIMAGE_CHANGED");
@@ -178,7 +178,7 @@ export function createStandardDriftRollback({ targetRoot, readSource, observeCon
           assertUnfilteredPaths(scopedNames(selected));
           const after = await observeContext();
           await assertAuthorized();
-          if (expired(plan) || shadowHash(view(instance, after.context, selected, paths)) !== shadowHash(plan.scope)) fail("STANDARD_DRIFT_ROLLBACK_CONTEXT_CHANGED");
+          if (!validPreparedTimestamp(plan) || shadowHash(view(instance, after.context, selected, paths)) !== shadowHash(plan.scope)) fail("STANDARD_DRIFT_ROLLBACK_CONTEXT_CHANGED");
           for (const change of plan.changes) {
             const postimage = physical(change.path, selected.deniedRoots, change.after);
             if (postimage.sha256 !== change.after.sha256 || postimage.mode !== change.after.mode) fail("STANDARD_DRIFT_ROLLBACK_POSTIMAGE_CHANGED");

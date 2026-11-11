@@ -5447,3 +5447,16 @@ corrélation avec l'appel réel. Le retour typé en revue reconstruit son opinio
 et son ancrage courant ; les fenêtres propres aux opinions humaines et aux
 observations restent à examiner séparément. Une perte réelle de confirmation
 après effet conserve UNKNOWN et interdit un nouvel essai implicite.
+
+La récupération de dérive (enregistrement, CR, contexte/checkpoint/nouveau cycle
+et rollback), la réouverture/checkpoint/nouveau cycle de correction PR et la
+conversion SPIKE suivent cette même décision. Le plan d'origine peut être
+ancien : ses sources acceptées, son contexte, son autorisation et ses préimages/
+postimages exactes doivent toujours être valides aux frontières existantes.
+Le timestamp reste une donnée numérique sûre et non négative, sans plafond
+d'âge ajouté. Les tests courants de perte de confirmation après effet utilisent
+une révocation réelle ou une modification vérifiée de source ; les anciens
+résultats d'expiration restent conservés séparément. Les composants installés
+depuis la source, y compris le vrai wrapper SPIKE, ne prouvent ni le modèle
+complet ni les acteurs réels ni l'archive livrable. Leur qualification reste à
+exécuter avant toute annonce de validation du lot.

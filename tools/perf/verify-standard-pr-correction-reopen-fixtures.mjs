@@ -75,12 +75,12 @@ if (process.argv[2] === '--retirement-owner-worker') {
   const witness = retire ? retireInterruptedReopenLock(args) : inspectInterruptedReopenLock(args.targetRoot, args.operationId, args.intention, args.originalLease);
   // Exit at the requested boundary with the acquired fence still held.
   console.log(JSON.stringify({ retired: witness.retired, pid: process.pid, lock_sha256: lockSha256, fence_sha256: fence.read().content_sha256 }));
-} else if (process.argv[2] === '--expired-owner-worker') {
+} else if (process.argv[2] === '--post-effect-grant-worker') {
   const { root, plan, instance } = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
   const artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
-  let clock = plan.plan.prepared_at_ms, grants = 0;
+  let grants = 0;
   const source = plan.plan.source, sourceHash = shadowHash(source);
-  const writer = createStandardPrCorrectionReopen({ targetRoot: root, readCurrent: () => instance, now: () => clock,
+  const writer = createStandardPrCorrectionReopen({ targetRoot: root, readCurrent: () => instance,
     authority: { readSource: async () => source, verifySource: async () => ({ origin_source_sha256: sourceHash }) } });
   const binding = 'session_pr_correction_reopen';
   const record = fixtureSigner.seal({ operation_id: op, phase: 'dispatching', preview: fixtureSigner.seal({ prepared: plan }),
@@ -88,7 +88,7 @@ if (process.argv[2] === '--retirement-owner-worker') {
     owner: { pid: process.pid, generation: 'fixture-cold-owner' }, results: [] });
   const disposition = reopenDisposition(root, artifacts, () => ({ record }));
   const result = await disposition.run(record, () => writer.apply(instance, plan, { write: true, expectPlan: plan.plan_sha256,
-    assertAuthorized() { if (++grants === 8) clock += 300001; } }));
+    assertAuthorized() { if (++grants === 8) throw Object.assign(Error('fixture permission lost after canonical postimages'), { code: 'FIXTURE_POST_EFFECT_GRANT_LOST', effect_status: 'no_effect' }); } }));
   assert.equal(result.effect_status, 'unknown');
   const receipted = fixtureSigner.seal({ ...record, phase: 'receipted', results: [{ output: result, receipt: {
     effect_status: 'unknown', outcome: 'reconciliation_required', output_sha256: shadowHash(result),
@@ -183,7 +183,7 @@ if (process.argv[2] === '--retirement-owner-worker') {
     assert.deepEqual(result.observations.committed.map(row => row.path), [partial.names[0]]);
     assert.equal(partial.artifacts.ownerPending(), true); assert.equal((await partial.port.prepare(partial.instance, partial.input)).can_apply, false);
   });
-  if (mode === 'files') await test('expired reopening with three postimages is observable without repeating writes', async () => {
+  if (mode === 'files') await test('reopening with three postimages and lost permission is observable without repeating writes', async () => {
     const stopped = await fixture('files');
     const exclusion = '/docs/audit/workflows/dispatch-records/';
     const scaffold = fs.readFileSync(new URL('../../scaffold/root/.gitignore.append', import.meta.url), 'utf8');
@@ -198,7 +198,7 @@ if (process.argv[2] === '--retirement-owner-worker') {
     try {
       fs.writeFileSync(fixtureFile, JSON.stringify({ root: stopped.root, plan, instance: stopped.instance }), { flag: 'wx' });
       assert.equal(git(stopped.root, 'status', '--porcelain'), '');
-      record = JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--expired-owner-worker', fixtureFile],
+      record = JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--post-effect-grant-worker', fixtureFile],
         { encoding: 'utf8', timeout: 180000, windowsHide: true, maxBuffer: 1048576 }));
     } finally {
       if (fs.existsSync(fixtureFile)) fs.unlinkSync(fixtureFile);
@@ -206,7 +206,7 @@ if (process.argv[2] === '--retirement-owner-worker') {
     }
     const result = record.results[0].output;
     assert.equal(result.effect_status, 'unknown');
-    assert.equal(result.observations.reason_code, 'STANDARD_PLAN_EXPIRED');
+    assert.equal(result.observations.reason_code, 'FIXTURE_POST_EFFECT_GRANT_LOST');
     assert.equal(result.observations.committed.length, 3);
     const file = name => path.join(stopped.root, 'docs/audit', name);
     const witness = () => stopped.names.map(name => fs.readFileSync(file(name)));
@@ -215,6 +215,8 @@ if (process.argv[2] === '--retirement-owner-worker') {
     const owner = disposition.observeInterruptedReopen(record);
     const assertOwner = () => assert.deepEqual(disposition.observeInterruptedReopen(record), owner);
     const observe = (output = result, options = {}) => observer.observeInterrupted(stopped.instance, plan, output, { assertOwner, ...options });
+    await assert.rejects(observe({ ...result, outcome: 'completed', effect_status: 'confirmed' }),
+      { code: 'STANDARD_PR_CORRECTION_INTERRUPTED_RESULT_REQUIRED' });
     await assert.rejects(observe({ ...result, observations: { ...result.observations, committed: result.observations.committed.slice(0, 2) } }),
       { code: 'STANDARD_PR_CORRECTION_POSTIMAGES_INCOMPLETE' });
     await assert.rejects(observe(result, { assertOwner() { throw Object.assign(Error('owner differs'), { code: 'FIXTURE_OWNER_CHANGED' }); } }),
@@ -233,6 +235,14 @@ if (process.argv[2] === '--retirement-owner-worker') {
     assert.equal(observed.plan_sha256, plan.plan_sha256);
     assert.deepEqual(witness(), before);
     assert.equal(stopped.artifacts.ownerPending(), true);
+    // Synthetic legacy output shape, not a replacement for the signed current
+    // grant-loss record and not proof of historical-instance recovery.
+    const originalResult = JSON.stringify(record.results[0]);
+    const legacy = await observe({ ...result, observations: { ...result.observations, reason_code: 'STANDARD_PLAN_EXPIRED' } });
+    assert.deepEqual(legacy.postimages, result.observations.committed);
+    assert.equal(legacy.confirmation.effect_status, 'confirmed');
+    assert.equal(JSON.stringify(record.results[0]), originalResult);
+    assert.deepEqual(witness(), before); assert.equal(stopped.artifacts.ownerPending(), true);
     const lock = path.join(stopped.root, '.aidn/runtime/standard-workflow/effects.lock');
     const originalLock = fs.readFileSync(lock);
     const dispatchPath = path.join(stopped.root, 'docs/audit/workflows/dispatch-records', op + '.json');

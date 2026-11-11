@@ -438,7 +438,8 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     prepare(id, { expectedSha256, signal } = {}) {
       const operation = readOperation(id).record;
       if (operation.intent.binding_ref === correctionReopen && typeof confirmInterruptedReopen === "function"
-        && operation.results[0]?.output.observations?.reason_code === "STANDARD_PLAN_EXPIRED") {
+        && operation.results[0]?.receipt?.outcome === "reconciliation_required"
+        && operation.results[0]?.receipt?.effect_status === "unknown") {
         return prepareReopen(operation, expectedSha256, signal);
       }
       const observed = observation(id, null, operation);

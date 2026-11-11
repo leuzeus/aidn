@@ -98,9 +98,9 @@ export function createStandardDriftCycle({ targetRoot, operations, readSource, o
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
       let plan;
       try {
-        plan = assertPlan(prepared?.plan); const age = now() - plan.prepared_at_ms;
+        plan = assertPlan(prepared?.plan);
         if (write !== true || !prepared.can_apply || shadowHash(plan) !== expectPlan || prepared.plan_sha256 !== expectPlan
-          || typeof assertAuthorized !== "function" || !Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_RECOVERY_CYCLE_EXPLICIT_EFFECT_REQUIRED");
+          || typeof assertAuthorized !== "function") fail("STANDARD_RECOVERY_CYCLE_EXPLICIT_EFFECT_REQUIRED");
       } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       const operation = plan.operation_ref;
       if (operation === checkpoint) {
@@ -119,7 +119,7 @@ export function createStandardDriftCycle({ targetRoot, operations, readSource, o
           if (shadowHash(selected) !== plan.source_sha256 || observed.context_sha256 !== plan.context_sha256
             || boundary(operation, observed.context, plan.inner, plan.original_references) !== plan.boundary_sha256) fail("STANDARD_RECOVERY_CYCLE_SOURCE_STALE");
           await assertAuthorized();
-          if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || now() - plan.prepared_at_ms > 300000
+          if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256
             || (await observeContext()).context_sha256 !== plan.context_sha256) fail("STANDARD_RECOVERY_CYCLE_SOURCE_STALE");
         },
         async after() {

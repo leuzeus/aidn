@@ -92,16 +92,16 @@ export function createStandardDriftChangeRequest({ targetRoot, readRecovery, obs
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
       let plan;
       try {
-        plan = assertPlan(prepared?.plan); const age = now() - plan.prepared_at_ms;
-        if (write !== true || !prepared.can_apply || typeof assertAuthorized !== "function" || shadowHash(plan) !== expectPlan || prepared.plan_sha256 !== expectPlan
-          || !Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_CHANGE_REQUEST_EXPLICIT_EFFECT_REQUIRED");
+        plan = assertPlan(prepared?.plan);
+        if (write !== true || !prepared.can_apply || typeof assertAuthorized !== "function" || shadowHash(plan) !== expectPlan || prepared.plan_sha256 !== expectPlan)
+          fail("STANDARD_CHANGE_REQUEST_EXPLICIT_EFFECT_REQUIRED");
       } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
           const fresh = await prepare(instance, plan.input, plan.prepared_at_ms);
           if (fresh.plan_sha256 !== expectPlan) fail("STANDARD_CHANGE_REQUEST_PREVIEW_CHANGED");
           await assertAuthorized();
-          if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || now() - plan.prepared_at_ms > 300000
+          if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256
             || (await observeContext()).context_sha256 !== plan.context_sha256) fail("STANDARD_CHANGE_REQUEST_PREVIEW_CHANGED");
         } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         const committed = [], afterMetadata = [];

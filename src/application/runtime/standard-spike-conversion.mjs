@@ -61,8 +61,7 @@ export function createStandardSpikeConversion({ targetRoot, operations, readAcce
   };
   const explicit = (prepared, write, expected) => {
     if (write !== true || !prepared?.can_apply || prepared.plan_sha256 !== expected || shadowHash(prepared.plan) !== expected) fail("STANDARD_EXPLICIT_EFFECT_REQUIRED");
-    const age = now() - prepared.plan.prepared_at_ms;
-    if (!Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_PLAN_EXPIRED");
+    if (!Number.isSafeInteger(prepared.plan?.prepared_at_ms) || prepared.plan.prepared_at_ms < 0) fail("STANDARD_EXPLICIT_EFFECT_REQUIRED");
   };
   function analysis(instance, id) {
     const accepted = readAcceptedOperation(instance, id, "mode_work_observe"), output = assertModeWorkObservationOutput(accepted.output);
@@ -202,7 +201,7 @@ export function createStandardSpikeConversion({ targetRoot, operations, readAcce
           await assertAuthorized(); active(instance);
           const context = operations.observeScope(), original = initialized(instance, plan.input);
           if (context.branch !== plan.branch || context.head !== plan.head || shadowHash(original.source) !== plan.source_sha256
-            || postimages(original) !== plan.postimages_sha256 || now() - plan.prepared_at_ms > 300000) fail("STANDARD_SPIKE_POSTIMAGE_CHANGED");
+            || postimages(original) !== plan.postimages_sha256) fail("STANDARD_SPIKE_POSTIMAGE_CHANGED");
           return emit("spike_conversion_finalize", "completed", "confirmed", { hook, sync, selection: plan.selection, product_effects_authorized: false,
             retention_authorized: false, native_authority_renewed: false }, { spike_conversion_completed: true, spike_experiments_pending: true, mode_analysis_completed: true }, original.source.output.evidence_refs);
         } catch (cause) { return emit("spike_conversion_finalize", "reconciliation_required", "unknown", { hook, sync, reason_code: cause.code ?? "STANDARD_SPIKE_EFFECT_UNCONFIRMED" }); }
