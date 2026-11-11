@@ -89,6 +89,16 @@ the first conditional write retains its uncertain outcome and committed
 prefix. Authorization intervals, resource leases and execution budgets retain
 their own authorities and require a separate justification for any change.
 
+## Signed-preview staging validity, 2026-11-11
+
+The host stages a signed preview against the current process prefix, complete
+snapshot and resolved input, then acquires its current authorization. These
+checks establish the present identity of the proposed intent. The host's
+separate five-minute preview-age rejection is removed. The timestamp remains
+in the signed preview and journal. Dispatch continues through grant
+verification and the operation's current effect admission. Historical expiry
+receipts and their recovery reader retain their recorded semantics.
+
 ## Eligible occurrence lookup, 2026-11-06
 
 After the common service validates the complete cursor, the mixed host checks

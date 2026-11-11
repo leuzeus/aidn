@@ -63,6 +63,12 @@ alone does not invalidate these plans. Their preparation timestamp remains
 part of their signed provenance. Authorization revocation and resource leases
 are checked by their respective authorities.
 
+Staging a signed STANDARD preview checks its current process prefix, complete
+snapshot, resolved input and current authorization. Its preparation timestamp
+records provenance. Staging does not impose a separate elapsed-age limit.
+Dispatch applies the current authorization and operation-specific validity
+checks before its business effect.
+
 Each STANDARD drift or cycle-plan context reads the PostgreSQL session and
 cycle topology from one bounded, read-only canonical inventory. Selected
 rows still pass path, content hash, and identity ambiguity checks. The drift

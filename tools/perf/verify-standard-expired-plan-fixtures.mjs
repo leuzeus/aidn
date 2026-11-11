@@ -11,6 +11,7 @@ import { standardWorkflowOperationBindings } from "../../src/application/runtime
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { verifyStandardPreviewValidity } from "./standard-preview-validity-fixture-lib.mjs";
 
 const here = fileURLToPath(import.meta.url), temporary = fs.realpathSync(os.tmpdir());
 const H = "a".repeat(64), grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: H, grant_sha256: H };
@@ -148,6 +149,7 @@ export async function verifyStandardExpiredPlans() {
       fs.rmSync(physical, { recursive: true, force: true });
     }
   }
+  await verifyStandardPreviewValidity(pass);
   return checks;
 }
 

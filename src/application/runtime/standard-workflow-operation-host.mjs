@@ -1514,8 +1514,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     async stage(preview, { write = false, expectedPreviewSha256 } = {}) {
       preview = structuredClone(preview);
       validatePreview(preview); requireWrite(write, expectedPreviewSha256, shadowHash(preview));
-      const state = current(preview.instance_id), age = now() - preview.prepared_at_ms;
-      if (!Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_HOST_PREVIEW_EXPIRED");
+      const state = current(preview.instance_id);
       if (state.record.instance_sha256 !== preview.instance_sha256 || shadowHash(snapshot()) !== shadowHash(preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       if (model.data_bindings && shadowHash(resolveStandardProcessInput({ instance: state.record, occurrenceId: preview.occurrence_id,
         readOperation: id => retained(id).record }).input_resolution) !== shadowHash(preview.input_resolution)) fail("PROCESS_RESOLVED_INPUT_CHANGED");

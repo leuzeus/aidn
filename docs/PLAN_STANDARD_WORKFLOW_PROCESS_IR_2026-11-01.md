@@ -5378,3 +5378,11 @@ révocation, d'un changement de contexte, de préfixe ou de préimage. Une
 interruption après une première écriture conserve son issue incertaine.
 La qualification native et celle du nominal complet gardent leurs preuves
 propres. Le brouillon d'optimisation 264 reste distinct de cette correction.
+
+L'enregistrement d'une intention depuis un aperçu signé suit la même
+décision. L'hôte compare le préfixe courant, le snapshot complet et l'entrée
+résolue, puis acquiert l'autorisation actuelle. Son rejet supplémentaire sur
+l'âge de l'aperçu est retiré. Vérifier cette entrée ordinaire après un jour
+avec le même sujet, ainsi que les refus sur contexte modifié, révocation et
+préfixe devenu différent. Les reçus historiques d'expiration gardent leur
+lecteur et leur provenance.

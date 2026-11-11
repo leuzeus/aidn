@@ -198,6 +198,13 @@ plan, context, prefix and preimages still match. Test an application beyond
 the former 300-second age, revocation and actual source changes separately.
 The nominal fixture retains its separate terminal verdict.
 
+`standard-preview-validity-fixture-lib.mjs` stages a signed preview after one
+day through the ordinary host in FILES, DUAL and SQLite DB-only. It checks
+changed context, current authorization refusal and a changed process prefix,
+then verifies the retained staged journal. Authorization is controlled by the
+fixture. Business dispatch, PostgreSQL and installed qualification have their
+own evidence. The existing expired-plan fixture also runs these staging cases.
+
 For PostgreSQL task advancement, compare the three ordered content and metadata
 observations against individual reads. Verify a fresh preimage after locked
 re-preparation and a separate postimage after CAS. Retain a metadata-only
