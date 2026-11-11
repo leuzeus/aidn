@@ -147,7 +147,6 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
   }
   function explicit(prepared, write, expected) {
     if (write !== true || !prepared?.can_apply || prepared.plan_sha256 !== expected || shadowHash(prepared.plan) !== expected) fail("STANDARD_EXPLICIT_EFFECT_REQUIRED");
-    const age = now() - prepared.plan.prepared_at_ms; if (!Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_PLAN_EXPIRED");
   }
   async function prepareContext(input, at, acquired = false) {
     assertStandardOperationInput("cycle_context_refresh", input);

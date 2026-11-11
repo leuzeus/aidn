@@ -12,6 +12,8 @@ import { createStandardWorkflowArtifacts } from "../../src/application/runtime/s
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { verifyStandardPreviewValidity } from "./standard-preview-validity-fixture-lib.mjs";
+import { createSyntheticLegacyExpiryFixtureHost } from "./standard-legacy-expiry-fixture-lib.mjs";
+import { verifyStandardSessionPlanValidity } from "./standard-session-plan-validity-fixture-lib.mjs";
 
 const here = fileURLToPath(import.meta.url), temporary = fs.realpathSync(os.tmpdir());
 const H = "a".repeat(64), grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: H, grant_sha256: H };
@@ -27,8 +29,9 @@ function model() {
     nodes: [{ id: "initialize", kind: "operation", participant_ref: "project", binding_ref: "session_initialize" }] };
 }
 const currentGrant = async request => ({ ...grant, grant_sha256: request.preview_sha256 });
-function host(root, keyFile, clock, authorize = currentGrant) {
-  return createStandardWorkflowOperationHost({ targetRoot: root, model: model(), readSigningKey: () => fs.readFileSync(keyFile),
+function host(root, keyFile, clock, authorize = currentGrant, legacyReceiptFixture = false) {
+  const create = legacyReceiptFixture ? createSyntheticLegacyExpiryFixtureHost : createStandardWorkflowOperationHost;
+  return create({ targetRoot: root, model: model(), readSigningKey: () => fs.readFileSync(keyFile),
     authorize, now: () => clock.value });
 }
 function snapshot(root) {
@@ -45,23 +48,25 @@ function snapshot(root) {
 }
 function child(root, keyFile, id, clockValue, expectedSha256, action) {
   return JSON.parse(execFileSync(process.execPath, [here, "--child", root, keyFile, id, String(clockValue), expectedSha256, action],
-    { encoding: "utf8", timeout: 180000, maxBuffer: 1048576, stdio: ["ignore", "pipe", "pipe"], windowsHide: true }));
+    { encoding: "utf8", maxBuffer: 1048576, stdio: ["ignore", "pipe", "pipe"], windowsHide: true }));
 }
 
-export async function verifyStandardExpiredPlans() {
+export async function verifyStandardExpiredPlans({ includeCurrentValidity = true } = {}) {
   let checks = 0;
   const owned = [], pass = name => { checks++; console.log("PASS " + name); };
   try {
     for (const mode of ["files", "dual", "db-only"]) {
       const root = createStandardWorkflowFixture(mode, owned), privateRoot = fs.mkdtempSync(path.join(temporary, "aidn-standard-expired-")); owned.push(privateRoot);
       const keyFile = path.join(privateRoot, "host.key"); fs.writeFileSync(keyFile, randomBytes(32));
-      const clock = { value: Date.now() }, runtime = host(root, keyFile, clock), initial = runtime.initialize({ instanceId: "expired" });
+      // Only the first dispatch result is doubled to construct a signed legacy
+      // no-effect receipt for the actual historical recovery reader below.
+      const clock = { value: Date.now() - 86400000 }, runtime = host(root, keyFile, clock, currentGrant, true), initial = runtime.initialize({ instanceId: "expired" });
       runtime.initialize({ instanceId: "expired", write: true, expectedResultSha256: initial.record.instance_sha256 });
       const preview = await runtime.preview({ instanceId: "expired", expectedSha256: initial.record.instance_sha256, occurrenceId: "root", input });
       const staged = await runtime.stage(preview, { write: true, expectedPreviewSha256: shadowHash(preview) }), id = staged.operation_id;
       const business = createStandardWorkflowArtifacts({ targetRoot: root });
       const before = preview.prepared.plan.changes.map(row => business.read(row.path)), head = git(root, "rev-parse", "HEAD");
-      clock.value = preview.prepared.plan.prepared_at_ms + 300001;
+      clock.value = Date.now();
       const refused = await runtime.dispatch(id, { write: true });
       assert.equal(refused.receipt.outcome, "blocked"); assert.equal(refused.receipt.effect_status, "no_effect");
       const original = runtime.readJournal(id);
@@ -72,7 +77,7 @@ export async function verifyStandardExpiredPlans() {
       const pending = runtime.inspect("expired");
       await assert.rejects(runtime.reprepareExpiredOperation(id, { expectedSha256: pending.record.instance_sha256 }),
         { code: "STANDARD_HOST_ACCEPTED_EXPIRED_NO_EFFECT_REQUIRED" });
-      pass(`${mode}: real expired dispatch refuses before business effects; unaccepted result cannot be reprepared`);
+      pass(`${mode}: synthetic legacy no-effect expiry receipt preserves business state; unaccepted result cannot be reprepared`);
 
       const accepted = await runtime.accept(id, { write: true }), expected = accepted.record.instance_sha256;
       assert.equal(accepted.cursor.status, "WAITING");
@@ -149,7 +154,10 @@ export async function verifyStandardExpiredPlans() {
       fs.rmSync(physical, { recursive: true, force: true });
     }
   }
-  await verifyStandardPreviewValidity(pass);
+  if (includeCurrentValidity) {
+    await verifyStandardPreviewValidity(pass);
+    await verifyStandardSessionPlanValidity(pass);
+  }
   return checks;
 }
 
@@ -166,8 +174,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === here) {
       console.log(JSON.stringify({ operation_id: next.operation_id, instance_sha256: next.record.instance_sha256 }));
     }
   } else {
-    const checks = await verifyStandardExpiredPlans();
-    console.log(JSON.stringify({ status: "PASS", checks, clock: "injected", business_ports: "actual", stores: "files-and-SQLite",
+    const includeCurrentValidity = !process.argv.includes("--legacy-reader-only");
+    const checks = await verifyStandardExpiredPlans({ includeCurrentValidity });
+    console.log(JSON.stringify({ status: "PASS", checks, clock: "injected", business_ports: "actual except synthetic first legacy-expiry result", stores: "files-and-SQLite",
+      current_aged_session_dispatch: includeCurrentValidity ? "actual" : "NOT_RUN", legacy_expiry_receipt: "synthetic recovery-reader corpus",
       authorizations: "fixture-capability", native_model_calls: 0, full_standard_workflow: "NOT_QUALIFIED", installed_archive: "NOT_RUN" }));
   }
 }

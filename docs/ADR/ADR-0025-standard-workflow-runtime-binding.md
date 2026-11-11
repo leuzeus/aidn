@@ -121,6 +121,18 @@ The hook event still has to match its unique run, subject, unchanged log prefix
 and observed invocation interval. This causal correlation is distinct from a
 maximum preparation age. An unconfirmed effect remains uncertain.
 
+Session initialization, cycle initialization/context refresh and the governed
+session Git checkpoint also supersede their earlier preparation-age limits.
+The explicit signed plan and locked reconstruction, current dispatch grant,
+canonical and Git scope, preimages, admission and postimages remain required.
+The Git checkpoint additionally checks its accepted context/start source,
+metadata, finite paths and index/HEAD, and the protected port's current effect
+authorization. Its timestamp remains commit provenance. A partial canonical
+write or lost Git confirmation retains uncertainty. Historical no-effect expiry
+receipts retain their dedicated recovery reader. Tests that construct such a
+receipt identify the first result as synthetic; current aged application uses
+the ordinary production initializer and actual canonical/Git ports.
+
 ## Eligible occurrence lookup, 2026-11-06
 
 After the common service validates the complete cursor, the mixed host checks

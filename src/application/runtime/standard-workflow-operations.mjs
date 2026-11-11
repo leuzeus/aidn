@@ -455,8 +455,6 @@ export function createStandardWorkflowOperations({ targetRoot, now = Date.now })
     async initializeSession(prepared, { write = false, expectPlan = null } = {}) {
       if (write !== true || !prepared?.can_apply || prepared.plan_sha256 !== expectPlan || shadowHash(prepared.plan) !== expectPlan) fail("STANDARD_EXPLICIT_EFFECT_REQUIRED");
       assertStandardSessionPlan(prepared.plan);
-      const age = now() - prepared.plan.prepared_at_ms;
-      if (!Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_PLAN_EXPIRED");
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
           const observed = await build(prepared.plan.input, prepared.plan.prepared_at_ms, true);

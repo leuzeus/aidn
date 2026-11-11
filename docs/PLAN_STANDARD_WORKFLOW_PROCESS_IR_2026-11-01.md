@@ -5408,3 +5408,14 @@ du rapport de dérive. La corrélation de l'événement au run et à l'intervall
 réel du hook reste requise. La qualification distingue un plan ancien valide,
 un délai après le rapport, les invalidations réelles et les issues incertaines
 après effet. Les contrôles d'âge des autres opérations restent à examiner.
+
+L'initialisation de session, le rafraîchissement du contexte de cycle,
+l'initialisation du cycle et son checkpoint Git de session suivent la même
+décision. Le dispatch conserve son contrôle d'autorisation, et les opérations
+conservent reconstruction, admission, contexte canonique/Git, préimages et
+postimages. Le checkpoint Git conserve en plus sa source acceptée, ses chemins
+finis, l'index/HEAD et son callback d'autorité à l'effet. Les tests doivent
+prouver le plan ancien valide, la révocation et les changements réels, puis
+l'issue incertaine après une confirmation Git perdue. Les reçus historiques
+d'expiration ont un corpus de lecture séparé dont le résultat synthétique est
+déclaré explicitement ; il ne qualifie pas une exécution ancienne du produit.

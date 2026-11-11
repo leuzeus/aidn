@@ -1093,12 +1093,14 @@ The mixed host forwards this capability and returns
 `operation_reprepare_required` when its ordinary step encounters that refusal;
 it does not automatically stage a replacement.
 
-The dedicated fixture suite uses actual session initialization, admission,
-Git, canonical stores and HMAC journals on files/dual/db-only, with an injected
+The dedicated legacy-reader fixture constructs its first expiry result with
+a scoped synthetic initializer refusal. Current session initialization does
+not expire for elapsed preparation age. The host, admission, Git, canonical
+stores and HMAC journals on files/dual/db-only are actual, with an injected
 clock and fixture authorization capability. A fresh Node process prepares the
 successor without an authorization call or any checkout-file change, then a
-separate explicit stage obtains a distinct grant. The suite checks expired
-refusal before business writes, missing acceptance, stale revision, subject
+separate explicit stage obtains a distinct grant. The suite checks the retained
+synthetic no-effect refusal, missing acceptance, stale revision, subject
 override, abort, refused new authorization, changed storage authority, a real
 local effect owner and a conflicting Git branch. After one successful effect,
 both original and successor receipts remain readable, repeated dispatch retains
@@ -1132,11 +1134,22 @@ grant/intent without prescribing the number of internal verification calls.
 
 These tests do not prove expired-plan continuation for every business operation.
 Only an accepted, authenticated deterministic
-`blocked/no_effect/STANDARD_PLAN_EXPIRED` receipt with a genuinely expired plan
-is eligible. Unreceipted dispatches, uncertain effects, confirmed results and
-changed subjects are excluded. Existing TTLs, native allocations and historical
-readers are unchanged. No model is called; full standard, genuine native/
+`blocked/no_effect/STANDARD_PLAN_EXPIRED` legacy receipt whose timestamp meets
+the recovery reader's historical expiry predicate is eligible. Unreceipted
+dispatches, uncertain effects, confirmed results and changed subjects are
+excluded. Native allocation authorities and historical readers remain
+separate. No model is called; full standard, genuine native/
 provider/human and exact installed-archive qualification remain separate.
+
+The same suite calls `standard-session-plan-validity-fixture-lib.mjs` for actual
+ordinary-host initialization after one day. Its FILES, DUAL and DB-only SQLite
+cases check a current valid plan, dispatch-time revocation, changed canonical
+context or HEAD, and a conflicting destination branch. Refusals preserve the
+business preimages and Git state; success applies the original plan once.
+Run that helper directly with `--mode=files|dual|db-only` for a selected backend.
+The synthetic legacy receipt above supplies no current execution proof.
+Use `--legacy-reader-only` on the legacy suite to select its reader corpus
+separately from current preview and session validity components.
 
 PR correction continuation has separate internal component suites. The candidate
 standard graph and signed operation host select the reopening operation, but
@@ -4134,6 +4147,19 @@ connection through the actual application ports and a simulated native wire.
 Its PASS must come from the current frozen model/package, not these port
 fixtures. True native and exact installed-archive qualification remain separate.
 
+`standard-session-git-plan-validity-fixture-lib.mjs` exercises the actual session
+checkpoint factory after one day using real bootstrap, admission, canonical
+artifact/owner and finite Git ports. Its accepted start/context reader is
+controlled. FILES and DUAL require the exact new commit; DB-only requires the
+admitted no-visible-file/no-effect result. Revoked authority, changed accepted
+source, HEAD or canonical metadata still refuse. A confirmation-loss double
+after the actual Git commit leaves an uncertain result and held effect owner.
+The existing workflow-ports suite also includes these cases. This does not
+authenticate a complete native start receipt or an installed archive.
+Use `--case=files:valid|dual:valid|db-only:valid|files:revoked|files:accepted-source|files:head|dual:metadata|files:ack-loss`
+on the helper to allocate one logical fixture at a time. The workflow-ports
+suite's `--base-ports-only` selection runs its earlier port cases separately.
+
 The [recorded files qualification](qualification/agentic-process/standard-governed-git-prefix-2026-11-03.json)
 separates the failed fixture deadline recreation, a cold-resumed objective-delta
 refusal, and the nominal PASS through 17 application operations and two
@@ -4749,9 +4775,12 @@ Run `node tools/perf/verify-standard-cycle-expired-prefix-fixtures.mjs --mode=fi
 and repeat with dual and db-only to exercise the actual fixed checkpoint hook
 from the original day-old plan, with one intent and current authorization.
 The old `--expire-checkpoint` spelling is an alias for this current behavior.
-Other cycle context/initialization expiry probes in this fixture remain
-separate pending their own validity review. Historical expiry receipts and
-their recovery readers keep their recorded semantics.
+The legacy filename now forwards to `verify-standard-cycle-plan-age-fixtures.mjs`.
+That component also dispatches context refresh and cycle initialization from
+their original day-old plans, checks current grant revocation before dispatch,
+then proves changed current source refuses direct reapplication. The real hook
+keeps a progressing clock. Historical expiry receipts and their recovery readers
+keep their recorded semantics in their separate legacy corpus.
 
 `node tools/perf/verify-agentic-process-execution-fixtures.mjs --drift-finalize-contract-only`
 adds controlled v3 finalizer tests for a day-old plan, elapsed time after report

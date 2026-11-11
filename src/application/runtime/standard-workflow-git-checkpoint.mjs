@@ -62,10 +62,11 @@ export function createStandardWorkflowGitCheckpoint({ targetRoot, readContext, r
   }
   return Object.freeze({ prepare: (instance, input, id) => prepare(instance, input, id, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
-      const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
+      const plan = prepared?.plan;
       if (write !== true || !prepared?.can_apply || typeof assertAuthorized !== "function" || prepared.plan_sha256 !== expectPlan
-        || shadowHash(plan) !== expectPlan || validateJsonSchema(plan, schema, "$", { contractKind: "workflow-definition" }).length
-        || !Number.isSafeInteger(age) || age < 0 || age > 300000) { const cause = Object.assign(new Error("STANDARD_GIT_EXPLICIT_EFFECT_REQUIRED"), { code: "STANDARD_GIT_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" }); throw cause; }
+        || shadowHash(plan) !== expectPlan || validateJsonSchema(plan, schema, "$", { contractKind: "workflow-definition" }).length) {
+        const cause = Object.assign(new Error("STANDARD_GIT_EXPLICIT_EFFECT_REQUIRED"), { code: "STANDARD_GIT_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" }); throw cause;
+      }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
           await assertAuthorized();

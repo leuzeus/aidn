@@ -17,6 +17,7 @@ import { assertProcessDispatchRecord } from "../../src/core/workflow/process-dis
 import { createOperationJournalSigner } from "../../src/core/workflow/process-operation-journal.mjs";
 import { assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
 import { runReloadCheckUseCase } from "../../src/application/runtime/reload-check-use-case.mjs";
+import { verifyStandardSessionGitPlanValidity } from "./standard-session-git-plan-validity-fixture-lib.mjs";
 
 const temporary = fs.realpathSync(os.tmpdir()), owned = [];
 let passed = 0;
@@ -201,16 +202,17 @@ try {
     assert.equal((await running).outcome, "completed");
     assert.equal((await second.reconcileSession(prepared)).outcome, "completed");
   });
-  await check("expired plans and redirected Git contexts refuse before effects", async () => {
+  await check("elapsed valid session plan applies while redirected Git context still refuses", async () => {
     const target = client(); let clock = Date.now(); const bound = createStandardWorkflowOperations({ targetRoot: target, now: () => clock });
-    const prepared = await bound.prepareSession(input); clock += 300001;
-    await assert.rejects(bound.initializeSession(prepared, { write: true, expectPlan: prepared.plan_sha256 }), { code: "STANDARD_PLAN_EXPIRED" });
+    const prepared = await bound.prepareSession(input); clock += 86400000;
+    assert.equal((await bound.initializeSession(prepared, { write: true, expectPlan: prepared.plan_sha256 })).effect_status, "confirmed");
     const previous = process.env.GIT_DIR;
-    try { process.env.GIT_DIR = path.join(root, ".git"); await assert.rejects(bound.reload(), { code: "STANDARD_GIT_ENV_SCOPE_CONFLICT" }); }
+    try { process.env.GIT_DIR = path.join(target, ".git"); await assert.rejects(bound.reload(), { code: "STANDARD_GIT_ENV_SCOPE_CONFLICT" }); }
     finally { if (previous === undefined) delete process.env.GIT_DIR; else process.env.GIT_DIR = previous; }
-    assert.equal(git(target, "branch", "--show-current"), "dev"); assert.equal(fs.existsSync(path.join(target, "docs/audit/sessions/S001.md")), false);
+    assert.equal(git(target, "branch", "--show-current"), input.session_branch); assert.equal(fs.existsSync(path.join(target, "docs/audit/sessions/S001.md")), true);
   });
-  process.stdout.write(`PASS standard workflow ports: ${passed}; native: NOT_RUN; installed archive: NOT_RUN\n`);
+  if (!process.argv.includes("--base-ports-only")) await verifyStandardSessionGitPlanValidity(name => { passed++; process.stdout.write(`PASS ${name}\n`); });
+  process.stdout.write(JSON.stringify({ status: "PASS", checks: passed, native: "NOT_RUN", installed_archive: "NOT_RUN" }) + "\n");
 } finally {
   for (const root of owned) {
     const physical = fs.realpathSync(root);

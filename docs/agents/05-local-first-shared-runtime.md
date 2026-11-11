@@ -79,6 +79,15 @@ matching subject and timestamp inside the observed hook invocation. A revoked
 capability or changed context still refuses; loss after an effect retains an
 uncertain outcome.
 
+Session and cycle initialization and cycle context refresh use explicit signed
+intent, locked reconstruction, current project/Git scope and their canonical
+preimages to establish validity. Their host checks the current grant before
+dispatch. Session Git checkpoints additionally recheck the accepted start and
+context evidence, finite path set, index and HEAD through the protected Git
+port and its live authorization callback. These plans carry preparation time
+as provenance without a separate age ceiling. Existing legacy expiry receipts
+remain readable and do not establish an age rule for a new effect.
+
 Cycle validation reconstructs the work, product snapshot, profile and boundary
 descriptor under its owner and current authorization before running checks.
 These observations establish plan validity. The profile's command budget
