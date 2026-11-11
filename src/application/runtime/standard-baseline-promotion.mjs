@@ -70,9 +70,9 @@ export function createStandardBaselinePromotion({ targetRoot, readRequest, obser
   return Object.freeze({ inspectContext: observe, observeContext: request => artifacts.ownerPending() ? Promise.resolve({ blocked: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" }) : observe(request), prepare: (instance, input) => prepare(instance, input, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
       let plan;
-      try { plan = assertPlan(prepared?.plan); const age = now() - plan.prepared_at_ms;
-        if (write !== true || !prepared.can_apply || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || typeof assertAuthorized !== "function"
-          || !Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_PROMOTION_EXPLICIT_EFFECT_REQUIRED");
+      try { plan = assertPlan(prepared?.plan);
+        if (write !== true || !prepared.can_apply || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || typeof assertAuthorized !== "function")
+          fail("STANDARD_PROMOTION_EXPLICIT_EFFECT_REQUIRED");
       } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
@@ -81,8 +81,7 @@ export function createStandardBaselinePromotion({ targetRoot, readRequest, obser
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_PROMOTION_SOURCE_STALE");
           for (const row of plan.changes) if (artifacts.read(row.path).sha256 !== row.before_sha256 || artifacts.metadataHash(row.path) !== row.before_metadata_sha256) fail("STANDARD_PROMOTION_SOURCE_STALE");
           await assertAuthorized();
-          projections(plan.changes); const age = now() - plan.prepared_at_ms;
-          if (!Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_PLAN_EXPIRED");
+          projections(plan.changes);
         } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         const committed = [], metadata = [];
         try {

@@ -5419,3 +5419,11 @@ prouver le plan ancien valide, la révocation et les changements réels, puis
 l'issue incertaine après une confirmation Git perdue. Les reçus historiques
 d'expiration ont un corpus de lecture séparé dont le résultat synthétique est
 déclaré explicitement ; il ne qualifie pas une exécution ancienne du produit.
+
+La même validité actuelle couvre l'application du mode, la finalisation du
+démarrage et l'enregistrement canonique de clôture de cycle, de rapport de
+session ou de promotion de baseline. Leurs sources acceptées, autorisations,
+préfixes et préimages/postimages restent requis. Le timestamp conserve sa
+provenance sans plafond d'âge supplémentaire. Enregistrer un état terminal,
+un rapport ou une baseline ne termine pas son hook séparé. La qualification
+doit garder les refus réels et l'incertitude après des écritures partielles.

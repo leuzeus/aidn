@@ -61,7 +61,8 @@ try {
     output: { operation_ref: "cycle_close_finalize", outcome: "completed", effect_status: "confirmed", facts: { cycle_close_completed: true, cycle_retained: true }, observations: { target_state: "DONE" } } };
   const instance = { instance_id: "fixture", scope_id: "fixture", instance_sha256: H }, input = { decision_operation_id: op("b") };
   let instanceChanged = false;
-  const promotion = createStandardBaselinePromotion({ targetRoot: root, readRequest: async () => ({ request, closure }), observeProduct: productHash,
+  const agedPlan = process.argv.includes("--aged-plan"); let preparationClock = agedPlan ? Date.now() - 86400000 : null;
+  const promotion = createStandardBaselinePromotion({ targetRoot: root, now: () => preparationClock ?? Date.now(), readRequest: async () => ({ request, closure }), observeProduct: productHash,
     readCurrent: () => instanceChanged ? { ...instance, instance_sha256: "b".repeat(64) } : instance });
   const review = createStandardBaselinePromotionReview({ readClosure: async () => ({ ...closure, session_id: "S001" }), promotion });
   const reviewInput = { contract_version: "standard-baseline-promotion-review-input.v1", closure_operation_id: closure.operation_id };
@@ -79,6 +80,7 @@ try {
   const historyProjection = fs.existsSync(historyProjectionPath) ? fs.readFileSync(historyProjectionPath) : null;
   const original = baselinePromotionPaths.map(name => artifacts.read(name)), preview = await promotion.prepare(instance, input);
   assert.equal(preview.can_apply, true, JSON.stringify(preview));
+  if (agedPlan) { preparationClock = null; assert.ok(Date.now() - preview.plan.prepared_at_ms >= 86400000); }
   await assert.rejects(promotion.apply(instance, preview, { expectPlan: preview.plan_sha256 }), { code: "STANDARD_PROMOTION_EXPLICIT_EFFECT_REQUIRED" });
   await assert.rejects(promotion.apply(instance, preview, { write: true, expectPlan: preview.plan_sha256, assertAuthorized: () => { throw Object.assign(Error("fixture denied"), { code: "FIXTURE_DENIED" }); } }), { code: "FIXTURE_DENIED" });
   for (const before of original) assert.equal(artifacts.read(before.path).sha256, before.sha256); assert.equal(artifacts.ownerPending(), false);
@@ -112,6 +114,7 @@ try {
         else assert.deepEqual(fs.readFileSync(historyProjectionPath), historyProjection, "DB-only must preserve an existing bootstrap projection without rewriting it");
       }
       pass("five actual metadata-preserving canonical writes record the chosen baseline with final hook pending");
+      if (agedPlan) pass("day-old promotion plan applies after current source, grant and preimage reconstruction");
       const after = baselinePromotionPaths.map(name => artifacts.read(name).sha256);
       await assert.rejects(promotion.apply(instance, preview, { write: true, expectPlan: preview.plan_sha256, assertAuthorized: () => {} }));
       assert.deepEqual(baselinePromotionPaths.map(name => artifacts.read(name).sha256), after); assert.equal(artifacts.ownerPending(), false);

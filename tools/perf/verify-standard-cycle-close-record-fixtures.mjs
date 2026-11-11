@@ -23,6 +23,7 @@ import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
 const selected = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "files";
+const agedPlan = process.argv.includes("--aged-plan");
 if (!["files", "dual", "db-only", "partial", "projection", "stale", "slow-authority", "expired"].includes(selected)) throw Error("CLOSE_RECORD_FIXTURE_MODE_INVALID");
 const mode = selected === "partial" ? "db-only" : selected === "projection" ? "dual" : ["stale", "slow-authority", "expired"].includes(selected) ? "files" : selected;
 const choice = process.argv.find(value => value.startsWith("--choice="))?.slice(9) ?? "retain";
@@ -85,8 +86,8 @@ try {
     question_sha256: shadowHash(question), subject_sha256: shadowHash(review), choice, rationale: "Explicit fixture disposition; actual human authentication is outside this component proof",
     risk_acceptances: [], evidence_refs: [{ ref: "fixture:operator", sha256: H }] };
   const instance = { instance_id: "fixture", instance_sha256: H }, input = { decision_operation_id: op };
-  let fixtureTime = Date.now(); const authorityReads = [];
-  const writer = createStandardCycleCloseRecord({ targetRoot: root, now: ["slow-authority", "expired"].includes(selected) ? () => fixtureTime : Date.now, readDecision: async () => {
+  let fixtureTime = Date.now() - (agedPlan ? 86400000 : 0); const authorityReads = [];
+  const writer = createStandardCycleCloseRecord({ targetRoot: root, now: agedPlan || ["slow-authority", "expired"].includes(selected) ? () => fixtureTime : Date.now, readDecision: async () => {
     authorityReads.push("decision"); if (selected === "slow-authority") fixtureTime += 100000;
     return { question, decision, report };
   }, observeContext, readCurrent: () => instance });
@@ -94,6 +95,7 @@ try {
   const preview = await writer.prepare(instance, input);
   if (!preview.can_apply) { const admission = await preWriteAdmit({ targetRoot: root, skill: "cycle-close" });
     assert.fail(JSON.stringify({ reason_code: preview.reason_code, blocking_reasons: admission.blocking_reasons, warnings: admission.warnings, runtime: { repair: admission.context.repair_layer_status, freshness: admission.context.current_state_freshness } })); }
+  if (agedPlan) { fixtureTime = Date.now(); assert.ok(fixtureTime - preview.plan.prepared_at_ms >= 86400000); }
   assert.equal((await observeContext()).context_sha256, before); assert.equal(preview.plan.changes.length, 6); assert.equal(artifacts.ownerPending(), false);
   await assert.rejects(writer.apply(instance, preview, { expectPlan: preview.plan_sha256 }), { code: "STANDARD_CYCLE_CLOSE_EXPLICIT_EFFECT_REQUIRED" });
   await assert.rejects(writer.apply(instance, preview, { write: true, expectPlan: preview.plan_sha256, assertAuthorized: async () => { throw Object.assign(Error("fixture denied"), { code: "FIXTURE_GRANT_DENIED" }); } }), { code: "FIXTURE_GRANT_DENIED" });
@@ -111,11 +113,11 @@ try {
     };
     const apply = () => writer.apply(instance, preview, { write: true, expectPlan: preview.plan_sha256, assertAuthorized: async () => {
       if (selected === "stale") fs.writeFileSync(path.join(productRoot, "app.mjs"), "export const value = 4;\n");
-      authorityReads.push("grant"); if (selected === "expired") fixtureTime += 300001;
+      authorityReads.push("grant"); if (selected === "expired") fixtureTime += 86400000;
     } });
-    if (["stale", "expired"].includes(selected)) {
-      await assert.rejects(apply(), { code: selected === "expired" ? "STANDARD_PLAN_EXPIRED" : "STANDARD_CYCLE_CLOSE_SOURCE_STALE" }); assert.match(artifacts.read(cycle + "/status.md").content, /^state: VERIFYING$/m);
-      assert.equal(artifacts.ownerPending(), false); pass(selected === "expired" ? "expired preview refuses before the first canonical write under the unchanged deadline" : "fresh authorization cannot conceal an external product change before the first canonical write");
+    if (selected === "stale") {
+      await assert.rejects(apply(), { code: "STANDARD_CYCLE_CLOSE_SOURCE_STALE" }); assert.match(artifacts.read(cycle + "/status.md").content, /^state: VERIFYING$/m);
+      assert.equal(artifacts.ownerPending(), false); pass("fresh authorization cannot conceal an external product change before the first canonical write");
     } else result = await apply();
   } finally { fs.writeFileSync = write; }
   if (result) {
@@ -137,8 +139,11 @@ try {
       if (choice !== "retain") { assert.match(artifacts.read(cycle + "/status.md").content, /^usage_matrix_state: PARTIAL$/m); assert.ok(artifacts.read(cycle + "/traceability.md").content.includes("REQ-001")); }
       if (selected === "slow-authority") {
         assert.ok(authorityReads.lastIndexOf("decision") > authorityReads.lastIndexOf("grant"));
-        assert.ok(fixtureTime - preview.plan.prepared_at_ms <= 300000);
-        pass("slow trusted authority remains fresh after the grant without redundant pre-grant verification or a larger deadline");
+        pass("slow trusted authority is observed after the grant without a separate plan-age deadline");
+      }
+      if (agedPlan || selected === "expired") {
+        assert.ok(fixtureTime - preview.plan.prepared_at_ms >= 86400000);
+        pass("day-old cycle close plan remains valid with unchanged current decision, context and authorization");
       }
       if (mode === "db-only") assert.equal(fs.existsSync(path.join(root, "docs/audit", cycle, "status.md")), false);
       assert.equal(artifacts.read(cycle + "/plan.md").sha256, frozenPlan.sha256); pass("six actual canonical writes establish terminal metadata while retaining pending hook and frozen plan");

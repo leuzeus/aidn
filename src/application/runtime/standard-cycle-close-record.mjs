@@ -65,9 +65,9 @@ export function createStandardCycleCloseRecord({ targetRoot, readDecision, obser
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
       let plan;
       try {
-        plan = assertPlan(prepared?.plan); const age = now() - plan.prepared_at_ms;
-        if (write !== true || !prepared.can_apply || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || typeof assertAuthorized !== "function"
-          || !Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_CYCLE_CLOSE_EXPLICIT_EFFECT_REQUIRED");
+        plan = assertPlan(prepared?.plan);
+        if (write !== true || !prepared.can_apply || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || typeof assertAuthorized !== "function")
+          fail("STANDARD_CYCLE_CLOSE_EXPLICIT_EFFECT_REQUIRED");
       } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
@@ -81,8 +81,6 @@ export function createStandardCycleCloseRecord({ targetRoot, readDecision, obser
             || (await observeContext()).context_sha256 !== plan.context_sha256) fail("STANDARD_CYCLE_CLOSE_SOURCE_STALE");
           for (const row of plan.changes) if (artifacts.read(row.path).sha256 !== row.before_sha256 || artifacts.metadataHash(row.path) !== row.before_metadata_sha256) fail("STANDARD_PREVIEW_CHANGED");
           projections(plan.changes).forEach((file, index) => { if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== plan.changes[index].before_sha256) fail("STANDARD_CYCLE_CLOSE_PROJECTION_STALE"); });
-          const effectAge = now() - plan.prepared_at_ms;
-          if (!Number.isSafeInteger(effectAge) || effectAge < 0 || effectAge > 300000) fail("STANDARD_PLAN_EXPIRED");
         } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         const committed = [], metadata = [];
         try {

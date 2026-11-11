@@ -133,6 +133,16 @@ receipts retain their dedicated recovery reader. Tests that construct such a
 receipt identify the first result as synthetic; current aged application uses
 the ordinary production initializer and actual canonical/Git ports.
 
+`session_mode_apply`, `session_start_finalize`, `cycle_close_record`,
+`session_close_record` and `baseline_promotion_record` also supersede their
+earlier elapsed-plan-age restrictions. Explicit intent/schema and the current
+accepted source, grant, scope/prefix and canonical preimages establish effect
+validity at their existing reconstruction and write boundaries. Prepared time
+stays in provenance and deterministic rendering. Terminal recording, session
+reporting and baseline recording still retain separate pending finalization
+facts. Partial CAS or required projection loss remains uncertain. This decision
+does not discharge a human question or alter resource/transport authorities.
+
 ## Eligible occurrence lookup, 2026-11-06
 
 After the common service validates the complete cursor, the mixed host checks

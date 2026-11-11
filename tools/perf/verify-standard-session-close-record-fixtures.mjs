@@ -72,12 +72,14 @@ try {
     question_sha256: shadowHash(question), subject_sha256: shadowHash(review), choice: "close", rationale: "Explicit fixture request", evidence_refs: [{ ref: "fixture:operator-close", sha256: H }],
     session_report: { summary: "state: CLOSED", open_loops: ["Retain the next decision"], blockers: [], next_entry_point: "Review the actual final hook" } };
   const instance = { instance_id: "record_fixture", instance_sha256: H }; let material = { question, decision };
-  const record = createStandardSessionCloseRecord({ targetRoot: root, readCurrent: () => instance, readDecision: async () => {
+  const agedPlan = process.argv.includes("--aged-plan"); let preparationClock = agedPlan ? Date.now() - 86400000 : null;
+  const record = createStandardSessionCloseRecord({ targetRoot: root, now: () => preparationClock ?? Date.now(), readCurrent: () => instance, readDecision: async () => {
     const current = await readStandardSessionClosureContext({ targetRoot: root, sessionId: "S001" });
     if (current.context_sha256 !== context_sha256) throw Error("FIXTURE_REVIEW_STALE"); return structuredClone(material);
   } });
   const input = { decision_operation_id: id(4) }, before = context.documents.map(row => [row.ref, artifacts.read(row.ref.slice(6)).sha256]);
   const prepared = await record.prepare(instance, input); assert.equal(prepared.can_apply, true);
+  if (agedPlan) { preparationClock = null; assert.ok(Date.now() - prepared.plan.prepared_at_ms >= 86400000); }
   assert.deepEqual(context.documents.map(row => [row.ref, artifacts.read(row.ref.slice(6)).sha256]), before); pass("actual record preview preserves canonical documents");
   await assert.rejects(() => record.apply(instance, prepared, { expectPlan: prepared.plan_sha256, assertAuthorized: async () => {} }));
   assert.equal(artifacts.ownerPending(), false); pass("implicit write refused before ownership or mutation");
@@ -88,6 +90,7 @@ try {
   const result = await record.apply(instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized: async () => {} });
   assert.equal(result.outcome, "completed", JSON.stringify(result)); assert.equal(result.effect_status, "confirmed");
   assert.deepEqual(result.facts, { session_close_report_recorded: true, session_close_completed: false }); assert.equal(artifacts.ownerPending(), false);
+  if (agedPlan) pass("day-old session report plan applies with current decision, scope and canonical preimages");
   assert.match(artifacts.read("sessions/S001.md").content, /^state: OPEN$/m); assert.match(artifacts.read("CURRENT-STATE.md").content, /^active_session: S001$/m);
   assert.match(artifacts.read("sessions/S001.md").content, /^session_closure_status: checkpoint_pending$/m);
   assert.match(artifacts.read("sessions/S001.md").content, /- "state: CLOSED"/);

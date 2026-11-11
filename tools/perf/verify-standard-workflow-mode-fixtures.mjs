@@ -16,6 +16,7 @@ import { analyzeStructuredArtifact } from "../../src/lib/workflow/structured-art
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 const H = "a".repeat(64), temp = fs.realpathSync(os.tmpdir()), owned = [];
+const agedPlan = process.argv.includes("--aged-plan"); let preparationClock = null;
 const inputs = { session_initialize: { session_id: "S001", session_branch: "S001-start", objective: "Start a governed session through the common process IR" },
   mode_decision: { session_id: "S001" }, session_start_finalize: { session_id: "S001" } };
 function humanModel() {
@@ -35,6 +36,7 @@ function humanSource(sourcesFile, onRead = () => {}) {
 }
 function openHost(root, keyFile, humanOnly = false, onRead) {
   const options = { targetRoot: root, readSigningKey: () => fs.readFileSync(keyFile),
+    ...(agedPlan ? { now: () => preparationClock ?? Date.now() } : {}),
     humanSource: humanSource(path.join(path.dirname(keyFile), "sources.json"), onRead),
     authorize: async () => ({ authorized: true, authority_id: "fixture_operator", principal_sha256: H, grant_sha256: H }) };
   return humanOnly ? createStandardWorkflowOperationHost({ ...options, model: humanModel() }) : createStandardWorkflowStartupHost(options);
@@ -42,7 +44,7 @@ function openHost(root, keyFile, humanOnly = false, onRead) {
 const here = fileURLToPath(import.meta.url);
 function acceptInChild(root, keyFile, id, humanOnly = false) {
   return JSON.parse(execFileSync(process.execPath, [here, "--accept", root, keyFile, id, String(humanOnly)],
-    { encoding: "utf8", timeout: 30000, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] }));
+    { encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "pipe"] }));
 }
 if (process.argv[2] === "--accept") {
   const [, , , root, keyFile, id, humanOnly] = process.argv;
@@ -51,7 +53,10 @@ if (process.argv[2] === "--accept") {
 } else {
 let passed = 0;
 try {
-  const scenarios = process.argv.includes("--fresh-only") ? [{ mode: "db-only", fresh: true }]
+  const selectedMode = process.argv.find(value => value.startsWith("--mode="))?.slice(7);
+  if (selectedMode && !["files", "dual", "db-only"].includes(selectedMode)) throw Error("STARTUP_FIXTURE_MODE_INVALID");
+  const scenarios = process.argv.includes("--source-installed") ? (selectedMode ? [selectedMode] : ["files", "dual", "db-only"]).map(mode => ({ mode, fresh: true }))
+    : process.argv.includes("--fresh-only") ? [{ mode: "db-only", fresh: true }]
     : [...["files", "dual", "db-only"].map(mode => ({ mode, fresh: false })), { mode: "db-only", fresh: true }];
   for (const { mode, fresh } of scenarios) {
     const label = fresh ? `fresh ${mode}` : mode;
@@ -79,12 +84,15 @@ try {
       const id = node.binding_ref;
       if (id === "session_mode_apply") await assert.rejects(runtime.preview({ instanceId: "start", expectedSha256: before.record.instance_sha256,
         occurrenceId: occurrence.occurrence_id, input: { decision_operation_id: "forged-decision" } }), { code: "PROCESS_INPUT_OVERRIDE_FORBIDDEN" });
+      const ageThisPlan = agedPlan && ["session_mode_apply", "session_start_finalize"].includes(id);
+      if (ageThisPlan) preparationClock = Date.now() - 86400000;
       const preview = await runtime.preview({ instanceId: "start", expectedSha256: before.record.instance_sha256, occurrenceId: occurrence.occurrence_id });
       assert.ok(preview.input_resolution);
       if (id === "session_mode_apply") assert.equal(preview.input.decision_operation_id, decisionId);
       assert.deepEqual(preview.snapshot.model_source, assets.source);
       assert.equal(preview.prepared?.can_apply ?? true, true, JSON.stringify(preview.prepared));
       const staged = await runtime.stage(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
+      if (ageThisPlan) { preparationClock = null; assert.ok(Date.now() - preview.prepared.plan.prepared_at_ms >= 86400000); }
       let dispatched = await runtime.dispatch(staged.operation_id, { write: true });
       const defer = fresh && id === "mode_decision" && deferredId === undefined;
       if (id === "mode_decision") {
@@ -108,6 +116,7 @@ try {
       const expectedGateRefusal = !fresh && mode === "db-only" && id === "session_start_finalize";
       assert.equal(dispatched.receipt?.outcome, defer ? "deferred" : expectedGateRefusal ? "reconciliation_required" : "completed",
         JSON.stringify({ id, status: dispatched.status, outcome: dispatched.receipt?.outcome, reason: output?.observations?.reason_code }));
+      if (ageThisPlan && !expectedGateRefusal) { process.stdout.write(`PASS ${label}: ${id} original day-old plan with current accepted decision and grant\n`); passed++; }
       if (expectedGateRefusal) {
         // The legacy corpus has a canonical open cycle without a defined goal.
         // The real hook exits successfully but its nested gate requires work.

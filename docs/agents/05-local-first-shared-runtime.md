@@ -88,6 +88,14 @@ port and its live authorization callback. These plans carry preparation time
 as provenance without a separate age ceiling. Existing legacy expiry receipts
 remain readable and do not establish an age rule for a new effect.
 
+Mode application and start finalization use the same validity rule for their
+explicit prepared effect. Cycle terminal recording, session closure reports
+and baseline promotion records reconstruct their current accepted decision
+and canonical source, then verify grant, scope, preimages, conditional writes
+and postimages at their existing boundaries. Elapsed preparation time alone
+does not invalidate these plans. Recording a terminal state, report or baseline
+still leaves its separate final hook pending; partial writes remain uncertain.
+
 Cycle validation reconstructs the work, product snapshot, profile and boundary
 descriptor under its owner and current authorization before running checks.
 These observations establish plan validity. The profile's command budget

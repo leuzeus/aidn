@@ -3910,14 +3910,24 @@ hook. The pending hook, frozen plan and retained reconciliation owner are
 asserted. These focused components are included in the existing agentic gate.
 
 
-The terminal-record component selectors `--mode=slow-authority` and
-`--mode=expired` use a private injected clock with the same 300000ms deadline.
-The first advances 100000ms per trusted decision read and requires a fresh
-post-grant validation and confirmed canonical effects without redundant
-pre-grant authentication. The second advances beyond the deadline inside the
-grant callback and requires refusal before any canonical write. Other component
-selectors retain the actual clock. These synthetic clock cases neither measure
-wall-time/native performance nor qualify the full process host.
+The terminal-record component's `--aged-plan` selector prepares in the past
+and applies the original day-old plan under current decision/context/grant
+checks. `--mode=slow-authority` advances its private clock per trusted decision
+read and requires fresh post-grant validation. The legacy `--mode=expired`
+spelling now advances a day inside the grant callback and requires a confirmed
+record when all current material remains valid. Earlier expiry-refusal records
+stay tied to their original source. The private clock measures neither wall
+performance nor Native execution; the full process host remains separate.
+
+The session-report and baseline-promotion port fixtures also accept
+`--aged-plan` on FILES, DUAL and DB-only SQLite. Current source, grant,
+preimage/postimage, refusal and partial-effect checks retain their original
+boundaries. Successful reports/records still leave final hooks pending.
+`verify-standard-workflow-mode-fixtures.mjs --source-installed --mode=files|dual|db-only --aged-plan`
+exercises the published startup component's original old mode-application and
+start-finalization plans. Human-source authentication is a fixture capability;
+the effect ports and fixed start hook are actual, with real hook time progressing.
+The question's own intake protocol is unchanged by these prepared-effect tests.
 
 The final checkpoint component extends the terminal-record component selector
 with `--final-hook`. It runs the actual cycle-close hook after explicit Git,

@@ -52,9 +52,9 @@ export function createStandardSessionCloseRecord({ targetRoot, readDecision, rea
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
       let plan;
       try {
-        plan = assertPlan(prepared?.plan); const age = now() - plan.prepared_at_ms;
-        if (write !== true || !prepared.can_apply || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || typeof assertAuthorized !== "function"
-          || !Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_SESSION_CLOSE_EXPLICIT_EFFECT_REQUIRED");
+        plan = assertPlan(prepared?.plan);
+        if (write !== true || !prepared.can_apply || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || typeof assertAuthorized !== "function")
+          fail("STANDARD_SESSION_CLOSE_EXPLICIT_EFFECT_REQUIRED");
         await assertAuthorized();
         // Admission observes no pending owner. Reauthenticate after the external
         // grant, then acquire serialization and compare every canonical preimage.
@@ -63,8 +63,8 @@ export function createStandardSessionCloseRecord({ targetRoot, readDecision, rea
       } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
-          if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || shadowHash(operations.observeScope()) !== plan.scope_sha256
-            || now() - plan.prepared_at_ms > 300000) fail("STANDARD_SESSION_CLOSE_SOURCE_CHANGED");
+          if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || shadowHash(operations.observeScope()) !== plan.scope_sha256)
+            fail("STANDARD_SESSION_CLOSE_SOURCE_CHANGED");
           assertDocuments(plan.changes);
         } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         const committed = [], metadata = [];
