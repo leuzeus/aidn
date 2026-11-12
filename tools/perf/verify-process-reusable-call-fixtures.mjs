@@ -8,7 +8,7 @@ import { spawnSync } from "node:child_process";
 import { assertAgenticProcessModel, agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
 import { advanceAgenticProcess, advanceAndInspectAgenticProcess, createAgenticProcess, inspectAgenticProcess, agenticProcessPrefixSha256 } from "../../src/core/workflow/agentic-process.mjs";
 import { iterateAgenticProcessSimulation, simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
-import { processFrameNode, processModelIdentity } from "../../src/core/workflow/process-call-model.mjs";
+import { processFrameModel, processFrameNode, processModelIdentity } from "../../src/core/workflow/process-call-model.mjs";
 import { assertProcessDataBindings } from "../../src/core/workflow/process-data-contracts.mjs";
 import { resolveProcessOperationInput } from "../../src/core/workflow/process-input-resolution.mjs";
 import { resolveProcessFrameInput } from "../../src/core/workflow/process-frame-input.mjs";
@@ -360,6 +360,17 @@ async function replayIdentitySelectionCases(record) {
 async function contractCases() {
   await inspectionStoreCases();
   const m = model({ size: 2 }); assertAgenticProcessModel(m);
+  const lookupModel = structuredClone(m), lookupTarget = lookupModel.call_targets[0], lookupFrame = { model_sha256: lookupTarget.model_sha256 };
+  assert.equal(processFrameModel(lookupModel, lookupFrame), lookupTarget.model);
+  assert.equal(processFrameModel(lookupModel, {}), lookupModel);
+  assert.equal(processFrameModel(lookupModel, { model_sha256: shadowHash(lookupModel) }), lookupModel);
+  lookupTarget.model.revision++;
+  assert.throws(() => processFrameModel(lookupModel, lookupFrame), { code: "PROCESS_CALL_TARGET_CHANGED" });
+  lookupTarget.model.revision--; lookupTarget.model_sha256 = H;
+  assert.equal(processFrameModel(lookupModel, lookupFrame), lookupTarget.model, "historical computed selection remains available");
+  assert.throws(() => assertAgenticProcessModel(lookupModel), { code: "PROCESS_CALL_TARGET_CHANGED" }, "selection is not model admission");
+  assert.throws(() => processFrameModel(lookupModel, { model_sha256: H }), { code: "PROCESS_CALL_TARGET_CHANGED" });
+  console.log("PASS scoped lookup rereads selected bytes, preserves root and historical selection, and never grants model admission");
   // An explicit return crosses only the source call boundary. Enclosing dynamic
   // scopes, sequence order and historical implicit-export refusals still apply.
   const sameScope = structuredClone(m);

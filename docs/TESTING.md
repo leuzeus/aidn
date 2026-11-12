@@ -1,5 +1,14 @@
 # Testing Guide
 
+## Scoped model lookup, 2026-11-12
+
+The reusable-call contract fixture verifies fresh selected model bytes after a
+previous lookup, implicit and explicit root frames, historical computed lookup,
+unknown hashes and full model admission. A declared target pin guides selection;
+it never replaces hashing the embedded model. There is no model-object or
+timestamp cache. Local pure lookup timings remain distinct from full workflow
+performance, Native execution and installed-archive qualification.
+
 ## Reviewed public validation client artifact, 2026-11-12
 
 The sandbox-boundary fixture checks both the historical app artifact and the

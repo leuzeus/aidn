@@ -15,6 +15,10 @@ export function resolveProcessCallTarget(root, reference) {
 export function processFrameModel(root, frame) {
   if (!frame) fail("PROCESS_OCCURRENCE_UNKNOWN");
   if (frame.model_sha256 === undefined) return root;
+  // Declared pins are a lookup hint, never a substitute for current bytes.
+  // Preserve computed lookup for historical frames and metadata-only changes.
+  const pinned = root.call_targets?.find(row => row.model_sha256 === frame.model_sha256);
+  if (pinned && shadowHash(pinned.model) === frame.model_sha256) return pinned.model;
   const model = processModels(root).find(row => shadowHash(row) === frame.model_sha256);
   if (!model) fail("PROCESS_CALL_TARGET_CHANGED");
   return model;
