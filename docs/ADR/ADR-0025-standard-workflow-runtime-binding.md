@@ -1,5 +1,24 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Amendment — canonical cycle entry observation, 2026-11-12
+
+The distinct read-only `cycle_entry_admit` component observes a COMMITTING
+session and its existing
+canonical cycle without recreating it, adopting a plan or resetting progress.
+Resume requires the current branch, session ownership, canonical topology and
+runtime admissions to agree. Content and metadata are reobserved after runtime
+checks. Competing owned cycles, carryover and a topology change require their
+separate decision; a caller-supplied ID is not that decision. Existing creation
+admission, including its pre-write gate, is reused through its actual port;
+its create-only initializer retains its behavior.
+
+An admitted entry is separate from DoR, plan provenance and implementation
+permission. OPEN, IMPLEMENTING and VERIFYING retain their actual state; none
+is converted into another phase. The component uses existing cycle/session
+artifacts and operation journals, with no new authority, storage or expiry.
+Its registration does not connect the general existing-cycle route or establish
+full STANDARD, legacy plan adoption, Native or installed-package qualification.
+
 ## Amendment — expected R03 cache invalidation sets, 2026-11-12
 
 This supersedes the two singleton-only cache cases in the 2026-11-11 R03

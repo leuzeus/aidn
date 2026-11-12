@@ -1,5 +1,16 @@
 # Testing Guide
 
+## Existing canonical cycle admission component, 2026-11-12
+
+The standard ports fixture includes FILES, DUAL and DB-only COMMITTING cycle
+entry checks. Creation stays create-only; current ownership, competing cycles,
+carryover, held effects, changed canonical bytes and forged output facts are
+checked separately. A signed single-operation fixture checks cold acceptance
+and exact simulation. Its phase and progress preimages are explicit fixture
+setup. Admission preserves those bytes and grants no implementation permission.
+The published STANDARD route, legacy plan adoption and productive resumption
+remain separate required work; this component claims no Native or archive proof.
+
 ## Catalog version capacity fixtures, 2026-11-12
 
 The process binding input fixture tests the four closed catalog versions with

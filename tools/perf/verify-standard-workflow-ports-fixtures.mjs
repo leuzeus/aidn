@@ -18,6 +18,7 @@ import { createOperationJournalSigner } from "../../src/core/workflow/process-op
 import { assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
 import { runReloadCheckUseCase } from "../../src/application/runtime/reload-check-use-case.mjs";
 import { verifyStandardSessionGitPlanValidity } from "./standard-session-git-plan-validity-fixture-lib.mjs";
+import { verifyStandardExistingCycleEntry } from "./verify-standard-existing-cycle-entry-fixtures.mjs";
 
 const temporary = fs.realpathSync(os.tmpdir()), owned = [];
 let passed = 0;
@@ -118,7 +119,7 @@ try {
     }
     // Standalone compatibility bindings are covered by their own fixtures.
     assert.deepEqual([...registered.keys()].filter(id => !published.has(id)).sort(),
-      ["cycle_work_evaluate", "session_admit", "session_pr_merge_observe", "session_pr_post_merge_wait", "session_pr_review_observe"]);
+      ["cycle_entry_admit", "cycle_work_evaluate", "session_admit", "session_pr_merge_observe", "session_pr_post_merge_wait", "session_pr_review_observe"]);
     const legacyAdmission = registered.get("session_admit"), entryAdmission = registered.get("session_entry_admit");
     assert.equal(legacyAdmission.revision, 1); assert.equal(legacyAdmission.input_contract, "standard-empty-input.v1");
     assert.equal(legacyAdmission.output_contract, "standard-operation-output.v1");
@@ -218,6 +219,7 @@ try {
     assert.equal(git(target, "branch", "--show-current"), input.session_branch); assert.equal(fs.existsSync(path.join(target, "docs/audit/sessions/S001.md")), true);
   });
   if (!process.argv.includes("--base-ports-only")) await verifyStandardSessionGitPlanValidity(name => { passed++; process.stdout.write(`PASS ${name}\n`); });
+  if (!process.argv.includes("--base-ports-only")) passed += await verifyStandardExistingCycleEntry();
   process.stdout.write(JSON.stringify({ status: "PASS", checks: passed, native: "NOT_RUN", installed_archive: "NOT_RUN" }) + "\n");
 } finally {
   for (const root of owned) {

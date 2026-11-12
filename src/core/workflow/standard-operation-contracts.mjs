@@ -172,6 +172,8 @@ import { checkShadowJson, shadowHash } from "./shadow-json.mjs";
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 import sessionEntryInput from "../contracts/workflow-definition/standard-session-entry-input.v1.schema.json" with { type: "json" };
 import sessionEntryOutput from "../contracts/workflow-definition/standard-session-entry-output.v1.schema.json" with { type: "json" };
+import cycleEntryInput from "../contracts/workflow-definition/standard-cycle-entry-input.v1.schema.json" with { type: "json" };
+import cycleEntryOutput from "../contracts/workflow-definition/standard-cycle-entry-output.v1.schema.json" with { type: "json" };
 export function normalizeStandardOperationInput(operation, value) {
   assertStandardOperationInput(operation, value);
   if (operation === "session_initialize") return { ...value, mode: value.mode ?? "UNKNOWN" };
@@ -179,6 +181,11 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (operation === "cycle_entry_admit") {
+    if (checkShadowJson(value) || validateJsonSchema(value, cycleEntryInput, "$", { contractKind: "workflow-definition" }).length)
+      fail("STANDARD_OPERATION_INPUT_INVALID");
+    return value;
+  }
   if (operation === "session_entry_admit") {
     if (checkShadowJson(value) || validateJsonSchema(value, sessionEntryInput, "$", { contractKind: "workflow-definition" }).length)
       fail("STANDARD_OPERATION_INPUT_INVALID");
@@ -291,6 +298,19 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-cycle-entry-output.v1") {
+    const action = value.observations?.action, blocked = action === "blocked";
+    const expected = blocked ? {} : { cycle_entry_creation_allowed: action === "create_cycle", cycle_entry_resume_allowed: action === "resume_cycle", cycle_entry_choice_required: action === "choose_cycle" };
+    if (checkShadowJson(value) || validateJsonSchema(value, cycleEntryOutput, "$", { contractKind: "workflow-definition" }).length
+      || value.outcome !== (blocked ? "blocked" : "completed") || shadowHash(value.facts) !== shadowHash(expected)
+      || (action === "resume_cycle") !== (value.observations.selected_cycle !== null)
+      || ["blocked", "choose_cycle"].includes(action) && !value.observations.reason_code
+      || ["create_cycle", "resume_cycle"].includes(action) && value.observations.reason_code !== null
+      || !blocked && value.observations.canonical.length !== (action === "resume_cycle" ? 7 : 2)
+      || shadowHash(value.evidence_refs) !== shadowHash(value.observations.canonical.map(row => ({ ref: "docs/audit/" + row.path, sha256: row.sha256 }))))
+      fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
   if (value?.contract_version === "standard-session-entry-output.v1") {
     const accepted = value.outcome === "completed", creation = value.observations?.admission?.lifecycle?.action === "create_session_allowed";
     const mode = value.observations?.session?.mode ?? "UNKNOWN";

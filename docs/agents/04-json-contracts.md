@@ -1,5 +1,13 @@
 # 04 JSON Contracts
 
+Private `standard-cycle-entry-{input,output}.v1` distinguishes COMMITTING creation,
+canonical resume, unresolved choice and refusal through `cycle_entry_admit`.
+Its closed no-effect output retains content and metadata hashes, current
+inventory and the observed phase. It grants no implementation, checkout or
+plan replacement. Supplying a cycle ID does not authenticate a human choice.
+The original create-only binding and historical readers remain unchanged.
+This component is registered independently of the published STANDARD route.
+
 Private `standard-session-entry-{input,output}.v1` binds STANDARD admission to
 the requested session ID, branch and original objective. The no-effect output
 retains canonical content and metadata hashes and derives routing facts from
