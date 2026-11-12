@@ -1,5 +1,17 @@
 # Testing Guide
 
+## Authenticated completion startup bridge, 2026-11-12
+
+The default startup-mode fixture includes the startup completion component on
+FILES, DUAL and DB-only. It uses real canonical initialization, checkpoint and
+start-hook effects with an explicitly synthetic completion-reader capability.
+Preview and refusal checks distinguish the original warning, a missing or
+substituted proof, revoked effect authorization, process changes and a
+substituted run identity. A successful checkpoint emits no fabricated R05
+completion event. The original v1 reader remains separate. This component does
+not establish a signed R05 chain, the published corrective journey, Native or
+installed-archive qualification; those require their own exact-source proofs.
+
 ## Existing canonical cycle admission component, 2026-11-12
 
 The standard ports fixture includes FILES, DUAL and DB-only COMMITTING cycle

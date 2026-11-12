@@ -1,5 +1,11 @@
 # 04 JSON Contracts
 
+Private `standard-session-start-plan.v2` pins an existing authenticated R05
+completion by digest for COMMITTING startup. Its owning host supplies the live
+reader, current effect grant and process CAS checks; JSON supplies none of
+these capabilities. The real checkpoint must still return `ok`. V1 retains its
+closed reader and ordinary hook path; no retained plan is converted or renewed.
+
 Private `standard-cycle-entry-{input,output}.v1` distinguishes COMMITTING creation,
 canonical resume, unresolved choice and refusal through `cycle_entry_admit`.
 Its closed no-effect output retains content and metadata hashes, current

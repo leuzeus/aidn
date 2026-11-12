@@ -12,6 +12,8 @@ import { validateJsonSchema } from "../../core/contracts/json-schema-validator.m
 import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import modePlanSchema from "../../core/contracts/workflow-definition/standard-session-mode-plan.v1.schema.json" with { type: "json" };
 import startPlanSchema from "../../core/contracts/workflow-definition/standard-session-start-plan.v1.schema.json" with { type: "json" };
+import startPlanSchemaV2 from "../../core/contracts/workflow-definition/standard-session-start-plan.v2.schema.json" with { type: "json" };
+import { runStartSessionCompletionHook } from "./start-session-completion-hook-use-case.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const modes = ["THINKING", "EXPLORING", "COMMITTING"];
@@ -58,15 +60,20 @@ export function createStandardSessionModeOperations({ artifacts, scope, admissio
       && context.branch === plan.scope.branch && context.head === plan.scope.head
       && plan.changes.every(change => artifacts.read(change.path).sha256 === change.after_sha256), admission: admitted };
   }
-  async function prepareStart(input, preparedAt, acquired = false) {
+  async function prepareStart(input, preparedAt, acquired = false, readObjectiveCompletion = null) {
     assertStandardOperationInput("session_start_finalize", input);
     const context = scope(), observed = session(input.session_id), mode = observed.metadata.mode, admitted = await admission(mode);
     if ((!acquired && artifacts.ownerPending()) || !modes.includes(mode) || observed.state.mode !== mode || !admitted.allowed
       || !["resume_current_session", "resume_current_cycle"].includes(admitted.lifecycle.action)) return { can_apply: false, admission: admitted };
-    const plan = { contract_version: "standard-session-start-plan.v1", operation_ref: "session_start_finalize", input, prepared_at_ms: preparedAt,
+    if (readObjectiveCompletion !== null && typeof readObjectiveCompletion !== "function") fail("STANDARD_START_COMPLETION_CAPABILITY_REQUIRED");
+    const completion = mode === "COMMITTING" && readObjectiveCompletion !== null ? await readObjectiveCompletion() : null;
+    if (completion !== null && (shadowHash(scope()) !== shadowHash(context) || session(input.session_id).row.sha256 !== observed.row.sha256
+      || session(input.session_id).current.sha256 !== observed.current.sha256)) fail("STANDARD_START_COMPLETION_SOURCE_CHANGED");
+    const plan = { contract_version: completion === null ? "standard-session-start-plan.v1" : "standard-session-start-plan.v2",
+      ...(completion === null ? {} : { objective_completion_sha256: shadowHash(completion) }), operation_ref: "session_start_finalize", input, prepared_at_ms: preparedAt,
       scope: context, mode, session_sha256: observed.row.sha256, current_sha256: observed.current.sha256,
       effects: ["checkpoint", "runtime_index", "constraint_loop_if_required", "context_telemetry"] };
-    if (validateJsonSchema(plan, startPlanSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_START_PLAN_INVALID");
+    if (validateJsonSchema(plan, completion === null ? startPlanSchema : startPlanSchemaV2, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_START_PLAN_INVALID");
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }
   function hookEvidence(payload, id) {
@@ -106,18 +113,37 @@ export function createStandardSessionModeOperations({ artifacts, scope, admissio
         } catch (cause) { return emit("session_mode_apply", "reconciliation_required", "unknown", { committed, reason_code: cause.code ?? "STANDARD_MODE_EFFECT_UNCONFIRMED" }); }
       });
     },
-    prepareStart: input => prepareStart(input, now()),
-    async finalizeStart(prepared, { write = false, expectPlan } = {}) {
+    prepareStart: (input, { readObjectiveCompletion = null } = {}) => prepareStart(input, now(), false, readObjectiveCompletion),
+    async finalizeStart(prepared, { write = false, expectPlan, readObjectiveCompletion = null, assertAuthorized = null, assertCurrent = null } = {}) {
       explicit(prepared, write, expectPlan);
-      if (validateJsonSchema(prepared.plan, startPlanSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_START_PLAN_INVALID");
+      const typed = prepared.plan.contract_version === "standard-session-start-plan.v2";
+      if (validateJsonSchema(prepared.plan, typed ? startPlanSchemaV2 : startPlanSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_START_PLAN_INVALID");
+      if (typed && [readObjectiveCompletion, assertAuthorized, assertCurrent].some(fn => typeof fn !== "function")) fail("STANDARD_START_COMPLETION_CAPABILITY_REQUIRED");
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
-        try { const fresh = await prepareStart(prepared.plan.input, prepared.plan.prepared_at_ms, true);
+        const readBoundCompletion = typed ? async () => {
+          const completion = await readObjectiveCompletion();
+          if (completion === null || shadowHash(completion) !== prepared.plan.objective_completion_sha256) fail("STANDARD_START_COMPLETION_CHANGED");
+          return completion;
+        } : null;
+        const assertEffectAuthorized = async () => {
+          await readBoundCompletion(); await assertAuthorized(); await assertCurrent();
+          const observed = session(prepared.plan.input.session_id);
+          if (shadowHash(scope()) !== shadowHash(prepared.plan.scope) || observed.row.sha256 !== prepared.plan.session_sha256
+            || observed.current.sha256 !== prepared.plan.current_sha256) fail("STANDARD_START_COMPLETION_SOURCE_CHANGED");
+        };
+        try { const fresh = await prepareStart(prepared.plan.input, prepared.plan.prepared_at_ms, true, readBoundCompletion);
           // The owner just acquired by this call is not an unresolved owner.
           if (fresh.plan_sha256 !== expectPlan) fail("STANDARD_PREVIEW_CHANGED");
+          if (typed) await assertEffectAuthorized();
         } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         let result = null;
         try {
-          result = runSkillHookUseCase({ args: { skill: "start-session", mode: prepared.plan.mode, strict: prepared.plan.scope.persistence.state_mode !== "files", noAutoSkipGate: false },
+          if (typed) {
+            const payload = await runStartSessionCompletionHook({ targetRoot: root, runtimeDir: fileURLToPath(new URL("../../../tools/perf/", import.meta.url)),
+              mode: prepared.plan.mode, runId: "process_start_" + expectPlan.slice(0, 40), readObjectiveCompletion: readBoundCompletion, assertEffectAuthorized });
+            result = { ok: payload.ok, payload, invocation: "in_process_authenticated_objective_completion" };
+            await assertEffectAuthorized();
+          } else result = runSkillHookUseCase({ args: { skill: "start-session", mode: prepared.plan.mode, strict: prepared.plan.scope.persistence.state_mode !== "files", noAutoSkipGate: false },
             perfDir: fileURLToPath(new URL("../../../tools/perf/", import.meta.url)), targetRoot: root, processAdapter: createLocalProcessAdapter() });
           const evidence = hookEvidence(result.payload, prepared.plan.input.session_id), observed = session(prepared.plan.input.session_id);
           if (observed.metadata.mode !== prepared.plan.mode || observed.state.mode !== prepared.plan.mode) fail("STANDARD_START_MODE_CHANGED");

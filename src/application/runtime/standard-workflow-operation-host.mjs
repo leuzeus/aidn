@@ -1464,7 +1464,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "drift_check_finalize" ? await driftFinalization?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "session_initialize" ? await operations.prepareSession(input)
         : binding.id === "session_mode_apply" ? await operations.prepareMode(decisionInput(state.record, input))
-        : binding.id === "session_start_finalize" ? await operations.prepareStart(input)
+        : binding.id === "session_start_finalize" ? await operations.prepareStart(input, { readObjectiveCompletion: processAuthority ? () => objectiveCompletion.read(state.record) : null })
         : binding.id === "cycle_context_refresh" ? await operations.prepareCycleContext(input)
         : binding.id === "cycle_initialize" ? await operations.prepareCycle(input)
         : binding.id === "cycle_checkpoint_finalize" ? await operations.prepareCycleCheckpoint(input, { readObjectiveCompletion: checkpointCompletion(state.record, input) })
@@ -1733,7 +1733,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record),
             readObjectiveCompletion: checkpointCompletion(state.record, record.preview.input),
             assertCurrent: () => { if (current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256) fail("STANDARD_CYCLE_CHECKPOINT_PROCESS_CHANGED"); } });
-        else output = await operations.finalizeStart(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
+        else output = await operations.finalizeStart(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256,
+          readObjectiveCompletion: processAuthority ? () => objectiveCompletion.read(state.record) : null, assertAuthorized: () => verifyGrant(record),
+          assertCurrent: () => { if (current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256) fail("STANDARD_START_PROCESS_CHANGED"); } });
         if (record.preview.binding.effect_class === "read-only" && shadowHash(snapshot()) !== shadowHash(record.preview.snapshot))
           throw Object.assign(new Error("STANDARD_HOST_PRECONDITIONS_CHANGED"), { effect_status: "no_effect" });
       } catch (cause) {

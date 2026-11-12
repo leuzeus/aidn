@@ -1,5 +1,21 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Amendment — R05 completion at corrective startup, 2026-11-12
+
+The owning host can bind a new COMMITTING startup plan v2 to the exact current
+accepted physical R05 completion. A live internal reader reauthenticates it;
+the digest alone grants nothing. Its real startup checkpoint consumes the
+existing objective-completion capability, with current authorization and
+process/source checks before effects. The checkpoint must produce `ok`; other
+signals, changed subjects and unresolved warnings remain refusals.
+
+The actual checkpoint and workflow start hook share the same host-derived run
+identity. No CLI argument or authored JSON supplies a checkpoint, reader,
+human source or effect grant. The ordinary CLI and startup plan v1 retain their
+existing paths. No accepted review, original UNKNOWN result, timestamp or
+Native grant is rewritten. Failure after effects retains reconciliation and
+ownership; the new path does not replay the earlier failed startup.
+
 ## Amendment — canonical cycle entry observation, 2026-11-12
 
 The distinct read-only `cycle_entry_admit` component observes a COMMITTING
