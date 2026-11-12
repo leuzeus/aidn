@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { registerHooks } from "node:module";
+import { registerFixtureModuleMocks } from "./fixture-module-mocks.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { artifactContentHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
 import { renderStandardCyclePlan } from "../../src/core/workflow/standard-cycle-planning.mjs";
@@ -16,15 +16,10 @@ export async function verifyCyclePreparedPlanValidity(check, proposalFactory) {
     "./standard-drift-recovery.mjs": "export const cyclePlanningBoundary = () => 'f'.repeat(64); export const cycleVerificationBoundary = cyclePlanningBoundary;",
     "./standard-workflow-artifacts.mjs": "export const createStandardWorkflowArtifacts = () => globalThis[Symbol.for(" + JSON.stringify(key) + ")];",
   };
-  const hook = registerHooks({ resolve(specifier, context, next) {
-    if (targets.includes(context.parentURL) && Object.hasOwn(mocked, specifier)) {
-      return { url: "data:text/javascript," + encodeURIComponent(mocked[specifier]), shortCircuit: true };
-    }
-    return next(specifier, context);
-  } });
+  const hook = registerFixtureModuleMocks({ targets, mocked });
   let modules;
   try { modules = await Promise.all(targets.map(target => import(target))); }
-  finally { hook.deregister(); }
+  finally { await hook.deregister(); }
   const hash = char => char.repeat(64), operationId = char => "op_" + char.repeat(40);
   try {
     for (const [index, definition] of definitions.entries()) {

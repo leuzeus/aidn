@@ -220,6 +220,18 @@ dispatched. Persistent FILES/DUAL/DB-only, full CLI/console execution,
 distributed STANDARD, native, providers and installed package qualification
 remain separate.
 
+## Fixture module isolation on the supported Node baseline
+
+Prepared-plan and retained-legacy fixtures use `node:module.register`, available
+on the supported Node 22.13 baseline, rather than the newer synchronous hook
+API. Their shared fixture resolver substitutes only explicitly queried parent
+modules and exact import specifiers. It deactivates through an acknowledged
+message before the fixture continues; evaluated mock modules still use the
+main realm's controlled artifact ports. Ordinary runtime imports, original case
+arguments, Native bounds and production implementations remain unchanged.
+Run the composed preflight, cycle readiness, task advancement and drift
+finalization selectors on the minimum Node version when changing this helper.
+
 ## Exact committed whitespace verification, 2026-11-06
 
 The earlier working-tree whitespace check excluded the three then-untracked

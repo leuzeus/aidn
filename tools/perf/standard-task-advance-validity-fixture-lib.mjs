@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { registerHooks } from "node:module";
+import { registerFixtureModuleMocks } from "./fixture-module-mocks.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { artifactContentHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
 import { renderStandardCyclePlan } from "../../src/core/workflow/standard-cycle-planning.mjs";
@@ -13,15 +13,10 @@ export async function verifyTaskAdvancePlanValidity(pass) {
     "./standard-drift-recovery.mjs": "export const cycleTaskProgressBoundary = () => 'f'.repeat(64);",
     "./standard-workflow-artifacts.mjs": "export const createStandardWorkflowArtifacts = () => globalThis[Symbol.for(" + JSON.stringify(key) + ")];",
   };
-  const hook = registerHooks({ resolve(specifier, context, next) {
-    if (context.parentURL === target && Object.hasOwn(mocked, specifier)) {
-      return { url: "data:text/javascript," + encodeURIComponent(mocked[specifier]), shortCircuit: true };
-    }
-    return next(specifier, context);
-  } });
+  const hook = registerFixtureModuleMocks({ targets: [target], mocked });
   let createStandardCycleTaskAdvance;
   try { ({ createStandardCycleTaskAdvance } = await import(target)); }
-  finally { hook.deregister(); }
+  finally { await hook.deregister(); }
   const hash = char => char.repeat(64), operationId = char => "op_" + char.repeat(40);
   try {
     for (const invalidation of ["none", "authorization", "prefix", "context", "metadata", "content", "partial"]) {

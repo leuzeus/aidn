@@ -1,4 +1,4 @@
-import { registerHooks } from "node:module";
+import { registerFixtureModuleMocks } from "./fixture-module-mocks.mjs";
 
 // Synthetic retained-legacy receipt constructor for recovery-reader tests.
 // This doubles only the first initializer result. It is not evidence that the
@@ -17,14 +17,10 @@ export function createStandardWorkflowOperations(options) {
     return operations.initializeSession(prepared, intent);
   }});
 }`;
-const hook = registerHooks({ resolve(specifier, context, next) {
-  if (context.parentURL === target && specifier === "./standard-workflow-operations.mjs")
-    return { url: "data:text/javascript," + encodeURIComponent(replacement), shortCircuit: true };
-  return next(specifier, context);
-} });
+const hook = registerFixtureModuleMocks({ targets: [target], mocked: { "./standard-workflow-operations.mjs": replacement } });
 let createHost;
 try { ({ createStandardWorkflowOperationHost: createHost } = await import(target)); }
-finally { hook.deregister(); }
+finally { await hook.deregister(); }
 export function createSyntheticLegacyExpiryFixtureHost(options) {
   roots.add(options.targetRoot);
   return createHost(options);

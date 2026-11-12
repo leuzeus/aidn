@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { registerHooks } from "node:module";
+import { registerFixtureModuleMocks } from "./fixture-module-mocks.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { artifactContentHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
 
@@ -17,14 +17,10 @@ export async function verifyDriftPreparedPlanValidity(check) {
     "./standard-workflow-artifacts.mjs": `export const createStandardWorkflowArtifacts = () => globalThis[Symbol.for(${JSON.stringify(key)})].artifacts;`,
     "./gating-evaluate-use-case.mjs": `export const runGatingEvaluateUseCase = options => globalThis[Symbol.for(${JSON.stringify(key)})].gate(options);`,
   };
-  const hook = registerHooks({ resolve(specifier, context, next) {
-    if (context.parentURL === target && Object.hasOwn(mocked, specifier))
-      return { url: "data:text/javascript," + encodeURIComponent(mocked[specifier]), shortCircuit: true };
-    return next(specifier, context);
-  } });
+  const hook = registerFixtureModuleMocks({ targets: [target], mocked });
   let factory;
   try { ({ createStandardDriftFinalization: factory } = await import(target)); }
-  finally { hook.deregister(); }
+  finally { await hook.deregister(); }
   const temporary = fs.realpathSync(os.tmpdir());
   const root = fs.mkdtempSync(path.join(temporary, "aidn-drift-plan-validity-"));
   let success = false;
