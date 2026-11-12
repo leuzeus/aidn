@@ -25,8 +25,8 @@ export async function verifyStandardExistingCycleEntry({ selectedMode } = {}) {
       const git = (...args) => execFileSync("git", ["-C", targetRoot, "-c", `core.hooksPath=${process.platform === "win32" ? "NUL" : "/dev/null"}`, ...args], { encoding: "utf8", windowsHide: true }).trim();
       const checkpoint = message => { git("add", "."); git("commit", "--allow-empty", "-m", message); };
       const observe = () => {
-        const inventory = artifacts.observeInventory();
-        return { canonical: { ...inventory, rows: inventory.rows.filter(row => !row.path.startsWith("workflows/")) },
+        const names = artifacts.inventory().paths.filter(name => !name.startsWith("workflows/") && !name.startsWith("history/"));
+        return { canonical: artifacts.readMany(names, { required: names, includeMetadata: true }),
           head: git("rev-parse", "HEAD"), branch: git("branch", "--show-current"), status: git("status", "--porcelain") };
       };
       const apply = async (prepared, method) => { assert.equal(prepared.can_apply, true); assert.equal((await ops[method](prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed"); };
@@ -101,14 +101,32 @@ export async function verifyStandardExistingCycleEntry({ selectedMode } = {}) {
       // A changed final observation is injected after the real runtime awaits.
       // This refusal component does not prove a real concurrent writer race.
       let observations = 0;
-      const raced = createStandardCycleEntryAdmission({ artifacts: { ...artifacts, observeInventory() {
-        const observed = artifacts.observeInventory();
-        if (++observations === 2) observed.rows = observed.rows.map(row => row.path === cyclePath + "/plan.md"
-          ? { ...row, content: row.content + "\nChanged fixture observation.\n", sha256: shadowText(row.content + "\nChanged fixture observation.\n") } : row);
-        return observed;
+      const raced = createStandardCycleEntryAdmission({ artifacts: { ...artifacts, observeTopology() {
+        observations++; return artifacts.observeTopology();
+      }, readMany(names, options) {
+        const observed = artifacts.readMany(names, options);
+        return observations === 2 ? observed.map(row => row.path === cyclePath + "/plan.md"
+          ? { ...row, content: row.content + "\nChanged fixture observation.\n", sha256: shadowText(row.content + "\nChanged fixture observation.\n") } : row)
+          : observed;
       } }, scope: ops.observeScope, admitCreation: ops.admitCycle });
       const stale = await raced(selected); assert.equal(stale.observations.reason_code, "STANDARD_CYCLE_ENTRY_CONTEXT_CHANGED"); assert.deepEqual(stale.facts, {});
       pass(`${persistence}: injected changed final observation refuses without a retained or time-based permission`);
+
+      const history = Array.from({ length: 32 }, (_, index) => ({ path: `history/retained-${String(index).padStart(3, "0")}.md`,
+        content: "# Retained neutral fixture notes\n\n" + "x".repeat(524288) }));
+      const beforeHistory = await ops.admitCycleEntry(selected);
+      for (const row of history) await write({ path: row.path, before_sha256: null, before_metadata_sha256: null,
+        after: row.content, after_sha256: shadowText(row.content) });
+      checkpoint("fixture independent retained history");
+      const historyNames = history.map(row => row.path), historyPins = () => artifacts.readMany(historyNames, { required: historyNames, includeMetadata: true })
+        .map(({ path, sha256, metadata_sha256 }) => ({ path, sha256, metadata_sha256 }));
+      const retainedBefore = historyPins(), entryBefore = observe(), afterHistory = await ops.admitCycleEntry(selected);
+      assert.equal(afterHistory.observations.action, "resume_cycle");
+      assert.deepEqual(afterHistory.observations.canonical, beforeHistory.observations.canonical);
+      assert.deepEqual(afterHistory.observations.selected_cycle, beforeHistory.observations.selected_cycle);
+      assert.deepEqual(observe(), entryBefore); assert.deepEqual(historyPins(), retainedBefore);
+      assert.throws(() => artifacts.observeInventory(), { code: "STANDARD_ARTIFACT_INVENTORY_TRUNCATED" });
+      pass(`${persistence}: unrelated retained history exceeds full inventory bound without changing cycle admission or that bound`);
 
       const binding = standardWorkflowOperationBindings().find(row => row.id === "cycle_entry_admit"), key = randomBytes(32);
       assert.deepEqual(binding.allowed_modes, ["COMMITTING"]);
@@ -125,6 +143,7 @@ export async function verifyStandardExistingCycleEntry({ selectedMode } = {}) {
       host = open(); const result = await host.accept(staged.operation_id, { write: true }); assert.equal(result.cursor.status, "COMPLETED");
       const simulation = simulateAgenticProcess({ instanceId: result.record.instance_id, model, policyPins: result.record.policy_pins, scopeId: result.record.scope_id, events: result.record.events });
       assert.equal(simulation.trace.at(-1).instance_sha256, result.record.instance_sha256); assert.equal(shadowHash(observe()), shadowHash(hostBefore));
+      assert.deepEqual(historyPins(), retainedBefore);
       pass(`${persistence}: actual signed operation dispatch, cold acceptance and exact SIM preserve canonical progress`);
     }
     success = true; console.log(JSON.stringify({ status: "PASS", checks, proof_class: "source-canonical-entry-component", phase_and_progress_setup: "SYNTHETIC", common_operation_host: "ACTUAL", published_standard_routing: "NOT_CONNECTED", legacy_plan_adoption: "NOT_RUN", implementation_resume: "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN" })); return checks;

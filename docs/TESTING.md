@@ -20,6 +20,10 @@ carryover, held effects, changed canonical bytes and forged output facts are
 checked separately. A signed single-operation fixture checks cold acceptance
 and exact simulation. Its phase and progress preimages are explicit fixture
 setup. Admission preserves those bytes and grants no implementation permission.
+Each storage case also retains more than 16 MiB of unrelated canonical history.
+Cycle admission reads the current/session rows, cycle status inventory and the
+selected cycle documents; it preserves their content and metadata. The full
+artifact collector still refuses that corpus under its unchanged byte limit.
 The published STANDARD route, legacy plan adoption and productive resumption
 remain separate required work; this component claims no Native or archive proof.
 
