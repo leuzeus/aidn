@@ -148,6 +148,7 @@ const files = ["src/application/runtime/standard-reconciliation-inventory.mjs",
   "src/core/contracts/workflow-definition/standard-session-start-plan.v2.schema.json",
   "src/core/contracts/workflow-definition/standard-cycle-entry-input.v1.schema.json",
   "src/core/contracts/workflow-definition/standard-cycle-entry-output.v1.schema.json",
+  "src/core/contracts/workflow-definition/standard-cycle-entry-observation-output.v1.schema.json",
   "src/application/runtime/local-artifact-owner-retirement.mjs",
   "src/application/runtime/standard-workflow-human-decisions.mjs", "src/adapters/runtime/process-operation-journal-store.mjs", "src/adapters/runtime/process-decision-inbox-store.mjs",
   "src/core/contracts/workflow-definition/standard-operation-preview.v1.schema.json",
@@ -182,6 +183,7 @@ const files = ["src/application/runtime/standard-reconciliation-inventory.mjs",
   "src/core/contracts/workflow-definition/agentic-process-model.v1.schema.json",
   "src/core/contracts/workflow-definition/agentic-process-instance.v1.schema.json", "VERSION", "package.json",
 ];
+files.push("src/core/contracts/workflow-definition/standard-workflow-catalog.v4.schema.json", "src/core/contracts/workflow-definition/standard-workflow-catalog.v5.schema.json");
 export function agenticProcessImplementationPins() {
   const source = files.map(name => {
     const data = fs.readFileSync(new URL(`../../../${name}`, import.meta.url));

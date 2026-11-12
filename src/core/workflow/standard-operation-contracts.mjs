@@ -176,6 +176,7 @@ import sessionEntryInput from "../contracts/workflow-definition/standard-session
 import sessionEntryOutput from "../contracts/workflow-definition/standard-session-entry-output.v1.schema.json" with { type: "json" };
 import cycleEntryInput from "../contracts/workflow-definition/standard-cycle-entry-input.v1.schema.json" with { type: "json" };
 import cycleEntryOutput from "../contracts/workflow-definition/standard-cycle-entry-output.v1.schema.json" with { type: "json" };
+import cycleEntryObservation from "../contracts/workflow-definition/standard-cycle-entry-observation-output.v1.schema.json" with { type: "json" };
 export function normalizeStandardOperationInput(operation, value) {
   assertStandardOperationInput(operation, value);
   if (operation === "session_initialize") return { ...value, mode: value.mode ?? "UNKNOWN" };
@@ -183,7 +184,7 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
-  if (operation === "cycle_entry_admit") {
+  if (["cycle_entry_admit", "cycle_entry_observe"].includes(operation)) {
     if (checkShadowJson(value) || validateJsonSchema(value, cycleEntryInput, "$", { contractKind: "workflow-definition" }).length)
       fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
@@ -317,6 +318,19 @@ export function assertStandardOperationOutput(value) {
         || selected.some(row => !row) || shadowHash(observed.proposal.evidence_refs) !== shadowHash(selected.map(row => ({ ref: "audit:" + row.path, sha256: row.sha256 }))))
         fail("STANDARD_OPERATION_OUTPUT_INVALID");
     }
+    return value;
+  }
+  if (value?.contract_version === "standard-cycle-entry-observation-output.v1") {
+    const action = value.observations?.action, blocked = action === "blocked";
+    const expected = blocked ? {} : { cycle_entry_fresh_context: action === "prepare_creation", cycle_entry_owned_context: action === "owned_cycle", cycle_entry_choice_required: action === "choose_cycle" };
+    if (checkShadowJson(value) || validateJsonSchema(value, cycleEntryObservation, "$", { contractKind: "workflow-definition" }).length
+      || value.outcome !== (blocked ? "blocked" : "completed") || shadowHash(value.facts) !== shadowHash(expected)
+      || (action === "owned_cycle") !== (value.observations.selected_cycle !== null)
+      || ["blocked", "choose_cycle"].includes(action) && !value.observations.reason_code
+      || ["prepare_creation", "owned_cycle"].includes(action) && value.observations.reason_code !== null
+      || !blocked && value.observations.canonical.length !== (action === "owned_cycle" ? 7 : 2)
+      || shadowHash(value.evidence_refs) !== shadowHash(value.observations.canonical.map(row => ({ ref: "docs/audit/" + row.path, sha256: row.sha256 }))))
+      fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
   }
   if (value?.contract_version === "standard-cycle-entry-output.v1") {

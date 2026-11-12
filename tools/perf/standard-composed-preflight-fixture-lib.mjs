@@ -8,7 +8,7 @@ import { resolveProcessCallData } from "../../src/core/workflow/process-call-dat
 import { resolveProcessFrameInput } from "../../src/core/workflow/process-frame-input.mjs";
 
 const H = "a".repeat(64), fail = code => { throw Object.assign(Error(code), { code }); };
-const stops = { session_pr_correction_decide: "session_pr_correction_decide", plan: "plan", cycle_admit: "cycle_admit", closure_decide: "closure_decide", promotion_decide: "promotion_decide" };
+const stops = { session_pr_correction_decide: "session_pr_correction_decide", plan: "plan", task_select: "task_select", cycle_admit: "cycle_admit", closure_decide: "closure_decide", promotion_decide: "promotion_decide" };
 const keys = (v, names) => v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).sort().join() === [...names].sort().join();
 const effectsPendingNode = "pr_premerge_observe";
 const verificationTargetId = "aidn-standard-final-verification", reviewTargetId = "aidn-standard-pr-review-completion";
@@ -28,7 +28,8 @@ const callSites = new Map([
 
 // Test planning only. Synthetic receipts/control/assignments never authenticate
 // a human, native producer, provider or effect. Routing uses the execution reducer.
-export function preflightStandardComposedFixture({ model, scenario, stop = "component_complete" }) {
+export function preflightStandardComposedFixture({ model, scenario, stop = "component_complete", cycleEntry = "fresh" }) {
+  if (!["fresh", "owned_open"].includes(cycleEntry) || cycleEntry === "owned_open" && scenario?.mode !== "COMMITTING") fail("STANDARD_FIXTURE_CYCLE_ENTRY_INVALID");
   const nominalPostMerge = stop === "nominal_post_merge_complete";
   const fullCorrection = scenario?.contract_version === "fixture-standard-composed-scenario.v3";
   const correctionScenario = fullCorrection || scenario?.contract_version === "fixture-standard-composed-scenario.v2";
@@ -121,6 +122,8 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
           : { session_creation_allowed: false, session_resume_allowed: true, session_mode_pending: false,
             mode_committing: scenario.mode === "COMMITTING", mode_thinking: scenario.mode === "THINKING",
             mode_exploring: scenario.mode === "EXPLORING", cycle_work_requested: scenario.mode === "COMMITTING" };
+        if (node.binding_ref === "cycle_entry_observe") facts = { cycle_entry_fresh_context: cycleEntry === "fresh", cycle_entry_owned_context: cycleEntry === "owned_open", cycle_entry_choice_required: false };
+        if (node.binding_ref === "cycle_entry_admit") facts = { cycle_entry_creation_allowed: cycleEntry === "fresh", cycle_entry_resume_allowed: cycleEntry === "owned_open", cycle_entry_choice_required: false };
         if (node.binding_ref === "spike_conversion_admit") facts = { mode_work_spike_requested: false };
         if (node.binding_ref === "mode_work_observe") facts = { mode_work_report_complete: true, mode_analysis_completed: false };
         if (node.binding_ref === "mode_work_evaluate") facts = { mode_analysis_completed: true };
@@ -191,7 +194,7 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
   let replay;
   for (const row of iterateAgenticProcessSimulation({ ...initial, events: state.events })) replay = row;
   if (replay.instance_sha256 !== state.instance_sha256) fail("STANDARD_FIXTURE_PREFLIGHT_REPLAY_CHANGED");
-  const result = { proof_class: "synthetic-fixture-only", model_sha256: state.model_sha256, scenario_sha256: shadowHash(scenario), stop,
+  const result = { proof_class: "synthetic-fixture-only", model_sha256: state.model_sha256, scenario_sha256: shadowHash(scenario), stop, cycle_entry: cycleEntry,
     responses_required: native.length, original_max_responses: scenario.max_responses, native_occurrences: native,
     cold_resume_checkpoints: checkpoints, planned_status: cursor.status, interrupted, operations, event_count: state.events.length,
     call_transitions: callTransitions, verification_inputs: verificationInputs, replay_exact: true,

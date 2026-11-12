@@ -17,6 +17,7 @@ import { verifyCycleVerificationContracts } from "./cycle-verification-fixture-l
 import { verifyDriftPreparedPlanValidity } from "./drift-plan-validity-fixture-lib.mjs";
 import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
 import { verifyCanonicalPlanAdoption } from "./standard-canonical-plan-adoption-fixture-lib.mjs";
+import { verifyPublishedExistingOpen } from "./standard-existing-open-route-fixture-lib.mjs";
 import { verifyCanonicalPlanWork } from "./standard-canonical-plan-work-fixture-lib.mjs";
 import assert from "node:assert/strict";
 import { attachComposedR09Provider } from "./standard-composed-r09-provider-fixture-lib.mjs";
@@ -122,6 +123,8 @@ const nominalPostMerge = standardComposedStop === "nominal_post_merge_complete";
 const standardComposedResume = process.argv.find(value => value.startsWith("--standard-composed-resume="))?.slice("--standard-composed-resume=".length);
 const selectedStandardComposedMode = process.argv.find(value => value.startsWith("--standard-composed-mode="))?.slice("--standard-composed-mode=".length);
 const selectedCanonicalPlanAdoptionMode = process.argv.find(value => value.startsWith("--canonical-plan-adoption-mode="))?.slice("--canonical-plan-adoption-mode=".length);
+const selectedStandardExistingOpenMode = process.argv.find(value => value.startsWith("--standard-existing-open-mode="))?.slice("--standard-existing-open-mode=".length);
+if (selectedStandardExistingOpenMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardExistingOpenMode)) throw Error("STANDARD_EXISTING_OPEN_FIXTURE_MODE_INVALID");
 if (selectedCanonicalPlanAdoptionMode && !["files", "dual", "db-only"].includes(selectedCanonicalPlanAdoptionMode)) throw Error("CANONICAL_PLAN_ADOPTION_FIXTURE_MODE_INVALID");
 const selectedCanonicalPlanSelectionMode = process.argv.find(value => value.startsWith("--canonical-plan-selection-mode="))?.slice("--canonical-plan-selection-mode=".length);
 if (selectedCanonicalPlanSelectionMode && !["files", "dual", "db-only"].includes(selectedCanonicalPlanSelectionMode)) throw Error("CANONICAL_PLAN_SELECTION_FIXTURE_MODE_INVALID");
@@ -228,7 +231,7 @@ function retainComposedChild(controlRoot, label, child) {
 }
 let serial = 0, completed = false;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
-async function check(name, callback) { if (process.argv.includes("--cycle-plan-select-native-only") && !name.startsWith("cycle plan selection native files:")) return; if (selectedCanonicalPlanSelectionMode && !name.startsWith(`cycle plan selection ${selectedCanonicalPlanSelectionMode}:`)) return; if (process.argv.includes("--canonical-plan-work-only") && !name.startsWith("canonical plan work files:")) return; if (selectedCanonicalPlanReadinessMode && !name.startsWith(`cycle plan readiness ${selectedCanonicalPlanReadinessMode}:`)) return; if (selectedCanonicalPlanAdoptionMode && !name.startsWith(`cycle plan adoption ${selectedCanonicalPlanAdoptionMode}:`)) return; if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
+async function check(name, callback) { if (selectedStandardExistingOpenMode && !name.startsWith(`standard existing open ${selectedStandardExistingOpenMode}:`)) return; if (process.argv.includes("--cycle-plan-select-native-only") && !name.startsWith("cycle plan selection native files:")) return; if (selectedCanonicalPlanSelectionMode && !name.startsWith(`cycle plan selection ${selectedCanonicalPlanSelectionMode}:`)) return; if (process.argv.includes("--canonical-plan-work-only") && !name.startsWith("canonical plan work files:")) return; if (selectedCanonicalPlanReadinessMode && !name.startsWith(`cycle plan readiness ${selectedCanonicalPlanReadinessMode}:`)) return; if (selectedCanonicalPlanAdoptionMode && !name.startsWith(`cycle plan adoption ${selectedCanonicalPlanAdoptionMode}:`)) return; if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
   if (process.argv.includes("--native-human-port-only") && !name.startsWith("native human port:")) return;
   if (process.argv.includes("--historical-diagnostic-only") && !name.startsWith("historical diagnostic:")) return;
   if (process.argv.includes("--native-human-turn-only") && !name.startsWith("worker private before-turn")) return;
@@ -1773,6 +1776,7 @@ if (process.argv[2] === "--mixed-continue") {
   });
   await verifyCycleVerificationContracts(check, cyclePlanProposal({ context_sha256: "a".repeat(64), context: { session_id: "S001", cycle_id: "C001", cycle_type: "feature", mode: "COMMITTING", original_objective: "Update the product", allowed_product_files: ["product/app.mjs"] }, evidence_refs: [{ ref: "audit:SPEC.md", sha256: "b".repeat(64) }] }));
   await verifyCyclePlanningContracts(check);
+  await verifyPublishedExistingOpen(check, { mixedFixture, selectedMode: selectedStandardExistingOpenMode });
   await verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePlanProposal, selectedMode: selectedCanonicalPlanAdoptionMode });
   await verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePlanProposal, selectedMode: selectedCanonicalPlanReadinessMode, readiness: true });
   await verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePlanProposal, selectedMode: selectedCanonicalPlanSelectionMode, readiness: true, selection: true });

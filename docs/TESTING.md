@@ -1,5 +1,27 @@
 # Testing Guide
 
+## Published owned OPEN entry candidate and catalog v5, 2026-11-12
+
+Structural checks cover shared context refresh, read-only entry observation,
+the fresh-only initial-session Git checkpoint before full creation admission,
+preserved fresh Native planning and the canonical adoption route. The existing
+entry corpus checks dirty fresh observation while actual creation stays blocked,
+owned context, unresolved carryover and both signed cold operation dispatches
+in all three persistence modes. Observation grants no creation or implementation. Catalog v5 declares the new entry
+scope; the v4 schema stays byte-identical. Both schemas are direct runtime
+and process pins. Identified symbolic preflight selects fresh or owned OPEN
+entry to size the actual delivered graph; its replay and response counts
+provide no business authority or product qualification. The focused
+`--standard-existing-open-mode=files|dual|db-only` cases execute the delivered
+root through actual canonical/session/Git/DoR/phase ports, with one identified
+startup Native diagnostic double and no planner or work response. They retain
+the actual C001 plan instead of applying an unused C002 constructor proposal,
+and assert unchanged planning content/metadata and product, actual phase entry,
+closed allocation, owner clearance and exact simulation. Fresh-path regression
+remains separate. The owned path asserts no initial-session Git checkpoint,
+no branch/HEAD change and preserved planning metadata. Human choice/carryover, other phases, genuine Native, archive and full
+STANDARD acceptance remain separate outstanding qualifications.
+
 ## Accepted canonical plan selection, 2026-11-12
 
 The focused `--canonical-plan-selection-mode=files|dual|db-only` cases execute

@@ -1587,6 +1587,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         if (record.intent.binding_ref === "context_reload") output = await operations.reload(record.preview.input);
         else if (record.intent.binding_ref === "session_admit") output = await operations.admitSession(record.preview.input);
         else if (record.intent.binding_ref === "session_entry_admit") output = await operations.admitSessionEntry(record.preview.input);
+        else if (record.intent.binding_ref === "cycle_entry_observe") output = await operations.observeCycleEntry(record.preview.input);
         else if (record.intent.binding_ref === "cycle_entry_admit") output = await operations.admitCycleEntry(record.preview.input);
         else if (record.intent.binding_ref === "session_close_admit") output = await operations.admitSessionClose(record.preview.input);
         else if (record.intent.binding_ref === "session_close_record") output = await sessionCloseRecord.apply(state.record, record.preview.prepared,

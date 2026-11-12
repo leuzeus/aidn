@@ -18,7 +18,7 @@ import { parseSessionMetadata } from "../../lib/workflow/session-context-lib.mjs
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
 import { createStandardSessionModeOperations } from "./standard-session-mode-operations.mjs";
 import { createStandardCycleOperations } from "./standard-cycle-operations.mjs";
-import { createStandardCycleEntryAdmission } from "./standard-cycle-entry-admission.mjs";
+import { createStandardCycleEntryAdmission, createStandardCycleEntryObserver } from "./standard-cycle-entry-admission.mjs";
 import { readStandardGitHead } from "./standard-drift-git.mjs";
 
 const correctionFiles = ["standard-reconciliation-inventory.mjs",
@@ -188,7 +188,7 @@ new URL("standard-cycle-implementation.mjs", import.meta.url), new URL("../../co
     new URL("../../core/contracts/workflow-definition/standard-cycle-plan-adoption-output.v1.schema.json", import.meta.url));
   refs.push(new URL("start-session-completion-hook-use-case.mjs", import.meta.url),
     new URL("../../core/contracts/workflow-definition/standard-session-start-plan.v2.schema.json", import.meta.url));
-  refs.push(...["standard-cycle-entry-input.v1", "standard-cycle-entry-output.v1", "standard-session-entry-input.v1", "standard-session-entry-output.v1", "standard-workflow-startup-catalog.v2", "standard-workflow-catalog.v4"]
+  refs.push(...["standard-cycle-entry-input.v1", "standard-cycle-entry-output.v1", "standard-cycle-entry-observation-output.v1", "standard-session-entry-input.v1", "standard-session-entry-output.v1", "standard-workflow-startup-catalog.v2", "standard-workflow-catalog.v4", "standard-workflow-catalog.v5"]
     .map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)));
   const packageRoot = fileURLToPath(new URL("../../../", import.meta.url));
   return shadowHash(refs.map(url => ({ path: path.relative(packageRoot, fileURLToPath(url)).replaceAll("\\", "/"), sha256: createHash("sha256").update(fs.readFileSync(url)).digest("hex") })));
@@ -275,6 +275,7 @@ const definitions = [
   ["context_reload", "context-reload", "read-only", ["SPEC-R01", "SPEC-R11"], "standard-empty-input.v1"],
   ["session_admit", "start-session", "read-only", ["SPEC-R01", "SPEC-R04"], "standard-empty-input.v1"],
   ["session_entry_admit", "start-session", "read-only", ["SPEC-R01", "SPEC-R04"], "standard-session-entry-input.v1", "deterministic", "standard-session-entry-output.v1"],
+  ["cycle_entry_observe", "start-session", "read-only", ["SPEC-R01", "SPEC-R03", "SPEC-R06", "SPEC-R07"], "standard-cycle-entry-input.v1", "deterministic", "standard-cycle-entry-observation-output.v1"],
   ["cycle_entry_admit", "start-session", "read-only", ["SPEC-R01", "SPEC-R03", "SPEC-R06", "SPEC-R07"], "standard-cycle-entry-input.v1", "deterministic", "standard-cycle-entry-output.v1"],
   ["session_initialize", "start-session", "mutating", ["SPEC-R01", "SPEC-R07"], "standard-session-initialize-input.v1"],
   ["mode_work_preflight", "context-reload", "read-only", ["SPEC-R01", "SPEC-R02"], "standard-mode-work-preflight-input.v1", "deterministic", "standard-mode-work-output.v1"],
@@ -311,7 +312,7 @@ export function standardWorkflowOperationBindings() {
   return definitions.map(([id, skill_id, effect_class, rule_refs, input_contract, executor_kind = "deterministic", output_contract = "standard-operation-output.v1"]) => {
     const binding = { contract_version: "process-operation-binding.v1", id, revision: id === "cycle_validation_evaluate" ? 2 : 1, executor_kind, effect_class, skill_id,
       input_contract, output_contract, rule_refs, allowed_modes: ["cycle_plan_select", "cycle_plan_adopt", "drift_recovery_cycle_decision"].includes(id) ? ["COMMITTING"] : id.startsWith("spike_") ? (id === "spike_conversion_finalize" || id === "spike_experiment_admit" || id === "spike_experiment_execution_admit" || id === "spike_experiment_execution_admit" || id === "spike_experiment_execution_admit" ? ["EXPLORING", "COMMITTING"] : ["EXPLORING"]) : ["mode_work_preflight", "mode_work_evaluate", "mode_work_observe", "mode_work_continue_decision"].includes(id) ? ["THINKING", "EXPLORING"] : ["session_delivery_checkpoint", "session_close_admit", "session_closure_decision", "session_close_record", "session_close_checkpoint", "session_close_finalize"].includes(id) ? ["THINKING", "EXPLORING", "COMMITTING"] : ["session_pr_correction_decision", "session_pr_correction_checkpoint", "session_pr_correction_reopen", "session_pr_triage_select", "session_pr_triage_evaluate", "session_pr_review_reply_select", "session_pr_review_reply_publish", "session_pr_review_resolution_select", "session_pr_review_resolution_exception", "session_pr_review_thread_resolve", "session_pr_review_effects_verify", "session_pr_premerge_observe", "session_pr_checks_accept", "session_pr_review_event_route", "session_pr_external_merge_disposition", "session_pr_merge_basis", "session_pr_merge_consent", "session_pr_merge_execute", "session_pr_post_merge_fetch", "session_pr_post_merge_alignment", "session_pr_post_merge_measure", "session_pr_post_merge_decision", "session_pr_post_merge_fast_forward", "session_pr_post_merge_complete", "session_pr_post_merge_wait", "session_pr_merge_observe", "session_pr_review_receive", "session_pr_review_content_observe", "session_pr_review_observe", "session_preclose_checkpoint", "session_branch_integration_decision", "session_branch_integrate", "session_pr_admit", "session_push", "session_pr_open", "session_pr_record", "session_pr_checkpoint", "session_pr_update_push", "session_pr_redelivery_push"].includes(id) ? ["COMMITTING"] : id === "session_initialize" ? ["UNKNOWN"] : ["drift_change_request_record", "drift_recovery_rollback_apply"].includes(id) || ["standard-baseline-promotion-checkpoint-output.v1", "standard-baseline-promotion-hook-output.v1", "standard-baseline-promotion-decision-output.v1", "standard-baseline-promotion-output.v1", "standard-cycle-readiness-output.v1", "standard-cycle-work-output.v1", "standard-cycle-validation-output.v1", "standard-cycle-verification-output.v1", "standard-cycle-task-output.v1", "standard-cycle-task-work-output.v1", "standard-cycle-audit-selection-output.v1", "standard-cycle-audit-output.v1", "standard-cycle-closure-decision-output.v1", "standard-cycle-close-output.v1", "standard-cycle-close-hook-output.v1", "standard-cycle-close-hook-output.v2", "standard-cycle-close-selection-output.v1"].includes(output_contract) ? ["COMMITTING"] : ["standard-cycle-output.v1", "standard-drift-cycle-output.v1", "standard-cycle-checkpoint-output.v1", "standard-cycle-planning-output.v1"].includes(output_contract) ? ["EXPLORING", "COMMITTING"] : ["UNKNOWN", "THINKING", "EXPLORING", "COMMITTING"], implementation_sha256: loadedImplementation };
-    if (id === "cycle_entry_admit") binding.allowed_modes = ["COMMITTING"];
+    if (["cycle_entry_admit", "cycle_entry_observe"].includes(id)) binding.allowed_modes = ["COMMITTING"];
     assertProcessOperationBinding(binding); return binding;
   });
 }
@@ -418,6 +419,7 @@ export function createStandardWorkflowOperations({ targetRoot, now = Date.now })
   return Object.freeze({
     ...createStandardSessionModeOperations({ artifacts, scope, admission, replaceField, now }),
     ...cycleOperations,
+    observeCycleEntry: createStandardCycleEntryObserver({ artifacts, scope }),
     admitCycleEntry: createStandardCycleEntryAdmission({ artifacts, scope, admitCreation: cycleOperations.admitCycle }),
     bindings: standardWorkflowOperationBindings,
     observeScope: scope,

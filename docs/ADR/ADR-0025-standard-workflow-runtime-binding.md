@@ -1,5 +1,27 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Published owned OPEN entry and catalog v5 candidate, 2026-11-12
+
+The delivered graph refreshes context, then `cycle_entry_observe` reads the
+current canonical session and cycle inventory without authorizing creation or
+implementation. A fresh context runs the initial-session Git checkpoint before
+`cycle_entry_admit` and the unchanged creation admission, initializer and Native
+planner. An owned context runs `cycle_entry_admit`, then read-only
+`cycle_plan_adopt`. The checkpoint requires no active cycle and the session
+branch; creation admission still requires its clean checkpointed preimage. Both reach the existing accepted-origin selector, DoR and
+phase ports. Constructor parameters describe a fresh-cycle proposal; they do
+not authenticate a choice among existing cycles. Adoption preserves canonical
+planning and imports no completed task. Owned resume skips the initial-session
+Git checkpoint. Both paths require their own root-level qualification.
+
+Catalog v5 declares `fresh_or_owned_open_cycle`; v4 retains its original
+`single_new_cycle` scope and closed reader, with v1-v3 unchanged. The model
+remains v2, root Native activities stay in the root, and the 256-node cap
+remains. No new effect authority or age condition is introduced. Unresolved
+choice/carryover and other phases still require their actual decision and
+phase routes; all-false routing is a failure, not a human wait. This candidate
+does not complete the STANDARD workflow or qualify real actors or an archive.
+
 ## Accepted canonical plan selection component, 2026-11-12
 
 The read-only `cycle_plan_select` accepts the latest current-instance plan

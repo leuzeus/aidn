@@ -107,7 +107,13 @@ for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING
   if (prefix === "exploring") op("exploring_context_refresh", "cycle_context_refresh", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] } });
   op(`${prefix}_admit`, "mode_work_preflight", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] }, mode: { source: "literal", value: mode } });
 }
-seq("committing", ["cycle_create", "plan", "plan_evaluate", "plan_record"]);
+seq("committing", ["cycle_entry_observe", "cycle_entry_route"]);
+op("cycle_entry_observe", "cycle_entry_observe", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] }, cycle_id: { source: "literal", value: null } });
+xor("cycle_entry_route", [["fresh", "fresh_cycle", "cycle_entry_fresh_context"], ["owned", "owned_cycle", "cycle_entry_owned_context"]]);
+seq("fresh_cycle", ["cycle_create", "plan", "plan_evaluate", "plan_record"]);
+seq("owned_cycle", ["owned_cycle_entry", "plan_adopt"]);
+for (const id of ["cycle_entry", "owned_cycle_entry"]) op(id, "cycle_entry_admit", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] }, cycle_id: { source: "literal", value: null } });
+op("plan_adopt", "cycle_plan_adopt");
 seq("cycle_work", ["plan_select", "readiness", "implementation_enter", "task_loop",
   "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "cycle_terminal_checkpoint", "close_finalize", "promotion_eligibility", "session_preclose_checkpoint", "session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize", "session_delivery_checkpoint", "session_branch_integration_decide", "session_branch_integrate", "session_pr_delivery"]);
 seq("session_pr_delivery", ["session_pr_admit", "session_push", "session_pr_open", "session_pr_record", "session_pr_checkpoint", "session_pr_update_push", "session_pr_review_observe", "session_pr_review_capture", "session_pr_review_event_route", "session_pr_pretriage_route"]);
@@ -284,7 +290,13 @@ for (const original of cycle.nodes) {
   if (copy.children) copy.children = copy.children.map(rename);
   nodes.push(copy);
 }
-nodes.find(row => row.id === "cycle_create").children.splice(1, 0, "session_git_checkpoint");
+nodes.find(row => row.id === "cycle_create").children.splice(1, 0, "session_git_checkpoint", "cycle_entry");
+// Context refresh applies to both paths. The session Git checkpoint requires
+// an initial session branch without an active cycle, so it stays fresh-only.
+// Constructor parameters grant no choice, checkout or replacement.
+const commonCyclePrefix = nodes.find(row => row.id === "cycle_create").children.splice(0, 1);
+if (commonCyclePrefix.join(",") !== "cycle_refresh_before") throw Error("STANDARD_CYCLE_ENTRY_PREFIX_CHANGED");
+nodes.find(row => row.id === "committing").children.unshift(...commonCyclePrefix);
 op("session_git_checkpoint", "session_git_checkpoint", operation("session_git_checkpoint", "context_operation_id", "cycle_refresh_before"));
 for (const original of cycle.data_bindings.inputs) {
   const copy = structuredClone(original); copy.node_id = rename(copy.node_id);
@@ -643,10 +655,10 @@ assertAgenticProcessModel(model);
 const components = processModels(model);
 const specification = read("docs/SPEC.md");
 const skillSource = path => ({ path, sha256: standardAssetHash(read(path)) });
-const catalog = { contract_version: "standard-workflow-catalog.v4",
+const catalog = { contract_version: "standard-workflow-catalog.v5",
   component_id: "aidn-standard", revision: model.revision,
   scope: { kind: "composed_committing_cycle_component", complete_standard_workflow: false,
-    entry_conditions: ["fresh_or_existing_session_admission", "single_new_cycle"], remaining_activities: ["thinking_session_closure", "exploring_experiments_and_spike_conversion",
+    entry_conditions: ["fresh_or_existing_session_admission", "fresh_or_owned_open_cycle"], remaining_activities: ["thinking_session_closure", "exploring_experiments_and_spike_conversion",
       "cycle_choice_and_carryover", "governed_git_checkpoints", "startup_and_work_drift_routes", "incidents_and_recovery", "session_close", "pr_review_and_merge", "post_merge_sync", "full_mixed_resume"] },
   model: { path: modelPath, sha256: shadowHash(model), model_id: model.model_id, revision: model.revision },
   specification: { path: "docs/SPEC.md", sha256: standardAssetHash(specification) },

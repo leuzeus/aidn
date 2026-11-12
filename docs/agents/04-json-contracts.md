@@ -1,10 +1,24 @@
 # 04 JSON Contracts
 
+Published STANDARD catalog v5 declares fresh creation or current owned OPEN
+entry. V4 keeps its original closed new-cycle declaration and reader, and
+v1-v3 remain unchanged. This scope declaration supplies no human choice or
+write permission. Actual cycle entry, typed canonical adoption, selected origin,
+DoR and phase ports remain distinct. Unsupported choice/carryover or phases
+are not reported as successful work or a human wait by catalog metadata.
+
 Private `standard-session-start-plan.v2` pins an existing authenticated R05
 completion by digest for COMMITTING startup. Its owning host supplies the live
 reader, current effect grant and process CAS checks; JSON supplies none of
 these capabilities. The real checkpoint must still return `ok`. V1 retains its
 closed reader and ordinary hook path; no retained plan is converted or renewed.
+
+Private `standard-cycle-entry-observation-output.v1` uses the existing entry
+input through the distinct read-only `cycle_entry_observe` binding. It
+distinguishes a fresh checkpoint context, current owned cycle, unresolved
+choice and refusal. Both creation and implementation authorization are always
+false. Its canonical hashes and final reobservation select the checkpoint
+domain; full entry and creation admissions remain separate and unchanged.
 
 Private `standard-cycle-entry-{input,output}.v1` distinguishes COMMITTING creation,
 canonical resume, unresolved choice and refusal through `cycle_entry_admit`.
