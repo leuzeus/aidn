@@ -19,6 +19,16 @@ allocation. The symbolic `audit_select` stop sizes three responses only and
 provides no business authority. This remains separate from genuine actors,
 imported progress, general phase resume, human cycle choices and archive proof.
 
+## Mode-closure structure coverage, 2026-11-12
+
+The mode-work fixture checks each root analysis/R05 prefix and its actual call
+to the shared deterministic/human closure suffix. It verifies the ordered four
+ports, the closed three-parameter interface and each mode-specific caller
+source. Existing permissions, typed findings, refusal and common-reducer replay
+checks remain. Logical preflight labels retain their mode prefixes; the
+structural check does not require removed inline root leaves. This fixture
+correction changes neither model, runtime, contract nor authority.
+
 ## Isolated R05 mode preimages, 2026-11-12
 
 The report and authenticated recovery-review fixtures admit their canonical
