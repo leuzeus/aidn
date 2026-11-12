@@ -1,5 +1,15 @@
 # Testing Guide
 
+## Reusable mode closure suffix, 2026-11-12
+
+THINKING and nonretained EXPLORING keep their real R05 Native activity in the
+root and call the same deterministic/human final closure suffix. Three accepted
+operation IDs enter the call; the target retains ordinary decision, record,
+checkpoint and final-hook order. The actual mode fixture consumes the final
+call return before claiming caller completion. Transport/H fixture results,
+source model checks, synthetic preflight, genuine Native and installed archive
+qualification remain separate. The root keeps the existing 256-node bound.
+
 ## Authenticated completion startup bridge, 2026-11-12
 
 The default startup-mode fixture includes the startup completion component on

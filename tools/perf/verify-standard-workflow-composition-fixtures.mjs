@@ -88,7 +88,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 194); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 190); assert.equal(assets.catalog.activities.length, 23);
 });
 test("correction work and closure consume the new implementation and new validation authorities", () => {
   const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
@@ -635,15 +635,33 @@ const rejectFixture = (name, change, code) => test(name, () => {
   assert.throws(() => loadFixture(input), { code });
   assert.equal(shadowHash({ catalog: input.catalog, model: input.model }), before);
 });
+test("both analysis modes call the same closure suffix after their own R05 observations", () => {
+  const target = assets.model.call_targets.find(row => row.model_id === "aidn-standard-mode-session-closure");
+  assert.ok(target);
+  assert.deepEqual(target.model.nodes.map(row => row.kind === "operation" ? row.binding_ref : row.kind),
+    ["sequence", "session_closure_decision", "session_close_record", "session_close_checkpoint", "session_close_finalize"]);
+  assert.deepEqual(target.model.call_interface.returns, {});
+  const parameters = ["admission_operation_id", "drift_evaluation_operation_id", "drift_finalization_operation_id"];
+  assert.deepEqual(target.model.call_interface.parameters, Object.fromEntries(parameters.map(key => [key, "string"])));
+  for (const prefix of ["thinking", "exploring"]) {
+    const call = assets.model.nodes.find(row => row.id === prefix + "_session_closure");
+    assert.equal(call.kind, "call"); assert.deepEqual(call.target, processModelIdentity(target.model));
+    const fields = assets.model.data_bindings.inputs.find(row => row.node_id === call.id).fields;
+    for (const [key, source] of [["admission_operation_id", "session_close_admit"], ["drift_evaluation_operation_id", "session_closure_drift_evaluate"], ["drift_finalization_operation_id", "session_closure_drift_finalize"]])
+      assert.deepEqual(fields[key], { source: "operation_id", node_id: prefix + "_" + source });
+    assert.equal(assets.model.nodes.find(row => row.id === prefix + "_session_closure_drift_report").kind, "activity");
+  }
+});
+
 test("the ordinary loader authenticates the two final-verification operations for both calls", () => {
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV3, "#", { contractKind: "workflow-definition" }), []);
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV4, "#", { contractKind: "workflow-definition" }), []);
   const input = fresh(), loaded = assets;
-  assert.equal(loaded.model.nodes.length, 254);
-  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 148);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 46);
+  assert.equal(loaded.model.nodes.length, 248);
+  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 140);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 50);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
-  assert.equal(loaded.model.call_targets.length, 7);
+  assert.equal(loaded.model.call_targets.length, 8);
   assert.equal(child.model_id, "aidn-standard-final-verification");
   assert.deepEqual(identity, processModelIdentity(child));
   const sites = loaded.model.nodes.filter(node => node.target?.model_id === child.model_id);

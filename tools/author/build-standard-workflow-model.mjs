@@ -471,26 +471,35 @@ seq("correction_pr_redelivery", ["correction_pr_redelivery_push", "correction_pr
   "correction_pr_review_event_route", "correction_pr_pretriage_route"]);
 nodes.find(row => row.id === "correction_cycle").children.push("correction_pr_redelivery");
 
-// Analysis completion is only an input to closure. These occurrences use the
-// same R05, human decision, canonical record, checkpoint and final-hook ports
-// as COMMITTING. No analysis receipt supplies a closure fact or permission.
+// Analysis completion is only an input to closure. Keep Native R05 in the
+// root and reuse the deterministic/H suffix through the ordinary call engine.
+const modeClosureStart = nodes.length, modeClosureInputStart = inputs.length;
+const modeClosureParameters = ["admission_operation_id", "drift_evaluation_operation_id", "drift_finalization_operation_id"];
+seq("session_closure", ["session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize"]);
+op("session_closure_decide", "session_closure_decision", Object.fromEntries(modeClosureParameters.map(key => [key, { source: "parameter", key, path: [] }])));
+op("session_close_record", "session_close_record", operation(null, "decision_operation_id", "session_closure_decide"));
+op("session_close_checkpoint", "session_close_checkpoint", operation(null, "record_operation_id", "session_close_record"));
+op("session_close_finalize", "session_close_finalize", {
+  ...operation(null, "record_operation_id", "session_close_record"),
+  ...operation(null, "checkpoint_operation_id", "session_close_checkpoint") });
+const modeClosureNodes = nodes.splice(modeClosureStart);
+const modeClosureTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-mode-session-closure", revision: 1,
+  participants: [{ id: "project" }], roles: [], policies: [], entry: "session_closure", nodes: modeClosureNodes,
+  operation_pins: pinsFor(modeClosureNodes), call_interface: { parameters: Object.fromEntries(modeClosureParameters.map(key => [key, "string"])), returns: {} },
+  data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: modeClosureParameters, inputs: inputs.splice(modeClosureInputStart) } };
+const modeClosureRef = pinTarget(modeClosureTarget);
 for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING"]]) {
   const name = suffix => `${prefix}_${suffix}`;
-  seq(name("session_close"), ["session_close_admit", "session_closure_drift", "session_closure_decide",
-    "session_close_record", "session_close_checkpoint", "session_close_finalize"].map(name));
+  seq(name("session_close"), ["session_close_admit", "session_closure_drift", "session_closure"].map(name));
   op(name("session_close_admit"), "session_close_admit", {
     session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] } });
   checkpointDrift(name("session_closure_drift"), null, null);
   nodes.find(row => row.id === name("session_closure_drift_report")).policy_ref = `${prefix}_drift_policy`;
-  op(name("session_closure_decide"), "session_closure_decision", {
+  node(name("session_closure"), "call", { target: modeClosureRef });
+  inputs.push({ node_id: name("session_closure"), fields: {
     ...operation(null, "admission_operation_id", name("session_close_admit")),
     ...operation(null, "drift_evaluation_operation_id", name("session_closure_drift_evaluate")),
-    ...operation(null, "drift_finalization_operation_id", name("session_closure_drift_finalize")) });
-  op(name("session_close_record"), "session_close_record", operation(null, "decision_operation_id", name("session_closure_decide")));
-  op(name("session_close_checkpoint"), "session_close_checkpoint", operation(null, "record_operation_id", name("session_close_record")));
-  op(name("session_close_finalize"), "session_close_finalize", {
-    ...operation(null, "record_operation_id", name("session_close_record")),
-    ...operation(null, "checkpoint_operation_id", name("session_close_checkpoint")) });
+    ...operation(null, "drift_finalization_operation_id", name("session_closure_drift_finalize")) } });
 }
 
 // First published objective review route: the terminal cycle diagnostic.
@@ -617,6 +626,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...driftRecoveryRef, model: driftRecoveryTarget },
     { ...correctiveDriftRef, model: correctiveDriftTarget },
     { ...sessionSetupRef, model: sessionSetup },
+    { ...modeClosureRef, model: modeClosureTarget },
   ],
   data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session", "cycle"], inputs } };
 // Session creation is conditional inside the pinned setup call. Later work

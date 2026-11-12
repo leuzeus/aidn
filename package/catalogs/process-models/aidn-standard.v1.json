@@ -1,7 +1,7 @@
 {
   "contract_version": "agentic-process-model.v2",
   "model_id": "aidn-standard",
-  "revision": 296,
+  "revision": 297,
   "participants": [
     {
       "id": "project"
@@ -283,10 +283,7 @@
         "thinking_session_closure_drift_report",
         "thinking_session_closure_drift_evaluate",
         "thinking_session_closure_drift_finalize",
-        "thinking_session_closure_decide",
-        "thinking_session_close_record",
-        "thinking_session_close_checkpoint",
-        "thinking_session_close_finalize"
+        "thinking_session_closure"
       ]
     },
     {
@@ -1994,28 +1991,14 @@
       "binding_ref": "drift_check_finalize"
     },
     {
-      "id": "thinking_session_closure_decide",
-      "kind": "operation",
+      "id": "thinking_session_closure",
+      "kind": "call",
       "participant_ref": "project",
-      "binding_ref": "session_closure_decision"
-    },
-    {
-      "id": "thinking_session_close_record",
-      "kind": "operation",
-      "participant_ref": "project",
-      "binding_ref": "session_close_record"
-    },
-    {
-      "id": "thinking_session_close_checkpoint",
-      "kind": "operation",
-      "participant_ref": "project",
-      "binding_ref": "session_close_checkpoint"
-    },
-    {
-      "id": "thinking_session_close_finalize",
-      "kind": "operation",
-      "participant_ref": "project",
-      "binding_ref": "session_close_finalize"
+      "target": {
+        "model_id": "aidn-standard-mode-session-closure",
+        "revision": 1,
+        "model_sha256": "33ba81223480ec6479f90e2358db0147c8b5e92bd16ccefa3fe588a32708f06d"
+      }
     },
     {
       "id": "exploring_session_close",
@@ -2026,10 +2009,7 @@
         "exploring_session_closure_drift_report",
         "exploring_session_closure_drift_evaluate",
         "exploring_session_closure_drift_finalize",
-        "exploring_session_closure_decide",
-        "exploring_session_close_record",
-        "exploring_session_close_checkpoint",
-        "exploring_session_close_finalize"
+        "exploring_session_closure"
       ]
     },
     {
@@ -2058,28 +2038,14 @@
       "binding_ref": "drift_check_finalize"
     },
     {
-      "id": "exploring_session_closure_decide",
-      "kind": "operation",
+      "id": "exploring_session_closure",
+      "kind": "call",
       "participant_ref": "project",
-      "binding_ref": "session_closure_decision"
-    },
-    {
-      "id": "exploring_session_close_record",
-      "kind": "operation",
-      "participant_ref": "project",
-      "binding_ref": "session_close_record"
-    },
-    {
-      "id": "exploring_session_close_checkpoint",
-      "kind": "operation",
-      "participant_ref": "project",
-      "binding_ref": "session_close_checkpoint"
-    },
-    {
-      "id": "exploring_session_close_finalize",
-      "kind": "operation",
-      "participant_ref": "project",
-      "binding_ref": "session_close_finalize"
+      "target": {
+        "model_id": "aidn-standard-mode-session-closure",
+        "revision": 1,
+        "model_sha256": "33ba81223480ec6479f90e2358db0147c8b5e92bd16ccefa3fe588a32708f06d"
+      }
     },
     {
       "id": "closure_drift_checkpoint_iteration",
@@ -4058,6 +4024,140 @@
           ]
         }
       }
+    },
+    {
+      "model_id": "aidn-standard-mode-session-closure",
+      "revision": 1,
+      "model_sha256": "33ba81223480ec6479f90e2358db0147c8b5e92bd16ccefa3fe588a32708f06d",
+      "model": {
+        "contract_version": "agentic-process-model.v2",
+        "model_id": "aidn-standard-mode-session-closure",
+        "revision": 1,
+        "participants": [
+          {
+            "id": "project"
+          }
+        ],
+        "roles": [],
+        "policies": [],
+        "entry": "session_closure",
+        "nodes": [
+          {
+            "id": "session_closure",
+            "kind": "sequence",
+            "participant_ref": "project",
+            "children": [
+              "session_closure_decide",
+              "session_close_record",
+              "session_close_checkpoint",
+              "session_close_finalize"
+            ]
+          },
+          {
+            "id": "session_closure_decide",
+            "kind": "operation",
+            "participant_ref": "project",
+            "binding_ref": "session_closure_decision"
+          },
+          {
+            "id": "session_close_record",
+            "kind": "operation",
+            "participant_ref": "project",
+            "binding_ref": "session_close_record"
+          },
+          {
+            "id": "session_close_checkpoint",
+            "kind": "operation",
+            "participant_ref": "project",
+            "binding_ref": "session_close_checkpoint"
+          },
+          {
+            "id": "session_close_finalize",
+            "kind": "operation",
+            "participant_ref": "project",
+            "binding_ref": "session_close_finalize"
+          }
+        ],
+        "operation_pins": {
+          "session_close_finalize": "5ecaa0178c75633195fa66d38fb30d18fa02ae117553da2344ba3365bed25e92",
+          "session_close_checkpoint": "4f52eec1f529f2cfb71a8d5a23b4882a296a385db06d3f22eb23fec3d9291a06",
+          "session_close_record": "9c4cda2f6f1b2400fefe3ae8c8a99fb40d07b8812921c7acd4172dc6972708c8",
+          "session_closure_decision": "89cffd85ce8f3660958510f7d1bb9eb657c02bd8e444953e57a8cadc5cdaf011"
+        },
+        "call_interface": {
+          "parameters": {
+            "admission_operation_id": "string",
+            "drift_evaluation_operation_id": "string",
+            "drift_finalization_operation_id": "string"
+          },
+          "returns": {}
+        },
+        "data_bindings": {
+          "contract_version": "process-data-bindings.v4",
+          "parameter_keys": [
+            "admission_operation_id",
+            "drift_evaluation_operation_id",
+            "drift_finalization_operation_id"
+          ],
+          "inputs": [
+            {
+              "node_id": "session_closure_decide",
+              "fields": {
+                "contract_version": {
+                  "source": "literal",
+                  "value": "standard-session-closure-review-input.v1"
+                },
+                "admission_operation_id": {
+                  "source": "parameter",
+                  "key": "admission_operation_id",
+                  "path": []
+                },
+                "drift_evaluation_operation_id": {
+                  "source": "parameter",
+                  "key": "drift_evaluation_operation_id",
+                  "path": []
+                },
+                "drift_finalization_operation_id": {
+                  "source": "parameter",
+                  "key": "drift_finalization_operation_id",
+                  "path": []
+                }
+              }
+            },
+            {
+              "node_id": "session_close_record",
+              "fields": {
+                "decision_operation_id": {
+                  "source": "operation_id",
+                  "node_id": "session_closure_decide"
+                }
+              }
+            },
+            {
+              "node_id": "session_close_checkpoint",
+              "fields": {
+                "record_operation_id": {
+                  "source": "operation_id",
+                  "node_id": "session_close_record"
+                }
+              }
+            },
+            {
+              "node_id": "session_close_finalize",
+              "fields": {
+                "record_operation_id": {
+                  "source": "operation_id",
+                  "node_id": "session_close_record"
+                },
+                "checkpoint_operation_id": {
+                  "source": "operation_id",
+                  "node_id": "session_close_checkpoint"
+                }
+              }
+            }
+          ]
+        }
+      }
     }
   ],
   "data_bindings": {
@@ -5781,12 +5881,8 @@
         }
       },
       {
-        "node_id": "thinking_session_closure_decide",
+        "node_id": "thinking_session_closure",
         "fields": {
-          "contract_version": {
-            "source": "literal",
-            "value": "standard-session-closure-review-input.v1"
-          },
           "admission_operation_id": {
             "source": "operation_id",
             "node_id": "thinking_session_close_admit"
@@ -5798,37 +5894,6 @@
           "drift_finalization_operation_id": {
             "source": "operation_id",
             "node_id": "thinking_session_closure_drift_finalize"
-          }
-        }
-      },
-      {
-        "node_id": "thinking_session_close_record",
-        "fields": {
-          "decision_operation_id": {
-            "source": "operation_id",
-            "node_id": "thinking_session_closure_decide"
-          }
-        }
-      },
-      {
-        "node_id": "thinking_session_close_checkpoint",
-        "fields": {
-          "record_operation_id": {
-            "source": "operation_id",
-            "node_id": "thinking_session_close_record"
-          }
-        }
-      },
-      {
-        "node_id": "thinking_session_close_finalize",
-        "fields": {
-          "record_operation_id": {
-            "source": "operation_id",
-            "node_id": "thinking_session_close_record"
-          },
-          "checkpoint_operation_id": {
-            "source": "operation_id",
-            "node_id": "thinking_session_close_checkpoint"
           }
         }
       },
@@ -5863,12 +5928,8 @@
         }
       },
       {
-        "node_id": "exploring_session_closure_decide",
+        "node_id": "exploring_session_closure",
         "fields": {
-          "contract_version": {
-            "source": "literal",
-            "value": "standard-session-closure-review-input.v1"
-          },
           "admission_operation_id": {
             "source": "operation_id",
             "node_id": "exploring_session_close_admit"
@@ -5880,37 +5941,6 @@
           "drift_finalization_operation_id": {
             "source": "operation_id",
             "node_id": "exploring_session_closure_drift_finalize"
-          }
-        }
-      },
-      {
-        "node_id": "exploring_session_close_record",
-        "fields": {
-          "decision_operation_id": {
-            "source": "operation_id",
-            "node_id": "exploring_session_closure_decide"
-          }
-        }
-      },
-      {
-        "node_id": "exploring_session_close_checkpoint",
-        "fields": {
-          "record_operation_id": {
-            "source": "operation_id",
-            "node_id": "exploring_session_close_record"
-          }
-        }
-      },
-      {
-        "node_id": "exploring_session_close_finalize",
-        "fields": {
-          "record_operation_id": {
-            "source": "operation_id",
-            "node_id": "exploring_session_close_record"
-          },
-          "checkpoint_operation_id": {
-            "source": "operation_id",
-            "node_id": "exploring_session_close_checkpoint"
           }
         }
       },

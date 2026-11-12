@@ -1,7 +1,7 @@
 {
   "contract_version": "standard-workflow-catalog.v4",
   "component_id": "aidn-standard",
-  "revision": 296,
+  "revision": 297,
   "scope": {
     "kind": "composed_committing_cycle_component",
     "complete_standard_workflow": false,
@@ -24,9 +24,9 @@
   },
   "model": {
     "path": "package/catalogs/process-models/aidn-standard.v1.json",
-    "sha256": "594a1c71bbc900fda486e7927c140cc82aa91d328e95b29b06e4e62436c17d84",
+    "sha256": "d5db8c2891d4b88875e5eb268a5d14c1ffa5cbf5504b021447c057cc54644ccd",
     "model_id": "aidn-standard",
-    "revision": 296
+    "revision": 297
   },
   "specification": {
     "path": "docs/SPEC.md",
@@ -3531,119 +3531,6 @@
       }
     },
     {
-      "node_id": "thinking_session_closure_decide",
-      "binding": {
-        "contract_version": "process-operation-binding.v1",
-        "id": "session_closure_decision",
-        "revision": 1,
-        "executor_kind": "human",
-        "effect_class": "read-only",
-        "skill_id": "close-session",
-        "input_contract": "standard-session-closure-review-input.v1",
-        "output_contract": "standard-session-closure-decision-output.v1",
-        "rule_refs": [
-          "SPEC-R05",
-          "SPEC-R07",
-          "SPEC-R11"
-        ],
-        "allowed_modes": [
-          "THINKING",
-          "EXPLORING",
-          "COMMITTING"
-        ],
-        "implementation_sha256": "4e0fe218444ec2670f23b6697605f6325e23b3917bf86fe1eaf5bfd401c19a1a"
-      },
-      "skill_source": {
-        "path": "scaffold/codex/aidn-close-session/SKILL.md",
-        "sha256": "39135f4a60cfc25b886ffa2d90282c531dafc969c0001d9ba73c3e8b04995ec9"
-      }
-    },
-    {
-      "node_id": "thinking_session_close_record",
-      "binding": {
-        "contract_version": "process-operation-binding.v1",
-        "id": "session_close_record",
-        "revision": 1,
-        "executor_kind": "deterministic",
-        "effect_class": "mutating",
-        "skill_id": "close-session",
-        "input_contract": "standard-session-close-input.v1",
-        "output_contract": "standard-session-close-output.v1",
-        "rule_refs": [
-          "SPEC-R05",
-          "SPEC-R07",
-          "SPEC-R11"
-        ],
-        "allowed_modes": [
-          "THINKING",
-          "EXPLORING",
-          "COMMITTING"
-        ],
-        "implementation_sha256": "4e0fe218444ec2670f23b6697605f6325e23b3917bf86fe1eaf5bfd401c19a1a"
-      },
-      "skill_source": {
-        "path": "scaffold/codex/aidn-close-session/SKILL.md",
-        "sha256": "39135f4a60cfc25b886ffa2d90282c531dafc969c0001d9ba73c3e8b04995ec9"
-      }
-    },
-    {
-      "node_id": "thinking_session_close_checkpoint",
-      "binding": {
-        "contract_version": "process-operation-binding.v1",
-        "id": "session_close_checkpoint",
-        "revision": 1,
-        "executor_kind": "deterministic",
-        "effect_class": "mutating",
-        "skill_id": "close-session",
-        "input_contract": "standard-session-close-checkpoint-input.v1",
-        "output_contract": "standard-session-close-checkpoint-output.v1",
-        "rule_refs": [
-          "SPEC-R05",
-          "SPEC-R07",
-          "SPEC-R11"
-        ],
-        "allowed_modes": [
-          "THINKING",
-          "EXPLORING",
-          "COMMITTING"
-        ],
-        "implementation_sha256": "4e0fe218444ec2670f23b6697605f6325e23b3917bf86fe1eaf5bfd401c19a1a"
-      },
-      "skill_source": {
-        "path": "scaffold/codex/aidn-close-session/SKILL.md",
-        "sha256": "39135f4a60cfc25b886ffa2d90282c531dafc969c0001d9ba73c3e8b04995ec9"
-      }
-    },
-    {
-      "node_id": "thinking_session_close_finalize",
-      "binding": {
-        "contract_version": "process-operation-binding.v1",
-        "id": "session_close_finalize",
-        "revision": 1,
-        "executor_kind": "deterministic",
-        "effect_class": "executor",
-        "skill_id": "close-session",
-        "input_contract": "standard-session-close-hook-input.v1",
-        "output_contract": "standard-session-close-hook-output.v1",
-        "rule_refs": [
-          "SPEC-R01",
-          "SPEC-R05",
-          "SPEC-R07",
-          "SPEC-R11"
-        ],
-        "allowed_modes": [
-          "THINKING",
-          "EXPLORING",
-          "COMMITTING"
-        ],
-        "implementation_sha256": "4e0fe218444ec2670f23b6697605f6325e23b3917bf86fe1eaf5bfd401c19a1a"
-      },
-      "skill_source": {
-        "path": "scaffold/codex/aidn-close-session/SKILL.md",
-        "sha256": "39135f4a60cfc25b886ffa2d90282c531dafc969c0001d9ba73c3e8b04995ec9"
-      }
-    },
-    {
       "node_id": "exploring_session_close_admit",
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3722,119 +3609,6 @@
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
         "sha256": "be09c8ac54deff056e19d5f3e56b00fc21571aafa84777626a632479a25e44dd"
-      }
-    },
-    {
-      "node_id": "exploring_session_closure_decide",
-      "binding": {
-        "contract_version": "process-operation-binding.v1",
-        "id": "session_closure_decision",
-        "revision": 1,
-        "executor_kind": "human",
-        "effect_class": "read-only",
-        "skill_id": "close-session",
-        "input_contract": "standard-session-closure-review-input.v1",
-        "output_contract": "standard-session-closure-decision-output.v1",
-        "rule_refs": [
-          "SPEC-R05",
-          "SPEC-R07",
-          "SPEC-R11"
-        ],
-        "allowed_modes": [
-          "THINKING",
-          "EXPLORING",
-          "COMMITTING"
-        ],
-        "implementation_sha256": "4e0fe218444ec2670f23b6697605f6325e23b3917bf86fe1eaf5bfd401c19a1a"
-      },
-      "skill_source": {
-        "path": "scaffold/codex/aidn-close-session/SKILL.md",
-        "sha256": "39135f4a60cfc25b886ffa2d90282c531dafc969c0001d9ba73c3e8b04995ec9"
-      }
-    },
-    {
-      "node_id": "exploring_session_close_record",
-      "binding": {
-        "contract_version": "process-operation-binding.v1",
-        "id": "session_close_record",
-        "revision": 1,
-        "executor_kind": "deterministic",
-        "effect_class": "mutating",
-        "skill_id": "close-session",
-        "input_contract": "standard-session-close-input.v1",
-        "output_contract": "standard-session-close-output.v1",
-        "rule_refs": [
-          "SPEC-R05",
-          "SPEC-R07",
-          "SPEC-R11"
-        ],
-        "allowed_modes": [
-          "THINKING",
-          "EXPLORING",
-          "COMMITTING"
-        ],
-        "implementation_sha256": "4e0fe218444ec2670f23b6697605f6325e23b3917bf86fe1eaf5bfd401c19a1a"
-      },
-      "skill_source": {
-        "path": "scaffold/codex/aidn-close-session/SKILL.md",
-        "sha256": "39135f4a60cfc25b886ffa2d90282c531dafc969c0001d9ba73c3e8b04995ec9"
-      }
-    },
-    {
-      "node_id": "exploring_session_close_checkpoint",
-      "binding": {
-        "contract_version": "process-operation-binding.v1",
-        "id": "session_close_checkpoint",
-        "revision": 1,
-        "executor_kind": "deterministic",
-        "effect_class": "mutating",
-        "skill_id": "close-session",
-        "input_contract": "standard-session-close-checkpoint-input.v1",
-        "output_contract": "standard-session-close-checkpoint-output.v1",
-        "rule_refs": [
-          "SPEC-R05",
-          "SPEC-R07",
-          "SPEC-R11"
-        ],
-        "allowed_modes": [
-          "THINKING",
-          "EXPLORING",
-          "COMMITTING"
-        ],
-        "implementation_sha256": "4e0fe218444ec2670f23b6697605f6325e23b3917bf86fe1eaf5bfd401c19a1a"
-      },
-      "skill_source": {
-        "path": "scaffold/codex/aidn-close-session/SKILL.md",
-        "sha256": "39135f4a60cfc25b886ffa2d90282c531dafc969c0001d9ba73c3e8b04995ec9"
-      }
-    },
-    {
-      "node_id": "exploring_session_close_finalize",
-      "binding": {
-        "contract_version": "process-operation-binding.v1",
-        "id": "session_close_finalize",
-        "revision": 1,
-        "executor_kind": "deterministic",
-        "effect_class": "executor",
-        "skill_id": "close-session",
-        "input_contract": "standard-session-close-hook-input.v1",
-        "output_contract": "standard-session-close-hook-output.v1",
-        "rule_refs": [
-          "SPEC-R01",
-          "SPEC-R05",
-          "SPEC-R07",
-          "SPEC-R11"
-        ],
-        "allowed_modes": [
-          "THINKING",
-          "EXPLORING",
-          "COMMITTING"
-        ],
-        "implementation_sha256": "4e0fe218444ec2670f23b6697605f6325e23b3917bf86fe1eaf5bfd401c19a1a"
-      },
-      "skill_source": {
-        "path": "scaffold/codex/aidn-close-session/SKILL.md",
-        "sha256": "39135f4a60cfc25b886ffa2d90282c531dafc969c0001d9ba73c3e8b04995ec9"
       }
     },
     {
@@ -5366,6 +5140,139 @@
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
         "sha256": "9ac22075bcfe9407059e693db9d0dd43c1d0e0e50b81667bff8685e1d7c7b814"
+      }
+    },
+    {
+      "node_id": "session_closure_decide",
+      "model_ref": {
+        "model_id": "aidn-standard-mode-session-closure",
+        "revision": 1,
+        "model_sha256": "33ba81223480ec6479f90e2358db0147c8b5e92bd16ccefa3fe588a32708f06d"
+      },
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "session_closure_decision",
+        "revision": 1,
+        "executor_kind": "human",
+        "effect_class": "read-only",
+        "skill_id": "close-session",
+        "input_contract": "standard-session-closure-review-input.v1",
+        "output_contract": "standard-session-closure-decision-output.v1",
+        "rule_refs": [
+          "SPEC-R05",
+          "SPEC-R07",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "THINKING",
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "4e0fe218444ec2670f23b6697605f6325e23b3917bf86fe1eaf5bfd401c19a1a"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-close-session/SKILL.md",
+        "sha256": "39135f4a60cfc25b886ffa2d90282c531dafc969c0001d9ba73c3e8b04995ec9"
+      }
+    },
+    {
+      "node_id": "session_close_record",
+      "model_ref": {
+        "model_id": "aidn-standard-mode-session-closure",
+        "revision": 1,
+        "model_sha256": "33ba81223480ec6479f90e2358db0147c8b5e92bd16ccefa3fe588a32708f06d"
+      },
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "session_close_record",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "mutating",
+        "skill_id": "close-session",
+        "input_contract": "standard-session-close-input.v1",
+        "output_contract": "standard-session-close-output.v1",
+        "rule_refs": [
+          "SPEC-R05",
+          "SPEC-R07",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "THINKING",
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "4e0fe218444ec2670f23b6697605f6325e23b3917bf86fe1eaf5bfd401c19a1a"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-close-session/SKILL.md",
+        "sha256": "39135f4a60cfc25b886ffa2d90282c531dafc969c0001d9ba73c3e8b04995ec9"
+      }
+    },
+    {
+      "node_id": "session_close_checkpoint",
+      "model_ref": {
+        "model_id": "aidn-standard-mode-session-closure",
+        "revision": 1,
+        "model_sha256": "33ba81223480ec6479f90e2358db0147c8b5e92bd16ccefa3fe588a32708f06d"
+      },
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "session_close_checkpoint",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "mutating",
+        "skill_id": "close-session",
+        "input_contract": "standard-session-close-checkpoint-input.v1",
+        "output_contract": "standard-session-close-checkpoint-output.v1",
+        "rule_refs": [
+          "SPEC-R05",
+          "SPEC-R07",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "THINKING",
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "4e0fe218444ec2670f23b6697605f6325e23b3917bf86fe1eaf5bfd401c19a1a"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-close-session/SKILL.md",
+        "sha256": "39135f4a60cfc25b886ffa2d90282c531dafc969c0001d9ba73c3e8b04995ec9"
+      }
+    },
+    {
+      "node_id": "session_close_finalize",
+      "model_ref": {
+        "model_id": "aidn-standard-mode-session-closure",
+        "revision": 1,
+        "model_sha256": "33ba81223480ec6479f90e2358db0147c8b5e92bd16ccefa3fe588a32708f06d"
+      },
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "session_close_finalize",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "executor",
+        "skill_id": "close-session",
+        "input_contract": "standard-session-close-hook-input.v1",
+        "output_contract": "standard-session-close-hook-output.v1",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R05",
+          "SPEC-R07",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "THINKING",
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "4e0fe218444ec2670f23b6697605f6325e23b3917bf86fe1eaf5bfd401c19a1a"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-close-session/SKILL.md",
+        "sha256": "39135f4a60cfc25b886ffa2d90282c531dafc969c0001d9ba73c3e8b04995ec9"
       }
     }
   ],

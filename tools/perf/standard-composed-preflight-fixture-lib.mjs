@@ -15,6 +15,8 @@ const verificationTargetId = "aidn-standard-final-verification", reviewTargetId 
 const reviewCaptureTargetId = "aidn-standard-pr-review-capture";
 const callSites = new Map([
   ["session_setup", { model_id: "aidn-standard-session-setup", prefix: "" }],
+  ["thinking_session_closure", { model_id: "aidn-standard-mode-session-closure", prefix: "thinking_" }],
+  ["exploring_session_closure", { model_id: "aidn-standard-mode-session-closure", prefix: "exploring_" }],
   ["session_pr_review_capture", { model_id: reviewCaptureTargetId, prefix: "session_" }],
   ["correction_pr_review_capture", { model_id: reviewCaptureTargetId, prefix: "correction_" }],
   ["final_verification", { model_id: verificationTargetId, prefix: "" }],

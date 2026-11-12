@@ -171,7 +171,7 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
         expectedHead = checkpoint.commit_sha;
       }
       if (record.intent.binding_ref === "mode_work_evaluate") { evaluation = output; if (!closeSession) break; }
-      if (record.intent.binding_ref === "session_close_finalize") { closure = output; break; }
+      if (record.intent.binding_ref === "session_close_finalize") closure = output;
       assert.equal(output?.outcome, "completed");
     } else {
       assert.equal(result.kind, "native"); assert.equal(result.journal_phase, "closed", JSON.stringify({ phase: result.journal_phase, status: result.status, failure: result.first_failure }));
