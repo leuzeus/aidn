@@ -1,5 +1,19 @@
 # Testing Guide
 
+## Native epoch fixture clock sampling
+
+Initial-entry and continuation fixtures build each fresh authorization from one
+clock sample. The workflow and global deadlines keep their original ten-minute
+or four-minute duration and agree even when the clock advances between reads.
+A ticking-clock regression exercises the real authorization validator and
+checks that the original authorization remains unchanged.
+
+The targeted selectors are `--native-initial-epoch-mode=files|dual|db-only`
+and `--native-epoch-mode=files|dual|db-only` on
+`verify-agentic-process-execution-fixtures.mjs`. These are controlled fixture
+checks. Native budgets, expiry checks, source authentication and resource-closure
+requirements in production remain unchanged.
+
 ## Required STANDARD review effects and current OPEN work
 
 The required agentic corpus runs the R08 reply cases `normal`, `lost`,

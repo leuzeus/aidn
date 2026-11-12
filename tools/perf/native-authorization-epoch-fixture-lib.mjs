@@ -6,8 +6,32 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { assertNativeAllocationJournal } from "../../src/core/workflow/native-allocation-journal.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { createOperationJournalSigner } from "../../src/core/workflow/process-operation-journal.mjs";
+import { assertNativeAuthorization } from "../../src/core/workflow/native-authorization-epoch.mjs";
+
+function freshFixtureEpochAuthorization(original, durationMs, overrides = {}) {
+  const authorizedAt = Date.now();
+  return { ...original, ...overrides, authorized_at_ms: authorizedAt,
+    global_deadline_ms: authorizedAt + durationMs, workflow_deadline_ms: authorizedAt + durationMs };
+}
 
 export async function verifyInitialNativeAuthorizationEpochs(check, { journalFixture, mixedFixture, bootstrapMixed }) {
+  await check("native initial epoch files: fixture grants remain valid across millisecond clock ticks", () => {
+    const realNow = Date.now, start = realNow();
+    const original = { approved: true, model_allowed: true, configuration_sha256: "a".repeat(64),
+      authorized_at_ms: start, global_deadline_ms: start + 600000, workflow_deadline_ms: start + 600000,
+      max_turn_ms: 300000, max_responses: 9, max_bytes: 33554432 };
+    const before = structuredClone(original);
+    try {
+      for (const durationMs of [600000, 240000]) {
+        let reads = 0; Date.now = () => start + reads++;
+        const authorization = freshFixtureEpochAuthorization(original, durationMs);
+        assertNativeAuthorization(authorization);
+        assert.equal(authorization.global_deadline_ms - authorization.authorized_at_ms, durationMs);
+        assert.equal(authorization.workflow_deadline_ms, authorization.global_deadline_ms);
+        assert.deepEqual(original, before);
+      }
+    } finally { Date.now = realNow; }
+  });
   for (const mode of ["files", "dual", "db-only"]) await check(`native initial epoch ${mode}: expired unused original grant retains zero-allocation origin and requires authenticated scope closure`, async () => {
     const f = journalFixture({ stateMode: mode, git: true }), original = f.authorize(), realNow = Date.now;
     assert.throws(() => f.open().prepareAuthorizationEpoch({ originalAuthorization: original }), /INITIAL_AUTHORIZATION_NOT_EXPIRED/);
@@ -15,8 +39,7 @@ export async function verifyInitialNativeAuthorizationEpochs(check, { journalFix
     let lastGrant, mutation, verified = 0;
     const source = { async read({ request }) {
       lastGrant = { contract_version: "native-authorization-epoch-grant.v1", authority_id: "fixture_initial_consent", source_event_id: `initial-${request.epoch}`,
-        request_sha256: shadowHash(request), authorization: { ...original, authorized_at_ms: Date.now(), global_deadline_ms: Date.now() + 600000,
-          workflow_deadline_ms: Date.now() + 600000, max_responses: 10 },
+        request_sha256: shadowHash(request), authorization: freshFixtureEpochAuthorization(original, 600000, { max_responses: 10 }),
         closure: { contract_version: "native-resource-closure.v1", request_sha256: shadowHash(request), inventory_sha256: shadowHash(request.resources),
           observed_at_ms: Date.now(), complete: true, active_resources: 0, evidence_class: "fixture",
           resources: request.resources.map(resource => ({ resource_sha256: shadowHash(resource), state: "closed", evidence_refs: [{ ref: "fixture:scope-resource-discovery", sha256: shadowHash(resource) }] })) },
@@ -68,8 +91,7 @@ export async function verifyInitialNativeAuthorizationEpochs(check, { journalFix
     const source = { async read({ request }) {
       reads++;
       grant = { contract_version: "native-authorization-epoch-grant.v1", authority_id: "fixture_initial_consent", source_event_id: "mixed-initial-epoch",
-        request_sha256: shadowHash(request), authorization: { ...request.initial_authorization, authorized_at_ms: Date.now(),
-          global_deadline_ms: Date.now() + 600000, workflow_deadline_ms: Date.now() + 600000 },
+        request_sha256: shadowHash(request), authorization: freshFixtureEpochAuthorization(request.initial_authorization, 600000),
         closure: { contract_version: "native-resource-closure.v1", request_sha256: shadowHash(request), inventory_sha256: shadowHash(request.resources),
           observed_at_ms: Date.now(), complete: true, active_resources: 0, evidence_class: "fixture",
           resources: request.resources.map(resource => ({ resource_sha256: shadowHash(resource), state: "closed", evidence_refs: [{ ref: "fixture:scope-discovery", sha256: shadowHash(resource) }] })) },
@@ -115,8 +137,7 @@ export async function verifyNativeAuthorizationEpochs(check, { readyResumeFixtur
       await assert.rejects(h.activateAuthorizationEpoch(request, { write: true, sourceRef: "fresh" }), /AUTHENTICATED_SOURCE_REQUIRED/);
       let grant, mutation = null, reads = 0, verified = 0, refuse = false;
       const createGrant = () => ({ contract_version: "native-authorization-epoch-grant.v1", authority_id: "fixture_human_and_resource_owner", source_event_id: `fresh-consent-${request.epoch}`,
-        request_sha256: shadowHash(request), authorization: { ...original, authorized_at_ms: Date.now(), global_deadline_ms: Date.now() + 240000,
-          workflow_deadline_ms: Date.now() + 240000, max_responses: 9, max_bytes: original.max_bytes + 1048576 },
+        request_sha256: shadowHash(request), authorization: freshFixtureEpochAuthorization(original, 240000, { max_responses: 9, max_bytes: original.max_bytes + 1048576 }),
         closure: { contract_version: "native-resource-closure.v1", request_sha256: shadowHash(request), inventory_sha256: shadowHash(request.resources),
           observed_at_ms: Date.now(), complete: true, active_resources: 0, evidence_class: "fixture",
           resources: request.resources.map(row => ({ resource_sha256: shadowHash(row), state: "closed", evidence_refs: [{ ref: "fixture:closed-resource", sha256: shadowHash(row) }] })) },
@@ -219,8 +240,7 @@ export async function verifyNativeAuthorizationEpochs(check, { readyResumeFixtur
     const nativeAuthorizationSource = { async read({ request }) {
       sourceReads++;
       lastGrant = { contract_version: "native-authorization-epoch-grant.v1", authority_id: "fixture_explicit_consent", source_event_id: "mixed-epoch-2",
-        request_sha256: shadowHash(request), authorization: { ...request.initial_authorization, authorized_at_ms: Date.now(),
-          global_deadline_ms: Date.now() + 240000, workflow_deadline_ms: Date.now() + 240000, max_responses: 8 },
+        request_sha256: shadowHash(request), authorization: freshFixtureEpochAuthorization(request.initial_authorization, 240000, { max_responses: 8 }),
         closure: { contract_version: "native-resource-closure.v1", request_sha256: shadowHash(request), inventory_sha256: shadowHash(request.resources),
           observed_at_ms: Date.now(), complete: true, active_resources: 0, evidence_class: "fixture",
           resources: request.resources.map(row => ({ resource_sha256: shadowHash(row), state: "closed", evidence_refs: [{ ref: "fixture:resource-closure", sha256: shadowHash(row) }] })) },
