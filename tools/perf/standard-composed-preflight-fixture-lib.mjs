@@ -8,7 +8,7 @@ import { resolveProcessCallData } from "../../src/core/workflow/process-call-dat
 import { resolveProcessFrameInput } from "../../src/core/workflow/process-frame-input.mjs";
 
 const H = "a".repeat(64), fail = code => { throw Object.assign(Error(code), { code }); };
-const stops = { session_pr_correction_decide: "session_pr_correction_decide", plan: "plan", task_select: "task_select", cycle_admit: "cycle_admit", closure_decide: "closure_decide", promotion_decide: "promotion_decide" };
+const stops = { session_pr_correction_decide: "session_pr_correction_decide", plan: "plan", task_select: "task_select", audit_select: "audit_select", cycle_admit: "cycle_admit", closure_decide: "closure_decide", promotion_decide: "promotion_decide" };
 const keys = (v, names) => v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).sort().join() === [...names].sort().join();
 const effectsPendingNode = "pr_premerge_observe";
 const verificationTargetId = "aidn-standard-final-verification", reviewTargetId = "aidn-standard-pr-review-completion";

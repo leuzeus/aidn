@@ -1,5 +1,24 @@
 # Testing Guide
 
+## Delivered root work from an owned OPEN plan candidate, 2026-11-12
+
+The focused `--standard-existing-open-work-mode=files|dual|db-only` cases load
+the exact delivered STANDARD model, arrange an owned canonical two-task plan,
+then execute entry, adoption, selection, DoR, implementation, scoped work, real
+checks and advancement through the final-verification call. They stop before
+auditor selection. One startup and two task responses use identified Native
+doubles; no planner or imported task receipt is supplied. Each product write
+first requires actual Native write admission. The case checks progress linkage,
+three actual test checks, unchanged declared write scope, stable intent
+documents and classification metadata, the original traceability plus its exact
+accepted verification evidence append and refreshed DB `updated_at`, same
+cycle/branch/HEAD, owner clearance and streamed exact replay. Metadata CAS still
+binds the full preimage fingerprint, including its prior timestamp.
+The six-response/10-MiB finite fixture grant is established before its first
+allocation. The symbolic `audit_select` stop sizes three responses only and
+provides no business authority. This remains separate from genuine actors,
+imported progress, general phase resume, human cycle choices and archive proof.
+
 ## Isolated R05 mode preimages, 2026-11-12
 
 The report and authenticated recovery-review fixtures admit their canonical

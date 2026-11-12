@@ -27,6 +27,11 @@ test("owned OPEN entry budget skips creation and planning in the delivered model
   for (const id of ["cycle_admit", "cycle_initialize", "plan_evaluate", "plan_record"]) assert.equal(result.operations.includes(id), false);
   assert.ok(result.operations.indexOf("cycle_refresh_before") < result.operations.indexOf("cycle_entry_observe"));
   assert.equal(result.operations.includes("session_git_checkpoint"), false);
+  const work = preflightStandardComposedFixture({ model, scenario: { ...scenario, task_iterations: 2, cold_resume: false, max_responses: 6 }, stop: "audit_select", cycleEntry: "owned_open" });
+  assert.equal(work.responses_required, 3); assert.equal(work.original_max_responses, 6);
+  assert.deepEqual(work.native_occurrences.map(row => row.node_id), ["startup_drift_report", "implement", "implement"]);
+  assert.equal(work.operations.filter(id => id === "task_advance").length, 2); assert.ok(work.operations.includes("verification_enter"));
+  assert.equal(work.operations.includes("audit_select"), false); assert.equal(work.replay_exact, true); assert.equal(work.write_authorization, false);
   assert.equal(result.replay_exact, true); assert.equal(result.write_authorization, false);
 });
 test("setup uses pinned call data and deterministic/H operations without another native response", () => {
