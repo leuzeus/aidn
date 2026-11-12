@@ -173,6 +173,7 @@ new URL("standard-cycle-implementation.mjs", import.meta.url), new URL("../../co
   new URL("standard-drift-objective-disposition.mjs", import.meta.url),
   new URL("standard-drift-objective-completion.mjs", import.meta.url),
   new URL("../../core/gating/gating-signal-policy.mjs", import.meta.url),
+  new URL("../../core/gating/fallback-history-policy.mjs", import.meta.url),
   new URL("cycle-close-hook-use-case.mjs", import.meta.url),
   ...["standard-drift-objective-disposition.v1", "standard-drift-finalize-plan.v3", "human-drift-recovery-decision.v2", "standard-drift-recovery-question.v2", "standard-drift-recovery-plan.v2", "process-decision-inbox.v12"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
   ...["human-drift-recovery-decision.v1", "standard-drift-recovery-question.v1", "standard-drift-recovery-plan.v1", "standard-drift-recovery-output.v1", "standard-drift-recovery-record-input.v1", "process-decision-inbox.v2"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),

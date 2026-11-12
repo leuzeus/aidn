@@ -1,5 +1,20 @@
 # Testing Guide
 
+## R05 review after expected compound R03 invalidation, 2026-11-12
+
+The required drift-recovery fixture covers both a single artifact invalidation
+and a real DUAL/SQLite cache retained from before session/cycle construction.
+The latter produces combined branch, HEAD, artifact, active-cycle and digest
+reasons. A fresh cache must preserve the original accepted review bytes and
+canonical business witnesses while intent is reread. Unknown reasons, an
+unexplained digest, state-mode fallback, stop, changed context and changed live
+intent still refuse. The model fixture also checks that the shared policy
+bytes are fresh direct STANDARD and process implementation pins.
+
+These are controlled component capabilities with real R03/cache/store ports
+and no Native allocation. The original full corrective journey failed at its
+cycle checkpoint; only a separate fresh full journey can qualify that path.
+
 ## Existing canonical session entry, 2026-11-12
 
 The default required startup-mode fixture also runs the existing-session entry
@@ -103,6 +118,9 @@ unchanged209-command manifest prefix. Full210 and genuine actor qualification
 remain separate requirements. Unexpected failures retain their original realms.
 
 ## Retained objective review across R03 cache refresh, 2026-11-11
+
+The original singleton scope below is historical. The 2026-11-12 compound
+invalidation coverage above supersedes its reason-set restriction.
 
 The focused recovery component builds an actual DUAL project, session and
 cycle through source ports, then writes a valid process instance through the

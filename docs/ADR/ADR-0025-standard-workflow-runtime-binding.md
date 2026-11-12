@@ -1,5 +1,22 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Amendment — expected R03 cache invalidation sets, 2026-11-12
+
+This supersedes the two singleton-only cache cases in the 2026-11-11 R03
+stability amendment. Accepted primary and linked objective reviews preserve
+their original level1 constraints when an expected full/fallback cache state
+becomes exactly incremental/no-fallback/no-reason. The existing R03 policy
+classifies expected invalidation combinations; DIGEST_MISS requires at least
+one explaining expected reason. Unknown and state-mode fallback reasons do
+not qualify.
+
+The current canonical context, evaluation, report, objectives, other signals
+and level3 constraints still have to match. This recognizes cache provenance
+after an authorized checkpoint; it does not accept changed branch/HEAD/cycle
+subjects. No review, receipt or timestamp is rewritten, no age limit is added,
+and issuer validity, Native bounds and effect authorization remain separate.
+The fallback-history recency window and classification behavior are unchanged.
+
 ## Amendment — entry on an existing canonical session, 2026-11-12
 
 A new STANDARD instance can attach to an admitted existing session. Its
@@ -66,6 +83,9 @@ source components and published recovery-call fixture remain distinct from
 genuine actors, full STANDARD and installed/archive qualification.
 
 ## Amendment — R03 cache stability during R05 revalidation, 2026-11-11
+
+Reason-set matching is superseded by the 2026-11-12 amendment above; the
+original measured singleton scope remains historical evidence.
 
 Revalidation of a retained primary or linked objective review always rereads
 intent, including on the no-change fast path. A cache refresh from exactly

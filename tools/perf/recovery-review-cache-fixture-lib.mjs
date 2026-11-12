@@ -16,12 +16,17 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 
 // Actual SQLite/DUAL source ports, runtime record and R03 cache. Evaluation
 // and context capabilities are fixtures; this allocates no Native resource.
-export async function verifyRecoveryReviewCache(pass) {
+export async function verifyRecoveryReviewCache(pass, { combinedCache = false } = {}) {
   const owned = [], H = "a".repeat(64), operationId = "op_" + "b".repeat(40);
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^(?:AIDN_|NODE_OPTIONS$|NODE_PATH$|GIT_)/i.test(key)));
   let completed = false;
   try {
     const targetRoot = createFreshStandardWorkflowFixture("dual", owned);
+    const reload = () => runReloadCheckUseCase({ targetRoot, args: { cache: ".aidn/runtime/cache/reload-state.json", stateMode: "dual",
+      stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto", writeCache: true } });
+    // A real cache from before the new branch/cycle reproduces the corrective
+    // journey's combined invalidations, without replaying its failed effect.
+    if (combinedCache) assert.notEqual((await reload()).decision, "stop");
     const operations = createStandardWorkflowOperations({ targetRoot, environment: env });
     const git = (...args) => execFileSync("git", ["-C", targetRoot, "-c", "core.hooksPath=NUL", ...args], { windowsHide: true, env, maxBuffer: 8388608 });
     const checkpoint = message => { git("add", "."); git("commit", "--allow-empty", "-m", message); };
@@ -45,9 +50,7 @@ export async function verifyRecoveryReviewCache(pass) {
       "sessions/S001.md", "cycles/C001-feature-cache-review/status.md", "cycles/C001-feature-cache-review/brief.md"];
     const business = () => Object.fromEntries(names.map(name => [name, { sha256: artifacts.read(name).sha256, metadata_sha256: artifacts.metadataHash(name) }]));
     const beforeBusiness = business();
-    const reload = () => runReloadCheckUseCase({ targetRoot, args: { cache: ".aidn/runtime/cache/reload-state.json", stateMode: "dual",
-      stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto", writeCache: true } });
-    assert.notEqual((await reload()).decision, "stop");
+    if (!combinedCache) assert.notEqual((await reload()).decision, "stop");
     const model = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agentic-process/compatible-work-and-review.json", import.meta.url)));
     const instance = createAgenticProcess({ instanceId: "cache-transition-component", model, policyPins: agenticPolicyPins(model), scopeId: "fixture:cache-transition" });
     const instances = createAgenticProcessStore({ targetRoot, stateMode: "dual", env });
@@ -67,22 +70,29 @@ export async function verifyRecoveryReviewCache(pass) {
       readCurrent: () => ({ instance_sha256: H }) });
     const subject = { instance_id: "component-subject", instance_sha256: H }, input = { evaluation_operation_id: operationId };
     const original = await recovery.prepare(subject, input, operationId), originalBytes = JSON.stringify(original);
-    assert.deepEqual(original.plan.gate_constraints.level1, { decision: "full", fallback: true, reason_codes: ["ARTIFACTS_CHANGED"] });
+    if (combinedCache) {
+      const level = original.plan.gate_constraints.level1;
+      assert.equal(level.decision, "full"); assert.equal(level.fallback, true);
+      for (const reason of ["BRANCH_CHANGED", "HEAD_CHANGED", "ARTIFACTS_CHANGED", "ACTIVE_CYCLES_CHANGED", "DIGEST_MISS"])
+        assert.ok(level.reason_codes.includes(reason), JSON.stringify(level));
+    } else assert.deepEqual(original.plan.gate_constraints.level1, { decision: "full", fallback: true, reason_codes: ["ARTIFACTS_CHANGED"] });
     assert.notEqual((await reload()).decision, "stop");
     const fast = await observeStandardDriftGate(artifacts, "COMMITTING");
     assert.deepEqual(fast.levels.level1, { decision: "incremental", fallback: false, reason_codes: [] });
     assert.deepEqual(fast.levels.level2.active_signals, []);
     await recovery.assertFresh(subject, original.plan);
     assert.equal(JSON.stringify(original), originalBytes); assert.deepEqual(business(), beforeBusiness);
-    pass("original objective review survives actual DUAL cache refresh while intent is reobserved and business witnesses stay fixed");
-    const other = structuredClone(original.plan); other.gate_constraints.level1.reason_codes = ["OTHER_RELOAD_REASON"];
-    await assert.rejects(recovery.assertFresh(subject, other), { code: "STANDARD_RECOVERY_REVIEW_STALE" });
+    pass(`${combinedCache ? "combined" : "single"} invalidation: original review survives actual DUAL cache refresh with intent and business witnesses fixed`);
+    for (const reasons of [["OTHER_RELOAD_REASON"], ["DIGEST_MISS"], ["ARTIFACTS_CHANGED", "STATE_MODE_FALLBACK"]]) {
+      const other = structuredClone(original.plan); other.gate_constraints.level1.reason_codes = reasons;
+      await assert.rejects(recovery.assertFresh(subject, other), { code: "STANDARD_RECOVERY_REVIEW_STALE" });
+    }
     const stop = structuredClone(original.plan); stop.gate_constraints.level1.decision = "stop";
     await assert.rejects(recovery.assertFresh(subject, stop), { code: "STANDARD_OBJECTIVE_REVIEW_INVALID" });
     changedContext = true;
     await assert.rejects(recovery.assertFresh(subject, original.plan), { code: "STANDARD_RECOVERY_REVIEW_STALE" });
     changedContext = false; assert.deepEqual(business(), beforeBusiness);
-    pass("cache normalization rejects another R03 reason, a stop and changed context");
+    pass(`${combinedCache ? "combined" : "single"} invalidation: unexplained digest, unknown/fallback reasons, stop and changed context still refuse`);
     const session = artifacts.read("sessions/S001.md"); assert.equal((session.content.match(/^session_objective:.*$/gm) ?? []).length, 1);
     await artifacts.withLocalEffectOwner(shadowHash({ fixture: "cache-review-changed-intent", path: session.path, before_sha256: session.sha256 }), async () => {
       artifacts.compareAndSwapPreservingMetadata({ path: session.path, before_sha256: session.sha256,
@@ -91,7 +101,7 @@ export async function verifyRecoveryReviewCache(pass) {
     });
     await assert.rejects(recovery.assertFresh(subject, original.plan), { code: "STANDARD_OBJECTIVE_REVIEW_INVALID" });
     assert.equal(JSON.stringify(original), originalBytes);
-    pass("changed live intent cannot reuse the retained review after cache normalization");
+    pass(`${combinedCache ? "combined" : "single"} invalidation: changed live intent cannot reuse the retained review`);
     completed = true;
   } finally {
     if (!completed) console.error("Cache-review component fixtures retained for diagnosis: " + JSON.stringify(owned));

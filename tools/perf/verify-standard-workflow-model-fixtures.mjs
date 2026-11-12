@@ -20,8 +20,9 @@ function fresh() {
 let checks = 0;
 function test(name, run) { run(); checks++; process.stdout.write(`PASS ${name}\n`); }
 function reject(name, mutate, code) { test(name, () => { const input = fresh(); mutate(input); assert.throws(() => verifyStandardWorkflowStartupAssets(input), { code }); }); }
-test("activation implementation bytes are direct fresh standard and process pins", () => {
-  const relative = "src/application/install/project-activation-service.mjs", url = new URL(relative, root);
+for (const relative of ["src/application/install/project-activation-service.mjs", "src/core/gating/fallback-history-policy.mjs"])
+test(relative + " bytes are direct fresh standard and process pins", () => {
+  const url = new URL(relative, root);
   const before = agenticProcessImplementationPins(), original = fs.readFileSync;
   assert.ok(before.files.some(row => row.path === relative)); assertStandardWorkflowImplementation();
   fs.readFileSync = function(file, ...args) {

@@ -1,5 +1,13 @@
 # Participants, roles and agentic control
 
+An accepted R05 objective review survives an expected R03 cache refresh,
+including compound invalidation reasons, when its authenticated canonical
+context and all other constraints are unchanged. The pure shared R03 reason
+classification carries no clock or permission decision. An unexplained digest,
+unknown or state-mode fallback reason, changed subject, intent or level3 still
+refuses; old
+review and result bytes remain intact.
+
 STANDARD entry accepts a fresh or admitted existing canonical session. Its
 typed admission binds the requested ID, session branch and objective to current
 canonical content and metadata. An existing selected mode is retained; UNKNOWN

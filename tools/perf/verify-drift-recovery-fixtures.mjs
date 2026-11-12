@@ -324,6 +324,7 @@ for (const fault of ["none", "context-revocation", "context-aged", "wrong-link",
 }
 await verifyObjectiveCompletion(pass);
 await verifyRecoveryReviewCache(pass);
+await verifyRecoveryReviewCache(pass, { combinedCache: true });
 await verifyRecoveryCycleSelectionBoundaries(pass);
 forwardFixtureOutput(execFileSync(process.execPath, [fileURLToPath(new URL("./verify-standard-drift-route-fixtures.mjs", import.meta.url))], { encoding: "utf8", windowsHide: true, timeout: 15000, maxBuffer: 1048576 }));
 if (process.argv.includes("--objective-disposition-only")) {

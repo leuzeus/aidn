@@ -6,6 +6,7 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 // their separately retained build-lock/installed-version pins. npm distributions
 // exclude package-lock.json; direct code pins must use distributed assets only.
 const files = ["src/application/runtime/standard-reconciliation-inventory.mjs",
+  "src/core/gating/fallback-history-policy.mjs",
   "src/application/install/project-activation-service.mjs",
   "src/lib/fs/exact-file-identity.mjs",
   "src/core/workflow/process-reconciliation-inventory.mjs",

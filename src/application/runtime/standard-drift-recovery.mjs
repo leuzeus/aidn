@@ -12,6 +12,7 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifact-parser-lib.mjs";
 import { observeStandardDriftGate } from "./standard-drift-finalization.mjs";
 import { assertObjectiveReview, objectiveReviewChoices } from "../../core/workflow/standard-drift-objective-review.mjs";
+import { isExpectedReloadInvalidation } from "../../core/gating/fallback-history-policy.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const controls = ["parking-lot.md", "CURRENT-STATE.md"];
@@ -148,8 +149,8 @@ export function createStandardDriftRecovery({ targetRoot, readEvaluation, observ
       // bytes across these cache-only R03 transitions.
       // Live objective and all other gate constraints still have to match.
       const retainedGate = retainedObjectiveReview?.gate_constraints;
-      if (retainedGate && ["MISSING_CACHE", "ARTIFACTS_CHANGED"].some(reason =>
-        shadowHash(retainedGate.level1) === shadowHash({ decision: "full", fallback: true, reason_codes: [reason] }))
+      if (retainedGate?.level1.decision === "full" && retainedGate.level1.fallback === true
+        && isExpectedReloadInvalidation(retainedGate.level1.reason_codes)
         && shadowHash(constraints.level1) === shadowHash({ decision: "incremental", fallback: false, reason_codes: [] }))
         constraints.level1 = retainedGate.level1;
       const plan = assertObjectiveReview({ contract_version: "standard-drift-recovery-plan.v2", review_kind: "objective_signal_disagreement",
