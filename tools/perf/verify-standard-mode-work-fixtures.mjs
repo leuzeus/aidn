@@ -53,12 +53,24 @@ for (const [prefix, mode, disposition] of [["thinking", "THINKING", "thinking_co
     assert.equal(preflight.condition, "mode_" + prefix);
     assert.equal(preflight.node_id, prefix + "_admit");
     const closure = ["session_close_admit", "session_closure_drift_report", "session_closure_drift_evaluate",
-      "session_closure_drift_finalize", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize"]
+      "session_closure_drift_finalize", "session_closure"]
       .map(id => prefix + "_" + id);
     assert.deepEqual(node(prefix + "_handoff").children, prefix === "exploring"
       ? ["exploring_context_refresh", "exploring_git_checkpoint", "exploring_analysis_loop", "exploring_after_analysis"]
       : ["thinking_analysis_loop", ...closure]);
     if (prefix === "exploring") assert.deepEqual(node("exploring_session_close").children, closure);
+    const call = node(prefix + "_session_closure"), target = model.call_targets.find(row => row.model_id === call.target.model_id);
+    assert.equal(call.kind, "call"); assert.equal(target.model_id, "aidn-standard-mode-session-closure");
+    assert.deepEqual(call.target, { model_id: target.model_id, revision: target.revision, model_sha256: target.model_sha256 });
+    const suffix = target.model, ordered = ["session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize"];
+    assert.deepEqual(suffix.nodes.find(row => row.id === suffix.entry).children, ordered);
+    assert.deepEqual(ordered.map(id => suffix.nodes.find(row => row.id === id).binding_ref), ["session_closure_decision", "session_close_record", "session_close_checkpoint", "session_close_finalize"]);
+    assert.equal(suffix.nodes.some(row => row.kind === "activity" || row.kind === "call"), false);
+    const parameters = ["admission_operation_id", "drift_evaluation_operation_id", "drift_finalization_operation_id"];
+    assert.deepEqual(suffix.call_interface, { parameters: Object.fromEntries(parameters.map(key => [key, "string"])), returns: {} });
+    const fields = model.data_bindings.inputs.find(row => row.node_id === call.id).fields;
+    for (const [key, source] of [["admission_operation_id", "session_close_admit"], ["drift_evaluation_operation_id", "session_closure_drift_evaluate"], ["drift_finalization_operation_id", "session_closure_drift_finalize"]])
+      assert.deepEqual(fields[key], { source: "operation_id", node_id: prefix + "_" + source });
     assert.equal(model.policies.find(row => row.id === node(prefix + "_session_closure_drift_report").policy_ref).mode, mode);
     assert.deepEqual(node(prefix + "_analysis_iteration").children, [prefix + "_analysis", prefix + "_observe", ...(prefix === "exploring" ? ["spike_admit"] : []), prefix + "_after_report"]);
     assert.equal(node(prefix + "_analysis_loop").until, "mode_analysis_completed");
