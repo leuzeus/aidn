@@ -117,9 +117,9 @@ try {
         published.add(binding.id);
       }
     }
-    // Standalone compatibility bindings are covered by their own fixtures.
+    // Standalone components and compatibility bindings have their own fixtures.
     assert.deepEqual([...registered.keys()].filter(id => !published.has(id)).sort(),
-      ["cycle_entry_admit", "cycle_work_evaluate", "session_admit", "session_pr_merge_observe", "session_pr_post_merge_wait", "session_pr_review_observe"]);
+      ["cycle_entry_admit", "cycle_plan_adopt", "cycle_work_evaluate", "session_admit", "session_pr_merge_observe", "session_pr_post_merge_wait", "session_pr_review_observe"]);
     const legacyAdmission = registered.get("session_admit"), entryAdmission = registered.get("session_entry_admit");
     assert.equal(legacyAdmission.revision, 1); assert.equal(legacyAdmission.input_contract, "standard-empty-input.v1");
     assert.equal(legacyAdmission.output_contract, "standard-operation-output.v1");

@@ -4,6 +4,8 @@ import spikeExperimentOutput from "../contracts/workflow-definition/standard-spi
 import spikeExperimentOutputV2 from "../contracts/workflow-definition/standard-spike-experiment-admission-output.v2.schema.json" with { type: "json" };
 import spikeExperimentOutputV3 from "../contracts/workflow-definition/standard-spike-experiment-admission-output.v3.schema.json" with { type: "json" };
 import planSelectionOutput from "../contracts/workflow-definition/standard-cycle-plan-selection-output.v1.schema.json" with { type: "json" };
+import planAdoptionOutput from "../contracts/workflow-definition/standard-cycle-plan-adoption-output.v1.schema.json" with { type: "json" };
+import { assertStandardCyclePlan } from "./standard-cycle-planning.mjs";
 import spikeInitializeInput from "../contracts/workflow-definition/standard-spike-initialize-input.v1.schema.json" with { type: "json" };
 import spikeFinalizeInput from "../contracts/workflow-definition/standard-spike-finalize-input.v1.schema.json" with { type: "json" };
 import spikeOutput from "../contracts/workflow-definition/standard-spike-output.v1.schema.json" with { type: "json" };
@@ -196,7 +198,7 @@ export function assertStandardOperationInput(operation, value) {
       fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
   }
-  if (operation === "cycle_plan_select") {
+  if (["cycle_plan_select", "cycle_plan_adopt"].includes(operation)) {
     if (checkShadowJson(value) || validateJsonSchema(value, empty, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
   }
@@ -298,6 +300,25 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-cycle-plan-adoption-output.v1") {
+    const accepted = value.outcome === "completed", observed = value.observations;
+    if (checkShadowJson(value) || validateJsonSchema(value, planAdoptionOutput, "$", { contractKind: "workflow-definition" }).length
+      || shadowHash(value.facts) !== shadowHash(accepted ? { canonical_cycle_plan_available: true } : {})
+      || (observed.proposal !== null) !== accepted || (observed.original_plan_sha256 !== null) !== accepted
+      || accepted && observed.reason_code !== null || !accepted && !observed.reason_code
+      || new Set(observed.canonical.map(row => row.path)).size !== observed.canonical.length
+      || shadowHash(value.evidence_refs) !== shadowHash(observed.canonical.map(row => ({ ref: "audit:" + row.path, sha256: row.sha256 }))))
+      fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    if (accepted) {
+      try { assertStandardCyclePlan(observed.proposal); } catch { fail("STANDARD_OPERATION_OUTPUT_INVALID"); }
+      const names = ["brief", "plan", "audit-spec", "traceability"].map(name => `${observed.cycle_path}/${name}.md`);
+      const selected = names.map(name => observed.canonical.find(row => row.path === name));
+      if (observed.proposal.context_sha256 !== observed.context_sha256 || !observed.cycle_path.startsWith(`cycles/${observed.proposal.cycle_id}-`)
+        || selected.some(row => !row) || shadowHash(observed.proposal.evidence_refs) !== shadowHash(selected.map(row => ({ ref: "audit:" + row.path, sha256: row.sha256 }))))
+        fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    }
+    return value;
+  }
   if (value?.contract_version === "standard-cycle-entry-output.v1") {
     const action = value.observations?.action, blocked = action === "blocked";
     const expected = blocked ? {} : { cycle_entry_creation_allowed: action === "create_cycle", cycle_entry_resume_allowed: action === "resume_cycle", cycle_entry_choice_required: action === "choose_cycle" };

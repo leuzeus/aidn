@@ -77,6 +77,7 @@ import { createStandardDriftChangeRequest } from "./standard-drift-change-reques
 import { createStandardDriftRollback } from "./standard-drift-rollback.mjs";
 import { createStandardDriftCycle } from "./standard-drift-cycle.mjs";
 import { createStandardCyclePlanRecord } from "./standard-cycle-plan-record.mjs";
+import { createStandardCanonicalPlanAdoption } from "./standard-canonical-plan-adoption.mjs";
 import { createStandardCycleImplementation } from "./standard-cycle-implementation.mjs";
 import { createStandardCycleValidation } from "./standard-cycle-validation.mjs";
 import { createStandardCycleTaskAdvance } from "./standard-cycle-task-advance.mjs";
@@ -153,6 +154,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   if (controlSource != null && ![["read", "verify"], ["readReview", "verifyReview"]].some(pair => pair.every(key => typeof controlSource[key] === "function")))
     fail("STANDARD_HOST_CONTROL_CONFIGURATION_INVALID");
   const operations = createStandardWorkflowOperations({ targetRoot, now }), artifacts = createStandardWorkflowArtifacts({ targetRoot });
+  const canonicalPlanAdoption = processAuthority ? createStandardCanonicalPlanAdoption({ artifacts, scope: operations.observeScope,
+    observeContext: () => processAuthority.observeCycleReadinessContext(), admitEntry: input => operations.admitCycleEntry(input),
+    readCurrent: id => current(id).record }) : null;
   const spike = processAuthority ? createStandardSpikeConversion({ targetRoot, operations, now, readAcceptedOperation: acceptedForPromotion,
     observeModeWork: (instance, input) => processAuthority.observeModeWork(instance, input), verifyDecision: record => verifyHumanRecord(record),
     readCurrent: id => current(id).record, observeProduct: () => processAuthority.observeProduct() }) : null;
@@ -1399,6 +1403,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "spike_experiment_admit" ? await spike.experimentAdmission(state.record, input)
         : binding.id === "spike_experiment_execution_admit" ? await spike.experimentExecutionAdmission(state.record, input)
         : binding.id === "cycle_plan_select" ? await selectCyclePlan(state.record)
+        : binding.id === "cycle_plan_adopt" ? await canonicalPlanAdoption?.(state.record, input) ?? fail("STANDARD_CANONICAL_PLAN_AUTHORITY_UNAVAILABLE")
         : binding.id === "mode_work_preflight" ? await processAuthority?.preflightModeWork(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
         : binding.id === "mode_work_observe" ? await processAuthority?.observeModeWork(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
         : binding.id === "mode_work_continue_decision" ? await processAuthority?.prepareModeWorkContinuation(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
@@ -1672,6 +1677,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "spike_experiment_admit") output = await spike.experimentAdmission(state.record, record.preview.input);
         else if (record.intent.binding_ref === "spike_experiment_execution_admit") output = await spike.experimentExecutionAdmission(state.record, record.preview.input);
         else if (record.intent.binding_ref === "cycle_plan_select") output = await selectCyclePlan(state.record);
+        else if (record.intent.binding_ref === "cycle_plan_adopt") output = await canonicalPlanAdoption?.(state.record, record.preview.input) ?? fail("STANDARD_CANONICAL_PLAN_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "spike_cycle_initialize") output = await spike.initialize(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "spike_conversion_finalize") output = await spike.finalize(state.record, record.preview.prepared,

@@ -1,5 +1,20 @@
 # Testing Guide
 
+## Canonical plan adoption observation component, 2026-11-12
+
+The private `cycle_plan_adopt` operation observes a current owned OPEN plan
+without recording a new proposal or changing phase. Its contract distinguishes
+canonical provenance from Native evidence, leaves DoR and implementation
+permission pending, and permits no imported completed tasks in this first path.
+Current source, metadata, backend, scope, process and owner checks surround the
+actual entry admission. Task paths must fit the configured product scope.
+The execution fixture selects `--canonical-plan-adoption-mode=files|dual|db-only`
+for real canonical setup, context/entry ports, controlled refusal probes and
+signed dispatch with acceptance in a separate Node process. Planning preimages
+are fixture setup; the process-change probe is injected. FILES has no SQL-only
+metadata-writer case, which stays explicitly not applicable. Component results
+do not establish productive or installed existing-cycle routing.
+
 ## Canonical plan projection reader, 2026-11-12
 
 The cycle planning contract suite includes a pure projection of the existing

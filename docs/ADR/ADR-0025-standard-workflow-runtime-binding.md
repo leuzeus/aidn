@@ -1,5 +1,28 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Amendment — canonical plan adoption observation, 2026-11-12
+
+The owning host may observe an existing canonical plan through the distinct
+read-only `cycle_plan_adopt` operation. Its provenance is canonical plan content
+and metadata, not a fabricated Native proposal, evaluation or historical record.
+The closed projection must reproduce the current planning documents exactly.
+The selected backend, current branch/scope, process prefix, effect owner and
+actual cycle entry are rechecked around the host's asynchronous observations.
+Only the host supplies these readers; authored JSON supplies an empty input.
+
+The initial component is restricted to an owned COMMITTING OPEN cycle, pending
+tasks and paths inside the configured product scope. It imports no completed
+work, changes no canonical document or phase, and grants no implementation
+permission. Missing or ambiguous planning cannot be normalized or replaced by
+this observation. There is no preparation-age limit or new authority/store.
+
+The existing fresh Native planning chain and historical contracts remain
+separate. Readiness still requires its own accepted source and actual checks;
+registration of this observation does not yet connect that consumer or the
+published existing-cycle route. IMPLEMENTING/VERIFYING progress, carryover,
+human choices, productive resumption, genuine actors and installed archives
+retain their own required work and evidence.
+
 ## Amendment — R05 completion at corrective startup, 2026-11-12
 
 The owning host can bind a new COMMITTING startup plan v2 to the exact current
