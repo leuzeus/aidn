@@ -1,5 +1,18 @@
 # Testing Guide
 
+## Accepted canonical plan selection, 2026-11-12
+
+The focused `--canonical-plan-selection-mode=files|dual|db-only` cases execute
+signed cold canonical adoption, the actual read-only selector, real DoR and
+phase entry. The selector reobserves the canonical source and authenticates the
+accepted origin ID and record digest. Deliberately changed plan content must
+refuse in actual selector preview without changing process state; restoration
+is explicit fixture setup. No Native plan or completed task is fabricated.
+The focused `--cycle-plan-select-native-only` case inserts the same selector
+after one actual Native planning transport double and real plan recording,
+then retains ordinary DoR/phase assertions. These component cases do not prove
+published existing-cycle routing, imported progress, genuine actors or delivery.
+
 ## Current-instance task work from an adopted canonical plan, 2026-11-12
 
 The focused `--canonical-plan-work-only` FILES case prepares a neutral existing

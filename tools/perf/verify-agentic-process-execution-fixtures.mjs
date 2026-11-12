@@ -123,6 +123,8 @@ const standardComposedResume = process.argv.find(value => value.startsWith("--st
 const selectedStandardComposedMode = process.argv.find(value => value.startsWith("--standard-composed-mode="))?.slice("--standard-composed-mode=".length);
 const selectedCanonicalPlanAdoptionMode = process.argv.find(value => value.startsWith("--canonical-plan-adoption-mode="))?.slice("--canonical-plan-adoption-mode=".length);
 if (selectedCanonicalPlanAdoptionMode && !["files", "dual", "db-only"].includes(selectedCanonicalPlanAdoptionMode)) throw Error("CANONICAL_PLAN_ADOPTION_FIXTURE_MODE_INVALID");
+const selectedCanonicalPlanSelectionMode = process.argv.find(value => value.startsWith("--canonical-plan-selection-mode="))?.slice("--canonical-plan-selection-mode=".length);
+if (selectedCanonicalPlanSelectionMode && !["files", "dual", "db-only"].includes(selectedCanonicalPlanSelectionMode)) throw Error("CANONICAL_PLAN_SELECTION_FIXTURE_MODE_INVALID");
 const selectedCanonicalPlanReadinessMode = process.argv.find(value => value.startsWith("--canonical-plan-readiness-mode="))?.slice("--canonical-plan-readiness-mode=".length);
 if (selectedCanonicalPlanReadinessMode && !["files", "dual", "db-only"].includes(selectedCanonicalPlanReadinessMode)) throw Error("CANONICAL_PLAN_READINESS_FIXTURE_MODE_INVALID");
 const selectedModeWorkResumeMode = process.argv.find(value => value.startsWith("--standard-mode-work-resume-mode="))?.split("=")[1];
@@ -226,7 +228,7 @@ function retainComposedChild(controlRoot, label, child) {
 }
 let serial = 0, completed = false;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
-async function check(name, callback) { if (process.argv.includes("--canonical-plan-work-only") && !name.startsWith("canonical plan work files:")) return; if (selectedCanonicalPlanReadinessMode && !name.startsWith(`cycle plan readiness ${selectedCanonicalPlanReadinessMode}:`)) return; if (selectedCanonicalPlanAdoptionMode && !name.startsWith(`cycle plan adoption ${selectedCanonicalPlanAdoptionMode}:`)) return; if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
+async function check(name, callback) { if (process.argv.includes("--cycle-plan-select-native-only") && !name.startsWith("cycle plan selection native files:")) return; if (selectedCanonicalPlanSelectionMode && !name.startsWith(`cycle plan selection ${selectedCanonicalPlanSelectionMode}:`)) return; if (process.argv.includes("--canonical-plan-work-only") && !name.startsWith("canonical plan work files:")) return; if (selectedCanonicalPlanReadinessMode && !name.startsWith(`cycle plan readiness ${selectedCanonicalPlanReadinessMode}:`)) return; if (selectedCanonicalPlanAdoptionMode && !name.startsWith(`cycle plan adoption ${selectedCanonicalPlanAdoptionMode}:`)) return; if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
   if (process.argv.includes("--native-human-port-only") && !name.startsWith("native human port:")) return;
   if (process.argv.includes("--historical-diagnostic-only") && !name.startsWith("historical diagnostic:")) return;
   if (process.argv.includes("--native-human-turn-only") && !name.startsWith("worker private before-turn")) return;
@@ -1773,6 +1775,7 @@ if (process.argv[2] === "--mixed-continue") {
   await verifyCyclePlanningContracts(check);
   await verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePlanProposal, selectedMode: selectedCanonicalPlanAdoptionMode });
   await verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePlanProposal, selectedMode: selectedCanonicalPlanReadinessMode, readiness: true });
+  await verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePlanProposal, selectedMode: selectedCanonicalPlanSelectionMode, readiness: true, selection: true });
   await verifyCanonicalPlanWork(check, { mixedFixture, script: fileURLToPath(import.meta.url) });
   await verifyCycleWorkContracts(check, { mixedFixture });
   await verifyCycleReadinessContracts(check, { createFixture: () => createFreshStandardWorkflowFixture("files", businessRoots) });
@@ -1801,6 +1804,7 @@ if (process.argv[2] === "--mixed-continue") {
   if (selectedCycleCloseFinalizeMode) await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true, taskProgress: true, audit: true, closure: true, closeRecord: true, closeFinalize: true });
   await verifyNativeAuthorizationEpochs(check, { readyResumeFixture, mixedFixture, bootstrapMixed });
   await verifyInitialNativeAuthorizationEpochs(check, { journalFixture, mixedFixture, bootstrapMixed });
+  if (process.argv.includes("--cycle-plan-select-native-only")) await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, selectPlan: true });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url) });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true });

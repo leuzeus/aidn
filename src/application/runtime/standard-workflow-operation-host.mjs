@@ -287,9 +287,21 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   async function selectCyclePlan(instance) {
     const context = (await processAuthority.observeCyclePlanContext()).context;
     if (context.mode !== "COMMITTING") fail("STANDARD_CYCLE_PLAN_EXECUTION_MODE_REQUIRED");
-    const latest = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "cycle_plan_record").at(-1);
+    const latest = instance.events.filter(event => event.kind === "operation_intent" && ["cycle_plan_record", "cycle_plan_adopt"].includes(event.intent.binding_ref)).at(-1);
     if (!latest) fail("STANDARD_CYCLE_PLAN_RECORD_REQUIRED");
-    const selected = acceptedForPromotion(instance, latest.intent.operation_id, "cycle_plan_record", "STANDARD_CYCLE_PLAN_RECORD_REQUIRED");
+    const selected = acceptedForPromotion(instance, latest.intent.operation_id, latest.intent.binding_ref, "STANDARD_CYCLE_PLAN_RECORD_REQUIRED");
+    if (latest.intent.binding_ref === "cycle_plan_adopt") {
+      const output = assertStandardOperationOutput(selected.output);
+      const fresh = await canonicalPlanAdoption?.(instance, {}) ?? fail("STANDARD_CANONICAL_PLAN_AUTHORITY_UNAVAILABLE");
+      if (fresh.outcome !== "completed" || output.effect_status !== "no_effect" || output.facts.canonical_cycle_plan_available !== true
+        || output.observations.source_kind !== "canonical_plan" || output.observations.cycle_path !== context.cycle_path
+        || shadowHash(output) !== shadowHash(fresh)) fail("STANDARD_CYCLE_PLAN_RECORD_CHANGED");
+      // This ID names the accepted canonical origin. It is not a Native plan
+      // record, a completed-task receipt, DoR or permission to implement.
+      return assertStandardOperationOutput({ contract_version: "standard-cycle-plan-selection-output.v1", operation_ref: "cycle_plan_select",
+        outcome: "completed", effect_status: "no_effect", facts: {}, observations: { record_operation_id: latest.intent.operation_id,
+          cycle_id: context.cycle_id, session_id: context.session_id, cycle_path: context.cycle_path, record_sha256: shadowHash(selected) }, evidence_refs: output.evidence_refs });
+    }
     const plan = selected.record.preview.prepared.plan;
     if (selected.output.effect_status !== "confirmed" || selected.output.facts.cycle_plan_recorded !== true || plan.cycle_path !== context.cycle_path
       || plan.changes.some(row => artifacts.read(row.path, { required: true }).sha256 !== row.after_sha256)) fail("STANDARD_CYCLE_PLAN_RECORD_CHANGED");

@@ -1,5 +1,17 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Accepted canonical plan selection component, 2026-11-12
+
+The read-only `cycle_plan_select` accepts the latest current-instance plan
+origin from either an authenticated `cycle_plan_record` or `cycle_plan_adopt`.
+The canonical branch reexecutes the existing adoption observer and compares its
+full typed output with the accepted source, retaining current source, metadata,
+backend, process, scope, owner and OPEN-phase fences. Its selected origin ID
+is consumed according to the actual accepted binding; no Native journal or
+completed task is invented. The existing closed selection output and Native
+record branch remain compatible. Selection supplies neither DoR nor permission
+to implement. Published existing-cycle entry remains a separate connection.
+
 ## Amendment — canonical planning origin in current-instance task provenance, 2026-11-12
 
 Task selection, Native work preparation and validation may read their plan from

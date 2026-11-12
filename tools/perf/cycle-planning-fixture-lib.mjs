@@ -10,13 +10,14 @@ import path from "node:path";
 import os from "node:os";
 import { spawnSync, execFileSync } from "node:child_process";
 import { runPromoteBaselineAdmitUseCase } from "../../src/application/runtime/promote-baseline-admit-use-case.mjs";
-import { createStandardWorkflowOperations } from "../../src/application/runtime/standard-workflow-operations.mjs";
+import { createStandardWorkflowOperations, standardWorkflowOperationBindings } from "../../src/application/runtime/standard-workflow-operations.mjs";
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { createProjectArtifactStore } from "../../src/application/runtime/project-artifact-store-service.mjs";
 import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { artifactContentHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
 import { assertStandardCyclePlan, renderStandardCyclePlan, CYCLE_PLAN_CONTRACT } from "../../src/core/workflow/standard-cycle-planning.mjs";
 import { assertNativeActivityAnswer, nativeActivityAnswerSchema, nativeActivityOutputBindings } from "../../src/core/workflow/native-activity-output.mjs";
 import { evaluateStandardCyclePlan } from "../../src/application/runtime/standard-cycle-plan-context.mjs";
@@ -216,9 +217,9 @@ export async function verifyCycleReadinessContracts(check, { createFixture }) {
   await verifyCyclePreparedPlanValidity(check, cyclePlanProposal);
 }
 
-export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script, readiness = false, work = false, validation = false, verification = false, taskProgress = false, audit = false, closure = false, closeRecord = false, closeFinalize = false }) {
+export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script, readiness = false, selectPlan = false, work = false, validation = false, verification = false, taskProgress = false, audit = false, closure = false, closeRecord = false, closeFinalize = false }) {
   const objectiveClosure = closeFinalize && process.argv.includes("--cycle-close-objective-completion");
-  for (const selected of (objectiveClosure ? ["files", "dual", "db-only"] : audit ? ["files", "db-only"] : taskProgress ? ["files", "db-only", "unchanged", "partial", "projection"] : verification ? ["files", "dual", "db-only", "partial", "projection"] : validation ? ["files", "dual", "db-only"] : work ? ["files", "dual", "db-only", "report", "source"] : readiness ? ["files", "dual", "db-only", "partial", "projection", "refusal", "stale"] : ["files", "dual", "db-only", "partial", "projection"])) await check(`${closeFinalize ? "cycle close finalize" : closeRecord ? "cycle close record" : closure ? "cycle closure" : audit ? "cycle audit" : taskProgress ? "cycle tasks" : verification ? "cycle verification" : validation ? "cycle validation" : work ? "cycle work" : readiness ? "cycle readiness" : "cycle plan"} ${selected}: ${work ? "execute the frozen task and authenticate observed work" : "authenticated native proposal records canonical planning and retains readiness barriers"}`, async () => {
+  for (const selected of (selectPlan ? ["files"] : objectiveClosure ? ["files", "dual", "db-only"] : audit ? ["files", "db-only"] : taskProgress ? ["files", "db-only", "unchanged", "partial", "projection"] : verification ? ["files", "dual", "db-only", "partial", "projection"] : validation ? ["files", "dual", "db-only"] : work ? ["files", "dual", "db-only", "report", "source"] : readiness ? ["files", "dual", "db-only", "partial", "projection", "refusal", "stale"] : ["files", "dual", "db-only", "partial", "projection"])) await check(`${selectPlan ? "cycle plan selection native" : closeFinalize ? "cycle close finalize" : closeRecord ? "cycle close record" : closure ? "cycle closure" : audit ? "cycle audit" : taskProgress ? "cycle tasks" : verification ? "cycle verification" : validation ? "cycle validation" : work ? "cycle work" : readiness ? "cycle readiness" : "cycle plan"} ${selected}: ${work ? "execute the frozen task and authenticate observed work" : "authenticated native proposal records canonical planning and retains readiness barriers"}`, async () => {
     const mode = selected === "partial" ? "db-only" : selected === "projection" ? "dual" : ["report", "source", "unchanged"].includes(selected) ? "files" : selected;
     let allowed = true, tamper = false, root;
     const grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
@@ -266,6 +267,14 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
       if (readiness && selected === "refusal") { report.surface = "shared"; report.usage_matrix.push({ ...report.usage_matrix[0], kind: "alternate" }); }
       return { outcome: "completed", summary: "Read-only typed planning fixture", report }; } });
     root = f.configuration.target_root;
+    if (selectPlan) {
+      assert.equal(readiness, true); assert.equal(work, false);
+      f.model.nodes[0].children.splice(f.model.nodes[0].children.indexOf("plan_record") + 1, 0, "plan_select");
+      f.model.nodes.push({ id: "plan_select", kind: "operation", participant_ref: "delivery", binding_ref: "cycle_plan_select" });
+      f.model.operation_pins.cycle_plan_select = shadowHash(standardWorkflowOperationBindings().find(row => row.id === "cycle_plan_select"));
+      f.model.data_bindings.inputs.push({ node_id: "plan_select", fields: {} });
+      const bytes = JSON.stringify(f.model); fs.writeFileSync(f.configuration.model.path, bytes); f.configuration.model.sha256 = artifactContentHash(bytes);
+    }
     const verifier = taskProgress ? taskProgressValidationProfile(f.base, selected === "unchanged") : validation ? createValidationProfileFixture(f.base, { testRef: "TEST-001" }) : null;
     if (verifier) f.validationProfile = verifier.profileRef;
     if (objectiveCompletion) f.sessionObjective = "Learn through an explicitly admitted bounded SPIKE";
@@ -336,6 +345,15 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
       } else recorded = await f.open().step({ write: true });
     } finally { fs.writeFileSync = writeFile; }
     const journal = f.open().readOperation(recorded.operation_id), output = journal.results.at(-1).output;
+    if (selectPlan) {
+      const beforeSelection = artifacts.readMany(names, { required: names, includeMetadata: true });
+      const chosen = await f.open().step({ write: true }), selectedOutput = f.open().readOperation(chosen.operation_id).results.at(-1).output;
+      assert.equal(selectedOutput.operation_ref, "cycle_plan_select"); assert.equal(selectedOutput.effect_status, "no_effect");
+      assert.equal(selectedOutput.observations.record_operation_id, recorded.operation_id);
+      assert.equal(selectedOutput.observations.record_sha256, shadowHash({ record: journal, output }));
+      assert.equal(selectedOutput.observations.cycle_path, cyclePath); assert.equal(f.t.sessions.length, 1);
+      assert.deepEqual(artifacts.readMany(names, { required: names, includeMetadata: true }), beforeSelection);
+    }
     let state = f.open().inspect();
     assert.equal(journal.preview.input.evaluation_operation_id, evaluated.operation_id);
     assert.equal(journal.preview.input_resolution.sources[0].operation_id, evaluated.operation_id);

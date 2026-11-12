@@ -17,8 +17,8 @@ import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-
 
 // Canonical planning here is an explicit fixture preimage written through real
 // ports/CAS. It is not evidence that a prior Native planner or task ran.
-export async function verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePlanProposal, selectedMode, readiness = false }) {
-  for (const mode of selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) await check(`cycle plan ${readiness ? "readiness" : "adoption"} ${mode}: actual canonical source, guarded observation and signed cold acceptance`, async () => {
+export async function verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePlanProposal, selectedMode, readiness = false, selection = false }) {
+  for (const mode of selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) await check(`cycle plan ${selection ? "selection" : readiness ? "readiness" : "adoption"} ${mode}: actual canonical source, guarded observation and signed cold acceptance`, async () => {
     const f = mixedFixture(mode, { planning: true }), root = f.configuration.target_root;
     const operations = createStandardWorkflowOperations({ targetRoot: root }), artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
     const git = (...args) => execFileSync("git", ["--no-optional-locks", "-C", root, "-c", `core.hooksPath=${process.platform === "win32" ? "NUL" : "/dev/null"}`, ...args], { encoding: "utf8", windowsHide: true }).trim();
@@ -44,14 +44,15 @@ export async function verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePl
     assert.deepEqual(binding.allowed_modes, ["COMMITTING"]); assert.equal(binding.effect_class, "read-only");
     for (const input of [{ write: true }, { producer: "native" }, { approved: true }]) assert.throws(() => assertStandardOperationInput("cycle_plan_adopt", input), { code: "STANDARD_OPERATION_INPUT_INVALID" });
     for (const key of Object.keys(f.model)) delete f.model[key];
-    const selectedBindings = [binding, ...(readiness ? ["cycle_readiness_evaluate", "cycle_implementation_enter"].map(id => standardWorkflowOperationBindings().find(row => row.id === id)) : [])];
-    Object.assign(f.model, { contract_version: "agentic-process-model.v2", model_id: readiness ? "canonical-readiness-fixture" : "canonical-adoption-fixture", revision: 1,
-      participants: [{ id: "delivery" }], roles: [], policies: [], entry: readiness ? "plan" : "adopt",
-      nodes: [...(readiness ? [{ id: "plan", kind: "sequence", participant_ref: "delivery", children: ["adopt", "ready", "enter"] }] : []),
-        ...selectedBindings.map((row, index) => ({ id: ["adopt", "ready", "enter"][index], kind: "operation", participant_ref: "delivery", binding_ref: row.id }))],
+    const selectedBindings = [binding, ...(selection ? ["cycle_plan_select"].map(id => standardWorkflowOperationBindings().find(row => row.id === id)) : []), ...(readiness ? ["cycle_readiness_evaluate", "cycle_implementation_enter"].map(id => standardWorkflowOperationBindings().find(row => row.id === id)) : [])];
+    const selectedIds = ["adopt", ...(selection ? ["select"] : []), ...(readiness ? ["ready", "enter"] : [])];
+    Object.assign(f.model, { contract_version: "agentic-process-model.v2", model_id: selection ? "canonical-selection-fixture" : readiness ? "canonical-readiness-fixture" : "canonical-adoption-fixture", revision: 1,
+      participants: [{ id: "delivery" }], roles: [], policies: [], entry: readiness || selection ? "plan" : "adopt",
+      nodes: [...(readiness || selection ? [{ id: "plan", kind: "sequence", participant_ref: "delivery", children: selectedIds }] : []),
+        ...selectedBindings.map((row, index) => ({ id: selectedIds[index], kind: "operation", participant_ref: "delivery", binding_ref: row.id }))],
       operation_pins: Object.fromEntries(selectedBindings.map(row => [row.id, shadowHash(row)])), data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: [], inputs: [
-        { node_id: "adopt", fields: {} }, ...(readiness ? [
-          { node_id: "ready", fields: { record_operation_id: { source: "operation_id", node_id: "adopt" } } },
+        { node_id: "adopt", fields: {} }, ...(selection ? [{ node_id: "select", fields: {} }] : []), ...(readiness ? [
+          { node_id: "ready", fields: { record_operation_id: selection ? { source: "operation_output", node_id: "select", path: ["observations", "record_operation_id"] } : { source: "operation_id", node_id: "adopt" } } },
           { node_id: "enter", fields: { evaluation_operation_id: { source: "operation_id", node_id: "ready" } } }] : [])] } });
     const bytes = JSON.stringify(f.model); fs.writeFileSync(f.configuration.model.path, bytes); f.configuration.model.sha256 = artifactContentHash(bytes);
     f.configuration.activity_outputs = {}; f.configuration.instructions = {};
@@ -121,19 +122,36 @@ export async function verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePl
       const name = cyclePath + "/plan.md", originalContent = artifacts.read(name, { required: true }).content;
       const store = mode === "files" ? null : createProjectArtifactStore({ targetRoot: root }), original = store?.getArtifact(name); store?.close();
       try {
-        await write(name, originalContent + "\n");
+        const changed = structuredClone(proposal); changed.tasks[0].task += " (current fixture revision)";
+        const changedPlan = selection ? renderStandardCyclePlan(changed, cyclePath, { "brief.md": artifacts.read(cyclePath + "/brief.md").content })[name] : originalContent + "\n";
+        await write(name, changedPlan);
         const state = f.open().inspect();
         // Preview only resolves this read-only operation's input. Its actual
         // consumer evaluates at dispatch; probe that consumer without creating
         // a failed terminal operation in the positive scenario's journal.
         const authority = createStandardProcessAuthority({ configuration: f.configuration, model: f.model, readSigningKey: () => f.key,
           readProductSha256: () => f.open().previewNative().product_sha256 });
-        await assert.rejects(authority.evaluateCycleReadiness(state.record, { record_operation_id: staged.operation_id }), { code: "STANDARD_CYCLE_READINESS_SOURCE_STALE" });
+        if (selection) {
+          // A valid new canonical plan must still fail selection against the
+          // accepted old origin; parser rejection would prove less here.
+          assert.equal((await createStandardCanonicalPlanAdoption(ports)(state.record, {})).outcome, "completed");
+          await assert.rejects(f.open().prepareOperation({ expectedSha256: state.record.instance_sha256, occurrenceId: state.cursor.ready[0], input: {} }), { code: "STANDARD_CYCLE_PLAN_RECORD_CHANGED" });
+          assert.equal(f.open().inspect().record.instance_sha256, state.record.instance_sha256);
+        } else await assert.rejects(authority.evaluateCycleReadiness(state.record, { record_operation_id: staged.operation_id }), { code: "STANDARD_CYCLE_READINESS_SOURCE_STALE" });
       } finally {
         await write(name, originalContent);
         if (original) { const writer = createProjectArtifactStore({ targetRoot: root }); try { writer.upsertArtifact(original); } finally { writer.close(); } }
       }
       assert.deepEqual(observeBusiness(), restored);
+      if (selection) {
+        const selected = await f.open().step({ write: true }), output = f.open().readOperation(selected.operation_id).results.at(-1).output;
+        const origin = f.open().readOperation(staged.operation_id), originOutput = origin.results.at(-1).output;
+        assert.equal(output.operation_ref, "cycle_plan_select"); assert.equal(output.effect_status, "no_effect"); assert.deepEqual(output.facts, {});
+        assert.equal(output.observations.record_operation_id, staged.operation_id);
+        assert.equal(output.observations.record_sha256, shadowHash({ record: origin, output: originOutput }));
+        assert.equal(output.observations.cycle_id, "C001"); assert.equal(output.observations.session_id, "S001"); assert.equal(output.observations.cycle_path, cyclePath);
+        assert.deepEqual(observeBusiness(), restored); assert.equal(f.t.sessions.length, 0);
+      }
       const ready = await f.open().step({ write: true }), readyOutput = f.open().readOperation(ready.operation_id).results.at(-1).output;
       assert.equal(readyOutput.facts.cycle_readiness_satisfied, true); assert.equal(readyOutput.effect_status, "no_effect");
       assert.deepEqual(readyOutput.observations.planning_source, { kind: "canonical_plan", operation_id: staged.operation_id, output_sha256: readyOutput.observations.record_sha256 });
@@ -150,7 +168,7 @@ export async function verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePl
       const replay = simulateAgenticProcess({ instanceId: complete.record.instance_id, model: complete.record.model, policyPins: complete.record.policy_pins, scopeId: complete.record.scope_id, events: complete.record.events });
       assert.equal(replay.trace.at(-1).instance_sha256, complete.record.instance_sha256);
       console.log(JSON.stringify({ canonical_plan_readiness_proof: true, mode, native_responses: 0, signed_canonical_adoption: true, actual_dor: true, actual_authorized_phase_cas: true,
-        canonical_plan_preserved: true, changed_source_refused: true, source_negative_boundary: "ACTUAL_PROCESS_AUTHORITY_CONSUMER_DIRECT", source_restore: "EXPLICIT_FIXTURE_PREIMAGE_RESTORATION", task_execution: "NOT_RUN", published_route: "NOT_CONNECTED" }));
+        canonical_plan_preserved: true, changed_source_refused: true, ...(selection ? { canonical_plan_selection_proof: true, accepted_origin_id_and_hash: true } : {}), source_negative_boundary: selection ? "ACTUAL_SELECTOR_PREVIEW" : "ACTUAL_PROCESS_AUTHORITY_CONSUMER_DIRECT", source_restore: "EXPLICIT_FIXTURE_PREIMAGE_RESTORATION", task_execution: "NOT_RUN", published_route: "NOT_CONNECTED" }));
     }
     if (!readiness) console.log(JSON.stringify({ canonical_plan_adoption_proof: true, mode, native_responses: 0, actual_entry_and_context_ports: true, signed_dispatch_cold_acceptance: true,
       metadata_writer: mode === "files" ? "NOT_APPLICABLE" : "ACTUAL_SQLITE", changed_process: "INJECTED_COUNTEREXAMPLE", phase_preimage: "FIXTURE_SETUP", readiness: "NOT_RUN", productive_resume: "NOT_RUN", skips }));
