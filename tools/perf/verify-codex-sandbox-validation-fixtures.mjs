@@ -376,6 +376,25 @@ await check("generic verifier refuses malformed or downgraded v2 declarations", 
 
 
 
+await check("public release artifact retains strict refusals and needs separate cooperative native evidence", async () => {
+  for (const [make, reason] of [[fixture, "SANDBOX_EXISTING_ONLY_UNSUPPORTED"], [managedFixture, "SANDBOX_SHARED_DENY_READ_UNSUPPORTED"],
+    [cooperativeFixture, "SANDBOX_NATIVE_QUALIFICATION_REQUIRED"], [networkCooperativeFixture, "SANDBOX_NATIVE_QUALIFICATION_REQUIRED"]]) {
+    const { config, request } = make(), before = structuredClone(config), names = fs.readdirSync(root).sort();
+    config.client.sha256 = "21f6fb0b01ba12a687f5fcd33546c0008ebd45654fdb23d84732ee8d62ee980b";
+    before.client.sha256 = config.client.sha256;
+    const support = getCodexSandboxValidationLaunchSupport(config);
+    assert.equal(support.reason_code, reason); assert.equal(support.native, false);
+    assert.equal(support.available, reason === "SANDBOX_NATIVE_QUALIFICATION_REQUIRED");
+    assert.deepEqual(support.reviewed_client, { version: "0.158.0-alpha.2.1", executable_sha256: config.client.sha256,
+      source_commit: "0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807" });
+    const { publicKey } = generateKeyPairSync("ed25519"), boundary = createCodexSandboxValidationBoundary({ configuration: config, publicKey, evidenceRoot: root });
+    assert.equal((await boundary.checkAvailability()).available, false); await assert.rejects(boundary.run(request));
+    assert.deepEqual(config, before); assert.deepEqual(fs.readdirSync(root).sort(), names);
+  }
+  const { config } = networkCooperativeFixture();
+  config.client.sha256 = "83f5c2dd2ac2902e0d96ba5d8ccdd27d513f57df4a9ab73e06a5a518028e9a2f";
+  assert.equal(getCodexSandboxValidationLaunchSupport(config).reason_code, "SANDBOX_CLIENT_UNQUALIFIED");
+});
 await check("v3 is explicit cooperative candidate support, never unsigned runtime qualification", async () => {
   const { config, request } = cooperativeFixture(), before = structuredClone(config), names = fs.readdirSync(root).sort();
   assert.equal(validate(config), true); const support = getCodexSandboxValidationLaunchSupport(config);

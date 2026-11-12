@@ -1,5 +1,14 @@
 # Testing Guide
 
+## Reviewed public validation client artifact, 2026-11-12
+
+The sandbox-boundary fixture checks both the historical app artifact and the
+exact public Windows x64 artifact of the reviewed Codex source. V1/V2 retain
+their refusals. V3/V4 admit only qualification probes; an unsigned or absent
+qualification never grants runtime availability. The current SDK model client
+remains unqualified for this distinct validation port. Identity/version checks
+and portable fixtures do not replace the selected artifact's native canaries.
+
 ## Mode fixture call transitions, 2026-11-12
 
 The analysis, continuation and SPIKE execution fixtures follow actual mixed-host
