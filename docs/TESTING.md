@@ -330,6 +330,12 @@ performance, real actor, installed-client or complete STANDARD claim follows.
 
 ## Embedded reusable-call source candidate, 2026-11-06
 
+The reusable-call `negative` selector distinguishes a global waiting cursor
+from its active parent call: blocked, deferred and uncertain child operations
+wait inside a `RUNNING` call, without an implicit return or effect. The composed
+`pr_effects_pending` selector applies the same distinction to its actual
+deferred pre-merge observation.
+
 `node tools/perf/verify-process-reusable-call-fixtures.mjs contract|negative|sequential|concurrent|cold`
 has exact selectors; execute each as a separate bounded Windows Job cohort case.
 `sequential` and `concurrent` embed one 131-node target twice and exceed 256

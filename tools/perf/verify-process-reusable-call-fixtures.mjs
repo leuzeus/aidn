@@ -496,6 +496,12 @@ async function negativeCases() {
     state = await f.service().acceptOperation({ instanceId: "fixture", expectedSha256: state.record.instance_sha256, occurrenceId: frame.occurrence_id,
       eventId: `event_${state.record.revision}`, receiptId: receipt.receipt_id, write: true });
     assert.equal(state.cursor.status, status);
+    if (status === "WAITING") {
+      const waiting = state.cursor.occurrences.find(row => row.occurrence_id === frame.occurrence_id);
+      const call = state.cursor.occurrences.find(row => row.occurrence_id === waiting.call_scope_id);
+      assert.equal(waiting.status, "WAITING"); assert.equal(waiting.wait_reason, outcome);
+      assert.equal(call.status, "RUNNING");
+    }
     assert.equal(state.record.events.some(row => row.kind === "call_return"), false);
     assert.equal(fs.readdirSync(path.join(arena, "effects")).length, 0);
     await assert.rejects(f.service().returnCall({ instanceId: "fixture", expectedSha256: state.record.instance_sha256, occurrenceId: "root/0", eventId: "bad_return", write: true }), /PROCESS_/);

@@ -1495,8 +1495,10 @@ if (process.argv[2] === "--mixed-continue") {
     if (stopsAtPrEffects) {
       assert.equal(final.cursor.status, "WAITING");
       const call = final.cursor.occurrences.find(row => row.node_id === (fullCorrection ? "correction_pr_effects_pending" : "session_pr_effects_pending"));
-      assert.equal(call.status, "WAITING");
+      assert.equal(call.status, "RUNNING");
       const frame = final.cursor.occurrences.find(row => row.node_id === "pr_premerge_observe" && row.call_scope_id === call.occurrence_id);
+      assert.equal(frame.status, "WAITING");
+      assert.equal(frame.wait_reason, "deferred");
       assert.equal(frame.operation.receipt.outcome, "deferred");
       assert.equal(frame.operation.receipt.effect_status, "no_effect");
       assert.deepEqual(frame.operation.receipt.facts, {});
