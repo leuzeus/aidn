@@ -3,6 +3,7 @@ import { cycleAuditProposal } from "./cycle-audit-fixture-lib.mjs";
 import { taskProgressProposal, taskProgressValidationProfile, verifyTaskProgressExecution } from "./cycle-task-progress-fixture-lib.mjs";
 import { verifyCycleVerificationEntry } from "./cycle-verification-fixture-lib.mjs";
 import { verifyCyclePreparedPlanValidity } from "./cycle-plan-validity-fixture-lib.mjs";
+import { verifyStandardCanonicalPlanProjection } from "./standard-canonical-plan-projection-fixture-lib.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -44,6 +45,7 @@ export async function verifyCyclePlanningContracts(check) {
   const observed = { context_sha256: "a".repeat(64), context: { session_id: "S001", cycle_id: "C001", cycle_type: "feature", mode: "COMMITTING",
     original_objective: "Update a local product value", allowed_product_files: ["product/app.mjs"] }, evidence_refs: [{ ref: "audit:SPEC.md", sha256: "b".repeat(64) }] };
   const proposal = cyclePlanProposal(observed), authenticated = { report: proposal, producer: { occurrence_id: "fixture" }, reference: { ref: "fixture:native-result", sha256: "c".repeat(64) } };
+  await verifyStandardCanonicalPlanProjection(check, proposal);
   await check("cycle plan contract binds native output and publishes no readiness or effect permission", async () => {
     assert.equal(assertStandardCyclePlan(proposal), proposal);
     assertNativeActivityAnswer({ outcome: "completed", summary: "Typed proposal", report: proposal }, CYCLE_PLAN_CONTRACT, observed.context_sha256);

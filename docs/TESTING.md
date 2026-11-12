@@ -1,5 +1,16 @@
 # Testing Guide
 
+## Canonical plan projection reader, 2026-11-12
+
+The cycle planning contract suite includes a pure projection of the existing
+standard canonical document format. It reconstructs declared plan fields and
+ordered progress data, validates the closed planning contract, and requires an
+exact roundtrip through the existing plan/progress renderers. Missing or
+competing documents, hashes, unknown permission fields, ambiguous sections,
+changed identity and inconsistent progress refuse. Parsing does not authenticate
+approval, prove completed work, satisfy DoR or grant an effect. Runtime adoption,
+current metadata/provenance and productive phase resumption remain separate work.
+
 ## Reusable mode closure suffix, 2026-11-12
 
 THINKING and nonretained EXPLORING keep their real R05 Native activity in the
