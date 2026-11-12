@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { createStandardWorkflowOperations, standardWorkflowOperationBindings } from "../../src/application/runtime/standard-workflow-operations.mjs";
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { createStandardCanonicalPlanAdoption } from "../../src/application/runtime/standard-canonical-plan-adoption.mjs";
+import { createStandardProcessAuthority } from "../../src/application/runtime/standard-process-authority.mjs";
 import { readStandardCyclePlanContext } from "../../src/application/runtime/standard-cycle-plan-context.mjs";
 import { createProjectArtifactStore } from "../../src/application/runtime/project-artifact-store-service.mjs";
 import { renderStandardCyclePlan } from "../../src/core/workflow/standard-cycle-planning.mjs";
@@ -16,8 +17,8 @@ import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-
 
 // Canonical planning here is an explicit fixture preimage written through real
 // ports/CAS. It is not evidence that a prior Native planner or task ran.
-export async function verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePlanProposal, selectedMode }) {
-  for (const mode of selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) await check(`cycle plan adoption ${mode}: actual canonical source, guarded observation and signed cold acceptance`, async () => {
+export async function verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePlanProposal, selectedMode, readiness = false }) {
+  for (const mode of selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) await check(`cycle plan ${readiness ? "readiness" : "adoption"} ${mode}: actual canonical source, guarded observation and signed cold acceptance`, async () => {
     const f = mixedFixture(mode, { planning: true }), root = f.configuration.target_root;
     const operations = createStandardWorkflowOperations({ targetRoot: root }), artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
     const git = (...args) => execFileSync("git", ["--no-optional-locks", "-C", root, "-c", `core.hooksPath=${process.platform === "win32" ? "NUL" : "/dev/null"}`, ...args], { encoding: "utf8", windowsHide: true }).trim();
@@ -43,9 +44,15 @@ export async function verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePl
     assert.deepEqual(binding.allowed_modes, ["COMMITTING"]); assert.equal(binding.effect_class, "read-only");
     for (const input of [{ write: true }, { producer: "native" }, { approved: true }]) assert.throws(() => assertStandardOperationInput("cycle_plan_adopt", input), { code: "STANDARD_OPERATION_INPUT_INVALID" });
     for (const key of Object.keys(f.model)) delete f.model[key];
-    Object.assign(f.model, { contract_version: "agentic-process-model.v2", model_id: "canonical-adoption-fixture", revision: 1,
-      participants: [{ id: "delivery" }], roles: [], policies: [], entry: "adopt", nodes: [{ id: "adopt", kind: "operation", participant_ref: "delivery", binding_ref: binding.id }],
-      operation_pins: { [binding.id]: shadowHash(binding) }, data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: [], inputs: [{ node_id: "adopt", fields: {} }] } });
+    const selectedBindings = [binding, ...(readiness ? ["cycle_readiness_evaluate", "cycle_implementation_enter"].map(id => standardWorkflowOperationBindings().find(row => row.id === id)) : [])];
+    Object.assign(f.model, { contract_version: "agentic-process-model.v2", model_id: readiness ? "canonical-readiness-fixture" : "canonical-adoption-fixture", revision: 1,
+      participants: [{ id: "delivery" }], roles: [], policies: [], entry: readiness ? "plan" : "adopt",
+      nodes: [...(readiness ? [{ id: "plan", kind: "sequence", participant_ref: "delivery", children: ["adopt", "ready", "enter"] }] : []),
+        ...selectedBindings.map((row, index) => ({ id: ["adopt", "ready", "enter"][index], kind: "operation", participant_ref: "delivery", binding_ref: row.id }))],
+      operation_pins: Object.fromEntries(selectedBindings.map(row => [row.id, shadowHash(row)])), data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: [], inputs: [
+        { node_id: "adopt", fields: {} }, ...(readiness ? [
+          { node_id: "ready", fields: { record_operation_id: { source: "operation_id", node_id: "adopt" } } },
+          { node_id: "enter", fields: { evaluation_operation_id: { source: "operation_id", node_id: "ready" } } }] : [])] } });
     const bytes = JSON.stringify(f.model); fs.writeFileSync(f.configuration.model.path, bytes); f.configuration.model.sha256 = artifactContentHash(bytes);
     f.configuration.activity_outputs = {}; f.configuration.instructions = {};
     const initial = f.open().initialize({ write: false }); f.open().initialize({ write: true, expectedResultSha256: initial.record.instance_sha256 });
@@ -102,14 +109,49 @@ export async function verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePl
     const staged = await f.open().stageOperation(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
     const dispatched = await f.open().dispatchOperation(staged.operation_id, { write: true }); assert.equal(dispatched.receipt.outcome, "completed");
     const request = path.join(f.base, "canonical-adoption-cold.json"); fs.writeFileSync(request, JSON.stringify({ configuration: f.configuration, key_hex: f.key.toString("hex"),
-      fixture_grant: { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) }, operation_id: staged.operation_id, expected_before_sha256: f.open().inspect().record.instance_sha256 }));
+      fixture_grant: { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) }, operation_id: staged.operation_id, expected_before_sha256: f.open().inspect().record.instance_sha256,
+      expected_cursor: readiness ? "RUNNING" : "COMPLETED" }));
     const child = spawnSync(process.execPath, [fileURLToPath(new URL("./standard-canonical-plan-adoption-cold-fixture.mjs", import.meta.url)), request], { encoding: "utf8", windowsHide: true, maxBuffer: 1048576 });
     fs.writeFileSync(path.join(f.base, "canonical-adoption-cold.stdout.log"), child.stdout ?? ""); fs.writeFileSync(path.join(f.base, "canonical-adoption-cold.stderr.log"), child.stderr ?? "");
     assert.equal(child.status, 0, (child.stdout + child.stderr).slice(-8192)); const cold = JSON.parse(child.stdout); assert.equal(cold.new_native_allocations, 0);
-    const final = f.reopen().inspect(); assert.equal(final.cursor.status, "COMPLETED"); assert.equal(final.record.instance_sha256, cold.instance_sha256);
+    const final = f.reopen().inspect(); assert.equal(final.cursor.status, readiness ? "RUNNING" : "COMPLETED"); assert.equal(final.record.instance_sha256, cold.instance_sha256);
     const simulation = simulateAgenticProcess({ instanceId: final.record.instance_id, model: final.record.model, policyPins: final.record.policy_pins, scopeId: final.record.scope_id, events: final.record.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, final.record.instance_sha256); assert.equal(f.t.sessions.length, 0); assert.deepEqual(observeBusiness(), restored);
-    console.log(JSON.stringify({ canonical_plan_adoption_proof: true, mode, native_responses: 0, actual_entry_and_context_ports: true, signed_dispatch_cold_acceptance: true,
+    if (readiness) {
+      const name = cyclePath + "/plan.md", originalContent = artifacts.read(name, { required: true }).content;
+      const store = mode === "files" ? null : createProjectArtifactStore({ targetRoot: root }), original = store?.getArtifact(name); store?.close();
+      try {
+        await write(name, originalContent + "\n");
+        const state = f.open().inspect();
+        // Preview only resolves this read-only operation's input. Its actual
+        // consumer evaluates at dispatch; probe that consumer without creating
+        // a failed terminal operation in the positive scenario's journal.
+        const authority = createStandardProcessAuthority({ configuration: f.configuration, model: f.model, readSigningKey: () => f.key,
+          readProductSha256: () => f.open().previewNative().product_sha256 });
+        await assert.rejects(authority.evaluateCycleReadiness(state.record, { record_operation_id: staged.operation_id }), { code: "STANDARD_CYCLE_READINESS_SOURCE_STALE" });
+      } finally {
+        await write(name, originalContent);
+        if (original) { const writer = createProjectArtifactStore({ targetRoot: root }); try { writer.upsertArtifact(original); } finally { writer.close(); } }
+      }
+      assert.deepEqual(observeBusiness(), restored);
+      const ready = await f.open().step({ write: true }), readyOutput = f.open().readOperation(ready.operation_id).results.at(-1).output;
+      assert.equal(readyOutput.facts.cycle_readiness_satisfied, true); assert.equal(readyOutput.effect_status, "no_effect");
+      assert.deepEqual(readyOutput.observations.planning_source, { kind: "canonical_plan", operation_id: staged.operation_id, output_sha256: readyOutput.observations.record_sha256 });
+      assert.throws(() => assertStandardOperationOutput({ ...readyOutput, observations: { ...readyOutput.observations, planning_source: { ...readyOutput.observations.planning_source, kind: "native" } } }), { code: "STANDARD_OPERATION_OUTPUT_INVALID" });
+      assert.deepEqual(observeBusiness(), restored);
+      const entered = await f.open().step({ write: true }), enteredOutput = f.open().readOperation(entered.operation_id).results.at(-1).output;
+      assert.equal(enteredOutput.facts.cycle_implementation_started, true); assert.equal(enteredOutput.effect_status, "confirmed");
+      const after = observeBusiness(), material = [cyclePath + "/status.md", "CURRENT-STATE.md"];
+      assert.equal(after.head, restored.head); assert.equal(after.branch, restored.branch); assert.equal(after.product, restored.product);
+      assert.deepEqual(after.canonical.filter(row => !material.includes(row.path)), restored.canonical.filter(row => !material.includes(row.path)));
+      assert.match(artifacts.read(cyclePath + "/status.md").content, /^state:\s*IMPLEMENTING\s*$/m); assert.match(artifacts.read(cyclePath + "/status.md").content, /^scope_frozen:\s*true\s*$/m);
+      const complete = f.reopen().inspect(); assert.equal(complete.cursor.status, "COMPLETED"); assert.equal(f.t.sessions.length, 0);
+      const replay = simulateAgenticProcess({ instanceId: complete.record.instance_id, model: complete.record.model, policyPins: complete.record.policy_pins, scopeId: complete.record.scope_id, events: complete.record.events });
+      assert.equal(replay.trace.at(-1).instance_sha256, complete.record.instance_sha256);
+      console.log(JSON.stringify({ canonical_plan_readiness_proof: true, mode, native_responses: 0, signed_canonical_adoption: true, actual_dor: true, actual_authorized_phase_cas: true,
+        canonical_plan_preserved: true, changed_source_refused: true, source_negative_boundary: "ACTUAL_PROCESS_AUTHORITY_CONSUMER_DIRECT", source_restore: "EXPLICIT_FIXTURE_PREIMAGE_RESTORATION", task_execution: "NOT_RUN", published_route: "NOT_CONNECTED" }));
+    }
+    if (!readiness) console.log(JSON.stringify({ canonical_plan_adoption_proof: true, mode, native_responses: 0, actual_entry_and_context_ports: true, signed_dispatch_cold_acceptance: true,
       metadata_writer: mode === "files" ? "NOT_APPLICABLE" : "ACTUAL_SQLITE", changed_process: "INJECTED_COUNTEREXAMPLE", phase_preimage: "FIXTURE_SETUP", readiness: "NOT_RUN", productive_resume: "NOT_RUN", skips }));
   });
 }

@@ -1,5 +1,23 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Amendment — canonical OPEN planning source for DoR, 2026-11-12
+
+Readiness may consume an accepted, signed `cycle_plan_adopt` result as an
+explicit canonical origin. Current content and metadata pins, backend, scope,
+OPEN phase and process prefix are checked before and after asynchronous branch
+admission. The ordinary DoR checks still run against the current canonical
+documents. The existing readiness v1 observations extension records a typed
+`planning_source` with that operation ID and output hash; it supplies no Native
+producer or imported work. Native planning retains its existing lineage and
+output shape, and historical contracts remain readable without conversion.
+
+Entering implementation still requires the separately authorized real phase
+effect, locked re-evaluation, unchanged preimages and CAS. Source validation
+does not mistake that operation's own held effect owner for a foreign owner.
+This component does not yet connect task work/validation provenance, published
+existing-cycle routing or resumption of imported IMPLEMENTING/VERIFYING work.
+It adds no timestamp expiry, authority, backend or synchronization surface.
+
 ## Amendment — canonical plan adoption observation, 2026-11-12
 
 The owning host may observe an existing canonical plan through the distinct
@@ -17,9 +35,9 @@ permission. Missing or ambiguous planning cannot be normalized or replaced by
 this observation. There is no preparation-age limit or new authority/store.
 
 The existing fresh Native planning chain and historical contracts remain
-separate. Readiness still requires its own accepted source and actual checks;
-registration of this observation does not yet connect that consumer or the
-published existing-cycle route. IMPLEMENTING/VERIFYING progress, carryover,
+separate. The observation supplies no readiness or implementation permission;
+its DoR consumer is described in the amendment above. The published
+existing-cycle route remains separate. IMPLEMENTING/VERIFYING progress, carryover,
 human choices, productive resumption, genuine actors and installed archives
 retain their own required work and evidence.
 

@@ -10,6 +10,7 @@ import { buildStandardCycleAuditContext } from "./standard-cycle-audit-context.m
 import { readWorkflowProjectAuthority, readWorkflowProjectExecutionAuthority } from "./workflow-instance-composition.mjs";
 import { createStandardWorkflowOperations, standardWorkflowOperationBindings, assertStandardWorkflowImplementation } from "./standard-workflow-operations.mjs";
 import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.mjs";
+import { artifactContentHash } from "../../core/workflow/artifact-compare-swap.mjs";
 import { createOperationJournalSigner } from "../../core/workflow/process-operation-journal.mjs";
 import { createProcessOperationJournalStore } from "../../adapters/runtime/process-operation-journal-store.mjs";
 import { createProcessControlInboxStore } from "../../adapters/runtime/process-control-inbox-store.mjs";
@@ -29,7 +30,7 @@ import { runStartSessionAdmitUseCase } from "./start-session-admit-use-case.mjs"
 import { readStandardCyclePlanContext, evaluateStandardCyclePlan } from "./standard-cycle-plan-context.mjs";
 import { preWriteAdmit } from "../../../tools/runtime/pre-write-admit.mjs";
 import { assertStandardWorkflowModelSource, assertStandardWorkflowActivityOutputs } from "../../core/workflow/standard-workflow-model-catalog.mjs";
-import { assertStandardOperationInput } from "../../core/workflow/standard-operation-contracts.mjs";
+import { assertStandardOperationInput, assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
 import { agenticProcessPrefixSha256, inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
 import { processModels, processFrameNode } from "../../core/workflow/process-call-model.mjs";
 import { assertAgenticProcessModel, agenticPolicyPins } from "../../core/workflow/agentic-process-model.mjs";
@@ -521,6 +522,32 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   }
   async function evaluateCycleReadiness(instance, input) {
     assertStandardOperationInput("cycle_readiness_evaluate", input);
+    const origin = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === input.record_operation_id)?.intent.binding_ref;
+    if (origin === "cycle_plan_adopt") {
+      const recorded = acceptedOperation(instance, input.record_operation_id, "cycle_plan_adopt"), output = assertStandardOperationOutput(recorded.output), source = output.observations;
+      if (output.effect_status !== "no_effect" || output.facts.canonical_cycle_plan_available !== true || source.source_kind !== "canonical_plan"
+        || source.imported_completed_task_ids.length || !source.proposal) fail("STANDARD_CYCLE_READINESS_RECORD_REQUIRED");
+      const assertSource = observed => {
+        const rows = artifacts.readMany(source.canonical.map(row => row.path), { required: source.canonical.map(row => row.path), includeMetadata: true });
+        const pins = rows.map(({ path, sha256, metadata_sha256 }) => ({ path, sha256, metadata_sha256 }));
+        const context = observed.context, plan = context.documents.find(row => row.ref === `audit:${source.cycle_path}/plan.md`);
+        if (source.context_sha256 !== observed.context_sha256 || source.scope_sha256 !== shadowHash(operations.observeScope())
+          || source.canonical_binding_sha256 !== shadowHash(artifacts.describe()) || shadowHash(source.canonical) !== shadowHash(pins)
+          || source.original_plan_sha256 !== artifactContentHash(plan?.content ?? "") || context.cycle_path !== source.cycle_path
+          || context.mode !== "COMMITTING" || context.cycle_state !== "OPEN"
+          || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+          fail("STANDARD_CYCLE_READINESS_SOURCE_STALE");
+      };
+      const observed = await observeCycleReadinessContext(); assertSource(observed);
+      const proposal = source.proposal, admitted = await operations.auditCycle({ session_id: proposal.session_id, cycle_id: proposal.cycle_id });
+      const start = await runStartSessionAdmitUseCase({ targetRoot: configuration.target_root, mode: "COMMITTING" });
+      const fresh = await observeCycleReadinessContext(); assertSource(fresh);
+      if (fresh.context_sha256 !== observed.context_sha256) fail("STANDARD_CYCLE_READINESS_SOURCE_STALE");
+      const evaluated = evaluateStandardCycleReadiness({ proposal, recordSha256: shadowHash(output), recordOperationId: input.record_operation_id,
+        context: fresh.context, contextSha256: fresh.context_sha256, branchAdmitted: admitted.outcome === "completed" && start.ok === true && start.action === "resume_current_cycle" });
+      evaluated.observations.planning_source = { kind: "canonical_plan", operation_id: input.record_operation_id, output_sha256: shadowHash(output) };
+      return assertStandardOperationOutput(evaluated);
+    }
     const recorded = acceptedOperation(instance, input.record_operation_id, "cycle_plan_record");
     if (recorded.output.effect_status !== "confirmed" || recorded.output.facts.cycle_plan_recorded !== true) fail("STANDARD_CYCLE_READINESS_RECORD_REQUIRED");
     const evaluated = acceptedOperation(instance, recorded.record.preview.input.evaluation_operation_id, "cycle_plan_evaluate");

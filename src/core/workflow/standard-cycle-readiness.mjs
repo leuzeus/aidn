@@ -2,8 +2,8 @@ import { assertStandardCyclePlan, renderStandardCyclePlan } from "./standard-cyc
 import { shadowHash } from "./shadow-json.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
-// Evaluate only the recorded, authenticated planning component. The host supplies
-// its canonical context and actual branch admission; authored facts grant nothing.
+// Evaluate an accepted planning origin. The host authenticates that origin and
+// supplies its canonical context and actual branch admission; authored facts grant nothing.
 export function evaluateStandardCycleReadiness({ proposal, recordSha256, recordOperationId, context, contextSha256, branchAdmitted }) {
   assertStandardCyclePlan(proposal);
   const checks = [], check = (id, ok) => checks.push({ id, satisfied: ok === true });

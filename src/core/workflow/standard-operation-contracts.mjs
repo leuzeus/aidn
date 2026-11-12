@@ -676,6 +676,13 @@ export function assertStandardOperationOutput(value) {
       || value.outcome !== "completed" && Object.keys(value.facts).length
       || (value.outcome === "reconciliation_required") !== (value.effect_status === "unknown")
       || ["blocked", "deferred"].includes(value.outcome) && value.effect_status !== "no_effect") fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    if (Object.hasOwn(value.observations, "planning_source")) {
+      const source = value.observations.planning_source;
+      if (!source || Object.keys(source).sort().join(",") !== "kind,operation_id,output_sha256" || source.kind !== "canonical_plan"
+        || value.operation_ref !== "cycle_readiness_evaluate" || source.operation_id !== value.observations.record_operation_id
+        || !/^op_[a-f0-9]{40}$/.test(source.operation_id ?? "") || !/^[a-f0-9]{64}$/.test(source.output_sha256 ?? "")
+        || source.output_sha256 !== value.observations.record_sha256) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    }
     return value;
   }
   if (value?.contract_version === "standard-drift-rollback-output.v1") {

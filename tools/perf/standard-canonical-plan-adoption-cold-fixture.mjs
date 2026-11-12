@@ -9,5 +9,6 @@ const host = createStandardWorkflowMixedHost({ configuration: data.configuration
   { controllerFactory: () => { launches++; throw Error("CANONICAL_ADOPTION_NATIVE_FORBIDDEN"); } });
 assert.equal(host.inspect().record.instance_sha256, data.expected_before_sha256);
 const accepted = await host.acceptOperation(data.operation_id, { write: true });
-assert.equal(accepted.cursor.status, "COMPLETED"); assert.equal(launches, 0);
+assert.ok(["RUNNING", "COMPLETED"].includes(data.expected_cursor ?? "COMPLETED"));
+assert.equal(accepted.cursor.status, data.expected_cursor ?? "COMPLETED"); assert.equal(launches, 0);
 console.log(JSON.stringify({ status: "PASS", instance_sha256: accepted.record.instance_sha256, cursor: accepted.cursor.status, new_native_allocations: 0 }));

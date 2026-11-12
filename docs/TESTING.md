@@ -1,5 +1,17 @@
 # Testing Guide
 
+## Canonical OPEN plan to DoR and phase entry, 2026-11-12
+
+The focused `--canonical-plan-readiness-mode=files|dual|db-only` execution
+cases use the same real canonical preimage and signed cold adoption as the
+observation component, then actual DoR evaluation and an explicitly authorized
+phase effect. The source remains canonical content/metadata. No Native
+producer or completed work is fabricated. Source mutation before readiness
+must refuse, restoration is explicit fixture arrangement, and implementation
+entry preserves plan content while applying the normal phase CAS. This
+component does not qualify task execution, published routing, imported
+progress, PostgreSQL, genuine actors or an installed archive.
+
 ## Canonical plan adoption observation component, 2026-11-12
 
 The private `cycle_plan_adopt` operation observes a current owned OPEN plan
