@@ -113,6 +113,13 @@ export async function verifyStandardSpikeExecution({ mixedFixture, storageMode, 
       delayed = { operation_id: staged.operation_id, prepared_at_ms: at, elapsed_ms: Date.now() - at, plan_sha256: preview.prepared.plan_sha256 };
     }
     const result = await f.open().step({ write: true, authorization });
+    if (result.kind === "call") {
+      assert.equal(result.written, true); assert.equal(f.t.sessions.length, count, "a call allocates no Native");
+      assert.equal(result.record.events.length, before.record.events.length + 1);
+      assert.deepEqual(result.record.events.slice(0, -1), before.record.events);
+      assert.equal(result.record.events.at(-1).kind, result.transition.transition === "call_entry" ? "call_enter" : "call_return");
+      f.reopen(); continue;
+    }
     if (result.operation_id) {
       assert.equal(f.t.sessions.length, count, "D/H must not allocate Native");
       let record = f.open().readOperation(result.operation_id);

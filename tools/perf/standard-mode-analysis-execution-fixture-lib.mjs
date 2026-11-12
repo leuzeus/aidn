@@ -84,6 +84,13 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
     if (state.cursor.status === "COMPLETED") break;
     const before = f.t.sessions.length;
     const result = await f.open().step({ write: true, authorization: auth });
+    if (result.kind === "call") {
+      assert.equal(result.written, true); assert.equal(f.t.sessions.length, before, "a call allocates no Native");
+      assert.equal(result.record.events.length, state.record.events.length + 1);
+      assert.deepEqual(result.record.events.slice(0, -1), state.record.events);
+      assert.equal(result.record.events.at(-1).kind, result.transition.transition === "call_entry" ? "call_enter" : "call_return");
+      f.reopen(); continue;
+    }
     if (result.operation_id) {
       assert.equal(f.t.sessions.length, before, "D/H must not allocate Native");
       if (result.status === "waiting_for_human") {

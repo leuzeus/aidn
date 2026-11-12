@@ -66,6 +66,13 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
       const result = await f.open().step({ write: true, authorization: grant?.authorization ?? authorization });
       console.log(JSON.stringify({ mode_resume_step: step, kind: result.kind, status: result.status, operation_id: result.operation_id ?? null,
         journal_phase: result.journal_phase ?? null, native_sessions: f.t.sessions.length }));
+      if (result.kind === "call") {
+        assert.equal(result.written, true); assert.equal(f.t.sessions.length, beforeCount, "a call allocates no Native");
+        assert.equal(result.record.events.length, state.record.events.length + 1);
+        assert.deepEqual(result.record.events.slice(0, -1), state.record.events);
+        assert.equal(result.record.events.at(-1).kind, result.transition.transition === "call_entry" ? "call_enter" : "call_return");
+        f.reopen(); continue;
+      }
       if (result.operation_id) {
         assert.equal(f.t.sessions.length, beforeCount, "D/H cannot allocate Native");
         const record = f.open().readOperation(result.operation_id);

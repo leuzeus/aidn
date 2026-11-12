@@ -1,5 +1,15 @@
 # Testing Guide
 
+## Mode fixture call transitions, 2026-11-12
+
+The analysis, continuation and SPIKE execution fixtures follow actual mixed-host
+call results before interpreting operation or Native results. Every call appends
+one event, preserves its prior prefix and starts no Native allocation. Existing
+mode, human-decision, clock/epoch, refusal, business and replay assertions remain
+in place. Focused FILES selections exercise each consumer; the required manifest
+retains its storage variants. Their transport and human authorities are fixtures,
+and controlled expiry is distinct from genuine wall-clock qualification.
+
 ## Composed fixture startup call, 2026-11-12
 
 The pure preflight and actual composed-execution fixture follow the published
