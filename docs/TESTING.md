@@ -2981,6 +2981,13 @@ substitute for this live database evidence or for native hook execution.
 The Codex DB-only skill readiness gate also rejects documented runtime commands
 that have no executable registry entry.
 
+The DB-only readiness source scan recognizes the STANDARD canonical artifact
+port, including its inspected injection into the cycle checkpoint. This source
+classification indicates database awareness; it does not prove every path is
+fileless. Operational SQLite/PostgreSQL readiness, missing canonical data and
+projection-fallback refusals remain separate checks. Exercise both the shared
+DB-first regression and DB-only readiness fixtures when changing these markers.
+
 Runtime head fixtures cover both artifact orders, exact PostgreSQL pointer
 resolution, checksum/identity mismatch, missing targets, ambiguous fallback and
 materialized SQLite heads. The dedicated PostgreSQL smoke keeps both historical
