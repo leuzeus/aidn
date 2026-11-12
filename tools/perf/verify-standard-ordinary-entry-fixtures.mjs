@@ -70,11 +70,15 @@ apply(preview);
 assert.equal(run(["--action-file", actionFile, "--execute", "--expect-plan", preview.action_sha256]).errors[0], "STANDARD_ENTRY_PRECONDITIONS_CHANGED");
 const initialize = run(); assert.equal(initialize.preview.kind, "initialize"); apply(initialize);
 console.log("PASS ordinary CLI: preview immutability, missing authority, separate exact host-key preparation and initialization");
-let waiting;
+let waiting, callTransitions = 0;
 for (let i = 0; i < 8; i++) {
   const next = run(); assert.deepEqual(next.errors, [], JSON.stringify(next));
   assert.equal(next.preview.context.native.model_sha256, loadStandardWorkflowAssets().source.model_sha256);
   if (next.preview.kind === "dispatch" && next.preview.payload.question) { waiting = next; break; }
+  if (next.preview.kind === "call") {
+    assert.equal(next.preview.payload.transition, "call_entry");
+    assert.equal(apply(next).result.workflow_completed, false); callTransitions++; continue;
+  }
   assert.equal(next.preview.kind, "operation"); const binding = next.preview.payload.preview.binding.id;
   const result = apply(next); console.log(`PASS ordinary CLI: ${binding} ${result.result.operation_outcome}`);
 }
@@ -110,8 +114,24 @@ decision = run(["--decision-source", ref]); fs.writeFileSync(actionFile, JSON.st
 assert.equal(run(["--decision-source", ref, "--action-file", actionFile, "--execute", "--expect-plan", decision.action_sha256]).errors[0], "STANDARD_HOST_SOURCE_INVALID");
 const freshRef = "mode-thinking"; fs.writeFileSync(path.join(directories.authority, "inbox", freshRef + ".json"), JSON.stringify(signed("THINKING", freshRef, fresh.preview.payload.question)));
 const resumed = apply(run(["--decision-source", freshRef]), ["--decision-source", freshRef]); assert.equal(resumed.result.details.receipt.outcome, "completed");
+const startupBindings = [];
+for (let i = 0; !startupBindings.includes("session_start_finalize"); i++) {
+  assert.ok(i < 8, "the deterministic startup suffix must finish before any Native activity");
+  const next = run(); assert.deepEqual(next.errors, [], JSON.stringify(next));
+  if (next.preview.kind === "call") {
+    assert.equal(next.preview.payload.transition, "call_return");
+    assert.equal(apply(next).result.workflow_completed, false); callTransitions++; continue;
+  }
+  assert.equal(next.preview.kind, "operation");
+  const binding = next.preview.payload.preview.binding.id;
+  assert.ok(["session_mode_apply", "session_entry_admit", "mode_work_preflight", "session_start_finalize"].includes(binding));
+  const applied = apply(next); assert.equal(applied.result.operation_outcome, "completed"); startupBindings.push(binding);
+}
+assert.deepEqual(startupBindings, ["session_mode_apply", "session_entry_admit", "mode_work_preflight", "session_start_finalize"]);
+assert.equal(callTransitions, 2);
 const replay = run(["--replay"]), simulation = run(["--simulate"]); assert.deepEqual(replay.errors, []); assert.deepEqual(simulation.errors, []);
 assert.equal(replay.result.instance_sha256, simulation.result.instance_sha256);
 assert.equal(fs.readdirSync(directories.control).length, 0, "D/H must never allocate Native or worker evidence");
-console.log(JSON.stringify({ status: "PASS", mode, calls, model_sha256: loadStandardWorkflowAssets().source.model_sha256, same_reducer_replay_simulation: true,
+console.log(JSON.stringify({ status: "PASS", mode, calls, call_transitions: callTransitions, startup_bindings: startupBindings,
+  model_sha256: loadStandardWorkflowAssets().source.model_sha256, same_reducer_replay_simulation: true,
   productive_cold_resume: "authenticated H followed by accepted process event", native: "NOT_RUN", genuine_human: "NOT_RUN", installed: "NOT_RUN", target, base }));

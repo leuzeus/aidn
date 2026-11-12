@@ -18,6 +18,12 @@ The obsolete private `--expire-initialize` selector is removed: it asserted an
 internal age refusal that current unchanged session plans no longer require.
 The retained elapsed-plan fixtures still check real context and issuer bounds.
 
+The required ordinary-entry CLI fixtures also apply the pinned setup call via
+the public exact-action protocol. They preserve forged-source refusal and the
+deferred/resumed signed H decision, then execute mode application, call return,
+root admission, mode preflight and the real startup hook. They stop before the
+first Native activity and compare readonly replay/SIM of that same instance.
+
 ## Published THINKING startup prefix, 2026-11-12
 
 The three required composition-prefix fixtures compose the real common process
