@@ -17,6 +17,7 @@ import { verifyCycleVerificationContracts } from "./cycle-verification-fixture-l
 import { verifyDriftPreparedPlanValidity } from "./drift-plan-validity-fixture-lib.mjs";
 import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
 import { verifyCanonicalPlanAdoption } from "./standard-canonical-plan-adoption-fixture-lib.mjs";
+import { verifyCanonicalPlanWork } from "./standard-canonical-plan-work-fixture-lib.mjs";
 import assert from "node:assert/strict";
 import { attachComposedR09Provider } from "./standard-composed-r09-provider-fixture-lib.mjs";
 import { resolveStandardWorkflowConfiguration, runStandardWorkflowEntry } from "../../src/application/runtime/standard-workflow-entry.mjs";
@@ -225,7 +226,7 @@ function retainComposedChild(controlRoot, label, child) {
 }
 let serial = 0, completed = false;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
-async function check(name, callback) { if (selectedCanonicalPlanReadinessMode && !name.startsWith(`cycle plan readiness ${selectedCanonicalPlanReadinessMode}:`)) return; if (selectedCanonicalPlanAdoptionMode && !name.startsWith(`cycle plan adoption ${selectedCanonicalPlanAdoptionMode}:`)) return; if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
+async function check(name, callback) { if (process.argv.includes("--canonical-plan-work-only") && !name.startsWith("canonical plan work files:")) return; if (selectedCanonicalPlanReadinessMode && !name.startsWith(`cycle plan readiness ${selectedCanonicalPlanReadinessMode}:`)) return; if (selectedCanonicalPlanAdoptionMode && !name.startsWith(`cycle plan adoption ${selectedCanonicalPlanAdoptionMode}:`)) return; if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
   if (process.argv.includes("--native-human-port-only") && !name.startsWith("native human port:")) return;
   if (process.argv.includes("--historical-diagnostic-only") && !name.startsWith("historical diagnostic:")) return;
   if (process.argv.includes("--native-human-turn-only") && !name.startsWith("worker private before-turn")) return;
@@ -1772,6 +1773,7 @@ if (process.argv[2] === "--mixed-continue") {
   await verifyCyclePlanningContracts(check);
   await verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePlanProposal, selectedMode: selectedCanonicalPlanAdoptionMode });
   await verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePlanProposal, selectedMode: selectedCanonicalPlanReadinessMode, readiness: true });
+  await verifyCanonicalPlanWork(check, { mixedFixture, script: fileURLToPath(import.meta.url) });
   await verifyCycleWorkContracts(check, { mixedFixture });
   await verifyCycleReadinessContracts(check, { createFixture: () => createFreshStandardWorkflowFixture("files", businessRoots) });
   await check("cycle plan contract refuses a writable native planning profile before any session", async () => {

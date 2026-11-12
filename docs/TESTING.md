@@ -1,5 +1,20 @@
 # Testing Guide
 
+## Current-instance task work from an adopted canonical plan, 2026-11-12
+
+The focused `--canonical-plan-work-only` FILES case prepares a neutral existing
+two-task plan through actual canonical ports. Its process adopts that source,
+satisfies real DoR and enters implementation, then uses the existing task loop,
+specific Native write admission, actual validation commands and task advancement
+to reach verification. Planning preimages are fixture setup. The two work
+responses use an identified Native transport double; no planner response or
+historical task receipt is fabricated. The shared task fixture retains scope
+preservation, revoked-operation refusal, cold advancement, chained progress and
+validation assertions. Before any Native work, the actual phase effect must
+project the adopted plan's first step and pass canonical context consistency.
+This case does not establish imported progress,
+published existing-cycle routing, other backends, genuine actors or an archive.
+
 ## Dataflow mode precondition, 2026-11-12
 
 The three real-port dataflow cases reach an authenticated mode question before

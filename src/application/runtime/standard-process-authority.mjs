@@ -570,17 +570,36 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (output.facts.cycle_readiness_satisfied !== true || shadowHash(output) !== shadowHash(verified.output)) fail("STANDARD_CYCLE_READINESS_EVALUATION_STALE");
     const observed = await observeCycleReadinessContext();
     if (observed.context_sha256 !== output.observations.context_sha256) fail("STANDARD_CYCLE_READINESS_SOURCE_STALE");
-    return { output, evaluation_sha256: shadowHash(output), context: observed.context, context_sha256: observed.context_sha256 };
+    return { output, evaluation_sha256: shadowHash(output), context: observed.context, context_sha256: observed.context_sha256,
+      ...(output.observations.planning_source?.kind === "canonical_plan" ? { first_plan_step: cyclePlanningProposal(instance, verified).tasks[0].task } : {}) };
   }
   const observeCycleReadinessContext = async (productSha256 = readProductSha256?.()) => readinessContext(await readStandardCyclePlanContext({ targetRoot: configuration.target_root, productSha256, productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment, readinessTransition: true }));
+  function cyclePlanningProposal(instance, ready, auth = {}, history = null) {
+    const id = ready.record.preview.input.record_operation_id;
+    const origin = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === id)?.intent.binding_ref;
+    if (origin === "cycle_plan_adopt") {
+      const adopted = acceptedOperation(instance, id, "cycle_plan_adopt", auth, history), output = assertStandardOperationOutput(adopted.output);
+      const source = output.observations, selected = ready.output.observations.planning_source;
+      if (output.effect_status !== "no_effect" || output.facts.canonical_cycle_plan_available !== true || source.source_kind !== "canonical_plan"
+        || source.imported_completed_task_ids.length || !source.proposal || ready.output.facts.cycle_readiness_satisfied !== true
+        || ready.output.observations.cycle_path !== source.cycle_path
+        || shadowHash(selected ?? null) !== shadowHash({ kind: "canonical_plan", operation_id: id, output_sha256: shadowHash(output) }))
+        fail("STANDARD_CYCLE_READINESS_RECORD_REQUIRED");
+      // The accepted DoR and phase bind this origin. Current task contexts and
+      // signed advances validate subsequent changes; the original OPEN pins
+      // are not falsely reapplied after those legitimate CAS transitions.
+      return source.proposal;
+    }
+    const recorded = acceptedOperation(instance, id, "cycle_plan_record", auth, history);
+    const evaluated = acceptedOperation(instance, recorded.record.preview.input.evaluation_operation_id, "cycle_plan_evaluate", auth, history);
+    return readActivityOutput(instance, evaluated.record.preview.input.report_occurrence_id, CYCLE_PLAN_CONTRACT, auth, history).report;
+  }
   function taskPhase(instance, id, auth = {}) {
     const phase = acceptedOperation(instance, id, "cycle_implementation_enter", auth);
     if (phase.output.effect_status !== "confirmed" || phase.output.facts.cycle_implementation_started !== true) fail("STANDARD_CYCLE_WORK_PHASE_REQUIRED");
     const ready = acceptedOperation(instance, phase.record.preview.input.evaluation_operation_id, "cycle_readiness_evaluate", auth);
-    const recorded = acceptedOperation(instance, ready.record.preview.input.record_operation_id, "cycle_plan_record", auth);
-    const evaluated = acceptedOperation(instance, recorded.record.preview.input.evaluation_operation_id, "cycle_plan_evaluate", auth);
-    return { phase, proposal: readActivityOutput(instance, evaluated.record.preview.input.report_occurrence_id, CYCLE_PLAN_CONTRACT, auth).report };
+    return { phase, proposal: cyclePlanningProposal(instance, ready, auth) };
   }
   function taskAdvances(instance, phaseId, auth = {}) {
     const result = [];
@@ -644,9 +663,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const id = resolution.input.implementation_operation_id, phase = acceptedOperation(instance, id, "cycle_implementation_enter", auth);
     if (phase.output.effect_status !== "confirmed" || phase.output.facts.cycle_implementation_started !== true) fail("STANDARD_CYCLE_WORK_PHASE_REQUIRED");
     const ready = acceptedOperation(instance, phase.record.preview.input.evaluation_operation_id, "cycle_readiness_evaluate", auth);
-    const recorded = acceptedOperation(instance, ready.record.preview.input.record_operation_id, "cycle_plan_record", auth);
-    const evaluated = acceptedOperation(instance, recorded.record.preview.input.evaluation_operation_id, "cycle_plan_evaluate", auth);
-    const proposal = readActivityOutput(instance, evaluated.record.preview.input.report_occurrence_id, CYCLE_PLAN_CONTRACT, auth).report;
+    const proposal = cyclePlanningProposal(instance, ready, auth);
     const observed = await observeCycleReadinessContext(productSha256), task = proposal.tasks[0];
     if (observed.context.mode !== "COMMITTING" || observed.context.cycle_state !== "IMPLEMENTING"
       || phase.output.observations.causal_transition.after_context_sha256 !== observed.context_sha256
@@ -715,9 +732,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const history = operationStore.readMany ? authenticateHistory(instance, auth) : null;
     const phase = acceptedOperation(instance, phaseId, "cycle_implementation_enter", auth, history);
     const ready = acceptedOperation(instance, phase.record.preview.input.evaluation_operation_id, "cycle_readiness_evaluate", auth, history);
-    const recorded = acceptedOperation(instance, ready.record.preview.input.record_operation_id, "cycle_plan_record", auth, history);
-    const evaluated = acceptedOperation(instance, recorded.record.preview.input.evaluation_operation_id, "cycle_plan_evaluate", auth, history);
-    const proposal = readActivityOutput(instance, evaluated.record.preview.input.report_occurrence_id, CYCLE_PLAN_CONTRACT, auth, history).report;
+    const proposal = cyclePlanningProposal(instance, ready, auth, history);
     const observedTasks = new Set();
     for (const event of instance.events.filter(row => row.kind === "operation_intent" && ["cycle_work_evaluate", "cycle_task_work_evaluate"].includes(row.intent.binding_ref))) {
       const accepted = instance.events.some(row => row.kind === "operation_result" && row.receipt.operation_id === event.intent.operation_id && row.receipt.outcome === "completed");

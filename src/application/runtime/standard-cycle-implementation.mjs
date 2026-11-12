@@ -51,6 +51,11 @@ export function createStandardCycleImplementation({ targetRoot, readEvaluation, 
       "next step": "\n  - Execute only the admitted first task, subject to specific native write admission.", "last updated": at, updated_at: at })) status = field(status, key, value);
     let current = rows[1].content;
     for (const [key, value] of Object.entries({ dor_state: "READY", updated_at: at })) current = field(current, key, value);
+    if (verified.first_plan_step !== undefined) {
+      if (typeof verified.first_plan_step !== "string" || !verified.first_plan_step.trim() || /[\r\n]/.test(verified.first_plan_step))
+        fail("STANDARD_CYCLE_READINESS_FIRST_STEP_REQUIRED");
+      current = field(current, "first_plan_step", verified.first_plan_step);
+    }
     const contents = { [rows[0].path]: status, [rows[1].path]: current };
     const changes = rows.map(row => ({ path: row.path, before_sha256: row.sha256,
       before_metadata_sha256: batch ? row.metadata_sha256 : artifacts.metadataHash(row.path),

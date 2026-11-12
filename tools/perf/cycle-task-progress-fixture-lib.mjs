@@ -52,7 +52,7 @@ export function taskProgressValidationProfile(base, unchanged) {
   const bytes = JSON.stringify(fixture.profile); fs.writeFileSync(fixture.profileRef.path, bytes);
   fixture.profileRef.sha256 = createHash("sha256").update(bytes).digest("hex"); return fixture;
 }
-export async function verifyTaskProgressExecution({ f, artifacts, cyclePath, selected, auth, verifier, script, audit = false, closure = false, setAllowed }) {
+export async function verifyTaskProgressExecution({ f, artifacts, cyclePath, selected, auth, verifier, script, audit = false, closure = false, planningNativeResponses = 1, setAllowed }) {
   const operations = [], advances = [], originalScope = artifacts.read(`${cyclePath}/plan.md`).content.split("## Native write scope")[1].split("```")[1];
   let restarted = false;
   for (let step = 0; step < 25; step++) {
@@ -117,7 +117,7 @@ export async function verifyTaskProgressExecution({ f, artifacts, cyclePath, sel
     const finalEvaluation = operations.filter(row => row.intent.binding_ref === "cycle_validation_evaluate").at(-1).results.at(-1).output;
     assert.equal(finalEvaluation.facts.cycle_work_complete, true); assert.equal(finalEvaluation.facts.cycle_checks_passed, true);
     assert.deepEqual(finalEvaluation.observations.pending_test_refs, []);
-    assert.equal(verifier.calls(), 3); assert.equal(f.t.sessions.length, audit ? 4 : 3); assert.ok(f.t.sessions.every(row => row.closed));
+    assert.equal(verifier.calls(), 3); assert.equal(f.t.sessions.length, planningNativeResponses + 2 + (audit ? 1 : 0)); assert.ok(f.t.sessions.every(row => row.closed));
     assert.equal(fs.readFileSync(path.join(f.configuration.product_root, "app.mjs"), "utf8"), `export const value = ${selected === "unchanged" ? 2 : 3};\n`);
     assert.match(artifacts.read(`${cyclePath}/status.md`).content, /^state: VERIFYING$/m);
     assert.equal(operations.find(row => row.intent.binding_ref === "cycle_verification_enter").results.at(-1).output.facts.cycle_verification_started, true); assert.equal(artifacts.ownerPending(), false);

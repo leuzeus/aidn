@@ -145,6 +145,7 @@ export async function verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePl
       assert.equal(after.head, restored.head); assert.equal(after.branch, restored.branch); assert.equal(after.product, restored.product);
       assert.deepEqual(after.canonical.filter(row => !material.includes(row.path)), restored.canonical.filter(row => !material.includes(row.path)));
       assert.match(artifacts.read(cyclePath + "/status.md").content, /^state:\s*IMPLEMENTING\s*$/m); assert.match(artifacts.read(cyclePath + "/status.md").content, /^scope_frozen:\s*true\s*$/m);
+      assert.equal(/^first_plan_step:\s*(.+)$/m.exec(artifacts.read("CURRENT-STATE.md").content)?.[1], proposal.tasks[0].task);
       const complete = f.reopen().inspect(); assert.equal(complete.cursor.status, "COMPLETED"); assert.equal(f.t.sessions.length, 0);
       const replay = simulateAgenticProcess({ instanceId: complete.record.instance_id, model: complete.record.model, policyPins: complete.record.policy_pins, scopeId: complete.record.scope_id, events: complete.record.events });
       assert.equal(replay.trace.at(-1).instance_sha256, complete.record.instance_sha256);

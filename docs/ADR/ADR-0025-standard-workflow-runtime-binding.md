@@ -1,5 +1,28 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Amendment — canonical planning origin in current-instance task provenance, 2026-11-12
+
+Task selection, Native work preparation and validation may read their plan from
+the accepted canonical adoption that supplied the current instance's accepted
+DoR and actual implementation phase. The readiness origin marker must bind the
+same adopted operation and output hash. The original Native plan record,
+evaluation and activity report path retains its authentication and readers.
+PostgreSQL callers retain their single authenticated history observation.
+
+This source selection grants no work or effect. Current task context, scoped
+Native permission, observed work, validation, advancement and verification
+remain separate checks. Original OPEN content and metadata pins are not
+reapplied after the instance's own authenticated phase and progress CAS writes.
+Parsed imported checkboxes remain data; this path imports no completed work or
+cross-instance task receipts. Published existing-cycle routing remains separate.
+
+For a canonical planning origin, the owning readiness reader also supplies the
+validated first task to the existing implementation-phase effect. That effect
+projects `first_plan_step` into its already authorized `CURRENT-STATE.md` CAS.
+The read-only adoption and evaluation do not write it. The specific Native write
+gate keeps its requirement for a consistent known first step; the Native plan
+record path retains its existing projection. No gate or authority is waived.
+
 ## Amendment — canonical OPEN planning source for DoR, 2026-11-12
 
 Readiness may consume an accepted, signed `cycle_plan_adopt` result as an
@@ -14,8 +37,8 @@ output shape, and historical contracts remain readable without conversion.
 Entering implementation still requires the separately authorized real phase
 effect, locked re-evaluation, unchanged preimages and CAS. Source validation
 does not mistake that operation's own held effect owner for a foreign owner.
-This component does not yet connect task work/validation provenance, published
-existing-cycle routing or resumption of imported IMPLEMENTING/VERIFYING work.
+Task work/validation provenance is described in the amendment above. Published
+existing-cycle routing and resumption of imported IMPLEMENTING/VERIFYING work remain separate.
 It adds no timestamp expiry, authority, backend or synchronization surface.
 
 ## Amendment — canonical plan adoption observation, 2026-11-12
