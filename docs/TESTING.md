@@ -1,5 +1,17 @@
 # Testing Guide
 
+## Published THINKING startup prefix, 2026-11-12
+
+The three required composition-prefix fixtures compose the real common process
+authority, canonical mode preflight and startup finalizer. Their fixture product
+has an observed digest. Human sources remain identified fixture sources.
+The fixtures retain one deferred mode choice and accept each operation in a
+separate Node process before checking its retained dispatch and exact SIM.
+They stop at the ready `thinking_analysis` activity after successful startup;
+the workflow remains RUNNING. This prefix does not execute Native analysis or
+establish full STANDARD completion. The original authority refusal is preserved
+separately from the corrected fixture result.
+
 ## Required full nominal published journey, 2026-11-11
 
 The existing runtime-agentic-process family appends command211 after its exact
