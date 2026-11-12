@@ -1,5 +1,17 @@
 # Testing Guide
 
+## Isolated R05 mode preimages, 2026-11-12
+
+The report and authenticated recovery-review fixtures admit their canonical
+COMMITTING mode through the existing prepare/apply ports before starting R05.
+They assert that the diagnostic observes that mode, then retain the actual
+report, forged-source refusals, recovery waits and accepted human-source checks.
+Mode preparation is fixture setup; these cases do not qualify a human mode
+choice. The selectors are `--drift-mode=files|dual|db-only` and
+`--drift-recovery-mode=files|dual|db-only`. Native budgets and the production mode
+guard stay unchanged. Original failed attempts, including pending logical
+ownership, remain separate from corrected fresh scopes.
+
 ## Published owned OPEN entry candidate and catalog v5, 2026-11-12
 
 Structural checks cover shared context refresh, read-only entry observation,

@@ -2171,12 +2171,15 @@ if (process.argv[2] === "--mixed-continue") {
     };
     const f = mixedFixture(mode, { drift: true, recovery: true, humanSource, answer({ params }) {
       const context = JSON.parse(params.input[0].text.split("\n").at(-1));
+      assert.equal(context.context.mode, "COMMITTING", "isolated R05 observes its actually admitted canonical mode");
       return { outcome: "completed", summary: "Recovery diagnostic fixture.", report: { contract_version: "standard-drift-report.v1", context_sha256: context.context_sha256,
         original_objective: context.context.original_objective, current_objective: context.context.original_objective + " with changed scope", drift_level: "severe", objective_changed: true,
         changes: ["Confirmed fixture scope expansion."], keep: ["Original scope"], discard: [],
         split_recommendation: { new_cycle: true, new_branch: true, change_request_required: true, impact: "high" },
         recommendation: "human_arbitration", rationale: "Typed fixture diagnostic, not a live model verdict.", evidence_refs: context.evidence_refs } };
     } });
+    // Canonical mode is fixture setup; authenticated recovery review remains the target.
+    f.sessionMode = "COMMITTING";
     const auth = await bootstrapMixed(f), native = await f.open().step({ write: true, authorization: auth }); assert.equal(native.journal_phase, "closed");
     console.log(`STEP drift recovery ${mode}: native producer closed`);
     const evaluated = await f.open().step({ write: true }); assert.equal(evaluated.kind, "operation");
@@ -2620,6 +2623,7 @@ if (process.argv[2] === "--mixed-continue") {
   for (const [stateMode, level] of [["files", "none"], ["dual", "mild"], ["db-only", "severe"]]) await check(`drift ${stateMode}: authenticated ${level} report routes through the real mixed host without completing R05`, async () => {
     const f = mixedFixture(stateMode, { drift: true, answer({ params }) {
       const context = JSON.parse(params.input[0].text.split("\n").at(-1));
+      assert.equal(context.context.mode, "COMMITTING", "isolated R05 observes its actually admitted canonical mode");
       assert.equal(JSON.stringify(context).includes("PRIVATE_END_TO_END_FIXTURE"), false);
       assert.equal(params.outputSchema.properties.report.anyOf[1].properties.context_sha256.const, context.context_sha256);
       const report = { contract_version: "standard-drift-report.v1", context_sha256: context.context_sha256, original_objective: context.context.original_objective,
@@ -2637,6 +2641,8 @@ if (process.argv[2] === "--mixed-continue") {
       }
       f.configuration.native.protected_roots = [privateFile];
     }
+    // Prepare the existing real mode port before asking R05 to observe it.
+    f.sessionMode = "COMMITTING";
     const auth = await bootstrapMixed(f);
     if (privateFile) fs.writeFileSync(privateFile, "PRIVATE_END_TO_END_FIXTURE\n");
     const native = await f.open().step({ write: true, authorization: auth });
