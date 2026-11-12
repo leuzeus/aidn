@@ -1,5 +1,14 @@
 # Testing Guide
 
+## Catalog version capacity fixtures, 2026-11-12
+
+The process binding input fixture tests the four closed catalog versions with
+each version's own entry vocabulary. V1 keeps its 128-row bound; V2, V3 and V4
+keep 256 rows. Old readers reject the newer entry vocabulary, V4 rejects the
+older entry vocabulary, and V1/V2 still refuse embedded model references.
+The current published catalog is validated separately against its actual model.
+These are schema and pure input resolver checks, without product or Native effects.
+
 ## Scoped model lookup, 2026-11-12
 
 The reusable-call contract fixture verifies fresh selected model bytes after a

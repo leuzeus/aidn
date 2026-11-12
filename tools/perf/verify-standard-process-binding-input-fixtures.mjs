@@ -12,13 +12,27 @@ import { assertStandardWorkflowComponentCatalog } from '../../src/core/workflow/
 const assets = loadStandardWorkflowAssets(), bindings = new Map(standardWorkflowOperationBindings().map(row => [row.id, row]));
 const H = 'a'.repeat(64); let serial = 0, checks = 0, covered = 0;
 const test = (name, fn) => { fn(); checks++; console.log('PASS ' + name); };
-test('catalog v2 retains exact model and activity coverage while v1 preserves its capacity bound', () => {
+test('catalog versions retain their entry vocabulary, closed rows and original capacity bounds', () => {
   assertStandardWorkflowComponentCatalog(assets.catalog, assets.model);
-  const schemas = [1, 2].map(v => JSON.parse(fs.readFileSync(new URL(`../../src/core/contracts/workflow-definition/standard-workflow-catalog.v${v}.schema.json`, import.meta.url))));
-  for (const [v, counts] of [[1, [128, 129]], [2, [135, 256, 257]]]) for (const count of counts) {
-    const value = { ...assets.catalog, contract_version: `standard-workflow-catalog.v${v}`, bindings: Array.from({ length: count }, (_, i) => ({ ...assets.catalog.bindings[0], node_id: 'op_' + i })) };
-    const errors = validateJsonSchema(value, schemas[v - 1], '$', { contractKind: 'workflow-definition' });
-    assert.equal(errors.length === 0, count <= (v === 1 ? 128 : 256));
+  const flatRow = assets.catalog.bindings.find(row => !Object.hasOwn(row, 'model_ref'));
+  for (const [v, counts] of [[1, [128, 129]], [2, [135, 256, 257]], [3, [135, 256, 257]], [4, [135, 256, 257]]]) {
+    const schema = JSON.parse(fs.readFileSync(new URL(`../../src/core/contracts/workflow-definition/standard-workflow-catalog.v${v}.schema.json`, import.meta.url)));
+    const entry = v === 4 ? 'fresh_or_existing_session_admission' : 'fresh_session_admission';
+    for (const count of counts) {
+      const value = { ...assets.catalog, contract_version: `standard-workflow-catalog.v${v}`,
+        scope: { ...assets.catalog.scope, entry_conditions: [entry, 'single_new_cycle'] },
+        bindings: Array.from({ length: count }, (_, i) => ({ ...flatRow, node_id: 'op_' + i })) };
+      const errors = validateJsonSchema(value, schema, '$', { contractKind: 'workflow-definition' });
+      assert.equal(errors.length === 0, count <= (v === 1 ? 128 : 256), `catalog v${v} count ${count}: ${errors}`);
+    }
+    const wrongEntry = { ...assets.catalog, contract_version: `standard-workflow-catalog.v${v}`, bindings: [flatRow],
+      scope: { ...assets.catalog.scope, entry_conditions: [v === 4 ? 'fresh_session_admission' : 'fresh_or_existing_session_admission', 'single_new_cycle'] } };
+    assert.ok(validateJsonSchema(wrongEntry, schema, '$', { contractKind: 'workflow-definition' }).length);
+    if (v <= 2) {
+      const embeddedRow = { ...wrongEntry, scope: { ...wrongEntry.scope, entry_conditions: [entry, 'single_new_cycle'] },
+        bindings: [{ ...flatRow, model_ref: { model_id: assets.model.model_id, revision: assets.model.revision, model_sha256: shadowHash(assets.model) } }] };
+      assert.ok(validateJsonSchema(embeddedRow, schema, '$', { contractKind: 'workflow-definition' }).length);
+    }
   }
   assert.throws(() => assertStandardWorkflowComponentCatalog({ ...assets.catalog, activities: assets.catalog.activities.slice(1) }, assets.model), { code: 'STANDARD_ACTIVITY_COVERAGE_INVALID' });
 });
