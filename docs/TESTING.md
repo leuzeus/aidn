@@ -1,5 +1,29 @@
 # Testing Guide
 
+## Required STANDARD review effects and current OPEN work
+
+The required agentic corpus runs the R08 reply cases `normal`, `lost`,
+`missing` and `interrupted`, both thread-resolution recovery cases, the
+session/correction resolution exceptions and their refusal/deferral/cancellation
+choices. It also covers external merge at checks, pre-merge and the pre-send
+boundary, refused/cancelled dispositions, and the three pre-triage call paths.
+Each selector keeps its original fixture assertions and child-call bounds.
+
+These cases exercise the operation host, real local Git and FILES artifacts
+with identified provider and issuer doubles. Their signed synthetic upstream
+prefix is declared explicitly; they do not qualify an entire STANDARD journey,
+genuine Native, a real provider or an installed archive.
+
+The same required corpus includes
+`--standard-existing-open-work-mode=files|dual|db-only`. These cases use the
+published STANDARD model and real canonical stores for plan adoption, two
+admitted tasks, validation, linked progress and the final-verification call.
+They use identified Native transport doubles and stop at VERIFYING.
+
+The ordered manifest and its exact-command policy guard are changed together.
+The previous cases retain their relative order and the full nominal remains
+the final case. The dispatcher adds no aggregate or per-case wall-clock limit.
+
 ## Delivered root work from an owned OPEN plan candidate, 2026-11-12
 
 The focused `--standard-existing-open-work-mode=files|dual|db-only` cases load
