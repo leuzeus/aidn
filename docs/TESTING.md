@@ -1,5 +1,17 @@
 # Testing Guide
 
+## Composed fixture startup call, 2026-11-12
+
+The pure preflight and actual composed-execution fixture follow the published
+session-setup call. Preflight supplies identified synthetic entry facts at the
+callee and root scopes; actual execution authenticates each accepted setup
+journal and applies the proposed call transition unchanged. Setup adds no
+Native response: nominal remains nine and full correction seventeen. Its one
+additional admission operation and two call transitions explain four extra
+events. A deferred mode choice leaves the setup call open without applying a
+mode. These fixture adaptations do not qualify an installed archive or genuine
+actors and do not change any production model, pin or grant.
+
 ## R05 review after expected compound R03 invalidation, 2026-11-12
 
 The required drift-recovery fixture covers both a single artifact invalidation

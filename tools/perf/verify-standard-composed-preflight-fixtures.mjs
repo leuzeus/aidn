@@ -16,6 +16,18 @@ const test = (name, run, finalVerification = false) => {
   run(); checks++; console.log("PASS " + name);
 };
 const plan = (changes = {}, stop = "pr_effects_pending") => preflightStandardComposedFixture({ model, scenario: { ...scenario, ...changes }, stop });
+test("setup uses pinned call data and deterministic/H operations without another native response", () => {
+  const result = plan(), transitions = result.call_transitions.filter(row => row.node_id === "session_setup");
+  assert.deepEqual(transitions.map(row => row.kind), ["call_enter", "call_return"]);
+  assert.deepEqual(transitions[0].resolution.input, { session_id: "S001", session_branch: "S001-standard", objective: "Synthetic fixture budget planning" });
+  assert.deepEqual(transitions[1].resolution.input, {});
+  assert.deepEqual(result.operations.slice(0, 6), ["context_reload", "session_admit", "session_initialize", "mode_decision", "session_mode_apply", "session_admit"]);
+  assert.equal(result.responses_required, scenario.max_responses);
+  const deferred = plan({ interruption: { node_id: "mode_decision", outcome: "deferred" }, max_responses: 1 });
+  assert.deepEqual(deferred.call_transitions.map(row => [row.node_id, row.kind]), [["session_setup", "call_enter"]]);
+  assert.equal(deferred.responses_required, 0); assert.equal(deferred.planned_status, "WAITING");
+  assert.ok(!deferred.operations.includes("session_mode_apply"));
+});
 function verifyFinalVerificationCalls(result, sites) {
   const transitions = result.call_transitions.filter(row => sites.includes(row.node_id));
   assert.deepEqual(transitions.map(row => [row.node_id, row.kind]),
@@ -65,7 +77,7 @@ test("positive path selects nine native turns; its cold prefix keeps the same cu
   assert.equal(result.cold_resume_checkpoints.length, 1); assert.equal(result.cold_resume_checkpoints[0].responses, 5);
   assert.equal(result.responses_required - result.cold_resume_checkpoints[0].responses, 4);
   assert.equal(result.planned_status, "WAITING"); assert.equal(result.replay_exact, true);
-  assert.equal(result.operations.length, 70); assert.equal(result.event_count, 166);
+  assert.equal(result.operations.length, 71); assert.equal(result.event_count, 170);
   verifyFinalVerificationCalls(result, ["final_verification"]);
   verifyReviewCall(result, "session");
   assert.equal(result.write_authorization, false); assert.equal(result.product_qualification, "NOT_ESTABLISHED");
@@ -101,7 +113,7 @@ test('v3 plans both cycles through the same published model, new closure, redeli
   const correction = JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/standard-workflow/composed-correction.v3.json', import.meta.url)));
   const result = preflightStandardComposedFixture({ model, scenario: correction, stop: "pr_effects_pending" });
   assert.equal(result.responses_required, 17); assert.equal(result.planned_status, 'WAITING');
-  assert.equal(result.operations.length, 124); assert.equal(result.event_count, 297);
+  assert.equal(result.operations.length, 125); assert.equal(result.event_count, 301);
   const correctiveDrift = result.call_transitions.filter(row => row.node_id === "correction_cycle_drift_finalize");
   assert.deepEqual(correctiveDrift.map(row => row.kind), ["call_enter", "call_return"]);
   const evaluation = correctiveDrift[0].resolution.input.evaluation_operation_id;
@@ -139,7 +151,8 @@ test("correction retains its original budget refusal and interruption choices", 
 test("an interrupted final evaluation retains its entry without returning or entering verification", () => {
   const result = plan({ interruption: { node_id: "final_validation", outcome: "blocked" } });
   assert.equal(result.interrupted, true);
-  assert.deepEqual(result.call_transitions.map(row => row.kind), ["call_enter"]);
+  assert.deepEqual(result.call_transitions.map(row => [row.node_id, row.kind]),
+    [["session_setup", "call_enter"], ["session_setup", "call_return"], ["final_verification", "call_enter"]]);
   assert.deepEqual(result.verification_inputs.map(row => row.node_id), ["final_validation"]);
   assert.ok(!result.operations.includes("verification_enter"));
 }, true);

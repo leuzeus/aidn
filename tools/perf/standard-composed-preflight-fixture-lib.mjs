@@ -14,6 +14,7 @@ const effectsPendingNode = "pr_premerge_observe";
 const verificationTargetId = "aidn-standard-final-verification", reviewTargetId = "aidn-standard-pr-review-completion";
 const reviewCaptureTargetId = "aidn-standard-pr-review-capture";
 const callSites = new Map([
+  ["session_setup", { model_id: "aidn-standard-session-setup", prefix: "" }],
   ["session_pr_review_capture", { model_id: reviewCaptureTargetId, prefix: "session_" }],
   ["correction_pr_review_capture", { model_id: reviewCaptureTargetId, prefix: "correction_" }],
   ["final_verification", { model_id: verificationTargetId, prefix: "" }],
@@ -72,8 +73,8 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
       && processFrameNode(model, frame).target?.model_id === callSites.get(frame.node_id).model_id);
     if (call) {
       const returning = call.wait_reason === "call_return", occurrence_id = call.occurrence_id;
-      // Only accepted operation IDs enter this fixture call. It supplies no
-      // arbitrary journal reader for targets that require output witnesses.
+      // Source-owned parameters and accepted operation IDs enter these calls.
+      // No arbitrary journal reader is supplied for output-witness targets.
       const data = resolveProcessCallData({ instance: state, cursor, occurrenceId: occurrence_id, returning });
       emit({ kind: returning ? "call_return" : "call_enter", occurrence_id, ...data });
       callTransitions.push({ node_id: call.node_id, occurrence_id, kind: state.events.at(-1).kind, ...data });
@@ -113,6 +114,11 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         opResult(frame, next, "completed");
       } else {
         let facts = {};
+        if (node.binding_ref === "session_entry_admit") facts = site?.node_id === "session_setup"
+          ? { session_creation_allowed: true, session_resume_allowed: false, session_mode_pending: true }
+          : { session_creation_allowed: false, session_resume_allowed: true, session_mode_pending: false,
+            mode_committing: scenario.mode === "COMMITTING", mode_thinking: scenario.mode === "THINKING",
+            mode_exploring: scenario.mode === "EXPLORING", cycle_work_requested: scenario.mode === "COMMITTING" };
         if (node.binding_ref === "spike_conversion_admit") facts = { mode_work_spike_requested: false };
         if (node.binding_ref === "mode_work_observe") facts = { mode_work_report_complete: true, mode_analysis_completed: false };
         if (node.binding_ref === "mode_work_evaluate") facts = { mode_analysis_completed: true };

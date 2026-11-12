@@ -1194,7 +1194,18 @@ if (process.argv[2] === "--mixed-continue") {
           journals.set(id, shadowHash(journal));
           return journal;
         };
-        if (["session_pr_review_capture", "correction_pr_review_capture"].includes(call.node_id)) {
+        if (call.node_id === "session_setup") {
+          if (entering) {
+            assert.deepEqual(event.resolution.input, parameters.session);
+            assert.ok(event.resolution.sources.every(source => source.source === "parameter"));
+          } else {
+            const operations = state.cursor.occurrences.filter(row => row.call_scope_id === call.occurrence_id && row.operation?.intent);
+            assert.deepEqual(operations.map(row => row.node_id).sort(), ["mode_decision", "session_admit", "session_initialize", "session_mode_apply"]);
+            for (const operation of operations) accepted(operation.operation.intent.operation_id,
+              operation.node_id === "session_admit" ? "session_entry_admit" : operation.node_id);
+            assert.deepEqual(event.resolution.input, {});
+          }
+        } else if (["session_pr_review_capture", "correction_pr_review_capture"].includes(call.node_id)) {
           assert.deepEqual(event.resolution.input, {});
           assert.deepEqual(event.resolution.sources, []);
         } else if (["session_pr_effects_pending", "correction_pr_effects_pending"].includes(call.node_id)) {
