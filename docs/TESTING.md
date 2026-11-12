@@ -2709,7 +2709,10 @@ native qualification; fixtures do not establish that host visibility.
 Branch-audit regressions use `perf:verify-branch-cycle-audit-admission`: complete
 cycle success, propagated warning/refusal, ownership failures, whitespace-valid
 event JSON, old and other-branch events, mixed anomaly reasons, and unchanged
-journal bytes. The live artifact-store smoke additionally exercises automatic
+journal bytes. A valid completion remains accepted without an implicit age
+ceiling; an explicit `--threshold-minutes` still reports elapsed time. Both
+observations preserve the original journal, while unresolved objective changes
+still refuse completion. The live artifact-store smoke additionally exercises automatic
 PostgreSQL selection, misleading local projections, normal reload history and a
 real repeated-anomaly stop through the standard hook and Codex JSON wrapper.
 These subprocess tests do not qualify native hook approval or client execution.
