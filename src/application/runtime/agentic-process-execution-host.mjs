@@ -130,7 +130,8 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
     const completion = checked(await resource.session.run({ instruction: task.input.instruction,
       request_sha256: shadowHash(frame.request), signal, deadline,
       ...(inputs.beforeNative ? { beforeTurn: () => inputs.beforeNative(task.input) } : {}),
-      ...(task.input.output_contract ? { output_contract: task.input.output_contract, output_context_sha256: task.input.output_context_sha256 } : {}) }));
+      ...(task.input.output_contract ? { output_contract: task.input.output_contract, output_context_sha256: task.input.output_context_sha256,
+        output_bindings: task.input.output_bindings ?? null } : {}) }));
     remaining();
     if (completion.session_id !== resource.sessionId || completion.binding_sha256 !== resource.binding
       || !["completed", "failed", "rejected"].includes(completion.outcome)

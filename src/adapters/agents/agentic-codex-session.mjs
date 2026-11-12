@@ -149,7 +149,7 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
         permissions: started.sandbox, profile: profileId, declared_guarantee_scope: "fresh thread, disabled memories and restricted native tool profile; not full-client OS confinement" });
     } catch (error) { await rpc.close(); throw error; }
     return Object.freeze({ observe,
-      async run({ instruction, request_sha256, signal, output_contract = null, output_context_sha256 = null, beforeTurn }) {
+      async run({ instruction, request_sha256, signal, output_contract = null, output_context_sha256 = null, output_bindings = null, beforeTurn }) {
         if (active || closed || signal?.aborted) fail("PROCESS_SESSION_BUSY_OR_CANCELLED");
         await observe();
         if (beforeTurn !== undefined) {
@@ -169,14 +169,14 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
         const abort = () => reject(Object.assign(Error("PROCESS_SESSION_CANCELLED"), { code: "PROCESS_SESSION_CANCELLED" })); signal?.addEventListener("abort", abort, { once: true });
         try {
           const result = await rpc.request("turn/start", { threadId, effort: native.effort,
-            input: [{ type: "text", text: instruction, text_elements: [] }], outputSchema: nativeActivityAnswerSchema(output_contract, output_context_sha256) }, Math.max(1, turnRemaining));
+            input: [{ type: "text", text: instruction, text_elements: [] }], outputSchema: nativeActivityAnswerSchema(output_contract, output_context_sha256, output_bindings) }, Math.max(1, turnRemaining));
           if (typeof result?.turn?.id !== "string") fail("PROCESS_SESSION_TURN_ID_MISSING");
           active.turnId = result.turn.id;
           for (const event of active.pending.splice(0)) await notification(event);
           await completion; await rpc.flush();
           if (active.answers.length !== 1 || active.usage === null) fail("PROCESS_SESSION_CAPTURE_INCOMPLETE");
           let answer; try { answer = JSON.parse(active.answers[0].text); } catch { fail("PROCESS_SESSION_ANSWER_INVALID"); }
-          assertNativeActivityAnswer(answer, output_contract, output_context_sha256);
+          assertNativeActivityAnswer(answer, output_contract, output_context_sha256, output_bindings);
           context.push(shadowHash(instruction));
           const ref = await evidence.retain("native-result", { thread_id: threadId, turn_id: active.turnId,
             request_sha256, binding_sha256: binding, answer, ...(output_contract ? { output_contract, output_context_sha256 } : {}), native_usage: active.usage,

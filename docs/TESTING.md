@@ -4486,6 +4486,13 @@ separate from the corrected full-harness result, real native and installed archi
 
 ### Planned traceability producer and promotion reader
 
+The cycle-plan contract selector below also verifies host-owned identity
+constants in the Native response schema, refusal of altered identities and
+unchanged business refusal of historical proposals with a reformulated
+objective. The `--cycle-plan-mode=files` selector checks that the actual
+composition, execution host and session adapter deliver those constants to
+`turn/start`. Native RPC remains a fixture wire in these checks.
+
 `node tools/perf/verify-agentic-process-execution-fixtures.mjs --cycle-plan-mode=contract`
 includes a producer/consumer regression: the real plan renderer writes canonical
 planned REQ/TEST links, and actual promotion admission reads them on a disposable

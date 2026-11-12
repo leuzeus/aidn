@@ -46,6 +46,14 @@ changes are retained when confirmation refuses; no rollback is inferred.
 
 ## Vocabulary and behavior
 
+For new cycle-plan activities, the trusted host derives session, cycle, cycle
+type and exact objective from the canonical activity context. These values and
+the context digest constrain the Native response schema and its local answer
+validation. The model proposes the planning content; it cannot reformulate
+these identity fields. This grants no readiness, write or implementation
+permission. Historical reports keep their original shape and bytes, and the
+independent business evaluator still refuses an objective or context mismatch.
+
 | Concept | Meaning in AIDN | Does not imply |
 | --- | --- | --- |
 | Participant / pool | Logical owner of a process and its exchanges | One model, agent, machine or account |

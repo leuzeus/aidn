@@ -17,7 +17,7 @@ import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { assertStandardCyclePlan, renderStandardCyclePlan, CYCLE_PLAN_CONTRACT } from "../../src/core/workflow/standard-cycle-planning.mjs";
-import { assertNativeActivityAnswer, nativeActivityAnswerSchema } from "../../src/core/workflow/native-activity-output.mjs";
+import { assertNativeActivityAnswer, nativeActivityAnswerSchema, nativeActivityOutputBindings } from "../../src/core/workflow/native-activity-output.mjs";
 import { evaluateStandardCyclePlan } from "../../src/application/runtime/standard-cycle-plan-context.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { createStandardCycleImplementation } from "../../src/application/runtime/standard-cycle-implementation.mjs";
@@ -62,6 +62,26 @@ export async function verifyCyclePlanningContracts(check) {
     assert.throws(() => evaluateStandardCyclePlan({ ...authenticated, report: bad }, observed), /SCOPE_NOT_ADMITTED/);
     assert.throws(() => evaluateStandardCyclePlan(authenticated, { ...observed, context_sha256: "d".repeat(64) }), /SOURCE_STALE/);
     assert.throws(() => evaluateStandardCyclePlan(authenticated, { ...observed, evidence_refs: [] }), /EVIDENCE_INVALID/);
+  });
+  await check("cycle plan contract binds host identity before generation and preserves historical consumer refusal", async () => {
+    const bindings = nativeActivityOutputBindings(CYCLE_PLAN_CONTRACT, observed.context);
+    const answer = { outcome: "completed", summary: "Typed proposal", report: proposal };
+    assert.equal(assertNativeActivityAnswer(answer, CYCLE_PLAN_CONTRACT, observed.context_sha256, bindings), answer);
+    const schema = nativeActivityAnswerSchema(CYCLE_PLAN_CONTRACT, observed.context_sha256, bindings).properties.report.anyOf[1];
+    for (const [key, value] of Object.entries(bindings)) {
+      assert.equal(schema.properties[key].const, value);
+      const changed = { ...proposal, [key]: key === "session_id" ? "S002" : key === "cycle_id" ? "C002" : key === "cycle_type" ? "refactor" : value + " while preserving its interface" };
+      assert.throws(() => assertNativeActivityAnswer({ ...answer, report: changed }, CYCLE_PLAN_CONTRACT, observed.context_sha256, bindings), /ANSWER_INVALID/);
+      assert.throws(() => evaluateStandardCyclePlan({ ...authenticated, report: changed }, observed), /SOURCE_STALE/);
+    }
+    assertNativeActivityAnswer({ outcome: "rejected", summary: "Cannot propose", report: null }, CYCLE_PLAN_CONTRACT, observed.context_sha256, bindings);
+    assert.equal(nativeActivityOutputBindings("standard-drift-report.v1", observed.context), null);
+    for (const invalid of [{ ...bindings, objective: undefined }, { ...bindings, objective: "" }, { ...bindings, objective: 7 }, { ...bindings, extra: true }])
+      assert.throws(() => nativeActivityAnswerSchema(CYCLE_PLAN_CONTRACT, observed.context_sha256, invalid), /BINDINGS_INVALID/);
+    assert.throws(() => nativeActivityOutputBindings(CYCLE_PLAN_CONTRACT, {}), /BINDINGS_INVALID/);
+    assert.throws(() => nativeActivityAnswerSchema("standard-drift-report.v1", observed.context_sha256, bindings), /BINDINGS_INVALID/);
+    // Historical readers keep the original report shape; business evaluation still rejects the changed objective.
+    assertNativeActivityAnswer({ ...answer, report: { ...proposal, objective: proposal.objective + " while preserving its interface" } }, CYCLE_PLAN_CONTRACT, observed.context_sha256);
   });
   await check("cycle plan contract enforces adaptive depth, planned traceability and distinct usage classes", async () => {
     for (const mutate of [p => { p.requirements = []; }, p => { p.tasks[0].test_refs = ["TEST-999"]; }, p => { p.requirements.push({ id: "REQ-002", statement: "Unmapped requirement" }); },
@@ -239,6 +259,8 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
           task: observed.context.task.task, changes: [{ path: "product/app.mjs", operation: selected === "report" ? "delete" : "update" }], notes: ["Validation remains the host's separate responsibility"] } };
       }
       const report = taskProgress ? taskProgressProposal(cyclePlanProposal(observed), selected === "unchanged") : cyclePlanProposal(observed);
+      if (!taskProgress) for (const key of ["session_id", "cycle_id", "cycle_type", "objective"])
+        assert.equal(params.outputSchema.properties.report.anyOf[1].properties[key].const, report[key]);
       if (readiness && selected === "refusal") { report.surface = "shared"; report.usage_matrix.push({ ...report.usage_matrix[0], kind: "alternate" }); }
       return { outcome: "completed", summary: "Read-only typed planning fixture", report }; } });
     root = f.configuration.target_root;

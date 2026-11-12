@@ -45,21 +45,40 @@ export function assertStandardDriftReport(report) {
   if (new Set(report.evidence_refs.map(row => row.ref)).size !== report.evidence_refs.length) fail("STANDARD_DRIFT_REPORT_EVIDENCE_INVALID");
   return report;
 }
-export function nativeActivityAnswerSchema(contractRef = null, contextSha256 = null) {
+const cyclePlanIdentityFields = ["session_id", "cycle_id", "cycle_type", "objective"];
+function assertCyclePlanOutputBindings(bindings) {
+  if (checkShadowJson(bindings) || !bindings || typeof bindings !== "object" || Array.isArray(bindings)
+    || Object.keys(bindings).length !== cyclePlanIdentityFields.length
+    || cyclePlanIdentityFields.some(key => !Object.hasOwn(bindings, key)
+      || validateJsonSchema(bindings[key], validationRoot(planSchema.properties[key]), "$", { contractKind: "workflow-definition" }).length))
+    fail("PROCESS_ACTIVITY_OUTPUT_BINDINGS_INVALID");
+  return bindings;
+}
+export function nativeActivityOutputBindings(contractRef, context) {
+  if (contractRef !== CYCLE_PLAN_CONTRACT) return null;
+  return assertCyclePlanOutputBindings({ session_id: context?.session_id, cycle_id: context?.cycle_id,
+    cycle_type: context?.cycle_type, objective: context?.original_objective });
+}
+export function nativeActivityAnswerSchema(contractRef = null, contextSha256 = null, outputBindings = null) {
   if (contractRef !== null && !nativeActivityOutputSupported(contractRef)) fail("PROCESS_ACTIVITY_OUTPUT_CONTRACT_UNSUPPORTED");
+  if (outputBindings !== null && contractRef !== CYCLE_PLAN_CONTRACT) fail("PROCESS_ACTIVITY_OUTPUT_BINDINGS_INVALID");
   const schema = { type: "object", additionalProperties: false, required: ["outcome", "summary"], properties: {
     outcome: { type: "string", enum: ["completed", "failed", "rejected"] }, summary: { type: "string" } } };
   if (contractRef) {
     if (!/^[a-f0-9]{64}$/.test(contextSha256 ?? "")) fail("PROCESS_ACTIVITY_OUTPUT_CONTEXT_REQUIRED");
     const report = structuredClone(contractRef === MODE_WORK_CONTRACT ? modeWorkSchema : contractRef === PR_TRIAGE_CONTRACT ? prTriageSchema : contractRef === CYCLE_AUDIT_CONTRACT ? auditSchema : contractRef === CYCLE_TASK_WORK_CONTRACT ? taskWorkSchema : contractRef === CYCLE_WORK_CONTRACT ? workSchema : contractRef === CYCLE_PLAN_CONTRACT ? planSchema : reportSchema); delete report.$schema; delete report.$id; delete report["x-aidn-contract-version"];
     report.properties.context_sha256 = { const: contextSha256 };
+    if (outputBindings !== null) {
+      assertCyclePlanOutputBindings(outputBindings);
+      for (const key of cyclePlanIdentityFields) report.properties[key] = { ...report.properties[key], const: outputBindings[key] };
+    }
     schema.required.push("report"); schema.properties.report = { anyOf: [{ type: "null" }, report] };
   }
   if (validateJsonSchemaDefinition(validationRoot(schema), "#", { contractKind: "workflow-definition" }).length) fail("PROCESS_ACTIVITY_OUTPUT_SCHEMA_INVALID");
   return schema;
 }
-export function assertNativeActivityAnswer(answer, contractRef = null, contextSha256 = null) {
-  const schema = validationRoot(nativeActivityAnswerSchema(contractRef, contextSha256));
+export function assertNativeActivityAnswer(answer, contractRef = null, contextSha256 = null, outputBindings = null) {
+  const schema = validationRoot(nativeActivityAnswerSchema(contractRef, contextSha256, outputBindings));
   if (checkShadowJson(answer) || validateJsonSchema(answer, schema, "$", { contractKind: "workflow-definition" }).length)
     fail("PROCESS_SESSION_ANSWER_INVALID");
   if (contractRef) {
