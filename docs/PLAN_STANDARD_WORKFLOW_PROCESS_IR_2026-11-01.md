@@ -1,5 +1,14 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## L6 full nominal required-case candidate, 2026-11-11
+
+The runtime-agentic-process manifest gains the actual full published nominal
+FILES journey after the unchanged210-command prefix. It requires the same
+instance to reach accepted post-merge reconciliation under the original Native
+grant and response count. Preflight and shortened paths remain partial evidence.
+The local qualification retains its canonical packet; full required gates,
+genuine L7 work, exact L8 installation and dev integration remain separate.
+
 ## Signed source validity candidate, 2026-11-11
 
 The source adapter removes its extra three-hour duration ceiling and separates

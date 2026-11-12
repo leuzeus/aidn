@@ -1025,6 +1025,11 @@
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--drift-cycle-mode=files",
       "--drift-cycle-published-selection"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--standard-composed-mode=files",
+      "--standard-composed-stop=nominal_post_merge_complete"
     ]
   ]
 }

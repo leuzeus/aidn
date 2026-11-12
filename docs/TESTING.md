@@ -1,5 +1,22 @@
 # Testing Guide
 
+## Required full nominal published journey, 2026-11-11
+
+The existing runtime-agentic-process family appends command211 after its exact
+unchanged210-command prefix: verify-agentic-process-execution-fixtures.mjs
+--standard-composed-mode=files --standard-composed-stop=nominal_post_merge_complete.
+This executes the shipped composed model through the accepted post-merge
+reconciliation on the same instance. Planning, a prefix or catalog inventory
+does not satisfy this case. The original finite Native fixture grant and
+response count remain unchanged; the runner invents no elapsed deadline.
+
+Local qualification adds --retain-always to retain the canonical evidence
+packet after success. That retention flag does not change business authority.
+The fixture uses real local Git/SQLite and identified Native/provider doubles;
+genuine agents, live provider work, exact installed archives and other storage
+claims retain their own evidence. Full-manifest and admission outcomes are
+reported separately from the retained local journey.
+
 ## Signed source issuer validity and historical clock movement, 2026-11-11
 
 The protected host-source fixture checks issuer-selected durations longer than

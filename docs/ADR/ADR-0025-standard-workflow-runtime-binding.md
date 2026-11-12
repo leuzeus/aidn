@@ -1,5 +1,15 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Amendment — full nominal L6 gate coverage, 2026-11-11
+
+The existing required runtime-agentic-process manifest now includes the full
+published FILES nominal path through session_pr_post_merge_reconciled_complete.
+It preserves the exact prior210 commands, protected command policy, original
+Native authorization and common model/reducer. No new orchestration or budget
+is introduced. The required executed case closes the earlier manifest coverage
+gap; a preflight or prefix remains insufficient. Fixture success does not
+establish genuine actors, live remote delivery or installed-package behavior.
+
 ## Amendment — signed source issuer validity and historical facts, 2026-11-11
 
 The protected source transport no longer adds a three-hour maximum duration to

@@ -23,7 +23,7 @@ assert.deepEqual(manifest.cases.slice(194, 197), [
   ["tools/perf/verify-standard-pr-redelivery-fixtures.mjs", "--mode=files", "--aged-plan"],
 ]);
 console.log("PASS accepted194 cases retain their original argv and order modulo explicit age selectors with three exact additions");
-assert.equal(manifest.cases.length, 210);
+assert.equal(manifest.cases.length, 211);
 assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 197))).digest("hex"),
   "47b229353b3929aa0b52623f688b46296517e513a331a68060c4c5a0190c62f4");
 console.log("PASS accepted197 exact argv and order are preserved before twelve R05 objective components");
@@ -92,14 +92,17 @@ assert.deepEqual(manifest.cases.slice(197, 209), [
 console.log("PASS twelve appended cases cover independent worker current permission and original old R05 closure in all three storage modes");
 assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 209))).digest("hex"),
   "d99daf15720f381660bf82e22ac3ad7b0cb0388430d7c0f6cfed14e4b33fbc84");
-assert.deepEqual(manifest.cases.slice(209), [["tools/perf/verify-agentic-process-execution-fixtures.mjs","--drift-cycle-mode=files","--drift-cycle-published-selection"]]);
-assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases)).digest("hex"),
+assert.deepEqual(manifest.cases.slice(209, 210), [["tools/perf/verify-agentic-process-execution-fixtures.mjs","--drift-cycle-mode=files","--drift-cycle-published-selection"]]);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 210))).digest("hex"),
   "51d10bbc1a450d058536baa9f9545385fe70c7fe2b7eec8fd586812bde04d52d");
+assert.deepEqual(manifest.cases.slice(210), [["tools/perf/verify-agentic-process-execution-fixtures.mjs","--standard-composed-mode=files","--standard-composed-stop=nominal_post_merge_complete"]]);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases)).digest("hex"),
+  "a69efae4383b1f0c86a1337a1fbd16585c1c1f07bf6b14362e40dfd73b222761");
 assert.equal(manifest.cases.filter(args => args.includes("--aged-plan") || args.includes("--aged-hook")).length, 56);
-console.log("PASS current210 exact argv preserves209 commands and appends the original old recovery cycle selection");
+console.log("PASS current211 exact argv preserves210 commands and appends the actual published full nominal FILES journey");
 if (process.argv.includes("--manifest-only")) {
   console.log(JSON.stringify({ status: "PASS", checks: 4, scope: "ordered manifest, original age selectors and appended R05 regressions only",
-    manifest_cases: 210, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
+    manifest_cases: 211, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
   process.exit(0);
 }
 
