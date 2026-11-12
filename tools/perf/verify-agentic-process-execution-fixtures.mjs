@@ -471,7 +471,11 @@ function mixedFixture(stateMode = "files", options = {}) {
     }
     if (options.dataBindings) {
       model.operation_pins.mode_decision = shadowHash(standardWorkflowOperationBindings().find(row => row.id === "mode_decision"));
-      model.nodes[0].children.push("choose_mode"); model.nodes.push(op("choose_mode", "mode_decision"));
+      model.operation_pins.session_mode_apply = shadowHash(standardWorkflowOperationBindings().find(row => row.id === "session_mode_apply"));
+      // R05 observes an admitted mode. The dataflow fixture must make its real
+      // human choice and application before asking for that observation.
+      model.nodes[0].children.splice(3, 0, "choose_mode", "apply_mode");
+      model.nodes.push(op("choose_mode", "mode_decision"), op("apply_mode", "session_mode_apply"));
       model.data_bindings = { contract_version: "process-data-bindings.v1", parameter_keys: ["session"], inputs: [
         { node_id: "reload", fields: {} }, { node_id: "admit", fields: {} },
         { node_id: "initialize", fields: Object.fromEntries(["session_id", "session_branch", "objective"].map(name => [name, { source: "parameter", key: "session", path: [name] }])) },
@@ -480,6 +484,7 @@ function mixedFixture(stateMode = "files", options = {}) {
         { node_id: "choose_mode", fields: { session_id: options.inputSource === "operation_input"
           ? { source: "operation_input", node_id: "initialize", path: ["session_id"] }
           : { source: "operation_output", node_id: "initialize", path: ["observations", "postconditions", "admission", "active_session"] } } },
+        { node_id: "apply_mode", fields: { decision_operation_id: { source: "operation_id", node_id: "choose_mode" } } },
       ] };
     }
     if (options.recovery) {
@@ -1797,7 +1802,10 @@ if (process.argv[2] === "--mixed-continue") {
   if (selectedCycleClosureMode) await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true, taskProgress: true, audit: true, closure: true });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true, taskProgress: true, audit: true, closure: true, closeRecord: true });
   for (const mode of ["files", "dual", "db-only"]) await check(`dataflow ${mode}: the IR resolves durable parameters and accepted result identities through real ports`, async () => {
-    const f = finalizationFixture(mode, { dataBindings: true, inputSource: mode === "dual" ? "operation_input" : "operation_output" });
+    const claims = new Map(), humanSource = { read: ({ sourceRef }) => claims.get(sourceRef) ?? null,
+      verify: ({ source, sourceRef }) => claims.has(sourceRef) && shadowHash(claims.get(sourceRef)) === shadowHash(source)
+        ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" } };
+    const f = finalizationFixture(mode, { dataBindings: true, humanSource, inputSource: mode === "dual" ? "operation_input" : "operation_output" });
     const parameters = { session: { session_id: "S001", session_branch: "S001-mixed", objective: "Execute real mixed bootstrap" } };
     const initial = f.open().initialize({ parameters }); f.open().initialize({ parameters, write: true, expectedResultSha256: initial.record.instance_sha256 });
     const authorization = f.authorize(); authorization.global_deadline_ms += 1800000; authorization.workflow_deadline_ms += 1800000;
@@ -1808,29 +1816,46 @@ if (process.argv[2] === "--mixed-continue") {
     // advances its model cursor until an authenticated human wait is reached.
     for (let step = 0; step < 32; step++) {
       const prior = f.open().inspect(), result = await f.open().step({ write: true, authorization }); results.push(result);
-      if (result.kind === "native") assert.equal(result.journal_phase, "closed");
+      assert.notEqual(result.kind, "native", "R05 must follow the authenticated mode decision");
       assert.notEqual(f.open().inspect().record.instance_sha256, prior.record.instance_sha256, "model driver made no progress");
       if (result.status === "waiting_for_human") break;
     }
-    const journals = results.filter(row => row.operation_id).map(row => f.open().readOperation(row.operation_id));
-    const evaluation = journals.find(row => row.intent.binding_ref === "drift_report_evaluate");
-    assert.equal(evaluation.preview.input_resolution.sources[0].source, "occurrence_id");
     const waiting = f.open().inspect();
-    assert.equal(evaluation.preview.input.report_occurrence_id, waiting.record.events.find(row => row.kind === "result").occurrence_id);
-    const journal = journals.find(row => row.intent.binding_ref === "drift_check_finalize");
-    assert.equal(journal.preview.input.evaluation_operation_id, evaluation.operation_id);
-    assert.equal(journal.preview.input_resolution.sources[0].operation_id, evaluation.operation_id);
-    assert.equal(journal.results.at(-1).output.facts.drift_check_completed, true);
-    assert.equal((await f.open().dispatchOperation(journal.operation_id, { write: true })).status, "retained_result"); assert.equal(f.t.sessions.length, 1);
     const human = results.at(-1); assert.equal(human.status, "waiting_for_human"); assert.equal(human.question.session_id, "S001");
-    const captured = journals.find(row => row.intent.binding_ref === "mode_decision"); assert.equal(captured.preview.input.session_id, "S001");
+    const captured = f.open().readOperation(human.operation_id); assert.equal(captured.intent.binding_ref, "mode_decision"); assert.equal(captured.preview.input.session_id, "S001");
     assert.equal(captured.preview.input_resolution.sources[0].source, mode === "dual" ? "operation_input" : "operation_output");
-    assert.equal(f.t.sessions.length, 1); assert.ok(f.t.sessions.every(row => row.closed));
+    assert.equal(f.t.sessions.length, 0);
     assert.equal(waiting.cursor.status, "WAITING");
     assert.equal((await f.open().step()).kind, "human_wait");
     const simulation = simulateAgenticProcess({ instanceId: waiting.record.instance_id, scopeId: waiting.record.scope_id, model: waiting.record.model,
       policyPins: waiting.record.policy_pins, parameters: waiting.record.initial_parameters, events: waiting.record.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, waiting.record.instance_sha256);
+    assert.equal((await f.open().receiveDecision(human.operation_id, { sourceRef: "missing", write: true })).status, "waiting_for_human");
+    assert.equal(f.open().inspect().record.instance_sha256, waiting.record.instance_sha256);
+    claims.set("selected-mode", { contract_version: "human-mode-decision.v1", source_kind: "human", authority_id: "fixture_operator", source_event_id: "dataflow-mode-thinking",
+      subject_sha256: "a".repeat(64), question_sha256: shadowHash(human.question), choice: "THINKING", evidence_refs: [{ ref: "fixture:dataflow-mode", sha256: "a".repeat(64) }] });
+    await f.open().receiveDecision(human.operation_id, { sourceRef: "selected-mode", write: true }); await f.open().acceptOperation(human.operation_id, { write: true });
+    for (let step = 0; step < 32 && f.open().inspect().cursor.status !== "COMPLETED"; step++) {
+      const prior = f.open().inspect(), result = await f.open().step({ write: true, authorization }); results.push(result);
+      if (result.kind === "native") assert.equal(result.journal_phase, "closed", JSON.stringify({ phase: result.journal_phase, failure: result.first_failure }));
+      assert.notEqual(f.open().inspect().record.instance_sha256, prior.record.instance_sha256, "model driver made no progress after mode selection");
+    }
+    const final = f.open().inspect(); assert.equal(final.cursor.status, "COMPLETED");
+    const journals = results.filter(row => row.operation_id).map(row => f.open().readOperation(row.operation_id));
+    const applied = journals.find(row => row.intent.binding_ref === "session_mode_apply");
+    assert.equal(applied.preview.input.decision_operation_id, human.operation_id); assert.equal(applied.results.at(-1).output.effect_status, "confirmed");
+    const evaluation = journals.find(row => row.intent.binding_ref === "drift_report_evaluate");
+    assert.equal(evaluation.preview.input_resolution.sources[0].source, "occurrence_id");
+    assert.equal(evaluation.preview.input.report_occurrence_id, final.record.events.find(row => row.kind === "result").occurrence_id);
+    const journal = journals.find(row => row.intent.binding_ref === "drift_check_finalize");
+    assert.equal(journal.preview.input.evaluation_operation_id, evaluation.operation_id);
+    assert.equal(journal.preview.input_resolution.sources[0].operation_id, evaluation.operation_id);
+    assert.equal(journal.results.at(-1).output.facts.drift_check_completed, true);
+    assert.equal((await f.open().dispatchOperation(journal.operation_id, { write: true })).status, "retained_result");
+    assert.equal(f.t.sessions.length, 1); assert.ok(f.t.sessions.every(row => row.closed));
+    const completedSimulation = simulateAgenticProcess({ instanceId: final.record.instance_id, scopeId: final.record.scope_id, model: final.record.model,
+      policyPins: final.record.policy_pins, parameters: final.record.initial_parameters, events: final.record.events });
+    assert.equal(completedSimulation.trace.at(-1).instance_sha256, final.record.instance_sha256);
   });
   for (const mode of ["files", "dual", "db-only"]) await check(`drift cycle ${mode}: authenticated recovery waits for Git reconciliation and ${publishedRecoverySelection
     ? "selects and initializes a fresh cycle through the published call" : "initializes a real cycle with exact simulation"}`, async () => {

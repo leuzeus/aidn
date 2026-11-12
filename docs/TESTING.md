@@ -1,5 +1,17 @@
 # Testing Guide
 
+## Dataflow mode precondition, 2026-11-12
+
+The three real-port dataflow cases reach an authenticated mode question before
+starting R05. A missing source leaves the wait unchanged; the accepted fixture
+human choice and real mode application then precede Native context observation.
+The cases retain parameter/input/output identity checks, accepted operation and
+occurrence resolution, one identified Native double, actual R05 finalization,
+retained dispatch and exact simulation at the wait and at completion. The focused
+selector is `--dataflow-mode=files|dual|db-only`. This fixture correction changes
+neither the runtime mode guard nor Native budgets and proves no genuine Native
+execution or full admission.
+
 ## Catalog version capacity fixtures, 2026-11-12
 
 The process binding input fixture tests the four closed catalog versions with
