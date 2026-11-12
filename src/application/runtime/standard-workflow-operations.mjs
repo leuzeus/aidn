@@ -180,6 +180,8 @@ new URL("standard-cycle-implementation.mjs", import.meta.url), new URL("../../co
     new URL("../../core/workflow/artifact-compare-swap.mjs", import.meta.url), new URL("../../adapters/runtime/workflow-record-store.mjs", import.meta.url),
     new URL("../../core/workflow/process-control-inbox.mjs", import.meta.url), new URL("../../adapters/runtime/process-control-inbox-store.mjs", import.meta.url),
     ...["standard-empty-input.v1", "standard-session-initialize-input.v1", "standard-session-initialize-plan.v1", "standard-operation-output.v1", "process-local-effect-owner.v1", "standard-operation-preview.v1", "process-operation-journal.v1", "standard-operation-output.v2", "standard-operation-output.v3", "standard-session-reference-input.v1", "standard-mode-apply-input.v1", "standard-session-mode-plan.v1", "human-mode-decision.v1", "process-decision-inbox.v1", "standard-mode-question.v1", "standard-session-start-plan.v1", "standard-workflow-startup-catalog.v1", "standard-workflow-model-source.v1", "standard-cycle-initialize-input.v1", "standard-cycle-reference-input.v1", "standard-cycle-initialize-plan.v1", "standard-cycle-output.v1", "standard-cycle-context-plan.v1", "standard-cycle-create-catalog.v1", "process-control-request.v1", "process-control-source.v1", "process-control-inbox.v1", "process-control-inbox.v2", "process-pr-review-payload.v1", "github-pr-review-event.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url))];
+  refs.push(...["standard-session-entry-input.v1", "standard-session-entry-output.v1", "standard-workflow-startup-catalog.v2", "standard-workflow-catalog.v4"]
+    .map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)));
   const packageRoot = fileURLToPath(new URL("../../../", import.meta.url));
   return shadowHash(refs.map(url => ({ path: path.relative(packageRoot, fileURLToPath(url)).replaceAll("\\", "/"), sha256: createHash("sha256").update(fs.readFileSync(url)).digest("hex") })));
 }
@@ -263,6 +265,7 @@ const definitions = [
   ["cycle_implementation_enter", "cycle-create", "mutating", ["SPEC-R03", "SPEC-R04"], "standard-cycle-implementation-enter-input.v1", "deterministic", "standard-cycle-readiness-output.v1"],
   ["context_reload", "context-reload", "read-only", ["SPEC-R01", "SPEC-R11"], "standard-empty-input.v1"],
   ["session_admit", "start-session", "read-only", ["SPEC-R01", "SPEC-R04"], "standard-empty-input.v1"],
+  ["session_entry_admit", "start-session", "read-only", ["SPEC-R01", "SPEC-R04"], "standard-session-entry-input.v1", "deterministic", "standard-session-entry-output.v1"],
   ["session_initialize", "start-session", "mutating", ["SPEC-R01", "SPEC-R07"], "standard-session-initialize-input.v1"],
   ["mode_work_preflight", "context-reload", "read-only", ["SPEC-R01", "SPEC-R02"], "standard-mode-work-preflight-input.v1", "deterministic", "standard-mode-work-output.v1"],
   ["mode_work_observe", "context-reload", "read-only", ["SPEC-R02", "SPEC-R11"], "standard-mode-work-evaluate-input.v1", "deterministic", "standard-mode-work-observation-output.v1"],
@@ -419,6 +422,47 @@ export function createStandardWorkflowOperations({ targetRoot, now = Date.now })
       const loaded = result.decision !== "stop" && !result.missing_required_artifacts?.length;
       return output("context_reload", loaded ? "completed" : "blocked", "no_effect", { reload: result, documents }, loaded ? { context_loaded: true } : {},
         documents.map(row => ({ ref: "docs/audit/" + row.path, sha256: row.sha256 })));
+    },
+    async admitSessionEntry(input) {
+      assertStandardOperationInput("session_entry_admit", input);
+      const { contract_version, ...requested } = input;
+      sessionInput(requested);
+      const context = scope();
+      const emit = (admission, session = null, reason_code = null, evidence_refs = []) => {
+        const accepted = reason_code === null, creation = admission?.lifecycle?.action === "create_session_allowed", mode = session?.mode ?? "UNKNOWN";
+        return assertStandardOperationOutput({ contract_version: "standard-session-entry-output.v1", operation_ref: "session_entry_admit",
+          outcome: accepted ? "completed" : "blocked", effect_status: "no_effect",
+          observations: { admission, session, scope_sha256: shadowHash(context), ...(reason_code ? { reason_code } : {}) },
+          facts: accepted ? { session_creation_allowed: creation, session_resume_allowed: !creation, session_mode_pending: mode === "UNKNOWN",
+            mode_thinking: mode === "THINKING", mode_exploring: mode === "EXPLORING", mode_committing: mode === "COMMITTING",
+            cycle_work_requested: mode === "COMMITTING" } : {}, evidence_refs });
+      };
+      if (artifacts.ownerPending()) return emit(null, null, "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED");
+      let observed = await admission();
+      if (!observed.allowed) return emit(observed, null, "STANDARD_SESSION_ENTRY_NOT_ADMITTED");
+      if (observed.lifecycle.action === "create_session_allowed") {
+        if (shadowHash(scope()) !== shadowHash(context) || artifacts.ownerPending()) return emit(observed, null, "STANDARD_SESSION_ENTRY_CONTEXT_CHANGED");
+        return emit(observed);
+      }
+      if (!["resume_current_session", "resume_current_cycle"].includes(observed.lifecycle.action)) return emit(observed, null, "STANDARD_SESSION_ENTRY_NOT_ADMITTED");
+      const names = ["CURRENT-STATE.md", `sessions/${input.session_id}.md`];
+      const rows = artifacts.readMany(names, { required: names, includeMetadata: true });
+      const [current, session] = rows, state = analyzeStructuredArtifact(current.content).key_values;
+      const fields = analyzeStructuredArtifact(session.content).key_values, metadata = parseSessionMetadata(session.content), mode = fields.mode;
+      if (state.active_session !== input.session_id || observed.lifecycle.active_session !== input.session_id
+        || state.session_branch !== input.session_branch || metadata.session_branch !== input.session_branch
+        || fields.session_objective !== input.objective.replace(/\s+/gu, " ").trim()
+        || !["UNKNOWN", "THINKING", "EXPLORING", "COMMITTING"].includes(mode) || state.mode !== mode
+        || metadata.mode !== (mode === "UNKNOWN" ? null : mode))
+        return emit(observed, null, "STANDARD_SESSION_ENTRY_IDENTITY_CHANGED");
+      observed = await admission(mode);
+      if (!observed.allowed || !["resume_current_session", "resume_current_cycle"].includes(observed.lifecycle.action)
+        || observed.lifecycle.active_session !== input.session_id || artifacts.ownerPending()
+        || shadowHash(scope()) !== shadowHash(context)
+        || shadowHash(artifacts.readMany(names, { required: names, includeMetadata: true })) !== shadowHash(rows))
+        return emit(observed, null, "STANDARD_SESSION_ENTRY_CONTEXT_CHANGED");
+      return emit(observed, { ...requested, objective: fields.session_objective, mode, canonical: rows.map(({ path, sha256, metadata_sha256 }) => ({ path, sha256, metadata_sha256 })) }, null,
+        rows.map(({ path, sha256 }) => ({ ref: "docs/audit/" + path, sha256 })));
     },
     async admitSession(input = {}) {
       assertStandardOperationInput("session_admit", input);

@@ -1,5 +1,14 @@
 # 04 JSON Contracts
 
+Private `standard-session-entry-{input,output}.v1` binds STANDARD admission to
+the requested session ID, branch and original objective. The no-effect output
+retains canonical content and metadata hashes and derives routing facts from
+the admitted session's current mode. The original empty admission input and
+`standard-operation-output.v1` reader remain available for historical callers.
+The new `session_entry_admit` binding is distinct from the original empty
+`session_admit` binding. No retained receipt is converted. Startup catalog v2 and composed catalog v4
+describe fresh or existing session entry; their earlier closed readers remain.
+
 Private disposition authorization grant v2 omits an internally generated expiry.
 Its closed reader coexists with the original v1 grant and actual issuer expiry.
 Historical control-intent records retain the exact original version and bytes;

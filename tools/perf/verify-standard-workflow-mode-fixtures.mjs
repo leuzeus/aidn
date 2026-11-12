@@ -16,6 +16,7 @@ import { analyzeStructuredArtifact } from "../../src/lib/workflow/structured-art
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { verifyStandardPreparedTimestampShapes } from "./standard-prepared-timestamp-fixture-lib.mjs";
+import { verifyStandardExistingSessionEntry } from "./verify-standard-existing-session-entry-fixtures.mjs";
 const H = "a".repeat(64), temp = fs.realpathSync(os.tmpdir()), owned = [];
 const agedPlan = process.argv.includes("--aged-plan"); let preparationClock = null;
 const inputs = { session_initialize: { session_id: "S001", session_branch: "S001-start", objective: "Start a governed session through the common process IR" },
@@ -211,6 +212,7 @@ try {
     assert.deepEqual([business.read("CURRENT-STATE.md").sha256, business.read("sessions/S001.md").sha256], beforeBusiness);
     process.stdout.write(`PASS ${label}: source identity cannot be reused; human protocol never reapplies business effects\n`); passed++;
   }
+  if (process.argv.length === 2) passed += await verifyStandardExistingSessionEntry();
   process.stdout.write(JSON.stringify({ status: "PASS", checks: passed, startup_model: timestampOnly ? "NOT_RUN" : "shipped-json-component", human_authority: timestampOnly ? "NOT_RUN" : "fixture-source-adapter", timestamp_shape: "controlled-pre-owner-component", native: "NOT_RUN", full_standard_workflow: "NOT_YET_DELIVERED" }) + "\n");
 } finally {
   for (const root of owned) { const real = fs.realpathSync(root); if (path.dirname(real) !== temp || !path.basename(real).startsWith("aidn-standard-")) throw Error("FIXTURE_CLEANUP_SCOPE_INVALID"); fs.rmSync(real, { recursive: true, force: true }); }

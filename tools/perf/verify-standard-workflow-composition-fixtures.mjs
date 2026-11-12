@@ -4,10 +4,12 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { loadStandardWorkflowAssets, STANDARD_WORKFLOW_MODEL_PATH, STANDARD_WORKFLOW_CATALOG_PATH } from "../../src/application/runtime/standard-workflow-composition.mjs";
+import { loadStandardWorkflowStartupAssets } from "../../src/application/runtime/standard-workflow-startup-composition.mjs";
 import { standardWorkflowOperationBindings } from "../../src/application/runtime/standard-workflow-operations.mjs";
 import { verifyStandardWorkflowComponentAssets, assertStandardWorkflowActivityOutputs, refreshStandardWorkflowComponentBindings } from "../../src/core/workflow/standard-workflow-model-catalog.mjs";
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import catalogSchemaV3 from "../../src/core/contracts/workflow-definition/standard-workflow-catalog.v3.schema.json" with { type: "json" };
+import catalogSchemaV4 from "../../src/core/contracts/workflow-definition/standard-workflow-catalog.v4.schema.json" with { type: "json" };
 import { processModelIdentity } from "../../src/core/workflow/process-call-model.mjs";
 import { advanceAgenticProcess, createAgenticProcess, inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
 import { resolveProcessFrameInput } from "../../src/core/workflow/process-frame-input.mjs";
@@ -86,7 +88,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 193); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 194); assert.equal(assets.catalog.activities.length, 23);
 });
 test("correction work and closure consume the new implementation and new validation authorities", () => {
   const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
@@ -566,7 +568,9 @@ test("the published recovery call routes confirmed findings to the selected CR, 
 });
 test("completion of this component cannot claim completion of the standard workflow", () => {
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);
-  for (const id of ["existing_session_resume", "thinking_session_closure", "exploring_experiments_and_spike_conversion", "cycle_choice_and_carryover",
+  assert.ok(assets.catalog.scope.entry_conditions.includes("fresh_or_existing_session_admission"));
+  assert.equal(assets.catalog.scope.remaining_activities.includes("existing_session_resume"), false);
+  for (const id of ["thinking_session_closure", "exploring_experiments_and_spike_conversion", "cycle_choice_and_carryover",
     "startup_and_work_drift_routes", "incidents_and_recovery", "session_close", "pr_review_and_merge", "post_merge_sync", "full_mixed_resume"])
     assert.ok(assets.catalog.scope.remaining_activities.includes(id));
 });
@@ -606,6 +610,24 @@ function reauthorTarget({ catalog, model }, change) {
   catalog.model.sha256 = shadowHash(model);
 }
 const targetRow = input => input.catalog.bindings.find(row => row.model_ref);
+test("the composed entry reuses authored session setup and rereads canonical mode in the root", () => {
+  const startup = loadStandardWorkflowStartupAssets().model;
+  const setup = assets.model.call_targets.find(target => target.model_id === "aidn-standard-session-setup");
+  assert.ok(setup); assert.deepEqual(assets.model.nodes.find(node => node.id === assets.model.entry).children.slice(0, 5),
+    ["context_reload", "session_setup", "session_admit", "mode_preflight", "session_start_finalize"]);
+  const expected = structuredClone(startup.nodes).filter(node => !["context_reload", "session_start_finalize"].includes(node.id));
+  const entry = expected.find(node => node.id === "startup"); entry.id = "session_setup";
+  entry.children = entry.children.filter(id => !["context_reload", "session_start_finalize"].includes(id));
+  assert.deepEqual(setup.model.nodes, expected);
+  assert.equal(assets.model.nodes.find(node => node.id === "session_admit").binding_ref, "session_entry_admit");
+  assert.equal(assets.model.nodes.some(node => node.id === "session_initialize"), false);
+  assert.equal(assets.model.data_bindings.inputs.some(input => Object.values(input.fields).some(field =>
+    field.source === "operation_input" && field.node_id === "session_initialize")), false);
+});
+const legacyCatalogScope = (catalog, version) => {
+  catalog.contract_version = "standard-workflow-catalog.v" + version;
+  catalog.scope.entry_conditions = ["fresh_session_admission", "single_new_cycle"];
+};
 const rejectFixture = (name, change, code) => test(name, () => {
   const input = fresh();
   change(input);
@@ -615,12 +637,13 @@ const rejectFixture = (name, change, code) => test(name, () => {
 });
 test("the ordinary loader authenticates the two final-verification operations for both calls", () => {
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV3, "#", { contractKind: "workflow-definition" }), []);
+  assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV4, "#", { contractKind: "workflow-definition" }), []);
   const input = fresh(), loaded = assets;
-  assert.equal(loaded.model.nodes.length, 256);
-  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 151);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 42);
+  assert.equal(loaded.model.nodes.length, 254);
+  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 148);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 46);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
-  assert.equal(loaded.model.call_targets.length, 6);
+  assert.equal(loaded.model.call_targets.length, 7);
   assert.equal(child.model_id, "aidn-standard-final-verification");
   assert.deepEqual(identity, processModelIdentity(child));
   const sites = loaded.model.nodes.filter(node => node.target?.model_id === child.model_id);
@@ -674,7 +697,7 @@ for (const version of [1, 2]) test("catalog v" + version + " still retains exact
   model.operation_pins = { [operation.binding.id]: model.operation_pins[operation.binding.id] };
   delete model.data_bindings;
   delete model.call_targets;
-  catalog.contract_version = "standard-workflow-catalog.v" + version;
+  legacyCatalogScope(catalog, version);
   catalog.bindings = [operation];
   catalog.activities = [activity];
   catalog.model.sha256 = shadowHash(model);
@@ -682,13 +705,17 @@ for (const version of [1, 2]) test("catalog v" + version + " still retains exact
   assert.deepEqual(loaded.source.catalog, catalog);
   assertStandardWorkflowActivityOutputs(loaded.source, loaded.model, { [activity.node_id]: activity.output_contract });
 });
-rejectFixture("catalog v2 keeps its closed rows", x => { x.catalog.contract_version = "standard-workflow-catalog.v2"; }, "STANDARD_STARTUP_CATALOG_INVALID");
+test("catalog v3 keeps its original fresh-only scope and embedded rows", () => {
+  const input = fresh(); legacyCatalogScope(input.catalog, 3);
+  assert.deepEqual(loadFixture(input).source.catalog, input.catalog);
+});
+rejectFixture("catalog v2 keeps its closed rows", x => { legacyCatalogScope(x.catalog, 2); }, "STANDARD_STARTUP_CATALOG_INVALID");
 rejectFixture("legacy catalog rows cannot cover the embedded operations", x => {
-  x.catalog.contract_version = "standard-workflow-catalog.v2";
+  legacyCatalogScope(x.catalog, 2);
   for (const row of x.catalog.bindings) delete row.model_ref;
 }, "STANDARD_STARTUP_COVERAGE_INVALID");
 rejectFixture("historical rows do not cover the moved operations", x => {
-  x.catalog.contract_version = "standard-workflow-catalog.v2";
+  legacyCatalogScope(x.catalog, 2);
   const formerTargets = x.catalog.bindings.filter(row => row.model_ref);
   for (const row of formerTargets) delete row.model_ref;
   x.catalog.bindings.push(...formerTargets.map(row => ({ ...row, node_id: "correction_" + row.node_id })));

@@ -47,12 +47,15 @@ test("source descriptor pins the exact catalog and embedded model without granti
 reject("a valid but changed startup order cannot retain the catalog hash", x => {
   const order = x.model.nodes[0].children; [order[0], order[1]] = [order[1], order[0]];
 }, "STANDARD_STARTUP_MODEL_CHANGED");
-reject("published data dependencies reject an order that consumes future results", x => x.model.nodes[0].children.reverse(), "PROCESS_INPUT_SOURCE_NOT_ORDERED");
+reject("published data dependencies reject an order that consumes future results", x => x.model.nodes.find(node => node.id === "session_mode_select").children.reverse(), "PROCESS_INPUT_SOURCE_NOT_ORDERED");
 reject("valid changed parameter mappings cannot retain the catalog hash", x => {
   x.model.data_bindings.inputs.find(row => row.node_id === "session_initialize").fields.session_branch.path = ["other_branch"];
 }, "STANDARD_STARTUP_MODEL_CHANGED");
 reject("catalog cannot turn a startup component into the complete standard workflow", x => { x.catalog.scope.complete_standard_workflow = true; }, "STANDARD_STARTUP_CATALOG_INVALID");
 reject("catalog does not select executable modules", x => { x.catalog.module = "untrusted.mjs"; }, "STANDARD_STARTUP_CATALOG_INVALID");
+reject("startup catalog rows do not select embedded call targets", x => {
+  x.catalog.bindings[0].model_ref = { model_id: "unreviewed", revision: 1, model_sha256: "a".repeat(64) };
+}, "STANDARD_STARTUP_CATALOG_INVALID");
 reject("authority paths cannot escape the fixed package assets", x => { x.catalog.specification.path = "../SPEC.md"; }, "STANDARD_STARTUP_CATALOG_INVALID");
 reject("changed SPEC bytes require a reviewed authority update", x => { x.specification += "\n"; }, "STANDARD_STARTUP_SPECIFICATION_CHANGED");
 reject("changed skill bytes require a reviewed authority update", x => { x.skills[x.catalog.bindings[0].skill_source.path] += "\n"; }, "STANDARD_STARTUP_SKILL_CHANGED");
@@ -93,6 +96,10 @@ test("pin refresh CLI is read-only by default and emits one complete JSON result
   const before = [read(modelPath), read(catalogPath)];
   const result = JSON.parse(execFileSync(process.execPath, [fileURLToPath(new URL("tools/verify/refresh-standard-startup-bindings.mjs", root))], { encoding: "utf8", cwd: os.tmpdir(), windowsHide: true }));
   assert.equal(result.status, "PASS"); assert.equal(result.written, false); assert.deepEqual([read(modelPath), read(catalogPath)], before);
+});
+test("the removed internal-age prefix selector refuses before fixture execution", () => {
+  assert.throws(() => execFileSync(process.execPath, [fileURLToPath(new URL("tools/perf/verify-standard-workflow-composition-prefix-fixtures.mjs", root)), "--expire-initialize"],
+    { encoding: "utf8", windowsHide: true, stdio: "pipe" }), error => error.status === 1 && /STANDARD_PREFIX_ARGUMENT_INVALID/.test(String(error.stderr)));
 });
 test("package-relative loading does not depend on the caller working directory", () => {
   const module = new URL("src/application/runtime/standard-workflow-startup-composition.mjs", root).href;

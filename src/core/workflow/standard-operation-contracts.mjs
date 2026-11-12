@@ -170,6 +170,8 @@ import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { checkShadowJson, shadowHash } from "./shadow-json.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
+import sessionEntryInput from "../contracts/workflow-definition/standard-session-entry-input.v1.schema.json" with { type: "json" };
+import sessionEntryOutput from "../contracts/workflow-definition/standard-session-entry-output.v1.schema.json" with { type: "json" };
 export function normalizeStandardOperationInput(operation, value) {
   assertStandardOperationInput(operation, value);
   if (operation === "session_initialize") return { ...value, mode: value.mode ?? "UNKNOWN" };
@@ -177,6 +179,11 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (operation === "session_entry_admit") {
+    if (checkShadowJson(value) || validateJsonSchema(value, sessionEntryInput, "$", { contractKind: "workflow-definition" }).length)
+      fail("STANDARD_OPERATION_INPUT_INVALID");
+    return value;
+  }
   if (operation === recoveryCycleSelection) {
     if (checkShadowJson(value) || validateJsonSchema(value, recoveryCycleSelectionInput, "$", { contractKind: "workflow-definition" }).length)
       fail("STANDARD_OPERATION_INPUT_INVALID");
@@ -284,6 +291,18 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-session-entry-output.v1") {
+    const accepted = value.outcome === "completed", creation = value.observations?.admission?.lifecycle?.action === "create_session_allowed";
+    const mode = value.observations?.session?.mode ?? "UNKNOWN";
+    const expected = accepted ? { session_creation_allowed: creation, session_resume_allowed: !creation,
+      session_mode_pending: mode === "UNKNOWN", mode_thinking: mode === "THINKING", mode_exploring: mode === "EXPLORING",
+      mode_committing: mode === "COMMITTING", cycle_work_requested: mode === "COMMITTING" } : {};
+    if (checkShadowJson(value) || validateJsonSchema(value, sessionEntryOutput, "$", { contractKind: "workflow-definition" }).length
+      || accepted && (!value.observations.admission?.allowed || !["UNKNOWN", "THINKING", "EXPLORING", "COMMITTING"].includes(mode)
+        || !creation && !["resume_current_session", "resume_current_cycle"].includes(value.observations.admission?.lifecycle?.action))
+      || shadowHash(value.facts) !== shadowHash(expected)) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
   if (value?.contract_version === "standard-drift-recovery-cycle-selection-output.v1") return assertRecoveryCycleSelectionOutput(value);
   if (value?.contract_version === "standard-cycle-close-selection-output.v1") {
     if (checkShadowJson(value) || validateJsonSchema(value, closeSelectionOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");

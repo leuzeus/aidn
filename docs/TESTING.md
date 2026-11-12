@@ -1,5 +1,23 @@
 # Testing Guide
 
+## Existing canonical session entry, 2026-11-12
+
+The default required startup-mode fixture also runs the existing-session entry
+checks in FILES, DUAL and DB-only. The standalone selector is
+`verify-standard-existing-session-entry-fixtures.mjs [--mode=files|dual|db-only]`.
+It checks typed identity/mode admission, the preserved legacy empty admission,
+create-only refusal, no mode renewal, unchanged canonical content/metadata and
+the real THINKING startup hook with exact SIM and no human/model task.
+
+The composed prefix selector adds `--existing-session` to attach a new published
+STANDARD instance to a real canonical THINKING session through the pinned setup
+call, root admission, mode preflight and real startup hook. Its final state is
+RUNNING at `thinking_analysis`; it proves neither existing-cycle continuity nor
+Native analysis. Default prefix selectors retain their deferred human choice.
+The obsolete private `--expire-initialize` selector is removed: it asserted an
+internal age refusal that current unchanged session plans no longer require.
+The retained elapsed-plan fixtures still check real context and issuer bounds.
+
 ## Published THINKING startup prefix, 2026-11-12
 
 The three required composition-prefix fixtures compose the real common process

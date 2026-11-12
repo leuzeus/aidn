@@ -1,5 +1,14 @@
 # Participants, roles and agentic control
 
+STANDARD entry accepts a fresh or admitted existing canonical session. Its
+typed admission binds the requested ID, session branch and objective to current
+canonical content and metadata. An existing selected mode is retained; UNKNOWN
+still requires the signed human mode decision and separate mode application.
+The composed model runs this deterministic/H setup in a pinned common-IR call,
+then rereads canonical admission in the root before mode preflight and the real
+startup hook. Creation stays create-only. This does not establish continuity
+of an existing cycle or change Native permission and resource accounting.
+
 The internal journaled allocator and mixed host expose read-only epoch
 preparation and explicit epoch activation. A host-composed source must verify
 fresh human approval and complete native/provider/process resource closure for

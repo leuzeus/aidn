@@ -49,8 +49,26 @@ const xor = (id, choices) => node(id, "xor", { branches: choices.map(([flow_id, 
 seq("standard", ["startup", "mode_preflight", "session_start_finalize", "mode_route", "cycle_work_route"]);
 xor("cycle_work_route", [["requested", "cycle_work", "cycle_work_requested"], ["analysis", "cycle_work_inapplicable", null]]);
 seq("cycle_work_inapplicable", []);
-nodes.push(...structuredClone(startup.nodes)); inputs.push(...structuredClone(startup.data_bindings.inputs));
-nodes.find(row => row.id === "startup").children = startup.nodes.find(row => row.id === "startup").children.filter(id => id !== "session_start_finalize");
+// Reuse the authored session setup through the common call engine. Native
+// activities remain in the root; this target contains deterministic/H ports.
+const sessionSetup = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-session-setup", revision: 1,
+  participants: [{ id: "project" }], roles: [], policies: [], entry: "session_setup",
+  nodes: structuredClone(startup.nodes).filter(node => !["context_reload", "session_start_finalize"].includes(node.id)),
+  operation_pins: {}, call_interface: { parameters: { session_id: "string", session_branch: "string", objective: "string" }, returns: {} },
+  data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session_id", "session_branch", "objective"],
+    inputs: structuredClone(startup.data_bindings.inputs).filter(input => !["context_reload", "session_start_finalize"].includes(input.node_id)) } };
+const setupEntry = sessionSetup.nodes.find(node => node.id === "startup"); setupEntry.id = "session_setup";
+setupEntry.children = setupEntry.children.filter(id => !["context_reload", "session_start_finalize"].includes(id));
+for (const input of sessionSetup.data_bindings.inputs) for (const field of Object.values(input.fields)) {
+  if (field.source === "parameter" && field.key === "session" && field.path.length === 1) { field.key = field.path[0]; field.path = []; }
+}
+sessionSetup.operation_pins = pinsFor(sessionSetup.nodes);
+const sessionSetupRef = pinTarget(sessionSetup);
+seq("startup", ["context_reload", "session_setup", "session_admit"]);
+node("session_setup", "call", { target: sessionSetupRef });
+inputs.push({ node_id: "session_setup", fields: Object.fromEntries(["session_id", "session_branch", "objective"].map(key => [key, { source: "parameter", key: "session", path: [key] }])) });
+nodes.push(...structuredClone(startup.nodes).filter(node => ["context_reload", "session_admit", "session_start_finalize"].includes(node.id)));
+inputs.push(...structuredClone(startup.data_bindings.inputs).filter(input => ["context_reload", "session_admit", "session_start_finalize"].includes(input.node_id)));
 xor("mode_route", [["committing", "committing", "mode_committing"], ["thinking", "thinking_handoff", "mode_thinking"], ["exploring", "exploring_handoff", "mode_exploring"]]);
 // Analysis reports retain their original outcomes. A received waiting report
 // reaches a durable human operation; continuation creates a new loop occurrence.
@@ -598,8 +616,16 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...captureRef, model: captureTarget },
     { ...driftRecoveryRef, model: driftRecoveryTarget },
     { ...correctiveDriftRef, model: correctiveDriftTarget },
+    { ...sessionSetupRef, model: sessionSetup },
   ],
   data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session", "cycle"], inputs } };
+// Session creation is conditional inside the pinned setup call. Later work
+// binds the requested identity, authenticated again by the root admission.
+for (const input of inputs) for (const field of Object.values(input.fields)) {
+  if (field.source === "operation_input" && field.node_id === "session_initialize" && field.path?.join(".") === "session_id") {
+    delete field.node_id; Object.assign(field, { source: "parameter", key: "session", path: ["session_id"] });
+  }
+}
 if (existing) {
   model.revision = existing.revision;
 }
@@ -607,10 +633,10 @@ assertAgenticProcessModel(model);
 const components = processModels(model);
 const specification = read("docs/SPEC.md");
 const skillSource = path => ({ path, sha256: standardAssetHash(read(path)) });
-const catalog = { contract_version: components.length > 1 ? "standard-workflow-catalog.v3" : "standard-workflow-catalog.v2",
+const catalog = { contract_version: "standard-workflow-catalog.v4",
   component_id: "aidn-standard", revision: model.revision,
   scope: { kind: "composed_committing_cycle_component", complete_standard_workflow: false,
-    entry_conditions: ["fresh_session_admission", "single_new_cycle"], remaining_activities: ["existing_session_resume", "thinking_session_closure", "exploring_experiments_and_spike_conversion",
+    entry_conditions: ["fresh_or_existing_session_admission", "single_new_cycle"], remaining_activities: ["thinking_session_closure", "exploring_experiments_and_spike_conversion",
       "cycle_choice_and_carryover", "governed_git_checkpoints", "startup_and_work_drift_routes", "incidents_and_recovery", "session_close", "pr_review_and_merge", "post_merge_sync", "full_mixed_resume"] },
   model: { path: modelPath, sha256: shadowHash(model), model_id: model.model_id, revision: model.revision },
   specification: { path: "docs/SPEC.md", sha256: standardAssetHash(specification) },

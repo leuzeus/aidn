@@ -1,5 +1,23 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Amendment — entry on an existing canonical session, 2026-11-12
+
+A new STANDARD instance can attach to an admitted existing session. Its
+no-effect admission receipt retains the exact canonical identity, mode,
+content and metadata hashes. The published IR creates a session only when
+creation is admitted and requests a human mode choice only for UNKNOWN.
+An existing selected mode is preserved without a fabricated human receipt
+or a mode rewrite. Identity mismatch and unresolved ownership stop entry.
+
+The composed model reuses the authored deterministic/H session setup through
+an embedded pinned call. Root admission then rereads canonical state to derive
+its own routing facts; call-local facts are not injected into the parent.
+The existing mode preflight and real session-start finalization remain in
+order. The common reducer, node bounds, separate effects and startup-hook
+requirements are unchanged. Historical model/catalog readers stay explicit.
+This entry capability does not establish existing-cycle continuity, genuine
+actors or complete STANDARD qualification.
+
 ## Amendment — full nominal L6 gate coverage, 2026-11-11
 
 The existing required runtime-agentic-process manifest now includes the full

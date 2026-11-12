@@ -1,5 +1,16 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## L2 existing-session entry candidate, 2026-11-12
+
+The new typed session-entry admission and published startup distinguish creation
+from attachment to a canonical open session. UNKNOWN requires the original
+human mode choice; a selected canonical mode is preserved without another
+choice or a mode rewrite. The composed root reuses the pinned setup and rereads
+canonical mode before preflight and the actual startup hook. Historical empty
+admission and catalog readers remain separate. Existing-cycle selection,
+carryover, genuine actors, final-archive and full-family qualification keep
+their own requirements; this candidate does not complete L1-L8 or A1-A10.
+
 ## L6 full nominal required-case candidate, 2026-11-11
 
 The runtime-agentic-process manifest gains the actual full published nominal

@@ -1,5 +1,21 @@
 # Standard workflow IR traceability
 
+## Current session-entry candidate, 2026-11-12
+
+New STANDARD instances can attach to an admitted canonical session through
+`session_entry_admit`. Its typed no-effect receipt binds the requested session
+ID, branch and objective to canonical content/metadata and the existing mode.
+The authored startup creates only when admitted and requests H mode selection
+only for UNKNOWN. The composed root calls that pinned deterministic/H setup,
+then rereads admission before mode preflight and the real startup hook.
+The legacy empty `session_admit` binding remains separate and readable.
+
+Source fixture qualification and genuine Native/installed qualification remain
+separate. This entry capability does not establish existing-cycle selection,
+carryover or complete STANDARD delivery. Earlier source sections below retain
+their recorded component milestones and evidence; their old inventories and
+remaining-work tables are historical rather than current package inventories.
+
 At the initial and corrective review waits, the pinned capture call selects
 a retained nominal review event or a protected external-merge observation.
 The latter enters the signed incident disposition before the shared R09
@@ -300,14 +316,16 @@ startup sequence in test code.
 | IR activity | SPEC intent | Skill | Actual realization |
 | --- | --- | --- | --- |
 | `context_reload` | R01/R11 canonical context before session actions | `context-reload` | `standard-workflow-operations.mjs.reload`: complete required documents and real `runReloadCheckUseCase`, read-only |
-| `session_admit` | R01/R04 fresh admission, no permission from a preview | `start-session` | `preWriteAdmit` and `runStartSessionAdmitUseCase` |
+| `session_entry_admit` | R01/R04 fresh or existing canonical session, no permission from a preview | `start-session` | actual admissions, requested/canonical identity comparison, mode and content/metadata hashes; no business write |
+| `session_admit` (compatibility) | original empty-input admission | `start-session` | original v1 no-effect reader/port, not selected by the new published startup |
 | `session_initialize` | R01/R07 fresh session and continuity | `start-session` | pinned template/preview, actual Git branch and canonical artifact CAS, observed postconditions |
 | `mode_decision` | R01/R02 explicit operator choice | `start-session` | trusted source read/verify, durable deduplicated inbox; no model allocation while waiting |
 | `session_mode_apply` | R01/R02 acknowledged mode applied under admission | `start-session` | authenticated accepted decision, separate effect grant, canonical session/current-state updates |
 | `session_start_finalize` | R01/R04/R11 actual hook and checkpoint results | `start-session` | `runSkillHookUseCase` and fixed `start-session-hook.mjs`; nested gate and required evidence checked |
 
-Session initialization is a skill component before mode acknowledgement; hook
-finalization follows acknowledgement/application. The catalog does not claim that
+Session initialization runs only for admitted creation. UNKNOWN mode requires
+human acknowledgement and application; a selected canonical mode is preserved.
+Hook finalization follows the established mode. The catalog does not claim that
 COMMITTING's subsequent branch/cycle audit or DoR has occurred. Those activities
 remain explicitly outside this component, as do work and session closure.
 
@@ -330,7 +348,7 @@ accept changed SPEC, skill bytes, effect classes or contracts automatically.
 Those changes require a reviewed source edit. A partial source update fails
 loading; it never triggers runtime repair.
 
-## Remaining standard integration
+## Remaining integration at the initial startup milestone
 
 | Required path | Current status |
 | --- | --- |
@@ -534,9 +552,9 @@ not_requested is a recorded choice, never promotion completion or a rule waiver.
 
 ## Composed standard IR: partial source, not full workflow qualification
 
-The [standard model](../../package/catalogs/process-models/aidn-standard.v1.json)
-and its [catalog](../../package/catalogs/standard-workflow.v1.json) now compose
-74 nodes and 42 operation occurrences through the existing reducer and
+At the historical 74-node, 42-operation milestone, the
+[standard model](../../package/catalogs/process-models/aidn-standard.v1.json)
+and its [catalog](../../package/catalogs/standard-workflow.v1.json) used the existing reducer and
 [application loader](../../src/application/runtime/standard-workflow-composition.mjs).
 The catalog pins real bindings, SPEC and skills and declares typed native reports.
 Its closed contract still requires `complete_standard_workflow: false`.
@@ -697,7 +715,8 @@ the authenticated model and remote delivery remain separate qualifications.
 
 `session_close_admit` binds SPEC-R07/R11 to the actual `close-session` admission:
 `preWriteAdmit` and `runCloseSessionAdmitUseCase`, through the fixed standard host.
-Its session input comes from `session_initialize`. It is deterministic/read-only;
+Its session input is the requested identity authenticated by canonical entry
+admission; session creation can be skipped. It is deterministic/read-only;
 the closed output permits only admission satisfaction, never session completion.
 Wrong ownership, unresolved open cycles and incomplete canonical state remain
 blocked without model allocation, business mutation or reader-side repair.

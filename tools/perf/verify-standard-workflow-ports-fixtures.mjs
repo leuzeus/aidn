@@ -118,7 +118,13 @@ try {
     }
     // Standalone compatibility bindings are covered by their own fixtures.
     assert.deepEqual([...registered.keys()].filter(id => !published.has(id)).sort(),
-      ["cycle_work_evaluate", "session_pr_merge_observe", "session_pr_post_merge_wait", "session_pr_review_observe"]);
+      ["cycle_work_evaluate", "session_admit", "session_pr_merge_observe", "session_pr_post_merge_wait", "session_pr_review_observe"]);
+    const legacyAdmission = registered.get("session_admit"), entryAdmission = registered.get("session_entry_admit");
+    assert.equal(legacyAdmission.revision, 1); assert.equal(legacyAdmission.input_contract, "standard-empty-input.v1");
+    assert.equal(legacyAdmission.output_contract, "standard-operation-output.v1");
+    assert.equal(entryAdmission.input_contract, "standard-session-entry-input.v1");
+    assert.equal(entryAdmission.output_contract, "standard-session-entry-output.v1");
+    assert.equal(entryAdmission.effect_class, "read-only"); assert.equal(entryAdmission.executor_kind, "deterministic");
     const closeAdmission = bindings.find(row => row.id === "session_close_admit");
     assert.equal(closeAdmission.executor_kind, "deterministic"); assert.equal(closeAdmission.effect_class, "read-only");
     assert.equal(closeAdmission.skill_id, "close-session"); assert.deepEqual(closeAdmission.allowed_modes, ["THINKING", "EXPLORING", "COMMITTING"]);

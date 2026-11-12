@@ -4,6 +4,8 @@ import cycleCatalogSchema from "../contracts/workflow-definition/standard-cycle-
 import standardCatalogSchema from "../contracts/workflow-definition/standard-workflow-catalog.v1.schema.json" with { type: "json" };
 import standardCatalogSchemaV2 from "../contracts/workflow-definition/standard-workflow-catalog.v2.schema.json" with { type: "json" };
 import standardCatalogSchemaV3 from "../contracts/workflow-definition/standard-workflow-catalog.v3.schema.json" with { type: "json" };
+import startupCatalogSchemaV2 from "../contracts/workflow-definition/standard-workflow-startup-catalog.v2.schema.json" with { type: "json" };
+import standardCatalogSchemaV4 from "../contracts/workflow-definition/standard-workflow-catalog.v4.schema.json" with { type: "json" };
 import sourceSchema from "../contracts/workflow-definition/standard-workflow-model-source.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { assertAgenticProcessModel } from "./agentic-process-model.mjs";
@@ -18,11 +20,13 @@ const catalogSchemas = new Map([
   ["standard-workflow-catalog.v1", standardCatalogSchema],
   ["standard-workflow-catalog.v2", standardCatalogSchemaV2],
   ["standard-workflow-catalog.v3", standardCatalogSchemaV3],
+  ["standard-workflow-startup-catalog.v2", startupCatalogSchemaV2],
+  ["standard-workflow-catalog.v4", standardCatalogSchemaV4],
 ]);
 const composedCatalog = catalog => Object.hasOwn(catalog, "activities");
 export const standardAssetHash = bytes => createHash("sha256").update(bytes).digest("hex");
 export function assertStandardWorkflowStartupCatalog(catalog, model) {
-  if (catalog?.contract_version !== "standard-workflow-startup-catalog.v1") fail("STANDARD_STARTUP_CATALOG_INVALID");
+  if (!["standard-workflow-startup-catalog.v1", "standard-workflow-startup-catalog.v2"].includes(catalog?.contract_version)) fail("STANDARD_STARTUP_CATALOG_INVALID");
   return assertStandardWorkflowComponentCatalog(catalog, model);
 }
 export function assertStandardWorkflowComponentCatalog(catalog, model) {
@@ -34,7 +38,8 @@ export function assertStandardWorkflowComponentCatalog(catalog, model) {
     || catalog.model.model_id !== model.model_id || catalog.model.revision !== model.revision || catalog.revision !== model.revision) fail("STANDARD_STARTUP_MODEL_CHANGED");
   const [, ...targets] = processModels(model);
   if (targets.some(target => target.nodes.some(node => node.kind === "activity"))) fail("STANDARD_EMBEDDED_ACTIVITY_UNSUPPORTED");
-  if (schema === standardCatalogSchemaV3) for (const target of targets) {
+  const embeddedCatalog = [standardCatalogSchemaV3, standardCatalogSchemaV4].includes(schema);
+  if (embeddedCatalog) for (const target of targets) {
     const events = target.nodes.filter(node => node.kind === "event");
     if (!events.length) continue;
     const [wait] = events;
@@ -51,7 +56,7 @@ export function assertStandardWorkflowComponentCatalog(catalog, model) {
   }));
   const targetCount = [...targetOperations.values()].reduce((count, target) => count + target.operations.size, 0);
   const ids = catalog.bindings.map(row => `${row.model_ref?.model_sha256 ?? rootIdentity.model_sha256}:${row.node_id}`);
-  if ((targetCount && schema !== standardCatalogSchemaV3) || rootOperations.size + targetCount !== ids.length || new Set(ids).size !== ids.length
+  if ((targetCount && !embeddedCatalog) || rootOperations.size + targetCount !== ids.length || new Set(ids).size !== ids.length
     || new Set(catalog.scope.entry_conditions).size !== 2 || new Set(catalog.scope.remaining_activities).size !== catalog.scope.remaining_activities.length) fail("STANDARD_STARTUP_COVERAGE_INVALID");
   for (const row of catalog.bindings) {
     assertProcessOperationBinding(row.binding);
