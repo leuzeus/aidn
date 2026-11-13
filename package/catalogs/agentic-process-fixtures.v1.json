@@ -1134,6 +1134,13 @@
     ],
     [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--drift-objective-mismatch-only",
+      "--drift-objective-published-corrective",
+      "--drift-objective-terminal-context",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--standard-composed-mode=files",
       "--standard-composed-stop=nominal_post_merge_complete"
     ]

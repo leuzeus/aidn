@@ -1203,7 +1203,7 @@ if (process.argv[2] === "--mixed-continue") {
         const event = proposed.record.events.at(-1), entering = call.wait_reason === "call_entry";
         assert.equal(event.kind, entering ? "call_enter" : "call_return");
         assert.equal(event.occurrence_id, call.occurrence_id);
-        assert.deepEqual(event.witnesses, []);
+        if (entering || !/^correction_(?:cycle|closure|promotion|session_closure)_drift_finalize$/.test(call.node_id)) assert.deepEqual(event.witnesses, []);
         const journals = new Map();
         const accepted = (id, binding) => {
           const journal = host.readOperation(id), receipt = journal.results.at(-1)?.receipt;
@@ -1241,9 +1241,11 @@ if (process.argv[2] === "--mixed-continue") {
             accepted(completion.operation.intent.operation_id, "session_pr_post_merge_complete");
             assert.deepEqual(event.resolution.input, {});
           }
-        } else if (call.node_id === "correction_cycle_drift_finalize") {
+        } else if (["correction_cycle_drift_finalize", "correction_closure_drift_finalize",
+          "correction_promotion_drift_finalize", "correction_session_closure_drift_finalize"].includes(call.node_id)) {
           assert.equal(fullCorrection, true);
-          verifyCorrectiveDriftCall({ call, cursor: state.cursor, prefix, event, accepted });
+          verifyCorrectiveDriftCall({ call, cursor: state.cursor, prefix, event, accepted,
+            evaluationNode: call.node_id.replace(/_finalize$/, "_evaluate") });
         } else if (entering) {
           const { validation_operation_id, progress_operation_id } = event.resolution.input;
           accepted(validation_operation_id, "cycle_validation_execute");
@@ -1402,7 +1404,8 @@ if (process.argv[2] === "--mixed-continue") {
           } else if (["drift_recovery_decision", "drift_completion_decision"].includes(binding)) {
             assert.equal(fullCorrection, true);
             const question = result.question, parent = state.cursor.occurrences.find(row => row.occurrence_id === frame.call_scope_id);
-            assert.equal(parent?.node_id, "correction_cycle_drift_finalize");
+            assert.ok(["correction_cycle_drift_finalize", "correction_closure_drift_finalize",
+              "correction_promotion_drift_finalize", "correction_session_closure_drift_finalize"].includes(parent?.node_id));
             assert.equal(question.contract_version, "standard-drift-recovery-question.v2");
             assert.ok(question.choices.includes("confirm_alignment"));
             const beforeWait = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
@@ -1412,8 +1415,8 @@ if (process.argv[2] === "--mixed-continue") {
             claim = { contract_version: "human-drift-recovery-decision.v2", source_kind: "human", authority_id: "fixture_operator",
               source_event_id: "standard:" + ref, subject_sha256: shadowHash(question.review), question_sha256: shadowHash(question),
               choice: "confirm_alignment", rationale: binding === "drift_completion_decision"
-                ? "The fixture operator confirms the witnessed corrective completion for the separate cycle checkpoint."
-                : "The selected corrective cycle addresses the accepted review finding within the current fixture session.",
+                ? `The fixture operator confirms the witnessed completion at ${parent.node_id}.`
+                : `The fixture operator reviews the current objectives at ${parent.node_id}.`,
               evidence_refs: [{ ref: "fixture:operator-corrective-drift", sha256: shadowHash(question.review) }] };
           } else if (binding === "session_branch_integration_decision") {
             assert.ok(runsPromotion); assert.ok(result.question.choices.includes("integrate-to-session"));
@@ -2246,6 +2249,8 @@ if (process.argv[2] === "--mixed-continue") {
     const cycleObjective = "Determine whether a bounded prototype is useful";
     const checkpointOnly = process.argv.includes("--drift-objective-checkpoint-only");
     const publishedCheckpoint = process.argv.includes("--drift-objective-published-checkpoint");
+    const terminalContext = process.argv.includes("--drift-objective-terminal-context");
+    assert.ok(!terminalContext || process.argv.includes("--drift-objective-published-corrective"));
     assert.ok(!checkpointOnly || publishedCheckpoint);
     for (const route of checkpointOnly ? ["recovery"] : ["finalize", "recovery"]) {
       let humanReads = 0;
@@ -2266,11 +2271,11 @@ if (process.argv[2] === "--mixed-continue") {
         console.log(JSON.stringify({ drift_objective_model_preflight: route, outcome: "constructed", native_allocations: 0 }));
         continue;
       }
-      const auth = await bootstrapMixed(f), c = await prepareCompletionCycle(f, published ? "OPEN" : "DONE");
+      const auth = await bootstrapMixed(f), c = await prepareCompletionCycle(f, published && !terminalContext ? "OPEN" : "DONE");
       assert.match(c.artifacts.sessions().find(row => row.session_id === "S001").content, new RegExp(sessionObjective));
       const observed = await c.context();
       assert.equal(observed.context.original_objective, cycleObjective);
-      assert.equal(observed.context.context_use, published ? "active_cycle" : "cycle_completion");
+      assert.equal(observed.context.context_use, published && !terminalContext ? "active_cycle" : "cycle_completion");
       const native = await f.open().step({ write: true, authorization: auth });
       assert.equal(native.journal_phase, "closed", JSON.stringify(native));
       const occurrence = f.open().inspect().cursor.occurrences.find(row => row.node_id === "analyze").occurrence_id;
@@ -2344,6 +2349,7 @@ if (process.argv[2] === "--mixed-continue") {
             const closed = await f.open().step({ write: true }), finalized = f.open().readOperation(closed.operation_id).results.at(-1).output;
             assert.equal(finalized.effect_status, "confirmed", JSON.stringify(finalized));
             assert.equal(finalized.facts.drift_check_completed, true, JSON.stringify(finalized));
+            assert.equal(finalized.observations.operation_id, closed.operation_id);
             assert.equal(finalized.observations.hook.invocation, "in_process_authenticated_objective_alignment");
             assert.equal(finalized.observations.hook.payload.objective_alignment.source_sha256, shadowHash(claim));
             assert.equal(finalized.observations.observed_event.objective_alignment_sha256,

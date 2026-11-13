@@ -385,9 +385,8 @@ checkpointDrift("closure_drift", "cycle_work", "close_finalize");
 checkpointDrift("promotion_drift", "promotion", "promotion_finalize");
 checkpointDrift("session_closure_drift", null, null);
 
-// The corrective checkpoint may arbitrate a sole objective signal against its
-// own evaluation. The finalizer still owns R05 and refuses unresolved drift.
-const correctiveDriftSite = "correction_cycle_drift_finalize";
+// Each corrective R05 checkpoint arbitrates its own current evaluation. The
+// finalizer still owns R05 and refuses unresolved drift.
 const correctiveDriftNodeStart = nodes.length, correctiveDriftInputStart = inputs.length;
 const correctiveEvaluation = { evaluation_operation_id: { source: "parameter", key: "evaluation_operation_id", path: [] } };
 seq("checkpoint_drift", ["select", "objective_route", "finalize", "checkpoint_review_route"]);
@@ -402,12 +401,10 @@ seq("checkpoint_without_review", []);
 const correctiveDriftNodes = nodes.splice(correctiveDriftNodeStart);
 const correctiveDriftTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-corrective-drift", revision: 1,
   participants: [{ id: "project" }], roles: [], policies: [], entry: "checkpoint_drift", nodes: correctiveDriftNodes,
-  operation_pins: pinsFor(correctiveDriftNodes), call_interface: { parameters: { evaluation_operation_id: "string" }, returns: {} },
+  operation_pins: pinsFor(correctiveDriftNodes), call_interface: { parameters: { evaluation_operation_id: "string" },
+    returns: { finalization_operation_id: { type: "string", node_id: "finalize", path: ["observations", "operation_id"] } } },
   data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["evaluation_operation_id"], inputs: inputs.splice(correctiveDriftInputStart) } };
 const correctiveDriftRef = pinTarget(correctiveDriftTarget);
-const correctiveDriftCall = nodes.find(row => row.id === correctiveDriftSite);
-delete correctiveDriftCall.binding_ref;
-Object.assign(correctiveDriftCall, { kind: "call", target: correctiveDriftRef });
 inputs.find(row => row.node_id === "correction_cycle_checkpoint").fields = {
   ...correctionRef, ...operation(null, "evaluation_operation_id", "correction_cycle_drift_evaluate"),
 };
@@ -446,6 +443,19 @@ for (const id of correctionNodes) {
   if (activity) activities.push({ ...structuredClone(activity), node_id: copy.id });
 }
 nodes.find(row => row.id === "correction_cycle").children.push(...correctionRoots.map(correctionName));
+
+// Keep the evaluated report at the call boundary. Session closure consumes the
+// actual accepted finalizer through the existing typed return, never the call
+// occurrence or a previous corrective checkpoint's operation.
+for (const stage of ["cycle", "closure", "promotion", "session_closure"]) {
+  const call = nodes.find(row => row.id === `correction_${stage}_drift_finalize`);
+  if (call?.kind !== "operation" || call.binding_ref !== "drift_check_finalize") throw Error("STANDARD_CORRECTIVE_DRIFT_SITE_CHANGED");
+  delete call.binding_ref;
+  Object.assign(call, { kind: "call", target: correctiveDriftRef });
+}
+inputs.find(row => row.node_id === "correction_session_closure_decide").fields.drift_finalization_operation_id = {
+  source: "call_output", node_id: "correction_session_closure_drift_finalize", path: ["finalization_operation_id"],
+};
 
 // Corrective delivery consumes the fresh integration and admitted cycle.
 // Review/control/triage have their own occurrences and exact current HEAD.

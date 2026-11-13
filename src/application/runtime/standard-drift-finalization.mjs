@@ -139,7 +139,7 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
           if (plan.contract_version === "standard-drift-finalize-plan.v3" && (event.objective_alignment_sha256 !== shadowHash(plan.objective_alignment)
             || shadowHash(payload.objective_alignment) !== shadowHash(plan.objective_alignment))) fail("STANDARD_DRIFT_OBJECTIVE_ALIGNMENT_CHANGED");
           if (artifacts.read(plan.report.path).sha256 !== plan.report.after_sha256) fail("STANDARD_DRIFT_REPORT_CHANGED");
-          return emit("completed", "confirmed", { report_path: plan.report.path, report_sha256: plan.report.after_sha256,
+          return emit("completed", "confirmed", { operation_id: plan.operation_id, report_path: plan.report.path, report_sha256: plan.report.after_sha256,
             evaluation_operation_id: plan.input.evaluation_operation_id, hook, observed_event: event, event_offset: matches[0].offset, event_file: eventRelative },
             { drift_check_completed: true }, [{ ref: "docs/audit/" + plan.report.path, sha256: plan.report.after_sha256 }, { ref: "aidn:drift-event/" + plan.operation_id, sha256: shadowHash(event) }]);
         } catch (cause) {

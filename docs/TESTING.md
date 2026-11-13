@@ -1200,6 +1200,17 @@ gates.
 Add `--drift-objective-checkpoint-only` with the published-checkpoint selector
 to isolate its positive route within the same execution bound. The direct
 refusal is verified by a separate execution.
+Add `--drift-objective-terminal-context` with the published-corrective selector
+to repeat the real refusal, current human alignment, physical R05 completion
+and typed finalizer return with an explicitly staged `DONE` cycle. This is a
+terminal-context port regression, not proof of cycle closure or promotion.
+The published correction graph uses that same pinned call at cycle entry,
+cycle closure, promotion and session closure. Each call receives its own
+accepted evaluation. Its `finalization_operation_id` return is witnessed by
+the finalizer's signed output (`observations.operation_id`); session closure
+consumes that return through `call_output`, then authenticates the original
+operation, receipt and physical completion. Historical outputs may omit the
+additive observation; new model pins require the current implementation.
 The positive fixture stages the exact preview returned by the mixed host and
 then dispatches and accepts that occurrence through the ordinary step. It
 records preview, staging and dispatch/acceptance elapsed times separately.

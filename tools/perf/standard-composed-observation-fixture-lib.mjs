@@ -35,21 +35,34 @@ export function verifyCorrectiveDriftCall({ call, cursor, prefix, event, accepte
   const evaluation = accepted(evaluationId, "drift_report_evaluate");
   assert.equal(cursor.occurrences.find(row => row.occurrence_id === evaluation.intent.occurrence_id)?.node_id, evaluationNode);
   assert.deepEqual(entry.resolution.input, { evaluation_operation_id: evaluationId });
-  if (entering) return;
+  if (entering) { assert.deepEqual(event.witnesses, []); return; }
 
   const leaves = cursor.occurrences.filter(row => row.call_scope_id === call.occurrence_id && row.operation?.intent);
-  const bindings = { select: "drift_followup_select", decide: "drift_recovery_decision",
-    finalize: "drift_check_finalize", checkpoint_review: "drift_completion_decision" };
+  const selection = leaves.find(row => row.node_id === "select");
+  assert.equal(selection?.status, "COMPLETED");
+  const selected = accepted(selection.operation.intent.operation_id, "drift_followup_select");
+  const objective = selected.results.at(-1).output.facts.drift_objective_review_required;
+  assert.equal(typeof objective, "boolean");
+  if (!objective) {
+    assert.equal(selected.results.at(-1).output.observations.reason_code, "STANDARD_DRIFT_NOMINAL");
+    assert.equal(selected.results.at(-1).output.facts.drift_route_ready, true);
+  }
+  const bindings = { select: "drift_followup_select", ...(objective ? { decide: "drift_recovery_decision" } : {}),
+    finalize: "drift_check_finalize", ...(objective ? { checkpoint_review: "drift_completion_decision" } : {}) };
   assert.equal(leaves.length, Object.keys(bindings).length);
   const operations = Object.fromEntries(Object.entries(bindings).map(([node, binding]) => {
     const leaf = leaves.find(row => row.node_id === node);
     assert.equal(leaf?.status, "COMPLETED", node);
-    return [node, accepted(leaf.operation.intent.operation_id, binding)];
+    return [node, node === "select" ? selected : accepted(leaf.operation.intent.operation_id, binding)];
   }));
-  for (const node of ["select", "decide", "finalize"]) assert.deepEqual(operations[node].preview.input, entry.resolution.input);
+  for (const node of ["select", ...(objective ? ["decide"] : []), "finalize"]) assert.deepEqual(operations[node].preview.input, entry.resolution.input);
   assert.equal(operations.finalize.results.at(-1).receipt.facts.drift_check_completed, true);
-  assert.equal(operations.checkpoint_review.preview.prepared.plan.previous_completion.operation_id, operations.finalize.intent.operation_id);
-  assert.deepEqual(event.resolution.input, {});
+  assert.equal(operations.finalize.results.at(-1).output.observations.operation_id, operations.finalize.intent.operation_id);
+  assert.equal(event.witnesses.length, 1);
+  assert.equal(event.witnesses[0].operation_id, operations.finalize.intent.operation_id);
+  assert.deepEqual(event.witnesses[0].results, [operations.finalize.results.at(-1)]);
+  if (objective) assert.equal(operations.checkpoint_review.preview.prepared.plan.previous_completion.operation_id, operations.finalize.intent.operation_id);
+  assert.deepEqual(event.resolution.input, { finalization_operation_id: operations.finalize.intent.operation_id });
 }
 
 // Interrupt only the atomic rename of a *completed* correction checkpoint's

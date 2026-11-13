@@ -24,6 +24,9 @@ const callSites = new Map([
   ["session_pr_effects_pending", { model_id: reviewTargetId, prefix: "session_" }],
   ["correction_pr_effects_pending", { model_id: reviewTargetId, prefix: "correction_" }],
   ["correction_cycle_drift_finalize", { model_id: "aidn-standard-corrective-drift", prefix: "correction_cycle_drift_" }],
+  ["correction_closure_drift_finalize", { model_id: "aidn-standard-corrective-drift", prefix: "correction_closure_drift_" }],
+  ["correction_promotion_drift_finalize", { model_id: "aidn-standard-corrective-drift", prefix: "correction_promotion_drift_" }],
+  ["correction_session_closure_drift_finalize", { model_id: "aidn-standard-corrective-drift", prefix: "correction_session_closure_drift_" }],
 ]);
 
 // Test planning only. Synthetic receipts/control/assignments never authenticate
@@ -57,16 +60,23 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
       cycle: { cycle_id: "C001", cycle_type: "feature", title: "standard-prefix", objective: "Synthetic fixture budget planning" } } };
   let state = createAgenticProcess(initial), serial = 0, advanced = 0, deferred = false, interrupted = false;
   const native = [], operations = [], checkpoints = [], callTransitions = [], verificationInputs = [];
+  const operationInputs = new Map(), syntheticWitnesses = new Map();
   const emit = value => { state = advanceAgenticProcess(state, { event_id: "preflight-" + ++serial, ...value }); };
   const opIntent = (frame, node, inputSha = H) => ({ contract_version: "process-operation-intent.v1", operation_id: "op-" + serial,
     binding_ref: node.binding_ref, binding_sha256: processFrameModel(model, frame).operation_pins[node.binding_ref], input_sha256: inputSha, preconditions_sha256: H,
     authorization_sha256: null, authority_id: "synthetic-host", scope_id: state.scope_id, instance_id: state.instance_id,
     instance_sha256: state.instance_sha256, model_sha256: state.model_sha256, occurrence_id: frame.occurrence_id, instance_revision: state.revision });
   function opResult(frame, intent, outcome, facts = {}) {
-    emit({ kind: "operation_result", occurrence_id: frame.occurrence_id, receipt: {
+    const input = operationInputs.get(intent.operation_id);
+    const output = input ? { observations: { operation_id: intent.operation_id } } : null;
+    const receipt = {
       contract_version: "process-operation-receipt.v1", receipt_id: "receipt-" + serial, operation_id: intent.operation_id,
-      intent_sha256: shadowHash(intent), authority_id: intent.authority_id, outcome, effect_status: "no_effect", output_sha256: H,
-      facts, evidence_refs: [{ ref: "fixture/preflight", sha256: H }] } });
+      intent_sha256: shadowHash(intent), authority_id: intent.authority_id, outcome, effect_status: "no_effect", output_sha256: output ? shadowHash(output) : H,
+      facts, evidence_refs: [{ ref: "fixture/preflight", sha256: H }] };
+    // Synthetic output witness for the declared typed return only. It proves
+    // reducer dataflow, never physical R05 completion or human authority.
+    if (input) syntheticWitnesses.set(intent.operation_id, { phase: "receipted", intent, preview: { input }, results: [{ receipt, output }] });
+    emit({ kind: "operation_result", occurrence_id: frame.occurrence_id, receipt });
   }
   for (let step = 0; step < 200; step++) {
     const cursor = inspectAgenticProcess(state);
@@ -77,8 +87,9 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
     if (call) {
       const returning = call.wait_reason === "call_return", occurrence_id = call.occurrence_id;
       // Source-owned parameters and accepted operation IDs enter these calls.
-      // No arbitrary journal reader is supplied for output-witness targets.
-      const data = resolveProcessCallData({ instance: state, cursor, occurrenceId: occurrence_id, returning });
+      // Only source-authored synthetic finalizer witnesses are available.
+      const data = resolveProcessCallData({ instance: state, cursor, occurrenceId: occurrence_id, returning,
+        readOperation: id => syntheticWitnesses.get(id) });
       emit({ kind: returning ? "call_return" : "call_enter", occurrence_id, ...data });
       callTransitions.push({ node_id: call.node_id, occurrence_id, kind: state.events.at(-1).kind, ...data });
       continue;
@@ -93,9 +104,12 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
       const label = (callSites.get(site?.node_id)?.prefix ?? "") + node.id;
       const verificationLeaf = model.model_id === "aidn-standard" &&
         ["final_validation", "verification_enter", "correction_final_validation", "correction_verification_enter"].includes(label);
-      const resolution = verificationLeaf ? resolveProcessFrameInput({ instance: state, cursor, occurrenceId: frame.occurrence_id }) : null;
+      const correctiveFinalizer = node.binding_ref === "drift_check_finalize"
+        && callSites.get(site?.node_id)?.model_id === "aidn-standard-corrective-drift";
+      const resolution = verificationLeaf || correctiveFinalizer ? resolveProcessFrameInput({ instance: state, cursor, occurrenceId: frame.occurrence_id }) : null;
       const intent = opIntent(frame, node, resolution ? shadowHash(resolution.input) : H);
-      if (resolution) verificationInputs.push({ node_id: label, occurrence_id: frame.occurrence_id, binding_ref: node.binding_ref,
+      if (correctiveFinalizer) operationInputs.set(intent.operation_id, resolution.input);
+      if (verificationLeaf) verificationInputs.push({ node_id: label, occurrence_id: frame.occurrence_id, binding_ref: node.binding_ref,
         operation_id: intent.operation_id, input: resolution.input, sources: resolution.sources });
       emit({ kind: "operation_intent", occurrence_id: frame.occurrence_id, intent });
       if (interruption?.node_id === label) { opResult(frame, intent, interruption.outcome); interrupted = true; break; }
@@ -132,7 +146,7 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         if (fullCorrection && node.id === "session_pr_correction_decide") facts = { session_pr_correction_cycle_requested: true };
         if (node.binding_ref === "drift_completion_select") facts = { drift_diagnosis_requested: !operations.includes("closure_drift_finalize"), drift_completion_review_required: false, drift_completion_reviewed: operations.includes("closure_drift_finalize") };
         if (node.binding_ref === "drift_followup_select") {
-          const objective = fullCorrection && site?.node_id === "correction_cycle_drift_finalize";
+          const objective = fullCorrection && callSites.get(site?.node_id)?.model_id === "aidn-standard-corrective-drift";
           facts = { drift_route_ready: !objective, drift_followup_review_required: objective, drift_objective_review_required: objective };
         }
         if (node.binding_ref === "drift_check_finalize") facts = { drift_check_completed: true };

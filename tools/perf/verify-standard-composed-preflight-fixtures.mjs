@@ -136,7 +136,7 @@ test('v3 plans both cycles through the same published model, new closure, redeli
   const correction = JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/standard-workflow/composed-correction.v3.json', import.meta.url)));
   const result = preflightStandardComposedFixture({ model, scenario: correction, stop: "pr_effects_pending" });
   assert.equal(result.responses_required, 17); assert.equal(result.planned_status, 'WAITING');
-  assert.equal(result.operations.length, 127); assert.equal(result.event_count, 305);
+  assert.equal(result.operations.length, 136); assert.equal(result.event_count, 329);
   assert.equal(result.operations.filter(id => id === "cycle_entry_observe").length, 1);
   assert.equal(result.operations.filter(id => id === "cycle_entry").length, 1);
   const correctiveDrift = result.call_transitions.filter(row => row.node_id === "correction_cycle_drift_finalize");
@@ -148,6 +148,19 @@ test('v3 plans both cycles through the same published model, new closure, redeli
   assert.deepEqual(result.operations.slice(decisionIndex - 2, decisionIndex + 4), ["correction_cycle_drift_evaluate",
     "correction_cycle_drift_select", "correction_cycle_drift_decide", "correction_cycle_drift_finalize",
     "correction_cycle_drift_checkpoint_review", "correction_cycle_checkpoint"]);
+  for (const stage of ["cycle", "closure", "promotion", "session_closure"]) {
+    const site = `correction_${stage}_drift_finalize`, evaluationNode = site.replace(/_finalize$/, "_evaluate");
+    const call = model.nodes.find(row => row.id === site), input = model.data_bindings.inputs.find(row => row.node_id === site);
+    assert.equal(call.kind, "call"); assert.equal(call.target.model_id, "aidn-standard-corrective-drift");
+    assert.deepEqual(input.fields, { evaluation_operation_id: { source: "operation_id", node_id: evaluationNode } });
+    const [enter, returned] = result.call_transitions.filter(row => row.node_id === site);
+    assert.equal(enter.kind, "call_enter"); assert.equal(returned.kind, "call_return");
+    assert.equal(returned.witnesses.length, 1);
+    assert.equal(returned.resolution.input.finalization_operation_id, returned.witnesses[0].operation_id);
+    assert.equal(returned.witnesses[0].preview.input.evaluation_operation_id, enter.resolution.input.evaluation_operation_id);
+  }
+  assert.deepEqual(model.data_bindings.inputs.find(row => row.node_id === "correction_session_closure_decide").fields.drift_finalization_operation_id,
+    { source: "call_output", node_id: "correction_session_closure_drift_finalize", path: ["finalization_operation_id"] });
   verifyFinalVerificationCalls(result, ["final_verification", "correction_final_verification"]);
   verifyReviewCall(result, "correction");
   assert.ok(result.operations.includes('correction_initialize'));
@@ -166,11 +179,12 @@ test("correction retains its original budget refusal and interruption choices", 
     assert.ok(!stopped.operations.includes('correction_initialize'));
     assert.notEqual(stopped.planned_status, 'COMPLETED');
   }
-  for (const node_id of ["correction_cycle_drift_decide", "correction_cycle_drift_checkpoint_review"]) {
+  for (const stage of ["cycle", "closure", "promotion", "session_closure"]) for (const suffix of ["decide", "checkpoint_review"]) {
+    const node_id = `correction_${stage}_drift_${suffix}`;
     const deferred = preflightStandardComposedFixture({ model, scenario: { ...correction, interruption: { node_id, outcome: "deferred" } } });
     assert.equal(deferred.planned_status, "WAITING");
-    assert.ok(!deferred.operations.includes("correction_cycle_checkpoint"));
-    assert.deepEqual(deferred.call_transitions.filter(row => row.node_id === "correction_cycle_drift_finalize").map(row => row.kind), ["call_enter"]);
+    assert.deepEqual(deferred.call_transitions.filter(row => row.node_id === `correction_${stage}_drift_finalize`).map(row => row.kind), ["call_enter"]);
+    assert.ok(!deferred.operations.includes("correction_session_closure_decide"));
   }
 });
 test("an interrupted final evaluation retains its entry without returning or entering verification", () => {
