@@ -13,6 +13,8 @@ import { externalMergeDisposition, externalMergeQuestionVersion, externalMergePr
   externalMergeDispositionOutput } from "../../core/workflow/standard-pr-external-merge.mjs";
 import { recoveryCycleSelection, recoveryCycleQuestionVersion, recoveryCycleQuestion, assertHumanRecoveryCycleSelection,
   recoveryCycleSelectionOutput } from "../../core/workflow/standard-drift-recovery-cycle-selection.mjs";
+import { cycleEntryChoiceOperation, cycleEntryChoiceQuestionVersion, cycleEntryChoiceQuestion,
+  assertHumanCycleEntryChoice, cycleEntryChoiceOutput } from "../../core/workflow/standard-cycle-entry-choice.mjs";
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const choices = ["THINKING", "EXPLORING", "COMMITTING", "refused", "deferred", "cancelled"];
 const spike = record => record.intent.binding_ref === "spike_conversion_decision";
@@ -25,6 +27,7 @@ const promotion = record => record.intent.binding_ref === "baseline_promotion_de
 const closure = record => record.intent.binding_ref === "cycle_closure_decision";
 const resolutionException = record => record.intent.binding_ref === resolutionExceptionOperation;
 export function standardHumanDecisionQuestion(record) {
+  if (record.intent.binding_ref === cycleEntryChoiceOperation) return cycleEntryChoiceQuestion(record);
   if (record.intent.binding_ref === recoveryCycleSelection) return recoveryCycleQuestion(record);
   if (record.intent.binding_ref === externalMergeDisposition) return externalMergeQuestion(record);
   if (record.intent.binding_ref === postMergeDecisionOperation) return postMergeDecisionQuestion(record);
@@ -95,7 +98,8 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     } finally { clearTimeout(timer); combined.removeEventListener("abort", onAbort); stop.abort(); }
   }
   async function verify(claim, sourceRef, request, signal, historical = false, expectedGrant) {
-    if ([recoveryCycleQuestionVersion, "standard-drift-recovery-cycle-question.v1"].includes(request.contract_version)) assertHumanRecoveryCycleSelection(claim, request);
+    if (request.contract_version === cycleEntryChoiceQuestionVersion) assertHumanCycleEntryChoice(claim, request);
+    else if ([recoveryCycleQuestionVersion, "standard-drift-recovery-cycle-question.v1"].includes(request.contract_version)) assertHumanRecoveryCycleSelection(claim, request);
     else if (request.contract_version === "standard-spike-question.v1") assertHumanSpikeDecision(claim, request);
     else if (request.contract_version === "standard-mode-work-question.v1") assertHumanModeWorkDecision(claim, request);
     else if ([externalMergeQuestionVersion, externalMergePretriageQuestionVersion].includes(request.contract_version)) assertHumanExternalMergeDisposition(claim, request);
@@ -152,7 +156,8 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
         if (projectionRequired) inbox.materialize(id, { write: true });
         return before.record;
       }
-      const version = currentMergeConsent ? "process-decision-inbox.v18"
+      const version = record.intent.binding_ref === cycleEntryChoiceOperation ? "process-decision-inbox.v19"
+        : currentMergeConsent ? "process-decision-inbox.v18"
         : record.intent.binding_ref === recoveryCycleSelection ? "process-decision-inbox.v17"
         : record.intent.binding_ref === externalMergeDisposition ? "process-decision-inbox.v16"
         : record.intent.binding_ref === postMergeDecisionOperation ? "process-decision-inbox.v15"
@@ -178,6 +183,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     },
     output(record, capture) {
       const request = question(record);
+      if (record.intent.binding_ref === cycleEntryChoiceOperation) return cycleEntryChoiceOutput(request, capture);
       if (record.intent.binding_ref === recoveryCycleSelection) return recoveryCycleSelectionOutput(request, capture);
       if (record.intent.binding_ref === externalMergeDisposition) return externalMergeDispositionOutput(request, capture);
       if (record.intent.binding_ref === postMergeDecisionOperation) return postMergeDecisionOutput(request, capture, record.preview.input.allow_fast_forward === true);

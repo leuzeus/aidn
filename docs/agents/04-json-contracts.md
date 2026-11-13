@@ -1,5 +1,17 @@
 # 04 JSON Contracts
 
+Private `standard-cycle-entry-choice-{subject,question,input,output}.v1` and
+`human-cycle-entry-choice.v1` describe an authenticated H selection intent.
+The subject binds the accepted entry observation, current canonical content and
+metadata, complete relevant inventory and observed branch tips. Every reported
+cycle has an explicit intent; that data grants no Git, canonical write or
+implementation permission. The host reobserves the exact subject around source
+verification. Unknown fields and unverified approvals are refused; new questions
+impose no host-generated expiry.
+Private inbox v19 retains this source through the existing owner, store, MAC and
+deduplication rules. V1-v18 are not converted. The published STANDARD choice
+route and actual realization remain separate; public CLI envelopes are unchanged.
+
 Published STANDARD catalog v5 declares fresh creation or current owned OPEN
 entry. V4 keeps its original closed new-cycle declaration and reader, and
 v1-v3 remain unchanged. This scope declaration supplies no human choice or

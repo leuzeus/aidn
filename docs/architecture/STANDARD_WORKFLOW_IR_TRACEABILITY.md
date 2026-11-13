@@ -1,5 +1,24 @@
 # Standard workflow IR traceability
 
+## Canonical cycle-choice H component, 2026-11-13
+
+`cycle_entry_choice_decision` realizes the human intent portion of
+SPEC-R03/R04/R06 through the existing trusted human source and decision inbox.
+It consumes an accepted entry observation and reobserves canonical document and
+metadata pins, current inventory, scope and local branch heads. The question
+records a selected active candidate and one explicit integrate/import/defer/drop
+intent per reported cycle, with distinct refusal, deferral and cancellation.
+Its v19 inbox receipt remains a no-effect intent; it supplies no implementation
+permission or Native allocation. Historical question and inbox readers remain.
+
+`verify-standard-cycle-choice-fixtures.mjs` uses the actual common operation
+host and FILES/DUAL/DB-only canonical stores, controlled human source verification,
+changed-ref and last-await refusals, cold acceptance and exact replay. Its second
+cycle status is fixture setup, not proof that the initializer ran for that cycle.
+Genuine actors and an archive require separate qualification. The complete
+choice/continuity activity still requires actual selection/carryover realization,
+readmission, R3 and phase routes, and connection to the published root.
+
 ## Current session-entry candidate, 2026-11-12
 
 New STANDARD instances can attach to an admitted canonical session through

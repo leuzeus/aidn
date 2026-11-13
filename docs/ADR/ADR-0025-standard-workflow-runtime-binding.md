@@ -1,5 +1,31 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Canonical cycle-choice human port component, 2026-11-13
+
+The fixed host registers the read-only H binding `cycle_entry_choice_decision`.
+Its subject consumes an authenticated, accepted `cycle_entry_observe` result
+and rereads current canonical content, metadata, inventory, scope and local
+branch tips. Source verification and receipt acceptance reobserve that subject
+around awaits. The shared canonical reader preserves the original admission
+and observation outputs; a requested cycle ID remains data, not consent.
+
+The closed question and human source record an existing cycle selection and
+one explicit integrate/import/defer/drop intent for every reported cycle.
+A deferred or dropped reported cycle cannot also be selected for implementation.
+Missing reported cycles or absent branch prerequisites keep only non-success
+choices available. Subject capacity refuses explicitly rather than truncating.
+There is no host-generated question expiry or preparation-age condition.
+Current source permission and issuer expiry, owner/source/CAS fences and finite
+Native grants retain their separate existing boundaries.
+
+Private inbox v19 uses the existing human principal verification, MAC, deduplication
+and artifact store; v1-v18 retain their exact readers and bytes. A completed H
+receipt records intent only, with no canonical/Git effect and no implementation
+permission. Selection realization, fresh admission, reported-cycle effects, R3,
+imported progress and published STANDARD routing remain separate required work.
+Catalog v5 retains its incomplete scope; this component does not qualify genuine
+human/Native/provider actors, an installed archive or the full workflow.
+
 ## Published owned OPEN entry and catalog v5 candidate, 2026-11-12
 
 The delivered graph refreshes context, then `cycle_entry_observe` reads the

@@ -166,6 +166,8 @@ import driftCycleContext from "../contracts/workflow-definition/standard-drift-c
 import driftCycleCheckpoint from "../contracts/workflow-definition/standard-drift-cycle-checkpoint-input.v1.schema.json" with { type: "json" };
 import recoveryCycleSelectionInput from "../contracts/workflow-definition/standard-drift-recovery-cycle-selection-input.v1.schema.json" with { type: "json" };
 import { recoveryCycleSelection, assertRecoveryCycleSelectionOutput } from "./standard-drift-recovery-cycle-selection.mjs";
+import cycleEntryChoiceInput from "../contracts/workflow-definition/standard-cycle-entry-choice-input.v1.schema.json" with { type: "json" };
+import { cycleEntryChoiceOperation, assertCycleEntryChoiceOutput } from "./standard-cycle-entry-choice.mjs";
 import driftCycleInput from "../contracts/workflow-definition/standard-drift-cycle-initialize-input.v1.schema.json" with { type: "json" };
 import driftCycleOutput from "../contracts/workflow-definition/standard-drift-cycle-output.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
@@ -184,6 +186,11 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (operation === cycleEntryChoiceOperation) {
+    if (checkShadowJson(value) || validateJsonSchema(value, cycleEntryChoiceInput, "$", { contractKind: "workflow-definition" }).length)
+      fail("STANDARD_OPERATION_INPUT_INVALID");
+    return value;
+  }
   if (["cycle_entry_admit", "cycle_entry_observe"].includes(operation)) {
     if (checkShadowJson(value) || validateJsonSchema(value, cycleEntryInput, "$", { contractKind: "workflow-definition" }).length)
       fail("STANDARD_OPERATION_INPUT_INVALID");
@@ -301,6 +308,7 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-cycle-entry-choice-output.v1") return assertCycleEntryChoiceOutput(value);
   if (value?.contract_version === "standard-cycle-plan-adoption-output.v1") {
     const accepted = value.outcome === "completed", observed = value.observations;
     if (checkShadowJson(value) || validateJsonSchema(value, planAdoptionOutput, "$", { contractKind: "workflow-definition" }).length

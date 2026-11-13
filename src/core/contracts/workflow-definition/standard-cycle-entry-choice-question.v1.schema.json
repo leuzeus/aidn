@@ -1,0 +1,251 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-entry-choice-question.v1",
+  "x-aidn-contract-version": "standard-cycle-entry-choice-question.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_id",
+    "intent_sha256",
+    "subject",
+    "choices"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-entry-choice-question.v1"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "intent_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "entry_operation_id",
+        "entry_output_sha256",
+        "session_id",
+        "session_path",
+        "scope_sha256",
+        "inventory_sha256",
+        "current_cycle_id",
+        "current_branch",
+        "head",
+        "reason_code",
+        "canonical",
+        "candidate_cycles",
+        "reported_cycles",
+        "missing_reported_cycles",
+        "carry_over_pending"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "standard-cycle-entry-choice-subject.v1"
+        },
+        "entry_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "entry_output_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^S[0-9]{3,6}$"
+        },
+        "session_path": {
+          "type": "string",
+          "pattern": "^sessions/S[0-9]{3,6}([-_.][A-Za-z0-9._-]+)?[.]md$"
+        },
+        "scope_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "inventory_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "current_cycle_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^C[0-9]{3,6}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "current_branch": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$"
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "reason_code": {
+          "enum": [
+            "STANDARD_CYCLE_ENTRY_CHOICE_REQUIRED",
+            "STANDARD_CYCLE_ENTRY_CARRYOVER_DECISION_REQUIRED",
+            "STANDARD_CYCLE_ENTRY_TOPOLOGY_DECISION_REQUIRED"
+          ]
+        },
+        "canonical": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "sha256",
+              "metadata_sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^(CURRENT-STATE[.]md|sessions/S[0-9]{3,6}([-_.][A-Za-z0-9._-]+)?[.]md)$"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "metadata_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "candidate_cycles": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "cycle_id",
+              "path",
+              "sha256",
+              "metadata_sha256",
+              "state",
+              "session_owner",
+              "branch_name",
+              "dor_state",
+              "scope_frozen",
+              "branch_head"
+            ],
+            "properties": {
+              "cycle_id": {
+                "type": "string",
+                "pattern": "^C[0-9]{3,6}$"
+              },
+              "path": {
+                "type": "string",
+                "pattern": "^cycles/C[0-9]{3,6}-[A-Za-z0-9_-]+/status[.]md$"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "metadata_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "state": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "session_owner": {
+                "type": "string",
+                "pattern": "^(S[0-9]{3,6}|none|unknown)$"
+              },
+              "branch_name": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$"
+              },
+              "dor_state": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "scope_frozen": {
+                "enum": [
+                  "true",
+                  "false"
+                ]
+              },
+              "branch_head": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "reported_cycles": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "string",
+            "pattern": "^C[0-9]{3,6}$"
+          }
+        },
+        "missing_reported_cycles": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "string",
+            "pattern": "^C[0-9]{3,6}$"
+          }
+        },
+        "carry_over_pending": {
+          "type": "boolean"
+        }
+      }
+    },
+    "choices": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 4,
+      "items": {
+        "enum": [
+          "select_cycle",
+          "refused",
+          "deferred",
+          "cancelled"
+        ]
+      }
+    }
+  }
+}

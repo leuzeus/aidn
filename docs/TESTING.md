@@ -1,5 +1,29 @@
 # Testing Guide
 
+## Canonical cycle-choice human port component
+
+`node tools/perf/verify-standard-cycle-choice-fixtures.mjs --mode=files --retain-always`
+(and `--mode=dual` / `--mode=db-only`) exercises closed cycle-choice contracts,
+per-reported-cycle integrate/import/defer/drop intent, independent source-port
+verification and inbox v19 deduplication. It keeps the historical recovery-cycle
+question v1/v2 and inbox v17 vectors as related regression checks.
+
+The actual local common host observes canonical cycles, retains a human wait,
+refuses a changed branch and a mutation at the final human verification await,
+then accepts in a fresh Node process. A virtual host clock advance must not add
+an internal question expiry. Canonical business content/metadata and Git state
+remain unchanged, replay matches, and repeated delivery retains the same receipt.
+The H receipt records intent only; the original admission still requires actual
+selection realization and fresh permission. D/H allocate no Native session.
+
+The competing cycle is an explicit fixture preimage with a real local ref.
+Controlled human verification is not genuine human identity. These cases do not
+connect the published STANDARD choice route, execute selection/carryover effects,
+qualify imported work, R3, real PostgreSQL, genuine actors or an installed archive.
+`--contracts-only` isolates the cheap protocol checks; it does not replace the
+three required canonical-store cases. Successful fixtures may clean their owned
+scratch data; `--retain-always` keeps it for a scoped evidence review.
+
 ## Native epoch fixture clock sampling
 
 Initial-entry and continuation fixtures build each fresh authorization from one

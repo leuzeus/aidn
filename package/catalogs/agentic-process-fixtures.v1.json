@@ -1118,6 +1118,21 @@
       "--case=external-pretriage-nominal"
     ],
     [
+      "tools/perf/verify-standard-cycle-choice-fixtures.mjs",
+      "--mode=files",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-choice-fixtures.mjs",
+      "--mode=dual",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-choice-fixtures.mjs",
+      "--mode=db-only",
+      "--retain-always"
+    ],
+    [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--standard-composed-mode=files",
       "--standard-composed-stop=nominal_post_merge_complete"
