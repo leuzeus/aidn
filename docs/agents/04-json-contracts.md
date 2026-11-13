@@ -671,3 +671,22 @@ they introduce no public JSON command or automatic migration.
 Private `standard-cycle-entry-choice-activation-{input,plan,output}.v1` consumes only an accepted checkpoint operation identity. The host authenticates that checkpoint, its canonical choice record and the original H capture in the current process. The closed prepared plan binds canonical content/metadata, inventory, scope and the fixed local Git observation. Its separate exact mutation grant is checked after awaited source authentication and around physical effects. The files reference backend is required by the adapter fence; other Git reference backends refuse before effect resources are allocated.
 
 A confirmed activation or already-selected no-change reports physical branch readiness and always denies canonical adoption, resume and implementation permission. Partial replacement, lost acknowledgement or revoked permission after an effect retains UNKNOWN, empty facts and the existing owner. No JSON path, executable, principal or approval supplies authority. This standalone binding does not connect the published choice route, adopt imported work or grant phase/DoR admission. It adds no store, inbox version or preparation-age ceiling.
+
+
+Private `standard-cycle-entry-selected-input.v1` and
+`standard-cycle-entry-selected-checkpoint-{plan,output}.v1` bind an accepted
+physical activation through its original CP/record/H source. JSON supplies only
+the activation identity. A protected reader observes the selected candidate
+while focus remains suspended; its internal owning-call option verifies the
+exact existing effect owner and never grants a write or phase permission.
+The closed plan pins this context, canonical content/metadata, inventory,
+physical canonical fingerprints and the exact activation overlay.
+A separate mutation grant permits the private cycle-context Git profile to
+checkpoint only those changed preserved documents, including explicit absence.
+No DB-only detailed projection is materialized. The grant is repeated after
+awaited source authentication and before effect boundaries. During one live
+owned attempt, an exact causal ref postimage may precede index installation;
+this never authorizes a foreign HEAD, cold effect replay or UNKNOWN adoption.
+Confirmed/no-change outputs deny resume, canonical adoption, phase admission
+and implementation. Unknown effects retain empty facts and the existing owner.
+No new store, inbox authority, public CLI envelope or preparation-age ceiling.

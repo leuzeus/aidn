@@ -1248,6 +1248,33 @@
       "tools/perf/verify-selected-context-checkpoint-port-fixtures.mjs"
     ],
     [
+      "tools/perf/verify-standard-selected-context-checkpoint-fixtures.mjs",
+      "--mode=files"
+    ],
+    [
+      "tools/perf/verify-standard-selected-context-checkpoint-fixtures.mjs",
+      "--mode=dual"
+    ],
+    [
+      "tools/perf/verify-standard-selected-context-checkpoint-fixtures.mjs",
+      "--mode=db-only"
+    ],
+    [
+      "tools/perf/verify-standard-selected-context-checkpoint-fixtures.mjs",
+      "--mode=files",
+      "--select-current"
+    ],
+    [
+      "tools/perf/verify-standard-selected-context-checkpoint-fixtures.mjs",
+      "--mode=files",
+      "--fault=grant_after_ref"
+    ],
+    [
+      "tools/perf/verify-standard-selected-context-checkpoint-fixtures.mjs",
+      "--mode=files",
+      "--fault=index_ack"
+    ],
+    [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--standard-composed-mode=files",
       "--standard-composed-stop=nominal_post_merge_complete"

@@ -363,3 +363,12 @@ The application caller owns current authorization, authenticated choice and cano
 
 
 The standalone `cycle_entry_choice_activate` application operation composes that physical port with the accepted H/record/checkpoint source and its own exact mutation grant. It observes canonical backend identity, document content/metadata, cycle inventory, branch tips and process CAS across protected awaits. Its scope may follow only the source tip or its planned selected tip; the physical adapter proves the actual transition. The source-ref fence requires the Git files reference backend and refuses other layouts read-only. Physical readiness still leaves canonical focus, history adoption, phase/DoR admission and the published choice route unfinished.
+
+
+The private selected-context checkpoint consumes accepted activation evidence
+from the same canonical backend and preserves canonical bodies and metadata.
+Its separate grant changes Git objects, the selected branch ref and its index;
+it does not synchronize a shared runtime, export DB-only detail or adopt
+canonical focus. Physical absence is retained without a checkout deletion.
+A partial effect keeps the existing owner and signed UNKNOWN for independent
+reconciliation; physical confirmation alone cannot accept that result.

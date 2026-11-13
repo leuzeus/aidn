@@ -1,0 +1,414 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-entry-selected-checkpoint-plan.v1",
+  "x-aidn-contract-version": "standard-cycle-entry-selected-checkpoint-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "operation_id",
+    "input",
+    "prepared_at_ms",
+    "source_sha256",
+    "context",
+    "context_sha256",
+    "scope_without_head_sha256",
+    "physical_canonical",
+    "overlay_paths",
+    "git"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-entry-selected-checkpoint-plan.v1"
+    },
+    "operation_ref": {
+      "const": "cycle_entry_selected_checkpoint"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "activation_operation_id"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "standard-cycle-entry-selected-input.v1"
+        },
+        "activation_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        }
+      }
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_sha256",
+        "activation_operation_id",
+        "session_id",
+        "selected_cycle",
+        "canonical",
+        "inventory_sha256",
+        "scope_sha256",
+        "backend_binding_sha256",
+        "deferred_cycles",
+        "carry_over_pending",
+        "phase_admission",
+        "implementation_authorized"
+      ],
+      "properties": {
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "activation_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^S[0-9]{3,6}$"
+        },
+        "selected_cycle": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cycle_id",
+            "cycle_path",
+            "branch",
+            "head",
+            "state",
+            "dor_state",
+            "scope_frozen"
+          ],
+          "properties": {
+            "cycle_id": {
+              "type": "string",
+              "pattern": "^C[0-9]{3,6}$"
+            },
+            "cycle_path": {
+              "type": "string",
+              "pattern": "^cycles/C[0-9]{3,6}-[A-Za-z0-9._-]+$"
+            },
+            "branch": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 192
+            },
+            "head": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "state": {
+              "enum": [
+                "OPEN",
+                "IMPLEMENTING",
+                "VERIFYING"
+              ]
+            },
+            "dor_state": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "scope_frozen": {
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        },
+        "canonical": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 384,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "sha256",
+              "metadata_sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024,
+                "pattern": "^[^\\\\\\u0000]+$"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "metadata_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "inventory_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "scope_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "backend_binding_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "deferred_cycles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^C[0-9]{3,6}$"
+          },
+          "maxItems": 128,
+          "minItems": 0
+        },
+        "carry_over_pending": {
+          "type": "boolean"
+        },
+        "phase_admission": {
+          "const": "not_evaluated"
+        },
+        "implementation_authorized": {
+          "const": false
+        }
+      }
+    },
+    "context_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "scope_without_head_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "physical_canonical": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "content"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "content": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sha256",
+                  "bytes",
+                  "mode"
+                ],
+                "properties": {
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "bytes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "mode": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 511
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "overlay_paths": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2048
+      }
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observed",
+        "files",
+        "operation_kind"
+      ],
+      "properties": {
+        "observed": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "branch",
+            "ref",
+            "head",
+            "index_sha256",
+            "index_clean",
+            "lock_present",
+            "changes",
+            "identity",
+            "signing"
+          ],
+          "properties": {
+            "branch": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "ref": {
+              "type": "string",
+              "pattern": "^refs/heads/[^\\r\\n]+$"
+            },
+            "head": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "index_sha256": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "index_clean": {
+              "type": "boolean"
+            },
+            "lock_present": {
+              "type": "boolean"
+            },
+            "changes": {
+              "type": "array",
+              "maxItems": 10000,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "status",
+                  "path"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 2
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  }
+                }
+              }
+            },
+            "identity": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "email"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "email": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                }
+              }
+            },
+            "signing": {
+              "type": "boolean"
+            },
+            "filter_context_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        "files": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "sha256": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operation_kind": {
+          "const": "metadata-objects-ref-index.v1"
+        }
+      }
+    }
+  }
+}

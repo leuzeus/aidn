@@ -27,7 +27,7 @@ function contracts() {
   assert.throws(() => assertStandardOperationInput("cycle_entry_choice_activate", { ...input, approved: true }));
   pass("activation contracts accept only the checkpoint identity and never a caller-selected branch or permission");
 }
-async function activationCase(f, { fault, selectCurrent }) {
+export async function activationCase(f, { fault = null, selectCurrent = false, nextNode = null, afterActivation = null, pass: reportPass = pass } = {}) {
   const { root, mode, keyFile, sourcesFile, clock, artifacts, operations, git, heads, canonical } = f;
   let host = openCycleChoiceFixtureHost(root, keyFile, sourcesFile, clock);
   const next = async node => {
@@ -72,7 +72,7 @@ async function activationCase(f, { fault, selectCurrent }) {
   { code: "FIXTURE_ACTIVATION_GRANT_REVOKED_LAST_SOURCE_AWAIT", effect_status: "no_effect" });
   assert.equal(sourceReads, 1); assert.equal(artifacts.ownerPending(), false); assert.equal(heads(), beforeRefs);
   assert.equal(artifactContentHash(fs.readFileSync(indexFile)), beforeIndex); assert.deepEqual(canonical(), before);
-  pass(mode + ": missing exact grant and revocation during the last source await refuse before physical effects");
+  reportPass(mode + ": missing exact grant and revocation during the last source await refuse before physical effects");
   grantLive = true;
   host = openCycleChoiceFixtureHost(root, keyFile, sourcesFile, clock + 86400000, { allowed: () => grantLive });
   const originalRename = fs.renameSync, originalUnlink = fs.unlinkSync;
@@ -109,7 +109,7 @@ async function activationCase(f, { fault, selectCurrent }) {
     console.log(JSON.stringify({ activation_scope: mode, root, private_root: f.privateRoot, operation_id: id, fault,
       signed_effect_status: "unknown", journal_sha256: shadowHash(journal), physical_status: physical.status,
       owner_retained: true, canonical_unchanged: true, native_calls: 0, canonical_adoption: "NOT_EXECUTED", phase_admission: "NOT_RUN" }));
-    pass(mode + ": physical " + fault + " retains a signed UNKNOWN and owner across cold read without replay"); return;
+    reportPass(mode + ": physical " + fault + " retains a signed UNKNOWN and owner across cold read without replay"); return;
   }
   assert.equal(dispatched.receipt.outcome, "completed", JSON.stringify(dispatched)); assert.equal(output.outcome, "completed");
   assert.equal(output.effect_status, selectCurrent ? "no_effect" : "confirmed");
@@ -122,7 +122,8 @@ async function activationCase(f, { fault, selectCurrent }) {
   else assert.equal(git("hash-object", "--no-filters", "--", "fixture-product.txt"), git("rev-parse", selectedHead + ":fixture-product.txt"));
   const cold = JSON.parse(execFileSync(process.execPath, [script, "--accept-activation", root, keyFile, sourcesFile, id, String(clock + 86400000)],
     { encoding: "utf8", windowsHide: true, stdio: "pipe" }));
-  const final = host.inspect("choice-record"); assert.equal(final.cursor.status, "COMPLETED"); assert.equal(final.record.instance_sha256, cold.instance_sha256);
+  const final = host.inspect("choice-record"); assert.equal(final.cursor.status, nextNode ? "RUNNING" : "COMPLETED");
+  if (nextNode) assert.deepEqual(final.cursor.ready.map(occ => final.cursor.occurrences.find(row => row.occurrence_id === occ).node_id), [nextNode]); assert.equal(final.record.instance_sha256, cold.instance_sha256);
   assert.equal(artifacts.ownerPending(), false); assert.equal((await host.dispatch(id, { write: true })).status, "retained_result");
   await host.accept(id, { write: true }); assert.equal(host.inspect("choice-record").record.instance_sha256, final.record.instance_sha256);
   let last, rows = 0;
@@ -136,8 +137,11 @@ async function activationCase(f, { fault, selectCurrent }) {
     actual_different_HEAD_and_product: !selectCurrent, canonical_unchanged: true, protected_configuration_unchanged: true,
     exact_replay: true, cold_acceptance: true, host_preparation_age_ceiling: "NONE", native_calls: 0,
     canonical_adoption: "NOT_EXECUTED", phase_admission: "NOT_RUN", human_source: "CONTROLLED_FIXTURE", published_root: "NOT_CONNECTED" }));
-  pass(mode + ": accepted H/record/checkpoint source drives actual physical activation or no-change with cold ACK and exact replay");
+  reportPass(mode + ": accepted H/record/checkpoint source drives actual physical activation or no-change with cold ACK and exact replay");
+  if (afterActivation) await afterActivation({ ...f, host, clock: clock + 86400000, activationId: id,
+    activationSource: { activation_operation_id: id, activation_sha256: shadowHash(journal), plan: prepared.plan, output, checkpoint: source } });
 }
+if (fileURLToPath(import.meta.url) === path.resolve(process.argv[1] ?? "")) {
 if (["--accept-record", "--accept-activation", "--inspect-activation"].includes(process.argv[2])) {
   const [, , , root, keyFile, sourcesFile, operationId, clock] = process.argv;
   console.log(JSON.stringify(await acceptRecordedChoice({ root, keyFile, sourcesFile, operationId, clock: Number(clock), inspectOnly: process.argv[2] === "--inspect-activation" })));
@@ -152,4 +156,5 @@ if (["--accept-record", "--accept-activation", "--inspect-activation"].includes(
     selectedCycleId: selectCurrent ? "C002" : "C001", afterRecordedChoice: f => activationCase(f, { fault, selectCurrent }) });
   console.log(JSON.stringify({ status: "PASS", checks, scope: mode ? "actual-choice-activation-common-host-component" : "closed-activation-contracts",
     native_calls: 0, canonical_adoption: "NOT_EXECUTED", phase_admission: "NOT_RUN", continuity_R1_R2_R3: "NOT_RUN", full_standard: false }));
+}
 }
