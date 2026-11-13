@@ -2563,6 +2563,12 @@ has no writes; runtime loading never repairs a stale catalog. Package-relative
 loading is checked from an unrelated working directory, while package topology
 checks the distributed assets. Neither proves execution from an installed archive.
 
+When registering an operation binding before its published routing is complete,
+run `verify-standard-workflow-ports-fixtures.mjs` with the binding checks. Its
+explicit standalone/compatibility inventory must match the actual catalogs;
+adding an entry does not qualify that component as productive STANDARD routing.
+Remove that entry when its binding is connected to a published catalog.
+
 The required gate also includes `tools/perf/verify-standard-workflow-ports-fixtures.mjs`
 for the partial L2 bootstrap ports. It uses real local business use cases,
 Git branches, canonical files/SQLite, CAS and projection, plus actual activation
