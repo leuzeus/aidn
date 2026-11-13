@@ -18,18 +18,21 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
   beforeRef = null, afterRef = null, profile = "session-metadata", approvedPaths = null,
 } = {}) {
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
-  // Only trusted application composition supplies the terminal postimage set.
+  // Only trusted application composition supplies the exact postimage set.
   // Process JSON never selects this profile or its paths.
   const relative = name => typeof name === "string" && name.length > 0 && name.length <= 2048
     && !/[\\\u0000-\u001f]/.test(name) && !path.posix.isAbsolute(name) && !path.win32.isAbsolute(name)
     && !name.split("/").some(part => !part || part === "." || part === "..")
     && !/^(?:[.]git|[.]aidn)(?:\/|$)/i.test(name);
   const choicePath = name => /^docs\/audit\/(?:CURRENT-STATE[.]md|sessions\/S[0-9]{3,6}[.]md|snapshots\/context-snapshot[.]md|cycles\/C[0-9]{3,6}-[A-Za-z0-9._-]+\/status[.]md)$/.test(name);
-  if (!["session-metadata", "cycle-terminal", "cycle-choice"].includes(profile)
+  const contextPath = name => /^docs\/audit\/(?!workflows(?:\/|$))/i.test(name)
+    && !name.split("/").some(part => /^(?:[.]git|[.]aidn|[.]codex|[.]agents)$/i.test(part));
+  if (!["session-metadata", "cycle-terminal", "cycle-choice", "cycle-context"].includes(profile)
     || profile === "session-metadata" && approvedPaths !== null
-    || profile !== "session-metadata" && (!Array.isArray(approvedPaths) || approvedPaths.length > (profile === "cycle-choice" ? 131 : 128)
+    || profile !== "session-metadata" && (!Array.isArray(approvedPaths) || approvedPaths.length > (profile === "cycle-context" ? 10000 : profile === "cycle-choice" ? 131 : 128)
       || new Set(approvedPaths).size !== approvedPaths.length || !approvedPaths.every(relative)
-      || profile === "cycle-choice" && !approvedPaths.every(choicePath))) fail("WORKFLOW_GIT_SCOPE_PROFILE_INVALID");
+      || profile === "cycle-choice" && !approvedPaths.every(choicePath)
+      || profile === "cycle-context" && !approvedPaths.every(contextPath))) fail("WORKFLOW_GIT_SCOPE_PROFILE_INVALID");
   const approved = new Set(approvedPaths ?? []), scopePath = profile === "session-metadata" ? sessionPath : name => approved.has(name);
   const maxFiles = profile === "session-metadata" ? 3 : approved.size;
   if (Object.keys(environment).some(name => /^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|CONFIG(?:_.*)?)$/i.test(name)))
@@ -73,7 +76,8 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
   const lockPath = indexPath + ".lock";
   function file(name) {
     if (!scopePath(name)) fail("WORKFLOW_GIT_PATH_SCOPE_INVALID");
-    const absolute = agentRunPhysicalPath(path.join(root, name));
+    const absolute = agentRunPhysicalPath(path.join(root, name), { missing: profile === "cycle-context" });
+    if (profile === "cycle-context" && !fs.existsSync(absolute)) return { bytes: null, sha256: null };
     const before = fs.lstatSync(absolute);
     if (!before.isFile() || before.nlink !== 1) fail("WORKFLOW_GIT_UNSAFE_FILE");
     if (before.size > 1048576) fail("WORKFLOW_GIT_FILE_LIMIT");
@@ -110,7 +114,7 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
     if (!/^op_[a-f0-9]{40}$/.test(plan?.operation_id ?? "") || !/^[a-f0-9]{64}$/.test(plan.plan_sha256 ?? "")
       || !Number.isSafeInteger(plan.prepared_at_ms) || !Array.isArray(plan.files) || plan.files.length > maxFiles
       || new Set(plan.files.map(row => row.path)).size !== plan.files.length) fail("WORKFLOW_GIT_PLAN_INVALID");
-    for (const row of plan.files) if (!scopePath(row.path) || !/^[a-f0-9]{64}$/.test(row.sha256)) fail("WORKFLOW_GIT_PLAN_INVALID");
+    for (const row of plan.files) if (!scopePath(row.path) || !(/^[a-f0-9]{64}$/.test(row.sha256) || profile === "cycle-context" && row.sha256 === null)) fail("WORKFLOW_GIT_PLAN_INVALID");
   }
   function assertFresh(plan, { ownLock = false } = {}) {
     assertMaterial(plan);
@@ -123,7 +127,8 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
     return current;
   }
   const title = profile === "session-metadata" ? "chore: checkpoint governed session metadata"
-    : profile === "cycle-choice" ? "chore: checkpoint canonical cycle choice" : "chore: checkpoint approved terminal cycle";
+    : profile === "cycle-choice" ? "chore: checkpoint canonical cycle choice"
+    : profile === "cycle-context" ? "chore: checkpoint selected cycle context" : "chore: checkpoint approved terminal cycle";
   const message = plan => `${title}\n\nAIDN-Operation: ${plan.operation_id}\nAIDN-Plan: ${plan.plan_sha256}\n`;
   function sampleTreeModes(head, names) {
     if (names.length < 2) return null;
@@ -167,6 +172,12 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
     const names = plan.files.map(row => row.path);
     let modes;
     for (const row of plan.files) {
+      modes ??= [sampleTreeModes(head, names), sampleTreeModes(plan.observed.head, names)];
+      if (row.sha256 === null) {
+        if (treeMode(head, row.path, modes[0]) !== "" || !["100644", "100755"].includes(treeMode(plan.observed.head, row.path, modes[1])))
+          return { status: "not_confirmed", reason_code: "WORKFLOW_GIT_COMMIT_POSTIMAGE_MISMATCH" };
+        continue;
+      }
       if (hash(run(["show", `${head}:${row.path}`], { binary: true })) !== row.sha256)
         return { status: "not_confirmed", reason_code: "WORKFLOW_GIT_COMMIT_POSTIMAGE_MISMATCH" };
       modes ??= [sampleTreeModes(head, names), sampleTreeModes(plan.observed.head, names)];
@@ -201,6 +212,9 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
       run(["read-tree", plan.observed.head], { variables });
       for (const row of plan.files) {
         const captured = file(row.path); if (captured.sha256 !== row.sha256) fail("WORKFLOW_GIT_POSTIMAGE_CHANGED");
+        // Absence is an explicit canonical postimage only in cycle-context.
+        // Remove it from the private index; never delete a worktree path.
+        if (row.sha256 === null) { run(["update-index", "--force-remove", "--", row.path], { variables }); continue; }
         const blob = run(["hash-object", "-w", "--stdin"], { input: captured.bytes, variables }).trim();
         run(["update-index", "--add", "--cacheinfo", `${modes.get(row.path)},${blob},${row.path}`], { variables });
       }
@@ -212,6 +226,9 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
       await beforeRef?.({ expected_head: plan.observed.head });
       run(["update-ref", plan.observed.ref, next, plan.observed.head]);
       await afterRef?.({ commit_sha: next });
+      // A context checkpoint rechecks the live grant after this awaited boundary
+      // before installing its index. Ref loss remains UNKNOWN, never a replay.
+      if (profile === "cycle-context") await assertAuthorized();
       if (run(["symbolic-ref", "--quiet", "HEAD"]).trim() !== plan.observed.ref || indexHash() !== plan.observed.index_sha256)
         fail("WORKFLOW_GIT_INDEX_RECONCILIATION_REQUIRED");
       for (const row of plan.files) if (file(row.path).sha256 !== row.sha256) fail("WORKFLOW_GIT_POSTIMAGE_CHANGED");

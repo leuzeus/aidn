@@ -1245,6 +1245,9 @@
       "--fault=product_ack"
     ],
     [
+      "tools/perf/verify-selected-context-checkpoint-port-fixtures.mjs"
+    ],
+    [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--standard-composed-mode=files",
       "--standard-composed-stop=nominal_post_merge_complete"
