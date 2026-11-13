@@ -20,6 +20,16 @@ Shared runtime is opt-in and must not weaken checkout-bound auditability or loca
 
 ## Core Rules
 
+A separately granted canonical-choice checkpoint authenticates the accepted
+record and its original H source while reobserving exact canonical postimages,
+metadata, process CAS, branch tips and current permission across awaits. It
+uses the existing objects/ref/index Git port without changing physical branch
+or canonical metadata. Only its own causally proved commit may advance the
+current HEAD; a selected current branch follows that commit. DB-only exports
+nothing and returns no change. Lost Git/index acknowledgement retains UNKNOWN,
+empty facts and the effect owner even when a physical commit is observed.
+Checkpointing supplies neither phase admission nor physical activation.
+
 Canonical cycle-choice recording uses the selected artifact backend and the
 existing local effect owner, resource fence and content/metadata CAS. A foreign
 cycle acted upon by import, integration intent or drop requires its canonical

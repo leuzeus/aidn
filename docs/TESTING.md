@@ -5804,3 +5804,27 @@ All four real-host cases are required before the unchanged final nominal.
 These cases use a controlled H source and no Native calls; branch activation,
 R1/R2/R3 continuity, imported progress adoption, the published choice route,
 real PostgreSQL and installed qualification remain separate gates.
+
+## Canonical cycle-choice Git checkpoint component
+
+`verify-standard-cycle-choice-checkpoint-fixtures.mjs --mode=files|dual|db-only`
+runs the actual host after an authenticated canonical choice record. FILES and
+DUAL commit only its approved Markdown postimages on the current branch;
+DB-only must retain the same HEAD without exporting canonical rows. The cases
+check exact parent, paths, blobs and operation trailer, preserved product and
+configuration, canonical content/metadata, other branch tips, separate grants,
+last-source-await revocation, a fresh Node ACK, replay and idempotent dispatch.
+
+The FILES `--select-current` variant selects the current cycle and checks that
+only its own checkpoint advances the selected tip. The FILES
+`--fault-after-index-ack` variant performs a real index replacement before
+losing its acknowledgement: the signed result stays UNKNOWN with empty facts
+and a held owner, and cold inspection or redispatch never repeats the commit.
+All five cases are required before the unchanged final nominal; their owned
+scopes remain for review. `--contracts-only` checks the closed private contracts.
+The 131-path profile bound is a scope check, not proof of a 131-file commit.
+
+These cases use controlled H sources and staged phase metadata. They establish
+no physical branch activation, R1/R2/R3 creation continuity, imported work
+acceptance, published choice routing, genuine Native actor, PostgreSQL adapter
+or installed full-workflow qualification.

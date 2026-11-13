@@ -170,6 +170,8 @@ import cycleEntryChoiceInput from "../contracts/workflow-definition/standard-cyc
 import { cycleEntryChoiceOperation, assertCycleEntryChoiceOutput } from "./standard-cycle-entry-choice.mjs";
 import cycleEntryChoiceRecordInput from "../contracts/workflow-definition/standard-cycle-entry-choice-record-input.v1.schema.json" with { type: "json" };
 import { cycleEntryChoiceRecordOperation, assertStandardCycleEntryChoiceRecordOutput } from "./standard-cycle-entry-choice-record.mjs";
+import cycleEntryChoiceCheckpointInput from "../contracts/workflow-definition/standard-cycle-entry-choice-checkpoint-input.v1.schema.json" with { type: "json" };
+import { cycleEntryChoiceCheckpointOperation, assertCycleChoiceCheckpointOutput } from "./standard-cycle-entry-choice-checkpoint.mjs";
 import driftCycleInput from "../contracts/workflow-definition/standard-drift-cycle-initialize-input.v1.schema.json" with { type: "json" };
 import driftCycleOutput from "../contracts/workflow-definition/standard-drift-cycle-output.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
@@ -188,6 +190,11 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (operation === cycleEntryChoiceCheckpointOperation) {
+    if (checkShadowJson(value) || validateJsonSchema(value, cycleEntryChoiceCheckpointInput, "$", { contractKind: "workflow-definition" }).length)
+      fail("STANDARD_OPERATION_INPUT_INVALID");
+    return value;
+  }
   if (operation === cycleEntryChoiceRecordOperation) {
     if (checkShadowJson(value) || validateJsonSchema(value, cycleEntryChoiceRecordInput, "$", { contractKind: "workflow-definition" }).length)
       fail("STANDARD_OPERATION_INPUT_INVALID");
@@ -315,6 +322,7 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-cycle-entry-choice-checkpoint-output.v1") return assertCycleChoiceCheckpointOutput(value);
   if (value?.contract_version === "standard-cycle-entry-choice-record-output.v1") return assertStandardCycleEntryChoiceRecordOutput(value);
   if (value?.contract_version === "standard-cycle-entry-choice-output.v1") return assertCycleEntryChoiceOutput(value);
   if (value?.contract_version === "standard-cycle-plan-adoption-output.v1") {

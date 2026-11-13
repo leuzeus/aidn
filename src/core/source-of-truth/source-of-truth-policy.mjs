@@ -186,7 +186,7 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     retention: "retain closed sessions and every closure report/completion body as audit history according to project policy",
     migration: "migrate session state only through state-mode migration or explicit import; new v2 closure records coexist with legacy reports without converting historical bodies; an explicitly granted cycle-choice record updates current carryover dispositions while retaining deferred reports and suspending focus until separate branch and phase admission",
     replacement: "an explicitly reopened correction keeps previous closure bodies, binds their hashes in a new report and requires new human subject, start run and final-hook evidence; a successor links to its predecessor",
-    evidence_targets: ["tools/perf/start-session-hook.mjs", "src/core/workflow/standard-session-closure-history.mjs", "src/core/contracts/workflow-definition/standard-session-closure-record.v2.schema.json", "src/core/contracts/workflow-definition/standard-session-closure-completion.v2.schema.json", "tools/perf/verify-standard-session-closure-history-fixtures.mjs", "src/application/runtime/standard-cycle-entry-choice-record.mjs", "src/core/workflow/standard-cycle-entry-choice-record.mjs", "tools/perf/verify-standard-cycle-choice-record-fixtures.mjs"],
+    evidence_targets: ["tools/perf/start-session-hook.mjs", "src/core/workflow/standard-session-closure-history.mjs", "src/core/contracts/workflow-definition/standard-session-closure-record.v2.schema.json", "src/core/contracts/workflow-definition/standard-session-closure-completion.v2.schema.json", "tools/perf/verify-standard-session-closure-history-fixtures.mjs", "src/application/runtime/standard-cycle-entry-choice-record.mjs", "src/core/workflow/standard-cycle-entry-choice-record.mjs", "tools/perf/verify-standard-cycle-choice-record-fixtures.mjs", "src/application/runtime/standard-cycle-entry-choice-checkpoint.mjs", "tools/perf/verify-standard-cycle-choice-checkpoint-fixtures.mjs"],
   },
   cycle_state: {
     owner: "cycle governance maintainer",
@@ -195,7 +195,7 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     retention: "retain terminal cycle status, prior owner, disposition rationale and traceability with the project audit history",
     migration: "migrate cycle state through explicit state-mode migration; explicitly granted import/integrate intent may attach an active reported cycle from a canonically closed owner while preserving its phase and work; defer preserves cycle bytes and metadata, and branch activation remains separate",
     replacement: "a replacement cycle must preserve the superseded cycle identifier in traceability",
-    evidence_targets: ["tools/perf/cycle-create-hook.mjs", "src/application/runtime/standard-cycle-entry-choice-record.mjs", "src/core/workflow/standard-cycle-entry-choice-record.mjs", "tools/perf/verify-standard-cycle-choice-record-fixtures.mjs"],
+    evidence_targets: ["tools/perf/cycle-create-hook.mjs", "src/application/runtime/standard-cycle-entry-choice-record.mjs", "src/core/workflow/standard-cycle-entry-choice-record.mjs", "tools/perf/verify-standard-cycle-choice-record-fixtures.mjs", "src/application/runtime/standard-cycle-entry-choice-checkpoint.mjs", "tools/perf/verify-standard-cycle-choice-checkpoint-fixtures.mjs"],
   },
   artifact_inventory: {
     owner: "runtime artifact inventory maintainer",

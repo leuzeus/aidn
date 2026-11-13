@@ -1,5 +1,17 @@
 # 04 JSON Contracts
 
+Private `standard-cycle-entry-choice-checkpoint-{input,plan,output}.v1` binds
+only an accepted canonical choice record. Its protected host authenticates the
+original H source and exact D postimages, metadata, inventory and branch tips.
+A separate mutation grant authorizes the existing Git checkpoint port to commit
+only changed approved canonical Markdown on the current branch. A private
+cycle-choice profile admits at most 131 fixed canonical paths; JSON supplies
+neither paths nor that capability. DB-only retains a no-change result without
+export. Output distinguishes a confirmed commit, no change and UNKNOWN, and
+always denies resume, branch activation and implementation permission. The
+checkpoint adds no inbox version, information authority or preparation-age
+ceiling; the published choice route and physical activation remain separate.
+
 Private `standard-cycle-entry-choice-record-{input,plan,output}.v1` records
 canonical carryover dispositions through a separately granted deterministic
 operation. The closed plan binds the accepted H source, canonical content and

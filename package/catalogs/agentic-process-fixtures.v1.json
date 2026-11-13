@@ -1161,6 +1161,28 @@
       "--retain-always"
     ],
     [
+      "tools/perf/verify-standard-cycle-choice-checkpoint-fixtures.mjs",
+      "--mode=files"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-choice-checkpoint-fixtures.mjs",
+      "--mode=dual"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-choice-checkpoint-fixtures.mjs",
+      "--mode=db-only"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-choice-checkpoint-fixtures.mjs",
+      "--mode=files",
+      "--fault-after-index-ack"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-choice-checkpoint-fixtures.mjs",
+      "--mode=files",
+      "--select-current"
+    ],
+    [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--standard-composed-mode=files",
       "--standard-composed-stop=nominal_post_merge_complete"

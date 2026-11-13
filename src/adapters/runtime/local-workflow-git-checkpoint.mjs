@@ -24,10 +24,12 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
     && !/[\\\u0000-\u001f]/.test(name) && !path.posix.isAbsolute(name) && !path.win32.isAbsolute(name)
     && !name.split("/").some(part => !part || part === "." || part === "..")
     && !/^(?:[.]git|[.]aidn)(?:\/|$)/i.test(name);
-  if (!["session-metadata", "cycle-terminal"].includes(profile)
+  const choicePath = name => /^docs\/audit\/(?:CURRENT-STATE[.]md|sessions\/S[0-9]{3,6}[.]md|snapshots\/context-snapshot[.]md|cycles\/C[0-9]{3,6}-[A-Za-z0-9._-]+\/status[.]md)$/.test(name);
+  if (!["session-metadata", "cycle-terminal", "cycle-choice"].includes(profile)
     || profile === "session-metadata" && approvedPaths !== null
-    || profile === "cycle-terminal" && (!Array.isArray(approvedPaths) || approvedPaths.length > 128
-      || new Set(approvedPaths).size !== approvedPaths.length || !approvedPaths.every(relative))) fail("WORKFLOW_GIT_SCOPE_PROFILE_INVALID");
+    || profile !== "session-metadata" && (!Array.isArray(approvedPaths) || approvedPaths.length > (profile === "cycle-choice" ? 131 : 128)
+      || new Set(approvedPaths).size !== approvedPaths.length || !approvedPaths.every(relative)
+      || profile === "cycle-choice" && !approvedPaths.every(choicePath))) fail("WORKFLOW_GIT_SCOPE_PROFILE_INVALID");
   const approved = new Set(approvedPaths ?? []), scopePath = profile === "session-metadata" ? sessionPath : name => approved.has(name);
   const maxFiles = profile === "session-metadata" ? 3 : approved.size;
   if (Object.keys(environment).some(name => /^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|CONFIG(?:_.*)?)$/i.test(name)))
@@ -120,7 +122,8 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
     for (const row of plan.files) if (file(row.path).sha256 !== row.sha256) fail("WORKFLOW_GIT_POSTIMAGE_CHANGED");
     return current;
   }
-  const title = profile === "session-metadata" ? "chore: checkpoint governed session metadata" : "chore: checkpoint approved terminal cycle";
+  const title = profile === "session-metadata" ? "chore: checkpoint governed session metadata"
+    : profile === "cycle-choice" ? "chore: checkpoint canonical cycle choice" : "chore: checkpoint approved terminal cycle";
   const message = plan => `${title}\n\nAIDN-Operation: ${plan.operation_id}\nAIDN-Plan: ${plan.plan_sha256}\n`;
   function sampleTreeModes(head, names) {
     if (names.length < 2) return null;

@@ -28,6 +28,8 @@ import { recoveryCycleSelection, assertRecoveryCycleSubject } from "../../core/w
 import { cycleEntryChoiceOperation } from "../../core/workflow/standard-cycle-entry-choice.mjs";
 import { createStandardCycleEntryChoiceRecord } from "./standard-cycle-entry-choice-record.mjs";
 import { cycleEntryChoiceRecordOperation } from "../../core/workflow/standard-cycle-entry-choice-record.mjs";
+import { createStandardCycleEntryChoiceCheckpoint } from "./standard-cycle-entry-choice-checkpoint.mjs";
+import { cycleEntryChoiceCheckpointOperation } from "../../core/workflow/standard-cycle-entry-choice-checkpoint.mjs";
 import { createStandardCycleEntryChoiceContext } from "./standard-cycle-entry-choice-context.mjs";
 import { createStandardSessionPrMergeObservation } from "./standard-session-pr-merge-observe.mjs";
 import { createStandardSessionPrReviewAuthority } from "./standard-session-pr-review-authority.mjs";
@@ -790,6 +792,20 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         fail("STANDARD_CYCLE_CHOICE_RECORD_DECISION_REQUIRED");
       return { question, decision: capture.source };
     } });
+  const cycleEntryChoiceCheckpoint = createStandardCycleEntryChoiceCheckpoint({ targetRoot, now, scope: operations.observeScope,
+    readCurrent: id => current(id).record,
+    async readRecorded(instance, input) {
+      const selected = acceptedForPromotion(instance, input.record_operation_id, cycleEntryChoiceRecordOperation, "STANDARD_CHOICE_CHECKPOINT_RECORDED_SOURCE_REQUIRED"),
+        plan = selected.record.preview.prepared.plan,
+        decision = acceptedForPromotion(instance, plan.input.decision_operation_id, cycleEntryChoiceOperation, "STANDARD_CHOICE_CHECKPOINT_HUMAN_SOURCE_REQUIRED");
+      await verifyHumanRecord(decision.record);
+      const capture = human.captured(decision.record), question = human.question(decision.record);
+      // The accepted record already changed the subject's canonical preimages.
+      // Authenticate its original H source without renewing that old subject.
+      if (shadowHash(question) !== shadowHash(plan.question) || shadowHash(capture.source) !== plan.decision_source_sha256
+        || shadowHash(capture.source) !== shadowHash(plan.decision)) fail("STANDARD_CHOICE_CHECKPOINT_HUMAN_SOURCE_CHANGED");
+      return { record_operation_id: input.record_operation_id, record_sha256: shadowHash(selected.record), plan, output: selected.output };
+    } });
   const bindings = new Map(standardWorkflowOperationBindings().map(value => [value.id, value]));
   function assertCurrentBindings() {
     for (const component of processModels(model)) for (const node of component.nodes.filter(node => node.kind === "operation"))
@@ -1510,6 +1526,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "drift_completion_decision" ? await recovery?.prepareRenewal(state.record, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === cycleEntryChoiceOperation ? await cycleEntryChoiceContext.prepare(state.record, input)
         : binding.id === cycleEntryChoiceRecordOperation ? await cycleEntryChoiceRecord.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
+        : binding.id === cycleEntryChoiceCheckpointOperation ? await cycleEntryChoiceCheckpoint.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === recoveryCycleSelection ? { can_apply: true, subject: await recoveryCycleSubject(state.record, input) }
         : binding.id === "drift_recovery_decision" ? await recovery?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_recovery_record" ? await (async () => { const body = { ...await recoveryDecision(state.record, input), prepared_at_ms: now() };
@@ -1627,6 +1644,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "cycle_entry_observe") output = await operations.observeCycleEntry(record.preview.input);
         else if (record.intent.binding_ref === "cycle_entry_admit") output = await operations.admitCycleEntry(record.preview.input);
         else if (record.intent.binding_ref === cycleEntryChoiceRecordOperation) output = await cycleEntryChoiceRecord.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
+        else if (record.intent.binding_ref === cycleEntryChoiceCheckpointOperation) output = await cycleEntryChoiceCheckpoint.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
         else if (record.intent.binding_ref === "session_close_admit") output = await operations.admitSessionClose(record.preview.input);
         else if (record.intent.binding_ref === "session_close_record") output = await sessionCloseRecord.apply(state.record, record.preview.prepared,

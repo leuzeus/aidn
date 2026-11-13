@@ -4307,3 +4307,28 @@ imported work admission and phase continuation still require their own wiring
 and evidence. Actual FILES/DUAL/DB-only component fixtures use a controlled H
 source, staged phase metadata and no Native session; they establish neither
 genuine actors nor real PostgreSQL or installed full-workflow qualification.
+
+### Canonical cycle-choice Git checkpoint, 2026-11-13
+
+The accepted carryover record changes canonical metadata before any physical
+branch activation. A separately granted `cycle_entry_choice_checkpoint` D
+operation now checkpoints its exact approved visible postimages on the current
+branch through the existing Git objects/ref/index port. Its private cycle-choice
+profile accepts only fixed canonical session, cycle-status, snapshot and current
+state paths, bounded to 131. Public/process JSON supplies only the accepted
+record identity. DB-only performs no export and produces a no-change result.
+
+The host authenticates the original H source and accepted D record, reobserves
+canonical content/metadata, unchanged inventory and relevant branch tips, and
+rechecks current permission around protected awaits. An own proved commit may
+advance HEAD; a selected current branch follows that exact tip. Product bytes,
+configuration and physical branch remain preserved. Lost acknowledgement after
+a real Git/index effect retains UNKNOWN, empty facts and the existing owner;
+a physical commit observation cannot turn that receipt into success.
+
+Closed private v1 contracts use the existing journal and effect owner without
+a new engine, store, inbox version or preparation-age guard. Actual component
+fixtures cover FILES, DUAL, DB-only, current selection and index-ACK loss with
+cold acceptance/replay. H sources and phase metadata are controlled fixtures.
+Physical activation, creation continuity, imported work/phase admission and the
+published choice route remain unfinished and require their own evidence.

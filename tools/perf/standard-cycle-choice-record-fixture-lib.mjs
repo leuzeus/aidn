@@ -28,23 +28,26 @@ function section(text, title, body) {
   return text.replace(pattern, (_all, heading) => heading + "\n" + body + "\n\n");
 }
 const list = ids => "\n" + (ids.length ? ids.map(id => "  - " + id).join("\n") : "  - none");
-function model() {
-  const ids = ["cycle_entry_observe", "cycle_entry_choice_decision", "cycle_entry_choice_record"];
-  return { contract_version: "agentic-process-model.v2", model_id: "cycle-choice-record-port-fixture", revision: 1,
+function model({ checkpoint = false } = {}) {
+  const ids = ["cycle_entry_observe", "cycle_entry_choice_decision", "cycle_entry_choice_record", ...(checkpoint ? ["cycle_entry_choice_checkpoint"] : [])],
+    nodes = ["observe", "choose", "record", ...(checkpoint ? ["checkpoint"] : [])];
+  return { contract_version: "agentic-process-model.v2", model_id: checkpoint ? "cycle-choice-checkpoint-port-fixture" : "cycle-choice-record-port-fixture", revision: 1,
     participants: [{ id: "project" }], roles: [], policies: [], entry: "start",
-    nodes: [{ id: "start", kind: "sequence", participant_ref: "project", children: ["observe", "choose", "record"] },
-      ...["observe", "choose", "record"].map((id, index) => ({ id, kind: "operation", participant_ref: "project", binding_ref: ids[index] }))],
+    nodes: [{ id: "start", kind: "sequence", participant_ref: "project", children: nodes },
+      ...nodes.map((id, index) => ({ id, kind: "operation", participant_ref: "project", binding_ref: ids[index] }))],
     operation_pins: Object.fromEntries(standardWorkflowOperationBindings().filter(row => ids.includes(row.id)).map(row => [row.id, shadowHash(row)])),
     data_bindings: { contract_version: "process-data-bindings.v2", parameter_keys: [], inputs: [
       { node_id: "observe", fields: Object.fromEntries(Object.entries({ contract_version: "standard-cycle-entry-input.v1", session_id: "S002", cycle_id: null }).map(([key, value]) => [key, { source: "literal", value }])) },
       { node_id: "choose", fields: { contract_version: { source: "literal", value: "standard-cycle-entry-choice-input.v1" }, entry_operation_id: { source: "operation_id", node_id: "observe" } } },
       { node_id: "record", fields: { contract_version: { source: "literal", value: "standard-cycle-entry-choice-record-input.v1" }, decision_operation_id: { source: "operation_id", node_id: "choose" } } },
+      ...(checkpoint ? [{ node_id: "checkpoint", fields: { contract_version: { source: "literal", value: "standard-cycle-entry-choice-checkpoint-input.v1" }, record_operation_id: { source: "operation_id", node_id: "record" } } }] : []),
     ] } };
 }
-function open(root, keyFile, sourcesFile, clock, { allowed = true } = {}) {
-  return createStandardWorkflowOperationHost({ targetRoot: root, model: model(), now: () => clock, readSigningKey: () => fs.readFileSync(keyFile),
+export function openCycleChoiceFixtureHost(root, keyFile, sourcesFile, clock, { allowed = true } = {}) {
+  const fixtureModel = path.join(path.dirname(keyFile), "fixture-model.json");
+  return createStandardWorkflowOperationHost({ targetRoot: root, model: fs.existsSync(fixtureModel) ? JSON.parse(fs.readFileSync(fixtureModel, "utf8")) : model(), now: () => clock, readSigningKey: () => fs.readFileSync(keyFile),
     authorize: async request => {
-      assert.equal(request.binding.effect_class, request.binding.id === "cycle_entry_choice_record" ? "mutating" : "read-only");
+      assert.equal(request.binding.effect_class, ["cycle_entry_choice_record", "cycle_entry_choice_checkpoint"].includes(request.binding.id) ? "mutating" : "read-only");
       return { authorized: allowed, authority_id: "fixture_operator", principal_sha256: H, grant_sha256: H };
     }, humanSource: { read: ({ sourceRef }) => JSON.parse(fs.readFileSync(sourcesFile, "utf8"))[sourceRef] ?? null,
       verify({ source, sourceRef, question }) {
@@ -53,6 +56,7 @@ function open(root, keyFile, sourcesFile, clock, { allowed = true } = {}) {
           ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" };
       } } });
 }
+const open = openCycleChoiceFixtureHost;
 export async function acceptRecordedChoice({ root, keyFile, sourcesFile, operationId, clock, inspectOnly = false }) {
   const host = open(root, keyFile, sourcesFile, clock);
   if (inspectOnly) {
@@ -69,13 +73,16 @@ export async function acceptRecordedChoice({ root, keyFile, sourcesFile, operati
 // Canonical lifecycle/phase setup below is explicit fixture construction. It is
 // not a claim that an earlier session close, imported validation or branch
 // activation was executed. Only the choice-record operation is under test.
-export async function verifyCanonicalCycleChoiceRecord(mode, { childScript, pass, faultAfterFirstCas = false }) {
+export async function verifyCanonicalCycleChoiceRecord(mode, { childScript, pass, faultAfterFirstCas = false, checkpoint: withCheckpoint = false, afterRecordedChoice = null, selectedCycleId = "C001" }) {
   if (faultAfterFirstCas && mode !== "files") throw Error("CHOICE_RECORD_PARTIAL_EFFECT_FILES_REQUIRED");
+  if (withCheckpoint && (faultAfterFirstCas || typeof afterRecordedChoice !== "function")) throw Error("CHOICE_RECORD_CHECKPOINT_CALLBACK_REQUIRED");
+  if (!["C001", "C002"].includes(selectedCycleId)) throw Error("CHOICE_RECORD_FIXTURE_SELECTION_INVALID");
   const owned = [], root = createFreshStandardWorkflowFixture(mode, owned), artifacts = createStandardWorkflowArtifacts({ targetRoot: root }),
     operations = createStandardWorkflowOperations({ targetRoot: root }), privateRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-choice-record-"));
   owned.push(privateRoot);
   const keyFile = path.join(privateRoot, "host.key"), sourcesFile = path.join(privateRoot, "sources.json");
   fs.writeFileSync(keyFile, randomBytes(32)); fs.writeFileSync(sourcesFile, "{}");
+  if (withCheckpoint) fs.writeFileSync(path.join(privateRoot, "fixture-model.json"), JSON.stringify(model({ checkpoint: true })));
   const git = (...args) => execFileSync("git", ["-C", root, "-c", "core.hooksPath=NUL", ...args], { encoding: "utf8", windowsHide: true, stdio: "pipe" }).trim();
   const checkpoint = label => { git("add", "."); git("commit", "--allow-empty", "-m", label); };
   const apply = async (prepared, method) => { assert.equal(prepared.can_apply, true, JSON.stringify(prepared));
@@ -140,7 +147,7 @@ export async function verifyCanonicalCycleChoiceRecord(mode, { childScript, pass
     const waiting = await host.dispatch(staged.operation_id, { write: true }); assert.equal(waiting.status, "waiting_for_human");
     const question = waiting.question, decision = { contract_version: "human-cycle-entry-choice.v1", source_kind: "human", authority_id: "fixture_operator",
       source_event_id: "fixture-carryover-record-current", subject_sha256: shadowHash(question.subject), question_sha256: shadowHash(question), choice: "select_cycle",
-      selection: { cycle_id: "C001", carryover_decisions: names.map(id => ({ cycle_id: id, action: id === "C001" ? "import_now" : id === "C003" ? "defer" : id === "C006" ? "integrate_now" : "drop",
+      selection: { cycle_id: selectedCycleId, carryover_decisions: names.map(id => ({ cycle_id: id, action: id === "C001" ? "import_now" : id === "C003" ? "defer" : id === "C006" ? "integrate_now" : "drop",
         outcome: id === "C004" ? "NO_GO" : id === "C005" ? "DROPPED" : null, rationale: "Explicit controlled per-cycle fixture disposition" })) },
       rationale: "Record current canonical dispositions before separate branch activation and phase admission", evidence_refs: [{ ref: "fixture:carryover-record", sha256: H }] };
     fs.writeFileSync(sourcesFile, JSON.stringify({ choice: decision }));
@@ -158,7 +165,7 @@ export async function verifyCanonicalCycleChoiceRecord(mode, { childScript, pass
     host = open(root, keyFile, sourcesFile, clock); staged = await stage(preview);
     const recordId = staged.operation_id, prepared = host.readJournal(recordId).preview.prepared;
     const selectedRef = "refs/heads/feature/C001-choice", oldRef = git("rev-parse", selectedRef), otherRef = git("rev-parse", "HEAD");
-    assert.notEqual(oldRef, otherRef, "The target branch staleness probe must move a real different tip");
+    assert.notEqual(oldRef, otherRef, "The candidate branch staleness probe must move a real different tip");
     let moved = false;
     const boundary = createStandardCycleEntryChoiceRecord({ targetRoot: root, scope: operations.observeScope,
       readCurrent: () => host.inspect("choice-record").record,
@@ -228,7 +235,8 @@ export async function verifyCanonicalCycleChoiceRecord(mode, { childScript, pass
     assert.equal(dispatched.receipt.outcome, "completed", JSON.stringify(dispatched));
     const cold = JSON.parse(execFileSync(process.execPath, [childScript, "--accept-record", root, keyFile, sourcesFile, recordId, String(clock + 86400000)],
       { encoding: "utf8", windowsHide: true, stdio: "pipe" }));
-    const final = host.inspect("choice-record"); assert.equal(final.cursor.status, "COMPLETED"); assert.equal(final.record.instance_sha256, cold.instance_sha256);
+    const final = host.inspect("choice-record"); assert.equal(final.cursor.status, withCheckpoint ? "RUNNING" : "COMPLETED"); assert.equal(final.record.instance_sha256, cold.instance_sha256);
+    if (withCheckpoint) assert.deepEqual(final.cursor.ready.map(id => final.cursor.occurrences.find(row => row.occurrence_id === id).node_id), ["checkpoint"]);
     const journal = host.readJournal(recordId), output = journal.results.at(-1).output;
     createOperationJournalSigner(() => fs.readFileSync(keyFile)).verify(journal);
     assert.deepEqual(output.facts, { cycle_entry_choice_recorded: true, cycle_entry_resume_allowed: false });
@@ -256,10 +264,12 @@ export async function verifyCanonicalCycleChoiceRecord(mode, { childScript, pass
     assert.equal(final.record.events.some(row => ["assign", "result"].includes(row.kind)), false);
     console.log(JSON.stringify({ persistence: mode, root, private_root: privateRoot, operation_id: recordId, instance_sha256: finalHash,
       changed_canonical_documents: changed.size, native_calls: 0, actual_effect: "CANONICAL_CARRYOVER_AND_FOCUS_SUSPENSION",
-      selected_phase: "STAGED_VERIFYING_METADATA_PRESERVED_NOT_WORK_ACCEPTANCE", branch_activation: "NOT_EXECUTED", published_root: "NOT_CONNECTED",
+      selected_phase: selectedCycleId === "C001" ? "STAGED_VERIFYING_METADATA_PRESERVED_NOT_WORK_ACCEPTANCE" : "STAGED_OPEN_METADATA_PRESERVED_NOT_WORK_ACCEPTANCE", branch_activation: "NOT_EXECUTED", published_root: "NOT_CONNECTED",
       checkpoint_and_continuity: "NOT_EXECUTED", exact_replay: true, cold_node_acceptance: true, host_preparation_age_ceiling: "NONE",
       human_source: "CONTROLLED_FIXTURE_PORT", genuine_native: "NOT_RUN", installed_archive: "NOT_RUN" }));
     pass(mode + ": actual signed carryover record preserves phase/deferred history, exact grant, metadata and cold idempotent ACK without branch or Native effects");
+    if (withCheckpoint) await afterRecordedChoice({ mode, root, privateRoot, keyFile, sourcesFile, clock: clock + 86400000,
+      host, artifacts, operations, recordId, beforeProduct, beforeBranch, beforeHead, git, heads, canonical });
   } finally {
     // Keep owned scopes and pending evidence for independent review. Cleanup is
     // a later, explicit operation; it is never inferred from a passing test.
