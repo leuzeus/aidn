@@ -690,3 +690,16 @@ this never authorizes a foreign HEAD, cold effect replay or UNKNOWN adoption.
 Confirmed/no-change outputs deny resume, canonical adoption, phase admission
 and implementation. Unknown effects retain empty facts and the existing owner.
 No new store, inbox authority, public CLI envelope or preparation-age ceiling.
+
+
+## Private selected-focus contracts
+
+The private standard-cycle-entry-selected-focus-{input,plan,output}.v1 contracts govern this focus-only transition.
+
+
+Private selected-focus restoration consumes only an accepted selected-context checkpoint identity, authenticated through its original activation/CP/record/H chain. The closed input accepts no selected cycle, phase, paths or approval. Its prepared plan pins the current scope, clean Git checkpoint, canonical document content/metadata, cycle inventory and exactly three focus postimages: current session, context snapshot and CURRENT-STATE.
+
+The separate exact mutation grant is rechecked after awaited source reads and before every metadata-preserving CAS. OPEN/IMPLEMENTING/VERIFYING select a later phase route as canonical data; cycle status, plan/progress, audit/validation history and deferred dispositions remain unchanged. Focus restoration supplies no current phase/DoR admission, progress adoption, implementation or resume permission. Ordinary entry choice rules remain intact. DB-only creates no detailed projection; dual verifies required projection. Lost CAS acknowledgement retains UNKNOWN, empty facts and the existing owner; replay returns the retained result. No store, migration, shared synchronization or preparation-age ceiling is added. Published routing and imported work qualification remain separate.
+
+
+For an accepted selected checkpoint with no_change, the source attests its HEAD and absence of a Git effect; its historical pre-operation index byte hash is not an index-write postimage. Selected-focus preparation requires the same current clean HEAD, index semantics and filter context, then captures and fences its own current index bytes before CAS. A byte-only index representation refresh before this preparation is admissible. Foreign work, staged changes, moved HEAD, changed filters, current-plan/index drift and revoked current permission retain their existing refusal or UNKNOWN behavior.

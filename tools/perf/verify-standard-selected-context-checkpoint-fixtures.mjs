@@ -29,7 +29,7 @@ function contracts() {
     assert.throws(() => assertStandardOperationInput("cycle_entry_selected_checkpoint", { ...input, ...extra }));
   pass("selected context contracts accept only an activation ID, never paths, a profile or approval");
 }
-async function selectedCase(f, { fault, selectCurrent }) {
+export async function selectedCase(f, { fault = null, selectCurrent = false, nextNode = null, afterSelected = null, pass: emitPass = pass } = {}) {
   const { root, mode, keyFile, sourcesFile, clock, artifacts, operations, git, canonical, activationId, activationSource } = f;
   let host = openCycleChoiceFixtureHost(root, keyFile, sourcesFile, clock);
   const state = host.inspect("choice-record"), occurrenceId = state.cursor.ready[0];
@@ -63,7 +63,7 @@ async function selectedCase(f, { fault, selectCurrent }) {
   { code: "FIXTURE_SELECTED_GRANT_REVOKED_LAST_SOURCE_AWAIT", effect_status: "no_effect" });
   assert.equal(sourceReads, 1); assert.equal(artifacts.ownerPending(), false); assert.equal(git("rev-parse", "HEAD"), beforeHead);
   assert.equal(artifactContentHash(fs.readFileSync(index)), indexBefore); assert.deepEqual(canonical(), canonicalBefore);
-  pass(mode + ": missing grant and revocation in the last source await refuse without Git effect and release the unused owner");
+  emitPass(mode + ": missing grant and revocation in the last source await refuse without Git effect and release the unused owner");
   grantLive = true;
   host = openCycleChoiceFixtureHost(root, keyFile, sourcesFile, clock + 86400000,
     { allowed: () => fault !== "grant_after_ref" || git("rev-parse", "HEAD") === beforeHead });
@@ -98,7 +98,7 @@ async function selectedCase(f, { fault, selectCurrent }) {
     console.log(JSON.stringify({ selected_checkpoint_scope: mode, root, private_root: f.privateRoot, operation_id: id, activation_operation_id: activationId,
       fault, signed_effect_status: "unknown", journal_sha256: shadowHash(journal), physical_status: physical.status, owner_retained: true,
       canonical_unchanged: true, product_preserved: true, phase_admission: "NOT_RUN", native_calls: 0 }));
-    pass(mode + ": " + fault + " keeps signed UNKNOWN, owner and cold physical evidence without repeating the effect"); return;
+    emitPass(mode + ": " + fault + " keeps signed UNKNOWN, owner and cold physical evidence without repeating the effect"); return;
   }
   assert.equal(dispatched.receipt.outcome, "completed", JSON.stringify(dispatched)); assert.equal(output.outcome, "completed");
   assert.equal(output.effect_status, checkpointExpected ? "confirmed" : "no_effect");
@@ -106,7 +106,8 @@ async function selectedCase(f, { fault, selectCurrent }) {
   assert.equal(output.observations.canonical_adoption, false); assert.equal(output.observations.phase_admission, false); assert.equal(output.observations.implementation_authorized, false);
   assert.equal(git("rev-parse", "HEAD"), output.observations.selected_branch_head); assert.equal(git("status", "--porcelain"), "");
   const cold = JSON.parse(execFileSync(process.execPath, [script, "--accept-selected", root, keyFile, sourcesFile, id, String(clock + 86400000)], { encoding: "utf8", windowsHide: true, stdio: "pipe" }));
-  const final = host.inspect("choice-record"); assert.equal(final.cursor.status, "COMPLETED"); assert.equal(final.record.instance_sha256, cold.instance_sha256);
+  const final = host.inspect("choice-record"); assert.equal(final.cursor.status, nextNode ? "RUNNING" : "COMPLETED");
+  if (nextNode) assert.deepEqual(final.cursor.ready.map(id => final.cursor.occurrences.find(row => row.occurrence_id === id).node_id), [nextNode]); assert.equal(final.record.instance_sha256, cold.instance_sha256);
   assert.equal(artifacts.ownerPending(), false); assert.equal((await host.dispatch(id, { write: true })).status, "retained_result");
   await host.accept(id, { write: true }); assert.equal(host.inspect("choice-record").record.instance_sha256, final.record.instance_sha256);
   let last, rows = 0; for (const row of iterateAgenticProcessSimulation({ instanceId: final.record.instance_id, scopeId: final.record.scope_id, model: final.record.model,
@@ -118,8 +119,11 @@ async function selectedCase(f, { fault, selectCurrent }) {
     committed_paths: output.observations.committed_paths, canonical_unchanged: true, product_preserved: true, protected_configuration_unchanged: true,
     DBonly_no_detailed_export: mode === "db-only", exact_replay: true, cold_acceptance: true, host_preparation_age_ceiling: "NONE",
     H_and_grants: "CONTROLLED_FIXTURE", phase_setup: "STAGED_METADATA_NOT_PRIOR_WORK_PROOF", phase_admission: "NOT_RUN", native_calls: 0, published_root: "NOT_CONNECTED" }));
-  pass(mode + ": accepted activation drives an exact context checkpoint/no-change with canonical preservation, cold ACK and exact replay");
+  emitPass(mode + ": accepted activation drives an exact context checkpoint/no-change with canonical preservation, cold ACK and exact replay");
+  if (afterSelected) await afterSelected({ ...f, host, clock: clock + 86400000, selectedCheckpointId: id,
+    selectedCheckpointSource: { checkpoint_operation_id: id, checkpoint_sha256: shadowHash(journal), plan: prepared.plan, output, activation: activationSource } });
 }
+if (path.resolve(process.argv[1] ?? "") === script) {
 if (["--accept-record", "--accept-selected", "--inspect-selected"].includes(process.argv[2])) {
   const [, , , root, keyFile, sourcesFile, operationId, clock] = process.argv;
   console.log(JSON.stringify(await acceptRecordedChoice({ root, keyFile, sourcesFile, operationId, clock: Number(clock), inspectOnly: process.argv[2] === "--inspect-selected" })));
@@ -135,4 +139,6 @@ if (["--accept-record", "--accept-selected", "--inspect-selected"].includes(proc
       afterActivation: f => selectedCase(f, { fault, selectCurrent }) }) });
   console.log(JSON.stringify({ status: "PASS", checks, scope: mode ? "ACTUAL_SELECTED_CONTEXT_COMMON_HOST_COMPONENT" : "CLOSED_SELECTED_CONTEXT_CONTRACTS",
     native_calls: 0, canonical_focus: "NOT_EXECUTED", phase_admission: "NOT_RUN", full_standard: false }));
+}
+
 }

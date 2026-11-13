@@ -1275,6 +1275,38 @@
       "--fault=index_ack"
     ],
     [
+      "tools/perf/verify-standard-selected-focus-fixtures.mjs",
+      "--mode=files"
+    ],
+    [
+      "tools/perf/verify-standard-selected-focus-fixtures.mjs",
+      "--mode=dual"
+    ],
+    [
+      "tools/perf/verify-standard-selected-focus-fixtures.mjs",
+      "--mode=db-only"
+    ],
+    [
+      "tools/perf/verify-standard-selected-focus-fixtures.mjs",
+      "--mode=files",
+      "--phase=OPEN"
+    ],
+    [
+      "tools/perf/verify-standard-selected-focus-fixtures.mjs",
+      "--mode=files",
+      "--phase=IMPLEMENTING"
+    ],
+    [
+      "tools/perf/verify-standard-selected-focus-fixtures.mjs",
+      "--mode=files",
+      "--select-current"
+    ],
+    [
+      "tools/perf/verify-standard-selected-focus-fixtures.mjs",
+      "--mode=files",
+      "--fault=cas_ack"
+    ],
+    [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--standard-composed-mode=files",
       "--standard-composed-stop=nominal_post_merge_complete"
