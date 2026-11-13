@@ -4279,3 +4279,31 @@ separate recovery boundaries.
 Every corrective R05 boundary (entry, cycle closure, promotion and session closure) uses the pinned corrective-drift call with that boundary's accepted evaluation. A prior human alignment cannot authorize another evaluation. The call retains the ordinary current-subject review, physical finalizer and separate completion review; unresolved drift and other gate signals still block.
 
 The confirmed finalizer adds its own operation identity to `observations.operation_id`. The call exports that signed output as the typed `finalization_operation_id` return. Corrective session closure consumes this return through the existing `call_output` data binding and still authenticates the original accepted finalizer and physical evidence. No engine, Native activity, elapsed-time gate or authorization ceiling is added. Historical outputs without the additive observation remain readable under their original model pins.
+
+### Canonical carryover decision record, 2026-11-13
+
+The authenticated cycle-choice H receipt remains an opinion. A separate
+`cycle_entry_choice_record` D operation requires its own exact mutation grant
+and records all reported-cycle dispositions in existing canonical session,
+cycle, snapshot and current-state artifacts. Import/integrate intent attaches
+the active cycle while preserving its phase, work and prior-owner provenance;
+it does not claim Git integration. Defer preserves the cycle and pending report.
+An explicit NO_GO/DROPPED outcome retains its owner and rationale without
+claiming a cycle-close hook. A foreign acted-upon cycle requires a canonically
+closed owner and satisfied close gate. Current focus becomes absent until
+separate branch activation and fresh phase/DoR admission.
+
+The deterministic port binds the accepted source, canonical content/metadata,
+complete relevant inventory, process CAS and branch tips. It checks permission
+and current material across awaits and every write under the existing owner
+and resource fence. DUAL projects exact canonical postimages; DB-only does not
+export visible files. Partial writes retain UNKNOWN, empty facts and ownership;
+neither retry nor rollback is inferred. Closed private v1 contracts and existing
+operation journals carry the record without a new engine, store, inbox version
+or elapsed preparation guard.
+
+The published root remains incomplete. Physical activation, continuity rules,
+imported work admission and phase continuation still require their own wiring
+and evidence. Actual FILES/DUAL/DB-only component fixtures use a controlled H
+source, staged phase metadata and no Native session; they establish neither
+genuine actors nor real PostgreSQL or installed full-workflow qualification.

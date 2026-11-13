@@ -5780,3 +5780,27 @@ The original failure is retained. Runtime registration preserves all 185 prior
 invocations and appends two nominal cases (187); the full runtime family has
 started separately on d07e12d2 with its normal timeout. It is not yet qualified.
 Governance Admission and the entire L1-L8/A1-A10 plan remain unfinished.
+## Canonical cycle-choice recording component
+
+`verify-standard-cycle-choice-record-fixtures.mjs --mode=files|dual|db-only`
+uses the actual operation host, signed H receipt, existing artifact owner/CAS
+and a fresh Node acceptance process. Each explicit fixture contains current
+and reported cycles with all four carryover dispositions. It checks preservation
+of selected VERIFYING metadata and deferred content/metadata, closed foreign
+ownership, current branch tips across an await, separate mutation permission,
+focus suspension, replay and idempotent acceptance. A later host clock does
+not impose a preparation-age ceiling. The phase and closed predecessor are
+staged preconditions, not proof of imported work or session-close execution.
+Revoking the mutation grant during the last accepted-H source await must
+refuse before the first canonical write and release the unused effect owner.
+
+The required FILES variant `--fault-after-first-cas` loses the acknowledgement
+after one real atomic canonical replacement. The signed result stays UNKNOWN
+with no positive facts; a fresh Node reader observes the same receipt and held
+owner, redispatch has no new effect and a new session is refused. This fixture
+retains its owned scope for explicit review and does not recover or clear the
+owner. `--contracts-only` isolates five pure rendering/closed-contract checks.
+All four real-host cases are required before the unchanged final nominal.
+These cases use a controlled H source and no Native calls; branch activation,
+R1/R2/R3 continuity, imported progress adoption, the published choice route,
+real PostgreSQL and installed qualification remain separate gates.

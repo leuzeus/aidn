@@ -26,6 +26,8 @@ import { createPretriageMergeControl, createPretriageMergeSource } from "./stand
 import { externalMergeControlRef, externalMergeEventKey, externalMergeDisposition, externalMergeObservationVersion } from "../../core/workflow/standard-pr-external-merge.mjs";
 import { recoveryCycleSelection, assertRecoveryCycleSubject } from "../../core/workflow/standard-drift-recovery-cycle-selection.mjs";
 import { cycleEntryChoiceOperation } from "../../core/workflow/standard-cycle-entry-choice.mjs";
+import { createStandardCycleEntryChoiceRecord } from "./standard-cycle-entry-choice-record.mjs";
+import { cycleEntryChoiceRecordOperation } from "../../core/workflow/standard-cycle-entry-choice-record.mjs";
 import { createStandardCycleEntryChoiceContext } from "./standard-cycle-entry-choice-context.mjs";
 import { createStandardSessionPrMergeObservation } from "./standard-session-pr-merge-observe.mjs";
 import { createStandardSessionPrReviewAuthority } from "./standard-session-pr-review-authority.mjs";
@@ -773,6 +775,21 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return { operation_id: id, input: record.preview.input, output: result.output };
     } });
   const assertCycleEntryChoiceFresh = (instance, record, signal) => cycleEntryChoiceContext.assertFresh(instance, record, signal);
+  const cycleEntryChoiceRecord = createStandardCycleEntryChoiceRecord({ targetRoot, now, scope: operations.observeScope,
+    readCurrent: id => current(id).record,
+    async readDecision(instance, input, { freshSubject = true } = {}) {
+      const selected = acceptedForPromotion(instance, input.decision_operation_id, cycleEntryChoiceOperation, "STANDARD_CYCLE_CHOICE_RECORD_DECISION_REQUIRED");
+      await verifyHumanRecord(selected.record);
+      if (freshSubject) await assertCycleEntryChoiceFresh(instance, selected.record);
+      const capture = human.captured(selected.record), question = human.question(selected.record), output = selected.output;
+      if (output.effect_status !== "no_effect" || output.facts.cycle_entry_selection_requested !== true
+        || output.observations.choice !== "select_cycle" || output.observations.implementation_authorized !== false
+        || output.observations.source_sha256 !== shadowHash(capture.source)
+        || output.observations.subject_sha256 !== shadowHash(question.subject)
+        || shadowHash(output.observations.selection) !== shadowHash(capture.source.selection))
+        fail("STANDARD_CYCLE_CHOICE_RECORD_DECISION_REQUIRED");
+      return { question, decision: capture.source };
+    } });
   const bindings = new Map(standardWorkflowOperationBindings().map(value => [value.id, value]));
   function assertCurrentBindings() {
     for (const component of processModels(model)) for (const node of component.nodes.filter(node => node.kind === "operation"))
@@ -1492,6 +1509,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "drift_completion_select" ? await driftRoute?.completion(state.record) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_completion_decision" ? await recovery?.prepareRenewal(state.record, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === cycleEntryChoiceOperation ? await cycleEntryChoiceContext.prepare(state.record, input)
+        : binding.id === cycleEntryChoiceRecordOperation ? await cycleEntryChoiceRecord.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === recoveryCycleSelection ? { can_apply: true, subject: await recoveryCycleSubject(state.record, input) }
         : binding.id === "drift_recovery_decision" ? await recovery?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_recovery_record" ? await (async () => { const body = { ...await recoveryDecision(state.record, input), prepared_at_ms: now() };
@@ -1608,6 +1626,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_entry_admit") output = await operations.admitSessionEntry(record.preview.input);
         else if (record.intent.binding_ref === "cycle_entry_observe") output = await operations.observeCycleEntry(record.preview.input);
         else if (record.intent.binding_ref === "cycle_entry_admit") output = await operations.admitCycleEntry(record.preview.input);
+        else if (record.intent.binding_ref === cycleEntryChoiceRecordOperation) output = await cycleEntryChoiceRecord.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
         else if (record.intent.binding_ref === "session_close_admit") output = await operations.admitSessionClose(record.preview.input);
         else if (record.intent.binding_ref === "session_close_record") output = await sessionCloseRecord.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });

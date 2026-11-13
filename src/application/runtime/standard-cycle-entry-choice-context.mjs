@@ -8,7 +8,7 @@ import { execFileSync } from "node:child_process";
 const active = new Set(["OPEN", "IMPLEMENTING", "VERIFYING"]);
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const pin = ({ path, sha256, metadata_sha256 }) => ({ path, sha256, metadata_sha256 });
-function branchHeads(root, cycles) {
+export function readStandardCycleEntryChoiceBranchHeads(root, cycles) {
   if (!cycles.length) return new Map();
   const refs = [...new Set(cycles.map(row => "refs/heads/" + row.fields.branch_name))];
   const text = execFileSync("git", ["-C", root, "-c", "core.fsmonitor=false", "-c", "submodule.recurse=false",
@@ -59,7 +59,7 @@ export function createStandardCycleEntryChoiceContext({ artifacts, operations, r
     const relevant = before.cycles.filter(row => row.fields.session_owner === source.input.session_id && active.has(row.fields.state)
       || reported.includes(row.cycle_id) || row.cycle_id === before.state.active_cycle);
     if (relevant.length > 128 || reported.length > 128) fail("STANDARD_CYCLE_ENTRY_CHOICE_CAPACITY_EXCEEDED");
-    const heads = branchHeads(artifacts.root, relevant);
+    const heads = readStandardCycleEntryChoiceBranchHeads(artifacts.root, relevant);
     const candidates = relevant.map(({ row, cycle_id, fields }) => ({ cycle_id, ...pin(row),
       state: fields.state, session_owner: fields.session_owner, branch_name: fields.branch_name,
       branch_head: heads.get(fields.branch_name) ?? null,
@@ -75,7 +75,7 @@ export function createStandardCycleEntryChoiceContext({ artifacts, operations, r
       missing_reported_cycles: reported.filter(id => !candidates.some(row => row.cycle_id === id)),
       carry_over_pending: metadata.carry_over_pending === true || metadata.carry_over_pending === "yes" });
     const after = observe(source.input.session_id), afterFresh = await operations.observeCycleEntry(source.input);
-    const afterHeads = branchHeads(artifacts.root, relevant);
+    const afterHeads = readStandardCycleEntryChoiceBranchHeads(artifacts.root, relevant);
     current(instance, signal);
     if (shadowHash(after.scope) !== shadowHash(before.scope) || after.inventory_sha256 !== before.inventory_sha256
       || shadowHash(after.canonical) !== shadowHash(before.canonical) || shadowHash(afterFresh) !== shadowHash(fresh)

@@ -20,6 +20,17 @@ Shared runtime is opt-in and must not weaken checkout-bound auditability or loca
 
 ## Core Rules
 
+Canonical cycle-choice recording uses the selected artifact backend and the
+existing local effect owner, resource fence and content/metadata CAS. A foreign
+cycle acted upon by import, integration intent or drop requires its canonical
+owner session to be closed with its close gate satisfied. A deferred foreign
+cycle is left unchanged. Source permission, process identity, relevant branches
+and canonical preimages/postimages are checked across awaits and writes. DUAL
+projects exact committed rows; DB-only requests no visible export. A partial
+write retains the owner for explicit reconciliation. Recording never checks
+out a branch or replaces imported work, and does not claim PostgreSQL or full
+STANDARD qualification from SQLite fixture evidence.
+
 R05 objective opinions, linked completions and diagnosis requests use current
 authenticated material instead of a preparation-age ceiling. Accepted physical
 completions retain their exact report/event/receipt witnesses without an age

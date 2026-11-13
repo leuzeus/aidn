@@ -1,5 +1,18 @@
 # 04 JSON Contracts
 
+Private `standard-cycle-entry-choice-record-{input,plan,output}.v1` records
+canonical carryover dispositions through a separately granted deterministic
+operation. The closed plan binds the accepted H source, canonical content and
+metadata, relevant inventory, owner sessions and observed branch tips. An
+import/integrate intent attaches a cycle without completing Git integration;
+defer preserves its cycle bytes and metadata; an explicit drop preserves the
+prior owner and rationale. Current focus is suspended until separate activation
+and phase admission. Confirmed output always denies resume and implementation
+permission. Partial effects retain `unknown`, empty facts and the existing
+effect owner. These records use the existing operation journal; they add no
+inbox version, source authority, store or preparation-age ceiling. Published
+root routing and branch activation remain separate unfinished work.
+
 Private `standard-cycle-entry-choice-{subject,question,input,output}.v1` and
 `human-cycle-entry-choice.v1` describe an authenticated H selection intent.
 The subject binds the accepted entry observation, current canonical content and

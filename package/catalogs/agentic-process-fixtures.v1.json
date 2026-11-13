@@ -1140,6 +1140,27 @@
       "--retain-always"
     ],
     [
+      "tools/perf/verify-standard-cycle-choice-record-fixtures.mjs",
+      "--mode=files",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-choice-record-fixtures.mjs",
+      "--mode=dual",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-choice-record-fixtures.mjs",
+      "--mode=db-only",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-choice-record-fixtures.mjs",
+      "--mode=files",
+      "--fault-after-first-cas",
+      "--retain-always"
+    ],
+    [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--standard-composed-mode=files",
       "--standard-composed-stop=nominal_post_merge_complete"

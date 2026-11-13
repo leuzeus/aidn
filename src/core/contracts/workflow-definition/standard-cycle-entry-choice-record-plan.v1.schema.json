@@ -1,0 +1,673 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-entry-choice-record-plan.v1",
+  "x-aidn-contract-version": "standard-cycle-entry-choice-record-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "operation_id",
+    "input",
+    "prepared_at_ms",
+    "scope_sha256",
+    "backend_binding_sha256",
+    "unchanged_cycle_inventory_sha256",
+    "question",
+    "decision",
+    "decision_source_sha256",
+    "selected_cycle_id",
+    "selected_cycle_path",
+    "selected_state",
+    "selected_branch",
+    "selected_branch_head",
+    "selected_status_sha256",
+    "deferred_cycles",
+    "carry_over_pending",
+    "decisions",
+    "documents",
+    "changes"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-entry-choice-record-plan.v1"
+    },
+    "operation_ref": {
+      "const": "cycle_entry_choice_record"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "decision_operation_id"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "standard-cycle-entry-choice-record-input.v1"
+        },
+        "decision_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        }
+      }
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "scope_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "backend_binding_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "unchanged_cycle_inventory_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "operation_id",
+        "intent_sha256",
+        "subject",
+        "choices"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "standard-cycle-entry-choice-question.v1"
+        },
+        "operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "intent_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "subject": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contract_version",
+            "entry_operation_id",
+            "entry_output_sha256",
+            "session_id",
+            "session_path",
+            "scope_sha256",
+            "inventory_sha256",
+            "current_cycle_id",
+            "current_branch",
+            "head",
+            "reason_code",
+            "canonical",
+            "candidate_cycles",
+            "reported_cycles",
+            "missing_reported_cycles",
+            "carry_over_pending"
+          ],
+          "properties": {
+            "contract_version": {
+              "const": "standard-cycle-entry-choice-subject.v1"
+            },
+            "entry_operation_id": {
+              "type": "string",
+              "pattern": "^op_[a-f0-9]{40}$"
+            },
+            "entry_output_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "session_id": {
+              "type": "string",
+              "pattern": "^S[0-9]{3,6}$"
+            },
+            "session_path": {
+              "type": "string",
+              "pattern": "^sessions/S[0-9]{3,6}([-_.][A-Za-z0-9._-]+)?[.]md$"
+            },
+            "scope_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "inventory_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "current_cycle_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^C[0-9]{3,6}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "current_branch": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$"
+            },
+            "head": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "reason_code": {
+              "enum": [
+                "STANDARD_CYCLE_ENTRY_CHOICE_REQUIRED",
+                "STANDARD_CYCLE_ENTRY_CARRYOVER_DECISION_REQUIRED",
+                "STANDARD_CYCLE_ENTRY_TOPOLOGY_DECISION_REQUIRED"
+              ]
+            },
+            "canonical": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path",
+                  "sha256",
+                  "metadata_sha256"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^(CURRENT-STATE[.]md|sessions/S[0-9]{3,6}([-_.][A-Za-z0-9._-]+)?[.]md)$"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "metadata_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "candidate_cycles": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "cycle_id",
+                  "path",
+                  "sha256",
+                  "metadata_sha256",
+                  "state",
+                  "session_owner",
+                  "branch_name",
+                  "dor_state",
+                  "scope_frozen",
+                  "branch_head"
+                ],
+                "properties": {
+                  "cycle_id": {
+                    "type": "string",
+                    "pattern": "^C[0-9]{3,6}$"
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^cycles/C[0-9]{3,6}-[A-Za-z0-9_-]+/status[.]md$"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "metadata_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "state": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  },
+                  "session_owner": {
+                    "type": "string",
+                    "pattern": "^(S[0-9]{3,6}|none|unknown)$"
+                  },
+                  "branch_name": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$"
+                  },
+                  "dor_state": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  },
+                  "scope_frozen": {
+                    "enum": [
+                      "true",
+                      "false"
+                    ]
+                  },
+                  "branch_head": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "reported_cycles": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "string",
+                "pattern": "^C[0-9]{3,6}$"
+              }
+            },
+            "missing_reported_cycles": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "string",
+                "pattern": "^C[0-9]{3,6}$"
+              }
+            },
+            "carry_over_pending": {
+              "type": "boolean"
+            }
+          }
+        },
+        "choices": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 4,
+          "items": {
+            "enum": [
+              "select_cycle",
+              "refused",
+              "deferred",
+              "cancelled"
+            ]
+          }
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "source_kind",
+        "authority_id",
+        "source_event_id",
+        "subject_sha256",
+        "question_sha256",
+        "choice",
+        "selection",
+        "rationale",
+        "evidence_refs"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "human-cycle-entry-choice.v1"
+        },
+        "source_kind": {
+          "const": "human"
+        },
+        "authority_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "source_event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
+        },
+        "subject_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "question_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "choice": {
+          "enum": [
+            "select_cycle",
+            "refused",
+            "deferred",
+            "cancelled"
+          ]
+        },
+        "selection": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "cycle_id",
+                "carryover_decisions"
+              ],
+              "properties": {
+                "cycle_id": {
+                  "type": "string",
+                  "pattern": "^C[0-9]{3,6}$"
+                },
+                "carryover_decisions": {
+                  "type": "array",
+                  "maxItems": 128,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "cycle_id",
+                      "action",
+                      "outcome",
+                      "rationale"
+                    ],
+                    "properties": {
+                      "cycle_id": {
+                        "type": "string",
+                        "pattern": "^C[0-9]{3,6}$"
+                      },
+                      "action": {
+                        "enum": [
+                          "integrate_now",
+                          "import_now",
+                          "defer",
+                          "drop"
+                        ]
+                      },
+                      "outcome": {
+                        "enum": [
+                          null,
+                          "NO_GO",
+                          "DROPPED"
+                        ]
+                      },
+                      "rationale": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2048
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ref",
+              "sha256"
+            ],
+            "properties": {
+              "ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "decision_source_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "selected_cycle_id": {
+      "type": "string",
+      "pattern": "^C[0-9]{3,6}$"
+    },
+    "selected_cycle_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^[^\\\\\\u0000]+$"
+    },
+    "selected_state": {
+      "enum": [
+        "OPEN",
+        "IMPLEMENTING",
+        "VERIFYING"
+      ]
+    },
+    "selected_branch": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9/_-]{0,127}$"
+    },
+    "selected_branch_head": {
+      "type": "string",
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    },
+    "selected_status_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "deferred_cycles": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "string",
+        "pattern": "^C[0-9]{3,6}$"
+      }
+    },
+    "carry_over_pending": {
+      "type": "boolean"
+    },
+    "decisions": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "cycle_id",
+          "path",
+          "action",
+          "rationale",
+          "previous_session_owner",
+          "session_owner",
+          "previous_state",
+          "state",
+          "outcome",
+          "integration_completed"
+        ],
+        "properties": {
+          "cycle_id": {
+            "type": "string",
+            "pattern": "^C[0-9]{3,6}$"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^[^\\\\\\u0000]+$"
+          },
+          "action": {
+            "enum": [
+              "import_now",
+              "integrate_now",
+              "defer",
+              "drop"
+            ]
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "previous_session_owner": {
+            "type": "string",
+            "pattern": "^S[0-9]{3,6}$"
+          },
+          "session_owner": {
+            "type": "string",
+            "pattern": "^S[0-9]{3,6}$"
+          },
+          "previous_state": {
+            "enum": [
+              "OPEN",
+              "IMPLEMENTING",
+              "VERIFYING"
+            ]
+          },
+          "state": {
+            "enum": [
+              "OPEN",
+              "IMPLEMENTING",
+              "VERIFYING",
+              "NO_GO",
+              "DROPPED"
+            ]
+          },
+          "outcome": {
+            "enum": [
+              null,
+              "NO_GO",
+              "DROPPED"
+            ]
+          },
+          "integration_completed": {
+            "const": false
+          }
+        }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 384,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256",
+          "metadata_sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^[^\\\\\\u0000]+$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "metadata_sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "changes": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 131,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "before_sha256",
+          "before_metadata_sha256",
+          "text_chunks",
+          "after_sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^[^\\\\\\u0000]+$"
+          },
+          "before_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "before_metadata_sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text_chunks": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 128,
+            "items": {
+              "type": "string",
+              "maxLength": 8192
+            }
+          },
+          "after_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}
