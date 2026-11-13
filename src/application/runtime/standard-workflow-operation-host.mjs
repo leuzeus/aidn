@@ -744,6 +744,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     ? createStandardBaselinePromotionCheckpoint({ targetRoot, now, readSource: readAcceptedPromotionCheckpointSource,
       promotion: baselinePromotion, readCurrent: id => current(id).record }) : null;
   const baselinePromotionHook = processAuthority ? createStandardBaselinePromotionHook({ targetRoot, now,
+    readObjectiveCompletion: instance => objectiveCompletion.read(instance),
     readRecorded: readAcceptedBaselineRecord, promotion: baselinePromotion, readCurrent: id => current(id).record }) : null;
 
   async function readValidationEvaluation(instance, input, operation = "cycle_verification_enter") {

@@ -4332,3 +4332,22 @@ fixtures cover FILES, DUAL, DB-only, current selection and index-ACK loss with
 cold acceptance/replay. H sources and phase metadata are controlled fixtures.
 Physical activation, creation continuity, imported work/phase admission and the
 published choice route remain unfinished and require their own evidence.
+
+### Protected R05 completion at baseline promotion, 2026-11-13
+
+A full corrective fixture reached an actual DONE cycle and a fresh physical
+R05 completion, then the promotion finalizer still refused its sole objective
+delta. The finalizer had not received the protected completion reader already
+used by cycle closure. The operation host now supplies that reader through the
+baseline promotion hook and its checkpoint application wrapper to the existing
+gating evaluator. Its eligibility, other signals and canonical authorities
+remain unchanged. Current effect permission and process CAS are rechecked
+after protected reads and immediately before effects.
+
+This is an application capability, never a JSON-supplied approval or completion.
+Existing closed plan and output versions retain their shapes and readers. The
+ordinary wrapper omits the capability. Observed effects with lost confirmation
+remain UNKNOWN. Component fixtures use a controlled completion reader and
+staged terminal/closure provenance, so they do not establish authenticated R05
+history or a complete common-host corrective workflow. The original full A5
+failure remains retained; a new fixed-source full execution is separate.

@@ -346,3 +346,12 @@ The whole batch keeps the 4.5-second callback bound; partial, duplicate or forei
 results are refused. The scalar inspector remains available for individual
 removal fences. PostgreSQL connection errors prevent commit and remain typed;
 a failed rollback cannot replace the original failure.
+
+The STANDARD baseline promotion finalizer receives the same protected R05
+completion reader as cycle closure. The real gating evaluator may discharge
+only a sole objective-delta signal with current authenticated completion
+material; other signals and ordinary CLI behavior retain their rules. The
+capability passes through the promotion checkpoint application wrapper without
+a JSON field, synthetic receipt or new permission source. Current mutation
+permission and process identity are checked after awaited completion reads
+before checkpoint effects and canonical completion writes.

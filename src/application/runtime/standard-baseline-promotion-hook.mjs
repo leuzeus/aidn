@@ -21,16 +21,18 @@ const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(
 const openGate = gate => gate?.result === "ok" && gate.levels?.level1?.decision !== "stop" && gate.levels?.level2?.required === false && gate.levels?.level3?.required === false;
 // Fixed host readers authenticate accepted request/record/close provenance.
 // Optional dependencies are trusted test ports; process data selects none.
-export function createStandardBaselinePromotionHook({ targetRoot, readRecorded, promotion, readCurrent, now = Date.now },
+export function createStandardBaselinePromotionHook({ targetRoot, readRecorded, promotion, readCurrent, readObjectiveCompletion = null, now = Date.now },
   { gating = runGatingEvaluateUseCase, checkpoint = runPromoteBaselineCheckpointUseCase } = {}) {
   if ([readRecorded, promotion?.inspectContext, readCurrent].some(value => typeof value !== "function")) fail("STANDARD_PROMOTION_HOOK_AUTHORITY_REQUIRED");
+  if (readObjectiveCompletion !== null && typeof readObjectiveCompletion !== "function") fail("STANDARD_PROMOTION_HOOK_AUTHORITY_REQUIRED");
   const artifacts = createStandardWorkflowArtifacts({ targetRoot }), root = artifacts.root;
   const events = () => {
     const file = agentRunPhysicalPath(path.join(root, eventRelative), { missing: true });
     const bytes = fs.existsSync(file) ? readAgentRunFile(file, { json: false, maxBytes: 4194304 }).value : Buffer.alloc(0);
     if (bytes.length && bytes.at(-1) !== 10) fail("STANDARD_PROMOTION_HOOK_EVENT_LOG_INVALID"); return bytes;
   };
-  const gate = completionCycleId => gating({ targetRoot: root, runtimeDir, completionCycleId, args: {
+  const gate = (instance, completionCycleId) => gating({ targetRoot: root, runtimeDir, completionCycleId,
+    readObjectiveCompletion: readObjectiveCompletion === null ? null : () => readObjectiveCompletion(instance), args: {
     cache: ".aidn/runtime/cache/reload-state.json", eventFile: eventRelative, indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
     stateMode: artifacts.describe().state_mode, stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto",
     thresholdFiles: 3, thresholdMinutes: null, mode: "COMMITTING", runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: false,
@@ -60,7 +62,7 @@ export function createStandardBaselinePromotionHook({ targetRoot, readRecorded, 
     if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
     const { selected, observed } = await source(instance, input), context = observed.context;
     const completionCycleId = ["cycle", "intermediate"].includes(classifyAidnBranch(context.branch)) ? selected.plan.request.cycle_id : null;
-    const gatingResult = await gate(completionCycleId);
+    const gatingResult = await gate(instance, completionCycleId);
     if (!openGate(gatingResult)) return { can_apply: false, reason_code: "STANDARD_PROMOTION_HOOK_GATE_REQUIRED", gate: gatingResult };
     // Reject oversized or incoherent completion material before the real hook.
     // This is a planned postimage estimate, never a successful receipt.
@@ -84,6 +86,11 @@ export function createStandardBaselinePromotionHook({ targetRoot, readRecorded, 
         || typeof assertAuthorized !== "function") fail("STANDARD_PROMOTION_HOOK_EXPLICIT_EFFECT_REQUIRED"); }
       catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
+        const assertEffectAuthorized = async () => {
+          if (readObjectiveCompletion !== null) await readObjectiveCompletion(instance);
+          await assertAuthorized();
+          if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_PROMOTION_HOOK_SOURCE_CHANGED");
+        };
         let before;
         try {
           await assertAuthorized();
@@ -91,13 +98,20 @@ export function createStandardBaselinePromotionHook({ targetRoot, readRecorded, 
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_PREVIEW_CHANGED");
           before = events();
           if (before.length !== plan.event_log.bytes || artifactContentHash(before) !== plan.event_log.sha256) fail("STANDARD_PROMOTION_HOOK_SOURCE_CHANGED");
+          if (readObjectiveCompletion !== null) await assertEffectAuthorized();
         } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         let result = null; const committed = [];
         try {
           const runId = "process_promote_" + plan.operation_id.slice(3), started = now();
           const args = { ...createPromoteBaselineCheckpointDefaults({ runtimeDir, env: { AIDN_STATE_MODE: plan.scope.state_mode } }), runId,
             indexSyncCheck: true, indexSyncCheckStrict: true, skipGateEvaluate: false, autoSkipGateOnNoSignal: false, skipIndexOnIncremental: false };
-          result = await checkpoint({ targetRoot: root, args, runtimeDir, cycleId: plan.request.cycle_id, completionCycleId: plan.completion_cycle_id });
+          result = await checkpoint({ targetRoot: root, args, runtimeDir, cycleId: plan.request.cycle_id, completionCycleId: plan.completion_cycle_id,
+            ...(readObjectiveCompletion === null ? {} : { assertEffectAuthorized, readObjectiveCompletion: async () => {
+              const completed = await readObjectiveCompletion(instance);
+              await assertAuthorized();
+              if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_PROMOTION_HOOK_SOURCE_CHANGED");
+              return completed;
+            } }) });
           if (result.checkpoint === null) return emit("blocked", "no_effect", { reason_code: "STANDARD_PROMOTION_HOOK_ADMISSION_BLOCKED", admission: result.admission });
           const observed = result.checkpoint, admission = result.admission;
           if (admission?.ok !== true || admission.action !== "promote_baseline_allowed" || admission.target_cycle?.cycle_id !== plan.request.cycle_id
@@ -115,7 +129,8 @@ export function createStandardBaselinePromotionHook({ targetRoot, readRecorded, 
           const current = await source(instance, plan.input);
           if (shadowHash(current.selected.plan) !== plan.record_plan_sha256 || shadowHash(current.selected.output) !== plan.record_output_sha256
             || current.observed.completion_boundary_sha256 !== plan.boundary_sha256
-            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || !openGate(await gate(plan.completion_cycle_id))) fail("STANDARD_PROMOTION_HOOK_POSTCONDITION_FAILED");
+            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || !openGate(await gate(instance, plan.completion_cycle_id))) fail("STANDARD_PROMOTION_HOOK_POSTCONDITION_FAILED");
+          if (readObjectiveCompletion !== null) await assertEffectAuthorized();
           const documents = plan.completion_preimages.map(row => {
             const document = artifacts.read(row.path, { required: true });
             if (document.sha256 !== row.sha256 || artifacts.metadataHash(row.path) !== row.metadata_sha256) fail("STANDARD_PROMOTION_HOOK_POSTIMAGE_CHANGED"); return document;

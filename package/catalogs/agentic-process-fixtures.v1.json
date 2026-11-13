@@ -1183,6 +1183,33 @@
       "--select-current"
     ],
     [
+      "tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs",
+      "--mode=files",
+      "--final-hook",
+      "--promotion-checkpoint",
+      "--keep-cycle-branch",
+      "--objective-completion",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs",
+      "--mode=dual",
+      "--final-hook",
+      "--promotion-checkpoint",
+      "--keep-cycle-branch",
+      "--objective-completion",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs",
+      "--mode=db-only",
+      "--final-hook",
+      "--promotion-checkpoint",
+      "--keep-cycle-branch",
+      "--objective-completion",
+      "--retain-always"
+    ],
+    [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--standard-composed-mode=files",
       "--standard-composed-stop=nominal_post_merge_complete"

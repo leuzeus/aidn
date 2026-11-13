@@ -5828,3 +5828,25 @@ These cases use controlled H sources and staged phase metadata. They establish
 no physical branch activation, R1/R2/R3 creation continuity, imported work
 acceptance, published choice routing, genuine Native actor, PostgreSQL adapter
 or installed full-workflow qualification.
+
+## Baseline promotion with a controlled objective-completion reader
+
+`verify-standard-baseline-promotion-ports-fixtures.mjs --mode=files|dual|db-only`
+with `--final-hook --promotion-checkpoint --keep-cycle-branch
+--objective-completion --retain-always` creates different session/cycle goals
+and uses the actual R05 evaluator, Git checkpoint and canonical promotion
+completion port. Without the private reader, the sole objective-delta signal
+still refuses promotion. Missing completion, a wrong subject, revoked source
+and mixed signals must preserve canonical content/metadata and the event
+prefix. Revoking the mutation grant during the final awaited completion read
+must refuse with no effect, zero checkpoint calls and a released unused owner.
+
+All three persistence cases are required before the unchanged final nominal.
+They retain their owned scopes and check the actual five completion writes,
+append-only history and no repeated completion. The source reader and upstream
+closure provenance are controlled application fixtures. A controlled alignment
+port prepares a physical R05 event through the production writer; it supplies
+no signed model or H history. The mixed-signal probe changes four precommitted
+auxiliary product paths, since the gating observer reads tracked changes. No common-host
+HMAC/R05 authentication, Native actor or PostgreSQL adapter qualification.
+A new full A5 on the fixed source remains necessary to test host integration.

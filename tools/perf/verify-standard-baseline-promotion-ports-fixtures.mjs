@@ -23,6 +23,8 @@ const finalFault = process.argv.find(value => value.startsWith("--final-hook-fau
 if (finalFault !== undefined && (!process.argv.includes("--final-hook") || !["event", "suffix", "projection", "grant_after"].includes(finalFault))) throw Error("PROMOTION_FINAL_FAULT_INVALID");
 if (process.argv.includes("--final-hook") && (!["files", "dual", "db-only"].includes(selected) || finalFault === "suffix" && mode === "files" || finalFault === "projection" && mode !== "dual")) throw Error("PROMOTION_FINAL_MODE_INVALID");
 const promotionCheckpoint = process.argv.includes("--promotion-checkpoint"), keepCycleBranch = process.argv.includes("--keep-cycle-branch");
+const objectiveCompletion = process.argv.includes("--objective-completion");
+if (objectiveCompletion && (!promotionCheckpoint || !keepCycleBranch || finalFault !== undefined)) throw Error("PROMOTION_OBJECTIVE_COMPLETION_FLAGS_INVALID");
 const agedCheckpoint = process.argv.includes("--aged-checkpoint");
 const agedHook = process.argv.includes("--aged-hook");
 if (agedHook && !process.argv.includes("--final-hook")) throw Error("PROMOTION_AGED_HOOK_ARGUMENT_INVALID");
@@ -42,9 +44,10 @@ try {
   git("add", "."); git("commit", "--allow-empty", "-m", "fixture selected session mode");
   plan = await operations.prepareCycleContext({ session_id: "S001" }); assert.equal((await operations.refreshCycleContext(plan, { write: true, expectPlan: plan.plan_sha256 })).outcome, "completed");
   git("add", "."); git("commit", "--allow-empty", "-m", "fixture cycle context"); assert.equal((await operations.admitCycle()).outcome, "completed");
-  plan = await operations.prepareCycle({ session_id: "S001", cycle_id: "C001", cycle_type: "feature", title: "promotion", objective: "Qualify canonical baseline promotion", continuity_rule: "R2_SESSION_BASE_WITH_IMPORT", base_branch: "S001-promotion" });
+  plan = await operations.prepareCycle({ session_id: "S001", cycle_id: "C001", cycle_type: "feature", title: "promotion", objective: objectiveCompletion ? "Qualify a separately scoped canonical baseline promotion" : "Qualify canonical baseline promotion", continuity_rule: "R2_SESSION_BASE_WITH_IMPORT", base_branch: "S001-promotion" });
   assert.equal(plan.can_apply, true, JSON.stringify(plan)); assert.equal((await operations.initializeCycle(plan, { write: true, expectPlan: plan.plan_sha256 })).outcome, "completed");
   const cyclePath = "cycles/C001-feature-promotion", product = path.join(root, "product/app.mjs"); fs.mkdirSync(path.dirname(product)); fs.writeFileSync(product, "export const value = 3;\n");
+  if (objectiveCompletion) for (let i = 0; i < 4; i++) fs.writeFileSync(path.join(root, "product", "fixture-mixed-signal-" + i + ".txt"), "Tracked clean fixture signal input.\n");
   // Explicit fixture terminal preconditions, not proof of the still separate
   // human decision/completed-cycle-close host chain or promotion final hook.
   await artifacts.withLocalEffectOwner(H, async () => {
@@ -126,11 +129,11 @@ try {
     }
   }
   if (process.argv.includes("--final-hook")) {
-    assert.equal(result?.outcome, "completed"); await verifyBaselinePromotionHook({ root, mode, artifacts, promotion, instance, preview, result, git, fault: finalFault, promotionCheckpoint, checkpointFault, agedCheckpoint, agedHook });
+    assert.equal(result?.outcome, "completed"); await verifyBaselinePromotionHook({ root, mode, artifacts, promotion, instance, preview, result, git, fault: finalFault, promotionCheckpoint, checkpointFault, agedCheckpoint, agedHook, objectiveCompletion });
     if (agedCheckpoint && !checkpointFault) pass("day-old baseline Git checkpoint applies with current accepted source, postimages and grant");
     if (agedHook && !checkpointFault && !finalFault) pass("day-old baseline finalization plan confirms the actual checkpoint and canonical completion");
     pass(checkpointFault ? "promotion checkpoint refusal or unknown effect cannot complete the promotion skill" : finalFault ? "actual checkpoint with lost confirmation retains unknown effects and prevents another checkpoint" : "actual selected promotion checkpoint and five completion writes preserve append-only history and cannot repeat");
   }
   completed = true;
-  console.log(JSON.stringify({ status: "PASS", checks, mode: selected, proof: "canonical-baseline-promotion-component", human_and_closure_authority: "fixture", common_process_host: "NOT_RUN", promotion_checkpoint: promotionCheckpoint ? "actual-application-component" : "NOT_RUN", cycle_branch_retained: keepCycleBranch, promotion_checkpoint_fault: checkpointFault ?? null, final_hook_fault: finalFault ?? null, promotion_final_hook: process.argv.includes("--final-hook") && !checkpointFault ? "actual-application-component" : "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN" }));
-} finally { if (!completed && process.argv.includes("--retain-on-failure")) { console.error(JSON.stringify({ proof_class: "offline-diagnostic-only", retained_business_roots: owned })); } else for (const folder of owned) { const resolved = fs.realpathSync(folder); assert.equal(path.dirname(resolved), temp); assert.ok(path.basename(resolved).startsWith("aidn-standard-fresh-")); fs.rmSync(resolved, { recursive: true, force: true }); } }
+  console.log(JSON.stringify({ status: "PASS", checks, mode: selected, proof: "canonical-baseline-promotion-component", human_and_closure_authority: "fixture", common_process_host: "NOT_RUN", objective_completion: objectiveCompletion ? "CONTROLLED_READER_COMPONENT_NOT_AUTHENTICATED_R05_SOURCE" : "NOT_RUN", promotion_checkpoint: promotionCheckpoint ? "actual-application-component" : "NOT_RUN", cycle_branch_retained: keepCycleBranch, promotion_checkpoint_fault: checkpointFault ?? null, final_hook_fault: finalFault ?? null, promotion_final_hook: process.argv.includes("--final-hook") && !checkpointFault ? "actual-application-component" : "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN" }));
+} finally { if (process.argv.includes("--retain-always") || !completed && process.argv.includes("--retain-on-failure")) { console.error(JSON.stringify({ proof_class: "offline-diagnostic-only", retained_business_roots: owned })); } else for (const folder of owned) { const resolved = fs.realpathSync(folder); assert.equal(path.dirname(resolved), temp); assert.ok(path.basename(resolved).startsWith("aidn-standard-fresh-")); fs.rmSync(resolved, { recursive: true, force: true }); } }

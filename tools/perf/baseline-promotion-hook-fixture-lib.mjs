@@ -1,3 +1,4 @@
+import { runGatingEvaluateUseCase } from "../../src/application/runtime/gating-evaluate-use-case.mjs";
 import { createStandardBaselinePromotionCheckpoint } from "../../src/application/runtime/standard-baseline-promotion-checkpoint.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import assert from "node:assert/strict";
@@ -10,12 +11,23 @@ import { baselinePromotionPaths } from "../../src/core/workflow/standard-baselin
 import { runPromoteBaselineCheckpointUseCase } from "../../src/application/runtime/promote-baseline-checkpoint-use-case.mjs";
 import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
-export async function verifyBaselinePromotionHook({ root, mode, artifacts, promotion, instance, preview, result, git, fault, promotionCheckpoint = false, checkpointFault, agedCheckpoint = false, agedHook = false }) {
+export async function verifyBaselinePromotionHook({ root, mode, artifacts, promotion, instance, preview, result, git, fault, promotionCheckpoint = false, checkpointFault, agedCheckpoint = false, agedHook = false, objectiveCompletion = false }) {
   const recordId = "op_" + "c".repeat(40), hookId = "op_" + "d".repeat(40), input = { record_operation_id: recordId };
   const eventFile = path.join(root, ".aidn/runtime/perf/workflow-events.ndjson"), events = () => fs.existsSync(eventFile) ? fs.readFileSync(eventFile) : Buffer.alloc(0);
   let checkpointCalls = 0; const write = fs.writeFileSync;
   let hookClock = agedHook ? Date.now() - 86400000 : null;
-  const hook = createStandardBaselinePromotionHook({ targetRoot: root, promotion, readCurrent: () => instance, now: () => hookClock ?? Date.now(),
+  let completionMode = "valid", sourceReads = 0, revokeAt = null, grantLive = true;
+  const completionSubject = { session_objective: "Qualify canonical baseline promotion", cycle_objective: "Qualify a separately scoped canonical baseline promotion" };
+  // Controlled capability fixture only. This does not authenticate an R05
+  // journal or establish the still separate full common-host A5 path.
+  const readCompletion = async () => {
+    sourceReads++; if (sourceReads === revokeAt) grantLive = false;
+    if (completionMode === "missing") return null;
+    if (completionMode === "revoked") throw Object.assign(Error("FIXTURE_PROMOTION_COMPLETION_REVOKED"), { code: "FIXTURE_PROMOTION_COMPLETION_REVOKED" });
+    return completionMode === "wrong" ? { ...completionSubject, cycle_objective: "Wrong unaccepted objective" } : { ...completionSubject };
+  };
+  const makeHook = reader => createStandardBaselinePromotionHook({ targetRoot: root, promotion, readCurrent: () => instance, now: () => hookClock ?? Date.now(),
+    readObjectiveCompletion: reader,
     readRecorded: async () => ({ record_operation_id: recordId, plan: preview.plan, output: result }) }, { checkpoint: async args => {
       checkpointCalls++; const prefix = events(), observed = await runPromoteBaselineCheckpointUseCase(args);
       assert.equal(observed.checkpoint?.ok, true, JSON.stringify(observed));
@@ -30,6 +42,7 @@ export async function verifyBaselinePromotionHook({ root, mode, artifacts, promo
       }
       return observed;
     } });
+  const hook = makeHook(objectiveCompletion ? readCompletion : null);
   if (promotionCheckpoint) {
     const id = "op_" + "e".repeat(40), checkpointInput = { record_operation_id: recordId, closure_operation_id: preview.plan.request.closure_operation_id,
       terminal_checkpoint_operation_id: "op_" + "f".repeat(40) };
@@ -78,7 +91,49 @@ export async function verifyBaselinePromotionHook({ root, mode, artifacts, promo
     const confirmedHead = git("rev-parse", "HEAD");
     await assert.rejects(checkpoint.apply(instance, preparedCheckpoint, { write: true, expectPlan: preparedCheckpoint.plan_sha256, assertAuthorized() {} }));
     assert.equal(git("rev-parse", "HEAD"), confirmedHead);
-    completeDriftCheckFixture(root); // Component preparation, not a model-driven R05 diagnostic.
+    if (!objectiveCompletion) completeDriftCheckFixture(root); // Existing ordinary component preparation.
+    else {
+      // Use the real event writer with an explicitly controlled alignment port.
+      // This is a physical fixture precondition, not a signed model/H receipt.
+      const runId = "fixture_promotion_objective_alignment", completed = await runGatingEvaluateUseCase({ targetRoot: root,
+        runtimeDir: import.meta.dirname, verifyObjectiveAlignment: async () => ({ ...completionSubject }), args: {
+          cache: ".aidn/runtime/cache/reload-state.json", eventFile: ".aidn/runtime/perf/workflow-events.ndjson", indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
+          stateMode: mode, stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto",
+          thresholdFiles: 3, thresholdMinutes: null, mode: "COMMITTING", runId, reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: true, completeDriftCheck: true } });
+      assert.equal(completed.ok, true, JSON.stringify(completed));
+      const physical = events().toString("utf8").split(/\r?\n/).filter(Boolean).map(row => JSON.parse(row)).filter(row => row.run_id === runId);
+      assert.equal(physical.length, 1); assert.equal(physical[0].event, "drift_check_completed");
+      assert.equal(physical[0].objective_alignment_sha256, shadowHash(completionSubject));
+      console.log(JSON.stringify({ controlled_physical_drift_precondition: true, mode, root, event_sha256: shadowHash(physical[0]),
+        source_authority: "CONTROLLED_ALIGNMENT_PORT_NOT_SIGNED_R05_OR_HUMAN_HISTORY", native: "NOT_RUN" }));
+    }
+  }
+  if (objectiveCompletion) {
+    const before = baselinePromotionPaths.map(name => ({ path: name, sha256: artifacts.read(name).sha256, metadata_sha256: artifacts.metadataHash(name) })), prefix = events();
+    const unchanged = () => { assert.deepEqual(events(), prefix); assert.equal(checkpointCalls, 0); assert.equal(artifacts.ownerPending(), false);
+      for (const row of before) { assert.equal(artifacts.read(row.path).sha256, row.sha256); assert.equal(artifacts.metadataHash(row.path), row.metadata_sha256); } };
+    const noReader = await makeHook(null).prepare(instance, input, hookId);
+    assert.equal(noReader.can_apply, false); assert.equal(noReader.reason_code, "STANDARD_PROMOTION_HOOK_GATE_REQUIRED");
+    assert.deepEqual(noReader.gate.levels.level2.active_signals, ["objective_delta"]); unchanged();
+    completionMode = "missing"; assert.equal((await hook.prepare(instance, input, hookId)).can_apply, false); unchanged();
+    completionMode = "wrong"; await assert.rejects(hook.prepare(instance, input, hookId), /STANDARD_OBJECTIVE_COMPLETION_GATE_CHANGED/); unchanged();
+    completionMode = "revoked"; await assert.rejects(hook.prepare(instance, input, hookId), { code: "FIXTURE_PROMOTION_COMPLETION_REVOKED" }); unchanged();
+    completionMode = "valid";
+    const foreign = Array.from({ length: 4 }, (_, i) => path.join(root, "product", "fixture-mixed-signal-" + i + ".txt")), foreignBefore = foreign.map(file => fs.readFileSync(file));
+    try { for (const file of foreign) fs.appendFileSync(file, "Tracked scope growth must remain active.\n");
+      sourceReads = 0; const blocked = await hook.prepare(instance, input, hookId);
+      assert.equal(blocked.can_apply, false); assert.equal(blocked.reason_code, "STANDARD_PROMOTION_HOOK_GATE_REQUIRED");
+      assert.ok(blocked.gate.levels.level2.active_signals.includes("scope_growth")); assert.ok(blocked.gate.levels.level2.active_signals.includes("objective_delta"));
+      assert.equal(sourceReads, 0); unchanged();
+    } finally { for (const [index, file] of foreign.entries()) fs.writeFileSync(file, foreignBefore[index]); }
+    const preparedBoundary = await hook.prepare(instance, input, hookId); assert.equal(preparedBoundary.can_apply, true, JSON.stringify(preparedBoundary));
+    sourceReads = 0; revokeAt = 3; grantLive = true;
+    await assert.rejects(hook.apply(instance, preparedBoundary, { write: true, expectPlan: preparedBoundary.plan_sha256,
+      assertAuthorized: async () => { if (!grantLive) throw Object.assign(Error("FIXTURE_PROMOTION_GRANT_REVOKED_LAST_COMPLETION_AWAIT"), { code: "FIXTURE_PROMOTION_GRANT_REVOKED_LAST_COMPLETION_AWAIT" }); } }),
+      { code: "FIXTURE_PROMOTION_GRANT_REVOKED_LAST_COMPLETION_AWAIT", effect_status: "no_effect" });
+    assert.equal(sourceReads, 3); unchanged(); revokeAt = null; grantLive = true;
+    console.log(JSON.stringify({ promotion_objective_refusals: true, mode, root, sole_signal: "objective_delta", missing_wrong_revoked_and_mixed_refused: true,
+      last_completion_await_grant_revocation: "NO_EFFECT_ZERO_CHECKPOINT_CALLS_CANONICAL_METADATA_UNCHANGED_OWNER_RELEASED", source_authority: "CONTROLLED_READER_NOT_AUTHENTICATED_R05" }));
   }
   let prepared = await hook.prepare(instance, input, hookId);
   if (!prepared.can_apply) {
@@ -111,6 +166,8 @@ export async function verifyBaselinePromotionHook({ root, mode, artifacts, promo
     assert.equal(checkpointCalls, 1); assert.deepEqual(events(), afterEvents);
     assert.equal(output.observations.committed.length, fault === "event" ? 0 : fault === "suffix" ? 1 : 5); return;
   }
+  if (objectiveCompletion) console.log(JSON.stringify({ promotion_objective_completion_component: true, mode, root, completion_source_reads: sourceReads,
+    source_authority: "CONTROLLED_READER_NOT_AUTHENTICATED_R05", common_process_host: "NOT_RUN", native: "NOT_RUN", effect_status: output.effect_status, facts: output.facts }));
   assert.equal(output.outcome, "completed", JSON.stringify(output)); assert.equal(output.effect_status, "confirmed");
   assert.deepEqual(output.facts, { baseline_recorded: true, baseline_promotion_completed: true }); assert.equal(output.observations.committed.length, 5);
   assert.ok(artifacts.read("baseline/history.md").content.startsWith(beforeDocuments[1].content));
