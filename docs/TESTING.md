@@ -48,6 +48,13 @@ history must be rejected predates initial-entry epochs and is no longer valid.
 
 ## Required STANDARD review effects and current OPEN work
 
+The published composition fixture checks the four corrective R05 calls, their
+own evaluation inputs and the typed finalizer return consumed by session
+closure. Reusing the shared corrective-drift target leaves 141 direct and 50
+target binding rows (191 total), including 34 counted corrective operations;
+the 23 Native activities remain distinct. These structural assertions do not
+substitute for the actual scoped R05 fixture or the full corrective journey.
+
 The required agentic corpus runs the R08 reply cases `normal`, `lost`,
 `missing` and `interrupted`, both thread-resolution recovery cases, the
 session/correction resolution exceptions and their refusal/deferral/cancellation

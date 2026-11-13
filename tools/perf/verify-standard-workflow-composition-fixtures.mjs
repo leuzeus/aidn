@@ -89,7 +89,25 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 194); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 191); assert.equal(assets.catalog.activities.length, 23);
+});
+test("all corrective R05 sites bind their own evaluation and consume the shared finalizer return", () => {
+  const target = assets.model.call_targets.find(row => row.model_id === "aidn-standard-corrective-drift"),
+    { model, ...identity } = target;
+  assert.deepEqual(processModelIdentity(model), identity);
+  assert.deepEqual(model.call_interface.parameters, { evaluation_operation_id: "string" });
+  assert.deepEqual(model.call_interface.returns.finalization_operation_id,
+    { type: "string", node_id: "finalize", path: ["observations", "operation_id"] });
+  assert.equal(model.nodes.find(row => row.id === "finalize").binding_ref, "drift_check_finalize");
+  for (const phase of ["cycle", "closure", "promotion", "session_closure"]) {
+    const nodeId = "correction_" + phase + "_drift_finalize", node = assets.model.nodes.find(row => row.id === nodeId);
+    assert.equal(node.kind, "call"); assert.deepEqual(node.target, identity);
+    assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === nodeId).fields,
+      { evaluation_operation_id: { source: "operation_id", node_id: "correction_" + phase + "_drift_evaluate" } });
+    assert.equal(assets.catalog.bindings.some(row => !row.model_ref && row.node_id === nodeId), false);
+  }
+  assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_session_closure_decide").fields.drift_finalization_operation_id,
+    { source: "call_output", node_id: "correction_session_closure_drift_finalize", path: ["finalization_operation_id"] });
 });
 test("correction work and closure consume the new implementation and new validation authorities", () => {
   const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
@@ -104,7 +122,7 @@ test("correction work and closure consume the new implementation and new validat
   assert.deepEqual(fields("correction_cycle_terminal_checkpoint").closure_operation_id, { source: "operation_id", node_id: "correction_close_record" });
   assert.deepEqual(fields("correction_close_finalize").closure_operation_id, { source: "operation_id", node_id: "correction_close_record" });
   const operations = assets.catalog.bindings.filter(row => row.node_id.startsWith("correction_") && !["correction_initialize", "correction_branch_audit", "correction_cycle_checkpoint", "correction_cycle_drift_evaluate", "correction_cycle_drift_finalize", "correction_plan_evaluate", "correction_plan_record", "correction_readiness", "correction_implementation_enter"].includes(row.node_id));
-  assert.equal(operations.length, 37);
+  assert.equal(operations.length, 34);
   assert.ok(operations.every(row => row.binding.id !== "session_pr_open" && row.binding.id !== "session_push"));
   const audit = assets.model.nodes.find(row => row.id === "correction_audit_review"); assert.equal(audit.policy_ref, "audit");
   const sequence = assets.model.nodes.find(row => row.id === "correction_cycle").children;
@@ -689,7 +707,7 @@ test("the ordinary loader authenticates the two final-verification operations fo
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV5, "#", { contractKind: "workflow-definition" }), []);
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 255);
-  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 144);
+  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 141);
   assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 50);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
   assert.equal(loaded.model.call_targets.length, 8);
