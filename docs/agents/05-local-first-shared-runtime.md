@@ -355,3 +355,8 @@ capability passes through the promotion checkpoint application wrapper without
 a JSON field, synthetic receipt or new permission source. Current mutation
 permission and process identity are checked after awaited completion reads
 before checkpoint effects and canonical completion writes.
+
+
+The private local cycle-activation port changes the selected Git HEAD, index and product files without advancing either branch tip. It preserves current `docs/audit/` bytes and refuses differences in tracked `.aidn/`, `.agents/`, `.codex/`, `AGENTS.md` or `.gitignore` configuration. Protected names are matched without case distinctions. Ignored local runtime and Native configuration remain in place. A canonical overlay may remain dirty against the selected index; physical activation does not adopt or commit that history.
+
+The application caller owns current authorization, authenticated choice and canonical admission. The fixed Git adapter checks the repository binding, refs, index, worktree and product preimages around awaited authorization and before each effect. It disables lazy fetching, credential prompting, hooks and configured filters. Partial product replacement or lost confirmation after HEAD/index installation remains uncertain; inspection does not replay, roll back or grant phase permission. This private port adds no shared store or implicit export and is not yet connected to the published choice route.

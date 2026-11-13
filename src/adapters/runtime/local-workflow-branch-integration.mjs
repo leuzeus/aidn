@@ -16,7 +16,8 @@ const key = value => process.platform === "win32" ? value.toLowerCase() : value;
 export function createLocalWorkflowBranchIntegration({ targetRoot, environment = process.env }, { beforeTransaction = null, afterTransaction = null, gitExecutable = "git", isolatedConfig = false } = {}) {
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
   if (Object.keys(environment).some(name => /^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|CONFIG(?:_.*)?)$/i.test(name))) fail("WORKFLOW_BRANCH_ENV_SCOPE_CONFLICT");
-  const env = { ...Object.fromEntries(Object.entries(environment).filter(([name]) => !/^GIT_/i.test(name))), GIT_OPTIONAL_LOCKS: "0" };
+  const env = { ...Object.fromEntries(Object.entries(environment).filter(([name]) => !/^GIT_/i.test(name))), GIT_OPTIONAL_LOCKS: "0",
+    GIT_NO_LAZY_FETCH: "1", GIT_TERMINAL_PROMPT: "0" };
   if (isolatedConfig) Object.assign(env, { GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
     GIT_NO_LAZY_FETCH: "1", GIT_TERMINAL_PROMPT: "0" });
   const fixed = ["--literal-pathspecs", "-C", root, "-c", "core.fsmonitor=false", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "-c", "core.hooksPath=" + (process.platform === "win32" ? "NUL" : "/dev/null")];

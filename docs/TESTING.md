@@ -5856,3 +5856,12 @@ no signed model or H history. The mixed-signal probe changes four precommitted
 auxiliary product paths, since the gating observer reads tracked changes. No common-host
 HMAC/R05 authentication, Native actor or PostgreSQL adapter qualification.
 A new full A5 on the fixed source remains necessary to test host integration.
+
+
+## Private physical cycle activation port
+
+Run `node tools/perf/verify-workflow-cycle-activation-port-fixtures.mjs` when changing the local selected-cycle checkout port. Actual Git fixtures switch to a different HEAD and product tree, including file creation and deletion, while retaining current canonical audit bytes, local runtime, project skills and Native configuration. Effective filters and hooks must not run. Protected configuration differences and special index flags refuse before effects; case variants of the protected namespaces remain protected.
+
+The fixture also checks read-only byte preservation, current grant revocation, foreign work and moved targets, same-branch no-change, a cold read-only confirmation, partial product effects and lost acknowledgement after HEAD/index installation. An uncertain effect stays UNKNOWN even when a later physical observation confirms its material. The old plan must not repeat the effect. Fixture roots are retained for review.
+
+This private port establishes physical Git/product behavior only. It does not authenticate a human choice, adopt canonical history on the selected branch, admit a phase or DoR, authorize implementation, or qualify the common operation host, installed archive, real Native actor or complete STANDARD workflow. The required manifest runs this case before the unchanged final nominal composed case.

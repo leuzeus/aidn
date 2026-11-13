@@ -4351,3 +4351,12 @@ remain UNKNOWN. Component fixtures use a controlled completion reader and
 staged terminal/closure provenance, so they do not establish authenticated R05
 history or a complete common-host corrective workflow. The original full A5
 failure remains retained; a new fixed-source full execution is separate.
+
+
+### Private physical selected-cycle activation, 2026-11-13
+
+The local activation port is separate from the existing fast-forward integration port. It prepares a private target index and raw product blobs, then uses a native symbolic-HEAD transaction that verifies the target tip while retaining both branch tips. Current canonical audit bytes survive as an explicit overlay; tracked project/runtime/Native configuration differences are refused, including protected namespace case variants. Project skills under `.agents/` are protected. No authored JSON selects executable commands, protected namespaces or permission sources.
+
+The caller must supply explicit write intent and a live authorization capability. Repository binding, refs, index, worktree registrations, filter context and material preimages are reobserved at the effect boundaries. Git hooks, filters, lazy fetching and credential prompting are disabled. Physical partial effects and acknowledgement loss retain an uncertain outcome without rollback or old-plan replay. Read-only causal reconciliation reports physical material only; it cannot upgrade a signed UNKNOWN outcome.
+
+Actual Git fixtures cover a different HEAD/product tree, canonical and configuration preservation, read-only cold confirmation, refusals and partial or completed effects with lost acknowledgement. This is a private component, not a registered host operation. Authenticated choice/checkpoint consumption, canonical adoption on the selected branch, continuity and imported-work/phase admission, and the published root choice route remain unfinished. No new public CLI/JSON surface, store, Native grant or preparation-age guard is introduced.
