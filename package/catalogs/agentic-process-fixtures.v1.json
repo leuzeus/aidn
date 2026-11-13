@@ -1307,6 +1307,37 @@
       "--fault=cas_ack"
     ],
     [
+      "tools/perf/verify-standard-focus-checkpoint-fixtures.mjs",
+      "--contracts-only"
+    ],
+    [
+      "tools/perf/verify-standard-focus-checkpoint-fixtures.mjs",
+      "--mode=files"
+    ],
+    [
+      "tools/perf/verify-standard-focus-checkpoint-fixtures.mjs",
+      "--mode=dual"
+    ],
+    [
+      "tools/perf/verify-standard-focus-checkpoint-fixtures.mjs",
+      "--mode=db-only"
+    ],
+    [
+      "tools/perf/verify-standard-focus-checkpoint-fixtures.mjs",
+      "--mode=files",
+      "--select-current"
+    ],
+    [
+      "tools/perf/verify-standard-focus-checkpoint-fixtures.mjs",
+      "--mode=files",
+      "--fault=grant_after_ref"
+    ],
+    [
+      "tools/perf/verify-standard-focus-checkpoint-fixtures.mjs",
+      "--mode=files",
+      "--fault=index_ack"
+    ],
+    [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--standard-composed-mode=files",
       "--standard-composed-stop=nominal_post_merge_complete"

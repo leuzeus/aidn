@@ -36,6 +36,8 @@ import { createStandardCycleEntrySelectedCheckpoint } from "./standard-cycle-ent
 import { cycleEntrySelectedCheckpointOperation } from "../../core/workflow/standard-cycle-entry-selected-checkpoint.mjs";
 import { createStandardCycleEntrySelectedFocus } from "./standard-cycle-entry-selected-focus.mjs";
 import { cycleEntrySelectedFocusOperation } from "../../core/workflow/standard-cycle-entry-selected-focus.mjs";
+import { createStandardCycleEntryFocusCheckpoint } from "./standard-cycle-entry-focus-checkpoint.mjs";
+import { cycleEntryFocusCheckpointOperation } from "../../core/workflow/standard-cycle-entry-focus-checkpoint.mjs";
 import { createStandardCycleEntryChoiceContext } from "./standard-cycle-entry-choice-context.mjs";
 import { createStandardSessionPrMergeObservation } from "./standard-session-pr-merge-observe.mjs";
 import { createStandardSessionPrReviewAuthority } from "./standard-session-pr-review-authority.mjs";
@@ -837,6 +839,14 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   const cycleEntrySelectedFocus = createStandardCycleEntrySelectedFocus({ targetRoot, now, scope: operations.observeScope,
     readCurrent: id => current(id).record, readCheckpoint: readAcceptedSelectedCheckpoint });
+  async function readAcceptedSelectedFocus(instance, input) {
+    const selected = acceptedForPromotion(instance, input.focus_operation_id, cycleEntrySelectedFocusOperation, "STANDARD_FOCUS_CHECKPOINT_FOCUS_REQUIRED"),
+      plan = selected.record.preview.prepared.plan, checkpoint = await readAcceptedSelectedCheckpoint(instance, plan.input);
+    return { focus_operation_id: input.focus_operation_id, focus_sha256: shadowHash(selected.record),
+      plan, output: selected.output, checkpoint };
+  }
+  const cycleEntryFocusCheckpoint = createStandardCycleEntryFocusCheckpoint({ targetRoot, now, scope: operations.observeScope,
+    readCurrent: id => current(id).record, readFocus: readAcceptedSelectedFocus });
   const bindings = new Map(standardWorkflowOperationBindings().map(value => [value.id, value]));
   function assertCurrentBindings() {
     for (const component of processModels(model)) for (const node of component.nodes.filter(node => node.kind === "operation"))
@@ -1561,6 +1571,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === cycleEntryChoiceActivationOperation ? await cycleEntryChoiceActivation.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === cycleEntrySelectedCheckpointOperation ? await cycleEntrySelectedCheckpoint.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === cycleEntrySelectedFocusOperation ? await cycleEntrySelectedFocus.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
+        : binding.id === cycleEntryFocusCheckpointOperation ? await cycleEntryFocusCheckpoint.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === recoveryCycleSelection ? { can_apply: true, subject: await recoveryCycleSubject(state.record, input) }
         : binding.id === "drift_recovery_decision" ? await recovery?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_recovery_record" ? await (async () => { const body = { ...await recoveryDecision(state.record, input), prepared_at_ms: now() };
@@ -1686,6 +1697,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === cycleEntrySelectedCheckpointOperation) output = await cycleEntrySelectedCheckpoint.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
         else if (record.intent.binding_ref === cycleEntrySelectedFocusOperation) output = await cycleEntrySelectedFocus.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
+        else if (record.intent.binding_ref === cycleEntryFocusCheckpointOperation) output = await cycleEntryFocusCheckpoint.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
         else if (record.intent.binding_ref === "session_close_admit") output = await operations.admitSessionClose(record.preview.input);
         else if (record.intent.binding_ref === "session_close_record") output = await sessionCloseRecord.apply(state.record, record.preview.prepared,

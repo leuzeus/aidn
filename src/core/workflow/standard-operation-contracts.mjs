@@ -176,6 +176,7 @@ import { cycleEntryChoiceActivationOperation, assertCycleChoiceActivationInput, 
 import { cycleEntrySelectedCheckpointOperation, assertSelectedContextCheckpointOutput } from "./standard-cycle-entry-selected-checkpoint.mjs";
 import { assertCycleEntrySelectedInput } from "./standard-cycle-entry-selected-source.mjs";
 import { cycleEntrySelectedFocusOperation, assertSelectedFocusInput, assertSelectedFocusOutput } from "./standard-cycle-entry-selected-focus.mjs";
+import { cycleEntryFocusCheckpointOperation, assertFocusCheckpointInput, assertFocusCheckpointOutput } from "./standard-cycle-entry-focus-checkpoint.mjs";
 import driftCycleInput from "../contracts/workflow-definition/standard-drift-cycle-initialize-input.v1.schema.json" with { type: "json" };
 import driftCycleOutput from "../contracts/workflow-definition/standard-drift-cycle-output.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
@@ -197,6 +198,7 @@ export function assertStandardOperationInput(operation, value) {
   if (operation === cycleEntryChoiceActivationOperation) return assertCycleChoiceActivationInput(value);
   if (operation === cycleEntrySelectedCheckpointOperation) return assertCycleEntrySelectedInput(value);
   if (operation === cycleEntrySelectedFocusOperation) return assertSelectedFocusInput(value);
+  if (operation === cycleEntryFocusCheckpointOperation) return assertFocusCheckpointInput(value);
   if (operation === cycleEntryChoiceCheckpointOperation) {
     if (checkShadowJson(value) || validateJsonSchema(value, cycleEntryChoiceCheckpointInput, "$", { contractKind: "workflow-definition" }).length)
       fail("STANDARD_OPERATION_INPUT_INVALID");
@@ -333,6 +335,7 @@ export function assertStandardOperationOutput(value) {
   if (value?.contract_version === "standard-cycle-entry-choice-activation-output.v1") return assertCycleChoiceActivationOutput(value);
   if (value?.contract_version === "standard-cycle-entry-selected-checkpoint-output.v1") return assertSelectedContextCheckpointOutput(value);
   if (value?.contract_version === "standard-cycle-entry-selected-focus-output.v1") return assertSelectedFocusOutput(value);
+  if (value?.contract_version === "standard-cycle-entry-focus-checkpoint-output.v1") return assertFocusCheckpointOutput(value);
   if (value?.contract_version === "standard-cycle-entry-choice-record-output.v1") return assertStandardCycleEntryChoiceRecordOutput(value);
   if (value?.contract_version === "standard-cycle-entry-choice-output.v1") return assertCycleEntryChoiceOutput(value);
   if (value?.contract_version === "standard-cycle-plan-adoption-output.v1") {

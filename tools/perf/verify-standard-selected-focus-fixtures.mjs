@@ -31,7 +31,7 @@ function contracts() {
     assert.throws(() => assertStandardOperationInput("cycle_entry_selected_focus", { ...input, ...extra }));
   pass("focus contracts accept only a checkpoint identity, never phase, paths or permission");
 }
-async function focusCase(f, { fault, selectCurrent }) {
+export async function focusCase(f, { fault, selectCurrent, nextNode = null, afterFocus = null, pass: emitPass = pass } = {}) {
   const { root, mode, keyFile, sourcesFile, clock, artifacts, operations, git, heads, canonical, selectedCheckpointId, selectedCheckpointSource } = f;
   let host = openCycleChoiceFixtureHost(root, keyFile, sourcesFile, clock);
   // Fixture-only perturbations precede the current focus preparation.
@@ -56,7 +56,7 @@ async function focusCase(f, { fault, selectCurrent }) {
       git("update-index", "--index-version=" + (version === 4 ? 4 : 2));
     assert.notEqual(artifactContentHash(fs.readFileSync(oldIndex)), selectedCheckpointSource.plan.git.observed.index_sha256);
   }
-  pass(mode + ": foreign product work refuses focus before effect ownership");
+  emitPass(mode + ": foreign product work refuses focus before effect ownership");
   if (noChangeSource) console.log(JSON.stringify({ arranged_focus_index_refresh: true, historical_index_sha256: selectedCheckpointSource.plan.git.observed.index_sha256,
     current_index_sha256: artifactContentHash(fs.readFileSync(path.resolve(root, git("rev-parse", "--git-path", "index")))) , semantic_Git_clean: true }));
   const state = host.inspect("choice-record"), occurrenceId = state.cursor.ready[0], before = canonical(), beforeRefs = heads(),
@@ -95,7 +95,7 @@ async function focusCase(f, { fault, selectCurrent }) {
     } }), { code: "FIXTURE_FOCUS_GRANT_REVOKED_LAST_SOURCE_AWAIT", effect_status: "no_effect" });
   assert.equal(sourceReads, 1); assert.equal(artifacts.ownerPending(), false); assert.deepEqual(canonical(), before);
   assert.equal(git("rev-parse", "HEAD"), beforeHead); assert.equal(artifactContentHash(fs.readFileSync(index)), beforeIndex);
-  pass(mode + ": unaccepted/changed checkpoint and missing or last-await revoked permission cannot write focus");
+  emitPass(mode + ": unaccepted/changed checkpoint and missing or last-await revoked permission cannot write focus");
   host = openCycleChoiceFixtureHost(root, keyFile, sourcesFile, clock + 86400000);
   const destination = path.resolve(root, "docs/audit", plan.changes[0].path), originalRename = fs.renameSync;
   let injected = false, dispatched;
@@ -129,7 +129,7 @@ async function focusCase(f, { fault, selectCurrent }) {
     console.log(JSON.stringify({ focus_scope: mode, root, private_root: f.privateRoot, operation_id: id, checkpoint_operation_id: selectedCheckpointId,
       journal_sha256: shadowHash(journal), fault, effect_status: "unknown", owner_retained: true, changed_paths: actualChanged.map(row => row.path),
       phase_preserved: true, product_and_Git_preserved: true, phase_admission: "NOT_RUN", native_calls: 0 }));
-    pass("files: lost first-CAS ACK retains partial focus, signed UNKNOWN and owner across cold read without repeating a write"); return;
+    emitPass("files: lost first-CAS ACK retains partial focus, signed UNKNOWN and owner across cold read without repeating a write"); return;
   }
   assert.equal(dispatched.receipt.outcome, "completed", JSON.stringify(dispatched)); assert.equal(output.outcome, "completed");
   assert.equal(output.facts.cycle_entry_focus_recorded, true); assert.equal(output.facts.cycle_entry_resume_allowed, false);
@@ -144,7 +144,8 @@ async function focusCase(f, { fault, selectCurrent }) {
   assert.equal(entry.facts.cycle_entry_choice_required, true);
   const cold = JSON.parse(execFileSync(process.execPath, [script, "--accept-focus", root, keyFile, sourcesFile, id, String(clock + 86400000)],
     { encoding: "utf8", windowsHide: true, stdio: "pipe" }));
-  const final = host.inspect("choice-record"); assert.equal(final.cursor.status, "COMPLETED"); assert.equal(final.record.instance_sha256, cold.instance_sha256);
+  const final = host.inspect("choice-record"); assert.equal(final.cursor.status, nextNode ? "RUNNING" : "COMPLETED");
+  if (nextNode) assert.deepEqual(final.cursor.ready.map(id => final.cursor.occurrences.find(row => row.occurrence_id === id).node_id), [nextNode]); assert.equal(final.record.instance_sha256, cold.instance_sha256);
   assert.equal(artifacts.ownerPending(), false); assert.equal((await host.dispatch(id, { write: true })).status, "retained_result");
   await host.accept(id, { write: true }); assert.equal(host.inspect("choice-record").record.instance_sha256, final.record.instance_sha256); assert.deepEqual(canonical(), after);
   let last, count = 0; for (const row of iterateAgenticProcessSimulation({ instanceId: final.record.instance_id, scopeId: final.record.scope_id,
@@ -158,12 +159,15 @@ async function focusCase(f, { fault, selectCurrent }) {
     DBonly_no_detailed_export: mode === "db-only", canonical_focus: "ACTUAL_CAS", phase_admission: "NOT_RUN", progress_adoption: "NOT_RUN",
     implementation_authorized: false, exact_replay: true, cold_acceptance: true, H_and_grants: "CONTROLLED_FIXTURE",
     phase_setup: "STAGED_NOT_PRIOR_WORK_PROOF", native_calls: 0, published_root: "NOT_CONNECTED" }));
-  pass(mode + ": exact three-document focus CAS retains phase/progress/deferred history, separate admission, cold ACK and exact SIM");
+  emitPass(mode + ": exact three-document focus CAS retains phase/progress/deferred history, separate admission, cold ACK and exact SIM");
+  if (afterFocus) await afterFocus({ ...f, host, clock: clock + 86400000, focusId: id,
+    focusSource: { focus_operation_id: id, focus_sha256: shadowHash(journal), plan, output, checkpoint: selectedCheckpointSource } });
 }
+if (path.resolve(process.argv[1] ?? "") === script) {
 if (["--accept-record", "--accept-focus", "--inspect-focus"].includes(process.argv[2])) {
   const [, , , root, keyFile, sourcesFile, operationId, clock] = process.argv;
   console.log(JSON.stringify(await acceptRecordedChoice({ root, keyFile, sourcesFile, operationId, clock: Number(clock), inspectOnly: process.argv[2] === "--inspect-focus" })));
-} else if (path.resolve(process.argv[1] ?? "") === script) {
+} else {
   const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7), fault = process.argv.find(arg => arg.startsWith("--fault="))?.slice(8) ?? null,
     phase = process.argv.find(arg => arg.startsWith("--phase="))?.slice(8) ?? "VERIFYING", selectCurrent = process.argv.includes("--select-current");
   if (!process.argv.includes("--contracts-only") && !["files", "dual", "db-only"].includes(mode) || mode && process.argv.includes("--contracts-only")
@@ -176,4 +180,6 @@ if (["--accept-record", "--accept-focus", "--inspect-focus"].includes(process.ar
       afterActivation: f => selectedCase(f, { pass, selectCurrent, nextNode: "selected_focus", afterSelected: f => focusCase(f, { fault, selectCurrent }) }) }) });
   console.log(JSON.stringify({ status: "PASS", checks, scope: mode ? "ACTUAL_SELECTED_FOCUS_COMMON_HOST_COMPONENT" : "CLOSED_FOCUS_CONTRACTS",
     phase_setup: "STAGED_CANONICAL_METADATA", phase_work_admission: "NOT_RUN", genuine_native: "NOT_RUN", full_standard: false }));
+}
+
 }

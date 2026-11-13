@@ -5900,3 +5900,21 @@ The fixture uses actual signed H/record/source-CP/activation/selected-CP/focus o
 
 
 Selected-focus fixtures introduce a foreign untracked product file before preparation and require refusal, then restore that owned fixture perturbation. DB-only and already-current no-change sources deliberately change the Git index storage version without staged or working-tree changes before the new focus preparation. They require success on the current clean context, an unchanged current-plan index through focus CAS and no detailed DB-only projection. The original DB-only historical-index-byte refusal stays a retained failed trial; the correction is not validated until a fresh run.
+
+## Accepted focus checkpoint component
+
+The standalone focus checkpoint fixture composes the actual protected observation, H choice, canonical record, choice checkpoint, physical activation, selected-context checkpoint, focus CAS and focus Git checkpoint. Lifecycle and phase inputs remain explicitly staged fixture data; controlled H/grants and a component result are not genuine Native or whole STANDARD qualification.
+
+```powershell
+node tools/perf/verify-standard-focus-checkpoint-fixtures.mjs --contracts-only
+node tools/perf/verify-standard-focus-checkpoint-fixtures.mjs --mode=files
+node tools/perf/verify-standard-focus-checkpoint-fixtures.mjs --mode=dual
+node tools/perf/verify-standard-focus-checkpoint-fixtures.mjs --mode=db-only
+node tools/perf/verify-standard-focus-checkpoint-fixtures.mjs --mode=files --select-current
+node tools/perf/verify-standard-focus-checkpoint-fixtures.mjs --mode=files --fault=grant_after_ref
+node tools/perf/verify-standard-focus-checkpoint-fixtures.mjs --mode=files --fault=index_ack
+```
+
+The fixtures check exact visible focus paths, metadata/canonical preservation, foreign-work refusal, current permission after the final source await, DB-only no-export/no-change, cold ACK and exact replay. The two effect faults retain signed UNKNOWN and the owner even when physical inspection observes the exact commit. A later phase route still needs current readiness/work admission. No preparation-age ceiling is used.
+
+For changes to shared fixture composition, keep the existing direct selected-focus FILES case and a cold-argv inert-import probe. Binding implementation changes require binding-input, startup-model, cycle-component and composition fixtures. New standalone registration also requires the full workflow-ports suite with its explicit unpublished inventory and documentation-reference validation. Read-only retained-source or preview checks alone do not qualify an effect.
