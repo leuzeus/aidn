@@ -38,6 +38,14 @@ and `--native-epoch-mode=files|dual|db-only` on
 checks. Native budgets, expiry checks, source authentication and resource-closure
 requirements in production remain unchanged.
 
+The required default corpus also checks the absent journal before allocation.
+Its `--journal-preview-only` selector rejects renewal while the original consent
+is live, then prepares an initial-entry v2 request from an explicitly expired
+original. The request binds an empty history, zero consumption and the initial
+scope. Preview and request preparation leave the journal absent and allocate
+no worker or Native session. The historical expectation that every empty
+history must be rejected predates initial-entry epochs and is no longer valid.
+
 ## Required STANDARD review effects and current OPEN work
 
 The required agentic corpus runs the R08 reply cases `normal`, `lost`,

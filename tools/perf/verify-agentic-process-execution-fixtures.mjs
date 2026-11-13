@@ -261,6 +261,7 @@ async function check(name, callback) { if (selectedStandardExistingOpenWorkMode 
   if (process.argv.includes("--checkpoint-only") && !name.startsWith("checkpoint ")) return;
   if (process.argv.includes("--large-checkpoint-only") && !name.startsWith("journal large checkpoint")) return;
   if (process.argv.includes("--journal-only") && !name.startsWith("journal ")) return;
+  if (process.argv.includes("--journal-preview-only") && !name.startsWith("journal preview ")) return;
   if (process.argv.includes("--owned-only") && !/^(journal |owned )/.test(name)) return;
   if (process.argv.includes("--resume-only") && !name.startsWith("resume ")) return;
   if (process.argv.includes("--worker-only") && !name.startsWith("worker ")) return;
@@ -2844,7 +2845,19 @@ if (process.argv[2] === "--mixed-continue") {
   });
   await check("journal preview retains no files, reservation or native allocation", async () => {
     const f = journalFixture(), view = f.actor.preview(); assert.equal(view.phase, "absent"); assert.equal(view.written, false);
-    assert.throws(() => f.actor.prepareAuthorizationEpoch({ originalAuthorization: f.authorize() }), /NATIVE_EPOCH_HISTORY_REQUIRED/);
+    assert.throws(() => f.actor.prepareAuthorizationEpoch({ originalAuthorization: f.authorize() }), /NATIVE_EPOCH_INITIAL_AUTHORIZATION_NOT_EXPIRED/);
+    // Initial-entry epochs deliberately support an empty allocation history.
+    // Observe their read-only request only after a valid original has expired.
+    const at = Date.now(), expired = { ...f.authorize(), authorized_at_ms: at - 60001,
+      workflow_deadline_ms: at - 1, global_deadline_ms: at - 1 };
+    const original = structuredClone(expired), request = f.actor.prepareAuthorizationEpoch({ originalAuthorization: expired });
+    assert.equal(request.contract_version, "native-authorization-epoch-request.v2");
+    assert.equal(request.next_generation, 1); assert.equal(request.journal_sha256, shadowHash(null));
+    assert.equal(request.allocations_sha256, shadowHash([]));
+    assert.deepEqual(request.consumption, { known: true, responses: 0, bytes: 0 });
+    assert.deepEqual(request.initial_authorization, original); assert.deepEqual(expired, original);
+    assert.equal(request.resources.length, 1); assert.equal(request.resources[0].kind, "native_scope");
+    assert.ok(request.issued_at_ms >= expired.global_deadline_ms);
     assert.equal(f.actor.inspect(), null); assert.equal(f.launches, undefined); assert.equal(f.t.sessions.length, 0);
     assert.equal(fs.existsSync(path.join(f.configuration.target_root, "docs/audit/workflows/native-allocations")), false);
     await assert.rejects(f.actor.run({ execute: true, authorization: { approved: true } }), /EXPLICIT_AUTHORIZATION_REQUIRED/);
