@@ -43,11 +43,14 @@ export function createLocalWorkflowCycleActivation({ targetRoot, environment = p
     catch (cause) { throw Object.assign(Error("WORKFLOW_ACTIVATION_GIT_FAILED"), { code: "WORKFLOW_ACTIVATION_GIT_FAILED", command: args[0], exit_code: cause.status }); }
   }
   function liveBinding() {
-    const output = execFileSync(gitExecutable, ["--literal-pathspecs", "-C", root, "rev-parse", "--path-format=absolute",
+    const output = execFileSync(gitExecutable, ["--literal-pathspecs", "-C", root, "rev-parse", "--show-ref-format", "--path-format=absolute",
       "--absolute-git-dir", "--git-common-dir", "--git-path", "index"], { env: { ...env, GIT_COMMON_DIR: undefined }, encoding: "utf8",
       windowsHide: true, timeout: 10000, stdio: "pipe" }).trimEnd().split(/\r?\n/);
-    if (output.length !== 3) fail("WORKFLOW_ACTIVATION_REPOSITORY_BINDING_INVALID");
-    return output.map(value => agentRunPhysicalPath(path.resolve(root, value), { missing: true }));
+    // The source-ref fence is a files-backend lock. Reftable has a different
+    // resource layout and is refused before allocating any effect resources.
+    if (output[0] !== "files") fail("WORKFLOW_ACTIVATION_REF_BACKEND_UNSUPPORTED");
+    if (output.length !== 4) fail("WORKFLOW_ACTIVATION_REPOSITORY_BINDING_INVALID");
+    return output.slice(1).map(value => agentRunPhysicalPath(path.resolve(root, value), { missing: true }));
   }
   const binding = liveBinding(), [gitDir, commonDir, index] = binding, indexLock = index + ".lock";
   env.GIT_COMMON_DIR = commonDir;

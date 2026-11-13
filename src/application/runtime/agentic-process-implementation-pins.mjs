@@ -6,6 +6,11 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 // their separately retained build-lock/installed-version pins. npm distributions
 // exclude package-lock.json; direct code pins must use distributed assets only.
 const files = ["src/application/runtime/standard-reconciliation-inventory.mjs",
+  "src/application/runtime/standard-cycle-entry-choice-activation.mjs",
+  "src/core/workflow/standard-cycle-entry-choice-activation.mjs",
+  "src/adapters/runtime/local-workflow-cycle-activation.mjs",
+  "src/core/ports/workflow-cycle-activation-port.mjs",
+  ...["input", "plan", "output"].map(kind => `src/core/contracts/workflow-definition/standard-cycle-entry-choice-activation-${kind}.v1.schema.json`),
   "src/core/gating/fallback-history-policy.mjs",
   "src/application/install/project-activation-service.mjs",
   "src/lib/fs/exact-file-identity.mjs",

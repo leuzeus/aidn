@@ -13,6 +13,13 @@ const sourceBranch = "feature/C002-source", targetBranch = "feature/C001-selecte
 const script = fileURLToPath(import.meta.url), inputs = { source_branch: sourceBranch, target_branch: targetBranch };
 let checks = 0;
 const pass = message => { checks++; console.log("PASS " + message); };
+function snapshotRoot(root) {
+  const values = {}, walk = dir => { for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+    const name = path.join(dir, item.name); assert.equal(fs.lstatSync(name).isSymbolicLink(), false);
+    if (item.isDirectory()) walk(name); else values[path.relative(root, name)] = sha(fs.readFileSync(name));
+  } };
+  walk(root); return values;
+}
 function fixture({ configurationDifference = null, canonicalPrefix = "docs/audit" } = {}) {
   const root = fs.mkdtempSync(path.join(temp, "aidn-cycle-activation-")); owned.push(root);
   const git = (...args) => execFileSync("git", ["--no-optional-locks", "-C", root, "-c", "core.hooksPath=NUL",
@@ -42,10 +49,7 @@ function fixture({ configurationDifference = null, canonicalPrefix = "docs/audit
   const port = createLocalWorkflowCycleActivation({ targetRoot: root });
   const preserved = () => [canonicalPrefix + "/CURRENT-STATE.md", canonicalPrefix + "/sessions/S002.md", ".aidn/config.json", ".aidn/runtime/retained-journal.json",
     ".codex/config.toml", ".codex/hooks.json", ".agents/skills/aidn/SKILL.md", "AGENTS.md", ".gitignore", ".git/config"].map(name => ({ path: name, sha256: sha(fs.readFileSync(path.join(root, name))) }));
-  const snapshot = () => { const values = {}; const walk = dir => { for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
-    const name = path.join(dir, item.name); assert.equal(fs.lstatSync(name).isSymbolicLink(), false);
-    if (item.isDirectory()) walk(name); else values[path.relative(root, name)] = sha(fs.readFileSync(name));
-  } }; walk(root); return values; };
+  const snapshot = () => snapshotRoot(root);
   return { root, git, write, port, targetHead, sourceHead, preserved, snapshot,
     plan: () => ({ operation_id: O, plan_sha256: H, observed: port.inspect(inputs) }) };
 }
@@ -59,6 +63,14 @@ if (process.argv[2] === "--inspect") {
   await check("port discovery is pure and has no source or permission supplied by JSON", () => {
     const methods = Object.fromEntries(["inspect", "activate", "inspectActivation"].map(name => [name, () => { throw Error("must not invoke"); }]));
     assert.equal(assertWorkflowCycleActivationPort(methods), methods); assert.throws(() => assertWorkflowCycleActivationPort({}));
+  });
+  await check("a different Git reference backend is refused read-only before effect-resource allocation", () => {
+    const root = fs.mkdtempSync(path.join(temp, "aidn-cycle-reftable-")); owned.push(root);
+    execFileSync("git", ["--no-optional-locks", "-C", root, "init", "--ref-format=reftable", "-b", sourceBranch],
+      { windowsHide: true, stdio: "pipe" });
+    const before = snapshotRoot(root);
+    assert.throws(() => createLocalWorkflowCycleActivation({ targetRoot: root }), { code: "WORKFLOW_ACTIVATION_REF_BACKEND_UNSUPPORTED" });
+    assert.deepEqual(snapshotRoot(root), before);
   });
   await check("read-only inspection preserves every product, canonical, Git and configuration byte", () => {
     const f = fixture(), before = f.snapshot(), plan = f.plan(); assert.notEqual(f.sourceHead, f.targetHead);

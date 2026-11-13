@@ -1213,6 +1213,38 @@
       "tools/perf/verify-workflow-cycle-activation-port-fixtures.mjs"
     ],
     [
+      "tools/perf/verify-standard-cycle-choice-activation-fixtures.mjs",
+      "--mode=files"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-choice-activation-fixtures.mjs",
+      "--mode=dual"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-choice-activation-fixtures.mjs",
+      "--mode=db-only"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-choice-activation-fixtures.mjs",
+      "--mode=files",
+      "--select-current"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-choice-activation-fixtures.mjs",
+      "--mode=files",
+      "--fault=index_ack"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-choice-activation-fixtures.mjs",
+      "--mode=files",
+      "--fault=grant_after_index"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-choice-activation-fixtures.mjs",
+      "--mode=files",
+      "--fault=product_ack"
+    ],
+    [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--standard-composed-mode=files",
       "--standard-composed-stop=nominal_post_merge_complete"

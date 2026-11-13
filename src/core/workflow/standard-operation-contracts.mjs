@@ -172,6 +172,7 @@ import cycleEntryChoiceRecordInput from "../contracts/workflow-definition/standa
 import { cycleEntryChoiceRecordOperation, assertStandardCycleEntryChoiceRecordOutput } from "./standard-cycle-entry-choice-record.mjs";
 import cycleEntryChoiceCheckpointInput from "../contracts/workflow-definition/standard-cycle-entry-choice-checkpoint-input.v1.schema.json" with { type: "json" };
 import { cycleEntryChoiceCheckpointOperation, assertCycleChoiceCheckpointOutput } from "./standard-cycle-entry-choice-checkpoint.mjs";
+import { cycleEntryChoiceActivationOperation, assertCycleChoiceActivationInput, assertCycleChoiceActivationOutput } from "./standard-cycle-entry-choice-activation.mjs";
 import driftCycleInput from "../contracts/workflow-definition/standard-drift-cycle-initialize-input.v1.schema.json" with { type: "json" };
 import driftCycleOutput from "../contracts/workflow-definition/standard-drift-cycle-output.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
@@ -190,6 +191,7 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (operation === cycleEntryChoiceActivationOperation) return assertCycleChoiceActivationInput(value);
   if (operation === cycleEntryChoiceCheckpointOperation) {
     if (checkShadowJson(value) || validateJsonSchema(value, cycleEntryChoiceCheckpointInput, "$", { contractKind: "workflow-definition" }).length)
       fail("STANDARD_OPERATION_INPUT_INVALID");
@@ -323,6 +325,7 @@ export function assertStandardOperationInput(operation, value) {
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
   if (value?.contract_version === "standard-cycle-entry-choice-checkpoint-output.v1") return assertCycleChoiceCheckpointOutput(value);
+  if (value?.contract_version === "standard-cycle-entry-choice-activation-output.v1") return assertCycleChoiceActivationOutput(value);
   if (value?.contract_version === "standard-cycle-entry-choice-record-output.v1") return assertStandardCycleEntryChoiceRecordOutput(value);
   if (value?.contract_version === "standard-cycle-entry-choice-output.v1") return assertCycleEntryChoiceOutput(value);
   if (value?.contract_version === "standard-cycle-plan-adoption-output.v1") {

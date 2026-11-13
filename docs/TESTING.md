@@ -5865,3 +5865,12 @@ Run `node tools/perf/verify-workflow-cycle-activation-port-fixtures.mjs` when ch
 The fixture also checks read-only byte preservation, current grant revocation, foreign work and moved targets, same-branch no-change, a cold read-only confirmation, partial product effects and lost acknowledgement after HEAD/index installation. An uncertain effect stays UNKNOWN even when a later physical observation confirms its material. The old plan must not repeat the effect. Fixture roots are retained for review.
 
 This private port establishes physical Git/product behavior only. It does not authenticate a human choice, adopt canonical history on the selected branch, admit a phase or DoR, authorize implementation, or qualify the common operation host, installed archive, real Native actor or complete STANDARD workflow. The required manifest runs this case before the unchanged final nominal composed case.
+
+
+## Accepted-source physical cycle activation component
+
+Run `node tools/perf/verify-standard-cycle-choice-activation-fixtures.mjs --mode=files|dual|db-only` when changing the protected physical activation operation. The common host consumes actual accepted H/record/checkpoint journals from the controlled fixture and observes the selected product tree. Its H source and lifecycle/phase setup remain controlled; this is no proof of genuine human/Native actors, prior phase work or installed execution.
+
+Select `--mode=files --select-current` for already-selected no-change. The FILES variants `--fault=index_ack`, `--fault=grant_after_index` and `--fault=product_ack` exercise completed or partial physical effects while requiring a signed UNKNOWN, retained owner, cold read and no replay. Ordinary cases check current-grant refusal across the last source await, a day-old prepared plan with unchanged authority, canonical/configuration preservation, unchanged branch tips, cold acceptance and exact replay. All cases deny canonical adoption and implementation permission.
+
+The private port fixture also refuses a real reftable repository without changing its bytes or allocating effect resources. Its supported files-backend cases retain the different-HEAD/product-tree checks. These component checks do not close canonical focus/history adoption, imported OPEN/IMPLEMENTING/VERIFYING work admission, the published choice route or full STANDARD qualification.

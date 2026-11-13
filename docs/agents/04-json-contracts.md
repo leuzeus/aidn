@@ -666,3 +666,8 @@ continuation requests a new occurrence without positive analysis or effect facts
 Historical inbox v1-v9 and mode evaluation v1 keep their meaning. These records
 reuse the operation/native-result/decision-inbox authorities from ADR-0025;
 they introduce no public JSON command or automatic migration.
+
+
+Private `standard-cycle-entry-choice-activation-{input,plan,output}.v1` consumes only an accepted checkpoint operation identity. The host authenticates that checkpoint, its canonical choice record and the original H capture in the current process. The closed prepared plan binds canonical content/metadata, inventory, scope and the fixed local Git observation. Its separate exact mutation grant is checked after awaited source authentication and around physical effects. The files reference backend is required by the adapter fence; other Git reference backends refuse before effect resources are allocated.
+
+A confirmed activation or already-selected no-change reports physical branch readiness and always denies canonical adoption, resume and implementation permission. Partial replacement, lost acknowledgement or revoked permission after an effect retains UNKNOWN, empty facts and the existing owner. No JSON path, executable, principal or approval supplies authority. This standalone binding does not connect the published choice route, adopt imported work or grant phase/DoR admission. It adds no store, inbox version or preparation-age ceiling.

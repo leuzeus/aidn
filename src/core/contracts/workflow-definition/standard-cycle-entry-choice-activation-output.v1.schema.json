@@ -1,0 +1,375 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-entry-choice-activation-output.v1",
+  "x-aidn-contract-version": "standard-cycle-entry-choice-activation-output.v1",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "operation_ref",
+        "outcome",
+        "effect_status",
+        "facts",
+        "observations",
+        "evidence_refs"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "standard-cycle-entry-choice-activation-output.v1"
+        },
+        "operation_ref": {
+          "const": "cycle_entry_choice_activate"
+        },
+        "outcome": {
+          "const": "completed"
+        },
+        "effect_status": {
+          "enum": [
+            "confirmed",
+            "no_effect"
+          ]
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cycle_entry_choice_activation_ready",
+            "cycle_entry_resume_allowed"
+          ],
+          "properties": {
+            "cycle_entry_choice_activation_ready": {
+              "const": true
+            },
+            "cycle_entry_resume_allowed": {
+              "const": false
+            }
+          }
+        },
+        "observations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "checkpoint_operation_id",
+            "record_operation_id",
+            "source_sha256",
+            "session_id",
+            "selected_cycle_id",
+            "selected_cycle_path",
+            "selected_state",
+            "selected_branch",
+            "selected_branch_head",
+            "branch_activated",
+            "canonical_preserved",
+            "canonical_adoption",
+            "implementation_authorized",
+            "git"
+          ],
+          "properties": {
+            "checkpoint_operation_id": {
+              "type": "string",
+              "pattern": "^op_[a-f0-9]{40}$"
+            },
+            "record_operation_id": {
+              "type": "string",
+              "pattern": "^op_[a-f0-9]{40}$"
+            },
+            "source_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "session_id": {
+              "type": "string",
+              "pattern": "^S[0-9]{3,6}$"
+            },
+            "selected_cycle_id": {
+              "type": "string",
+              "pattern": "^C[0-9]{3,6}$"
+            },
+            "selected_cycle_path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024,
+              "pattern": "^[^\\\\\\u0000]+$"
+            },
+            "selected_state": {
+              "enum": [
+                "OPEN",
+                "IMPLEMENTING",
+                "VERIFYING"
+              ]
+            },
+            "selected_branch": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "selected_branch_head": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "branch_activated": {
+              "const": true
+            },
+            "canonical_preserved": {
+              "const": true
+            },
+            "canonical_adoption": {
+              "const": false
+            },
+            "implementation_authorized": {
+              "const": false
+            },
+            "git": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "status",
+                    "branch",
+                    "head",
+                    "source_head",
+                    "target_ref_unchanged",
+                    "canonical_preserved",
+                    "canonical_overlay_paths",
+                    "product_tree_checked_out",
+                    "implementation_authorized",
+                    "effect_status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "confirmed"
+                    },
+                    "branch": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    },
+                    "head": {
+                      "type": "string",
+                      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+                    },
+                    "source_head": {
+                      "type": "string",
+                      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+                    },
+                    "target_ref_unchanged": {
+                      "const": true
+                    },
+                    "canonical_preserved": {
+                      "const": true
+                    },
+                    "canonical_overlay_paths": {
+                      "type": "array",
+                      "maxItems": 10000,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2048
+                      }
+                    },
+                    "product_tree_checked_out": {
+                      "const": true
+                    },
+                    "implementation_authorized": {
+                      "const": false
+                    },
+                    "effect_status": {
+                      "const": "confirmed"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "status",
+                    "head",
+                    "effect_status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "no_change"
+                    },
+                    "head": {
+                      "type": "string",
+                      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+                    },
+                    "effect_status": {
+                      "const": "no_effect"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ref",
+              "sha256"
+            ],
+            "properties": {
+              "ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "operation_ref",
+        "outcome",
+        "effect_status",
+        "facts",
+        "observations",
+        "evidence_refs"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "standard-cycle-entry-choice-activation-output.v1"
+        },
+        "operation_ref": {
+          "const": "cycle_entry_choice_activate"
+        },
+        "outcome": {
+          "const": "blocked"
+        },
+        "effect_status": {
+          "const": "no_effect"
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {}
+        },
+        "observations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reason_code"
+          ],
+          "properties": {
+            "reason_code": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            }
+          }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ref",
+              "sha256"
+            ],
+            "properties": {
+              "ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "operation_ref",
+        "outcome",
+        "effect_status",
+        "facts",
+        "observations",
+        "evidence_refs"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "standard-cycle-entry-choice-activation-output.v1"
+        },
+        "operation_ref": {
+          "const": "cycle_entry_choice_activate"
+        },
+        "outcome": {
+          "const": "reconciliation_required"
+        },
+        "effect_status": {
+          "const": "unknown"
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {}
+        },
+        "observations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reason_code"
+          ],
+          "properties": {
+            "reason_code": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            }
+          }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ref",
+              "sha256"
+            ],
+            "properties": {
+              "ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

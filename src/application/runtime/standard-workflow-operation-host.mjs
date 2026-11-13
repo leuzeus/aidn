@@ -30,6 +30,8 @@ import { createStandardCycleEntryChoiceRecord } from "./standard-cycle-entry-cho
 import { cycleEntryChoiceRecordOperation } from "../../core/workflow/standard-cycle-entry-choice-record.mjs";
 import { createStandardCycleEntryChoiceCheckpoint } from "./standard-cycle-entry-choice-checkpoint.mjs";
 import { cycleEntryChoiceCheckpointOperation } from "../../core/workflow/standard-cycle-entry-choice-checkpoint.mjs";
+import { createStandardCycleEntryChoiceActivation } from "./standard-cycle-entry-choice-activation.mjs";
+import { cycleEntryChoiceActivationOperation } from "../../core/workflow/standard-cycle-entry-choice-activation.mjs";
 import { createStandardCycleEntryChoiceContext } from "./standard-cycle-entry-choice-context.mjs";
 import { createStandardSessionPrMergeObservation } from "./standard-session-pr-merge-observe.mjs";
 import { createStandardSessionPrReviewAuthority } from "./standard-session-pr-review-authority.mjs";
@@ -793,9 +795,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         fail("STANDARD_CYCLE_CHOICE_RECORD_DECISION_REQUIRED");
       return { question, decision: capture.source };
     } });
-  const cycleEntryChoiceCheckpoint = createStandardCycleEntryChoiceCheckpoint({ targetRoot, now, scope: operations.observeScope,
-    readCurrent: id => current(id).record,
-    async readRecorded(instance, input) {
+  async function readAcceptedCycleChoiceRecord(instance, input) {
       const selected = acceptedForPromotion(instance, input.record_operation_id, cycleEntryChoiceRecordOperation, "STANDARD_CHOICE_CHECKPOINT_RECORDED_SOURCE_REQUIRED"),
         plan = selected.record.preview.prepared.plan,
         decision = acceptedForPromotion(instance, plan.input.decision_operation_id, cycleEntryChoiceOperation, "STANDARD_CHOICE_CHECKPOINT_HUMAN_SOURCE_REQUIRED");
@@ -806,6 +806,17 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (shadowHash(question) !== shadowHash(plan.question) || shadowHash(capture.source) !== plan.decision_source_sha256
         || shadowHash(capture.source) !== shadowHash(plan.decision)) fail("STANDARD_CHOICE_CHECKPOINT_HUMAN_SOURCE_CHANGED");
       return { record_operation_id: input.record_operation_id, record_sha256: shadowHash(selected.record), plan, output: selected.output };
+  }
+  const cycleEntryChoiceCheckpoint = createStandardCycleEntryChoiceCheckpoint({ targetRoot, now, scope: operations.observeScope,
+    readCurrent: id => current(id).record, readRecorded: readAcceptedCycleChoiceRecord });
+  const cycleEntryChoiceActivation = createStandardCycleEntryChoiceActivation({ targetRoot, now, scope: operations.observeScope,
+    readCurrent: id => current(id).record,
+    async readCheckpoint(instance, input) {
+      const selected = acceptedForPromotion(instance, input.checkpoint_operation_id, cycleEntryChoiceCheckpointOperation, "STANDARD_CHOICE_ACTIVATION_CHECKPOINT_REQUIRED"),
+        plan = selected.record.preview.prepared.plan,
+        record = await readAcceptedCycleChoiceRecord(instance, plan.input);
+      return { checkpoint_operation_id: input.checkpoint_operation_id, checkpoint_sha256: shadowHash(selected.record),
+        checkpoint_plan: plan, checkpoint_output: selected.output, record };
     } });
   const bindings = new Map(standardWorkflowOperationBindings().map(value => [value.id, value]));
   function assertCurrentBindings() {
@@ -1528,6 +1539,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === cycleEntryChoiceOperation ? await cycleEntryChoiceContext.prepare(state.record, input)
         : binding.id === cycleEntryChoiceRecordOperation ? await cycleEntryChoiceRecord.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === cycleEntryChoiceCheckpointOperation ? await cycleEntryChoiceCheckpoint.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
+        : binding.id === cycleEntryChoiceActivationOperation ? await cycleEntryChoiceActivation.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === recoveryCycleSelection ? { can_apply: true, subject: await recoveryCycleSubject(state.record, input) }
         : binding.id === "drift_recovery_decision" ? await recovery?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_recovery_record" ? await (async () => { const body = { ...await recoveryDecision(state.record, input), prepared_at_ms: now() };
@@ -1647,6 +1659,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === cycleEntryChoiceRecordOperation) output = await cycleEntryChoiceRecord.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
         else if (record.intent.binding_ref === cycleEntryChoiceCheckpointOperation) output = await cycleEntryChoiceCheckpoint.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
+        else if (record.intent.binding_ref === cycleEntryChoiceActivationOperation) output = await cycleEntryChoiceActivation.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
         else if (record.intent.binding_ref === "session_close_admit") output = await operations.admitSessionClose(record.preview.input);
         else if (record.intent.binding_ref === "session_close_record") output = await sessionCloseRecord.apply(state.record, record.preview.prepared,
