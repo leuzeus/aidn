@@ -19,11 +19,31 @@ const test = (name, run, finalVerification = false) => {
   run(); checks++; console.log("PASS " + name);
 };
 const plan = (changes = {}, stop = "pr_effects_pending") => preflightStandardComposedFixture({ model, scenario: { ...scenario, ...changes }, stop });
+function verifyPlanningOrigin(result, expectedBinding) {
+  const expectedNode = expectedBinding === "cycle_owned_resume_admit" ? "owned_resume" : "plan_record";
+  const origins = result.source_operations.filter(row => row.binding_ref === expectedBinding && row.node_id === expectedNode);
+  assert.equal(origins.length, 1);
+  const origin = origins[0], readiness = result.source_operations.find(row => row.node_id === "readiness");
+  assert.equal(readiness.input.record_operation_id, origin.operation_id);
+  const calls = result.call_transitions.filter(row => row.node_id === "work_prepare");
+  assert.deepEqual(calls.map(row => row.kind), ["call_enter", "call_return"]);
+  const returned = calls[1], selected = result.source_operations.find(row => row.binding_ref === "cycle_plan_select");
+  assert.equal(returned.resolution.input.record_operation_id, origin.operation_id);
+  assert.equal(returned.witnesses.length, 1);
+  assert.equal(returned.witnesses[0].operation_id, selected.operation_id);
+  const witness = returned.witnesses[0].results[0];
+  assert.equal(witness.receipt.outcome, "completed");
+  assert.equal(witness.output.observations.record_operation_id, origin.operation_id);
+  const phase = result.source_operations.find(row => row.binding_ref === "cycle_execution_source_select");
+  assert.equal(phase.input.record_operation_id, origin.operation_id);
+  assert.equal(phase.sources[0].source, "call_output");
+}
+
 test("owned OPEN entry budget skips creation and planning in the delivered model", () => {
   const result = preflightStandardComposedFixture({ model, scenario: { ...scenario, max_responses: 1 }, stop: "task_select", cycleEntry: "owned_open" });
   assert.equal(result.proof_class, "synthetic-fixture-only"); assert.equal(result.product_qualification, "NOT_ESTABLISHED");
   assert.equal(result.responses_required, 1); assert.deepEqual(result.native_occurrences.map(row => row.node_id), ["startup_drift_report"]);
-  for (const id of ["cycle_entry_observe", "owned_cycle_entry", "plan_adopt", "plan_select", "readiness", "implementation_enter"]) assert.ok(result.operations.includes(id));
+  for (const id of ["cycle_entry_observe", "owned_entry", "owned_resume", "plan_select", "readiness", "implementation_enter", "phase_select"]) assert.ok(result.operations.includes(id));
   for (const id of ["cycle_admit", "cycle_initialize", "plan_evaluate", "plan_record"]) assert.equal(result.operations.includes(id), false);
   assert.ok(result.operations.indexOf("cycle_refresh_before") < result.operations.indexOf("cycle_entry_observe"));
   assert.equal(result.operations.includes("session_git_checkpoint"), false);
@@ -32,6 +52,9 @@ test("owned OPEN entry budget skips creation and planning in the delivered model
   assert.deepEqual(work.native_occurrences.map(row => row.node_id), ["startup_drift_report", "implement", "implement"]);
   assert.equal(work.operations.filter(id => id === "task_advance").length, 2); assert.ok(work.operations.includes("verification_enter"));
   assert.equal(work.operations.includes("audit_select"), false); assert.equal(work.replay_exact, true); assert.equal(work.write_authorization, false);
+  verifyPlanningOrigin(result, "cycle_owned_resume_admit");
+  assert.deepEqual(result.call_transitions.filter(row => row.node_id === "owned_cycle").map(row => row.kind), ["call_enter", "call_return"]);
+  assert.equal(result.operations.includes("plan_adopt"), false);
   assert.equal(result.replay_exact, true); assert.equal(result.write_authorization, false);
 });
 test("setup uses pinned call data and deterministic/H operations without another native response", () => {
@@ -98,7 +121,8 @@ test("positive path selects nine native turns; its cold prefix keeps the same cu
   assert.equal(result.cold_resume_checkpoints.length, 1); assert.equal(result.cold_resume_checkpoints[0].responses, 5);
   assert.equal(result.responses_required - result.cold_resume_checkpoints[0].responses, 4);
   assert.equal(result.planned_status, "WAITING"); assert.equal(result.replay_exact, true);
-  assert.equal(result.operations.length, 73); assert.equal(result.event_count, 174);
+  assert.equal(result.operations.length, 74); assert.equal(result.event_count, 178);
+  verifyPlanningOrigin(result, "cycle_plan_record");
   assert.equal(result.operations.filter(id => id === "cycle_entry_observe").length, 1);
   assert.equal(result.operations.filter(id => id === "cycle_entry").length, 1);
   verifyFinalVerificationCalls(result, ["final_verification"]);
@@ -136,7 +160,8 @@ test('v3 plans both cycles through the same published model, new closure, redeli
   const correction = JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/standard-workflow/composed-correction.v3.json', import.meta.url)));
   const result = preflightStandardComposedFixture({ model, scenario: correction, stop: "pr_effects_pending" });
   assert.equal(result.responses_required, 17); assert.equal(result.planned_status, 'WAITING');
-  assert.equal(result.operations.length, 136); assert.equal(result.event_count, 329);
+  assert.equal(result.operations.length, 137); assert.equal(result.event_count, 333);
+  verifyPlanningOrigin(result, "cycle_plan_record");
   assert.equal(result.operations.filter(id => id === "cycle_entry_observe").length, 1);
   assert.equal(result.operations.filter(id => id === "cycle_entry").length, 1);
   const correctiveDrift = result.call_transitions.filter(row => row.node_id === "correction_cycle_drift_finalize");
@@ -191,7 +216,8 @@ test("an interrupted final evaluation retains its entry without returning or ent
   const result = plan({ interruption: { node_id: "final_validation", outcome: "blocked" } });
   assert.equal(result.interrupted, true);
   assert.deepEqual(result.call_transitions.map(row => [row.node_id, row.kind]),
-    [["session_setup", "call_enter"], ["session_setup", "call_return"], ["final_verification", "call_enter"]]);
+    [["session_setup", "call_enter"], ["session_setup", "call_return"], ["work_prepare", "call_enter"],
+      ["work_prepare", "call_return"], ["final_verification", "call_enter"]]);
   assert.deepEqual(result.verification_inputs.map(row => row.node_id), ["final_validation"]);
   assert.ok(!result.operations.includes("verification_enter"));
 }, true);

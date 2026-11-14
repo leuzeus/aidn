@@ -1833,7 +1833,13 @@ authorizing execution; `--standard-composed-preflight-only` stops there.
 Its versioned positive scenario chooses COMMITTING, one task, retained closure,
 promotion, cold continuation and PR triage, with nine original responses.
 Synthetic receipts and choices drive the actual published model and common
-reducer. Task-loop occurrences, skipped promotion, non-retained closure,
+reducer. The owned/selected cycle entry, work preparation and canonical
+verification calls use their published typed data bindings. Assertions preserve
+the accepted planning-origin ID through plan selection, readiness, call return
+and execution-source selection; owned continuation does not alias plan adoption.
+The nine-response and seventeen-response scenarios retain their original
+allowances. Operation/event counts reflect the current phase selector and call
+boundaries; these counts authenticate no human, Native producer or effect. Task-loop occurrences, skipped promotion, non-retained closure,
 admission refusal, native failure and human non-success are checked separately;
 the catalog's activity count is not a consumption estimate. THINKING and EXPLORING each
 plan one read-only native analysis. Mode decisions and deterministic preflight/
@@ -4722,9 +4728,9 @@ distributed calls require separate evidence.
 
 `node tools/perf/verify-standard-composed-preflight-fixtures.mjs --final-verification`
 uses the common reducer and call-data resolver with the distributed assets.
-The positive route plans 70 operations and 9 response slots, with 166 events.
-The correction route through the pre-merge wait plans 121 operations and
-17 response slots, with 289 events. Both routes check entry and return of
+The current positive route plans 74 operations and 9 response slots, with 178 events.
+The current correction route through the pre-merge wait plans 137 operations and
+17 response slots, with 333 events. Both routes check entry and return of
 the shared review-capture call with empty parameters and no result witnesses.
 The suite also checks the per-iteration input IDs, the scoped evaluation ID,
 the empty return, exact replay, and a blocked evaluation that cannot return.
