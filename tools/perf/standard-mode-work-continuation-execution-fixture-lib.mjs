@@ -82,14 +82,20 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
               subject_sha256: "a".repeat(64), question_sha256: shadowHash(result.question), choice: sessionMode, evidence_refs: [{ ref: "fixture:initial-mode", sha256: "a".repeat(64) }] });
             await f.open().receiveDecision(result.operation_id, { sourceRef: "initial", write: true }); await f.open().acceptOperation(result.operation_id, { write: true });
           } else {
-            assert.equal(record.intent.binding_ref, "mode_work_continue_decision"); assert.equal(waiting, undefined);
+            const spikeContinuation = sessionMode === "EXPLORING" && firstDisposition === "retain_requested";
+            assert.equal(record.intent.binding_ref, spikeContinuation ? "spike_conversion_decision" : "mode_work_continue_decision");
+            assert.equal(result.question.contract_version, spikeContinuation ? "standard-spike-question.v2" : "standard-mode-work-question.v1");
+            assert.equal(waiting, undefined);
             waiting = f.open().inspect().record; originalAllocation = f.open().inspectAllocations().allocations[0];
-            originalReport = record.preview.prepared.review.report;
+            const analysisReview = spikeContinuation ? record.preview.prepared.review.analysis : record.preview.prepared.review;
+            originalReport = analysisReview.report;
             assert.equal(originalReport.disposition, firstDisposition); assert.equal(waiting.events.filter(row => row.kind === "result").length, 1);
-            const evaluation = f.open().readOperation(record.preview.input.review_operation_id).results.at(-1).output.observations.evaluation;
+            const reviewOperation = f.open().readOperation(record.preview.input.review_operation_id);
+            const evaluation = reviewOperation.results.at(-1).output.observations.evaluation;
             assert.equal(evaluation.outcome, "blocked"); assert.deepEqual(evaluation.facts, {});
-            const claim = { contract_version: "human-mode-work-decision.v1", source_kind: "human", authority_id: "fixture_operator", source_event_id: "mode-resume-NEW-decision",
+            const claim = { contract_version: spikeContinuation ? "human-spike-decision.v2" : "human-mode-work-decision.v1", source_kind: "human", authority_id: "fixture_operator", source_event_id: "mode-resume-NEW-decision",
               subject_sha256: shadowHash(result.question.review), question_sha256: shadowHash(result.question), choice, rationale: newRationale,
+              ...(spikeContinuation ? { selection: null } : {}),
               evidence_refs: [{ ref: "fixture:NEW-mode-decision", sha256: "c".repeat(64) }] };
             const witness = modeAnalysisWitness(f.open(), f.configuration);
             for (const [ref, change, code] of [["wrong-question", { question_sha256: "b".repeat(64) }, "PROCESS_HUMAN_QUESTION_CHANGED"],
@@ -115,6 +121,12 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
             assert.equal((await f.open().receiveDecision(result.operation_id, { sourceRef: "new", write: true })).status, "retained_result");
             assert.equal(f.open().inspect().record.events.length, count);
             assert.equal(decision.results[0].output.observations.native_authority_renewed, false);
+            if (spikeContinuation && choice === "continue_analysis") {
+              assert.deepEqual(decision.results[0].output.facts, { spike_conversion_requested: false, mode_analysis_loop_complete: false,
+                mode_work_continue_requested: true, mode_analysis_completed: false });
+              assert.equal(decision.results[0].output.observations.retention_authorized, false);
+              assert.equal(decision.results[0].output.observations.product_effects_authorized, false);
+            }
             if (choice !== "continue_analysis") {
               const terminal = f.open().inspect(), journal = f.open().inspectAllocations();
               const expectedStatus = { refused: "FAILED", deferred: "WAITING", cancelled: "CANCELLED" }[choice];

@@ -790,3 +790,11 @@ existing canonical artifact CAS/projection adapter. Allocation journal v1-v3
 and historical evidence are unchanged. Returned/threw phases and released
 lease data confer neither effect permission nor complete resource closure.
 No public CLI output root or preparation-age ceiling is added.
+
+Private SPIKE question/source/output v2 add explicit analysis continuation at the
+existing decision. Inbox v20 reuses the existing signed decision-inbox store;
+v1 SPIKE claims retain their original choices on a hash-bound v2 question.
+Mode observation v2 separates loop termination from analysis completion and
+retains a closed blocked/no_effect branch with empty facts. Historical schemas
+and readers remain closed and unchanged. No source, question or control fact
+grants retention, product writes or Native renewal.

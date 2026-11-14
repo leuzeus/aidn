@@ -164,7 +164,7 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         if (node.binding_ref === "cycle_entry_observe") facts = { cycle_entry_fresh_context: cycleEntry === "fresh", cycle_entry_owned_context: cycleEntry === "owned_open", cycle_entry_choice_required: false };
         if (node.binding_ref === "cycle_entry_admit") facts = { cycle_entry_creation_allowed: cycleEntry === "fresh", cycle_entry_resume_allowed: cycleEntry === "owned_open", cycle_entry_choice_required: false };
         if (node.binding_ref === "spike_conversion_admit") facts = { mode_work_spike_requested: false };
-        if (node.binding_ref === "mode_work_observe") facts = { mode_work_report_complete: true, mode_analysis_completed: false };
+        if (node.binding_ref === "mode_work_observe") facts = { mode_work_report_complete: true, mode_analysis_completed: false, mode_analysis_loop_complete: true };
         if (node.binding_ref === "mode_work_evaluate") facts = { mode_analysis_completed: true };
         if (node.binding_ref === "mode_decision") facts = { mode_committing: scenario.mode === "COMMITTING", mode_thinking: scenario.mode === "THINKING", mode_exploring: scenario.mode === "EXPLORING", cycle_work_requested: scenario.mode === "COMMITTING" };
         if (node.binding_ref === "cycle_prework_select") facts = { cycle_prework_required: true };

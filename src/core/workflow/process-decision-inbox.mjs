@@ -25,6 +25,7 @@ import inboxV15 from "../contracts/workflow-definition/process-decision-inbox.v1
 import { assertHumanPostMergeDecision } from "./standard-pr-post-merge-decision.mjs";
 import inboxV18 from "../contracts/workflow-definition/process-decision-inbox.v18.schema.json" with { type: "json" };
 import inboxV19 from "../contracts/workflow-definition/process-decision-inbox.v19.schema.json" with { type: "json" };
+import inboxV20 from "../contracts/workflow-definition/process-decision-inbox.v20.schema.json" with { type: "json" };
 import { assertHumanCycleEntryChoice } from "./standard-cycle-entry-choice.mjs";
 import inboxV14 from "../contracts/workflow-definition/process-decision-inbox.v14.schema.json" with { type: "json" };
 import { assertHumanMergeConsent } from "./standard-pr-merge-consent.mjs";
@@ -87,6 +88,12 @@ export function decisionInboxPath(id) {
   return `workflows/decision-inbox/${id}.json`;
 }
 export function assertDecisionInbox(value) {
+  if (value?.contract_version === "process-decision-inbox.v20") {
+    if (checkShadowJson(value) || validateJsonSchema(value, inboxV20, "$", { contractKind: "workflow-definition" }).length) fail("PROCESS_DECISION_INBOX_INVALID");
+    assertHumanSpikeDecision(value.source);
+    if (value.inbox_id !== decisionInboxId(value.source) || (value.phase === "receipted") !== (value.receipt_sha256 !== null)) fail("PROCESS_DECISION_INBOX_BINDING_CHANGED");
+    return value;
+  }
   if (value?.contract_version === "process-decision-inbox.v19") {
     if (checkShadowJson(value) || validateJsonSchema(value, inboxV19, "$", { contractKind: "workflow-definition" }).length)
       fail("PROCESS_DECISION_INBOX_INVALID");

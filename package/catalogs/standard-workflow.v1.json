@@ -1,7 +1,7 @@
 {
   "contract_version": "standard-workflow-catalog.v7",
   "component_id": "aidn-standard",
-  "revision": 338,
+  "revision": 339,
   "scope": {
     "kind": "composed_committing_cycle_component",
     "complete_standard_workflow": false,
@@ -24,9 +24,9 @@
   },
   "model": {
     "path": "package/catalogs/process-models/aidn-standard.v1.json",
-    "sha256": "6dccb4378387cc85e8c483b0e66cf0ed7e7b60da1b9eba821771f1391689f5c9",
+    "sha256": "df1e1936c713f24b942d913fe2c470af1ec20f06a6f85df1779efc9dda8806f8",
     "model_id": "aidn-standard",
-    "revision": 338
+    "revision": 339
   },
   "specification": {
     "path": "docs/SPEC.md",
@@ -54,7 +54,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",
@@ -82,7 +82,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -111,7 +111,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -123,12 +123,12 @@
       "binding": {
         "contract_version": "process-operation-binding.v1",
         "id": "mode_work_observe",
-        "revision": 1,
+        "revision": 2,
         "executor_kind": "deterministic",
         "effect_class": "read-only",
         "skill_id": "context-reload",
         "input_contract": "standard-mode-work-evaluate-input.v1",
-        "output_contract": "standard-mode-work-observation-output.v1",
+        "output_contract": "standard-mode-work-observation-output.v2",
         "rule_refs": [
           "SPEC-R02",
           "SPEC-R11"
@@ -137,7 +137,7 @@
           "THINKING",
           "EXPLORING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",
@@ -164,7 +164,7 @@
           "THINKING",
           "EXPLORING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",
@@ -190,7 +190,7 @@
           "THINKING",
           "EXPLORING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",
@@ -220,7 +220,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -232,12 +232,12 @@
       "binding": {
         "contract_version": "process-operation-binding.v1",
         "id": "mode_work_observe",
-        "revision": 1,
+        "revision": 2,
         "executor_kind": "deterministic",
         "effect_class": "read-only",
         "skill_id": "context-reload",
         "input_contract": "standard-mode-work-evaluate-input.v1",
-        "output_contract": "standard-mode-work-observation-output.v1",
+        "output_contract": "standard-mode-work-observation-output.v2",
         "rule_refs": [
           "SPEC-R02",
           "SPEC-R11"
@@ -246,7 +246,7 @@
           "THINKING",
           "EXPLORING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",
@@ -273,7 +273,7 @@
           "THINKING",
           "EXPLORING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",
@@ -299,7 +299,7 @@
           "THINKING",
           "EXPLORING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",
@@ -311,7 +311,7 @@
       "binding": {
         "contract_version": "process-operation-binding.v1",
         "id": "spike_conversion_admit",
-        "revision": 1,
+        "revision": 2,
         "executor_kind": "deterministic",
         "effect_class": "read-only",
         "skill_id": "convert-to-spike",
@@ -325,7 +325,33 @@
         "allowed_modes": [
           "EXPLORING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-convert-to-spike/SKILL.md",
+        "sha256": "ad9b82e1247fc348738ac76163737293dc6982d30514186f82eec9439d03d698"
+      }
+    },
+    {
+      "node_id": "spike_selected",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "spike_conversion_select",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "convert-to-spike",
+        "input_contract": "standard-empty-input.v1",
+        "output_contract": "standard-spike-selection-output.v1",
+        "rule_refs": [
+          "SPEC-R02",
+          "SPEC-R03",
+          "SPEC-R06"
+        ],
+        "allowed_modes": [
+          "EXPLORING"
+        ],
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-convert-to-spike/SKILL.md",
@@ -337,12 +363,12 @@
       "binding": {
         "contract_version": "process-operation-binding.v1",
         "id": "spike_conversion_decision",
-        "revision": 1,
+        "revision": 2,
         "executor_kind": "human",
         "effect_class": "read-only",
         "skill_id": "convert-to-spike",
         "input_contract": "standard-spike-review-input.v1",
-        "output_contract": "standard-spike-decision-output.v1",
+        "output_contract": "standard-spike-decision-output.v2",
         "rule_refs": [
           "SPEC-R02",
           "SPEC-R03",
@@ -351,7 +377,7 @@
         "allowed_modes": [
           "EXPLORING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-convert-to-spike/SKILL.md",
@@ -377,7 +403,7 @@
         "allowed_modes": [
           "EXPLORING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-convert-to-spike/SKILL.md",
@@ -404,7 +430,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-convert-to-spike/SKILL.md",
@@ -430,7 +456,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-convert-to-spike/SKILL.md",
@@ -456,7 +482,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -482,7 +508,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -508,7 +534,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-convert-to-spike/SKILL.md",
@@ -534,7 +560,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -560,7 +586,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -586,7 +612,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-convert-to-spike/SKILL.md",
@@ -612,7 +638,7 @@
           "THINKING",
           "EXPLORING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",
@@ -639,7 +665,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",
@@ -665,7 +691,7 @@
           "THINKING",
           "EXPLORING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",
@@ -691,7 +717,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -718,7 +744,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -744,7 +770,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -769,7 +795,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -795,7 +821,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -820,7 +846,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -845,7 +871,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -874,7 +900,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -904,7 +930,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -930,7 +956,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-branch-cycle-audit/SKILL.md",
@@ -958,7 +984,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -984,7 +1010,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -1010,7 +1036,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -1035,7 +1061,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -1060,7 +1086,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -1088,7 +1114,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -1116,7 +1142,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -1144,7 +1170,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -1170,7 +1196,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -1196,7 +1222,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -1222,7 +1248,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -1248,7 +1274,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -1274,7 +1300,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -1300,7 +1326,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -1326,7 +1352,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -1352,7 +1378,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -1380,7 +1406,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -1406,7 +1432,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -1435,7 +1461,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -1463,7 +1489,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -1491,7 +1517,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -1518,7 +1544,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -1546,7 +1572,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -1573,7 +1599,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",
@@ -1599,7 +1625,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -1625,7 +1651,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -1650,7 +1676,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -1675,7 +1701,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -1700,7 +1726,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -1726,7 +1752,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -1751,7 +1777,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -1776,7 +1802,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -1801,7 +1827,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -1826,7 +1852,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -1851,7 +1877,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -1876,7 +1902,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -1906,7 +1932,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -1933,7 +1959,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -1958,7 +1984,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-promote-baseline/SKILL.md",
@@ -1983,7 +2009,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-promote-baseline/SKILL.md",
@@ -2010,7 +2036,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-promote-baseline/SKILL.md",
@@ -2037,7 +2063,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-promote-baseline/SKILL.md",
@@ -2064,7 +2090,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -2091,7 +2117,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -2118,7 +2144,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -2145,7 +2171,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -2172,7 +2198,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -2199,7 +2225,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -2226,7 +2252,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -2253,7 +2279,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -2280,7 +2306,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -2307,7 +2333,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -2334,7 +2360,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -2359,7 +2385,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -2384,7 +2410,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -2410,7 +2436,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -2435,7 +2461,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -2460,7 +2486,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -2485,7 +2511,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -2510,7 +2536,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -2535,7 +2561,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -2560,7 +2586,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -2590,7 +2616,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -2617,7 +2643,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -2644,7 +2670,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -2669,7 +2695,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-promote-baseline/SKILL.md",
@@ -2694,7 +2720,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-promote-baseline/SKILL.md",
@@ -2721,7 +2747,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-promote-baseline/SKILL.md",
@@ -2748,7 +2774,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -2775,7 +2801,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-promote-baseline/SKILL.md",
@@ -2801,7 +2827,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -2828,7 +2854,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -2855,7 +2881,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -2883,7 +2909,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -2911,7 +2937,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -2939,7 +2965,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -2968,7 +2994,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -2996,7 +3022,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -3022,7 +3048,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3048,7 +3074,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3074,7 +3100,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3100,7 +3126,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3125,7 +3151,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3151,7 +3177,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3176,7 +3202,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3201,7 +3227,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3228,7 +3254,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -3255,7 +3281,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -3282,7 +3308,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -3309,7 +3335,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -3336,7 +3362,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -3363,7 +3389,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -3390,7 +3416,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -3417,7 +3443,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -3444,7 +3470,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -3471,7 +3497,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -3498,7 +3524,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -3509,8 +3535,8 @@
       "node_id": "final_validation",
       "model_ref": {
         "model_id": "aidn-standard-final-verification",
-        "revision": 147,
-        "model_sha256": "c665935e27b3602b6d140399557a7bb4fb22117cc2b7e59fe283b2eb98d8434e"
+        "revision": 148,
+        "model_sha256": "39ed2be965a7b14f092c04eff7f0a8d5e230f019c1977d66f577728914621dfd"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3528,7 +3554,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -3539,8 +3565,8 @@
       "node_id": "verification_enter",
       "model_ref": {
         "model_id": "aidn-standard-final-verification",
-        "revision": 147,
-        "model_sha256": "c665935e27b3602b6d140399557a7bb4fb22117cc2b7e59fe283b2eb98d8434e"
+        "revision": 148,
+        "model_sha256": "39ed2be965a7b14f092c04eff7f0a8d5e230f019c1977d66f577728914621dfd"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3558,7 +3584,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -3569,8 +3595,8 @@
       "node_id": "pr_premerge_observe",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3588,7 +3614,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3599,8 +3625,8 @@
       "node_id": "pr_reply_select",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3618,7 +3644,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3629,8 +3655,8 @@
       "node_id": "pr_reply_publish",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3648,7 +3674,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3659,8 +3685,8 @@
       "node_id": "pr_resolution_select",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3678,7 +3704,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3689,8 +3715,8 @@
       "node_id": "pr_thread_resolve",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3708,7 +3734,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3719,8 +3745,8 @@
       "node_id": "pr_resolution_exception",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3738,7 +3764,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3749,8 +3775,8 @@
       "node_id": "pr_review_effects_verify",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3768,7 +3794,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3779,8 +3805,8 @@
       "node_id": "pr_checks_accept",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3798,7 +3824,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3809,8 +3835,8 @@
       "node_id": "pr_external_delivery",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3829,7 +3855,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3840,8 +3866,8 @@
       "node_id": "pr_premerge_external_delivery",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3860,7 +3886,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3871,8 +3897,8 @@
       "node_id": "pr_merge_consent",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3890,7 +3916,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3901,8 +3927,8 @@
       "node_id": "pr_merge_execute",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3920,7 +3946,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3931,8 +3957,8 @@
       "node_id": "pr_merge_basis",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3949,7 +3975,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3960,8 +3986,8 @@
       "node_id": "pr_post_merge_fetch",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -3979,7 +4005,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -3990,8 +4016,8 @@
       "node_id": "pr_post_merge_measure",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4008,7 +4034,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -4019,8 +4045,8 @@
       "node_id": "pr_post_merge_complete",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4037,7 +4063,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -4048,8 +4074,8 @@
       "node_id": "pr_post_merge_decision",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4067,7 +4093,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -4078,8 +4104,8 @@
       "node_id": "pr_post_merge_fast_forward",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4097,7 +4123,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -4108,8 +4134,8 @@
       "node_id": "pr_post_merge_alignment",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4126,7 +4152,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -4137,8 +4163,8 @@
       "node_id": "pr_post_merge_reconciled_complete",
       "model_ref": {
         "model_id": "aidn-standard-pr-review-completion",
-        "revision": 138,
-        "model_sha256": "4031769698d5a6ffa07c02586f70996b1ab1e9bab439503aeaa048ff2a12d926"
+        "revision": 139,
+        "model_sha256": "a183caa5b43122a7c4af881e172cb7bfb7d1c9c304f6369400f614f7f26e0228"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4155,7 +4181,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -4166,8 +4192,8 @@
       "node_id": "pr_pretriage_external_disposition",
       "model_ref": {
         "model_id": "aidn-standard-pr-pretriage-completion",
-        "revision": 120,
-        "model_sha256": "fa67e57832edfcc2a72b0cd818e7f7f50746f7ceb407c565c9ad3ccaf112c81e"
+        "revision": 121,
+        "model_sha256": "acb64b6f7877ea1a26ce75fc5b2c101d2505324b5699a843fbb36801482c3071"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4186,7 +4212,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -4197,8 +4223,8 @@
       "node_id": "pr_merge_basis",
       "model_ref": {
         "model_id": "aidn-standard-pr-pretriage-completion",
-        "revision": 120,
-        "model_sha256": "fa67e57832edfcc2a72b0cd818e7f7f50746f7ceb407c565c9ad3ccaf112c81e"
+        "revision": 121,
+        "model_sha256": "acb64b6f7877ea1a26ce75fc5b2c101d2505324b5699a843fbb36801482c3071"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4215,7 +4241,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -4226,8 +4252,8 @@
       "node_id": "pr_post_merge_fetch",
       "model_ref": {
         "model_id": "aidn-standard-pr-pretriage-completion",
-        "revision": 120,
-        "model_sha256": "fa67e57832edfcc2a72b0cd818e7f7f50746f7ceb407c565c9ad3ccaf112c81e"
+        "revision": 121,
+        "model_sha256": "acb64b6f7877ea1a26ce75fc5b2c101d2505324b5699a843fbb36801482c3071"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4245,7 +4271,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -4256,8 +4282,8 @@
       "node_id": "pr_post_merge_measure",
       "model_ref": {
         "model_id": "aidn-standard-pr-pretriage-completion",
-        "revision": 120,
-        "model_sha256": "fa67e57832edfcc2a72b0cd818e7f7f50746f7ceb407c565c9ad3ccaf112c81e"
+        "revision": 121,
+        "model_sha256": "acb64b6f7877ea1a26ce75fc5b2c101d2505324b5699a843fbb36801482c3071"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4274,7 +4300,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -4285,8 +4311,8 @@
       "node_id": "pr_post_merge_complete",
       "model_ref": {
         "model_id": "aidn-standard-pr-pretriage-completion",
-        "revision": 120,
-        "model_sha256": "fa67e57832edfcc2a72b0cd818e7f7f50746f7ceb407c565c9ad3ccaf112c81e"
+        "revision": 121,
+        "model_sha256": "acb64b6f7877ea1a26ce75fc5b2c101d2505324b5699a843fbb36801482c3071"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4303,7 +4329,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -4314,8 +4340,8 @@
       "node_id": "pr_post_merge_decision",
       "model_ref": {
         "model_id": "aidn-standard-pr-pretriage-completion",
-        "revision": 120,
-        "model_sha256": "fa67e57832edfcc2a72b0cd818e7f7f50746f7ceb407c565c9ad3ccaf112c81e"
+        "revision": 121,
+        "model_sha256": "acb64b6f7877ea1a26ce75fc5b2c101d2505324b5699a843fbb36801482c3071"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4333,7 +4359,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -4344,8 +4370,8 @@
       "node_id": "pr_post_merge_fast_forward",
       "model_ref": {
         "model_id": "aidn-standard-pr-pretriage-completion",
-        "revision": 120,
-        "model_sha256": "fa67e57832edfcc2a72b0cd818e7f7f50746f7ceb407c565c9ad3ccaf112c81e"
+        "revision": 121,
+        "model_sha256": "acb64b6f7877ea1a26ce75fc5b2c101d2505324b5699a843fbb36801482c3071"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4363,7 +4389,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -4374,8 +4400,8 @@
       "node_id": "pr_post_merge_alignment",
       "model_ref": {
         "model_id": "aidn-standard-pr-pretriage-completion",
-        "revision": 120,
-        "model_sha256": "fa67e57832edfcc2a72b0cd818e7f7f50746f7ceb407c565c9ad3ccaf112c81e"
+        "revision": 121,
+        "model_sha256": "acb64b6f7877ea1a26ce75fc5b2c101d2505324b5699a843fbb36801482c3071"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4392,7 +4418,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -4403,8 +4429,8 @@
       "node_id": "pr_post_merge_reconciled_complete",
       "model_ref": {
         "model_id": "aidn-standard-pr-pretriage-completion",
-        "revision": 120,
-        "model_sha256": "fa67e57832edfcc2a72b0cd818e7f7f50746f7ceb407c565c9ad3ccaf112c81e"
+        "revision": 121,
+        "model_sha256": "acb64b6f7877ea1a26ce75fc5b2c101d2505324b5699a843fbb36801482c3071"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4421,7 +4447,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
@@ -4432,8 +4458,8 @@
       "node_id": "recovery_record",
       "model_ref": {
         "model_id": "aidn-standard-drift-recovery",
-        "revision": 110,
-        "model_sha256": "e839a44e2ed02075501e9cc0a7522c8377a17eabf4089f146b92b1c024005943"
+        "revision": 111,
+        "model_sha256": "1244478d32009684347f9dead6847e6dfdeadeb4143cff6126ebb201953f4ced"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4453,7 +4479,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -4464,8 +4490,8 @@
       "node_id": "scope_rollback",
       "model_ref": {
         "model_id": "aidn-standard-drift-recovery",
-        "revision": 110,
-        "model_sha256": "e839a44e2ed02075501e9cc0a7522c8377a17eabf4089f146b92b1c024005943"
+        "revision": 111,
+        "model_sha256": "1244478d32009684347f9dead6847e6dfdeadeb4143cff6126ebb201953f4ced"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4482,7 +4508,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -4493,8 +4519,8 @@
       "node_id": "change_request_record",
       "model_ref": {
         "model_id": "aidn-standard-drift-recovery",
-        "revision": 110,
-        "model_sha256": "e839a44e2ed02075501e9cc0a7522c8377a17eabf4089f146b92b1c024005943"
+        "revision": 111,
+        "model_sha256": "1244478d32009684347f9dead6847e6dfdeadeb4143cff6126ebb201953f4ced"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4511,7 +4537,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -4522,8 +4548,8 @@
       "node_id": "recovery_context_refresh",
       "model_ref": {
         "model_id": "aidn-standard-drift-recovery",
-        "revision": 110,
-        "model_sha256": "e839a44e2ed02075501e9cc0a7522c8377a17eabf4089f146b92b1c024005943"
+        "revision": 111,
+        "model_sha256": "1244478d32009684347f9dead6847e6dfdeadeb4143cff6126ebb201953f4ced"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4542,7 +4568,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",
@@ -4553,8 +4579,8 @@
       "node_id": "recovery_checkpoint_observe",
       "model_ref": {
         "model_id": "aidn-standard-drift-recovery",
-        "revision": 110,
-        "model_sha256": "e839a44e2ed02075501e9cc0a7522c8377a17eabf4089f146b92b1c024005943"
+        "revision": 111,
+        "model_sha256": "1244478d32009684347f9dead6847e6dfdeadeb4143cff6126ebb201953f4ced"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4574,7 +4600,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -4585,8 +4611,8 @@
       "node_id": "recovery_cycle_decide",
       "model_ref": {
         "model_id": "aidn-standard-drift-recovery",
-        "revision": 110,
-        "model_sha256": "e839a44e2ed02075501e9cc0a7522c8377a17eabf4089f146b92b1c024005943"
+        "revision": 111,
+        "model_sha256": "1244478d32009684347f9dead6847e6dfdeadeb4143cff6126ebb201953f4ced"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4605,7 +4631,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -4616,8 +4642,8 @@
       "node_id": "recovery_cycle_initialize",
       "model_ref": {
         "model_id": "aidn-standard-drift-recovery",
-        "revision": 110,
-        "model_sha256": "e839a44e2ed02075501e9cc0a7522c8377a17eabf4089f146b92b1c024005943"
+        "revision": 111,
+        "model_sha256": "1244478d32009684347f9dead6847e6dfdeadeb4143cff6126ebb201953f4ced"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4637,7 +4663,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -4648,8 +4674,8 @@
       "node_id": "select",
       "model_ref": {
         "model_id": "aidn-standard-corrective-drift",
-        "revision": 108,
-        "model_sha256": "1f5765a8c2ab142b4a3b137b453b50f46192a207d9a335d4e0fbb018c099fd71"
+        "revision": 109,
+        "model_sha256": "05a1a5e656abb913c06bf9739c05b204a75eb4bef09dcffc5dcbf2cf895905cf"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4669,7 +4695,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -4680,8 +4706,8 @@
       "node_id": "decide",
       "model_ref": {
         "model_id": "aidn-standard-corrective-drift",
-        "revision": 108,
-        "model_sha256": "1f5765a8c2ab142b4a3b137b453b50f46192a207d9a335d4e0fbb018c099fd71"
+        "revision": 109,
+        "model_sha256": "05a1a5e656abb913c06bf9739c05b204a75eb4bef09dcffc5dcbf2cf895905cf"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4701,7 +4727,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -4712,8 +4738,8 @@
       "node_id": "finalize",
       "model_ref": {
         "model_id": "aidn-standard-corrective-drift",
-        "revision": 108,
-        "model_sha256": "1f5765a8c2ab142b4a3b137b453b50f46192a207d9a335d4e0fbb018c099fd71"
+        "revision": 109,
+        "model_sha256": "05a1a5e656abb913c06bf9739c05b204a75eb4bef09dcffc5dcbf2cf895905cf"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4733,7 +4759,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -4744,8 +4770,8 @@
       "node_id": "checkpoint_review",
       "model_ref": {
         "model_id": "aidn-standard-corrective-drift",
-        "revision": 108,
-        "model_sha256": "1f5765a8c2ab142b4a3b137b453b50f46192a207d9a335d4e0fbb018c099fd71"
+        "revision": 109,
+        "model_sha256": "05a1a5e656abb913c06bf9739c05b204a75eb4bef09dcffc5dcbf2cf895905cf"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4765,7 +4791,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-drift-check/SKILL.md",
@@ -4776,8 +4802,8 @@
       "node_id": "session_admit",
       "model_ref": {
         "model_id": "aidn-standard-session-setup",
-        "revision": 53,
-        "model_sha256": "50dd323fa2f8ca62b2d41eaaf9bb7b1b5c1abb359ec7ab1097ea28227e5b68ee"
+        "revision": 54,
+        "model_sha256": "63a61bf9deac1fab65c2bed13ce3420c1884f7895a3fe1b109d5cf47f69d8426"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4798,7 +4824,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -4809,8 +4835,8 @@
       "node_id": "session_initialize",
       "model_ref": {
         "model_id": "aidn-standard-session-setup",
-        "revision": 53,
-        "model_sha256": "50dd323fa2f8ca62b2d41eaaf9bb7b1b5c1abb359ec7ab1097ea28227e5b68ee"
+        "revision": 54,
+        "model_sha256": "63a61bf9deac1fab65c2bed13ce3420c1884f7895a3fe1b109d5cf47f69d8426"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4828,7 +4854,7 @@
         "allowed_modes": [
           "UNKNOWN"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -4839,8 +4865,8 @@
       "node_id": "mode_decision",
       "model_ref": {
         "model_id": "aidn-standard-session-setup",
-        "revision": 53,
-        "model_sha256": "50dd323fa2f8ca62b2d41eaaf9bb7b1b5c1abb359ec7ab1097ea28227e5b68ee"
+        "revision": 54,
+        "model_sha256": "63a61bf9deac1fab65c2bed13ce3420c1884f7895a3fe1b109d5cf47f69d8426"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4861,7 +4887,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -4872,8 +4898,8 @@
       "node_id": "session_mode_apply",
       "model_ref": {
         "model_id": "aidn-standard-session-setup",
-        "revision": 53,
-        "model_sha256": "50dd323fa2f8ca62b2d41eaaf9bb7b1b5c1abb359ec7ab1097ea28227e5b68ee"
+        "revision": 54,
+        "model_sha256": "63a61bf9deac1fab65c2bed13ce3420c1884f7895a3fe1b109d5cf47f69d8426"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4894,7 +4920,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -4905,8 +4931,8 @@
       "node_id": "session_closure_decide",
       "model_ref": {
         "model_id": "aidn-standard-mode-session-closure",
-        "revision": 40,
-        "model_sha256": "3935f8d76115a15f172848d7d119e796b8db31643a6ee83bb95f7f2974481a1e"
+        "revision": 41,
+        "model_sha256": "758e48ac9a63ac3f9e2e3a75e6219b86d10ce93cf911a2046c55db52da3d73f2"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4927,7 +4953,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -4938,8 +4964,8 @@
       "node_id": "session_close_record",
       "model_ref": {
         "model_id": "aidn-standard-mode-session-closure",
-        "revision": 40,
-        "model_sha256": "3935f8d76115a15f172848d7d119e796b8db31643a6ee83bb95f7f2974481a1e"
+        "revision": 41,
+        "model_sha256": "758e48ac9a63ac3f9e2e3a75e6219b86d10ce93cf911a2046c55db52da3d73f2"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4960,7 +4986,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -4971,8 +4997,8 @@
       "node_id": "session_close_checkpoint",
       "model_ref": {
         "model_id": "aidn-standard-mode-session-closure",
-        "revision": 40,
-        "model_sha256": "3935f8d76115a15f172848d7d119e796b8db31643a6ee83bb95f7f2974481a1e"
+        "revision": 41,
+        "model_sha256": "758e48ac9a63ac3f9e2e3a75e6219b86d10ce93cf911a2046c55db52da3d73f2"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4993,7 +5019,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -5004,8 +5030,8 @@
       "node_id": "session_close_finalize",
       "model_ref": {
         "model_id": "aidn-standard-mode-session-closure",
-        "revision": 40,
-        "model_sha256": "3935f8d76115a15f172848d7d119e796b8db31643a6ee83bb95f7f2974481a1e"
+        "revision": 41,
+        "model_sha256": "758e48ac9a63ac3f9e2e3a75e6219b86d10ce93cf911a2046c55db52da3d73f2"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5027,7 +5053,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-close-session/SKILL.md",
@@ -5038,8 +5064,8 @@
       "node_id": "entry",
       "model_ref": {
         "model_id": "aidn-standard-owned-entry",
-        "revision": 10,
-        "model_sha256": "3f0ad8b1c5fcf14aa774717118c3899fb806bc50ce452332ec5df7e210c15eea"
+        "revision": 11,
+        "model_sha256": "2b4fdc63c5342c564dbc025c2f05c69b8f8c7019f4b957811bd1b95570b146d8"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5059,7 +5085,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -5070,8 +5096,8 @@
       "node_id": "resume",
       "model_ref": {
         "model_id": "aidn-standard-owned-entry",
-        "revision": 10,
-        "model_sha256": "3f0ad8b1c5fcf14aa774717118c3899fb806bc50ce452332ec5df7e210c15eea"
+        "revision": 11,
+        "model_sha256": "2b4fdc63c5342c564dbc025c2f05c69b8f8c7019f4b957811bd1b95570b146d8"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5089,7 +5115,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -5100,8 +5126,8 @@
       "node_id": "choose",
       "model_ref": {
         "model_id": "aidn-standard-selected-entry",
-        "revision": 10,
-        "model_sha256": "e69c6ba899de39d1e5c38b017be2a382b09fadf94732813762ad6378ac3ca01d"
+        "revision": 11,
+        "model_sha256": "dc1b7eab9c5d547f8538e85306b0a848d2b9e57892edafaeb7883c2a13c96772"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5120,7 +5146,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -5131,8 +5157,8 @@
       "node_id": "record",
       "model_ref": {
         "model_id": "aidn-standard-selected-entry",
-        "revision": 10,
-        "model_sha256": "e69c6ba899de39d1e5c38b017be2a382b09fadf94732813762ad6378ac3ca01d"
+        "revision": 11,
+        "model_sha256": "dc1b7eab9c5d547f8538e85306b0a848d2b9e57892edafaeb7883c2a13c96772"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5151,7 +5177,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -5162,8 +5188,8 @@
       "node_id": "checkpoint",
       "model_ref": {
         "model_id": "aidn-standard-selected-entry",
-        "revision": 10,
-        "model_sha256": "e69c6ba899de39d1e5c38b017be2a382b09fadf94732813762ad6378ac3ca01d"
+        "revision": 11,
+        "model_sha256": "dc1b7eab9c5d547f8538e85306b0a848d2b9e57892edafaeb7883c2a13c96772"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5182,7 +5208,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -5193,8 +5219,8 @@
       "node_id": "activate",
       "model_ref": {
         "model_id": "aidn-standard-selected-entry",
-        "revision": 10,
-        "model_sha256": "e69c6ba899de39d1e5c38b017be2a382b09fadf94732813762ad6378ac3ca01d"
+        "revision": 11,
+        "model_sha256": "dc1b7eab9c5d547f8538e85306b0a848d2b9e57892edafaeb7883c2a13c96772"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5213,7 +5239,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -5224,8 +5250,8 @@
       "node_id": "selected_checkpoint",
       "model_ref": {
         "model_id": "aidn-standard-selected-entry",
-        "revision": 10,
-        "model_sha256": "e69c6ba899de39d1e5c38b017be2a382b09fadf94732813762ad6378ac3ca01d"
+        "revision": 11,
+        "model_sha256": "dc1b7eab9c5d547f8538e85306b0a848d2b9e57892edafaeb7883c2a13c96772"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5244,7 +5270,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -5255,8 +5281,8 @@
       "node_id": "focus",
       "model_ref": {
         "model_id": "aidn-standard-selected-entry",
-        "revision": 10,
-        "model_sha256": "e69c6ba899de39d1e5c38b017be2a382b09fadf94732813762ad6378ac3ca01d"
+        "revision": 11,
+        "model_sha256": "dc1b7eab9c5d547f8538e85306b0a848d2b9e57892edafaeb7883c2a13c96772"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5274,7 +5300,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -5285,8 +5311,8 @@
       "node_id": "focus_checkpoint",
       "model_ref": {
         "model_id": "aidn-standard-selected-entry",
-        "revision": 10,
-        "model_sha256": "e69c6ba899de39d1e5c38b017be2a382b09fadf94732813762ad6378ac3ca01d"
+        "revision": 11,
+        "model_sha256": "dc1b7eab9c5d547f8538e85306b0a848d2b9e57892edafaeb7883c2a13c96772"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5304,7 +5330,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -5315,8 +5341,8 @@
       "node_id": "resume",
       "model_ref": {
         "model_id": "aidn-standard-selected-entry",
-        "revision": 10,
-        "model_sha256": "e69c6ba899de39d1e5c38b017be2a382b09fadf94732813762ad6378ac3ca01d"
+        "revision": 11,
+        "model_sha256": "dc1b7eab9c5d547f8538e85306b0a848d2b9e57892edafaeb7883c2a13c96772"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5334,7 +5360,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -5345,8 +5371,8 @@
       "node_id": "plan_select",
       "model_ref": {
         "model_id": "aidn-standard-cycle-preparation",
-        "revision": 10,
-        "model_sha256": "cc310c18c859fa44808ee04a5942d3fe36020889fbe4e135ee65b3c8ca8d1ba3"
+        "revision": 11,
+        "model_sha256": "19b6b18405ddb6e772341031e24e4ad4ff0e463d4b031b840c5878333d29ade4"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5364,7 +5390,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -5375,8 +5401,8 @@
       "node_id": "readiness",
       "model_ref": {
         "model_id": "aidn-standard-cycle-preparation",
-        "revision": 10,
-        "model_sha256": "cc310c18c859fa44808ee04a5942d3fe36020889fbe4e135ee65b3c8ca8d1ba3"
+        "revision": 11,
+        "model_sha256": "19b6b18405ddb6e772341031e24e4ad4ff0e463d4b031b840c5878333d29ade4"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5394,7 +5420,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -5405,8 +5431,8 @@
       "node_id": "implementation_enter",
       "model_ref": {
         "model_id": "aidn-standard-cycle-preparation",
-        "revision": 10,
-        "model_sha256": "cc310c18c859fa44808ee04a5942d3fe36020889fbe4e135ee65b3c8ca8d1ba3"
+        "revision": 11,
+        "model_sha256": "19b6b18405ddb6e772341031e24e4ad4ff0e463d4b031b840c5878333d29ade4"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5424,7 +5450,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -5435,8 +5461,8 @@
       "node_id": "observe",
       "model_ref": {
         "model_id": "aidn-standard-canonical-verification",
-        "revision": 10,
-        "model_sha256": "113181e812255b83d301c6c2a62c635c00e5a405724589377d45bdfd65ad43ea"
+        "revision": 11,
+        "model_sha256": "f7d09aab8f45c44a014d21be3ade8574fe2c5c2878fe05445ea6b02e7fe121d2"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5454,7 +5480,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -5465,8 +5491,8 @@
       "node_id": "validate",
       "model_ref": {
         "model_id": "aidn-standard-canonical-verification",
-        "revision": 10,
-        "model_sha256": "113181e812255b83d301c6c2a62c635c00e5a405724589377d45bdfd65ad43ea"
+        "revision": 11,
+        "model_sha256": "f7d09aab8f45c44a014d21be3ade8574fe2c5c2878fe05445ea6b02e7fe121d2"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5485,7 +5511,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -5496,8 +5522,8 @@
       "node_id": "evaluate",
       "model_ref": {
         "model_id": "aidn-standard-canonical-verification",
-        "revision": 10,
-        "model_sha256": "113181e812255b83d301c6c2a62c635c00e5a405724589377d45bdfd65ad43ea"
+        "revision": 11,
+        "model_sha256": "f7d09aab8f45c44a014d21be3ade8574fe2c5c2878fe05445ea6b02e7fe121d2"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5515,7 +5541,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -5526,8 +5552,8 @@
       "node_id": "verify",
       "model_ref": {
         "model_id": "aidn-standard-canonical-verification",
-        "revision": 10,
-        "model_sha256": "113181e812255b83d301c6c2a62c635c00e5a405724589377d45bdfd65ad43ea"
+        "revision": 11,
+        "model_sha256": "f7d09aab8f45c44a014d21be3ade8574fe2c5c2878fe05445ea6b02e7fe121d2"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5545,7 +5571,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
@@ -5556,8 +5582,8 @@
       "node_id": "session_git_checkpoint",
       "model_ref": {
         "model_id": "aidn-standard-fresh-cycle-entry",
-        "revision": 5,
-        "model_sha256": "baa6107f1ccfe1cfd5dfb7cc484790722308e1ca099372705edcf277707134d3"
+        "revision": 6,
+        "model_sha256": "9d9e78bb478650254c815b4c491ee77b88219fb5d8883cbd10a238fe92cfcb8f"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5580,7 +5606,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -5591,8 +5617,8 @@
       "node_id": "cycle_entry",
       "model_ref": {
         "model_id": "aidn-standard-fresh-cycle-entry",
-        "revision": 5,
-        "model_sha256": "baa6107f1ccfe1cfd5dfb7cc484790722308e1ca099372705edcf277707134d3"
+        "revision": 6,
+        "model_sha256": "9d9e78bb478650254c815b4c491ee77b88219fb5d8883cbd10a238fe92cfcb8f"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5612,7 +5638,7 @@
         "allowed_modes": [
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
@@ -5623,8 +5649,8 @@
       "node_id": "cycle_admit",
       "model_ref": {
         "model_id": "aidn-standard-fresh-cycle-entry",
-        "revision": 5,
-        "model_sha256": "baa6107f1ccfe1cfd5dfb7cc484790722308e1ca099372705edcf277707134d3"
+        "revision": 6,
+        "model_sha256": "9d9e78bb478650254c815b4c491ee77b88219fb5d8883cbd10a238fe92cfcb8f"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5643,7 +5669,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -5654,8 +5680,8 @@
       "node_id": "cycle_initialize",
       "model_ref": {
         "model_id": "aidn-standard-fresh-cycle-entry",
-        "revision": 5,
-        "model_sha256": "baa6107f1ccfe1cfd5dfb7cc484790722308e1ca099372705edcf277707134d3"
+        "revision": 6,
+        "model_sha256": "9d9e78bb478650254c815b4c491ee77b88219fb5d8883cbd10a238fe92cfcb8f"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5674,7 +5700,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -5685,8 +5711,8 @@
       "node_id": "cycle_audit",
       "model_ref": {
         "model_id": "aidn-standard-fresh-cycle-entry",
-        "revision": 5,
-        "model_sha256": "baa6107f1ccfe1cfd5dfb7cc484790722308e1ca099372705edcf277707134d3"
+        "revision": 6,
+        "model_sha256": "9d9e78bb478650254c815b4c491ee77b88219fb5d8883cbd10a238fe92cfcb8f"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5705,7 +5731,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-branch-cycle-audit/SKILL.md",
@@ -5716,8 +5742,8 @@
       "node_id": "cycle_checkpoint",
       "model_ref": {
         "model_id": "aidn-standard-fresh-cycle-checkpoint",
-        "revision": 5,
-        "model_sha256": "d1f3894ae8e01e0814d5f069baede3b6e26c261929e2ed6056113a9fa065b565"
+        "revision": 6,
+        "model_sha256": "31910f3854a5290c85de34cc32577779aa9ac9a18cbcddedb0f05e2926991298"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5738,7 +5764,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -5749,8 +5775,8 @@
       "node_id": "cycle_refresh_after",
       "model_ref": {
         "model_id": "aidn-standard-fresh-cycle-checkpoint",
-        "revision": 5,
-        "model_sha256": "d1f3894ae8e01e0814d5f069baede3b6e26c261929e2ed6056113a9fa065b565"
+        "revision": 6,
+        "model_sha256": "31910f3854a5290c85de34cc32577779aa9ac9a18cbcddedb0f05e2926991298"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -5770,7 +5796,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "20ed9c7e4408e7c130f88c9c50a8bd0b4c1b2e0f487eb20e8187c08f162a3f27"
+        "implementation_sha256": "571cd6ebc0ae317f1246ce097fdc33262da0c026087ed23f1b31733902275530"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",

@@ -19,10 +19,16 @@ for (const [mode, dispositions] of [["THINKING", ["waiting", "thinking_complete"
     const output = produce(mode, disposition); assertStandardOperationOutput(output);
     const complete = ["thinking_complete", "nonretained"].includes(disposition);
     assert.equal(output.facts.mode_analysis_completed, false); assert.equal(output.facts.mode_work_report_complete, complete);
+    assert.equal(output.contract_version, "standard-mode-work-observation-output.v2");
+    assert.equal(output.facts.mode_analysis_loop_complete, complete);
     assert.equal(output.observations.evaluation.outcome, complete ? "completed" : "blocked");
     if (!complete) assert.deepEqual(output.observations.evaluation.facts, {});
     const forged = structuredClone(output); forged.facts.mode_analysis_completed = true;
     assert.throws(() => assertModeWorkObservationOutput(forged), { code: "STANDARD_MODE_WORK_OBSERVATION_INVALID" });
+    const legacy = structuredClone(output); legacy.contract_version = "standard-mode-work-observation-output.v1";
+    delete legacy.facts.mode_analysis_loop_complete; assertStandardOperationOutput(legacy);
+    const wrongControl = structuredClone(output); wrongControl.facts.mode_analysis_loop_complete = !complete;
+    assert.throws(() => assertModeWorkObservationOutput(wrongControl), { code: "STANDARD_MODE_WORK_OBSERVATION_INVALID" });
   });
   const review = produce(mode, "waiting").observations.review;
   const question = { contract_version: "standard-mode-work-question.v1", operation_id: "op_" + "c".repeat(40), instance_id: "instance", scope_id: "fixture",
@@ -56,6 +62,14 @@ for (const [mode, dispositions] of [["THINKING", ["waiting", "thinking_complete"
     assert.throws(() => assertModeWorkQuestion(fabricated), { code: "STANDARD_MODE_WORK_QUESTION_INVALID" });
   });
 }
+check("a blocked observation retains its typed refusal without positive facts", () => {
+  const blocked = { contract_version: "standard-mode-work-observation-output.v2", operation_ref: "mode_work_observe", outcome: "blocked",
+    effect_status: "no_effect", facts: {}, observations: { reason_code: "STANDARD_MODE_WORK_CONTEXT_STALE" }, evidence_refs: [] };
+  assertStandardOperationOutput(blocked);
+  for (const change of [{ facts: { mode_analysis_loop_complete: true } }, { effect_status: "confirmed" },
+    { observations: { reason_code: "unbounded refusal text" } }, { evidence_refs: [reference] }])
+    assert.throws(() => assertModeWorkObservationOutput({ ...blocked, ...change }), { code: "STANDARD_MODE_WORK_OBSERVATION_INVALID" });
+});
 check("new operations use closed input contracts", () => {
   assertStandardOperationInput("mode_work_observe", { report_occurrence_id: "root/analysis" });
   assertStandardOperationInput("mode_work_continue_decision", { review_operation_id: "op_" + "a".repeat(40) });

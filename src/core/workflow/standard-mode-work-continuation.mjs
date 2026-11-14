@@ -2,6 +2,7 @@ import reviewSchema from "../contracts/workflow-definition/standard-mode-work-re
 import questionSchema from "../contracts/workflow-definition/standard-mode-work-question.v1.schema.json" with { type: "json" };
 import sourceSchema from "../contracts/workflow-definition/human-mode-work-decision.v1.schema.json" with { type: "json" };
 import observationSchema from "../contracts/workflow-definition/standard-mode-work-observation-output.v1.schema.json" with { type: "json" };
+import observationSchemaV2 from "../contracts/workflow-definition/standard-mode-work-observation-output.v2.schema.json" with { type: "json" };
 import outputSchema from "../contracts/workflow-definition/standard-mode-work-decision-output.v1.schema.json" with { type: "json" };
 import { evaluateStandardModeWork, assertStandardModeWorkReport } from "./standard-mode-work.mjs";
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
@@ -25,15 +26,17 @@ export function observeModeWorkReport(authenticated, current) {
     mode: current.context.mode, context_sha256: current.context_sha256, product_sha256: current.context.product_sha256,
     head: current.context.git.head, branch: current.context.git.branch, report: authenticated.report,
     report_sha256: shadowHash(authenticated.report), producer: authenticated.producer, reference: authenticated.reference });
-  return assertModeWorkObservationOutput({ contract_version: "standard-mode-work-observation-output.v1", operation_ref: "mode_work_observe",
-    outcome: "completed", effect_status: "no_effect", facts: { mode_work_report_complete: evaluation.outcome === "completed", mode_analysis_completed: false },
+  return assertModeWorkObservationOutput({ contract_version: "standard-mode-work-observation-output.v2", operation_ref: "mode_work_observe",
+    outcome: "completed", effect_status: "no_effect", facts: { mode_work_report_complete: evaluation.outcome === "completed", mode_analysis_completed: false, mode_analysis_loop_complete: evaluation.outcome === "completed" },
     observations: { review, evaluation }, evidence_refs: [authenticated.reference] });
 }
 export function assertModeWorkObservationOutput(value) {
-  if (!valid(value, observationSchema)) fail("STANDARD_MODE_WORK_OBSERVATION_INVALID");
+  const current = value?.contract_version === "standard-mode-work-observation-output.v2";
+  if (!valid(value, current ? observationSchemaV2 : observationSchema)) fail("STANDARD_MODE_WORK_OBSERVATION_INVALID");
+  if (current && value.outcome === "blocked") return value;
   assertModeWorkReview(value.observations.review);
   const complete = ["thinking_complete", "nonretained"].includes(value.observations.review.report.disposition);
-  if (shadowHash(value.facts) !== shadowHash({ mode_work_report_complete: complete, mode_analysis_completed: false })
+  if (shadowHash(value.facts) !== shadowHash({ mode_work_report_complete: complete, mode_analysis_completed: false, ...(current ? { mode_analysis_loop_complete: complete } : {}) })
     || value.observations.evaluation.outcome !== (complete ? "completed" : "blocked")
     || shadowHash(value.observations.evaluation.observations?.report ?? null) !== value.observations.review.report_sha256
     || shadowHash(value.observations.evaluation.facts) !== shadowHash(complete ? { mode_analysis_completed: true, exploration_nonretained: value.observations.review.report.disposition === "nonretained" } : {})

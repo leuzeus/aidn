@@ -6,8 +6,8 @@ import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-
 import { createStandardWorkflowOperations } from "../../src/application/runtime/standard-workflow-operations.mjs";
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { observeModeWorkReport } from "../../src/core/workflow/standard-mode-work-continuation.mjs";
-import { assertSpikeQuestion, assertHumanSpikeDecision, observeHumanSpikeDecision, assertSpikeDecisionOutput, spikeConversionChoices } from "../../src/core/workflow/standard-spike-decision.mjs";
-import { assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
+import { assertSpikeQuestion, assertHumanSpikeDecision, observeHumanSpikeDecision, assertSpikeDecisionOutput, spikeConversionChoices, spikeConversionChoicesV2 } from "../../src/core/workflow/standard-spike-decision.mjs";
+import { assertStandardOperationInput, assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { createOperationJournalSigner } from "../../src/core/workflow/process-operation-journal.mjs";
 import { createProcessDecisionInboxStore } from "../../src/adapters/runtime/process-decision-inbox-store.mjs";
@@ -43,6 +43,56 @@ for (const choice of spikeConversionChoices) {
 assert.throws(() => assertHumanSpikeDecision({ ...source("convert-to-spike"), selection: { ...selection, cycle_id: "C006" } }, question), { code: "STANDARD_SPIKE_CYCLE_ALREADY_EXISTS" });
 assert.throws(() => assertHumanSpikeDecision({ ...source("convert-to-spike"), question_sha256: "f".repeat(64) }, question), { code: "PROCESS_HUMAN_QUESTION_CHANGED" });
 assert.throws(() => assertHumanSpikeDecision({ ...source("convert-to-spike"), selection: { ...selection, chosen_mode: "COMMITTING" } }, question), { code: "STANDARD_SPIKE_SELECTION_INVALID" });
+// The current question offers continuation at the existing SPIKE decision.
+// Neither accepting conversion intent nor continuing is a business effect.
+const currentQuestion = assertSpikeQuestion({ ...question, contract_version: "standard-spike-question.v2", choices: [...spikeConversionChoicesV2] });
+const currentSource = choice => ({ ...source(choice), contract_version: "human-spike-decision.v2", question_sha256: shadowHash(currentQuestion) });
+for (const choice of spikeConversionChoicesV2) {
+  const claim = currentSource(choice), observed = observeHumanSpikeDecision({ question: currentQuestion, decision: claim });
+  const output = { contract_version: "standard-spike-decision-output.v2", operation_ref: "spike_conversion_decision", ...observed,
+    observations: { ...observed.observations, inbox_id: decisionInboxId(claim), source_ref: "fixture:current" }, evidence_refs: [ref] };
+  assertStandardOperationOutput(output); assert.equal(output.effect_status, "no_effect");
+  for (const flag of ["product_effects_authorized", "retention_authorized", "native_authority_renewed"]) {
+    assert.equal(output.observations[flag], false);
+    assert.throws(() => assertSpikeDecisionOutput({ ...output, observations: { ...output.observations, [flag]: true } }), { code: "STANDARD_SPIKE_DECISION_OUTPUT_INVALID" });
+  }
+  assert.deepEqual(output.facts, choice === "convert-to-spike"
+    ? { spike_conversion_requested: true, mode_analysis_loop_complete: true, mode_analysis_completed: false }
+    : choice === "continue_analysis"
+      ? { spike_conversion_requested: false, mode_analysis_loop_complete: false, mode_work_continue_requested: true, mode_analysis_completed: false } : {});
+  for (const facts of [{ ...output.facts, mode_analysis_completed: true },
+    { ...output.facts, mode_analysis_loop_complete: choice !== "convert-to-spike" }])
+    assert.throws(() => assertSpikeDecisionOutput({ ...output, facts }), { code: "STANDARD_SPIKE_DECISION_OUTPUT_INVALID" });
+  const signer = createOperationJournalSigner(() => Buffer.alloc(32, 9));
+  const inbox = signer.seal({ contract_version: "process-decision-inbox.v20", inbox_id: decisionInboxId(claim), operation_id: currentQuestion.operation_id,
+    source_ref: "fixture:current", source: claim, phase: "reserved", receipt_sha256: null });
+  assertDecisionInbox(inbox); signer.verify(inbox);
+  assert.throws(() => assertDecisionInbox({ ...inbox, inbox_id: "decision_" + "e".repeat(40) }), { code: "PROCESS_DECISION_INBOX_BINDING_CHANGED" });
+  assert.throws(() => assertDecisionInbox({ ...inbox, phase: "receipted" }), { code: "PROCESS_DECISION_INBOX_BINDING_CHANGED" });
+  assert.throws(() => signer.verify({ ...inbox, source_ref: "fixture:foreign" }));
+  if (choice !== "continue_analysis") {
+    // Old claim versions retain only their old choices, bound to this question.
+    const legacyClaim = { ...claim, contract_version: "human-spike-decision.v1" };
+    assertHumanSpikeDecision(legacyClaim, currentQuestion);
+    assert.deepEqual(observeHumanSpikeDecision({ question: currentQuestion, decision: legacyClaim }).facts, output.facts);
+  }
+}
+const continuing = currentSource("continue_analysis");
+assert.throws(() => assertHumanSpikeDecision({ ...continuing, contract_version: "human-spike-decision.v1" }, currentQuestion), { code: "STANDARD_SPIKE_DECISION_INVALID" });
+assert.throws(() => assertHumanSpikeDecision({ ...continuing, question_sha256: shadowHash(question) }, question), { code: "PROCESS_HUMAN_CHOICE_NOT_OFFERED" });
+assert.throws(() => assertHumanSpikeDecision({ ...continuing, selection }, currentQuestion), { code: "STANDARD_SPIKE_DECISION_INVALID" });
+for (const change of [{ question_sha256: "f".repeat(64) }, { subject_sha256: "f".repeat(64) }])
+  assert.throws(() => assertHumanSpikeDecision({ ...continuing, ...change }, currentQuestion), { code: "PROCESS_HUMAN_QUESTION_CHANGED" });
+assert.throws(() => assertSpikeQuestion({ ...currentQuestion, choices: [...spikeConversionChoices] }), { code: "STANDARD_SPIKE_QUESTION_INVALID" });
+const selectedOutput = { contract_version: "standard-spike-selection-output.v1", operation_ref: "spike_conversion_select", outcome: "completed",
+  effect_status: "no_effect", facts: {}, evidence_refs: [], observations: { decision_operation_id: currentQuestion.operation_id,
+    receipt_sha256: H, output_sha256: H, product_effects_authorized: false, retention_authorized: false, native_authority_renewed: false } };
+assertStandardOperationInput("spike_conversion_select", {}); assertStandardOperationOutput(selectedOutput);
+assert.throws(() => assertStandardOperationInput("spike_conversion_select", { decision_operation_id: currentQuestion.operation_id }), { code: "STANDARD_OPERATION_INPUT_INVALID" });
+for (const change of [{ facts: { spike_conversion_completed: true } }, { observations: { ...selectedOutput.observations, retention_authorized: true } },
+  { effect_status: "confirmed" }, { observations: { ...selectedOutput.observations, decision_operation_id: "op_foreign" } }])
+  assert.throws(() => assertStandardOperationOutput({ ...selectedOutput, ...change }), { code: "STANDARD_OPERATION_OUTPUT_INVALID" });
+assertStandardOperationOutput({ ...selectedOutput, outcome: "blocked", observations: { reason_code: "STANDARD_SPIKE_DECISION_REQUIRED" } });
 // Composed schemas retain input validation without embedding root declarations.
 for (const name of ["initialize", "finalize"]) {
   const schema = JSON.parse(fs.readFileSync(new URL(`../../src/core/contracts/workflow-definition/standard-spike-${name}-plan.v1.schema.json`, import.meta.url), "utf8"));
@@ -83,6 +133,13 @@ try {
       native_calls: 0, mixed_conversion_wrapper: "NOT_RUN", conversion_hook: "NOT_RUN", experiments: "NOT_RUN", genuine_human: "NOT_RUN" }));
   }
   const assets = loadStandardWorkflowAssets(); assert.equal(assets.model.nodes.find(row => row.id === "spike_decide").binding_ref, "spike_conversion_decision");
+  const currentNode = id => assets.model.nodes.find(row => row.id === id);
+  assert.equal(currentNode("exploring_after_report").branches.find(row => row.flow_id === "spike").node_id, "spike_decide");
+  assert.equal(currentNode("exploring_after_analysis").branches.find(row => row.flow_id === "spike").node_id, "spike_conversion");
+  assert.deepEqual(currentNode("spike_conversion").children, ["spike_selected", "spike_initialize", "spike_finalize", "spike_experiment_admit", "spike_planning_route"]);
+  assert.equal(currentNode("spike_selected").binding_ref, "spike_conversion_select");
+  assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "spike_initialize").fields.decision_operation_id,
+    { source: "operation_output", node_id: "spike_selected", path: ["observations", "decision_operation_id"] });
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);
   console.log(JSON.stringify({ ok: true, retained_projects: roots, model_sha256: assets.source.model_sha256, full_standard: false }));
 } catch (error) { console.error(JSON.stringify({ retained_projects: roots, code: error.code ?? null, message: error.message })); throw error; }

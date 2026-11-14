@@ -381,19 +381,22 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const prefix = assignment >= 0 ? instance.events.slice(0, assignment) : instance.events;
     const decisionEvent = prefix.filter(event => event.kind === "operation_result").findLast(event => {
       const intent = prefix.find(row => row.kind === "operation_intent" && row.intent.operation_id === event.receipt.operation_id);
-      return intent?.intent.binding_ref === "mode_work_continue_decision";
+      return intent?.intent.binding_ref === "mode_work_continue_decision"
+        || intent?.intent.binding_ref === "spike_conversion_decision" && event.receipt.facts.mode_work_continue_requested === true;
     });
     let continuation;
     if (decisionEvent) {
-      const selected = acceptedOperation(instance, decisionEvent.receipt.operation_id, "mode_work_continue_decision", auth);
+      const binding = prefix.find(row => row.kind === "operation_intent" && row.intent.operation_id === decisionEvent.receipt.operation_id).intent.binding_ref;
+      const selected = acceptedOperation(instance, decisionEvent.receipt.operation_id, binding, auth);
       const capture = human.captured(selected.record);
+      const priorReview = binding === "spike_conversion_decision" ? selected.record.preview.prepared.review.analysis : selected.record.preview.prepared.review;
       if (capture.source.choice !== "continue_analysis" || selected.output.facts.mode_work_continue_requested !== true)
         fail("STANDARD_MODE_WORK_CONTINUATION_REQUIRED");
       continuation = { operation_id: selected.record.operation_id, source_sha256: shadowHash(capture.source), question_sha256: capture.source.question_sha256,
         review_sha256: selected.output.observations.review_sha256, choice: capture.source.choice,
         information_only: true, product_effects_authorized: false, retention_authorized: false, native_authority_renewed: false,
-        decision: structuredClone(capture.source), prior_report: structuredClone(selected.record.preview.prepared.review.report),
-        prior_producer: structuredClone(selected.record.preview.prepared.review.producer), prior_reference: structuredClone(selected.record.preview.prepared.review.reference) };
+        decision: structuredClone(capture.source), prior_report: structuredClone(priorReview.report),
+        prior_producer: structuredClone(priorReview.producer), prior_reference: structuredClone(priorReview.reference) };
     }
     const context = { ...current.context, preflight_operation_id: id, ...(continuation ? { continuation } : {}) };
     if (Buffer.byteLength(JSON.stringify(context)) > 262144) fail("STANDARD_MODE_WORK_CONTEXT_TOO_LARGE");
@@ -411,6 +414,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     assertStandardOperationInput("mode_work_continue_decision", input);
     const accepted = acceptedOperation(instance, input.review_operation_id, "mode_work_observe");
     assertModeWorkObservationOutput(accepted.output);
+    if (accepted.output.outcome !== "completed") fail("STANDARD_MODE_WORK_REVIEW_STALE");
     const fresh = observeModeWork(instance, accepted.record.preview.input);
     if (shadowHash(fresh) !== shadowHash(accepted.output)) fail("STANDARD_MODE_WORK_REVIEW_STALE");
     if (!["waiting", "retain_requested"].includes(fresh.observations.review.report.disposition)) fail("STANDARD_MODE_WORK_CONTINUATION_NOT_REQUIRED");

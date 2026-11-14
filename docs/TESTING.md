@@ -6126,3 +6126,24 @@ the corrected source; this regression alone grants no installed or full journey
 acceptance.
 
 The composed call fixture recognizes closure_drift_recovery_execution and its declared aidn-standard-drift-recovery target. Return assertions use the actual reducer-selected flow and its declared operation leaves; skipped branch journals are not accepted as execution. The existing composition fixture covers record, new-cycle, rollback and pending branches with the production reducer and explicitly synthetic receipts, including missing/foreign operation refusals. This driver-oracle scope runs no business port or Native actor and does not qualify general R10 or a full composed recovery.
+
+## EXPLORING retention-request continuation candidate, 2026-11-14
+
+The existing SPIKE contract suite exercises legacy/current choices, v20 inbox
+identity and signature binding, false permission flags and loop-control facts.
+The mode continuation contract suite preserves legacy observation reads and
+rejects a blocked output with positive facts. These are offline contracts.
+
+Keep the original mixed selector unchanged:
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs
+--standard-mode-work-resume-mode=files --standard-mode-work-session=EXPLORING
+--standard-mode-work-resume-disposition=retain_requested --retain-always`.
+Also run the separate dual and db-only cases. They must reach the actual v2
+SPIKE question, authenticate continuation with no conversion selection, retain
+the original blocked evaluation and prefix, and execute the next analysis only
+after the separately authenticated Native epoch. Wrong question, subject and
+author still refuse. The original grant and cumulative response/storage debits
+remain unchanged. Run actual SPIKE conversion separately to prove its selected
+route still invokes initialization/finalization after the analysis loop.
+Source registration or synthetic reducer traversal alone is not a mixed-host
+PASS; genuine actors, installed execution and the full plan remain separate.

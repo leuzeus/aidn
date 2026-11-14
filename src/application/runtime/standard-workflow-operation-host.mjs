@@ -1558,7 +1558,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "cycle_terminal_checkpoint" ? await terminalCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_TERMINAL_CHECKPOINT_AUTHORITY_REQUIRED")
         : binding.id === "session_git_checkpoint" ? await sessionGitCheckpoint.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === "spike_conversion_admit" ? await spike.admit(state.record, input)
-        : binding.id === "spike_conversion_decision" ? await spike.prepareDecision(state.record, input)
+        : binding.id === "spike_conversion_decision" ? await spike.prepareDecision(state.record, input, { analysisContinuation: binding.output_contract === "standard-spike-decision-output.v2" })
         : binding.id === "spike_cycle_initialize" ? await spike.prepareInitialize(state.record, input)
         : binding.id === "spike_conversion_finalize" ? await spike.prepareFinalize(state.record, input)
         : binding.id === "spike_experiment_admit" ? await spike.experimentAdmission(state.record, input)
@@ -1861,7 +1861,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "cycle_work_evaluate") output = await processAuthority?.evaluateCycleWork(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_WORK_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "cycle_validation_evaluate") output = (await evaluateValidation(state.record, record.preview.input)).output;
         else if (record.intent.binding_ref === "cycle_audit_evaluate") output = await evaluateAudit(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "spike_conversion_admit") output = await spike.admit(state.record, record.preview.input);
+        else if (record.intent.binding_ref === "spike_conversion_admit") output = await spike.admit(state.record, record.preview.input, { analysisContinuation: record.preview.binding.revision >= 2 });
+        else if (record.intent.binding_ref === "spike_conversion_select") output = await spike.selectConversion(state.record, record.preview.input);
         else if (record.intent.binding_ref === "spike_experiment_admit") output = await spike.experimentAdmission(state.record, record.preview.input);
         else if (record.intent.binding_ref === "spike_experiment_execution_admit") output = await spike.experimentExecutionAdmission(state.record, record.preview.input);
         else if (record.intent.binding_ref === "cycle_plan_select") output = await selectCyclePlan(state.record);

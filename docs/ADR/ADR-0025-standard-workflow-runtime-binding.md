@@ -1,5 +1,34 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Retention request and analysis continuation, 2026-11-14
+
+The existing EXPLORING SPIKE question now offers both `convert-to-spike` and
+`continue_analysis`, followed by refusal, deferral and cancellation. It binds
+the same authenticated analysis, canonical inventory and session/continuity
+subject. No extra human question is introduced. Continuing requests another
+read-only analysis occurrence; it grants no retention, product effect or Native
+authorization renewal. Conversion remains subject to its existing separately
+admitted initializer, exact effect grant and confirmed finalization.
+
+The private v2 SPIKE question/source/output and inbox v20 preserve the closed
+historical v1/v11 readers. Old claim versions can select only their original
+choices, bound to the actual current question. A v2 mode observation separates
+`mode_analysis_loop_complete`, a control fact, from actual
+`mode_analysis_completed`. Choosing conversion exits the analysis loop without
+claiming conversion or analysis completion; the existing conversion sequence
+runs after that loop. A read-only selector authenticates the accepted decision,
+its receipt, H source and current subject before exporting its operation identity
+across the loop boundary; it supplies no effect permission. Continuing resets
+the control fact and returns to a fresh
+analysis occurrence. Existing node, iteration and finite Native limits remain.
+A blocked observation retains its typed reason with no positive facts.
+
+These are candidate source changes. Exact-source contract, reducer and mixed-host
+qualification must be recorded separately. Prior CI failures remain failures;
+fixture Human/Native ports, injected expiry and separately authenticated epochs
+do not establish genuine actors, installed behavior or full STANDARD acceptance.
+
+
 ## Canonical cycle-choice human port component, 2026-11-13
 
 The fixed host registers the read-only H binding `cycle_entry_choice_decision`.

@@ -12,7 +12,7 @@ import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifac
 import { parseSessionMetadata } from "../../lib/workflow/session-context-lib.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { assertModeWorkObservationOutput } from "../../core/workflow/standard-mode-work-continuation.mjs";
-import { assertSpikeReview, assertSpikeDecisionOutput, spikeConversionChoices } from "../../core/workflow/standard-spike-decision.mjs";
+import { assertSpikeReview, assertSpikeDecisionOutput, spikeConversionChoices, spikeConversionChoicesV2 } from "../../core/workflow/standard-spike-decision.mjs";
 import { assertStandardOperationInput, assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import initializeSchema from "../../core/contracts/workflow-definition/standard-spike-initialize-plan.v1.schema.json" with { type: "json" };
@@ -65,6 +65,7 @@ export function createStandardSpikeConversion({ targetRoot, operations, readAcce
   };
   function analysis(instance, id) {
     const accepted = readAcceptedOperation(instance, id, "mode_work_observe"), output = assertModeWorkObservationOutput(accepted.output);
+    if (output.outcome !== "completed") fail("STANDARD_SPIKE_ANALYSIS_STALE");
     const fresh = observeModeWork(instance, accepted.record.preview.input);
     if (shadowHash(fresh) !== shadowHash(output)) fail("STANDARD_SPIKE_ANALYSIS_STALE");
     return { accepted, review: output.observations.review };
@@ -75,12 +76,12 @@ export function createStandardSpikeConversion({ targetRoot, operations, readAcce
     return { prewrite, lifecycle, allowed: prewrite.ok === true && prewrite.activation?.active === true
       && ["admitted", "admitted_with_warnings"].includes(prewrite.admission_status) && lifecycle.ok === true };
   }
-  async function prepareDecision(instance, input) {
+  async function prepareDecision(instance, input, { analysisContinuation = false } = {}) {
     assertStandardOperationInput("spike_conversion_decision", input); active(instance);
     const before = analysis(instance, input.review_operation_id);
     if (before.review.mode !== "EXPLORING" || before.review.report.disposition !== "retain_requested") fail("STANDARD_SPIKE_RETENTION_REQUEST_REQUIRED");
     const admitted = await admission(); active(instance);
-    if (!admitted.allowed) fail("STANDARD_SPIKE_ADMISSION_BLOCKED");
+    if (!analysisContinuation && !admitted.allowed) fail("STANDARD_SPIKE_ADMISSION_BLOCKED");
     const inventory = artifacts.cycles().map(row => ({ cycle_id: row.cycle_id, path: row.path, sha256: row.sha256, metadata_sha256: artifacts.metadataHash(row.path) }));
     const minimum = Math.max(0, ...inventory.map(row => Number(row.cycle_id.slice(1)))) + 1;
     const session = artifacts.sessions().find(row => row.session_id === before.review.session_id), current = artifacts.read("CURRENT-STATE.md", { required: true });
@@ -89,10 +90,12 @@ export function createStandardSpikeConversion({ targetRoot, operations, readAcce
     const review = assertSpikeReview({ contract_version: "standard-spike-review.v1", analysis: before.review,
       inventory_sha256: shadowHash(inventory), minimum_cycle_number: minimum, continuity_sha256: shadowHash(continuity(admitted.lifecycle)),
       session_sha256: session.sha256, current_sha256: current.sha256 });
-    return { review, choices: [...spikeConversionChoices] };
+    return { review, choices: [...(analysisContinuation ? spikeConversionChoicesV2 : spikeConversionChoices)] };
   }
   async function assertFresh(instance, input, prepared) {
-    if (shadowHash(await prepareDecision(instance, input)) !== shadowHash(prepared)) fail("STANDARD_SPIKE_REVIEW_STALE");
+    if (!Array.isArray(prepared?.choices)) fail("STANDARD_SPIKE_REVIEW_STALE");
+    const analysisContinuation = shadowHash(prepared.choices) === shadowHash(spikeConversionChoicesV2);
+    if (shadowHash(await prepareDecision(instance, input, { analysisContinuation })) !== shadowHash(prepared)) fail("STANDARD_SPIKE_REVIEW_STALE");
   }
   async function selected(instance, input) {
     const source = readAcceptedOperation(instance, input.decision_operation_id, "spike_conversion_decision");
@@ -104,7 +107,9 @@ export function createStandardSpikeConversion({ targetRoot, operations, readAcce
   }
   async function prepareInitialize(instance, input, at = now()) {
     assertStandardOperationInput("spike_cycle_initialize", input); active(instance);
-    const decision = await selected(instance, input), admitted = await operations.admitCycle(); active(instance);
+    const decision = await selected(instance, input), retention = await admission(); active(instance);
+    if (!retention.allowed) return { can_apply: false, admission: retention };
+    const admitted = await operations.admitCycle(); active(instance);
     if (admitted.outcome !== "completed") return { can_apply: false, admission: admitted };
     const lifecycle = admitted.observations.lifecycle, selection = decision.selection;
     const inner = await operations.prepareSpikeCycle({ session_id: decision.review.analysis.session_id, cycle_id: selection.cycle_id, cycle_type: "spike",
@@ -135,12 +140,23 @@ export function createStandardSpikeConversion({ targetRoot, operations, readAcce
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }
   return Object.freeze({ prepareDecision, assertFresh, prepareInitialize, prepareFinalize,
-    async admit(instance, input) {
+    async selectConversion(instance, input) {
+      assertStandardOperationInput("spike_conversion_select", input); active(instance);
+      const intent = instance.events.findLast(event => event.kind === "operation_intent" && event.intent.binding_ref === "spike_conversion_decision")?.intent;
+      if (!intent) fail("STANDARD_SPIKE_DECISION_REQUIRED");
+      const decision = await selected(instance, { decision_operation_id: intent.operation_id }); active(instance);
+      const result = decision.source.record.results.at(-1);
+      return assertStandardOperationOutput({ contract_version: "standard-spike-selection-output.v1", operation_ref: "spike_conversion_select",
+        outcome: "completed", effect_status: "no_effect", facts: {}, evidence_refs: [], observations: {
+          decision_operation_id: intent.operation_id, receipt_sha256: shadowHash(result.receipt), output_sha256: shadowHash(decision.source.output),
+          product_effects_authorized: false, retention_authorized: false, native_authority_renewed: false } });
+    },
+    async admit(instance, input, { analysisContinuation = false } = {}) {
       assertStandardOperationInput("spike_conversion_admit", input); active(instance);
       const source = analysis(instance, input.review_operation_id), requested = source.review.mode === "EXPLORING" && source.review.report.disposition === "retain_requested";
       const admitted = requested ? await admission() : null; active(instance);
-      return emit("spike_conversion_admit", requested && !admitted.allowed ? "blocked" : "completed", "no_effect", { requested, admission: admitted },
-        requested && !admitted.allowed ? {} : { mode_work_spike_requested: requested });
+      return emit("spike_conversion_admit", requested && !admitted.allowed && !analysisContinuation ? "blocked" : "completed", "no_effect", { requested, admission: admitted },
+        requested && !admitted.allowed && !analysisContinuation ? {} : { mode_work_spike_requested: requested });
     },
     async initialize(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
       explicit(prepared, write, expectPlan); const plan = planValid(prepared.plan, initializeSchema); active(instance);
