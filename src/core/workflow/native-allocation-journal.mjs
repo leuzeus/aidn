@@ -1,3 +1,5 @@
+import schemaV4 from "../contracts/workflow-definition/native-allocation-journal.v4.schema.json" with { type: "json" };
+import { assertNativeReconciliationReceipt, nativeAllocationResolution } from "./native-allocation-reconciliation.mjs";
 import schema from "../contracts/workflow-definition/native-allocation-journal.v1.schema.json" with { type: "json" };
 import schemaV2 from "../contracts/workflow-definition/native-allocation-journal.v2.schema.json" with { type: "json" };
 import schemaV3 from "../contracts/workflow-definition/native-allocation-journal.v3.schema.json" with { type: "json" };
@@ -14,10 +16,33 @@ export function nativeJournalPath(id) {
   return `workflows/native-allocations/${id}.json`;
 }
 export function assertNativeAllocationJournal(value) {
+  const reconciled = value?.contract_version === "native-allocation-journal.v4";
   const epochs = value?.contract_version === "native-allocation-journal.v2";
   const initialEpoch = value?.contract_version === "native-allocation-journal.v3";
-  if (checkShadowJson(value) || validateJsonSchema(value, initialEpoch ? schemaV3 : epochs ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length) fail("NATIVE_ALLOCATION_JOURNAL_INVALID");
-  if (initialEpoch) assertNativeEpochHistory(value);
+  if (checkShadowJson(value) || validateJsonSchema(value, reconciled ? schemaV4 : initialEpoch ? schemaV3 : epochs ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length) fail("NATIVE_ALLOCATION_JOURNAL_INVALID");
+  if (initialEpoch || reconciled) assertNativeEpochHistory(value);
+  if (reconciled) {
+    const origin = assertNativeAllocationJournal(value.origin_journal), count = origin.allocations.length;
+    if (!count || origin.allocations.at(-1).phase !== "failed" || value.revision <= origin.revision
+      || origin.journal_id !== value.journal_id || origin.instance_id !== value.instance_id
+      || origin.scope_id !== value.scope_id || origin.model_sha256 !== value.model_sha256
+      || shadowHash(origin.allocations) !== shadowHash(value.allocations.slice(0, count))
+      || shadowHash(origin.epochs ?? []) !== shadowHash(value.epochs.slice(0, origin.epochs?.length ?? 0))
+      || origin.initial_authorization && shadowHash(origin.initial_authorization) !== shadowHash(value.initial_authorization))
+      fail("NATIVE_RECONCILIATION_ORIGINAL_JOURNAL_CHANGED");
+    let previous = count - 1;
+    const reconciliationSources = new Set();
+    for (const [index, receipt] of value.reconciliations.entries()) {
+      const generation = receipt.request.generation;
+      if (generation <= previous || generation > value.allocations.length
+        || index === 0 && (generation !== count || receipt.request.journal_sha256 !== shadowHash(origin)))
+        fail("NATIVE_RECONCILIATION_HISTORY_INVALID");
+      assertNativeReconciliationReceipt(receipt, { journal: value, entry: value.allocations[generation - 1] });
+      const source = shadowHash([receipt.grant.authority_id, receipt.grant.source_event_id]);
+      if (reconciliationSources.has(source)) fail("NATIVE_RECONCILIATION_SOURCE_REUSED");
+      reconciliationSources.add(source); previous = generation;
+    }
+  }
   if (epochs) {
     const { initial_authorization, origin_journal, epochs: history, ...legacy } = value;
     // Same allocation schema, without changing the historical v1 revision cap.
@@ -34,7 +59,8 @@ export function assertNativeAllocationJournal(value) {
   for (const [index, entry] of value.allocations.entries()) {
     if (entry.generation !== index + 1 || entry.limits.configuration_sha256 !== entry.configuration_sha256
       || entry.limits.workflow_deadline_ms > entry.limits.global_deadline_ms || entry.limits.authorized_at_ms >= entry.limits.global_deadline_ms) fail("NATIVE_ALLOCATION_GENERATION_INVALID");
-    if (index < value.allocations.length - 1 && entry.phase !== "closed") fail("NATIVE_ALLOCATION_PREDECESSOR_UNRESOLVED");
+    if (index < value.allocations.length - 1 && entry.phase !== "closed"
+      && !(reconciled && nativeAllocationResolution(entry, value.reconciliations))) fail("NATIVE_ALLOCATION_PREDECESSOR_UNRESOLVED");
     if (entry.phase === "reserved" && ([entry.owned_result_sha256, entry.tree_proof_sha256, entry.checkpoint, entry.closure_ref,
       entry.consumption, entry.owned_status, entry.first_failure].some(item => item !== null) || entry.tree_closed)) fail("NATIVE_ALLOCATION_RESERVATION_INVALID");
     if (entry.phase !== "reserved" && (entry.owned_status === null || entry.owned_result_sha256 === null || entry.tree_proof_sha256 === null)) fail("NATIVE_ALLOCATION_OBSERVATION_MISSING");
@@ -45,8 +71,11 @@ export function assertNativeAllocationJournal(value) {
     if (entry.phase === "closed" && (entry.consumption.responses_observed > entry.limits.max_responses
       || entry.consumption.storage_debit_bytes > entry.limits.max_bytes)) fail("NATIVE_ALLOCATION_CONSUMPTION_EXCEEDS_LIMIT");
     const epoch = nativeEpochForGeneration(value, entry.generation);
+    const priorReconciliation = reconciled ? value.reconciliations.findLast(row => row.request.generation < entry.generation) : null;
+    if (priorReconciliation && (!epoch || epoch.start_generation <= priorReconciliation.request.generation))
+      fail("NATIVE_RECONCILIATION_NEW_AUTHORIZATION_REQUIRED");
     if (epoch) {
-      const totals = nativeAllocationTotals(value.allocations.slice(0, index)), grant = epoch.grant.authorization;
+      const totals = nativeAllocationTotals(value.allocations.slice(0, index), value.reconciliations), grant = epoch.grant.authorization;
       const effective = { ...grant, max_responses: grant.max_responses - totals.responses, max_bytes: grant.max_bytes - totals.bytes };
       if (!totals.known || shadowHash(entry.limits) !== shadowHash(nativeLimitsOf(effective))
         || entry.authorization_sha256 !== shadowHash(effective)) fail("NATIVE_EPOCH_ALLOCATION_UNBOUND");

@@ -1,3 +1,4 @@
+import { nativeAllocationResolution } from "./native-allocation-reconciliation.mjs";
 import authorizationSchema from "../contracts/workflow-definition/native-authorization.v1.schema.json" with { type: "json" };
 import requestSchema from "../contracts/workflow-definition/native-authorization-epoch-request.v1.schema.json" with { type: "json" };
 import initialRequestSchema from "../contracts/workflow-definition/native-authorization-epoch-request.v2.schema.json" with { type: "json" };
@@ -18,10 +19,13 @@ export function assertNativeAuthorization(value) {
     || value.global_deadline_ms - value.authorized_at_ms > 10800000) fail("NATIVE_EPOCH_AUTHORIZATION_INVALID");
   return value;
 }
-export function nativeAllocationTotals(entries) {
-  if (entries.some(entry => entry.phase !== "closed" || !entry.consumption)) return { known: false, responses: null, bytes: null };
-  return { known: true, responses: entries.reduce((sum, entry) => sum + entry.consumption.responses_observed, 0),
-    bytes: entries.reduce((sum, entry) => sum + entry.consumption.storage_debit_bytes, 0) };
+export function nativeAllocationTotals(entries, reconciliations = []) {
+  const resolved = entries.map(entry => nativeAllocationResolution(entry, reconciliations));
+  if (resolved.some(value => value === null)) return { known: false, responses: null, bytes: null };
+  const responses = resolved.reduce((sum, value) => sum + value.consumption.responses_observed, 0);
+  const bytes = resolved.reduce((sum, value) => sum + value.consumption.storage_debit_bytes, 0);
+  if (!Number.isSafeInteger(responses) || !Number.isSafeInteger(bytes)) fail("NATIVE_ALLOCATION_CONSUMPTION_OVERFLOW");
+  return { known: true, responses, bytes };
 }
 export function assertNativeEpochRequest(value) {
   valid(value, value?.contract_version === "native-authorization-epoch-request.v2" ? initialRequestSchema : requestSchema, "NATIVE_EPOCH_REQUEST_INVALID"); assertNativeAuthorization(value.initial_authorization);
@@ -44,10 +48,11 @@ export function assertNativeEpochGrant(value, request) {
 }
 export function assertNativeEpochHistory(record) {
   assertNativeAuthorization(record.initial_authorization);
-  const first = record.allocations[0], initialEntry = record.contract_version === "native-allocation-journal.v3";
+  const first = record.allocations[0], origin = record.contract_version === "native-allocation-journal.v4" ? record.origin_journal : record;
+  const initialEntry = origin.contract_version === "native-allocation-journal.v3";
   if (!initialEntry && (shadowHash(record.initial_authorization) !== first.authorization_sha256
     || shadowHash(nativeLimitsOf(record.initial_authorization)) !== shadowHash(first.limits))) fail("NATIVE_EPOCH_ORIGINAL_AUTHORIZATION_CHANGED");
-  if (initialEntry && (record.origin_journal !== null || record.epochs[0].start_generation !== 1
+  if (initialEntry && (origin.origin_journal !== null || record.epochs[0].start_generation !== 1
     || record.epochs[0].request.contract_version !== "native-authorization-epoch-request.v2"
     || record.epochs[0].request.journal_sha256 !== shadowHash(null)
     || record.epochs[0].request.issued_at_ms < Math.min(record.initial_authorization.global_deadline_ms, record.initial_authorization.workflow_deadline_ms)))
@@ -56,8 +61,11 @@ export function assertNativeEpochHistory(record) {
   const sources = new Set();
   for (const [index, epoch] of record.epochs.entries()) {
     const request = assertNativeEpochRequest(epoch.request), grant = assertNativeEpochGrant(epoch.grant, request);
-    const prefix = record.allocations.slice(0, epoch.start_generation - 1), consumption = nativeAllocationTotals(prefix);
+    const prefix = record.allocations.slice(0, epoch.start_generation - 1), consumption = nativeAllocationTotals(prefix, record.reconciliations);
     const sourceId = shadowHash([grant.authority_id, grant.source_event_id]);
+    const reconciledPrefix = record.reconciliations?.filter(row => row.request.generation < epoch.start_generation) ?? [];
+    if (reconciledPrefix.some(row => row.confirmed_at_ms > request.issued_at_ms))
+      fail("NATIVE_RECONCILIATION_NEW_AUTHORIZATION_REQUIRED");
     if (epoch.epoch !== index + 2 || request.epoch !== epoch.epoch || request.next_generation !== epoch.start_generation
       || epoch.start_generation < previousStart || epoch.start_generation > record.allocations.length + 1
       || request.instance_id !== record.instance_id || request.scope_id !== record.scope_id || request.model_sha256 !== record.model_sha256
@@ -75,7 +83,7 @@ export const nativeEpochForGeneration = (record, generation) => record.epochs?.f
 export function effectiveNativeEpochAuthorization(record, authorization) {
   const active = record.epochs.at(-1);
   if (shadowHash(authorization) !== shadowHash(active.grant.authorization)) fail("NATIVE_EPOCH_EXACT_GRANT_REQUIRED");
-  const totals = nativeAllocationTotals(record.allocations);
+  const totals = nativeAllocationTotals(record.allocations, record.reconciliations);
   if (!totals.known) fail("NATIVE_ALLOCATION_CONSUMPTION_UNKNOWN");
   return { ...authorization, max_responses: authorization.max_responses - totals.responses, max_bytes: authorization.max_bytes - totals.bytes };
 }

@@ -874,3 +874,14 @@ allows a cold repreneur to finish acknowledgement without repeating a confirmed
 physical effect. It does not close the allocation, establish known accounting,
 renew Native authority or resume the workflow. Public entry actions and the
 remaining R10/handoff journey still require their own implementation and proof.
+
+### Native allocation reconciliation reader candidate
+
+The private v4 journal reader preserves the exact original failed allocation
+and signed legacy journal while retaining a separately verified closure and
+non-refunded debit proof. It accepts only the no-assignment data profile and
+requires a distinct later Native authorization epoch before another generation
+can validate. Its pure fixtures use synthetic resource/source observations.
+No producer, real reconciliation effect, public action, post-assignment
+resolution or Native execution permission is implemented by these readers.
+General R10/handoff and complete workflow qualification remain open.

@@ -820,3 +820,14 @@ Native execution grant. The signed physical-effect receipt remains immutable
 while separate attempt/fence records describe cold recovery. Original journals
 remain unchanged and all resume, renewal, accounting-reconciliation and
 complete-resource-closure permissions are false.
+
+Private native-allocation reconciliation request, grant and receipt v1 are
+closed data contracts for the no-assignment profile. Their subject includes
+exact allocation/dispatch/checkpoint/prefix, inventory, physical root and owner
+retirement digests. The grant binds complete allocation-and-scope closure and
+a non-refunded final debit; the receipt binds its independent verification.
+Journal v4 retains the full signed v1/v2/v3 origin and exact failed allocations
+with ordered proofs. A separate later authorization epoch is mandatory before
+a subsequent generation. These readers supply no source authentication,
+writer, conversion, public CLI action or execution permission. All historical
+versions keep their closed schemas and behavior.

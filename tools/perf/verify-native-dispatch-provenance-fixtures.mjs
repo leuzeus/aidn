@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { verifyNativeReconciliationKernel, verifyNativeReconciliationKernelStorage } from './native-reconciliation-kernel-fixture-lib.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -78,8 +79,9 @@ for (const [name, mutate] of [
   const body = structuredClone(fixtureBody()); mutate(body);
   assert.throws(() => assertNativeDispatchRecord(signer.seal(body)), { code: 'NATIVE_DISPATCH_RECORD_INVALID' });
 });
+const nativeReconciliationFixture = verifyNativeReconciliationKernel(test);
 if (contractsOnly) {
-  console.log(JSON.stringify({ ok: true, checks, scope: 'NATIVE_DISPATCH_DATA_CONTRACTS_ONLY', effect_owner_port: 'NOT_RUN', Native_calls: 0, full_standard: false }));
+  console.log(JSON.stringify({ ok: true, checks, scope: 'NATIVE_DISPATCH_AND_RECONCILIATION_KERNEL_DATA_CONTRACTS_ONLY', effect_owner_port: 'NOT_RUN', Native_calls: 0, full_standard: false }));
 } else {
   const { createFreshStandardWorkflowFixture } = await import('./standard-workflow-fixture-lib.mjs');
   const { createStandardProcessAuthority } = await import('../../src/application/runtime/standard-process-authority.mjs');
@@ -99,6 +101,7 @@ if (contractsOnly) {
     } }; visit(root); return { files, directories };
   };
   const owned = [], results = [];
+  await verifyNativeReconciliationKernelStorage(mode, nativeReconciliationFixture, test, owned);
   for (const point of ['returned', 'epoch_returned', 'unknown', 'native_owner_reserved', 'native_fence_acquired', 'native_owner_declared', 'native_owner_released', 'native_dispatch_returned']) {
     const root = createFreshStandardWorkflowFixture(mode, owned), artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
     const binding = standardWorkflowOperationBindings().find(row => row.id === 'context_reload');

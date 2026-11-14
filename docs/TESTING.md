@@ -6162,8 +6162,9 @@ variants retain unknown assignment. Stale prefixes, foreign configuration,
 generation changes, write flags and corrupted checkpoint bytes also refuse.
 Every normal observation preserves fixture bytes and directories.
 
-The `--contracts-only` selector retains its original Native dispatch DTO scope;
-the allocation-assessment cases require one of the three actual backend modes.
+The `--contracts-only` selector covers Native dispatch DTOs and the pure
+reconciliation readers; allocation-assessment and owner-port cases require
+one of the three actual backend modes.
 Historical-source observations, actual interrupted trees, concurrent recovery,
 exact owner disposition, general R10/handoff, genuine Native and installed
 archive qualification remain separate. Existing required case order, argv and
@@ -6191,3 +6192,16 @@ inside an OS/filesystem/database primitive. All original required argv/order
 and finite Native grants remain unchanged. Actual abrupt crash, post-assignment
 reconciliation, public entry, general R10/handoff, genuine Native and installed
 archive qualification remain separate.
+
+## Native allocation reconciliation reader candidate
+
+The existing Native dispatch provenance commands also run the pure Native
+reconciliation kernel fixture. It covers exact v1/v2/v3 origins and retained
+failures, non-refunded storage and prior response debits, two separately
+reconciled generations, distinct later authorization epochs, and refusal of
+backdated/reused/foreign/incomplete proofs and permission claims. Arithmetic
+overflow refuses. These are closed-data fixtures: owner retirement, source
+verification, resource closure and consent are synthetic, with zero Native
+calls. They do not exercise a producer, canonical reconciliation write, public
+entry, post-assignment effect, real resource termination or workflow resume.
+Original required command argv/order and finite Native grants remain unchanged.

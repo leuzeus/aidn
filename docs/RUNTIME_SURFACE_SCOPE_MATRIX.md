@@ -488,3 +488,9 @@ operator grant, attempt/fence intention and physical-retirement receipt under
 `workflows/native-owner-dispositions/`. It adds no table, shared coordination
 method, native grant or automatic DB-only export. The physical archive stays
 local; original failed journals, unknown accounting and contributions remain.
+
+Native reconciliation journal v4 currently has closed private readers only
+within the existing native-allocation artifact. Exact legacy origin and failed
+entries remain retained; reconciliation data cannot grant a new execution
+budget or global resource closure. There is no producer, automatic conversion,
+new table, shared coordination surface or visible export in this tranche.

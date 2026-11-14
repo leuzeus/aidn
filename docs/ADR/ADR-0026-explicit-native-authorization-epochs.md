@@ -438,3 +438,35 @@ or complete resource closure. Unproved post-assignment effects stay unresolved.
 Public entry actions, general R10/handoff, actual abrupt crash/concurrent
 qualification, genuine Native and the exact installed archive remain separate
 until their required executable evidence exists.
+
+## Native allocation reconciliation reader candidate, 2026-11-14
+
+Private journal v4 retains an exact signed v1, v2 or v3 origin, every original
+allocation and epoch, and a bounded ordered reconciliation-receipt history.
+Original failed phases, failures and observed consumption remain unchanged.
+Its current no-assignment profile binds the exact allocation, dispatch,
+checkpoint, original prefix, physical root, inventory and owner-retirement
+receipt. The closed request, independently sourced closure/accounting grant
+and verification are retained together. Closure must cover both the exact
+allocation and its Native scope. A receipt grants no effect, workflow resume,
+Native renewal or complete workflow-resource closure.
+
+Pure readers accept known accounting only from that exact closed proof and
+never reduce an original debit. They preserve earlier response/storage debits,
+refuse duplicate or reordered reconciliation and reused source events, and
+require a distinct authorization epoch after reconciliation before a later
+allocation can validate. A backdated epoch cannot use a later reconciliation.
+The v4 revision bound is 128: one origin transition plus at most 32 reservations,
+32 returns, 31 authorization epochs and 32 reconciliations. Allocation count
+and execution ceilings remain unchanged. V1-v3 schemas and readers retain
+their historical behavior; reading never converts or writes a journal.
+
+This prerequisite adds data readers, not a reconciliation producer. No trusted
+source capture, durable CAS writer, Native execution admission, public action,
+post-assignment effect reconciliation or resource termination is supplied here.
+A host MAC alone authenticates none of those observations. Current execution
+exclusion remains in force. Independent source verification, current-state
+fencing and explicit writes must precede any real v4 creation; a new finite
+Native grant and the common workflow/business admissions remain separate.
+Pure fixture grants and closure claims are synthetic. General R10/handoff,
+full STANDARD, genuine Native and installed qualification remain unfinished.

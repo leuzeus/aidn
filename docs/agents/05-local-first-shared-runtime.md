@@ -466,3 +466,13 @@ former creator to be terminated and preserves the original physical witness.
 Original allocation/dispatch records and unknown accounting remain unchanged.
 A signed owner-retirement receipt creates no allocation, resume permission,
 shared coordination surface, new principal or anti-rollback guarantee.
+
+The private Native reconciliation journal v4 is a reader candidate within the
+existing native_allocation_journal concept and canonical artifact namespace.
+It retains an exact legacy origin and failed entries plus bounded, closed
+reconciliation proofs. It adds no backend, table, shared coordination method,
+projection or migration. No runtime producer emits or converts this version
+yet; current Native exclusion remains in force. A future explicit writer must
+authenticate independent resource/accounting observations and current owner,
+physical subject and CAS before sealing it. Data validity alone establishes
+none of those authorities or complete workflow-resource closure.
