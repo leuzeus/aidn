@@ -11,6 +11,7 @@ import { validateJsonSchemaDefinition, validateJsonSchema } from "../../src/core
 import catalogSchemaV3 from "../../src/core/contracts/workflow-definition/standard-workflow-catalog.v3.schema.json" with { type: "json" };
 import catalogSchemaV4 from "../../src/core/contracts/workflow-definition/standard-workflow-catalog.v4.schema.json" with { type: "json" };
 import catalogSchemaV5 from "../../src/core/contracts/workflow-definition/standard-workflow-catalog.v5.schema.json" with { type: "json" };
+import catalogSchemaV6 from "../../src/core/contracts/workflow-definition/standard-workflow-catalog.v6.schema.json" with { type: "json" };
 import { processModelIdentity } from "../../src/core/workflow/process-call-model.mjs";
 import { advanceAgenticProcess, createAgenticProcess, inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
 import { resolveProcessFrameInput } from "../../src/core/workflow/process-frame-input.mjs";
@@ -89,7 +90,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 191); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 204); assert.equal(assets.catalog.activities.length, 23);
 });
 test("all corrective R05 sites bind their own evaluation and consume the shared finalizer return", () => {
   const target = assets.model.call_targets.find(row => row.model_id === "aidn-standard-corrective-drift"),
@@ -585,34 +586,42 @@ test("the published recovery call routes confirmed findings to the selected CR, 
     }
   }
 });
-test("published cycle entry preserves fresh preconditions and selects canonical adoption without a Native planner", () => {
-  assert.equal(assets.catalog.contract_version, "standard-workflow-catalog.v5");
-  assert.deepEqual(assets.catalog.scope.entry_conditions, ["fresh_or_existing_session_admission", "fresh_or_owned_open_cycle"]);
+test("published cycle entry preserves creation preconditions and separates owned progress from explicit selection", () => {
+  assert.equal(assets.catalog.contract_version, "standard-workflow-catalog.v6");
+  assert.deepEqual(assets.catalog.scope.entry_conditions, ["fresh_or_existing_session_admission", "fresh_owned_or_explicitly_selected_active_cycle"]);
   const node = id => assets.model.nodes.find(row => row.id === id);
   assert.deepEqual(node("committing").children, ["cycle_refresh_before", "cycle_entry_observe", "cycle_entry_route"]);
   assert.deepEqual(node("cycle_entry_route").branches, [
     { flow_id: "fresh", node_id: "fresh_cycle", condition: "cycle_entry_fresh_context" },
-    { flow_id: "owned", node_id: "owned_cycle", condition: "cycle_entry_owned_context" }
+    { flow_id: "owned", node_id: "owned_cycle", condition: "cycle_entry_owned_context" },
+    { flow_id: "choice", node_id: "selected_cycle", condition: "cycle_entry_choice_required" }
   ]);
   assert.equal(node("cycle_entry_observe").binding_ref, "cycle_entry_observe");
-  assert.equal(node("cycle_entry").binding_ref, "cycle_entry_admit"); assert.equal(node("plan_adopt").binding_ref, "cycle_plan_adopt");
-  assert.deepEqual(node("owned_cycle").children, ["owned_cycle_entry", "plan_adopt"]);
-  assert.equal(node("owned_cycle_entry").binding_ref, "cycle_entry_admit");
-  assert.equal(node("plan_adopt").kind, "operation");
-  assert.equal(assets.catalog.bindings.find(row => row.node_id === "plan_adopt").binding.effect_class, "read-only");
+  assert.equal(node("cycle_entry").binding_ref, "cycle_entry_admit"); assert.equal(node("plan_adopt"), undefined);
+  const owned = assets.model.call_targets.find(row => row.model_id === "aidn-standard-owned-entry");
+  assert.deepEqual(node("owned_cycle").target, processModelIdentity(owned.model));
+  assert.deepEqual(owned.model.nodes.find(row => row.id === "owned_entry").children, ["entry", "resume"]);
+  assert.equal(owned.model.nodes.find(row => row.id === "entry").binding_ref, "cycle_entry_admit");
+  assert.equal(owned.model.nodes.find(row => row.id === "resume").binding_ref, "cycle_owned_resume_admit");
+  assert.equal(assets.catalog.bindings.find(row => row.node_id === "resume" && row.model_ref?.model_id === owned.model_id).binding.effect_class, "read-only");
   assert.ok(node("fresh_cycle").children.includes("cycle_initialize"));
   assert.deepEqual(node("fresh_cycle").children.slice(0, 3), ["session_git_checkpoint", "cycle_entry", "cycle_admit"]);
   assert.deepEqual(node("fresh_cycle").children.slice(-3), ["plan", "plan_evaluate", "plan_record"]);
   assert.equal(assets.model.nodes.filter(row => row.kind === "activity").length, 23);
   assert.equal(assets.model.nodes.length, 255); assert.ok(assets.model.nodes.length <= 256);
 });
-test("catalog v5 changes its entry declaration while the closed v4 format stays readable", () => {
-  assert.deepEqual(validateJsonSchema(assets.catalog, catalogSchemaV5, "$", { contractKind: "workflow-definition" }), []);
+test("catalog v6 declares active/selected entry while the closed v4/v5 formats retain their scopes", () => {
+  assert.deepEqual(validateJsonSchema(assets.catalog, catalogSchemaV6, "$", { contractKind: "workflow-definition" }), []);
+  assert.ok(validateJsonSchema(assets.catalog, catalogSchemaV5, "$", { contractKind: "workflow-definition" }).length > 0);
   assert.ok(validateJsonSchema(assets.catalog, catalogSchemaV4, "$", { contractKind: "workflow-definition" }).length > 0);
   const legacy = structuredClone(assets.catalog); legacy.contract_version = "standard-workflow-catalog.v4";
   legacy.scope.entry_conditions = ["fresh_or_existing_session_admission", "single_new_cycle"];
   assert.deepEqual(validateJsonSchema(legacy, catalogSchemaV4, "$", { contractKind: "workflow-definition" }), []);
   assert.ok(validateJsonSchema(legacy, catalogSchemaV5, "$", { contractKind: "workflow-definition" }).length > 0);
+  legacy.contract_version = "standard-workflow-catalog.v5";
+  legacy.scope.entry_conditions = ["fresh_or_existing_session_admission", "fresh_or_owned_open_cycle"];
+  assert.deepEqual(validateJsonSchema(legacy, catalogSchemaV5, "$", { contractKind: "workflow-definition" }), []);
+  assert.ok(validateJsonSchema(legacy, catalogSchemaV6, "$", { contractKind: "workflow-definition" }).length > 0);
 });
 test("completion of this component cannot claim completion of the standard workflow", () => {
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);
@@ -705,12 +714,13 @@ test("the ordinary loader authenticates the two final-verification operations fo
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV3, "#", { contractKind: "workflow-definition" }), []);
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV4, "#", { contractKind: "workflow-definition" }), []);
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV5, "#", { contractKind: "workflow-definition" }), []);
+  assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV6, "#", { contractKind: "workflow-definition" }), []);
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 255);
-  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 141);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 50);
+  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 137);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 67);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
-  assert.equal(loaded.model.call_targets.length, 8);
+  assert.equal(loaded.model.call_targets.length, 12);
   assert.equal(child.model_id, "aidn-standard-final-verification");
   assert.deepEqual(identity, processModelIdentity(child));
   const sites = loaded.model.nodes.filter(node => node.target?.model_id === child.model_id);
@@ -743,7 +753,9 @@ test("distinct pinned targets may share both local operation IDs", () => {
 });
 test("a target operation may share a root node ID while pinning a different binding", () => {
   const input = fresh(), row = targetRow(input);
-  const localId = row.node_id, rootRow = input.catalog.bindings.find(row => row.node_id === "validate");
+  const localId = row.node_id, rootRow = input.catalog.bindings.find(row => !row.model_ref && row.node_id === "validate");
+  const unrelated = input.catalog.bindings.filter(candidate => candidate.node_id === rootRow.node_id && candidate.model_ref
+    && shadowHash(candidate.model_ref) !== shadowHash(row.model_ref));
   assert.notEqual(row.binding.id, rootRow.binding.id);
   reauthorTarget(input, target => {
     target.nodes.find(node => node.id === localId).id = rootRow.node_id;
@@ -752,8 +764,12 @@ test("a target operation may share a root node ID while pinning a different bind
     target.data_bindings.inputs[1].fields.evaluation_operation_id.node_id = rootRow.node_id;
   });
   row.node_id = rootRow.node_id;
-  const matches = loadFixture(input).catalog.bindings.filter(row => row.node_id === rootRow.node_id);
-  assert.deepEqual(matches.map(row => row.binding.id), [rootRow.binding.id, row.binding.id]);
+  const matches = loadFixture(input).catalog.bindings.filter(candidate => candidate.node_id === rootRow.node_id);
+  const qualified = matches.filter(candidate => !candidate.model_ref || shadowHash(candidate.model_ref) === shadowHash(row.model_ref));
+  assert.deepEqual(qualified.map(candidate => candidate.binding.id), [rootRow.binding.id, row.binding.id]);
+  assert.equal(matches.length, 2 + unrelated.length);
+  for (const candidate of unrelated) assert.deepEqual(matches.find(loaded => loaded.model_ref
+    && shadowHash(loaded.model_ref) === shadowHash(candidate.model_ref)), candidate);
 });
 for (const version of [1, 2]) test("catalog v" + version + " still retains exact root rows and activity contracts", () => {
   const input = fresh(), { catalog, model } = input;
@@ -784,8 +800,9 @@ rejectFixture("legacy catalog rows cannot cover the embedded operations", x => {
 rejectFixture("historical rows do not cover the moved operations", x => {
   legacyCatalogScope(x.catalog, 2);
   const formerTargets = x.catalog.bindings.filter(row => row.model_ref);
-  for (const row of formerTargets) delete row.model_ref;
-  x.catalog.bindings.push(...formerTargets.map(row => ({ ...row, node_id: "correction_" + row.node_id })));
+  // Keep the historical schema bound: replace the moved identities with their
+  // former root convention instead of appending a second full set of rows.
+  for (const row of formerTargets) { delete row.model_ref; row.node_id = "correction_" + row.node_id; }
 }, "STANDARD_STARTUP_COVERAGE_INVALID");
 rejectFixture("a missing embedded row fails coverage", x => x.catalog.bindings.pop(), "STANDARD_STARTUP_COVERAGE_INVALID");
 rejectFixture("an embedded row cannot replace a different row with a duplicate", x => {

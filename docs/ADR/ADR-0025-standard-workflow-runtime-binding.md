@@ -4426,3 +4426,26 @@ The ordinary owned entry and selected-focus checkpoint are distinct authenticate
 The existing ordinary canonical adoption path does not require a globally clean working tree. The owned continuation therefore captures the existing controlled current Git/context observation, including uncommitted progress, and rechecks its exact current material around awaited reads. It retains current canonical/metadata/owner/process fences and all later effect grants and CAS. It does not transfer the selected physical-checkpoint clean-context precondition to an operation that performs no Git mutation.
 
 Known canonical Process cycle choice sections can constrain the owned work intent to integration-only; they remain historical DATA and authenticate no human or current work. The registered private adapter remains separate from published root choice/phase wiring and genuine Native/installed/full-workflow qualification.
+
+
+### Published active-cycle routing and catalog v6, 2026-11-13
+
+Catalog v6 explicitly declares fresh/owned/selected active-cycle entry while v1-v5 retain their closed historical readers. The IR remains v2, with the existing 256-node bound and root Native activities. The ordinary owned source uses its actual entry adapter; the selected source keeps the original H and physical/canonical checkpoint chain. Existing R01 context refresh is reused without another owned-entry digest mutation.
+
+Plan selection revision 2 has a versioned closed output for accepted Native planning, canonical plan and typed progress origins. A deterministic preparation call keeps its route facts local and returns the original planning identity. A separate read-only root selector authenticates the linked implementation entry or complete canonical admission through the existing task cursor and context readers. It returns a real phase source and root routing facts, without an implementation grant or fabricated phase/work receipt.
+
+Pending work uses the current task loop; complete DATA uses current product observation, registered checks and verification before the ordinary audit/closure path. Corrective task/audit inputs retain their own implementation source. H wait/refusal/cancellation, finite Native budgets, specific patch admission, ownership, CAS, historical readers and metadata remain unchanged. There is no new store, shared coordination or preparation-age ceiling. This decision connects source routing; it does not qualify genuine actors, an installed archive or the complete STANDARD journey.
+
+
+### Cycle-choice receipt acceptance within the existing observation bound
+
+The local operation authority reads an authenticated retained receipt as data. Its verifier still authenticates the current grant and H source, then fully reconstructs the canonical cycle-choice subject after that asynchronous H verification and before accepting an event. The redundant complete reconstruction before H verification is removed for this operation. Current instance/owner, scope/ref/metadata, signature, policy and CAS checks remain, with no observation cached across an await. The existing five-second authority maximum, cancellation behavior and finite Native grants are unchanged.
+
+The composed-root timeout that exposed the duplicate work remains a failed attempt; a captured H receipt is not an accepted workflow event. Current-source negative controls must reject a branch mutation during H verification and a changed H source without advancing the instance. Genuine actors, installed execution and the whole original plan keep their separate qualification.
+
+
+### Choice checkpoint after the published startup context
+
+The published startup can leave its confirmed RUNTIME-STATE postimage before the choice checkpoint. The fixed host can authenticate the last accepted same-instance cycle-context refresh preceding the original H intent, with the same session and original scope. Checkpoint plan v2 binds that context operation, its authenticated journal hash and the exact runtime content/metadata. Its closed output v2 admits that one additional metadata path. V1 plan/output schemas and readers retain their original closed shapes.
+
+The existing cycle-choice Git profile receives RUNTIME-STATE only from this protected composition, together with the choice-record postimages. The original 131-file bound remains. Arbitrary product, SPEC, configuration and unrelated changes still refuse; DB-only exports no canonical detail. Activation reauthenticates the same historical context source without pretending it is a new refresh or H opinion. Current grants, owner, source/context equality and CAS are rechecked around awaits. A refused preparation fails before effect-owner acquisition with no_effect; the original composed attempt retains its recorded UNKNOWN rather than being relabelled.

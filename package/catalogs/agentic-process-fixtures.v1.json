@@ -1042,6 +1042,36 @@
       "--retain-always"
     ],
     [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--standard-existing-complete-mode=files",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--standard-existing-complete-mode=dual",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--standard-existing-complete-mode=db-only",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--standard-selected-root-mode=files",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--standard-selected-root-mode=dual",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--standard-selected-root-mode=db-only",
+      "--retain-always"
+    ],
+    [
       "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
       "--case=normal"
     ],
@@ -1429,6 +1459,9 @@
       "--phase=VERIFYING",
       "--prefix=2",
       "--checks"
+    ],
+    [
+      "tools/perf/verify-standard-cycle-source-selection-fixtures.mjs"
     ],
     [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",

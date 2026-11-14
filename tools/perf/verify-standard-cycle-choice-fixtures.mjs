@@ -198,6 +198,22 @@ if (process.argv[2] === "--accept") {
       assert.equal(changed, true); git("update-ref", "refs/heads/feature/C002-competing", oldRef, otherRef);
       host = open(targetRoot, keyFile, sourcesFile, clock + 86400000);
       assert.equal((await host.receiveDecision(id, { sourceRef: "choice", write: true })).receipt.outcome, "completed");
+      const beforeAckHash = host.inspect("choice").record.instance_sha256;
+      let ackChanged = false;
+      host = open(targetRoot, keyFile, sourcesFile, clock + 86400000, () => {
+        if (!ackChanged) { ackChanged = true; git("update-ref", "refs/heads/feature/C002-competing", otherRef, oldRef); }
+      });
+      await assert.rejects(host.accept(id, { write: true }), { code: "PROCESS_OPERATION_AUTHORITY_UNAVAILABLE" });
+      assert.equal(ackChanged, true); assert.equal(host.inspect("choice").record.instance_sha256, beforeAckHash);
+      assert.equal(host.readJournal(id).phase, "receipted"); assert.deepEqual(pins(), before);
+      git("update-ref", "refs/heads/feature/C002-competing", oldRef, otherRef);
+      pass(persistence + ": a branch change during H verification refuses receipt acceptance without an accepted event");
+      host = open(targetRoot, keyFile, sourcesFile, clock + 86400000);
+      publish("choice", { ...accepted, source_event_id: "changed-before-acceptance" });
+      await assert.rejects(host.accept(id, { write: true }), { code: "PROCESS_OPERATION_AUTHORITY_UNAVAILABLE" });
+      assert.equal(host.inspect("choice").record.instance_sha256, beforeAckHash); assert.deepEqual(pins(), before);
+      publish("choice", accepted);
+      pass(persistence + ": a changed H source cannot promote an already captured receipt");
       const cold = JSON.parse(execFileSync(process.execPath, [here, "--accept", targetRoot, keyFile, sourcesFile, id, String(clock + 86400000)],
         { encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "pipe"] }));
       const state = host.inspect("choice"); assert.equal(state.cursor.status, "COMPLETED"); assert.equal(state.record.instance_sha256, cold.instance_sha256);

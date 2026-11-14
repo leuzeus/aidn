@@ -735,3 +735,15 @@ The separate `cycle_owned_resume_admit` binding accepts the closed `standard-own
 Current canonical phase, ordered task prefix, metadata, context, branch/session ownership and DoR remain observed. Existing Process cycle choice sections are canonical DATA used to retain an integration-only restriction, including when the transaction originally focused a different reported cycle. They authenticate no human and supply no current work, validation or Native receipt. Unknown or inconsistent declared choice material refuses interpretation.
 
 The owned reader binds the existing controlled product Git observation and reobserves its context; it does not require a new Git checkpoint merely because current owned progress is uncommitted. Selected physical-checkpoint constraints retain their existing scope. Both typed sources share current readiness, task cursor, separate implementation grant and validation/audit consumers. This private adapter adds no store, lifecycle mode, Native consent or preparation-age ceiling; published routing remains a separate change.
+
+
+## Published typed cycle-source selection
+
+The current `cycle_plan_select` binding has revision 2 and emits the closed `standard-cycle-plan-selection-output.v2`. It authenticates and reobserves accepted Native planning records, canonical plan adoption or either typed canonical-progress origin. Its ordered imported/remaining task IDs and existing phase derive the implementation-entry route. The original v1 schema and reader remain available for historical outputs. Selection grants no DoR, phase write or Native work.
+
+The read-only `cycle_execution_source_select` consumes only the existing closed record-operation reference. It authenticates the current actual implementation-entry receipt linked to that planning origin, or a complete non-OPEN canonical admission, and reuses the current task cursor and plan/context fences. Its closed output names that real phase source. Routing facts mean pending tasks or eligibility to attempt present-product observation; they attest no writer or validation. All execution, patch, machine-check, verification and audit evidence keep their own current receipts.
+
+Catalog v6 declares fresh, already-owned and explicitly selected active-cycle entry. Closed v1-v5 catalog readers keep their historical scope declarations. The same common IR v2 and fixed registry carry typed call returns; operation facts inside a call remain local, so the root phase selector supplies the root routing facts. No process JSON selects an observer, module, principal, store or approval.
+
+
+The current cycle-choice checkpoint binding revision 2 emits closed output v2. A v2 plan adds a fixed accepted-context reference and the exact RUNTIME-STATE content/metadata postimage to the original choice document set; the protected host derives it only from the accepted same-instance refresh before the original H intent and reauthenticates it on activation. V1 plan/output readers remain closed and unchanged. No JSON input can supply that authority or widen the path set; the existing 131-file and Native/authority limits remain.

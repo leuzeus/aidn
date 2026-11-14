@@ -162,6 +162,11 @@ const files = ["src/application/runtime/standard-reconciliation-inventory.mjs",
   "src/core/workflow/standard-canonical-cycle-resume.mjs",
   "src/core/workflow/standard-owned-cycle-resume.mjs",
   "src/application/runtime/standard-canonical-cycle-resume.mjs",
+  "src/core/workflow/standard-cycle-source-selection.mjs",
+  "src/core/contracts/workflow-definition/standard-cycle-entry-choice-checkpoint-plan.v2.schema.json",
+  "src/core/contracts/workflow-definition/standard-cycle-entry-choice-checkpoint-output.v2.schema.json",
+  "src/core/contracts/workflow-definition/standard-cycle-plan-selection-output.v2.schema.json",
+  "src/core/contracts/workflow-definition/standard-cycle-execution-source-output.v1.schema.json",
   "src/core/workflow/standard-canonical-plan-projection.mjs",
   "src/core/contracts/workflow-definition/standard-cycle-plan-adoption-output.v1.schema.json",
   "src/application/runtime/start-session-completion-hook-use-case.mjs",
@@ -204,7 +209,7 @@ const files = ["src/application/runtime/standard-reconciliation-inventory.mjs",
   "src/core/contracts/workflow-definition/agentic-process-model.v1.schema.json",
   "src/core/contracts/workflow-definition/agentic-process-instance.v1.schema.json", "VERSION", "package.json",
 ];
-files.push("src/core/contracts/workflow-definition/standard-workflow-catalog.v4.schema.json", "src/core/contracts/workflow-definition/standard-workflow-catalog.v5.schema.json");
+files.push("src/core/contracts/workflow-definition/standard-workflow-catalog.v4.schema.json", "src/core/contracts/workflow-definition/standard-workflow-catalog.v5.schema.json", "src/core/contracts/workflow-definition/standard-workflow-catalog.v6.schema.json");
 export function agenticProcessImplementationPins() {
   const source = files.map(name => {
     const data = fs.readFileSync(new URL(`../../../${name}`, import.meta.url));

@@ -16,14 +16,15 @@ import inputSchema from "../../core/contracts/workflow-definition/standard-cycle
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const stableScope = ({ head, ...scope }) => scope;
 const emit = (outcome, effect_status, observations, facts = {}, evidence_refs = []) => assertCycleChoiceCheckpointOutput({
-  contract_version: "standard-cycle-entry-choice-checkpoint-output.v1", operation_ref: cycleEntryChoiceCheckpointOperation,
+  contract_version: "standard-cycle-entry-choice-checkpoint-output.v2", operation_ref: cycleEntryChoiceCheckpointOperation,
   outcome, effect_status, observations, facts, evidence_refs });
 
 // An accepted record supplies exact canonical postimages. This operation only
 // checkpoints its changed Markdown on the current branch; activation and phase
 // admission remain separate. DB-only never exports canonical rows for Git.
-export function createStandardCycleEntryChoiceCheckpoint({ targetRoot, scope, readRecorded, readCurrent, now = Date.now }) {
+export function createStandardCycleEntryChoiceCheckpoint({ targetRoot, scope, readRecorded, readCurrent, readContext = null, now = Date.now }) {
   if (![scope, readRecorded, readCurrent].every(fn => typeof fn === "function")) fail("STANDARD_CHOICE_CHECKPOINT_AUTHORITY_REQUIRED");
+  if (readContext !== null && typeof readContext !== "function") fail("STANDARD_CHOICE_CHECKPOINT_AUTHORITY_REQUIRED");
   const artifacts = createStandardWorkflowArtifacts({ targetRoot });
   const current = instance => {
     if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_CHOICE_CHECKPOINT_PROCESS_CHANGED");
@@ -34,8 +35,16 @@ export function createStandardCycleEntryChoiceCheckpoint({ targetRoot, scope, re
     const source = await readRecorded(instance, input);
     if (source.record_operation_id !== input.record_operation_id || !/^[a-f0-9]{64}$/.test(source.record_sha256 ?? ""))
       fail("STANDARD_CHOICE_CHECKPOINT_RECORDED_SOURCE_REQUIRED");
-    const documents = cycleChoiceCheckpointDocuments(source.plan, source.output);
-    current(instance); return { source, documents };
+    const acceptedContext = readContext?.(instance, source) ?? null;
+    let context = null;
+    if (acceptedContext) {
+      const row = artifacts.read("RUNTIME-STATE.md", { required: true });
+      if (row.sha256 !== acceptedContext.runtime_sha256) fail("STANDARD_CHOICE_CHECKPOINT_CONTEXT_CHANGED");
+      context = { operation_id: acceptedContext.operation_id, record_sha256: acceptedContext.record_sha256,
+        runtime_document: { path: "RUNTIME-STATE.md", sha256: row.sha256, metadata_sha256: artifacts.metadataHash("RUNTIME-STATE.md") } };
+    }
+    const documents = cycleChoiceCheckpointDocuments(source.plan, source.output, context?.runtime_document ?? null);
+    current(instance); return { source, documents, context };
   }
   function assertMaterial(instance, plan, source, expectedHead, owner = null) {
     current(instance); if (owner) artifacts.assertLocalEffectOwner(owner);
@@ -63,10 +72,11 @@ export function createStandardCycleEntryChoiceCheckpoint({ targetRoot, scope, re
     if (!owned && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
     const before = await recorded(instance, input), admission = await preWriteAdmit({ targetRoot: artifacts.root, skill: "start-session" });
     if (!admission.ok) return { can_apply: false, reason_code: "STANDARD_CHOICE_CHECKPOINT_ADMISSION_BLOCKED" };
-    const { source, documents } = await recorded(instance, input);
-    if (shadowHash(source) !== shadowHash(before.source)) fail("STANDARD_CHOICE_CHECKPOINT_RECORDED_SOURCE_CHANGED");
+    const { source, documents, context } = await recorded(instance, input);
+    if (shadowHash(source) !== shadowHash(before.source) || shadowHash(context) !== shadowHash(before.context)) fail("STANDARD_CHOICE_CHECKPOINT_RECORDED_SOURCE_CHANGED");
     const actualScope = scope(), selected = source.plan, subject = selected.question.subject,
-      approved = source.output.observations.committed.map(row => ({ path: "docs/audit/" + row.path, sha256: row.sha256 })),
+      approved = [...source.output.observations.committed.map(row => ({ path: "docs/audit/" + row.path, sha256: row.sha256 })),
+        ...(context ? [{ path: "docs/audit/RUNTIME-STATE.md", sha256: context.runtime_document.sha256 }] : [])],
       git = port(approved), view = git.inspect();
     if (shadowHash(actualScope) !== selected.scope_sha256 || view.branch !== subject.current_branch || view.head !== subject.head
       || !view.index_clean || view.lock_present) return { can_apply: false, reason_code: "STANDARD_CHOICE_CHECKPOINT_GIT_CHANGED" };
@@ -82,7 +92,7 @@ export function createStandardCycleEntryChoiceCheckpoint({ targetRoot, scope, re
       if (readAgentRunFile(physical, { json: false, maxBytes: 1048576 }).sha256 !== expected.sha256) fail("STANDARD_CHOICE_CHECKPOINT_PROJECTION_CHANGED");
       return { ...expected };
     });
-    const plan = assertCycleChoiceCheckpointPlan({ contract_version: "standard-cycle-entry-choice-checkpoint-plan.v1",
+    const plan = assertCycleChoiceCheckpointPlan({ contract_version: context ? "standard-cycle-entry-choice-checkpoint-plan.v2" : "standard-cycle-entry-choice-checkpoint-plan.v1", ...(context ? { context } : {}),
       operation_ref: cycleEntryChoiceCheckpointOperation, operation_id: operationId, input, prepared_at_ms: at,
       source_sha256: shadowHash(source), scope_sha256: shadowHash(actualScope), scope_without_head_sha256: shadowHash(stableScope(actualScope)),
       backend_binding_sha256: shadowHash(artifacts.describe()), session_id: subject.session_id,
@@ -94,16 +104,18 @@ export function createStandardCycleEntryChoiceCheckpoint({ targetRoot, scope, re
   }
   return Object.freeze({ prepare: (instance, input, id) => prepare(instance, input, id, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
-      const plan = assertCycleChoiceCheckpointPlan(prepared?.plan);
-      if (write !== true || !prepared?.can_apply || typeof assertAuthorized !== "function"
-        || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan)
+      if (write !== true || prepared?.can_apply !== true || typeof assertAuthorized !== "function")
+        throw Object.assign(Error("STANDARD_CHOICE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED"), { code: "STANDARD_CHOICE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" });
+      const plan = assertCycleChoiceCheckpointPlan(prepared.plan);
+      if (prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan)
         throw Object.assign(Error("STANDARD_CHOICE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED"), { code: "STANDARD_CHOICE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" });
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         const git = port(plan.git.files), gitPlan = { ...plan.git, operation_id: plan.operation_id, prepared_at_ms: plan.prepared_at_ms, plan_sha256: expectPlan };
         const permission = async () => {
-          await assertAuthorized(); const { source, documents } = await recorded(instance, plan.input);
+          await assertAuthorized(); const { source, documents, context } = await recorded(instance, plan.input);
           await assertAuthorized();
-          if (shadowHash(source) !== plan.source_sha256 || shadowHash(documents) !== shadowHash(plan.documents))
+          if (shadowHash(source) !== plan.source_sha256 || shadowHash(documents) !== shadowHash(plan.documents)
+            || shadowHash(context) !== shadowHash(plan.context ?? null))
             fail("STANDARD_CHOICE_CHECKPOINT_RECORDED_SOURCE_CHANGED");
           let expectedHead = plan.git.observed.head;
           if (scope().head !== expectedHead) {

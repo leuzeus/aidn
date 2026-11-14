@@ -5946,3 +5946,31 @@ Required representative cases are FILES/OPEN/prefix1, DUAL/IMPLEMENTING/prefix1 
 The fixture recomputes the active-cycle runtime digest through the existing protected context-refresh operation after arranging canonical DATA. Read-only reload cannot replace that preparation, and no freshness value is authored or waived. The model fixture also checks that changing each shared or owned resume runtime/schema file invalidates both the direct binding fingerprint and the complete process pins without writing source bytes.
 
 The selected-resume denied-entry-grant witness reads operation journal paths, content hashes and metadata from the selected canonical backend. It also observes the optional physical journal projection, retaining its absence in DB-only. A missing physical projection cannot substitute for checking canonical journals, and denial must preserve both observations before any entry effect or Native allocation.
+
+
+## Published cycle-source routing checks
+
+Run `node tools/perf/verify-standard-cycle-source-selection-fixtures.mjs` for closed plan-selection v2 and execution-source output contracts, the historical v1 reader, original task limits, ordered partitions, current-entry routing, identity confusion and invented permission/evidence refusals. These pure checks allocate no host or Native actor.
+
+The required owned-source cases also execute the actual plan and phase selectors: partial OPEN admission remains DATA; unfinished IMPLEMENTING work consumes a separately granted current entry and returns its real phase ID; complete VERIFYING data returns the accepted canonical identity and performs current checks/verification/audit. The published existing-OPEN fixture follows the actual owned-entry/preparation calls and root phase selector with one identified startup transport double. Catalog v6 tests preserve the v4/v5 scope readers, closed embedded calls, actor boundaries and the existing node cap. Source/model authoring, component execution, controlled actors, genuine actors, installed archive and the whole original plan retain separate verdicts.
+
+The delivered two-task `--standard-existing-open-work-mode=files|dual|db-only` cases also require the actual owned-resume origin, plan-selection v2 and current phase-selection identities. They refuse a legacy-adoption substitute and retain the original task writes, three real validation checks, progress chain, final-verification call, scope/classification preservation and exact replay assertions. The phase selector itself grants no work permission or validation evidence; the original one-startup/two-task controlled actor counts and finite fixture grants are unchanged.
+
+
+## Published complete canonical-cycle verification
+
+The focused `--standard-existing-complete-mode=files|dual|db-only` cases use the delivered root unchanged with an owned two-task plan whose completed prefix and VERIFYING phase are explicitly staged DATA. One identified startup diagnostic actor runs; no current planner, task writer or auditor runs. The actual source and phase selectors must bypass implementation entry and task advancement, then call the published canonical product observation, two real Node checks, linked evaluation and four-document verification before stopping at auditor selection. The fixture checks the exact call input/return, unchanged original plan, retained history prefix, appended current verification, current consistency, owner closure and exact simulation. These cases do not establish historical work, genuine actors, installation or the whole STANDARD journey.
+
+The three required cases are added without changing the previous 294 cases in relative order or the final full nominal. The exact expanded-command policy changes with the manifest; no dispatcher deadline or original finite actor grant changes.
+
+
+## Published selected-cycle call with a current controlled H source
+
+The focused `--standard-selected-root-mode=files|dual|db-only` cases reuse only explicitly generated canonical preconditions. The arrangement helper returns before initializing its old choice process; the delivered root must capture a new current-question selection through an identified H port. It then executes the eight selected-entry operations, actual branch activation and focus, current plan/phase selectors, current product checks, verification and auditor selection. The selected target contains a different product value from the source branch, so changing a pointer or accepting staged completion cannot substitute for observing the selected product. Deferred cycle data, original planning, exact selected-call input/return, owner closure and exact replay remain checked. One controlled startup actor runs and no task writer or auditor runs in this case. These fixtures do not establish genuine Human/Native behavior or installed/full STANDARD qualification.
+
+The three required selected-root cases preserve the previous 297 cases in relative order and keep the full nominal last. Their finite actor grant is unchanged, and the dispatcher adds no deadline.
+
+The actual cycle-choice port cases also reject receipt acceptance when a candidate branch moves during asynchronous H verification or the retained H source changes after capture. Neither refusal advances the instance or mutates canonical work. The final full subject reconstruction remains after H authentication, and the original five-second observation timeout is retained.
+
+
+The choice-checkpoint fixtures retain closed v1 readers and validate v2 plan/output definitions. They reject an invalid runtime postimage descriptor, unrelated approved paths and application of a refused preparation before any source read or owner acquisition. The selected published-root fixture additionally requires a v2 checkpoint linked to its actual accepted context refresh and checkpoints the exact RUNTIME-STATE postimage in FILES/DUAL, with no detailed export in DB-only. This composed scope differs from a choice-only fixture without normal startup. The original foreign-change/UNKNOWN failure is retained; current qualification, real actors and installed execution remain separate.

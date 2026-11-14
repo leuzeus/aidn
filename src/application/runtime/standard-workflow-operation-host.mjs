@@ -93,7 +93,8 @@ import { createStandardDriftCycle } from "./standard-drift-cycle.mjs";
 import { createStandardCyclePlanRecord } from "./standard-cycle-plan-record.mjs";
 import { createStandardCanonicalPlanAdoption } from "./standard-canonical-plan-adoption.mjs";
 import { createStandardCanonicalCycleResume, createStandardOwnedCanonicalCycleResume } from "./standard-canonical-cycle-resume.mjs";
-import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation, ownedCanonicalCycleResumeAdmitOperation } from "../../core/workflow/standard-canonical-cycle-resume.mjs";
+import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation, canonicalCycleResumeAdmissionOperations, ownedCanonicalCycleResumeAdmitOperation } from "../../core/workflow/standard-canonical-cycle-resume.mjs";
+import { cyclePlanSourceSelection, cycleExecutionSourceSelectOperation } from "../../core/workflow/standard-cycle-source-selection.mjs";
 import { ownedCanonicalResumeEntry } from "../../core/workflow/standard-owned-cycle-resume.mjs";
 import { createStandardCycleImplementation } from "./standard-cycle-implementation.mjs";
 import { createStandardCycleValidation } from "./standard-cycle-validation.mjs";
@@ -302,29 +303,40 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     return { record, output: result.output };
   }
   async function selectCyclePlan(instance) {
-    const context = (await processAuthority.observeCyclePlanContext()).context;
-    if (context.mode !== "COMMITTING") fail("STANDARD_CYCLE_PLAN_EXECUTION_MODE_REQUIRED");
-    const latest = instance.events.filter(event => event.kind === "operation_intent" && ["cycle_plan_record", "cycle_plan_adopt"].includes(event.intent.binding_ref)).at(-1);
+    const kinds = ["cycle_plan_record", "cycle_plan_adopt", ...canonicalCycleResumeAdmissionOperations];
+    const latest = instance.events.filter(event => event.kind === "operation_intent" && kinds.includes(event.intent.binding_ref)).at(-1);
     if (!latest) fail("STANDARD_CYCLE_PLAN_RECORD_REQUIRED");
     const selected = acceptedForPromotion(instance, latest.intent.operation_id, latest.intent.binding_ref, "STANDARD_CYCLE_PLAN_RECORD_REQUIRED");
+    const emit = (context, proposal, sourceKind, phase, completedTaskIds, evidenceRefs) => {
+      if (context.mode !== "COMMITTING") fail("STANDARD_CYCLE_PLAN_EXECUTION_MODE_REQUIRED");
+      return cyclePlanSourceSelection({ recordOperationId: selected.record.operation_id, recordSha256: shadowHash(selected),
+        proposal, sourceKind, phase, completedTaskIds, context, evidenceRefs });
+    };
+    if (canonicalCycleResumeAdmissionOperations.includes(latest.intent.binding_ref)) {
+      const output = assertStandardOperationOutput(selected.output), source = output.observations,
+        admission = latest.intent.binding_ref === ownedCanonicalCycleResumeAdmitOperation ? ownedResumeAdmission : canonicalResumeAdmission;
+      const fresh = await admission?.(instance, selected.record.preview.input, selected.record.operation_id)
+        ?? fail("STANDARD_CANONICAL_RESUME_AUTHORITY_REQUIRED");
+      const observed = await processAuthority.observeCycleVerificationContext();
+      if (output.outcome !== "completed" || output.facts.canonical_cycle_resume_available !== true
+        || shadowHash(output) !== shadowHash(fresh) || source.context_sha256 !== observed.context_sha256)
+        fail("STANDARD_CYCLE_PLAN_RECORD_CHANGED");
+      return emit(observed.context, source.proposal, "canonical_progress", source.canonical_phase, source.imported_completed_task_ids, output.evidence_refs);
+    }
+    const context = (await processAuthority.observeCyclePlanContext()).context;
     if (latest.intent.binding_ref === "cycle_plan_adopt") {
       const output = assertStandardOperationOutput(selected.output);
       const fresh = await canonicalPlanAdoption?.(instance, {}) ?? fail("STANDARD_CANONICAL_PLAN_AUTHORITY_UNAVAILABLE");
       if (fresh.outcome !== "completed" || output.effect_status !== "no_effect" || output.facts.canonical_cycle_plan_available !== true
         || output.observations.source_kind !== "canonical_plan" || output.observations.cycle_path !== context.cycle_path
         || shadowHash(output) !== shadowHash(fresh)) fail("STANDARD_CYCLE_PLAN_RECORD_CHANGED");
-      // This ID names the accepted canonical origin. It is not a Native plan
-      // record, a completed-task receipt, DoR or permission to implement.
-      return assertStandardOperationOutput({ contract_version: "standard-cycle-plan-selection-output.v1", operation_ref: "cycle_plan_select",
-        outcome: "completed", effect_status: "no_effect", facts: {}, observations: { record_operation_id: latest.intent.operation_id,
-          cycle_id: context.cycle_id, session_id: context.session_id, cycle_path: context.cycle_path, record_sha256: shadowHash(selected) }, evidence_refs: output.evidence_refs });
+      return emit(context, output.observations.proposal, "canonical_plan", "OPEN", [], output.evidence_refs);
     }
     const plan = selected.record.preview.prepared.plan;
     if (selected.output.effect_status !== "confirmed" || selected.output.facts.cycle_plan_recorded !== true || plan.cycle_path !== context.cycle_path
       || plan.changes.some(row => artifacts.read(row.path, { required: true }).sha256 !== row.after_sha256)) fail("STANDARD_CYCLE_PLAN_RECORD_CHANGED");
-    return assertStandardOperationOutput({ contract_version: "standard-cycle-plan-selection-output.v1", operation_ref: "cycle_plan_select",
-      outcome: "completed", effect_status: "no_effect", facts: {}, observations: { record_operation_id: latest.intent.operation_id,
-        cycle_id: context.cycle_id, session_id: context.session_id, cycle_path: context.cycle_path, record_sha256: shadowHash(selected) }, evidence_refs: selected.output.evidence_refs });
+    const evaluated = acceptedForPromotion(instance, selected.record.preview.input.evaluation_operation_id, "cycle_plan_evaluate", "STANDARD_CYCLE_PLAN_RECORD_REQUIRED");
+    return emit(context, evaluated.output.observations.proposal, "native_record", "OPEN", [], selected.output.evidence_refs);
   }
   const sessionClosureAuthority = processAuthority ? createStandardSessionClosureAuthority({ targetRoot,
     readAcceptedOperation: acceptedForPromotion, readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input) }) : null;
@@ -817,11 +829,32 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         || shadowHash(capture.source) !== shadowHash(plan.decision)) fail("STANDARD_CHOICE_CHECKPOINT_HUMAN_SOURCE_CHANGED");
       return { record_operation_id: input.record_operation_id, record_sha256: shadowHash(selected.record), plan, output: selected.output };
   }
+  function readAcceptedChoiceContext(instance, source) {
+    const decisionIndex = instance.events.findIndex(row => row.kind === "operation_intent"
+      && row.intent.operation_id === source.plan.input.decision_operation_id);
+    if (decisionIndex < 0) fail("STANDARD_CHOICE_CHECKPOINT_CONTEXT_REQUIRED");
+    const contextIntent = instance.events.slice(0, decisionIndex).filter(row => row.kind === "operation_intent"
+      && row.intent.binding_ref === "cycle_context_refresh").at(-1);
+    if (!contextIntent) return null; // Historical choice-only component has no startup context operation.
+    const context = acceptedForPromotion(instance, contextIntent.intent.operation_id, "cycle_context_refresh", "STANDARD_CHOICE_CHECKPOINT_CONTEXT_REQUIRED"),
+      plan = context.record.preview.prepared.plan, output = context.output, subject = source.plan.question.subject,
+      refs = output.evidence_refs.filter(row => row.ref === "docs/audit/RUNTIME-STATE.md");
+    if (plan.contract_version !== "standard-cycle-context-plan.v2" || plan.input.session_id !== subject.session_id
+      || shadowHash(plan.scope) !== subject.scope_sha256 || output.outcome !== "completed" || output.effect_status !== "confirmed"
+      || output.facts.cycle_context_refreshed !== true || refs.length !== 1)
+      fail("STANDARD_CHOICE_CHECKPOINT_CONTEXT_REQUIRED");
+    return { operation_id: context.record.operation_id, record_sha256: shadowHash(context.record), runtime_sha256: refs[0].sha256 };
+  }
   const cycleEntryChoiceCheckpoint = createStandardCycleEntryChoiceCheckpoint({ targetRoot, now, scope: operations.observeScope,
-    readCurrent: id => current(id).record, readRecorded: readAcceptedCycleChoiceRecord });
+    readCurrent: id => current(id).record, readRecorded: readAcceptedCycleChoiceRecord, readContext: readAcceptedChoiceContext });
   async function readAcceptedCycleChoiceCheckpoint(instance, input) {
     const selected = acceptedForPromotion(instance, input.checkpoint_operation_id, cycleEntryChoiceCheckpointOperation, "STANDARD_CHOICE_ACTIVATION_CHECKPOINT_REQUIRED"),
       plan = selected.record.preview.prepared.plan, record = await readAcceptedCycleChoiceRecord(instance, plan.input);
+    if (plan.contract_version === "standard-cycle-entry-choice-checkpoint-plan.v2") {
+      const context = readAcceptedChoiceContext(instance, record);
+      if (!context || context.operation_id !== plan.context.operation_id || context.record_sha256 !== plan.context.record_sha256
+        || context.runtime_sha256 !== plan.context.runtime_document.sha256) fail("STANDARD_CHOICE_CHECKPOINT_CONTEXT_CHANGED");
+    }
     return { checkpoint_operation_id: input.checkpoint_operation_id, checkpoint_sha256: shadowHash(selected.record),
       checkpoint_plan: plan, checkpoint_output: selected.output, record };
   }
@@ -1063,7 +1096,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(instance, record.preview.prepared.plan, { signal });
-      if (record.intent.binding_ref === cycleEntryChoiceOperation) await assertCycleEntryChoiceFresh(instance, record, signal);
+      // Cycle-choice H authentication is followed below by a full fresh subject
+      // reconstruction before acceptance; do not repeat it before that await.
       if (record.intent.binding_ref === recoveryCycleSelection) await assertRecoveryCycleSelectionFresh(instance, record, signal);
       if (record.preview.binding.executor_kind === "human") await verifyHumanRecord(record, signal);
       if (record.intent.binding_ref === resolutionExceptionOperation) await assertResolutionExceptionFresh(instance, record, signal);
@@ -1527,6 +1561,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "spike_experiment_admit" ? await spike.experimentAdmission(state.record, input)
         : binding.id === "spike_experiment_execution_admit" ? await spike.experimentExecutionAdmission(state.record, input)
         : binding.id === "cycle_plan_select" ? await selectCyclePlan(state.record)
+        : binding.id === cycleExecutionSourceSelectOperation ? await processAuthority?.selectCycleExecutionSource?.(state.record, input) ?? fail("STANDARD_CYCLE_EXECUTION_SOURCE_AUTHORITY_REQUIRED")
         : binding.id === "cycle_plan_adopt" ? await canonicalPlanAdoption?.(state.record, input) ?? fail("STANDARD_CANONICAL_PLAN_AUTHORITY_UNAVAILABLE")
         : binding.id === canonicalCycleResumeAdmitOperation ? await canonicalResumeAdmission?.(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CANONICAL_RESUME_AUTHORITY_REQUIRED")
         : binding.id === ownedCanonicalCycleResumeAdmitOperation ? await ownedResumeAdmission?.(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_OWNED_RESUME_AUTHORITY_REQUIRED")
@@ -1825,6 +1860,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "spike_experiment_admit") output = await spike.experimentAdmission(state.record, record.preview.input);
         else if (record.intent.binding_ref === "spike_experiment_execution_admit") output = await spike.experimentExecutionAdmission(state.record, record.preview.input);
         else if (record.intent.binding_ref === "cycle_plan_select") output = await selectCyclePlan(state.record);
+        else if (record.intent.binding_ref === cycleExecutionSourceSelectOperation) output = await processAuthority?.selectCycleExecutionSource?.(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_EXECUTION_SOURCE_AUTHORITY_REQUIRED");
         else if (record.intent.binding_ref === "cycle_plan_adopt") output = await canonicalPlanAdoption?.(state.record, record.preview.input) ?? fail("STANDARD_CANONICAL_PLAN_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === canonicalCycleResumeAdmitOperation) output = await canonicalResumeAdmission?.(state.record, record.preview.input, record.operation_id) ?? fail("STANDARD_CANONICAL_RESUME_AUTHORITY_REQUIRED");
         else if (record.intent.binding_ref === ownedCanonicalCycleResumeAdmitOperation) output = await ownedResumeAdmission?.(state.record, record.preview.input, record.operation_id) ?? fail("STANDARD_OWNED_RESUME_AUTHORITY_REQUIRED");

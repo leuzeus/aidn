@@ -24,7 +24,7 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
     && !/[\\\u0000-\u001f]/.test(name) && !path.posix.isAbsolute(name) && !path.win32.isAbsolute(name)
     && !name.split("/").some(part => !part || part === "." || part === "..")
     && !/^(?:[.]git|[.]aidn)(?:\/|$)/i.test(name);
-  const choicePath = name => /^docs\/audit\/(?:CURRENT-STATE[.]md|sessions\/S[0-9]{3,6}[.]md|snapshots\/context-snapshot[.]md|cycles\/C[0-9]{3,6}-[A-Za-z0-9._-]+\/status[.]md)$/.test(name);
+  const choicePath = name => /^docs\/audit\/(?:(?:CURRENT-STATE|RUNTIME-STATE)[.]md|sessions\/S[0-9]{3,6}[.]md|snapshots\/context-snapshot[.]md|cycles\/C[0-9]{3,6}-[A-Za-z0-9._-]+\/status[.]md)$/.test(name);
   const contextPath = name => /^docs\/audit\/(?!workflows(?:\/|$))/i.test(name)
     && !name.split("/").some(part => /^(?:[.]git|[.]aidn|[.]codex|[.]agents)$/i.test(part));
   if (!["session-metadata", "cycle-terminal", "cycle-choice", "cycle-context"].includes(profile)

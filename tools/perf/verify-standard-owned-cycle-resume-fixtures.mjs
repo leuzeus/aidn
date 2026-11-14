@@ -14,6 +14,7 @@ import { arrangeCanonicalResumeData } from "./standard-canonical-resume-fixture-
 import { taskProgressValidationProfile } from "./cycle-task-progress-fixture-lib.mjs";
 import { verifyOwnedResumeContracts } from "./standard-owned-cycle-resume-contract-fixture-lib.mjs";
 import { assertOwnedCanonicalResumeOutput } from "../../src/core/workflow/standard-owned-cycle-resume.mjs";
+import { assertCyclePlanSourceSelection, assertCycleExecutionSourceSelection } from "../../src/core/workflow/standard-cycle-source-selection.mjs";
 import { assertCanonicalResumeObserveOutput } from "../../src/core/workflow/standard-canonical-cycle-resume.mjs";
 import { createOperationJournalSigner } from "../../src/core/workflow/process-operation-journal.mjs";
 import { artifactContentHash, artifactMetadataHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
@@ -86,19 +87,24 @@ export async function verifyOwnedCycleResume({ mode, phase, prefix, enter = fals
   await apply(await operations.prepareCycleContext({ session_id: "S001" }), "refreshCycleContext");
   await operations.reload();
 
-  const nodes = [["entry", "cycle_entry_admit"], ["resume", "cycle_owned_resume_admit"]];
-  if (enter) nodes.push(["ready", "cycle_readiness_evaluate"], ["enter", "cycle_implementation_enter"], ["select_task", "cycle_task_select"]);
+  const nodes = [["entry", "cycle_entry_admit"], ["resume", "cycle_owned_resume_admit"], ["plan_select", "cycle_plan_select"]];
+  if (enter) nodes.push(["ready", "cycle_readiness_evaluate"], ["enter", "cycle_implementation_enter"]);
+  if (enter || prefix === 2 && phase !== "OPEN") nodes.push(["phase_select", "cycle_execution_source_select"]);
+  if (enter) nodes.push(["select_task", "cycle_task_select"]);
   if (prefix === 2 && phase !== "OPEN") nodes.push(["observe_product", "cycle_canonical_resume_observe"]);
   if (withChecks) nodes.push(["validate", "cycle_validation_execute"], ["validation_evaluate", "cycle_validation_evaluate"],
     ["verification_enter", "cycle_verification_enter"], ["audit_select", "cycle_audit_select"]);
   const reference = (key, source) => ({ [key]: { source: "operation_id", node_id: source } }),
     fields = { entry: { contract_version: { source: "literal", value: "standard-cycle-entry-input.v1" },
       session_id: { source: "literal", value: "S001" }, cycle_id: { source: "literal", value: "C001" } },
-      resume: reference("entry_operation_id", "entry"), ready: reference("record_operation_id", "resume"), enter: reference("evaluation_operation_id", "ready"),
-      select_task: reference("implementation_operation_id", "enter"),
-      observe_product: reference("implementation_operation_id", "resume"), validate: reference("work_operation_id", "observe_product"),
+      resume: reference("entry_operation_id", "entry"), plan_select: {},
+      ready: { record_operation_id: { source: "operation_output", node_id: "plan_select", path: ["observations", "record_operation_id"] } },
+      enter: reference("evaluation_operation_id", "ready"),
+      phase_select: { record_operation_id: { source: "operation_output", node_id: "plan_select", path: ["observations", "record_operation_id"] } },
+      select_task: { implementation_operation_id: { source: "operation_output", node_id: "phase_select", path: ["observations", "implementation_operation_id"] } },
+      observe_product: { implementation_operation_id: { source: "operation_output", node_id: "phase_select", path: ["observations", "implementation_operation_id"] } }, validate: reference("work_operation_id", "observe_product"),
       validation_evaluate: reference("validation_operation_id", "validate"), verification_enter: reference("evaluation_operation_id", "validation_evaluate"),
-      audit_select: reference("implementation_operation_id", "resume") };
+      audit_select: { implementation_operation_id: { source: "operation_output", node_id: "phase_select", path: ["observations", "implementation_operation_id"] } } };
   const bindings = new Map(standardWorkflowOperationBindings().map(row => [row.id, row])),
     model = { contract_version: "agentic-process-model.v2", model_id: "owned-canonical-resume-port-fixture", revision: 1,
       participants: [{ id: "project" }], roles: [], policies: [], entry: "main",
@@ -144,11 +150,22 @@ export async function verifyOwnedCycleResume({ mode, phase, prefix, enter = fals
   assert.equal(Object.hasOwn(output.observations, "focus_checkpoint_operation_id"), false); assert.equal(Object.hasOwn(output.observations, "checkpoint_sha256"), false);
   assert.deepEqual(witness(), before); assert.equal(artifacts.ownerPending(), false);
   pass(mode + "/" + phase + ": actual owned entry and read-only progress admission preserve dirty canonical/product/Git state without H, checkpoint or Native receipts");
+  const chosen = assertCyclePlanSourceSelection((await execute("plan_select")).results.at(-1).output);
+  assert.equal(chosen.observations.record_operation_id, resumed.operation_id);
+  assert.equal(chosen.observations.source_kind, "canonical_progress");
+  assert.deepEqual(chosen.observations.imported_completed_task_ids, output.observations.imported_completed_task_ids);
+  assert.deepEqual(chosen.observations.remaining_task_ids, proposal.tasks.slice(prefix).map(row => row.id));
+  assert.deepEqual(witness(), before);
+  pass(mode + ": current plan selector reattests the typed owned origin and routes remaining work without granting entry");
   if (enter) {
     await execute("ready"); const entered = await execute("enter"), effect = entered.results.at(-1).output;
     assert.equal(effect.effect_status, "confirmed"); assert.equal(effect.observations.committed.length, 2);
     assert.equal(analyzeStructuredArtifact(artifacts.read("CURRENT-STATE.md", { required: true }).content).key_values.first_plan_step,
       output.observations.proposal.tasks[prefix].task);
+    const phaseSource = assertCycleExecutionSourceSelection((await execute("phase_select")).results.at(-1).output);
+    assert.equal(phaseSource.observations.implementation_operation_id, entered.operation_id);
+    assert.equal(phaseSource.observations.implementation_source_kind, "implementation_entry");
+    assert.equal(phaseSource.facts.cycle_work_tasks_pending, true);
     const selected = (await execute("select_task")).results.at(-1).output;
     assert.equal(selected.observations.task.id, proposal.tasks[prefix].id);
     assert.equal(selected.observations.ordinal, prefix + 1);
@@ -158,6 +175,10 @@ export async function verifyOwnedCycleResume({ mode, phase, prefix, enter = fals
     pass(mode + ": current readiness and separately granted implementation entry project the next task, without a Native response");
   }
   if (prefix === 2 && phase !== "OPEN") {
+    const phaseSource = assertCycleExecutionSourceSelection((await execute("phase_select")).results.at(-1).output);
+    assert.equal(phaseSource.observations.implementation_operation_id, resumed.operation_id);
+    assert.equal(phaseSource.observations.implementation_source_kind, "canonical_progress");
+    assert.equal(phaseSource.facts.cycle_work_product_ready, true);
     const observed = assertCanonicalResumeObserveOutput((await execute("observe_product")).results.at(-1).output);
     assert.deepEqual(observed.observations.current_observed_task_ids, []); assert.equal(observed.observations.work_complete, true);
     assert.equal(observed.facts.cycle_work_observed, undefined); assert.deepEqual(witness(), before);

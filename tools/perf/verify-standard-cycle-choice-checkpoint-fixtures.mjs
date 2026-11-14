@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import { assertStandardOperationInput } from "../../src/core/workflow/standard-operation-contracts.mjs";
-import { assertCycleChoiceCheckpointOutput, cycleChoiceCheckpointDocuments } from "../../src/core/workflow/standard-cycle-entry-choice-checkpoint.mjs";
+import { assertCycleChoiceCheckpointOutput, assertCycleChoiceCheckpointPlan, cycleChoiceCheckpointDocuments } from "../../src/core/workflow/standard-cycle-entry-choice-checkpoint.mjs";
 import { createStandardCycleEntryChoiceCheckpoint } from "../../src/application/runtime/standard-cycle-entry-choice-checkpoint.mjs";
 import { createLocalWorkflowGitCheckpoint } from "../../src/adapters/runtime/local-workflow-git-checkpoint.mjs";
 import { createOperationJournalSigner } from "../../src/core/workflow/process-operation-journal.mjs";
@@ -23,6 +23,10 @@ function contracts() {
     const schema = JSON.parse(fs.readFileSync(new URL(`../../src/core/contracts/workflow-definition/standard-cycle-entry-choice-checkpoint-${kind}.v1.schema.json`, import.meta.url)));
     assert.deepEqual(validateJsonSchemaDefinition(schema, "#", { contractKind: "workflow-definition" }), []);
   }
+  for (const kind of ["plan", "output"]) {
+    const schema = JSON.parse(fs.readFileSync(new URL("../../src/core/contracts/workflow-definition/standard-cycle-entry-choice-checkpoint-" + kind + ".v2.schema.json", import.meta.url)));
+    assert.deepEqual(validateJsonSchemaDefinition(schema, "#", { contractKind: "workflow-definition" }), []);
+  }
   const input = { contract_version: "standard-cycle-entry-choice-checkpoint-input.v1", record_operation_id: O };
   assertStandardOperationInput("cycle_entry_choice_checkpoint", input);
   assert.throws(() => assertStandardOperationInput("cycle_entry_choice_checkpoint", { ...input, approved_paths: ["product.txt"] }));
@@ -33,6 +37,8 @@ function contracts() {
       selected_branch: "feature/C001-choice", selected_branch_head: G, committed_paths: [], git: { status: "no_change", head: G, effect_status: "no_effect" },
       branch_activated: false, implementation_authorized: false }, evidence_refs: [] };
   assertCycleChoiceCheckpointOutput(output);
+  assertCycleChoiceCheckpointOutput({ ...output, contract_version: "standard-cycle-entry-choice-checkpoint-output.v2" });
+  assert.throws(() => assertCycleChoiceCheckpointOutput({ ...output, observations: { ...output.observations, runtime_approved: true } }));
   assert.throws(() => assertCycleChoiceCheckpointOutput({ ...output, facts: { ...output.facts, cycle_entry_choice_checkpoint_created: true } }));
   assert.throws(() => assertCycleChoiceCheckpointOutput({ ...output, facts: { ...output.facts, cycle_entry_resume_allowed: true } }));
   assert.throws(() => assertCycleChoiceCheckpointOutput({ ...output, observations: { ...output.observations, branch_activated: true } }));
@@ -50,7 +56,18 @@ async function checkpointCase(f, fault) {
     ...Array.from({ length: 128 }, (_, i) => `docs/audit/cycles/C${String(i + 1).padStart(3, "0")}-feature-choice/status.md`)];
   assert.doesNotThrow(() => createLocalWorkflowGitCheckpoint({ targetRoot: root }, { profile: "cycle-choice", approvedPaths: allPaths }));
   assert.throws(() => createLocalWorkflowGitCheckpoint({ targetRoot: root }, { profile: "cycle-terminal", approvedPaths: allPaths }), { code: "WORKFLOW_GIT_SCOPE_PROFILE_INVALID" });
+  assert.doesNotThrow(() => createLocalWorkflowGitCheckpoint({ targetRoot: root }, { profile: "cycle-choice", approvedPaths: ["docs/audit/RUNTIME-STATE.md"] }));
+  assert.throws(() => createLocalWorkflowGitCheckpoint({ targetRoot: root }, { profile: "cycle-choice", approvedPaths: ["docs/audit/SPEC.md"] }));
   assert.throws(() => createLocalWorkflowGitCheckpoint({ targetRoot: root }, { profile: "cycle-choice", approvedPaths: ["product.txt"] }), { code: "WORKFLOW_GIT_SCOPE_PROFILE_INVALID" });
+  const runtime = artifacts.read("RUNTIME-STATE.md", { required: true }), runtimeDocument = { path: "RUNTIME-STATE.md", sha256: runtime.sha256, metadata_sha256: artifacts.metadataHash("RUNTIME-STATE.md") };
+  assert.deepEqual(cycleChoiceCheckpointDocuments(source.plan, source.output, runtimeDocument).at(-1), runtimeDocument);
+  for (const extra of [{ ...runtimeDocument, path: "product.txt" }, { ...runtimeDocument, approved: true }, { ...runtimeDocument, sha256: "invalid" }])
+    assert.throws(() => cycleChoiceCheckpointDocuments(source.plan, source.output, extra), { code: "STANDARD_CHOICE_CHECKPOINT_CONTEXT_REQUIRED" });
+  const refusedBoundary = createStandardCycleEntryChoiceCheckpoint({ targetRoot: root, scope: operations.observeScope, readCurrent: () => host.inspect("choice-record").record, readRecorded: async () => { assert.fail("Refused preparation must not read a source"); } });
+  let refusedAuthorizationCalls = 0;
+  await assert.rejects(refusedBoundary.apply(host.inspect("choice-record").record, { can_apply: false, reason_code: "STANDARD_CHOICE_CHECKPOINT_FOREIGN_CHANGES" },
+    { write: true, assertAuthorized: async () => { refusedAuthorizationCalls++; } }), { code: "STANDARD_CHOICE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" });
+  assert.equal(refusedAuthorizationCalls, 0); assert.equal(artifacts.ownerPending(), false);
   const forged = structuredClone(source.output); forged.observations.selected_state = source.plan.selected_state === "OPEN" ? "VERIFYING" : "OPEN";
   assert.throws(() => cycleChoiceCheckpointDocuments(source.plan, forged));
   const before = canonical(), oldHead = git("rev-parse", "HEAD"), oldBranch = git("branch", "--show-current"), oldRefs = heads(),
@@ -63,6 +80,12 @@ async function checkpointCase(f, fault) {
   try { const blocked = await next(); assert.equal(blocked.prepared.can_apply, false); assert.deepEqual(canonical(), before); }
   finally { fs.writeFileSync(product, bytes); }
   const preview = await next(); assert.equal(preview.prepared.can_apply, true, JSON.stringify(preview.prepared));
+  const v2Plan = { ...structuredClone(preview.prepared.plan), contract_version: "standard-cycle-entry-choice-checkpoint-plan.v2",
+    context: { operation_id: "op_" + "1".repeat(40), record_sha256: H, runtime_document: runtimeDocument },
+    documents: [...preview.prepared.plan.documents, runtimeDocument] };
+  assertCycleChoiceCheckpointPlan(v2Plan);
+  assert.throws(() => assertCycleChoiceCheckpointPlan({ ...v2Plan, contract_version: "standard-cycle-entry-choice-checkpoint-plan.v1" }));
+  assert.throws(() => assertCycleChoiceCheckpointPlan({ ...v2Plan, context: { ...v2Plan.context, runtime_document: { ...runtimeDocument, path: "product.txt" } } }));
   const expectedPaths = mode === "db-only" ? [] : source.output.observations.committed.map(row => "docs/audit/" + row.path).sort();
   assert.deepEqual(preview.prepared.plan.git.files.map(row => row.path).sort(), expectedPaths);
   host = openCycleChoiceFixtureHost(root, keyFile, sourcesFile, clock, { allowed: false });

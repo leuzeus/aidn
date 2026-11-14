@@ -467,3 +467,6 @@ bodies; new reports bind their ordered hashes and fresh current subject/HEAD,
 and completion binds the new report/decision. Legacy readers do not convert old
 records. No new shared table, public command or independent authority is added.
 See ADR-0025.
+
+
+Published owned/selected phase routing reuses the operation journal, artifact backend, local owner, CAS and existing Native/validation ports. Plan selection v2 and the read-only execution-source selector derive source identities and routing facts from accepted current history and canonical context; they create no new information authority, table, shared synchronization or DB-only projection. The typed preparation and verification calls use the existing IR. Historical catalog/output readers retain their original versions. Genuine actor, full-route and installed qualification remain separate from source wiring.

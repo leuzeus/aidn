@@ -19,7 +19,7 @@ import { evaluateCurrentStateConsistency } from "./verify-current-state-consiste
 // The canonical plan is fixture arrangement, never historical Native work.
 // The host loads the delivered model; this case does not alter its graph.
 export async function verifyPublishedExistingOpenWork(check, { mixedFixture, selectedMode }) {
-  for (const mode of selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) await check(`standard existing open work ${mode}: delivered root executes two adopted current-instance tasks through verification`, async () => {
+  for (const mode of selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) await check(`standard existing open work ${mode}: delivered root executes two owned current-instance tasks through verification`, async () => {
     let root, diagnostics = 0, work = 0;
     const f = mixedFixture(mode, { standardModel: true, planning: true, readiness: true, work: true, validation: true,
       taskProgress: true, taskFinalValue: 3, hostTrace: true, async answer({ params }) {
@@ -45,7 +45,7 @@ export async function verifyPublishedExistingOpenWork(check, { mixedFixture, sel
           assert.equal(admission.write_decision.outcome, "allow", JSON.stringify(admission.write_decision));
           stage = "product_write";
           fs.writeFileSync(path.join(root, "product/app.mjs"), `export const value = ${value};\n`); work++;
-          return { outcome: "completed", summary: "Observed task work from the adopted canonical source", report: {
+          return { outcome: "completed", summary: "Observed task work from the owned canonical source", report: {
             contract_version: CYCLE_TASK_WORK_CONTRACT, context_sha256: observed.context_sha256,
             task_id: context.task.id, task: context.task.task, work_outcome: "changed",
             changes: [{ path: "product/app.mjs", operation: "update" }], notes: ["Validation and advancement remain separate host operations"] } };
@@ -124,9 +124,22 @@ export async function verifyPublishedExistingOpenWork(check, { mixedFixture, sel
     assert.equal(f.t.sessions.length, 3); assert.ok(f.t.sessions.every(row => row.closed));
     const final = f.open().inspect(), accepted = binding => final.record.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === binding).map(row => f.open().readOperation(row.intent.operation_id));
     for (const binding of ["session_initialize", "mode_decision", "session_git_checkpoint", "cycle_initialize", "cycle_plan_evaluate", "cycle_plan_record", "cycle_audit_select"]) assert.equal(accepted(binding).length, 0, binding);
-    const adopted = accepted("cycle_plan_adopt"); assert.equal(adopted.length, 1);
-    assert.equal(accepted("cycle_plan_select")[0].results.at(-1).output.observations.record_operation_id, adopted[0].operation_id);
-    assert.equal(accepted("cycle_readiness_evaluate")[0].results.at(-1).output.observations.planning_source.operation_id, adopted[0].operation_id);
+    assert.equal(accepted("cycle_plan_adopt").length, 0);
+    const owned = accepted("cycle_owned_resume_admit"); assert.equal(owned.length, 1);
+    const ownedSource = owned[0].results.at(-1).output;
+    assert.equal(ownedSource.observations.source_kind, "canonical_progress");
+    assert.deepEqual(ownedSource.observations.imported_completed_task_ids, []);
+    const selected = accepted("cycle_plan_select")[0].results.at(-1).output;
+    assert.equal(selected.contract_version, "standard-cycle-plan-selection-output.v2");
+    assert.equal(selected.observations.record_operation_id, owned[0].operation_id);
+    assert.equal(accepted("cycle_readiness_evaluate")[0].results.at(-1).output.observations.planning_source.operation_id, owned[0].operation_id);
+    const phaseSelection = accepted("cycle_execution_source_select"); assert.equal(phaseSelection.length, 1);
+    const phase = phaseSelection[0].results.at(-1).output;
+    assert.equal(phase.observations.implementation_source_kind, "implementation_entry");
+    assert.equal(phase.observations.implementation_operation_id, accepted("cycle_implementation_enter")[0].operation_id);
+    assert.equal(phase.observations.implementation_authorized, false);
+    assert.equal(phase.observations.current_native_work_evidence, false);
+    assert.equal(phase.observations.current_validation_evidence, false);
     const advances = accepted("cycle_task_advance"); assert.equal(advances.length, 2);
     assert.deepEqual(advances.map(row => row.results.at(-1).output.observations.task_id), proposal.tasks.map(row => row.id));
     assert.deepEqual(advances.map(row => row.results.at(-1).output.facts.cycle_tasks_finished), [false, true]);
@@ -181,6 +194,6 @@ export async function verifyPublishedExistingOpenWork(check, { mixedFixture, sel
       original_plan_intent_and_classification_preserved: true, trace_metadata_timestamp_refreshed: beforeTraceMetadata !== null,
       accepted_verification_evidence_appended: true,
       same_cycle_branch_and_head: true, unused_constructor_not_applied: true, owner_clear: true, exact_sim: true, simulation_rows: rows,
-      native_transport: "IDENTIFIED_DOUBLE", genuine_native: "NOT_RUN", human_choice_and_carryover: "NOT_CONNECTED", installed_archive: "NOT_RUN", full_standard_workflow: false }));
+      native_transport: "IDENTIFIED_DOUBLE", genuine_native: "NOT_RUN", human_choice_and_carryover: "NOT_RUN_IN_THIS_CASE", installed_archive: "NOT_RUN", full_standard_workflow: false }));
   });
 }

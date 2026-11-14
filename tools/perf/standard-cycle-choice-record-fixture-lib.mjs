@@ -95,7 +95,8 @@ export async function acceptRecordedChoice({ root, keyFile, sourcesFile, operati
 // Canonical lifecycle/phase setup below is explicit fixture construction. It is
 // not a claim that an earlier session close, imported validation or branch
 // activation was executed. Only the choice-record operation is under test.
-export async function verifyCanonicalCycleChoiceRecord(mode, { childScript, pass, faultAfterFirstCas = false, checkpoint: withCheckpoint = false, activation: withActivation = false, selectedCheckpoint: withSelectedCheckpoint = false, selectedFocus: withSelectedFocus = false, focusCheckpoint: withFocusCheckpoint = false, selectedPhase = null, afterRecordedChoice = null, arrangeBeforeBranches = null, selectedCycleId = "C001", selectedCarryoverAction = "import_now", cycleObjective = "Record explicit carryover without activating a branch or granting implementation" }) {
+export async function verifyCanonicalCycleChoiceRecord(mode, { childScript, pass, faultAfterFirstCas = false, checkpoint: withCheckpoint = false, activation: withActivation = false, selectedCheckpoint: withSelectedCheckpoint = false, selectedFocus: withSelectedFocus = false, focusCheckpoint: withFocusCheckpoint = false, selectedPhase = null, afterRecordedChoice = null, arrangeBeforeBranches = null, arrangeOnly = false, selectedCycleId = "C001", selectedCarryoverAction = "import_now", cycleObjective = "Record explicit carryover without activating a branch or granting implementation" }) {
+  if (typeof arrangeOnly !== "boolean") throw Error("CHOICE_FIXTURE_ARRANGEMENT_MODE_INVALID");
   if (faultAfterFirstCas && mode !== "files") throw Error("CHOICE_RECORD_PARTIAL_EFFECT_FILES_REQUIRED");
   if (withCheckpoint && (faultAfterFirstCas || typeof afterRecordedChoice !== "function")) throw Error("CHOICE_RECORD_CHECKPOINT_CALLBACK_REQUIRED");
   if (withActivation && !withCheckpoint) throw Error("CHOICE_RECORD_ACTIVATION_CHECKPOINT_REQUIRED");
@@ -168,6 +169,10 @@ export async function verifyCanonicalCycleChoiceRecord(mode, { childScript, pass
       const file = path.join(root, "docs/audit", name); return { path: name, sha256: fs.existsSync(file) ? artifactContentHash(fs.readFileSync(file, "utf8")) : null }; });
     console.log(JSON.stringify({ arranged_choice_record_fixture: mode, target: root,
       precondition: withSelectedFocus ? "STAGED_CLOSED_PREDECESSOR_AND_CANONICAL_PHASE_METADATA_NOT_WORK_ACCEPTANCE_PROOF" : "STAGED_CLOSED_PREDECESSOR_AND_VERIFYING_METADATA_NOT_SESSION_CLOSE_OR_WORK_ACCEPTANCE_PROOF", native_calls: 0 }));
+    // A caller may reuse only the generated canonical preconditions. No choice
+    // process, H capture, branch activation or historical work is accepted here.
+    if (arrangeOnly) return { proof_class: "GENERATED_CANONICAL_DATA_ONLY", root, privateRoot, keyFile, sourcesFile, artifacts, operations,
+      replace, checkpoint, selectedCycleId, selectedPhase, cycleObjective, workflow_initialized: false, prior_H_capture: false, owned_roots: [...owned] };
     const clock = Date.now(); let host = open(root, keyFile, sourcesFile, clock);
     const initial = host.initialize({ instanceId: "choice-record" }); host.initialize({ instanceId: "choice-record", write: true, expectedResultSha256: initial.record.instance_sha256 });
     const next = async () => { const state = host.inspect("choice-record"); return host.preview({ instanceId: "choice-record", expectedSha256: state.record.instance_sha256, occurrenceId: state.cursor.ready[0] }); };

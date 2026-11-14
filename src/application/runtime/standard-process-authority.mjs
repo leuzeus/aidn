@@ -42,6 +42,7 @@ import { resolveProcessOperationInput } from "../../core/workflow/process-input-
 import { CYCLE_WORK_CONTRACT, CYCLE_TASK_WORK_CONTRACT, assertWorkProductSnapshot, observeStandardCycleWork, observeStandardCycleTaskWork } from "../../core/workflow/standard-cycle-work.mjs";
 import { deriveStandardCycleTaskCursor, deriveStandardCanonicalResumeTaskCursor, renderStandardTaskProgress } from "../../core/workflow/standard-cycle-task-progress.mjs";
 import { canonicalCycleResumeAdmissionOperations, ownedCanonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation, assertCanonicalResumeOutput, evaluateCanonicalResumeReadiness, assertCanonicalResumeObserveInput, assertCanonicalResumeObserveOutput } from "../../core/workflow/standard-canonical-cycle-resume.mjs";
+import { assertCycleExecutionSourceSelection } from "../../core/workflow/standard-cycle-source-selection.mjs";
 import { projectStandardCanonicalCycleProgress } from "../../core/workflow/standard-canonical-plan-projection.mjs";
 import { renderStandardCyclePlan } from "../../core/workflow/standard-cycle-planning.mjs";
 import { cycleWorkBoundary } from "./standard-drift-recovery.mjs";
@@ -716,6 +717,42 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
         ...(subject.resumeSource ? { canonical_resume_origin: subject.resumeSource } : {}), task_count: proposal.tasks.length, cycle_path: observed.context.cycle_path },
       evidence_refs: observed.context.documents.filter(row => ["audit:CURRENT-STATE.md", "audit:" + observed.context.cycle_path + "/plan.md", "audit:" + observed.context.cycle_path + "/status.md"].includes(row.ref)).map(({ ref, sha256 }) => ({ ref, sha256 })) };
   }
+  async function selectCycleExecutionSource(instance, input) {
+    assertStandardOperationInput("cycle_execution_source_select", input);
+    const current = () => {
+      if (instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256 || artifacts.ownerPending())
+        fail("STANDARD_CYCLE_EXECUTION_SOURCE_CHANGED");
+    };
+    current();
+    const originBinding = instance.events.find(row => row.kind === "operation_intent" && row.intent.operation_id === input.record_operation_id)?.intent.binding_ref;
+    if (!["cycle_plan_record", "cycle_plan_adopt", ...canonicalCycleResumeAdmissionOperations].includes(originBinding))
+      fail("STANDARD_CYCLE_PLAN_RECORD_REQUIRED");
+    const origin = acceptedOperation(instance, input.record_operation_id, originBinding);
+    if (origin.output.operation_ref !== originBinding) fail("STANDARD_CYCLE_PLAN_RECORD_REQUIRED");
+    let phaseId = null;
+    const entries = instance.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "cycle_implementation_enter"
+      && instance.events.some(result => result.kind === "operation_result" && result.receipt.operation_id === row.intent.operation_id && result.receipt.outcome === "completed"));
+    for (const entry of entries.toReversed()) {
+      const phase = acceptedOperation(instance, entry.intent.operation_id, "cycle_implementation_enter"),
+        ready = acceptedOperation(instance, phase.record.preview.input.evaluation_operation_id, "cycle_readiness_evaluate");
+      if (ready.record.preview.input.record_operation_id === input.record_operation_id) { phaseId = phase.record.operation_id; break; }
+    }
+    if (!phaseId && canonicalCycleResumeAdmissionOperations.includes(originBinding)) phaseId = input.record_operation_id;
+    if (!phaseId) fail("STANDARD_CYCLE_WORK_PHASE_REQUIRED");
+    const subject = taskPhase(instance, phaseId), selected = await evaluateCycleTaskSelection(instance, { implementation_operation_id: phaseId });
+    current();
+    const cursor = selected.observations, remaining = subject.proposal.tasks.slice(cursor.completed_task_ids.length).map(row => row.id);
+    return assertCycleExecutionSourceSelection({ contract_version: "standard-cycle-execution-source-output.v1", operation_ref: "cycle_execution_source_select",
+      outcome: "completed", effect_status: "no_effect", facts: { cycle_execution_source_selected: true,
+        cycle_work_tasks_pending: remaining.length > 0, cycle_work_product_ready: remaining.length === 0 },
+      observations: { record_operation_id: input.record_operation_id, implementation_operation_id: phaseId,
+        implementation_source_kind: phaseId === input.record_operation_id ? "canonical_progress" : "implementation_entry",
+        phase_source_sha256: shadowHash(subject.phase.record), context_sha256: cursor.context_sha256, scope_sha256: cursor.scope_sha256,
+        cycle_path: cursor.cycle_path, task_count: cursor.task_count, completed_task_ids: cursor.completed_task_ids,
+        remaining_task_ids: remaining, imported_completed_task_ids: cursor.imported_completed_task_ids ?? [],
+        implementation_authorized: false, current_native_work_evidence: false, current_validation_evidence: false },
+      evidence_refs: [...selected.evidence_refs, { ref: "audit:" + operationJournalPath(origin.record.operation_id), sha256: shadowHash(origin.record) }] });
+  }
   async function prepareTaskWorkActivity({ instance, occurrenceId, productSha256, productSnapshot }) {
     const auth = nativeReservation ? { reservation: nativeReservation } : {};
     authenticate(instance, auth); assertWorkProductSnapshot(productSnapshot);
@@ -1010,5 +1047,5 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home],
   });
   return Object.freeze({ profile: "standard-mixed.v1", rollbackProductScope, observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, authenticateOperationHost, inspectDiagnostic, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
-    verifyNativeHumanSource, admitNativeActivity, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCanonicalResumeProduct, observeCycleVerificationContext, observeDriftContext, modelSource: source });
+    verifyNativeHumanSource, admitNativeActivity, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, selectCycleExecutionSource, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCanonicalResumeProduct, observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

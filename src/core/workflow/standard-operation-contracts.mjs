@@ -4,6 +4,7 @@ import spikeExperimentOutput from "../contracts/workflow-definition/standard-spi
 import spikeExperimentOutputV2 from "../contracts/workflow-definition/standard-spike-experiment-admission-output.v2.schema.json" with { type: "json" };
 import spikeExperimentOutputV3 from "../contracts/workflow-definition/standard-spike-experiment-admission-output.v3.schema.json" with { type: "json" };
 import planSelectionOutput from "../contracts/workflow-definition/standard-cycle-plan-selection-output.v1.schema.json" with { type: "json" };
+import { cycleExecutionSourceSelectOperation, assertCyclePlanSourceSelection, assertCycleExecutionSourceSelection } from "./standard-cycle-source-selection.mjs";
 import planAdoptionOutput from "../contracts/workflow-definition/standard-cycle-plan-adoption-output.v1.schema.json" with { type: "json" };
 import { assertStandardCyclePlan } from "./standard-cycle-planning.mjs";
 import spikeInitializeInput from "../contracts/workflow-definition/standard-spike-initialize-input.v1.schema.json" with { type: "json" };
@@ -197,6 +198,7 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (operation === cycleExecutionSourceSelectOperation) return assertStandardOperationInput("cycle_readiness_evaluate", value);
   if (operation === cycleEntryChoiceActivationOperation) return assertCycleChoiceActivationInput(value);
   if (operation === cycleEntrySelectedCheckpointOperation) return assertCycleEntrySelectedInput(value);
   if (operation === cycleEntrySelectedFocusOperation) return assertSelectedFocusInput(value);
@@ -336,7 +338,9 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
-  if (value?.contract_version === "standard-cycle-entry-choice-checkpoint-output.v1") return assertCycleChoiceCheckpointOutput(value);
+  if (value?.contract_version === "standard-cycle-plan-selection-output.v2") return assertCyclePlanSourceSelection(value);
+  if (value?.contract_version === "standard-cycle-execution-source-output.v1") return assertCycleExecutionSourceSelection(value);
+  if (["standard-cycle-entry-choice-checkpoint-output.v1", "standard-cycle-entry-choice-checkpoint-output.v2"].includes(value?.contract_version)) return assertCycleChoiceCheckpointOutput(value);
   if (value?.contract_version === "standard-cycle-entry-choice-activation-output.v1") return assertCycleChoiceActivationOutput(value);
   if (value?.contract_version === "standard-cycle-entry-selected-checkpoint-output.v1") return assertSelectedContextCheckpointOutput(value);
   if (value?.contract_version === "standard-cycle-entry-selected-focus-output.v1") return assertSelectedFocusOutput(value);

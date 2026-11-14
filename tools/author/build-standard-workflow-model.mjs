@@ -109,12 +109,44 @@ for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING
 }
 seq("committing", ["cycle_entry_observe", "cycle_entry_route"]);
 op("cycle_entry_observe", "cycle_entry_observe", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] }, cycle_id: { source: "literal", value: null } });
-xor("cycle_entry_route", [["fresh", "fresh_cycle", "cycle_entry_fresh_context"], ["owned", "owned_cycle", "cycle_entry_owned_context"]]);
+xor("cycle_entry_route", [["fresh", "fresh_cycle", "cycle_entry_fresh_context"], ["owned", "owned_cycle", "cycle_entry_owned_context"],
+  ["choice", "selected_cycle", "cycle_entry_choice_required"]]);
 seq("fresh_cycle", ["cycle_create", "plan", "plan_evaluate", "plan_record"]);
-seq("owned_cycle", ["owned_cycle_entry", "plan_adopt"]);
-for (const id of ["cycle_entry", "owned_cycle_entry"]) op(id, "cycle_entry_admit", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] }, cycle_id: { source: "literal", value: null } });
-op("plan_adopt", "cycle_plan_adopt");
-seq("cycle_work", ["plan_select", "readiness", "implementation_enter", "task_loop",
+op("cycle_entry", "cycle_entry_admit", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] }, cycle_id: { source: "literal", value: null } });
+// An ordinary owned cycle needs no carryover H/checkpoint chain. The root's
+// existing cycle_refresh_before already derives its active-cycle digest.
+const ownedNodeStart = nodes.length, ownedInputStart = inputs.length;
+seq("owned_entry", ["entry", "resume"]);
+const ownedSession = { session_id: { source: "parameter", key: "session_id", path: [] } };
+op("entry", "cycle_entry_admit", { ...ownedSession, cycle_id: { source: "literal", value: null } });
+op("resume", "cycle_owned_resume_admit", operation(null, "entry_operation_id", "entry"));
+const ownedNodes = nodes.splice(ownedNodeStart), ownedTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-owned-entry", revision: 1,
+  participants: [{ id: "project" }], roles: [], policies: [], entry: "owned_entry", nodes: ownedNodes, operation_pins: pinsFor(ownedNodes),
+  call_interface: { parameters: { session_id: "string" }, returns: {} },
+  data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session_id"], inputs: inputs.splice(ownedInputStart) } };
+const ownedRef = pinTarget(ownedTarget);
+node("owned_cycle", "call", { target: ownedRef });
+inputs.push({ node_id: "owned_cycle", fields: { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] } } });
+// Non-completed H outcomes retain the reducer's original wait/stop behavior.
+// Only the accepted selection can reach the existing physical/canonical ports.
+const choiceNodeStart = nodes.length, choiceInputStart = inputs.length;
+seq("selected_entry", ["choose", "record", "checkpoint", "activate", "selected_checkpoint", "focus", "focus_checkpoint", "resume"]);
+op("choose", "cycle_entry_choice_decision", { entry_operation_id: { source: "parameter", key: "entry_operation_id", path: [] } });
+op("record", "cycle_entry_choice_record", operation(null, "decision_operation_id", "choose"));
+op("checkpoint", "cycle_entry_choice_checkpoint", operation(null, "record_operation_id", "record"));
+op("activate", "cycle_entry_choice_activate", operation(null, "checkpoint_operation_id", "checkpoint"));
+op("selected_checkpoint", "cycle_entry_selected_checkpoint", operation(null, "activation_operation_id", "activate"));
+op("focus", "cycle_entry_selected_focus", operation(null, "checkpoint_operation_id", "selected_checkpoint"));
+op("focus_checkpoint", "cycle_entry_focus_checkpoint", operation(null, "focus_operation_id", "focus"));
+op("resume", "cycle_canonical_resume_admit", operation(null, "focus_checkpoint_operation_id", "focus_checkpoint"));
+const choiceNodes = nodes.splice(choiceNodeStart), choiceTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-selected-entry", revision: 1,
+  participants: [{ id: "project" }], roles: [], policies: [], entry: "selected_entry", nodes: choiceNodes, operation_pins: pinsFor(choiceNodes),
+  call_interface: { parameters: { entry_operation_id: "string" }, returns: {} },
+  data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["entry_operation_id"], inputs: inputs.splice(choiceInputStart) } };
+const choiceRef = pinTarget(choiceTarget);
+node("selected_cycle", "call", { target: choiceRef });
+inputs.push({ node_id: "selected_cycle", fields: operation(null, "entry_operation_id", "cycle_entry_observe") });
+seq("cycle_work", ["work_prepare", "phase_select", "initial_task_route",
   "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "cycle_terminal_checkpoint", "close_finalize", "promotion_eligibility", "session_preclose_checkpoint", "session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize", "session_delivery_checkpoint", "session_branch_integration_decide", "session_branch_integrate", "session_pr_delivery"]);
 seq("session_pr_delivery", ["session_pr_admit", "session_push", "session_pr_open", "session_pr_record", "session_pr_checkpoint", "session_pr_update_push", "session_pr_review_observe", "session_pr_review_capture", "session_pr_review_event_route", "session_pr_pretriage_route"]);
 op("session_pr_review_observe", "session_pr_review_content_observe", operation("session_pr_review_observe", "update_operation_id", "session_pr_update_push"));
@@ -311,12 +343,26 @@ for (const original of cycle.data_bindings.inputs) {
 native("plan", "planner", "planning", "standard-cycle-plan-proposal.v1", ["cycle-create"], ["SPEC-R03", "SPEC-R04"]);
 op("plan_evaluate", "cycle_plan_evaluate", occurrence("plan"));
 op("plan_record", "cycle_plan_record", operation("plan_record", "evaluation_operation_id", "plan_evaluate"));
+const preparationNodeStart = nodes.length, preparationInputStart = inputs.length;
+seq("prepare", ["plan_select", "entry_route"]);
 op("plan_select", "cycle_plan_select");
+xor("entry_route", [["required", "enter", "cycle_implementation_entry_required"], ["admitted", "existing_phase", null]]);
+seq("enter", ["readiness", "implementation_enter"]);
+seq("existing_phase", []);
 op("readiness", "cycle_readiness_evaluate", { record_operation_id: { source: "operation_output", node_id: "plan_select", path: ["observations", "record_operation_id"] } });
 op("implementation_enter", "cycle_implementation_enter", operation("implementation_enter", "evaluation_operation_id", "readiness"));
+const preparationNodes = nodes.splice(preparationNodeStart), preparationTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-cycle-preparation", revision: 1,
+  participants: [{ id: "project" }], roles: [], policies: [], entry: "prepare", nodes: preparationNodes, operation_pins: pinsFor(preparationNodes),
+  call_interface: { parameters: {}, returns: { record_operation_id: { type: "string", node_id: "plan_select", path: ["observations", "record_operation_id"] } } },
+  data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: [], inputs: inputs.splice(preparationInputStart) } };
+const preparationRef = pinTarget(preparationTarget);
+node("work_prepare", "call", { target: preparationRef }); inputs.push({ node_id: "work_prepare", fields: {} });
+op("phase_select", "cycle_execution_source_select", { record_operation_id: { source: "call_output", node_id: "work_prepare", path: ["record_operation_id"] } });
+xor("initial_task_route", [["pending", "task_loop", "cycle_work_tasks_pending"], ["complete", "canonical_verification", "cycle_work_product_ready"]]);
 node("task_loop", "loop", { child: "task_iteration", until: "cycle_tasks_finished", max_iterations: 32 });
 seq("task_iteration", ["task_select", "implement", "work_evaluate", "validate", "task_validation", "task_advance", "task_route"]);
-op("task_select", "cycle_task_select", operation("task_select", "implementation_operation_id", "implementation_enter"));
+const implementationSource = () => ({ implementation_operation_id: { source: "operation_output", node_id: "phase_select", path: ["observations", "implementation_operation_id"] } });
+op("task_select", "cycle_task_select", implementationSource());
 native("implement", "implementer", "implementation", "standard-cycle-task-work-report.v1", [], ["SPEC-R03", "SPEC-R04", "SPEC-R06"]);
 inputs.push({ node_id: "implement", fields: operation("implement", "task_operation_id", "task_select") });
 op("work_evaluate", "cycle_task_work_evaluate", occurrence("implement"));
@@ -343,7 +389,21 @@ node("final_verification", "call", { target: verificationRef });
 inputs.push({ node_id: "final_verification", fields: {
   ...operation(null, "validation_operation_id", "validate"), ...operation(null, "progress_operation_id", "task_advance"),
 } });
-op("audit_select", "cycle_audit_select", operation("audit_select", "implementation_operation_id", "implementation_enter"));
+// Complete canonical DATA gets a trusted present-product observation and fresh
+// checks, with no synthetic task advance, writer result or progress identity.
+const completeNodeStart = nodes.length, completeInputStart = inputs.length;
+seq("verify_complete", ["observe", "validate", "evaluate", "verify"]);
+op("observe", "cycle_canonical_resume_observe", { implementation_operation_id: { source: "parameter", key: "implementation_operation_id", path: [] } });
+op("validate", "cycle_validation_execute", operation(null, "work_operation_id", "observe"));
+op("evaluate", "cycle_validation_evaluate", operation(null, "validation_operation_id", "validate"));
+op("verify", "cycle_verification_enter", operation(null, "evaluation_operation_id", "evaluate"));
+const completeNodes = nodes.splice(completeNodeStart), completeTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-canonical-verification", revision: 1,
+  participants: [{ id: "project" }], roles: [], policies: [], entry: "verify_complete", nodes: completeNodes, operation_pins: pinsFor(completeNodes),
+  call_interface: { parameters: { implementation_operation_id: "string" }, returns: {} },
+  data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["implementation_operation_id"], inputs: inputs.splice(completeInputStart) } };
+const completeRef = pinTarget(completeTarget);
+node("canonical_verification", "call", { target: completeRef }); inputs.push({ node_id: "canonical_verification", fields: implementationSource() });
+op("audit_select", "cycle_audit_select", implementationSource());
 native("audit_review", "auditor", "audit", "standard-cycle-audit-report.v1", ["cycle-close"], ["SPEC-R04", "SPEC-R06"]);
 inputs.push({ node_id: "audit_review", fields: operation("audit_review", "audit_operation_id", "audit_select") });
 op("audit_evaluate", "cycle_audit_evaluate", occurrence("audit_review"));
@@ -436,7 +496,11 @@ for (const id of correctionNodes) {
   const input = inputs.find(row => row.node_id === id);
   if (input) {
     const next = structuredClone(input); next.node_id = copy.id;
-    for (const field of Object.values(next.fields)) if (field.node_id) field.node_id = correctionName(field.node_id);
+    for (const [key, field] of Object.entries(next.fields)) {
+      if (field.source === "operation_output" && field.node_id === "phase_select")
+        next.fields[key] = { source: "operation_id", node_id: "correction_implementation_enter" };
+      else if (field.node_id) field.node_id = correctionName(field.node_id);
+    }
     inputs.push(next);
   }
   const activity = activities.find(row => row.node_id === id);
@@ -649,6 +713,10 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...correctiveDriftRef, model: correctiveDriftTarget },
     { ...sessionSetupRef, model: sessionSetup },
     { ...modeClosureRef, model: modeClosureTarget },
+    { ...ownedRef, model: ownedTarget },
+    { ...choiceRef, model: choiceTarget },
+    { ...preparationRef, model: preparationTarget },
+    { ...completeRef, model: completeTarget },
   ],
   data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session", "cycle"], inputs } };
 // Session creation is conditional inside the pinned setup call. Later work
@@ -665,10 +733,10 @@ assertAgenticProcessModel(model);
 const components = processModels(model);
 const specification = read("docs/SPEC.md");
 const skillSource = path => ({ path, sha256: standardAssetHash(read(path)) });
-const catalog = { contract_version: "standard-workflow-catalog.v5",
+const catalog = { contract_version: "standard-workflow-catalog.v6",
   component_id: "aidn-standard", revision: model.revision,
   scope: { kind: "composed_committing_cycle_component", complete_standard_workflow: false,
-    entry_conditions: ["fresh_or_existing_session_admission", "fresh_or_owned_open_cycle"], remaining_activities: ["thinking_session_closure", "exploring_experiments_and_spike_conversion",
+    entry_conditions: ["fresh_or_existing_session_admission", "fresh_owned_or_explicitly_selected_active_cycle"], remaining_activities: ["thinking_session_closure", "exploring_experiments_and_spike_conversion",
       "cycle_choice_and_carryover", "governed_git_checkpoints", "startup_and_work_drift_routes", "incidents_and_recovery", "session_close", "pr_review_and_merge", "post_merge_sync", "full_mixed_resume"] },
   model: { path: modelPath, sha256: shadowHash(model), model_id: model.model_id, revision: model.revision },
   specification: { path: "docs/SPEC.md", sha256: standardAssetHash(specification) },

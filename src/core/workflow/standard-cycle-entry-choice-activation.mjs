@@ -29,7 +29,7 @@ export function cycleChoiceActivationSource(source, input) {
     || !exactKeys(source.record, "output,plan,record_operation_id,record_sha256") || !hash(source.record.record_sha256))
     fail("STANDARD_CHOICE_ACTIVATION_SOURCE_REQUIRED");
   const plan = assertCycleChoiceCheckpointPlan(source.checkpoint_plan), output = assertCycleChoiceCheckpointOutput(source.checkpoint_output),
-    record = source.record, selected = record.plan, documents = cycleChoiceCheckpointDocuments(selected, record.output),
+    record = source.record, selected = record.plan, documents = cycleChoiceCheckpointDocuments(selected, record.output, plan.context?.runtime_document ?? null),
     view = plan.git.observed, observation = output.observations, git = observation.git;
   if (output.outcome !== "completed" || plan.operation_id !== input.checkpoint_operation_id
     || plan.input.record_operation_id !== record.record_operation_id
