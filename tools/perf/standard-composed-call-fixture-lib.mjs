@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 export const standardDataCallTargets = new Map([
   ["fresh_entry", "aidn-standard-fresh-cycle-entry"], ["fresh_checkpoint", "aidn-standard-fresh-cycle-checkpoint"],
+  ["closure_drift_recovery_execution", "aidn-standard-drift-recovery"],
   ["owned_cycle", "aidn-standard-owned-entry"], ["selected_cycle", "aidn-standard-selected-entry"],
   ["work_prepare", "aidn-standard-cycle-preparation"], ["canonical_verification", "aidn-standard-canonical-verification"],
   ["thinking_session_closure", "aidn-standard-mode-session-closure"], ["exploring_session_closure", "aidn-standard-mode-session-closure"],
@@ -59,9 +60,29 @@ export function verifyStandardDataCallFixture({ call, model, parameters, cursor,
     }
     const selected = children.get("plan_select");
     if (targetId === "aidn-standard-cycle-preparation") assert.ok(selected, "fixture requires the accepted planning selector");
-    const expected = targetId === "aidn-standard-cycle-preparation"
+    let recoveryOperations;
+    if (targetId === "aidn-standard-drift-recovery") {
+      const route = target.nodes.find(row => row.id === "recovery_effect_route" && row.kind === "xor");
+      assert.ok(route);
+      const routed = cursor.occurrences.filter(row => row.call_scope_id === call.occurrence_id && row.node_id === route.id);
+      assert.equal(routed.length, 1);
+      assert.equal(routed[0].status, "COMPLETED");
+      assert.equal(routed[0].selected_flows.length, 1);
+      const branch = route.branches.find(row => row.flow_id === routed[0].selected_flows[0]);
+      assert.ok(branch, "recovery fixture requires the reducer-selected declared branch");
+      assert.deepEqual([...routed[0].skipped_flows].sort(), route.branches.filter(row => row !== branch).map(row => row.flow_id).sort());
+      const leaves = id => {
+        const node = target.nodes.find(row => row.id === id);
+        assert.ok(node);
+        if (node.kind === "operation") return [id];
+        assert.equal(node.kind, "sequence", "recovery fixture accepts only the published deterministic branch shape");
+        return node.children.flatMap(leaves);
+      };
+      recoveryOperations = ["recovery_record", ...leaves(branch.node_id)];
+    }
+    const expected = recoveryOperations ?? (targetId === "aidn-standard-cycle-preparation"
       ? selected.results.at(-1).output.facts.cycle_implementation_entry_required ? ["plan_select", "readiness", "implementation_enter"] : ["plan_select"]
-      : target.nodes.filter(row => row.kind === "operation").map(row => row.id);
+      : target.nodes.filter(row => row.kind === "operation").map(row => row.id));
     assert.deepEqual([...children.keys()].sort(), expected.sort());
     const returns = target.call_interface.returns;
     assert.deepEqual(Object.keys(event.resolution.input).sort(), Object.keys(returns).sort());

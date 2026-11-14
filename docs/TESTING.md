@@ -6009,3 +6009,6 @@ Canonical plan selection reports whether a separate implementation entry is
 required for the accepted current phase and remaining tasks. This read-only
 route fact is not DoR satisfaction or an implementation permission. The
 canonical selection fixture checks that fact and keeps authorization false.
+
+
+The composed call fixture recognizes closure_drift_recovery_execution and its declared aidn-standard-drift-recovery target. Return assertions use the actual reducer-selected flow and its declared operation leaves; skipped branch journals are not accepted as execution. The existing composition fixture covers record, new-cycle, rollback and pending branches with the production reducer and explicitly synthetic receipts, including missing/foreign operation refusals. This driver-oracle scope runs no business port or Native actor and does not qualify general R10 or a full composed recovery.

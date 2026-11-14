@@ -26,6 +26,7 @@ import { createProjectAgenticProcessExecution } from "../../src/application/runt
 import { CODEX_STARTUP_ENVIRONMENT_PROFILES } from "../../src/core/agents/codex-startup-arguments.mjs";
 import { PR_TRIAGE_CONTRACT } from "../../src/core/workflow/standard-pr-triage.mjs";
 import { CYCLE_WORK_CONTRACT } from "../../src/core/workflow/standard-cycle-work.mjs";
+import { verifyStandardRecoveryCallFixture } from "./standard-composed-recovery-call-fixture-lib.mjs";
 
 const root = new URL("../../", import.meta.url), read = name => fs.readFileSync(new URL(name, root));
 const assets = loadStandardWorkflowAssets();
@@ -875,6 +876,13 @@ test("optional continuation is structural and requests no dummy context operatio
   for (const id of ["task_continue", "promotion_not_requested"])
     assert.deepEqual(assets.model.nodes.find(row => row.id === id).children, []);
 });
+test("recovery call fixtures follow the actual reducer-selected branch and reject missing or foreign journals", () => {
+  const result = verifyStandardRecoveryCallFixture();
+  assert.equal(result.checks, 16); assert.equal(result.observations.length, 4);
+  assert.deepEqual(result.observations.map(row => row.branch), ["record", "new_cycle", "rollback", "pending"]);
+  assert.equal(result.Native_calls, 0); assert.equal(result.full_standard, false);
+});
+
 test("source authoring preview leaves the exact published JSON bytes unchanged", () => {
   const names = [STANDARD_WORKFLOW_MODEL_PATH, STANDARD_WORKFLOW_CATALOG_PATH], before = names.map(name => shadowHash([...read(name)]));
   const result = JSON.parse(execFileSync(process.execPath, [fileURLToPath(new URL("tools/author/build-standard-workflow-model.mjs", root))], { encoding: "utf8", windowsHide: true }));
