@@ -752,3 +752,12 @@ The current cycle-choice checkpoint binding revision 2 emits closed output v2. A
 Private standard-cycle-prework-subject.v1 and standard-cycle-prework-report.v1 define initial intent and architecture judgement DATA. The closed subject carries origin, declared rules, current scope/canonical/product/HEAD hashes and the canonical proposal hash when applicable. A fresh proposal reuses the unchanged v1 plan contract; a canonical assessment supplies no replacement proposal. Both named judgement dimensions have explicit passed/failed/needs_information verdicts, rationale and registered evidence. Unknown approvals/principals/permissions, contradictory passed claims and foreign references refuse.
 
 These pure readers confer no source authenticity or implementation permission. The fixed host must authenticate accepted Native provenance and reobserve its actual subject around awaited reads before current readiness or effects. Historical v1 planning is never converted into an audit receipt. The runtime producer and published model remain separate implementation/qualification boundaries.
+
+
+The fixed Native answer-schema registry also recognizes the prework report.
+Its source-provided bindings pin report context, subject and origin; fresh
+proposal identity and its business planning-context hash are distinct from the
+whole Native context. Canonical assessment has a null replacement proposal.
+The active kind becomes a closed object schema for transport; historical plan
+answers keep their original shape. This schema support authenticates no live
+producer and does not satisfy readiness or connect the published route.

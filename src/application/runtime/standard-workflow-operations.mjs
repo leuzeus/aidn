@@ -166,6 +166,8 @@ new URL("standard-cycle-implementation.mjs", import.meta.url), new URL("../../co
     ...["process-data-contracts.mjs", "process-input-resolution.mjs", "process-frame-input.mjs", "process-call-model.mjs", "process-call-data.mjs", "process-frame-input-selection.mjs", "process-call-selection.mjs", "process-replay-data.mjs", "process-operation-contracts.mjs", "agentic-process-model.mjs", "agentic-process.mjs"].map(name => new URL(`../../core/workflow/${name}`, import.meta.url)),
     ...["process-data-bindings.v1", "process-data-bindings.v4", "process-resolved-input.v1", "process-resolved-input.v3", "process-call-transition.v1", "agentic-process-model.v2", "agentic-process-instance.v2"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
     new URL("../../core/workflow/native-activity-output.mjs", import.meta.url),
+    new URL("../../core/workflow/standard-cycle-prework.mjs", import.meta.url),
+    ...["subject", "report"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-cycle-prework-${kind}.v1.schema.json`, import.meta.url)),
     ...["standard-drift-report.v1", "standard-drift-evaluate-input.v1", "standard-drift-output.v1", "standard-drift-followup-input.v1", "standard-drift-finalize-plan.v1", "standard-drift-finalize-plan.v2"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
     new URL("../../core/workflow/standard-workflow-model-catalog.mjs", import.meta.url),
     new URL("../../core/workflow/process-operation-journal.mjs", import.meta.url), new URL("../../adapters/runtime/process-operation-journal-store.mjs", import.meta.url),

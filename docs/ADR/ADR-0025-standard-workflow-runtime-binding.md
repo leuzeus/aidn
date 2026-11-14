@@ -4458,3 +4458,13 @@ ACT-10 and the mandatory cycle pipeline require actual judgements before impleme
 Compatible initial judgements may share an eligible Native planning response; this does not claim independence and never replaces the mandatory independent final review. An unfinished canonical source without an authenticated current producer requires a real current assessment, without replacing its approved plan. A complete canonical DATA source keeps its separate present-product verification route. Existing Native grants and every original attempt keep their original limits.
 
 The pure validator requires separate intent/architecture verdicts and registered evidence, rejects missing, contradictory, stale or foreign material and preserves failed versus information-needed outcomes. It authenticates no Native or human source and grants no phase, work or validation authority. The fixed application host, current readiness/effect fences, durable producer linkage and published IR integration are required follow-up implementation; this data component alone does not close ACT-10 or full STANDARD qualification. No new store, shared table, authority principal or preparation-age rule is added.
+
+
+The Native answer registry supports these closed reports with current context,
+subject and origin bindings. Fresh planning preserves a distinct business
+context digest in its unchanged proposal while the report binds the richer
+Native context; canonical assessment carries no replacement proposal. The
+source-selected mode is emitted as a closed object, without changing legacy
+plan answers. This registry component creates no allocation or accepted
+judgement and supplies no readiness, phase or effect authority. Existing
+initial-audit host integration and genuine backend qualification remain open.

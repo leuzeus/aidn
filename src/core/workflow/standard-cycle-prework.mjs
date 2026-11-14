@@ -41,16 +41,16 @@ export function assertStandardCyclePreworkReport(report) {
 // Native producer and accepted lineage, observe this subject from current
 // authorities and fence permissions/owner/instance before any later effect.
 // Compatible initial judgements do not replace the independent final review.
-export function observeStandardCyclePrework({ subject, report, contextSha256, evidenceRefs, canonicalProposal = null }) {
+export function observeStandardCyclePrework({ subject, report, contextSha256, evidenceRefs, canonicalProposal = null, proposalContextSha256 = contextSha256 }) {
   assertStandardCyclePreworkSubject(subject); assertStandardCyclePreworkReport(report);
   const kind = subject.kind === "fresh_cycle" ? "propose_plan" : "audit_canonical_plan";
-  if (!hash(contextSha256) || report.context_sha256 !== contextSha256 || report.subject_sha256 !== shadowHash(subject)
+  if (!hash(contextSha256) || !hash(proposalContextSha256) || report.context_sha256 !== contextSha256 || report.subject_sha256 !== shadowHash(subject)
     || report.origin_operation_id !== subject.origin_operation_id || report.kind !== kind)
     fail("STANDARD_PREWORK_SOURCE_CHANGED");
   const proposal = kind === "propose_plan" ? report.proposal : canonicalProposal;
   assertStandardCyclePlan(proposal);
   if (proposal.session_id !== subject.session_id || proposal.cycle_id !== subject.cycle_id
-    || kind === "propose_plan" && (canonicalProposal !== null || proposal.context_sha256 !== contextSha256)
+    || kind === "propose_plan" && (canonicalProposal !== null || proposal.context_sha256 !== proposalContextSha256)
     || kind === "audit_canonical_plan" && shadowHash(proposal) !== subject.proposal_sha256)
     fail("STANDARD_PREWORK_SOURCE_CHANGED");
   const references = Object.values(report.audits).flatMap(audit => [...audit.evidence_refs, ...audit.findings.flatMap(row => row.evidence_refs)]);

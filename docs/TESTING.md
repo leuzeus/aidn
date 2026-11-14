@@ -5979,3 +5979,13 @@ The choice-checkpoint fixtures retain closed v1 readers and validate v2 plan/out
 Run `node tools/perf/verify-standard-cycle-prework-fixtures.mjs` for the pure initial-audit subject/report boundary. The required agentic manifest includes this command before the existing typed source-selection check and unchanged final nominal case. It verifies closed supported schemas, separate intent/architecture verdicts, historical v1 readability without conversion, immutable canonical plans, failed/information-needed distinctions, changed source/context/HEAD/product/metadata/rule refusals, foreign evidence and rejection of JSON approvals or authority fields. The protected-source shape regression first exposed an untyped null-reference error, then passed with typed refusal.
 
 This scope calls no Native/Human provider, authenticates no authority, executes no host effect and connects no published route. Current Native producer, readiness/fence, actual root, backend and installed qualifications remain separate required work. The original plan and all old FAIL/UNKNOWN attempts are unchanged.
+
+
+The same prework fixture command checks the registered Native answer schema
+and exact source bindings, including a whole-context hash distinct from the
+unchanged business planning context, immutable canonical proposals,
+non-successful judgements and malformed/foreign identity refusals. No Native
+backend is launched: schema construction and local answer validation are
+component evidence. Direct source-pin mutation checks cover the prework core
+and both schemas. The fixed host, readiness/effect fences and current genuine
+producer remain required before the published workflow can use this data.
