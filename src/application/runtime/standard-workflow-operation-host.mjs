@@ -92,8 +92,9 @@ import { createStandardDriftRollback } from "./standard-drift-rollback.mjs";
 import { createStandardDriftCycle } from "./standard-drift-cycle.mjs";
 import { createStandardCyclePlanRecord } from "./standard-cycle-plan-record.mjs";
 import { createStandardCanonicalPlanAdoption } from "./standard-canonical-plan-adoption.mjs";
-import { createStandardCanonicalCycleResume } from "./standard-canonical-cycle-resume.mjs";
-import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation } from "../../core/workflow/standard-canonical-cycle-resume.mjs";
+import { createStandardCanonicalCycleResume, createStandardOwnedCanonicalCycleResume } from "./standard-canonical-cycle-resume.mjs";
+import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation, ownedCanonicalCycleResumeAdmitOperation } from "../../core/workflow/standard-canonical-cycle-resume.mjs";
+import { ownedCanonicalResumeEntry } from "../../core/workflow/standard-owned-cycle-resume.mjs";
 import { createStandardCycleImplementation } from "./standard-cycle-implementation.mjs";
 import { createStandardCycleValidation } from "./standard-cycle-validation.mjs";
 import { createStandardCycleTaskAdvance } from "./standard-cycle-task-advance.mjs";
@@ -858,6 +859,15 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const canonicalResumeAdmission = processAuthority ? createStandardCanonicalCycleResume({ targetRoot, scope: operations.observeScope,
     readCheckpoint: readAcceptedFocusCheckpoint, readContext: () => processAuthority.observeCycleVerificationContext(),
     readCurrent: id => current(id).record }) : null;
+  async function readAcceptedOwnedEntry(instance, input) {
+    const selected = acceptedForPromotion(instance, input.entry_operation_id, "cycle_entry_admit", "STANDARD_OWNED_RESUME_ENTRY_REQUIRED"),
+      source = { entry_operation_id: input.entry_operation_id, entry_sha256: shadowHash(selected.record), input: selected.record.preview.input, output: selected.output };
+    ownedCanonicalResumeEntry(source, input);
+    return source;
+  }
+  const ownedResumeAdmission = processAuthority ? createStandardOwnedCanonicalCycleResume({ targetRoot, scope: operations.observeScope,
+    readEntry: readAcceptedOwnedEntry, readContext: () => processAuthority.observeCycleVerificationContext(),
+    readCurrent: id => current(id).record }) : null;
   const bindings = new Map(standardWorkflowOperationBindings().map(value => [value.id, value]));
   function assertCurrentBindings() {
     for (const component of processModels(model)) for (const node of component.nodes.filter(node => node.kind === "operation"))
@@ -1519,6 +1529,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "cycle_plan_select" ? await selectCyclePlan(state.record)
         : binding.id === "cycle_plan_adopt" ? await canonicalPlanAdoption?.(state.record, input) ?? fail("STANDARD_CANONICAL_PLAN_AUTHORITY_UNAVAILABLE")
         : binding.id === canonicalCycleResumeAdmitOperation ? await canonicalResumeAdmission?.(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CANONICAL_RESUME_AUTHORITY_REQUIRED")
+        : binding.id === ownedCanonicalCycleResumeAdmitOperation ? await ownedResumeAdmission?.(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_OWNED_RESUME_AUTHORITY_REQUIRED")
         : binding.id === canonicalCycleResumeObserveOperation ? await processAuthority?.observeCanonicalResumeProduct?.(state.record, input) ?? fail("STANDARD_CANONICAL_RESUME_PRODUCT_AUTHORITY_REQUIRED")
         : binding.id === "mode_work_preflight" ? await processAuthority?.preflightModeWork(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
         : binding.id === "mode_work_observe" ? await processAuthority?.observeModeWork(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
@@ -1816,6 +1827,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "cycle_plan_select") output = await selectCyclePlan(state.record);
         else if (record.intent.binding_ref === "cycle_plan_adopt") output = await canonicalPlanAdoption?.(state.record, record.preview.input) ?? fail("STANDARD_CANONICAL_PLAN_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === canonicalCycleResumeAdmitOperation) output = await canonicalResumeAdmission?.(state.record, record.preview.input, record.operation_id) ?? fail("STANDARD_CANONICAL_RESUME_AUTHORITY_REQUIRED");
+        else if (record.intent.binding_ref === ownedCanonicalCycleResumeAdmitOperation) output = await ownedResumeAdmission?.(state.record, record.preview.input, record.operation_id) ?? fail("STANDARD_OWNED_RESUME_AUTHORITY_REQUIRED");
         else if (record.intent.binding_ref === canonicalCycleResumeObserveOperation) output = await processAuthority?.observeCanonicalResumeProduct?.(state.record, record.preview.input) ?? fail("STANDARD_CANONICAL_RESUME_PRODUCT_AUTHORITY_REQUIRED");
         else if (record.intent.binding_ref === "spike_cycle_initialize") output = await spike.initialize(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });

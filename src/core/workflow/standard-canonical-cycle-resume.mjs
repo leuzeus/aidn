@@ -6,10 +6,13 @@ import { shadowHash, checkShadowJson } from "./shadow-json.mjs";
 import { artifactContentHash } from "./artifact-compare-swap.mjs";
 import inputSchema from "../contracts/workflow-definition/standard-canonical-cycle-resume-input.v1.schema.json" with { type: "json" };
 import outputSchema from "../contracts/workflow-definition/standard-canonical-cycle-resume-output.v1.schema.json" with { type: "json" };
+import ownedOutputSchema from "../contracts/workflow-definition/standard-owned-cycle-resume-output.v1.schema.json" with { type: "json" };
 import observeInputSchema from "../contracts/workflow-definition/standard-canonical-cycle-resume-observe-input.v1.schema.json" with { type: "json" };
 import observeOutputSchema from "../contracts/workflow-definition/standard-canonical-cycle-resume-observe-output.v1.schema.json" with { type: "json" };
 
 export const canonicalCycleResumeAdmitOperation = "cycle_canonical_resume_admit";
+export const ownedCanonicalCycleResumeAdmitOperation = "cycle_owned_resume_admit";
+export const canonicalCycleResumeAdmissionOperations = Object.freeze([canonicalCycleResumeAdmitOperation, ownedCanonicalCycleResumeAdmitOperation]);
 export const canonicalCycleResumeObserveOperation = "cycle_canonical_resume_observe";
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const same = (a, b) => shadowHash(a) === shadowHash(b);
@@ -89,7 +92,7 @@ export function evaluateCanonicalResumeReadiness({ projection, context, branchAd
   return { checks, satisfied: checks.every(row => row.satisfied) };
 }
 export function assertCanonicalResumeOutput(value) {
-  valid(value, outputSchema, "STANDARD_CANONICAL_RESUME_OUTPUT_INVALID");
+  valid(value, value?.contract_version === "standard-owned-cycle-resume-output.v1" ? ownedOutputSchema : outputSchema, "STANDARD_CANONICAL_RESUME_OUTPUT_INVALID");
   const observed = value.observations, proposal = assertStandardCyclePlan(observed.proposal), imported = observed.imported_completed_task_ids;
   if (proposal.context_sha256 !== observed.context_sha256 || proposal.session_id !== observed.session_id || proposal.cycle_id !== observed.cycle_id
     || !same(imported, proposal.tasks.slice(0, imported.length).map(row => row.id))

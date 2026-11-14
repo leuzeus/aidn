@@ -120,7 +120,7 @@ try {
     // Standalone components and compatibility bindings have their own fixtures.
     assert.deepEqual([...registered.keys()].filter(id => !published.has(id)).sort(),
       ["cycle_canonical_resume_admit", "cycle_canonical_resume_observe", "cycle_entry_choice_activate", "cycle_entry_choice_checkpoint", "cycle_entry_choice_decision", "cycle_entry_choice_record", "cycle_entry_focus_checkpoint", "cycle_entry_selected_checkpoint", "cycle_entry_selected_focus",
-        "cycle_work_evaluate", "session_admit", "session_pr_merge_observe", "session_pr_post_merge_wait", "session_pr_review_observe"]);
+        "cycle_owned_resume_admit", "cycle_work_evaluate", "session_admit", "session_pr_merge_observe", "session_pr_post_merge_wait", "session_pr_review_observe"]);
     for (const id of ["cycle_entry_observe", "cycle_entry_admit", "cycle_plan_adopt"]) {
       assert.equal(published.has(id), true); assert.equal(registered.get(id).effect_class, "read-only");
     }

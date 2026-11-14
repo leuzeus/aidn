@@ -177,7 +177,8 @@ import { cycleEntrySelectedCheckpointOperation, assertSelectedContextCheckpointO
 import { assertCycleEntrySelectedInput } from "./standard-cycle-entry-selected-source.mjs";
 import { cycleEntrySelectedFocusOperation, assertSelectedFocusInput, assertSelectedFocusOutput } from "./standard-cycle-entry-selected-focus.mjs";
 import { cycleEntryFocusCheckpointOperation, assertFocusCheckpointInput, assertFocusCheckpointOutput } from "./standard-cycle-entry-focus-checkpoint.mjs";
-import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation, assertCanonicalResumeInput, assertCanonicalResumeObserveInput, assertCanonicalResumeOutput, assertCanonicalResumeObserveOutput } from "./standard-canonical-cycle-resume.mjs";
+import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation, ownedCanonicalCycleResumeAdmitOperation, assertCanonicalResumeInput, assertCanonicalResumeObserveInput, assertCanonicalResumeOutput, assertCanonicalResumeObserveOutput } from "./standard-canonical-cycle-resume.mjs";
+import { assertOwnedCanonicalResumeInput, assertOwnedCanonicalResumeOutput } from "./standard-owned-cycle-resume.mjs";
 import driftCycleInput from "../contracts/workflow-definition/standard-drift-cycle-initialize-input.v1.schema.json" with { type: "json" };
 import driftCycleOutput from "../contracts/workflow-definition/standard-drift-cycle-output.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
@@ -201,6 +202,7 @@ export function assertStandardOperationInput(operation, value) {
   if (operation === cycleEntrySelectedFocusOperation) return assertSelectedFocusInput(value);
   if (operation === cycleEntryFocusCheckpointOperation) return assertFocusCheckpointInput(value);
   if (operation === canonicalCycleResumeAdmitOperation) return assertCanonicalResumeInput(value);
+  if (operation === ownedCanonicalCycleResumeAdmitOperation) return assertOwnedCanonicalResumeInput(value);
   if (operation === canonicalCycleResumeObserveOperation) return assertCanonicalResumeObserveInput(value);
   if (operation === cycleEntryChoiceCheckpointOperation) {
     if (checkShadowJson(value) || validateJsonSchema(value, cycleEntryChoiceCheckpointInput, "$", { contractKind: "workflow-definition" }).length)
@@ -340,6 +342,7 @@ export function assertStandardOperationOutput(value) {
   if (value?.contract_version === "standard-cycle-entry-selected-focus-output.v1") return assertSelectedFocusOutput(value);
   if (value?.contract_version === "standard-cycle-entry-focus-checkpoint-output.v1") return assertFocusCheckpointOutput(value);
   if (value?.contract_version === "standard-canonical-cycle-resume-output.v1") return assertCanonicalResumeOutput(value);
+  if (value?.contract_version === "standard-owned-cycle-resume-output.v1") return assertOwnedCanonicalResumeOutput(value);
   if (value?.contract_version === "standard-canonical-cycle-resume-observe-output.v1") return assertCanonicalResumeObserveOutput(value);
   if (value?.contract_version === "standard-cycle-entry-choice-record-output.v1") return assertStandardCycleEntryChoiceRecordOutput(value);
   if (value?.contract_version === "standard-cycle-entry-choice-output.v1") return assertCycleEntryChoiceOutput(value);

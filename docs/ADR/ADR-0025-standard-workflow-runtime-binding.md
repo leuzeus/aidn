@@ -4417,3 +4417,12 @@ Partial canonical continuation reuses the existing readiness and implementation-
 Imported task IDs form the baseline of current cursor derivation and stay separate from authenticated current Native-observed IDs. Completed progress uses a distinct trusted product snapshot, then actual registered checks and the existing verification/audit bridge. The Native worker audit reader obtains product bytes through a protected construction capability. Own validation/verification leases use private owner assertions; foreign or uncertain owners remain blocking. New current verification evidence is appended without replacing the retained historical trace.
 
 Read-only Git observation disables porcelain diff stat-cache refresh per invocation. Current index bytes stay a fenced preimage. The private route adds no store, migration, shared synchronization, Native consent or elapsed-age guard and does not itself connect published STANDARD choice routing. Controlled fixtures, genuine Native, installed archives and the complete workflow remain separate qualifications.
+
+
+### Owned canonical source alongside selected focus
+
+The ordinary owned entry and selected-focus checkpoint are distinct authenticated origins. A private `cycle_owned_resume_admit` adapter consumes an accepted current-process `cycle_entry_admit` and emits its own closed entry-identity output. It shares the canonical progress/DoR/cursor consumers with selected resume; it neither fabricates a focus checkpoint nor weakens the original H/checkpoint chain. This additional read-only binding supplies an origin adapter, not a new approval, phase effect or information authority.
+
+The existing ordinary canonical adoption path does not require a globally clean working tree. The owned continuation therefore captures the existing controlled current Git/context observation, including uncommitted progress, and rechecks its exact current material around awaited reads. It retains current canonical/metadata/owner/process fences and all later effect grants and CAS. It does not transfer the selected physical-checkpoint clean-context precondition to an operation that performs no Git mutation.
+
+Known canonical Process cycle choice sections can constrain the owned work intent to integration-only; they remain historical DATA and authenticate no human or current work. The registered private adapter remains separate from published root choice/phase wiring and genuine Native/installed/full-workflow qualification.

@@ -401,3 +401,10 @@ The task cursor offsets new accepted advances by the imported prefix. Its first 
 FILES canonical metadata remains absent; DUAL verifies required physical projection, while DB-only preserves detailed physical absence. Canonical reads and writes bind to the selected backend and existing artifact classification. Trusted product snapshots preserve approved presence/absence and file-boundary checks. No second store, shared synchronization or metadata authority is introduced.
 
 Controlled Git context reads set `diff.autoRefreshIndex=false` per invocation alongside disabled optional locks. A stat-cache refresh must preserve the current index bytes while source observations are compared. The exact current index fence remains enforced; repository/global Git settings are unchanged. Genuine actors, the published route, installed archives and complete workflow qualification require their own evidence.
+
+
+## Owned entry to canonical progress
+
+An unambiguous owned cycle can supply its accepted `cycle_entry_admit` identity to the separate read-only `cycle_owned_resume_admit` adapter. This preserves ordinary entry and avoids requiring the selected-cycle H/activation/checkpoint sequence for a cycle already owned in the current context. The selected source retains that full sequence and its physical checkpoint rules.
+
+The owned source reuses current canonical/backend/metadata/process ownership checks and the progress projector. Its current Git diff/status and product scope are observed through the existing controlled context reader and fenced before/after awaited reads. Uncommitted current progress is DATA, not a reason to invent a checkpoint or fresh work receipt. Canonical choice history can retain `integration_only` intent; it provides no H authentication or effect permission. All unfinished work still needs current DoR, the existing separately granted implementation entry and specific Native write admission. Complete data keeps imported and current task IDs separate through product observation, checks and audit. No new authority, store, shared synchronization or elapsed-age rule is introduced.

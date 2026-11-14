@@ -1407,6 +1407,30 @@
       "--retain-always"
     ],
     [
+      "tools/perf/verify-standard-owned-cycle-resume-fixtures.mjs",
+      "--contracts-only"
+    ],
+    [
+      "tools/perf/verify-standard-owned-cycle-resume-fixtures.mjs",
+      "--mode=files",
+      "--phase=OPEN",
+      "--prefix=1"
+    ],
+    [
+      "tools/perf/verify-standard-owned-cycle-resume-fixtures.mjs",
+      "--mode=dual",
+      "--phase=IMPLEMENTING",
+      "--prefix=1",
+      "--enter"
+    ],
+    [
+      "tools/perf/verify-standard-owned-cycle-resume-fixtures.mjs",
+      "--mode=db-only",
+      "--phase=VERIFYING",
+      "--prefix=2",
+      "--checks"
+    ],
+    [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--standard-composed-mode=files",
       "--standard-composed-stop=nominal_post_merge_complete"

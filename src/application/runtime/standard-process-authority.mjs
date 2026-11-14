@@ -41,7 +41,7 @@ import path from "node:path";
 import { resolveProcessOperationInput } from "../../core/workflow/process-input-resolution.mjs";
 import { CYCLE_WORK_CONTRACT, CYCLE_TASK_WORK_CONTRACT, assertWorkProductSnapshot, observeStandardCycleWork, observeStandardCycleTaskWork } from "../../core/workflow/standard-cycle-work.mjs";
 import { deriveStandardCycleTaskCursor, deriveStandardCanonicalResumeTaskCursor, renderStandardTaskProgress } from "../../core/workflow/standard-cycle-task-progress.mjs";
-import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation, assertCanonicalResumeOutput, evaluateCanonicalResumeReadiness, assertCanonicalResumeObserveInput, assertCanonicalResumeObserveOutput } from "../../core/workflow/standard-canonical-cycle-resume.mjs";
+import { canonicalCycleResumeAdmissionOperations, ownedCanonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation, assertCanonicalResumeOutput, evaluateCanonicalResumeReadiness, assertCanonicalResumeObserveInput, assertCanonicalResumeObserveOutput } from "../../core/workflow/standard-canonical-cycle-resume.mjs";
 import { projectStandardCanonicalCycleProgress } from "../../core/workflow/standard-canonical-plan-projection.mjs";
 import { renderStandardCyclePlan } from "../../core/workflow/standard-cycle-planning.mjs";
 import { cycleWorkBoundary } from "./standard-drift-recovery.mjs";
@@ -525,7 +525,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   async function evaluateCycleReadiness(instance, input) {
     assertStandardOperationInput("cycle_readiness_evaluate", input);
     const origin = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === input.record_operation_id)?.intent.binding_ref;
-    if (origin === canonicalCycleResumeAdmitOperation) {
+    if (canonicalCycleResumeAdmissionOperations.includes(origin)) {
       const adopted = canonicalResumeOrigin(instance, input.record_operation_id), output = adopted.output, source = output.observations;
       if (!["OPEN", "IMPLEMENTING"].includes(source.canonical_phase)
         || source.phase_transition_required !== (source.canonical_phase === "OPEN")) fail("STANDARD_CANONICAL_RESUME_IMPLEMENTATION_CHECKPOINT_REQUIRED");
@@ -615,8 +615,10 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   const observeCycleReadinessContext = async (productSha256 = readProductSha256?.()) => readinessContext(await readStandardCyclePlanContext({ targetRoot: configuration.target_root, productSha256, productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment, readinessTransition: true }));
   function canonicalResumeOrigin(instance, id, auth = {}, history = null) {
-    const adopted = acceptedOperation(instance, id, canonicalCycleResumeAdmitOperation, auth, history), output = assertCanonicalResumeOutput(adopted.output);
-    if (output.outcome !== "completed" || output.effect_status !== "no_effect" || output.facts.canonical_cycle_resume_available !== true
+    const binding = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === id)?.intent.binding_ref;
+    if (!canonicalCycleResumeAdmissionOperations.includes(binding)) fail("STANDARD_CANONICAL_RESUME_ADMISSION_REQUIRED");
+    const adopted = acceptedOperation(instance, id, binding, auth, history), output = assertCanonicalResumeOutput(adopted.output);
+    if (output.operation_ref !== binding || output.outcome !== "completed" || output.effect_status !== "no_effect" || output.facts.canonical_cycle_resume_available !== true
       || output.observations.admission_operation_id !== id || output.observations.readiness_satisfied !== true)
       fail("STANDARD_CANONICAL_RESUME_ADMISSION_REQUIRED");
     return adopted;
@@ -624,7 +626,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   function cyclePlanningProposal(instance, ready, auth = {}, history = null) {
     const id = ready.record.preview.input.record_operation_id;
     const origin = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === id)?.intent.binding_ref;
-    if (origin === canonicalCycleResumeAdmitOperation) {
+    if (canonicalCycleResumeAdmissionOperations.includes(origin)) {
       const adopted = canonicalResumeOrigin(instance, id, auth, history), source = adopted.output.observations;
       if (ready.output.facts.cycle_readiness_satisfied !== true || ready.output.observations.cycle_path !== source.cycle_path
         || ready.output.observations.scope_sha256 !== source.scope_sha256
@@ -652,7 +654,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   function taskPhase(instance, id, auth = {}, history = null) {
     const binding = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === id)?.intent.binding_ref;
     let phase, proposal, resume = null, phaseContextSha256;
-    if (binding === canonicalCycleResumeAdmitOperation) {
+    if (canonicalCycleResumeAdmissionOperations.includes(binding)) {
       phase = canonicalResumeOrigin(instance, id, auth, history);
       if (phase.output.facts.cycle_resume_phase_admitted !== true || !["IMPLEMENTING", "VERIFYING"].includes(phase.output.observations.canonical_phase))
         fail("STANDARD_CANONICAL_RESUME_OPEN_TRANSITION_REQUIRED");
@@ -668,12 +670,13 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       proposal = cyclePlanningProposal(instance, ready, auth, history); phaseContextSha256 = phase.output.observations.causal_transition.after_context_sha256;
       const recordId = ready.record.preview.input.record_operation_id,
         recordBinding = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === recordId)?.intent.binding_ref;
-      if (recordBinding === canonicalCycleResumeAdmitOperation) resume = canonicalResumeOrigin(instance, recordId, auth, history);
+      if (canonicalCycleResumeAdmissionOperations.includes(recordBinding)) resume = canonicalResumeOrigin(instance, recordId, auth, history);
     }
     return { phase, proposal, phaseContextSha256,
       canonicalResume: resume ? { source_operation_id: resume.record.operation_id, source_sha256: shadowHash(resume.output), completed_task_ids: resume.output.observations.imported_completed_task_ids } : null,
       resumeSource: resume ? { operation_id: resume.record.operation_id, output_sha256: shadowHash(resume.output), canonical_phase: resume.output.observations.canonical_phase,
-        focus_checkpoint_operation_id: resume.output.observations.focus_checkpoint_operation_id, source_sha256: resume.output.observations.source_sha256,
+        ...(resume.output.operation_ref === ownedCanonicalCycleResumeAdmitOperation ? { entry_operation_id: resume.output.observations.entry_operation_id }
+          : { focus_checkpoint_operation_id: resume.output.observations.focus_checkpoint_operation_id }), source_sha256: resume.output.observations.source_sha256,
         continuity_action: resume.output.observations.continuity_action, work_intent: resume.output.observations.work_intent } : null };
   }
   function taskAdvances(instance, phaseId, auth = {}) {
