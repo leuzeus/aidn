@@ -24,6 +24,7 @@ import { verifyPublishedExistingOpenWork } from "./standard-existing-open-work-f
 import { verifyCanonicalPlanWork } from "./standard-canonical-plan-work-fixture-lib.mjs";
 import { cycleVerificationBoundary } from "../../src/application/runtime/standard-drift-recovery.mjs";
 import assert from "node:assert/strict";
+import { standardDataCallTargets, verifyStandardDataCallFixture } from "./standard-composed-call-fixture-lib.mjs";
 import { attachComposedR09Provider } from "./standard-composed-r09-provider-fixture-lib.mjs";
 import { resolveStandardWorkflowConfiguration, runStandardWorkflowEntry } from "../../src/application/runtime/standard-workflow-entry.mjs";
 import { readStandardPostMergeContinuity } from "../../src/application/runtime/standard-post-merge-continuity.mjs";
@@ -1220,7 +1221,7 @@ if (process.argv[2] === "--mixed-continue") {
         const event = proposed.record.events.at(-1), entering = call.wait_reason === "call_entry";
         assert.equal(event.kind, entering ? "call_enter" : "call_return");
         assert.equal(event.occurrence_id, call.occurrence_id);
-        if (entering || !/^correction_(?:cycle|closure|promotion|session_closure)_drift_finalize$/.test(call.node_id)) assert.deepEqual(event.witnesses, []);
+        if (!standardDataCallTargets.has(call.node_id) && (entering || !/^correction_(?:cycle|closure|promotion|session_closure)_drift_finalize$/.test(call.node_id))) assert.deepEqual(event.witnesses, []);
         const journals = new Map();
         const accepted = (id, binding) => {
           const journal = host.readOperation(id), receipt = journal.results.at(-1)?.receipt;
@@ -1263,7 +1264,11 @@ if (process.argv[2] === "--mixed-continue") {
           assert.equal(fullCorrection, true);
           verifyCorrectiveDriftCall({ call, cursor: state.cursor, prefix, event, accepted,
             evaluationNode: call.node_id.replace(/_finalize$/, "_evaluate") });
+        } else if (standardDataCallTargets.has(call.node_id)) {
+          verifyStandardDataCallFixture({ call, model: state.record.model, parameters: state.record.initial_parameters,
+            cursor: state.cursor, event, entering, accepted, readOperation: id => host.readOperation(id) });
         } else if (entering) {
+          assert.ok(["final_verification", "correction_final_verification"].includes(call.node_id), "unsupported composed fixture call before final-verification lookup");
           const { validation_operation_id, progress_operation_id } = event.resolution.input;
           accepted(validation_operation_id, "cycle_validation_execute");
           const progress = accepted(progress_operation_id, "cycle_task_advance");

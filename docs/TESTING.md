@@ -5995,3 +5995,12 @@ backend is launched: schema construction and local answer validation are
 component evidence. Direct source-pin mutation checks cover the prework core
 and both schemas. The fixed host, readiness/effect fences and current genuine
 producer remain required before the published workflow can use this data.
+
+The actual composed driver recognizes the pinned creation/checkpoint, owned/
+selected entry, work preparation, canonical verification and mode-closure
+interfaces. It compares input identities with actual accepted journals and
+parameters, authenticates each executed D/H leaf, verifies declared return
+witnesses and keeps the exact planning origin through readiness. These calls
+consume no Native response. Unsupported calls fail as fixture assertions before
+any missing final-verification ID can be passed to the journal reader. Actual
+current-root execution remains a separate required case from pure preflight.
