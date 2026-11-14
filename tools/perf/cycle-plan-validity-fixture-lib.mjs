@@ -40,14 +40,19 @@ export async function verifyCyclePreparedPlanValidity(check, proposalFactory) {
           const rows = new Map(Object.entries(contents).map(([path, content]) => [path, { path, content, metadata_sha256: hash("b") }]));
           const before = structuredClone([...rows]);
           const first = rows.keys().next().value;
-          let owner = false, granted = false, writes = 0, evaluations = 0, authorizationCalls = 0;
+          let owner = false, ownerPlan = null, ownerAssertions = 0, granted = false, writes = 0, evaluations = 0, authorizationCalls = 0;
           const material = path => { const row = rows.get(path); assert.ok(row, path); return { ...row, sha256: artifactContentHash(row.content), source: "postgres" }; };
           globalThis[Symbol.for(key)] = { root: "C:/controlled-cycle-plan-validity",
             describe: () => ({ database: true, backend: "postgres", state_mode: "db-only" }), ownerPending: () => owner,
             read: material, metadataHash: path => material(path).metadata_sha256,
-            async withLocalEffectOwner(_plan, action) {
-              assert.equal(owner, false); owner = true;
-              try { return await action(); } finally { owner = false; }
+            async withLocalEffectOwner(plan, action) {
+              assert.match(plan, /^[a-f0-9]{64}$/);
+              assert.equal(owner, false); owner = true; ownerPlan = plan;
+              try { return await action(); } finally { owner = false; ownerPlan = null; }
+            },
+            assertLocalEffectOwner(plan) {
+              if (!owner || ownerPlan !== plan) throw Object.assign(new Error("STANDARD_EFFECT_OWNER_REQUIRED"), { code: "STANDARD_EFFECT_OWNER_REQUIRED" });
+              ownerAssertions++;
             },
             compareAndSwapPreservingMetadata(change) {
               if (invalidation === "partial" && writes === 1) throw Object.assign(new Error("CAS_INTERRUPTED"), { code: "CAS_INTERRUPTED" });
@@ -95,6 +100,8 @@ export async function verifyCyclePreparedPlanValidity(check, proposalFactory) {
           }
           assert.equal(authorizationCalls, invalidation === "evaluation" ? 0 : 1);
           assert.equal(owner, false);
+          assert.equal(ownerPlan, null);
+          assert.equal(ownerAssertions > 0, !planning);
         });
       }
     }
