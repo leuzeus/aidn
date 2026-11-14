@@ -747,3 +747,8 @@ Catalog v6 declares fresh, already-owned and explicitly selected active-cycle en
 
 
 The current cycle-choice checkpoint binding revision 2 emits closed output v2. A v2 plan adds a fixed accepted-context reference and the exact RUNTIME-STATE content/metadata postimage to the original choice document set; the protected host derives it only from the accepted same-instance refresh before the original H intent and reauthenticates it on activation. V1 plan/output readers remain closed and unchanged. No JSON input can supply that authority or widen the path set; the existing 131-file and Native/authority limits remain.
+
+
+Private standard-cycle-prework-subject.v1 and standard-cycle-prework-report.v1 define initial intent and architecture judgement DATA. The closed subject carries origin, declared rules, current scope/canonical/product/HEAD hashes and the canonical proposal hash when applicable. A fresh proposal reuses the unchanged v1 plan contract; a canonical assessment supplies no replacement proposal. Both named judgement dimensions have explicit passed/failed/needs_information verdicts, rationale and registered evidence. Unknown approvals/principals/permissions, contradictory passed claims and foreign references refuse.
+
+These pure readers confer no source authenticity or implementation permission. The fixed host must authenticate accepted Native provenance and reobserve its actual subject around awaited reads before current readiness or effects. Historical v1 planning is never converted into an audit receipt. The runtime producer and published model remain separate implementation/qualification boundaries.
