@@ -444,3 +444,14 @@ Complete canonical source text remains in the bounded prework context. The
 Native binding reader uses that context's existing total byte bound for this
 input, while ordinary small shadow data keeps its original string limit.
 This changes neither the source digest nor the separate Native byte ledger.
+
+
+The internal Native allocation assessment reuses the canonical artifact and
+reconciliation readers. Its distinct diagnostic path authenticates historical
+bindings and observes product bytes through the protected snapshot reader,
+without initializing an executor. Execution and disposition keep current
+binding and unresolved-allocation checks. Two unchanged captures retain exact
+backend, instance, journal, dispatch and evidence hashes; they are not a CAS
+fence or independent external discovery. The returned signed observation
+creates no record, projection, shared synchronization or authority. Failed
+allocations and unknown debit totals remain unchanged until separate recovery.

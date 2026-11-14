@@ -1185,6 +1185,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     const value = service.inspect(id);
     return { ...value, native: processAuthority.inspectDiagnostic(value.record) };
   }
+  function observeNativeReconciliationSubject(id) {
+    if (!processAuthority) fail("NATIVE_ALLOCATION_ASSESSMENT_AUTHORITY_REQUIRED");
+    return processAuthority.observeNativeDiagnostic(service.inspect(id).record);
+  }
   function observeReadOnlyReconciliationSubject(id) {
     try {
       return observeReconciliationSubject(id);
@@ -1358,7 +1362,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const reconciliationInventory = createStandardReconciliationInventory({ targetRoot, signer, now,
     configuration: reconciliationConfiguration, modelSource: source,
     readInstance: id => current(id).record, readAuthority, readContext: snapshot, readSubject: observeReconciliationSubject,
-    readDiagnosticSubject: processAuthority ? observeReadOnlyReconciliationSubject : undefined });
+    readDiagnosticSubject: processAuthority ? observeReadOnlyReconciliationSubject : undefined,
+    readNativeSubject: processAuthority ? observeNativeReconciliationSubject : undefined });
   disposition = createStandardOperationDisposition({ targetRoot, stateMode: initial.stateMode, signer, artifacts, now,
     readOperation: retained, readInstance: id => current(id).record, readAuthority, readContext: snapshot, observeBoundary,
     inventory: reconciliationInventory, dispositionSource, onBoundary: dispatchCheckpoint,
@@ -1439,6 +1444,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     },
     prepareReconciliationInventory: (id, input) => reconciliationInventory.prepare(id, input),
     prepareProcessOwnerObservation: (id, input) => reconciliationInventory.prepareProcessOwnerObservation(id, input),
+    prepareNativeAllocationAssessment: (id, input) => reconciliationInventory.prepareNativeAllocationAssessment(id, input),
     prepareOperationDisposition: (id, input) => disposition.prepare(id, input),
     applyOperationDisposition: (plan, input) => disposition.apply(plan, input),
     inspectDiagnostic,

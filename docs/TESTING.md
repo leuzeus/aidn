@@ -6147,3 +6147,24 @@ remain unchanged. Run actual SPIKE conversion separately to prove its selected
 route still invokes initialization/finalization after the analysis loop.
 Source registration or synthetic reducer traversal alone is not a mixed-host
 PASS; genuine actors, installed execution and the full plan remain separate.
+
+
+## Native allocation assessment candidate
+
+The existing Native dispatch provenance commands for `files`, `dual` and
+`db-only` also exercise `prepareNativeAllocationAssessment` with real canonical
+stores, signing and owner/fence ports. Their failed checkpoint, allocator return
+and OS closure are explicitly synthetic; no Native client or model is started.
+The result binds the exact failed generation and dispatch, preserves unknown
+accounting, the held owner and debit minimum, and survives a cold host read.
+Fourteen signed contract substitutions refuse, while four incomplete proof
+variants retain unknown assignment. Stale prefixes, foreign configuration,
+generation changes, write flags and corrupted checkpoint bytes also refuse.
+Every normal observation preserves fixture bytes and directories.
+
+The `--contracts-only` selector retains its original Native dispatch DTO scope;
+the allocation-assessment cases require one of the three actual backend modes.
+Historical-source observations, actual interrupted trees, concurrent recovery,
+exact owner disposition, general R10/handoff, genuine Native and installed
+archive qualification remain separate. Existing required case order, argv and
+finite Native grants are unchanged.

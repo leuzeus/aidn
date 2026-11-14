@@ -20,6 +20,7 @@ import { exactFileIdentity } from "../../lib/fs/exact-file-identity.mjs";
 import { assertProcessDispatchRecord, dispatchRecordPath } from "../../core/workflow/process-dispatch-record.mjs";
 import { observeLocalProcessOwner } from "../../adapters/runtime/local-process-identity.mjs";
 import { assertNativeDispatchRecord, nativeDispatchPath } from "../../core/workflow/native-dispatch-record.mjs";
+import { createStandardNativeAllocationAssessment } from "./standard-native-allocation-assessment.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
@@ -28,7 +29,7 @@ const prefixFor = (instance, intent) => agenticProcessPrefixSha256(instance, int
 // Only trusted host capabilities supply these readers. Authored JSON cannot
 // select a discoverer, verifier or effect observer. This port has no writer.
 export function createStandardReconciliationInventory({ targetRoot, signer, readInstance, readAuthority, readContext, readSubject,
-  readDiagnosticSubject, configuration = null, modelSource = null, now = Date.now }) {
+  readDiagnosticSubject, readNativeSubject, configuration = null, modelSource = null, now = Date.now }) {
   const artifacts = createStandardWorkflowArtifacts({ targetRoot });
   const readRetainedSubject = readSubject ?? (id => ({ instance: readInstance(id), authority: readAuthority(), context: readContext() }));
   const readObservationSubject = readDiagnosticSubject ?? readRetainedSubject;
@@ -125,6 +126,7 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
           accounting.storage_debit_bytes_minimum += entry.consumption?.storage_debit_bytes ?? 0;
           add(`native:${record.journal_id}/${entry.generation}`, "native_allocation", shadowHash(entry), {
             generation: entry.generation, phase: entry.phase, owner_id: entry.owner_id, limits: entry.limits,
+            initial_instance_sha256: entry.initial_instance_sha256,
             authorization_sha256: entry.authorization_sha256, configuration_sha256: entry.configuration_sha256,
             consumption: entry.consumption, checkpoint: entry.checkpoint, closure_ref: entry.closure_ref,
             tree_closed: entry.tree_closed, accounting_known: known });
@@ -302,7 +304,10 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
         complete_resource_closure: false, permits_effects: false, written: false }), inventory);
       return { inventory, observation };
   }
+  const nativeAssessment = createStandardNativeAllocationAssessment({ artifacts, configuration, signer,
+    capture: typeof readNativeSubject === "function" ? (id, expected) => capture(readNativeSubject, id, expected, true) : null });
   return Object.freeze({
+    prepareNativeAllocationAssessment: (id, input) => nativeAssessment.prepare(id, input),
     prepare(instanceId, { expectedSha256 } = {}) { return capture(readObservationSubject, instanceId, expectedSha256, true).inventory; },
     prepareProcessOwnerObservation(instanceId, { expectedSha256, operationId } = {}) {
       if (typeof operationId !== "string" || !/^op_[a-f0-9]{40}$/.test(operationId)) fail("PROCESS_OWNER_OBSERVATION_OPERATION_INVALID");

@@ -175,8 +175,11 @@ if (contractsOnly) {
       runtime_path_ignored_adjacent_business_paths_reviewable: true, all_fixture_bytes_and_directories_unchanged_by_inventory: true });
     console.log('PASS ' + mode + ' actual canonical owner boundary ' + point); checks++;
   }
+  const { verifyNativeAllocationAssessmentFixture } = await import('./native-allocation-assessment-fixture-lib.mjs');
+  const allocationAssessment = await verifyNativeAllocationAssessmentFixture(mode);
+  console.log('PASS ' + mode + ' exact Native allocation assessment with synthetic checkpoint and real canonical/owner ports'); checks++;
   // Retain owned fixtures, including every expected UNKNOWN owner. Cleanup is a
   // separate recovery operation; a successful assertion cannot retire a lock.
-  console.log(JSON.stringify({ ok: true, checks, mode, results, retained_roots: owned, authority: 'REAL_COMMON_OWNER_PORT',
+  console.log(JSON.stringify({ ok: true, checks, mode, results, allocation_assessment: allocationAssessment, retained_roots: owned, authority: 'REAL_COMMON_OWNER_PORT',
     action_results: 'CONTROLLED_NO_NATIVE_EXECUTION', Native_calls: 0, actual_crash_process: 'NOT_RUN', genuine_native: 'NOT_RUN', full_standard: false }));
 }

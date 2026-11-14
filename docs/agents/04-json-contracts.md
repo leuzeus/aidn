@@ -798,3 +798,13 @@ Mode observation v2 separates loop termination from analysis completion and
 retains a closed blocked/no_effect branch with empty facts. Historical schemas
 and readers remain closed and unchanged. No source, question or control fact
 grants retention, product writes or Native renewal.
+
+
+The private `native-allocation-assessment.v1` is a closed signed read-only
+observation, linked to the exact canonical reconciliation inventory, Native
+journal/generation, original dispatch and retained checkpoint/closure. Its
+`no_assignment` claim requires the original failed allocator return and an
+unchanged empty checkpoint prefix with parent and owned tree closure. Missing
+proof remains unknown; contradictory evidence refuses. Legacy Native journal
+readers and accounting keep their existing semantics. The observation grants
+no effect, resume, renewal, retirement or complete-resource-closure authority.

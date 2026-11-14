@@ -367,3 +367,35 @@ allocation reconciliation, retained uncertain effect owners, admitted correction
 cycles and genuine native/human/provider/installed-archive acceptance remain
 separate requirements. Reverting new selection must retain both journal readers
 and every existing epoch; it must not restore an older authority pointer.
+
+
+## Native allocation assessment candidate
+
+The internal `prepareNativeAllocationAssessment` port returns a signed, closed
+`native-allocation-assessment.v1` with its exact canonical reconciliation
+inventory. It selects a real Native dispatch ID and latest unresolved allocation
+generation; it never substitutes an operation ID. The fixed host authenticates
+historical journal, checkpoint, operation, human and control provenance using
+the original model and configuration. Its diagnostic product observation uses
+the existing protected snapshot reader without constructing a Native executor
+for an older binding set. Normal execution and disposition retain current
+binding checks and unresolved-allocation exclusion.
+
+Two unchanged captures bind the canonical backend, instance, inventory,
+journal, dispatch, checkpoint and closure bytes. A failed allocation reports
+`no_assignment` only when its original signed allocator return matches, its
+initial/checkpoint/dispatch prefix is identical, its checkpoint has no response,
+resource or result, and both parent and owned tree closure are observed under
+the original limits. Other cases retain `unknown`; changed or invalid evidence
+refuses. This is an observation of that allocation, not absence of business
+effects or independent discovery of every external resource.
+
+The returned observation adds no canonical record family, store, table or
+principal. Failed history, original grants, unknown accounting and retained
+leases remain unchanged. All effect, resume, renewal, owner-retirement and
+complete-resource-closure permissions are false. No preparation-age ceiling
+is introduced. Any later disposition needs separate authority and exact fresh
+owner/fence/CAS checks; any later Native execution needs its own finite grant.
+Controlled component evidence and a retained historical observation do not
+complete R10, abrupt crash recovery, concurrency, genuine Native, installed
+archive or the STANDARD plan.

@@ -203,13 +203,23 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
         // authority, effect, resource allocation or accounting reset.
       } else fail("STANDARD_PROCESS_HISTORY_NOT_AUTHENTICATED");
     }
-    return { native, journal, cursor, records: seen };
+    return { native, journal, cursor, records: seen, authority };
   }
   function inspectDiagnostic(instance) {
     const { native, journal } = authenticateHistory(instance, {}, true);
     // Failed observations stay failed even with a closed OS tree. Reading does
     // not release an owner, reconcile resources or establish effect admission.
     return structuredClone({ journal, checkpoint: native, written: false, native_started: false });
+  }
+  function observeNativeDiagnostic(instance) {
+    const { native, journal, authority } = authenticateHistory(instance, {}, true);
+    if (!journal?.allocations.length || journal.allocations.at(-1).phase === "closed") fail("NATIVE_ALLOCATION_ASSESSMENT_UNRESOLVED_REQUIRED");
+    // The existing pure product reader avoids constructing a Native executor
+    // just to inspect a historical model whose implementation pins changed.
+    if (typeof readProductSnapshot !== "function") fail("STANDARD_PROCESS_PRODUCT_OBSERVATION_REQUIRED");
+    return structuredClone({ instance, authority, context: { ...snapshot(shadowHash(readProductSnapshot())),
+      diagnostic_native_journal_sha256: shadowHash(journal) }, diagnosticJournalSha256: shadowHash(journal),
+      written: false, native_started: false });
   }
   async function withNativeOwner(intent, action) {
     const result = await artifacts.withLocalEffectOwner(shadowHash({ authority: read(), ...intent }), async () => {
@@ -1120,6 +1130,6 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       const record = operationStore.read(id).record; signer.verify(record); return record; } }).input,
     readNativeActivity: readPreworkNativeActivity,
   });
-  return Object.freeze({ profile: "standard-mixed.v1", rollbackProductScope, observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, authenticateOperationHost, inspectDiagnostic, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
+  return Object.freeze({ profile: "standard-mixed.v1", rollbackProductScope, observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, authenticateOperationHost, inspectDiagnostic, observeNativeDiagnostic, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
     verifyNativeHumanSource, admitNativeActivity, selectCyclePrework, evaluateCyclePrework, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, selectCycleExecutionSource, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCanonicalResumeProduct, observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

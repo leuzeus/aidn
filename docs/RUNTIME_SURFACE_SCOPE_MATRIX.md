@@ -473,3 +473,10 @@ Published owned/selected phase routing reuses the operation journal, artifact ba
 
 
 Initial intent/architecture prework uses two read-only private operations and the existing operation/native allocation journals. Current readiness binds their accepted Native producer by a closed witness. Fresh plan recording retains canonical content/metadata postimages for its own causal transition; assessment of an existing canonical plan records no replacement plan. Controlled port fixtures do not establish genuine actors, backend execution, an installed archive or a complete published STANDARD route.
+
+
+The private Native allocation assessment returns signed DATA from the existing
+canonical inventory, Native journal, dispatch and local checkpoint readers. It
+persists nothing and creates no shared surface or DB-only export. Historical
+binding authentication is diagnostic-only; retained failures, unknown accounting
+and held owners do not become resume, disposal or effect permissions.
