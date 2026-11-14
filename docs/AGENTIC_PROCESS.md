@@ -857,3 +857,20 @@ These are candidate source changes. Exact-source contract, reducer and mixed-hos
 qualification must be recorded separately. Prior CI failures remain failures;
 fixture Human/Native ports, injected expiry and separately authenticated epochs
 do not establish genuine actors, installed behavior or full STANDARD acceptance.
+
+
+## Native owner disposition candidate
+
+The common host exposes separate private preparation and application methods
+for Native owner retirement. The read-only plan binds the actual unresolved
+Native generation and dispatch; application needs exact write intent and
+independent current operator permission. The fixed profile currently requires
+a signed no-assignment failure checkpoint and a terminated original creator.
+An unproved assignment/effect remains unresolved.
+
+The canonical disposition records durable fence intentions before effects and
+preserves the exact physical owner witness. An immutable retirement receipt
+allows a cold repreneur to finish acknowledgement without repeating a confirmed
+physical effect. It does not close the allocation, establish known accounting,
+renew Native authority or resume the workflow. Public entry actions and the
+remaining R10/handoff journey still require their own implementation and proof.

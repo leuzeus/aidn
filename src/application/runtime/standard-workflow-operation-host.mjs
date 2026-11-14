@@ -81,6 +81,7 @@ import { createStandardCycleCloseRecord } from "./standard-cycle-close-record.mj
 import { createStandardCycleClosureReview } from "./standard-cycle-closure-review.mjs";
 import { observeStandardCycleAudit } from "../../core/workflow/standard-cycle-audit.mjs";
 import { randomUUID } from "node:crypto";
+import { createStandardNativeOwnerDisposition } from "./standard-native-owner-disposition.mjs";
 import path from "node:path";
 import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { createStandardWorkflowOperations, standardWorkflowOperationBindings } from "./standard-workflow-operations.mjs";
@@ -145,7 +146,7 @@ function controlCheckpoint(instance, eventId) {
 // Fixed local business adapters plus the common reducer/store. This host owns
 // neither model routing nor human decisions. Signing/authorization capabilities
 // must come from a trusted outer host, never authored JSON or a model tool.
-export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, reconciliationConfiguration = null, dispositionSource = null }, { validationBoundaryFactory, dispatchCheckpoint } = {}) {
+export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, reconciliationConfiguration = null, dispositionSource = null, nativeOwnerDispositionSource = null }, { validationBoundaryFactory, dispatchCheckpoint, nativeOwnerDispositionBoundary } = {}) {
   if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.authenticate !== "function"
     || typeof processAuthority.authenticateOperationHost !== "function")) fail("STANDARD_HOST_CONFIGURATION_INVALID");
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
@@ -1364,6 +1365,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readInstance: id => current(id).record, readAuthority, readContext: snapshot, readSubject: observeReconciliationSubject,
     readDiagnosticSubject: processAuthority ? observeReadOnlyReconciliationSubject : undefined,
     readNativeSubject: processAuthority ? observeNativeReconciliationSubject : undefined });
+  const nativeOwnerDisposition = createStandardNativeOwnerDisposition({ targetRoot: artifacts.root, stateMode: initial.stateMode, artifacts, signer, now,
+    source: nativeOwnerDispositionSource, onBoundary: nativeOwnerDispositionBoundary,
+    assess: (id, input) => { if (!processAuthority) fail("NATIVE_OWNER_DISPOSITION_AUTHORITY_REQUIRED"); return reconciliationInventory.prepareNativeAllocationAssessment(id, input); } });
   disposition = createStandardOperationDisposition({ targetRoot, stateMode: initial.stateMode, signer, artifacts, now,
     readOperation: retained, readInstance: id => current(id).record, readAuthority, readContext: snapshot, observeBoundary,
     inventory: reconciliationInventory, dispositionSource, onBoundary: dispatchCheckpoint,
@@ -1445,6 +1449,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     prepareReconciliationInventory: (id, input) => reconciliationInventory.prepare(id, input),
     prepareProcessOwnerObservation: (id, input) => reconciliationInventory.prepareProcessOwnerObservation(id, input),
     prepareNativeAllocationAssessment: (id, input) => reconciliationInventory.prepareNativeAllocationAssessment(id, input),
+    prepareNativeOwnerDisposition: (id, input) => nativeOwnerDisposition.prepare(id, input),
+    applyNativeOwnerDisposition: (plan, input) => nativeOwnerDisposition.apply(plan, input),
+    readNativeOwnerDisposition: id => nativeOwnerDisposition.read(id),
     prepareOperationDisposition: (id, input) => disposition.prepare(id, input),
     applyOperationDisposition: (plan, input) => disposition.apply(plan, input),
     inspectDiagnostic,

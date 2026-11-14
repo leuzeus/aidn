@@ -480,3 +480,11 @@ canonical inventory, Native journal, dispatch and local checkpoint readers. It
 persists nothing and creates no shared surface or DB-only export. Historical
 binding authentication is diagnostic-only; retained failures, unknown accounting
 and held owners do not become resume, disposal or effect permissions.
+
+
+Native owner disposition is a Native allocation-journal subrecord in the
+existing canonical artifact backend. It retains the exact plan, current
+operator grant, attempt/fence intention and physical-retirement receipt under
+`workflows/native-owner-dispositions/`. It adds no table, shared coordination
+method, native grant or automatic DB-only export. The physical archive stays
+local; original failed journals, unknown accounting and contributions remain.

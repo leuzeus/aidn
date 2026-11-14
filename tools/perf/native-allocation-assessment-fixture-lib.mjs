@@ -33,11 +33,11 @@ const tree = root => {
 // Real canonical stores, signing and owner/fence ports; the retained checkpoint,
 // failed allocator return and OS tree evidence below are explicitly synthetic.
 // This fixture starts no Native client, process tree, model or human actor.
-export async function verifyNativeAllocationAssessmentFixture(mode) {
+export async function createNativeAllocationAssessmentFixture(mode, { protectedHome = null, parentClosed = true } = {}) {
   const retained = [], root = createFreshStandardWorkflowFixture(mode, retained);
   const privateRoot = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aidn-native-assessment-')); retained.push(privateRoot);
   const configuration = { target_root: root, instance_id: 'assessment-case', product_root: path.join(root, 'product'), product_files: ['app.mjs'],
-    control_root: path.join(privateRoot, 'control'), review_root: path.join(privateRoot, 'review'), native: { home: path.join(privateRoot, 'home'), protected_roots: [] } };
+    control_root: path.join(privateRoot, 'control'), review_root: path.join(privateRoot, 'review'), native: { home: path.join(privateRoot, 'home'), tool_roots: [], protected_roots: protectedHome ? [protectedHome] : [] } };
   for (const directory of [configuration.product_root, configuration.control_root, configuration.review_root, configuration.native.home]) fs.mkdirSync(directory, { recursive: true });
   fs.writeFileSync(path.join(configuration.product_root, 'app.mjs'), 'export const value = 1;\n');
   const key = () => Buffer.alloc(32, 73), signer = createOperationJournalSigner(key), binding = standardWorkflowOperationBindings().find(row => row.id === 'context_reload');
@@ -59,7 +59,7 @@ export async function verifyNativeAllocationAssessmentFixture(mode) {
   const reserved = signer.seal({ contract_version: 'native-allocation-journal.v1', journal_id: journalId, instance_id: instance.instance_id,
     scope_id: instance.scope_id, model_sha256: instance.model_sha256, revision: 1, allocations: [allocation] });
   store.compareAndSwap(reserved, null);
-  const state = { contract_version: 'native-host-state.v1', authority_id: 'synthetic_retained', instance, parent_closed: true, resources: [], results: [], native_usage: null };
+  const state = { contract_version: 'native-host-state.v1', authority_id: 'synthetic_retained', instance, parent_closed: parentClosed, resources: [], results: [], native_usage: null };
   const evidence = { state, responses_observed: 0, response_sha256: [], authorized_budget_sha256: allocation.authorization_sha256, authorized_limits: limits,
     resume_authority: 'NOT_ESTABLISHED_SUPERVISOR_AND_AUTHENTICATED_JOURNAL_REQUIRED' };
   const checkpoint = path.join(configuration.control_root, instance.instance_id, '00001-native-host-state.json');
@@ -80,6 +80,10 @@ export async function verifyNativeAllocationAssessmentFixture(mode) {
   await provenance.withOwner({ instance_id: instance.instance_id, authorization_sha256: allocation.authorization_sha256 }, async () => returned);
   const dispatch = JSON.parse(artifacts.observeInventory().rows.find(row => row.path.startsWith('workflows/native-dispatches/')).content);
   const input = { expectedSha256: instance.instance_sha256, dispatchId: dispatch.dispatch_id, generation: 1 };
+  return { retained, root, privateRoot, configuration, key, signer, model, productSnapshot, authority, hostOptions, host, instance, artifacts, journalId, options, store, limits, allocation, failed, dispatch, input, checkpoint };
+}
+export async function verifyNativeAllocationAssessmentFixture(mode) {
+  const { retained, root, privateRoot, configuration, signer, hostOptions, host, instance, artifacts, journalId, store, input, checkpoint } = await createNativeAllocationAssessmentFixture(mode);
   const before = { project: tree(root), private: tree(privateRoot) };
   const result = host.prepareNativeAllocationAssessment(instance.instance_id, input);
   signer.verify(result.inventory); signer.verify(result.assessment); assertNativeAllocationAssessment(result.assessment, result.inventory);

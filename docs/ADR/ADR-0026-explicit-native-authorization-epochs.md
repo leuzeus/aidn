@@ -399,3 +399,42 @@ owner/fence/CAS checks; any later Native execution needs its own finite grant.
 Controlled component evidence and a retained historical observation do not
 complete R10, abrupt crash recovery, concurrency, genuine Native, installed
 archive or the STANDARD plan.
+
+
+## Native owner disposition candidate
+
+The distinct private Native owner disposition authenticates the current
+no-assignment failure assessment, original dispatch/lease, exact physical lock
+and original process creation identity. An active or unobserved original
+creator refuses. A signed read-only plan binds the unchanged canonical
+inventory material, backend, model, configuration and original fence.
+
+Application requires exact write intent and separate current operator
+authorization for `native_owner_retire`. Existing grant v1/v2 wire readers
+retain issuer expiry and no host-generated preparation age. The protected
+operator key and trust digest bind the reviewed action, instance, configuration
+and plan; synchronous permission checks run before effects. No original
+Native execution grant supplies retirement permission. H source calls retain
+the existing five-second authority limit.
+
+A closed signed `native-owner-disposition-record.v1` belongs to the existing
+`native_allocation_journal` family at `workflows/native-owner-dispositions/`.
+It uses the same canonical CAS/projection adapter and no new table, store or
+principal. At most 32 complete attempt records are retained without truncation.
+Each attempt durably names its creator and proposed fence before acquisition.
+An incomplete live attempt excludes another repreneur; transfer requires its
+original creation identity to be terminated. An acquired disposition fence
+guards the exact original lock and preserves it at a fixed Native archive
+path. The operation-specific retirement API remains unchanged.
+
+The immutable signed physical-retirement receipt precedes final fence-release
+acknowledgement. Recovery authenticates its original witness and may finish
+its own fence steps without repeating a confirmed rename. Fence closure and
+physical retirement stay distinct; foreign current resources still refuse.
+The original Native allocation and dispatch bytes, failed phase, unknown debit
+totals, original grants and all confirmed contributions remain unchanged.
+No receipt authorizes a Native allocation, accounting refund, workflow resume
+or complete resource closure. Unproved post-assignment effects stay unresolved.
+Public entry actions, general R10/handoff, actual abrupt crash/concurrent
+qualification, genuine Native and the exact installed archive remain separate
+until their required executable evidence exists.

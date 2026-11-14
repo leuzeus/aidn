@@ -36,7 +36,7 @@ try {
   } finally { fs.unlinkSync(alias); }
   process.stdout.write("PASS FILES record read: absence, canonical bytes, and redirect refusals\n"); checks++;
 
-  for (const directory of ["instances", "definitions", "process-instances", "operation-records", "decision-inbox", "control-inbox", "native-allocations", "native-dispatches"]) {
+  for (const directory of ["instances", "definitions", "process-instances", "operation-records", "decision-inbox", "control-inbox", "native-allocations", "native-dispatches", "native-owner-dispositions"]) {
     const root = createStandardWorkflowFixture("dual", owned), sqliteFile = resolveRuntimeSqliteFile({ targetRoot: root });
     const row = content => ({ path: `workflows/${directory}/checkpoint.json`, kind: "runtime", family: "runtime", content_format: "utf8",
       content, sha256: artifactContentHash(content), size_bytes: Buffer.byteLength(content) });

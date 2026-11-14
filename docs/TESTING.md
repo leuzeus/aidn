@@ -6168,3 +6168,26 @@ Historical-source observations, actual interrupted trees, concurrent recovery,
 exact owner disposition, general R10/handoff, genuine Native and installed
 archive qualification remain separate. Existing required case order, argv and
 finite Native grants are unchanged.
+
+
+## Native owner disposition candidate
+
+The existing three Native dispatch provenance commands also exercise exact
+Native owner retirement with real canonical stores, physical owner/fence ports
+and protected operator HMAC verification. The reviewed exact-action permit is
+a fixture, and the failed checkpoint/allocator return/OS closure remain
+synthetic. A separate real producer process terminates before retirement.
+Missing authority, expired issuer grants, changed permission/trust, tampered
+HMAC and the existing five-second authority timeout refuse before a durable
+attempt. Replay keeps the signed retirement receipt and original Native
+journal/dispatch bytes unchanged. DB-only must export no disposition JSON.
+
+The FILES case adds controlled process exits at each declared intent, fence,
+retirement, receipt and acknowledgement boundary. Cold repreneurs must preserve
+an already confirmed receipt and exact physical witness. Two real repreneurs
+compete while one holds a durable intention; only one may perform the physical
+retirement. These are controlled boundary exits, not arbitrary interruption
+inside an OS/filesystem/database primitive. All original required argv/order
+and finite Native grants remain unchanged. Actual abrupt crash, post-assignment
+reconciliation, public entry, general R10/handoff, genuine Native and installed
+archive qualification remain separate.

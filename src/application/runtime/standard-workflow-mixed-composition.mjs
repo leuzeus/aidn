@@ -34,7 +34,7 @@ export function standardWorkflowCallPort(operations, instanceId) {
 // The common reducer owns control flow. This adapter selects a port for the
 // cursor's ready leaf; it contains no standard-workflow routing decisions.
 export function createStandardWorkflowMixedHost({ configuration: suppliedConfiguration, modelSource = null, readSigningKey, authorize, humanSource, controlSource,
-  environment = process.env, now = Date.now, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, dispositionSource = null, nativeAuthorizationSource }, { controllerFactory, validationBoundaryFactory } = {}) {
+  environment = process.env, now = Date.now, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, dispositionSource = null, nativeOwnerDispositionSource = null, nativeAuthorizationSource }, { controllerFactory, validationBoundaryFactory, nativeOwnerDispositionBoundary } = {}) {
   if (checkShadowJson(suppliedConfiguration)) fail("STANDARD_PROCESS_CONFIGURATION_INVALID");
   const configuration = freezeShadow(structuredClone(suppliedConfiguration));
   const model = readAgentRunFile(configuration.model.path, { sha256: configuration.model.sha256 }).value;
@@ -53,7 +53,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     && component.operation_pins[node.binding_ref] === shadowHash(bindings.get(node.binding_ref))))) nativeHost();
   const operations = createStandardWorkflowOperationHost({ targetRoot: configuration.target_root, model, modelSource, readSigningKey,
     authorize, humanSource, controlSource, processAuthority, now, validationProfile, sessionPushPort, sessionPullRequestPort, sessionReviewPort, sessionReviewEventPort,
-    reconciliationConfiguration: configuration, dispositionSource }, { validationBoundaryFactory });
+    reconciliationConfiguration: configuration, dispositionSource, nativeOwnerDispositionSource }, { validationBoundaryFactory, nativeOwnerDispositionBoundary });
   const inspect = () => operations.inspect(configuration.instance_id);
   const callTransition = standardWorkflowCallPort(operations, configuration.instance_id);
   const nodeFor = frame => processFrameNode(model, frame);
@@ -70,6 +70,9 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     prepareReconciliationInventory: input => operations.prepareReconciliationInventory(configuration.instance_id, input),
     prepareProcessOwnerObservation: input => operations.prepareProcessOwnerObservation(configuration.instance_id, input),
     prepareNativeAllocationAssessment: input => operations.prepareNativeAllocationAssessment(configuration.instance_id, input),
+    prepareNativeOwnerDisposition: input => operations.prepareNativeOwnerDisposition(configuration.instance_id, input),
+    applyNativeOwnerDisposition: (plan, input) => operations.applyNativeOwnerDisposition(plan, input),
+    readNativeOwnerDisposition: id => operations.readNativeOwnerDisposition(id),
     prepareOperationDisposition: (id, input) => operations.prepareOperationDisposition(id, input),
     applyOperationDisposition: (plan, input) => operations.applyOperationDisposition(plan, input),
     previewNative: () => nativeHost().preview(),

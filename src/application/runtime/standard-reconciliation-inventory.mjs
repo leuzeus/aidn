@@ -20,6 +20,7 @@ import { exactFileIdentity } from "../../lib/fs/exact-file-identity.mjs";
 import { assertProcessDispatchRecord, dispatchRecordPath } from "../../core/workflow/process-dispatch-record.mjs";
 import { observeLocalProcessOwner } from "../../adapters/runtime/local-process-identity.mjs";
 import { assertNativeDispatchRecord, nativeDispatchPath } from "../../core/workflow/native-dispatch-record.mjs";
+import { assertNativeOwnerDispositionRecord, nativeOwnerDispositionPath } from "../../core/workflow/native-owner-disposition.mjs";
 import { createStandardNativeAllocationAssessment } from "./standard-native-allocation-assessment.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
@@ -35,7 +36,7 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
   const readObservationSubject = readDiagnosticSubject ?? readRetainedSubject;
   function observe(instance) {
     assertAgenticProcessInstance(instance);
-    const observed = artifacts.observeInventory(), resources = [], operations = [], records = new Map(), prefixes = new Map(), dispatches = [];
+    const observed = artifacts.observeInventory(), resources = [], operations = [], records = new Map(), prefixes = new Map(), dispatches = [], nativeDispositions = [];
     const accounting = { native_known: true, responses_observed_minimum: 0, storage_debit_bytes_minimum: 0,
       unresolved_native_allocations: 0, operation_attempts: 0, unknown_operations: 0 };
     const add = (ref, kind, sha256, details) => {
@@ -46,9 +47,22 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
       add("artifact:" + row.path, "artifact", row.sha256, { metadata_sha256: row.metadata_sha256, source: observed.source });
       // Unknown record namespaces are retained as artifacts, never treated as
       // an understood or closed resource. The external-discovery gaps stay open.
-      if (!/^workflows\/(operation-records|decision-inbox|control-inbox|native-allocations|dispatch-records|native-dispatches)\//.test(row.path)) continue;
+      if (!/^workflows\/(operation-records|decision-inbox|control-inbox|native-allocations|dispatch-records|native-dispatches|native-owner-dispositions)\//.test(row.path)) continue;
       const record = JSON.parse(row.content);
-      if (row.path.startsWith("workflows/native-dispatches/")) {
+      if (row.path.startsWith("workflows/native-owner-dispositions/")) {
+        assertNativeOwnerDispositionRecord(record);
+        if (row.path !== nativeOwnerDispositionPath(record.dispatch_id)) fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
+        if (record.plan.instance_id !== instance.instance_id) continue;
+        signer.verify(record); signer.verify(record.plan); if (record.receipt) signer.verify(record.receipt);
+        if (record.plan.scope_id !== instance.scope_id || record.plan.model_sha256 !== instance.model_sha256
+          || record.plan.physical_root_sha256 !== shadowHash(artifacts.root)
+          || configuration !== null && record.plan.configuration_sha256 !== shadowHash(configuration)) fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
+        nativeDispositions.push(record);
+        add("native-owner-disposition:" + record.dispatch_id, "native_journal", shadowHash(record), {
+          record_kind: "native_owner_disposition", journal_id: record.plan.journal_id, generation: record.plan.generation, phase: record.phase,
+          plan_sha256: shadowHash(record.plan), receipt_sha256: record.receipt ? shadowHash(record.receipt) : null,
+          complete_resource_closure: false, permits_resume: false, permits_native_renewal: false });
+      } else if (row.path.startsWith("workflows/native-dispatches/")) {
         assertNativeDispatchRecord(record);
         if (row.path !== nativeDispatchPath(record.dispatch_id)) fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
         if (record.instance_id !== instance.instance_id) continue;
@@ -140,6 +154,14 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
         // link through the canonical operation records after the full scan.
         records.set(row.path, { record, decision });
       }
+    }
+    for (const disposition of nativeDispositions) {
+      const plan = disposition.plan, native = resources.find(row => row.ref === "native:" + plan.journal_id),
+        allocation = resources.find(row => row.ref === `native:${plan.journal_id}/${plan.generation}`),
+        dispatch = resources.find(row => row.ref === "native-dispatch:" + plan.dispatch_id);
+      if (native?.sha256 !== plan.journal_sha256 || allocation?.sha256 !== plan.allocation_sha256
+        || dispatch?.sha256 !== plan.dispatch_sha256 || dispatch.details.journal_id !== plan.journal_id
+        || !dispatch.details.leases.some(row => shadowHash(row) === plan.original_lease_sha256)) fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
     }
     for (const dispatch of dispatches) {
       const operation = records.get(dispatch.operation_id);

@@ -808,3 +808,15 @@ unchanged empty checkpoint prefix with parent and owned tree closure. Missing
 proof remains unknown; contradictory evidence refuses. Legacy Native journal
 readers and accounting keep their existing semantics. The observation grants
 no effect, resume, renewal, retirement or complete-resource-closure authority.
+
+
+Private Native owner disposition plan, authorization request, record and
+physical-retirement receipt use closed v1 contracts. They bind the original
+Native dispatch/generation, signed no-assignment assessment, canonical
+inventory, physical lease, exact plan, current operator and resource fence.
+The existing authorization grant v1/v2 formats retain their semantics; Native
+action/request hashes cannot be substituted for operation disposition or a
+Native execution grant. The signed physical-effect receipt remains immutable
+while separate attempt/fence records describe cold recovery. Original journals
+remain unchanged and all resume, renewal, accounting-reconciliation and
+complete-resource-closure permissions are false.

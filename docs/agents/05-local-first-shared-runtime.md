@@ -455,3 +455,14 @@ backend, instance, journal, dispatch and evidence hashes; they are not a CAS
 fence or independent external discovery. The returned signed observation
 creates no record, projection, shared synchronization or authority. Failed
 allocations and unknown debit totals remain unchanged until separate recovery.
+
+
+Native owner disposition subrecords use the existing canonical artifact CAS
+and the `native_allocation_journal` parent at `workflows/native-owner-dispositions/`.
+The exact runtime namespace is ignored by product Git; DUAL projects committed
+rows and DB-only exports no JSON. Durable attempts precede fence acquisition
+and physical retirement. Recovery reuses the existing fence CAS, requires the
+former creator to be terminated and preserves the original physical witness.
+Original allocation/dispatch records and unknown accounting remain unchanged.
+A signed owner-retirement receipt creates no allocation, resume permission,
+shared coordination surface, new principal or anti-rollback guarantee.
