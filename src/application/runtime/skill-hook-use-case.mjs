@@ -10,8 +10,16 @@ import {
 
 export { assertSupportedSkill, assertValidSkillMode };
 
-function buildToolArgs(route, targetRoot, mode, effectiveStrict, noAutoSkipGate) {
+function buildToolArgs(route, targetRoot, mode, effectiveStrict, noAutoSkipGate, runId, completionCycleId) {
   const args = [...(route.fixedArgs ?? []), "--target", targetRoot, "--json"];
+  if (completionCycleId !== undefined) {
+    if (route.tool !== "convert-to-spike-hook.mjs" || !/^C[0-9]{3,6}$/.test(completionCycleId)) throw Error("SPIKE_COMPLETION_CYCLE_INVALID");
+    args.push("--completion-cycle", completionCycleId);
+  }
+  if (runId !== undefined) {
+    if (!["gating-evaluate.mjs", "cycle-create-hook.mjs", "cycle-close-hook.mjs"].includes(route.tool) || typeof runId !== "string" || !/^[a-z][a-z0-9_-]{0,95}$/.test(runId)) throw Error("SKILL_HOOK_RUN_ID_INVALID");
+    args.push("--run-id", runId);
+  }
   if (
     route.tool === "checkpoint.mjs"
     || route.tool === "gating-evaluate.mjs"
@@ -92,7 +100,7 @@ export function runSkillHookUseCase({ args, perfDir, targetRoot, processAdapter 
   });
   const strictRequiredByState = shouldForceStrictForSkillState(stateMode);
   const effectiveStrict = args.strict || strictRequiredByState;
-  const toolArgs = buildToolArgs(route, targetRoot, mode, effectiveStrict, args.noAutoSkipGate === true);
+  const toolArgs = buildToolArgs(route, targetRoot, mode, effectiveStrict, args.noAutoSkipGate === true, args.runId, args.completionCycleId);
   const startedAt = new Date().toISOString();
 
   try {

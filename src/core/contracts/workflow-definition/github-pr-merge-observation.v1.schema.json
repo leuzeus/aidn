@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/github-pr-merge-observation.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "repository",
+    "pull_request",
+    "observed_from",
+    "observed_until"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "github-pr-merge-observation.v1"
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node_id",
+        "owner",
+        "name"
+      ],
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    },
+    "pull_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node_id",
+        "number",
+        "head_repository_id",
+        "head_ref",
+        "head_oid",
+        "base_ref",
+        "observed_base_tip_oid",
+        "state",
+        "is_draft",
+        "merged",
+        "merged_at",
+        "merge_oid",
+        "merge_parent_oids"
+      ],
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "head_repository_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "head_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "head_oid": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "base_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "observed_base_tip_oid": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "state": {
+          "enum": [
+            "OPEN",
+            "CLOSED",
+            "MERGED"
+          ]
+        },
+        "is_draft": {
+          "type": "boolean"
+        },
+        "merged": {
+          "type": "boolean"
+        },
+        "merged_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "merge_oid": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "merge_parent_oids": {
+          "type": "array",
+          "maxItems": 2,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          }
+        }
+      }
+    },
+    "observed_from": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "observed_until": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

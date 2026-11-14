@@ -1,0 +1,175 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-baseline-promotion-question.v1",
+  "x-aidn-contract-version": "standard-baseline-promotion-question.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_id",
+    "instance_id",
+    "scope_id",
+    "occurrence_id",
+    "intent_sha256",
+    "session_id",
+    "review",
+    "choices"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-baseline-promotion-question.v1"
+    },
+    "operation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 43,
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "instance_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "occurrence_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "intent_sha256": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 7,
+      "pattern": "^S[0-9]{3,6}$"
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_id",
+        "cycle_id",
+        "cycle_path",
+        "closure_operation_id",
+        "closure_output_sha256",
+        "context_sha256",
+        "product_sha256",
+        "baseline_sha256",
+        "history_sha256",
+        "current_version",
+        "evidence_refs"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 7,
+          "pattern": "^S[0-9]{3,6}$"
+        },
+        "cycle_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 7,
+          "pattern": "^C[0-9]{3,6}$"
+        },
+        "cycle_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^cycles/C[0-9]{3,6}-[a-z]+-[A-Za-z0-9._-]+$"
+        },
+        "closure_operation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 43,
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "closure_output_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "context_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "product_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "baseline_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "history_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "current_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^v[0-9]+(?:\\.[0-9]+){1,2}(?:-[A-Za-z0-9][A-Za-z0-9.-]{0,31})?$"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ref",
+              "sha256"
+            ],
+            "properties": {
+              "ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "sha256": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "choices": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "enum": [
+          "promote",
+          "not_requested",
+          "refused",
+          "deferred",
+          "cancelled"
+        ]
+      }
+    }
+  }
+}

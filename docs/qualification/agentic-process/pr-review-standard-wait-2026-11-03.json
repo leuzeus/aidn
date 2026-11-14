@@ -1,0 +1,165 @@
+{
+  "observed_at_utc": "2026-11-04T02:45:20.225145+00:00",
+  "lane": "ASSURED",
+  "source_commits": {
+    "session_continuity_fix": "8592970",
+    "standard_pr_wait": "fa243d96f1a3bbea5c2c1f65595714c6338fde28",
+    "golden_version_context": "e874fa9",
+    "native_receiver_pins": "d273db87924d9ae7b05d8bd0bdc1018d01c85145"
+  },
+  "objective_complete": false,
+  "ordinary_standard_entry_changed": false,
+  "complete_standard_workflow": false,
+  "continuity_regression": {
+    "status": "PASS",
+    "authority_cases": 8,
+    "retained_49_differential": {
+      "file": "G:\\aidn-plans\\model49-retained-authority-regression-20261103.json",
+      "bytes": 1961,
+      "sha256": "1463dd94064e7d81d9359740a51fde88567b92ed743d89364c5e33fa2fd65df1"
+    },
+    "method": "actual retained HMAC operation journals, canonical postimages and R07 event; reconstructed finalization material matches original signed delivery plan; old authority refuses and fixed authority accepts source; read-only, fixture identity/key",
+    "original_49_result": "FAIL",
+    "49_terminal": {
+      "file": "G:\\aidn-plans\\model49-terminal-owner-observation-20261103.json",
+      "bytes": 3066,
+      "sha256": "7fe716e8ea9eb7864eee1605899d7c188e42ad7910a9a1de02d3c1b185c77185"
+    },
+    "49_cleanup": "NOT_DONE",
+    "49_general_resource_extinction": "NOT_PROVEN"
+  },
+  "pr_wait": {
+    "source": "fa243d96f1a3bbea5c2c1f65595714c6338fde28",
+    "model_revision": 61,
+    "model_sha256": "6fd8b3b33eb34d721a578fd6d2eb7936f2ac03699cb75b6abcf54c049f8ac607",
+    "capture_receiver": {
+      "files": {
+        "status": "PASS",
+        "checks": 9,
+        "cleanup": "PASS 2 roots",
+        "log": "tool session 46970; identical code before commit"
+      },
+      "dual": {
+        "status": "PASS",
+        "checks": 9,
+        "cleanup": "PASS 2 roots",
+        "log": {
+          "file": "G:\\aidn-plans\\model61-pr-control-dual-20261103.stdout.log",
+          "bytes": 1254,
+          "sha256": "50fcd7113be51ea73eba3bf25000be009cb073ce1e0ccd7b9686182c8e23b28a"
+        }
+      },
+      "db-only": {
+        "status": "PASS",
+        "checks": 10,
+        "cleanup": "PASS 2 roots",
+        "log": {
+          "file": "G:\\aidn-plans\\model61-pr-control-db-only-20261103.stdout.log",
+          "bytes": 1382,
+          "sha256": "f0d0cbd65e1f49d86c398b397bfc3f15c34bf9b79afaf4d18cc60719d15eeaed"
+        }
+      }
+    },
+    "actual": "canonical inbox, operation receiver, host/service, signed storage, SQLite/CAS, fresh-process delivery and exact common-reducer simulation",
+    "doubled": "event/provider identity and transport; accepted update lookup in component suite",
+    "component_model_is_standard": false,
+    "standard_graph_selects_wait_consumer": true,
+    "actual_composed_standard_result": "RUNNING; separate frozen source and logs; no PASS yet",
+    "composed_start": {
+      "file": "G:\\aidn-plans\\model61-pr-wait-composed-files-20261103.start.json",
+      "bytes": 912,
+      "sha256": "3116d34a2f7ee8375e4078f3c85f401ce278c1bebd9e6d5ac59501fe07fa96db"
+    },
+    "composition_checks": 26,
+    "input_boundary_cases": 3,
+    "published_input_boundaries": 44,
+    "contract_reducer_service_checks": 27,
+    "startup_checks": 22,
+    "source_of_truth_policies": 35,
+    "metadata_policies": 37,
+    "governance_completeness": "PASS",
+    "gate_catalog": "PASS",
+    "historical_control_suite": "RUNNING at handoff observation; not counted as PASS"
+  },
+  "native_pin_completion": {
+    "source": "d273db87924d9ae7b05d8bd0bdc1018d01c85145",
+    "model_revision": 62,
+    "direct_files": 337,
+    "source61_direct_files": 334,
+    "reason": "receiver implementation and its two contracts were covered by standard binding but absent from direct native launch pins",
+    "byte_mutation_tests": "PASS; read interception only, no physical source edit",
+    "reader_and_pins_checks": 15,
+    "composition_checks": 26,
+    "startup_checks": 22,
+    "logs": [
+      {
+        "file": "G:\\aidn-plans\\model62-direct-pins-20261103.stdout.log",
+        "bytes": 1328,
+        "sha256": "e3b0761e5411a051eed7d2adec665396e3981045094335563cb81130091904c9"
+      },
+      {
+        "file": "G:\\aidn-plans\\model62-composition-20261103.stdout.log",
+        "bytes": 2429,
+        "sha256": "d423e9f301b5219e9d29e8efdfe817f66023fe1152e73a2a29cada2361f68b4e"
+      },
+      {
+        "file": "G:\\aidn-plans\\model62-startup-20261103.stdout.log",
+        "bytes": 1701,
+        "sha256": "90a1622927d5acbc3d3af629c31771fa1ae52dd2401ff8ace275544dae8ceb55"
+      }
+    ],
+    "composed62": "NOT_RUN",
+    "no_transfer_from_61": true
+  },
+  "golden": {
+    "status": "PASS",
+    "checks": 17,
+    "snapshot_version": "0.12.0",
+    "package_version": "0.19.0",
+    "fixture_unchanged": true,
+    "renderer_unchanged": true,
+    "meaning": "explicit single metadata version comparison plus wrong-rendered-version/unpinned-snapshot/nonversion-drift negative controls",
+    "prior_54_58_result": "FAIL retained",
+    "log": {
+      "file": "G:\\aidn-plans\\generated-doc-golden-version-context-20261103.stdout.log",
+      "bytes": 2174,
+      "sha256": "1b77a90cdf6f4008e242a7dce2dc12a3fcf60af456b2a9062dd3c7a0e2f87ae8"
+    }
+  },
+  "precommit_failure": {
+    "status": "FAIL",
+    "reason": "receiver output schema retained prior observation oneOf shape",
+    "exact_source_retained": false,
+    "cleanup": "PASS 2 roots",
+    "superseded_only_for_new_corrected_source": true
+  },
+  "partial_triage": {
+    "status": "NOT_RUN",
+    "applied": false,
+    "patch": {
+      "file": "G:\\aidn-plans\\triage-native-partial-20261103.patch",
+      "bytes": 26540,
+      "sha256": "08f6f6dfe5f33ce06005d22d9ec38b3e4b0d57a43184fedafa649a4f3b5894fc"
+    },
+    "scope": "native triage report/context/evaluator draft, five schemas, native answer support and operation validators; no host/authority/IR/registry/pin/test integration; not delivery-ready"
+  },
+  "not_run": [
+    "full runtime and Governance Admission rollup",
+    "composed62",
+    "actual standard PR capture/receive outcome pending61",
+    "native triage activity and downstream effects",
+    "provider/human/native real qualification",
+    "PostgreSQL on this source",
+    "exact installed archive",
+    "general unknown reconciliation and native reauthorization after proved closure",
+    "full A1-A10 and ordinary standard entry"
+  ],
+  "skip": [],
+  "limits": [
+    "synchronous Git reads are not preemptible; signal forwarding proves neither an end-to-end deadline nor general tree closure",
+    "captured/received content does not prove finding disposition, reply, resolution, check acceptance, completed skill or merge consent",
+    "no real remote push/PR/merge, release or global install authorized by fixture grants",
+    "retained39 owner/reserved generation8 unknown: no takeover, cleanup or retry",
+    "prior async cleanup rejected twice by automatic review remains NOT_DONE; no bypass"
+  ]
+}

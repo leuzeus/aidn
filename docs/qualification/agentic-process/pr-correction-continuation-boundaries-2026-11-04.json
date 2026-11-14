@@ -1,0 +1,136 @@
+{
+  "recorded_at_utc": "2026-11-04T05:32:18.1511579Z",
+  "parent_commit": "7e0051cbc9d0defd279f7f2fb323f6f58296c06e",
+  "scope": "Review capture regression, next-cycle checkpoint refusal, and terminal observations of four distinct frozen trials",
+  "pass": [
+    {
+      "name": "control-all-storage",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T05:30:17.620666Z",
+      "started_at_utc": "2026-11-04T05:20:18.9950733Z",
+      "log_sha256": "99f37edc6e42799a4c032bebea08484042cc99b23b7bdcd5c0f5f1aeff8745e1",
+      "checks": 30,
+      "command": "node tools/perf/verify-standard-pr-review-control-fixtures.mjs"
+    },
+    {
+      "name": "synthetic-preflight",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T05:30:16.9154975Z",
+      "started_at_utc": "2026-11-04T05:25:15.2289409Z",
+      "log_sha256": "fc6226b0863cb4e1b44958758f38d92c33e1e8e781e425cf6b2db19871d473ae",
+      "checks": 18,
+      "command": "node tools/perf/verify-standard-composed-preflight-fixtures.mjs"
+    },
+    {
+      "name": "source-composition",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T05:25:16.861934Z",
+      "started_at_utc": "2026-11-04T05:25:14.6414239Z",
+      "log_sha256": "f3c24e9b5a08bd42269441054313407c828ba3e13e555a5f6820fed3df463c66",
+      "checks": 28,
+      "command": "node tools/perf/verify-standard-workflow-composition-fixtures.mjs"
+    },
+    {
+      "name": "gate-catalog",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T05:25:17.1278921Z",
+      "started_at_utc": "2026-11-04T05:25:15.1745561Z",
+      "log_sha256": "8c486cba139b6f4ffecca687a960344a5bec6a510295935ca12d0e222198aed0",
+      "command": "node tools/verify/verify-gate-catalog.mjs"
+    },
+    {
+      "name": "doc-references",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T05:25:16.0876339Z",
+      "started_at_utc": "2026-11-04T05:25:14.964626Z",
+      "log_sha256": "dbb41035f91782d9df2fdcdb5e8549ff676b7e3d61a7458ba8c16d033c7b14ff",
+      "command": "node tools/verify/verify-doc-references.mjs"
+    },
+    {
+      "name": "correction-reopen-files",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T05:29:54.659677Z",
+      "started_at_utc": "2026-11-04T05:27:51.5691384Z",
+      "log_sha256": "1243d79ad45f9924d610965e1ea00d3252e1e821cf2804effba09a95621738f2",
+      "checks": 8,
+      "command": "node tools/perf/verify-standard-pr-correction-reopen-fixtures.mjs --mode=files"
+    }
+  ],
+  "negative_boundary": {
+    "source": "actual CAS/Git/admission with injected triage/external authority",
+    "ordinary_checkpoint": "three-file session profile refuses the pending snapshot without commit",
+    "new_cycle_created": false,
+    "new_cycle_admission": "blocked by pending canonical changes",
+    "canonical_reopen_writes": "session, CURRENT-STATE and context snapshot"
+  },
+  "failed_trials": [
+    {
+      "source": "7e0051cbc9d0defd279f7f2fb323f6f58296c06e",
+      "original_authorized_at_utc": "2026-11-04T05:23:16.241Z",
+      "exit_code": 1,
+      "max_responses": 9,
+      "original_deadline_utc": "2026-11-04T08:23:16.241Z",
+      "cause": "spawnSync git ETIMEDOUT, branch --show-current, standard-workflow-operations.mjs:205/215, while staging the next operation after context_reload/session_admit/session_initialize",
+      "events_observed": 6,
+      "ended_at_utc": "2026-11-04T05:28:05.0905877Z",
+      "correction_capture_and_writer": "NOT_REACHED",
+      "max_bytes": 33554432
+    },
+    {
+      "allocations_observed": 3,
+      "ended_at_utc": "2026-11-04T05:28:12.5230122Z",
+      "responses_observed": 3,
+      "events_observed": 48,
+      "source": "e00339b5a1bc740b67061ac98ace5b569a13b32e",
+      "known_body_assertion": "not reached, not established as terminal cause",
+      "cause": "cycle_implementation_enter blocked with WORKFLOW_INSTANCE_ACTIVATION_REQUIRED; driver asserts completed",
+      "exit_code": 1
+    },
+    {
+      "parent_responses_observed": 5,
+      "ended_at_utc": "2026-11-04T05:26:19.5162188Z",
+      "source": "1a84bc01e6ad4d5dafb5725260983ec5a6fcdf01",
+      "parent_events_observed": 76,
+      "child_log": "parent stderr retains distinct child output",
+      "parent_allocations_observed": 5,
+      "cause": "cold continuation cycle_close_record blocked with STANDARD_PLAN_EXPIRED; child driver937 and parent926 assert completed/exit0",
+      "exit_code": 1
+    },
+    {
+      "original_response_limit": 8,
+      "source": "b39e55729bf3c43022d0cad7a0de08779515c01c",
+      "exit_code": 1,
+      "events_observed": 111,
+      "cause": "cold continuation PROCESS_EXECUTION_PERSISTENCE_AUTHORITY_UNAVAILABLE after session closure drift; child nonzero retained by parent",
+      "allocations_observed": 8,
+      "response_exhaustion": "NOT_OBSERVED as terminal cause",
+      "ended_at_utc": "2026-11-04T05:28:04.8515883Z",
+      "responses_observed": 8
+    }
+  ],
+  "fresh_activation_observation": {
+    "from": "each owning frozen source",
+    "boundary": "later read-only observation, not proof of the earlier failure cause; no write or retry",
+    "status": "active/authorized for all four fixture roots"
+  },
+  "cleanup": {
+    "reopen_component": "completed, independent process inventory not captured",
+    "general_resource_extinction": "NOT_PROVEN",
+    "long_trial_cleanup": "NOT_DONE",
+    "control_all": "PASS, 12 owned roots"
+  },
+  "not_run": [
+    "complete authenticated correction producer-to-canonical-writer composition",
+    "actual admitted correction cycle/plan/readiness/IMPLEMENTING/product corrections/fresh delivery",
+    "new explicit native authorization epochs after proved predecessor closure",
+    "remaining L1-L8/A1-A10",
+    "real native/human/provider",
+    "exact installed archive",
+    "full runtime family",
+    "Governance Admission"
+  ],
+  "skip": [],
+  "runtime_or_ir_changed": false,
+  "ordinary_entry_changed": false,
+  "complete_standard_workflow": false
+}

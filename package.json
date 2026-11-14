@@ -1,7 +1,7 @@
 {
   "name": "aidn-workflow",
   "version": "0.19.0",
-  "description": "aidâ€™n â€” Audit-driven, session-based workflow packaging system for structured AI-assisted development",
+  "description": "aid\u00e2\u20ac\u2122n \u00e2\u20ac\u201d Audit-driven, session-based workflow packaging system for structured AI-assisted development",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -21,6 +21,9 @@
     "docs/CODEX_INTEGRATION.md",
     "docs/AGENT_WORKING_MEMORY.md",
     "docs/AGENTIC_PROCESS.md",
+    "docs/architecture/STANDARD_WORKFLOW_IR_TRACEABILITY.md",
+    "docs/BPMN_EXECUTION_PROFILE.md",
+    "docs/BPMN_EXECUTION_PROFILE_V2.md",
     "docs/CODEX_NATIVE_QUALIFICATION.md",
     "docs/CODEX_CLIENT_MIGRATION.md",
     "docs/WINDOWS_PROJECT_SETUP.md",
@@ -69,7 +72,7 @@
     "pg": ">=8 <9"
   },
   "scripts": {
-    "perf:verify-agentic-process": "node tools/perf/verify-agentic-process-fixtures.mjs && node tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "perf:verify-agentic-process": "node tools/perf/run-agentic-process-fixtures.mjs",
     "perf:verify-workflow-transaction": "node tools/perf/verify-workflow-transaction-fixtures.mjs",
     "aidn": "node bin/aidn.mjs",
     "bootstrap": "node tools/bootstrap.mjs",
@@ -376,7 +379,7 @@
     "perf:verify-runtime-state-reanchor": "node tools/perf/verify-runtime-state-reanchor-fixtures.mjs",
     "perf:verify-runtime-digest-hints": "node tools/perf/verify-runtime-digest-hints-fixtures.mjs",
     "perf:verify-context-admission": "node tools/perf/verify-reanchor-template.mjs && node tools/perf/verify-current-state-skill-coverage.mjs --root scaffold/codex && node tools/perf/verify-pre-write-admit-skill-coverage.mjs --root scaffold/codex && node tools/perf/verify-codex-db-only-skill-readiness.mjs --root scaffold/codex --agents scaffold/root/AGENTS.md && node tools/perf/verify-start-session-admission-fixtures.mjs && node tools/perf/verify-branch-cycle-audit-admission-fixtures.mjs && node tools/perf/verify-cycle-close-admission-fixtures.mjs",
-    "perf:verify-context-completion": "node tools/perf/verify-cycle-close-completion-fixtures.mjs && node tools/perf/verify-pr-orchestrate-admission-fixtures.mjs",
+    "perf:verify-context-completion": "node tools/perf/verify-promote-baseline-admission-fixtures.mjs && node tools/perf/verify-cycle-close-completion-fixtures.mjs && node tools/perf/verify-pr-orchestrate-admission-fixtures.mjs",
     "perf:verify-context-coordination": "node tools/perf/verify-agent-reuse-fixtures.mjs && node tools/perf/verify-reanchor-artifacts-fixtures.mjs --target tests/fixtures/repo-installed-core && node tools/perf/verify-agent-role-model.mjs && node tools/perf/verify-agent-roster-fixtures.mjs && node tools/perf/verify-agent-health-summary-fixtures.mjs && node tools/perf/verify-agent-selection-policy.mjs && node tools/perf/verify-agent-transition-policy.mjs && node tools/perf/verify-coordinator-escalation-policy.mjs && node tools/perf/verify-handoff-packet-fixtures.mjs && node tools/perf/verify-handoff-admit-fixtures.mjs && node tools/perf/verify-pre-write-admit-fixtures.mjs && node tools/perf/verify-integration-risk-fixtures.mjs && node tools/perf/verify-coordinator-next-action-fixtures.mjs && node tools/perf/verify-coordinator-select-agent-fixtures.mjs && node tools/perf/verify-coordinator-suggest-arbitration-fixtures.mjs && node tools/perf/verify-coordinator-loop-fixtures.mjs && node tools/perf/verify-coordinator-record-arbitration-fixtures.mjs && node tools/perf/verify-coordinator-resume-fixtures.mjs && node tools/perf/verify-coordinator-orchestrate-fixtures.mjs && node tools/perf/verify-coordinator-dispatch-plan-fixtures.mjs && node tools/perf/verify-coordinator-dispatch-execute-fixtures.mjs",
     "perf:verify-context-projection": "node tools/perf/verify-coordination-summary-fixtures.mjs && node tools/perf/verify-list-agent-adapters-fixtures.mjs && node tools/perf/verify-agent-selection-summary-fixtures.mjs && node tools/perf/verify-multi-agent-status-fixtures.mjs && node tools/perf/verify-current-state-consistency-fixtures.mjs && node tools/perf/verify-runtime-state-projector-fixtures.mjs && node tools/perf/verify-runtime-state-projector-repair-fixtures.mjs && node tools/perf/verify-hydrate-context-runtime-state-fixtures.mjs && node tools/perf/verify-codex-context-repair-layer-fixtures.mjs && node tools/perf/verify-runtime-digest-hints-fixtures.mjs && node tools/perf/verify-current-state-skill-coverage.mjs --root tests/fixtures/repo-installed-core/.agents/skills && node tools/perf/verify-codex-db-only-skill-readiness.mjs --root tests/fixtures/repo-installed-core/.agents/skills --manifest tests/fixtures/repo-installed-core/.aidn/codex/skills.yaml --agents tests/fixtures/repo-installed-core/AGENTS.md && node tools/perf/verify-install-import-fixtures.mjs && node tools/perf/verify-install-source-branch-fixtures.mjs",
     "perf:verify-context-resilience": "npm run perf:verify-context-admission && npm run perf:verify-context-completion && npm run perf:verify-context-coordination && npm run perf:verify-context-projection",
@@ -415,6 +418,11 @@
     "perf:verify-scoped-context-selection": "node tools/perf/verify-scoped-context-selection-fixtures.mjs",
     "perf:verify-client-adoption-install": "node tools/perf/verify-client-adoption-install-fixtures.mjs",
     "perf:verify-agent-working-memory": "node tools/perf/verify-agent-working-memory-fixtures.mjs && node tools/perf/verify-context-metrics-fixtures.mjs && node tools/perf/verify-context-lifecycle-fixtures.mjs",
-    "perf:smoke-agent-working-memory-postgres": "node tools/perf/verify-agent-working-memory-fixtures.mjs --live-postgres"
+    "perf:smoke-agent-working-memory-postgres": "node tools/perf/verify-agent-working-memory-fixtures.mjs --live-postgres",
+    "perf:verify-standard-session-closure-authority": "node tools/perf/verify-standard-session-closure-authority-fixtures.mjs",
+    "perf:verify-standard-session-close-record": "node tools/perf/verify-standard-session-close-record-fixtures.mjs --checkpoint --final-hook"
+  },
+  "dependencies": {
+    "sax": "1.6.1"
   }
 }

@@ -1,0 +1,108 @@
+{
+  "observed_at_utc": "2026-11-03T23:54:43.0852760Z",
+  "source_commit": "93958bff11dd2cfacbdb80e0d0c1d112f11fa0ff",
+  "model_revision": 41,
+  "execution": "FAIL",
+  "exit_code": 1,
+  "reason": "PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED before native launch, effect_status no_effect",
+  "original_deadline_utc": "2026-11-03T23:42:28.146Z",
+  "deadline_renewed": false,
+  "events": 104,
+  "instance_sha256": "fc1a1a7e9e2a6e64ccf92af0020f2f49b9a7a6e7da931c66c5f0c401d2bffaf8",
+  "native_generations": [
+    {
+      "generation": 1,
+      "phase": "closed",
+      "tree_closed": true,
+      "first_failure": null
+    },
+    {
+      "generation": 2,
+      "phase": "closed",
+      "tree_closed": true,
+      "first_failure": null
+    },
+    {
+      "generation": 3,
+      "phase": "closed",
+      "tree_closed": true,
+      "first_failure": null
+    },
+    {
+      "generation": 4,
+      "phase": "closed",
+      "tree_closed": true,
+      "first_failure": null
+    },
+    {
+      "generation": 5,
+      "phase": "closed",
+      "tree_closed": true,
+      "first_failure": null
+    },
+    {
+      "generation": 6,
+      "phase": "closed",
+      "tree_closed": true,
+      "first_failure": null
+    },
+    {
+      "generation": 7,
+      "phase": "closed",
+      "tree_closed": true,
+      "first_failure": null
+    }
+  ],
+  "owner_present": false,
+  "generation8_reserved": false,
+  "cleanup": "NOT_DONE",
+  "descendants_scope": "OS snapshot of parent relationships only, not independent proof of resource extinction",
+  "evidence_files": [
+    {
+      "name": "exit.json",
+      "bytes": 139,
+      "sha256": "799861d820c396b64baf85fca8d15c25a013b8ea8426103c629e30f2ba5cc9b7"
+    },
+    {
+      "name": "instance.json",
+      "bytes": 130393,
+      "sha256": "a0f555317dd13b530bdea77a474a0a973a717b306bce65c94f34150a81abfdb9"
+    },
+    {
+      "name": "native-0.json",
+      "bytes": 12456,
+      "sha256": "b76d6b450e5e048484fe44505d84ae9a4da4495251784d46167c5b6ecea00706"
+    },
+    {
+      "name": "os-terminal.json",
+      "bytes": 333,
+      "sha256": "84c6de7e0870ac9bdea4757a3bcbbe83e274089c7bee74b0cfe609cb39875ccd"
+    },
+    {
+      "name": "result.txt",
+      "bytes": 9588,
+      "sha256": "edd1c39bc96b1a55c956714f606bb94e2751e6d09e19dd145e0aff4621819f64"
+    }
+  ],
+  "replay": {
+    "observed_at_utc": "2026-11-03T23:54:57.642Z",
+    "source_commit": "93958bff11dd2cfacbdb80e0d0c1d112f11fa0ff",
+    "model_revision": 41,
+    "events": 104,
+    "instance_sha256": "fc1a1a7e9e2a6e64ccf92af0020f2f49b9a7a6e7da931c66c5f0c401d2bffaf8",
+    "replay_status": "RUNNING",
+    "simulation_steps": 105,
+    "exact": true,
+    "execution": "FAIL",
+    "effects_replayed": false,
+    "native_reauthorized": false,
+    "ports_constructed": false
+  },
+  "limits": [
+    "104-event replay is not successful execution",
+    "no push or PR reached",
+    "not model37 input invalidity",
+    "not model39 unknown reserved generation",
+    "cannot qualify successor models"
+  ]
+}

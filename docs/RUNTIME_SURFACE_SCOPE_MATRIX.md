@@ -1,5 +1,121 @@
 # Runtime Surface Scope Matrix
 
+The initial and corrective STANDARD review waits share an authenticated event
+component. The pre-triage external merge uses the existing control inbox store
+with a signed occurrence reservation and a provider capture v3. The existing
+review capture v2 retains its source-keyed identity. The incident question v2
+binds the accepted delivery and delivered control event. Its decision and R09
+use the existing journal, decision inbox and effect ports.
+
+The R08 external merge observation and incident disposition reuse the signed
+operation journal and decision inbox v16 in the owning process. The R09 fetch
+and completion reuse their existing authority. Historical records keep their
+original schema versions. The route adds no backend, shared sync, automatic
+export, or installed-runtime qualification.
+
+An authenticated objective disposition is derived from the existing accepted
+operation journal and receipted decision inbox. Finalization plan v3 and its
+retained diagnostic bind this source; the internal hook reuses the production
+gate/event ports. It adds no canonical store, table, shared synchronization,
+backend fallback, implicit db-only export or historical conversion. Fixture
+authentication and source wiring remain distinct from actual actor, complete
+published-model and installed qualification.
+
+Native authorization epochs are versioned retained members of the existing
+native allocation journal. Explicit activation retains its signed v1 origin
+and uses the same canonical CAS, local mixed-host owner and required projection.
+It adds no table, shared synchronization, backend fallback or db-only export.
+The trusted approval/resource-closure source is composed outside process JSON;
+fixture evidence cannot establish actual human/provider/native termination.
+Historical process instances and v1 journals retain their readers.
+An explicitly activated v3 journal may begin with no native allocation after
+the original unused authorization expires. Its v2 request binds the current
+native scope; the trusted source must discover and close all resources even
+when no allocation is retained. It uses the same artifact CAS/projections,
+preserves the original authorization and creates no synthetic v1 origin.
+
+
+PR triage selection and evaluation use the existing authenticated operation
+journal. The accepted selection retains the complete delivered review payload
+and product identity. The native worker reads that signed source without provider
+capabilities; its read-only context and result stay in owned native evidence.
+Afterwards the host reauthenticates the source event and reobserves complete
+provider content, current head/base and product. Classification preserves each
+correction/reply obligation and unresolved thread; no response, resolution, check
+acceptance or merge permission is inferred. There is no new table, shared sync,
+implicit export, historical conversion or native budget renewal.
+
+Task selection and progress reuse existing cycle/process records. Selection and
+work evaluation are read-only; advancement changes exactly the owning cycle
+plan/status and current entry point, preserving metadata and the frozen scope.
+The same local owner, CAS and required projection rules apply, including unknown
+effect retention. No new table, shared synchronization, implicit db-only export
+or historical instance conversion is introduced. Final code-check evidence
+remains separate from lifecycle acceptance.
+
+Validation-result consumption reads existing signed operation/native evidence
+and immutable host-profile artifacts. Verification entry updates only the
+owning cycle status/traceability, context snapshot and current entry point through
+the existing local owner and canonical CAS/projection ports. It adds no table,
+shared synchronization or implicit db-only export. Fixture/native quality is
+preserved, and unknown writes/projections require reconciliation.
+
+Deterministic cycle validation consumes an accepted signed work evaluation.
+Its trusted host profile, immutable snapshot, bounded check logs and manifest
+remain local owned execution evidence. The existing operation journal signs
+the resulting observations and facts. The port uses the existing local effect
+owner and qualified execution boundary; it adds no table, canonical business
+write, public CLI command, shared synchronization or implicit db-only export.
+The private fixture boundary is always recorded as fixture evidence.
+
+Frozen task input uses explicit activity data links and the existing signed
+operation/native allocation journals. Native context and observed product
+snapshots stay in owned execution evidence. The read-only work evaluator adds
+no business writes, table, export or shared synchronization; native product
+effects require the ordinary explicit allocation and specific patch admission.
+Observing code is separate from running deterministic validation.
+
+Cycle readiness reads the existing authenticated planning operation and canonical
+artifacts. Its separate implementation transition uses the same journal, local
+owner and metadata-preserving CAS/projection ports for cycle status and current
+state. It freezes the recorded scope; individual native writes retain their
+specific admission. No new persistence table or shared synchronization is added.
+
+Typed cycle planning reuses owned native evidence and the signed operation
+journal. Its read-only proposal is evaluated against canonical cycle context;
+the explicit record operation writes only the admitted cycle planning documents,
+usage declaration and current task through the existing canonical artifact CAS
+and projection ports. It preserves metadata and leaves DoR/phase authorization
+pending. No proposal table, implicit export in db-only, shared synchronization
+or backend fallback is introduced.
+
+The deterministic cycle checkpoint uses the existing fixed skill/checkpoint
+ports and local operation owner. Its effects are runtime cache/index/telemetry,
+with a fresh correlated event retained by the authenticated operation journal.
+It waits for conditional drift admission before effects, preserves canonical
+business documents and never changes session mode, cycle continuity or DoR.
+No new shared coordination table, synchronization or backend fallback is added.
+
+Recovery cycle continuation reuses the operation journal, local effect owner,
+canonical runtime/cycle artifact ports and existing Git observation. The Git
+checkpoint binding is read-only and waits for external reconciliation; it does
+not stage/commit or synchronize a remote. Cycle/context plan v2 binds metadata
+preimages and checks physical projections under the owner. No new table,
+backend fallback, distributed lease or shared write is introduced.
+
+The deterministic R05 CR continuation reuses the canonical change-request and
+CURRENT-STATE artifacts plus the existing operation journal/effect owner. Its
+scope is an authenticated, confirmed recovery record and admitted active cycle;
+it adds no table, backend fallback, implicit scope approval or shared write.
+
+R05 recovery review and findings reuse the existing process instance, operation
+journal, decision inbox and canonical artifact ports. Recovery decisions use an
+explicit v2 inbox source; historical mode v1 records remain separate. Fixed
+findings writes cover parking-lot and current-state summary only, with causal
+before/after hashes and local unknown-effect retention. This adds no table,
+backend fallback, shared synchronization, actual recovery-action permission or
+native/installed-workflow qualification.
+
 Evidence labels used in reviews and gates are deliberately distinct:
 
 - `source`: package implementation or policy;
@@ -9,6 +125,33 @@ Evidence labels used in reviews and gates are deliberately distinct:
 - `external-pilot`: separately controlled pilot evidence.
 
 No scaffold, fixture, cache, projection, or export is promoted to canonical state merely because it exists. PostgreSQL and shared synchronization remain explicit opt-ins.
+
+The internal `standard-mixed.v1` host binds one process instance to the existing
+canonical operation/control/allocation artifacts. Native allocations share the
+existing physical worktree effect owner with mutating application ports. This
+adds no shared table or distributed ownership. It does not select the complete
+standard workflow through ordinary CLI/console entrypoints; see ADR-0025.
+
+Typed native activity outputs are protected result evidence in the allocation's
+external control root. A signed operation journal may retain their authenticated
+evaluation. This creates no additional canonical process state or shared table.
+The diagnostic adapter passes configured product diffs and canonical governance
+documents, while other Git changes retain hashes/counts and configured private
+roots remain denied. Coverage and diagnostic availability grant no R05 completion
+or recovery effects.
+
+`workflows/drift-reports/<operation>.md` is a canonical retained diagnostic copy
+under the existing artifact backend and local effect owner. It is generated
+evidence associated with the process instance, with projection when required.
+Its presence grants no completion: only the authenticated operation receipt
+retains verified execution of the fixed R05 hook. No shared table or historical
+conversion is introduced.
+
+Opt-in IR `data_bindings` is model configuration. Its immutable
+`initial_parameters` remain inside the existing process instance; source
+references and `input_resolution` remain inside its signed operation preview.
+They reuse existing artifact scope/CAS/projection and introduce no shared table,
+credential, automatic approval fact or historical conversion.
 
 Date: 2026-03-28  
 Status: current codebase inventory
@@ -30,10 +173,15 @@ Purpose:
 
 | Path or surface | Scope | Shared by default | Current source of truth | Notes |
 | --- | --- | --- | --- | --- |
+| `package/catalogs/standard-workflow-startup.v1.json` and its process-model JSON | `checkout-bound` package source; immutable asset of the installed package revision | no | versioned package catalog, IR, SPEC and skill/code pins | Partial fresh-session startup component. Source descriptor enters host scope and signed operation snapshots; existing process instances embed their exact model. No automatic pin repair, default workflow activation or historical conversion. |
 | `workflows/process-instances/<id>.json` audit artifact | `checkout-bound` in files; configured runtime artifact scope in DB modes | no | files or configured canonical artifact store; configured PostgreSQL always wins | ADR-0022 internal structured profile. Explicit writes and existing CAS/fence; policy, model and occurrence pins. Separate format; no automatic migration, native execution or new shared coordination surface. |
 | Workflow console view and loopback dashboard | `ephemeral` | no | derived from configured canonical artifacts and explicit supervisor status | ADR-0020. Per-record observation, retained/live distinction; memory-only token. Actions reuse the same CLI application services and admissions; no direct SQL or new shared surface. |
 | `workflows/definitions/<workflow-id>.json` audit artifact | `checkout-bound` in files; configured runtime artifact scope in DB modes | no | files or configured canonical artifact store; configured PostgreSQL always wins | ADR-0019 reviewed selection for explicit future instances. Retained review/preview hashes; existing instances stay pinned. Bulk DB projections refuse stale content. No new shared surface. |
 | `workflows/instances/<id>.json` audit artifact | `checkout-bound` in files; configured runtime artifact scope in DB modes | no | files or configured canonical artifact store; configured PostgreSQL always wins | ADR-0018 internal opt-in instance. Dual JSON is derived; db-only has no automatic visible projection. Existing reservation fence applies; no new shared coordination table. |
+| `workflows/operation-records/<id>.json` audit artifact | `checkout-bound` in files; configured runtime artifact scope in DB modes | no | existing canonical artifact CAS; visible JSON is derived in dual | ADR-0025 signed operation preview/intent, dispatch owner and authenticated result. Out-of-product host key capability is never serialized. R09 continuity reads the authenticated origin journal and its accepted process history. An interrupted R09 completion can reobserve Git under its original grant. No implicit takeover or provider write retry. No new shared coordination table. |
+| `workflows/decision-inbox/<id>.json` audit artifact | `checkout-bound` in files; configured runtime artifact scope in DB modes | no | existing canonical artifact CAS; visible JSON is derived in dual | ADR-0025 trusted human source capture, exact question and globally deduplicated source identity. Missing answers wait; refusal, deferral and cancellation remain non-success. Native human/provider adapters require independent qualification. |
+| `workflows/control-inbox/<id>.json` audit artifact | `checkout-bound` in files; configured runtime artifact scope in DB modes | no | existing canonical artifact CAS; visible JSON is derived when required | Signed human/external capture and durable delivery acknowledgement. Actual provider authentication and applicability remain host responsibilities. Native continuation verifies accepted control history and its current context before allocating again. |
+| `workflows/native-allocations/<id>.json` audit artifact | `checkout-bound` in files; configured runtime artifact scope in DB modes | no | existing canonical artifact CAS; visible JSON is derived when required | Signed owned reservation, original ceilings, protected checkpoint/closure references and observed accounting. Explicit native-only continuation restores history, never live resources. No new shared coordination table, automatic retry, deadline extension or standard-workflow qualification. The privileged key capability exists in trusted parent/worker memory and private bounded IPC; it is not a product artifact. |
 | `docs/audit/SPEC.md`, `docs/audit/WORKFLOW.md`, `docs/audit/WORKFLOW-KERNEL.md`, `docs/audit/WORKFLOW_SUMMARY.md`, `docs/audit/CODEX_ONLINE.md` | `checkout-bound` workflow bootstrap | no | worktree checkout or scaffold materialization | Protected workflow surfaces; strict `db-only` cleanup must not quarantine them. |
 | `docs/audit/CURRENT-STATE.md`, `docs/audit/RUNTIME-STATE.md`, `docs/audit/HANDOFF-PACKET.md`, `docs/audit/snapshots/context-snapshot.md`, `docs/audit/baseline/current.md`, `docs/audit/baseline/history.md`, `docs/audit/parking-lot.md` | `checkout-bound` minimal re-anchor anchors | no | runtime backend plus protected visible anchor | In strict `db-only`, these anchors stay visible/protected so agents can re-anchor; the runtime DB remains canonical. |
 | `docs/audit/cycles/C*`, `docs/audit/sessions/S*.md`, coordination summaries, agent health summaries, detailed runtime projections | `checkout-bound` runtime/state materialization | no | runtime backend with explicit materialization | In strict `db-only`, detailed managed runtime files are not written automatically and may be quarantined after external backup, except active session/cycle paths referenced by current state. |
@@ -302,3 +450,23 @@ Any future shared surface must update this matrix, ADR-0007, CLI status output c
 Shared coordination access is expected to pass through the port contract described in `docs/ADR/ADR-0008-shared-coordination-ports.md` before any new shared behavior is considered stable.
 
 That port contract is implemented by `src/core/ports/shared-coordination-store-port.mjs` and asserted by the PostgreSQL shared coordination adapter; future shared behavior should extend that contract rather than bypass it.
+
+Authenticated GitHub push uses a separate host-owned temporary bare transport
+repository so checkout URL/HTTP/credential configuration cannot receive the
+credential or redirect the network operation. Its closed preparation manifest
+is local execution evidence attached to the already journaled push, with pinned
+host/repository/actor, branch/HEAD and observed-plan digest. It adds no shared
+table or synchronization, authority, implicit native grant or db-only export.
+The deterministic preparation identity is retained after an unknown effect;
+confirmed completion removes only that exact checked directory. Recovery and
+reconciliation remain explicit. Preview observation creates no preparation.
+
+The private session closure record/completion v2 bodies remain content of the
+existing canonical session artifact. Explicit correction preserves historical
+bodies; new reports bind their ordered hashes and fresh current subject/HEAD,
+and completion binds the new report/decision. Legacy readers do not convert old
+records. No new shared table, public command or independent authority is added.
+See ADR-0025.
+
+
+Published owned/selected phase routing reuses the operation journal, artifact backend, local owner, CAS and existing Native/validation ports. Plan selection v2 and the read-only execution-source selector derive source identities and routing facts from accepted current history and canonical context; they create no new information authority, table, shared synchronization or DB-only projection. The typed preparation and verification calls use the existing IR. Historical catalog/output readers retain their original versions. Genuine actor, full-route and installed qualification remain separate from source wiring.

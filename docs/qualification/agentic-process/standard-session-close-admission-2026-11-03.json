@@ -1,0 +1,160 @@
+{
+  "contract_version": "qualification-standard-session-close-admission.v1",
+  "date": "2026-11-03",
+  "status": "FOCUSED_APPLICATION_AND_HOST_PASS_FULL_COMPOSED_MODEL_NOT_RUN",
+  "complete_standard_workflow": false,
+  "source_snapshot": "2795eb9c649305b4100efcc55890af95be28926f",
+  "projection_fix_commit": "9aba7a3",
+  "model": {
+    "revision": 21,
+    "sha256": "4036a3e01b6bb3832443dedd01cba8f75295c08c31e9552ee404c96b566ab131",
+    "catalog_sha256": "d708c4020c9a8d7ffc24e1ac67fcf0d6440114c053d8dd2b082d276432a41538",
+    "nodes": 75,
+    "operation_occurrences": 43,
+    "referenced_binding_ids": 35,
+    "registered_bindings": 42,
+    "native_declarations": 7,
+    "full_published_model_execution": "NOT_RUN_FOR_THIS_REVISION"
+  },
+  "native_implementation_sha256": "4c5b31a6fbbd7ef40e10cd95be820eaf9e21ba850a778aec6886ba4d7a00ff7e",
+  "operation": {
+    "binding_ref": "session_close_admit",
+    "skill": "close-session",
+    "input_contract": "standard-session-reference-input.v1",
+    "output_contract": "standard-session-close-admission-output.v1",
+    "actual_ports": [
+      "preWriteAdmit",
+      "runCloseSessionAdmitUseCase"
+    ],
+    "effect_status": "no_effect",
+    "facts": [
+      "session_close_admission_satisfied"
+    ],
+    "session_completion": false,
+    "model_calls": 0
+  },
+  "focused_fixture_model": {
+    "model_id": "session-close-admission-port-fixture",
+    "revision": 1,
+    "scope": "actual host and reducer for this operation; not full published standard model"
+  },
+  "components": [
+    {
+      "mode": "files",
+      "checks": 7,
+      "status": "PASS",
+      "cleanup": "TERMINAL_COMPLETE"
+    },
+    {
+      "mode": "dual",
+      "checks": 8,
+      "status": "PASS",
+      "cleanup": "TERMINAL_COMPLETE"
+    },
+    {
+      "mode": "db-only",
+      "checks": 8,
+      "status": "PASS",
+      "cleanup": "TERMINAL_COMPLETE"
+    }
+  ],
+  "verified": [
+    "actual application admission",
+    "byte-identical project after direct read-only calls",
+    "foreign owner refused",
+    "open cycle requires explicit resolution",
+    "incomplete canonical session refuses without Markdown fallback or read repair",
+    "closed typed output cannot claim session closure or facts on refusal",
+    "actual standard host stages dispatches authenticates and accepts result",
+    "reopened host reuses signed result without repeated application dispatch",
+    "accepted focused admission completes only its fixture",
+    "blocked focused admission remains WAITING",
+    "same focused model and common reducer replay/simulation exact hash",
+    "no model call or business-effect grant requested"
+  ],
+  "projection_contracts": {
+    "status": "PASS",
+    "checks": 45,
+    "sqlite": "ACTUAL",
+    "postgres": "DOUBLE",
+    "cas_late_projection_failure": "ROLLBACK_ARTIFACT_AND_SESSION_ROW"
+  },
+  "legacy_canonical_session_close": {
+    "status": "PASS",
+    "checks": 12,
+    "live_postgres": "NOT_RUN"
+  },
+  "source_checks": {
+    "composition": 15,
+    "startup_model": 22,
+    "source_of_truth_policies": 35,
+    "metadata_policies": 37,
+    "governance_concepts": 38,
+    "governance_adoption_checks": 87,
+    "governance_adoption_native_client": "UNAVAILABLE",
+    "gate_catalog": 63
+  },
+  "source_install_topology": {
+    "status": "PASS",
+    "clients": 5,
+    "cleanup": "TERMINAL_COMPLETE",
+    "exact_archive": false
+  },
+  "failed_attempts": [
+    {
+      "snapshot": "fb7656768699d2c12f9fc1ab54769e119ed0757e",
+      "classification": "PRODUCT_INTEGRATION_GAP",
+      "outcome": "actual DB canonical closure admission correctly refused missing normalized session rows",
+      "correction": "explicit producer projection in CAS; reader unchanged"
+    },
+    {
+      "snapshot": "79f1d1a6415b1a0a7b356597e7099afb4a9d43c9",
+      "classification": "FIXTURE_API_INPUT_ERROR",
+      "outcome": "actual host accepted authentic result; simulation call included undefined optional fields",
+      "correction": "omit absent optional fixture arguments; no production change"
+    },
+    {
+      "snapshot": "7365c947615cc9e6a09a5037d65224c3255281a4",
+      "classification": "FIXTURE_REGISTRY_EXPECTATION_STALE",
+      "outcome": "closed registry expected the prior operation ID list",
+      "correction": "explicitly include session_close_admit and assert deterministic/read-only/skill/modes; no production change"
+    }
+  ],
+  "native": "NOT_RUN",
+  "live_postgres": "NOT_RUN",
+  "exact_installed_archive": "NOT_RUN",
+  "full_standard_workflow": "NOT_COMPLETE",
+  "ordinary_standard_selector": "NOT_CHANGED",
+  "aggregate_assured_route": "NOT_CLAIMED",
+  "remaining": [
+    "R07 human resolution and closure report",
+    "governed session checkpoint and real final hook",
+    "explicit branch integration before PR",
+    "authenticated external PR review and durable resume",
+    "post-merge synchronization",
+    "general restart and long-wait reauthorization",
+    "unknown-effect reconciliation",
+    "other standard modes and cycle choices",
+    "full published-model acceptance then native and exact installed archive"
+  ],
+  "legacy_ports": {
+    "status": "PASS",
+    "checks": 14,
+    "production_change_after_focused_snapshot": false,
+    "fixture_change": "explicit closed registry expectation includes the new deterministic read-only binding"
+  },
+  "governed_artifact_metadata": "PASS",
+  "docs_gate": "PASS",
+  "delivery_lane": "ASSURED",
+  "primary_integration": {
+    "code_commit": "96900b8",
+    "projection_fix_commit": "86037a3",
+    "promotion_component_commit": "322693c",
+    "runtime_and_test_code_matches_isolated_commit": "ca96c6c",
+    "docs_merge_resolved": true,
+    "docs_gate": "PASS",
+    "composition_checks": 15,
+    "artifact_store_checks": 45,
+    "model_and_runtime_hashes_match_focused_snapshot": true
+  }
+}

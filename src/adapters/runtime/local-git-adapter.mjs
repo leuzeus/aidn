@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { execSync, execFileSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { assertVcsAdapter } from "../../core/ports/vcs-adapter-port.mjs";
 
 function runGitString(targetRoot, args) {
@@ -17,24 +17,10 @@ function runGitString(targetRoot, args) {
 export function createLocalGitAdapter() {
   return assertVcsAdapter({
     getCurrentBranch(targetRoot) {
-      try {
-        return execSync(`git -C "${targetRoot}" branch --show-current`, {
-          encoding: "utf8",
-          stdio: ["ignore", "pipe", "ignore"],
-        }).trim() || "unknown";
-      } catch {
-        return "unknown";
-      }
+      return runGitString(targetRoot, ["branch", "--show-current"]) || "unknown";
     },
     getHeadCommit(targetRoot) {
-      try {
-        return execSync(`git -C "${targetRoot}" rev-parse HEAD`, {
-          encoding: "utf8",
-          stdio: ["ignore", "pipe", "ignore"],
-        }).trim() || "unknown";
-      } catch {
-        return "unknown";
-      }
+      return runGitString(targetRoot, ["rev-parse", "HEAD"]) || "unknown";
     },
     hasWorkingTreeChanges(targetRoot) {
       try {
@@ -91,13 +77,13 @@ export function createLocalGitAdapter() {
         return false;
       }
     },
-    getUpstreamBranch(targetRoot, ref = "HEAD") {
+    getUpstreamBranch(targetRoot, ref = "HEAD", { fullName = false } = {}) {
       try {
         return execFileSync("git", [
           "-C",
           targetRoot,
           "rev-parse",
-          "--abbrev-ref",
+          ...(fullName ? [] : ["--abbrev-ref"]),
           "--symbolic-full-name",
           `${ref}@{upstream}`,
         ], {

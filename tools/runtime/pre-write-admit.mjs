@@ -3,10 +3,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { readActivation } from "../../src/application/install/project-activation-service.mjs";
+import { runPromoteBaselineAdmitUseCase } from "../../src/application/runtime/promote-baseline-admit-use-case.mjs";
 import { projectAdmissionAgentView, projectAgentDecisionError } from "../../src/application/runtime/agent-decision-projection.mjs";
 import { resolveSkillId } from "../../src/core/skills/skill-policy.mjs";
 import { resolveRuntimeHeadArtifact, findUniqueAuditArtifact } from "../../src/application/runtime/runtime-head-resolution-service.mjs";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
+import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
+import { readStandardPostMergeContinuity, verifyStandardPostMergePreWrite } from "../../src/application/runtime/standard-post-merge-continuity.mjs";
 import {
   buildPreWriteAdmissionResult,
   admitSpecificNativeWrite,
@@ -28,7 +31,7 @@ import { resolveWorkspaceContext } from "../../src/application/runtime/workspace
 import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-transition-constants.mjs";
 import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { readAidnProjectConfig, normalizeStateMode, resolveConfigStateMode, resolveConfigRuntimePersistence } from "../../src/lib/config/aidn-config-lib.mjs";
-import { parseSessionMetadata } from "../../src/lib/workflow/session-context-lib.mjs";
+import { parseSessionMetadata, readSourceBranch } from "../../src/lib/workflow/session-context-lib.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
 import { workflowObservationActive } from "../../src/application/runtime/workflow-observation-service.mjs";
 import {
@@ -656,6 +659,25 @@ function addCheck(checks, key, pass, details, extra = {}) {
   };
 }
 
+async function readCycleSourceReconciliation(targetRoot, git, { providerTransport } = {}) {
+  const branch = readSourceBranch(targetRoot);
+  if (git.getCurrentBranch(targetRoot) !== branch) return null;
+  let prior;
+  try { prior = createStandardWorkflowArtifacts({ targetRoot }).sessions().at(-1); }
+  catch { return null; } // Canonical backend availability is checked separately.
+  if (!prior) return null;
+  const { managed, completion } = readStandardPostMergeContinuity({
+    targetRoot, sessionId: prior.session_id, sessionPath: prior.path, sourceBranch: branch, content: prior.content,
+  });
+  if (!managed) return null;
+  let head = null;
+  if (completion) {
+    try { head = await verifyStandardPostMergePreWrite({ completion }, { providerTransport }); }
+    catch { /* Keep the source gate blocked when the fresh proof is unavailable. */ }
+  }
+  return { branch, head };
+}
+
 export async function preWriteAdmit({
   targetRoot,
   skill = "",
@@ -665,7 +687,8 @@ export async function preWriteAdmit({
   sharedCoordination = null,
   sharedCoordinationOptions = {},
   nativeRequest = undefined,
-} = {}) {
+  promotionCycleId = null,
+} = {}, { providerTransport } = {}) {
   const activationState = readActivation({ targetRoot: path.resolve(process.cwd(), targetRoot ?? ".") });
   const activation = {
     state: activationState.state, active: activationState.active,
@@ -727,7 +750,7 @@ export async function preWriteAdmit({
       warning: "configured canonical PostgreSQL backend did not provide a PostgreSQL snapshot" };
   }
   const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
-  const preferDb = canonicalRequired || (nativeRequest !== undefined || skill === "cycle-create") && dbBackedMode;
+  const preferDb = canonicalRequired || (nativeRequest !== undefined || ["cycle-create", "convert-to-spike"].includes(skill)) && dbBackedMode;
   const canonicalResolutionErrors = [];
   const resolveSelection = resolve => {
     try {
@@ -918,13 +941,14 @@ export async function preWriteAdmit({
     parseListSection(runtimeStateText, "blocking_findings")
       .filter((item) => item.toLowerCase() !== "none"),
   );
-  const cycleCreateGitGate = skill === "cycle-create"
+  const cycleCreateGitGate = ["cycle-create", "convert-to-spike"].includes(skill)
     ? evaluateCycleCreateGitGate({
       git,
       targetRoot: absoluteTargetRoot,
+      r09: skill === "cycle-create" ? await readCycleSourceReconciliation(absoluteTargetRoot, git, { providerTransport }) : null,
     })
     : null;
-  const sessionIntegrationGate = skill === "cycle-create"
+  const sessionIntegrationGate = ["cycle-create", "convert-to-spike"].includes(skill)
     ? evaluateSessionIntegrationGate({
       git,
       targetRoot: absoluteTargetRoot,
@@ -935,6 +959,16 @@ export async function preWriteAdmit({
         : cycleBranch,
     })
     : null;
+
+  const promotion = skill === "promote-baseline"
+    ? await runPromoteBaselineAdmitUseCase({ targetRoot: absoluteTargetRoot, mode, cycleId: promotionCycleId }) : null;
+  if (promotion) {
+    addCheck(checks, "baseline_promotion_target", promotion.ok === true,
+      promotion.reason_code ?? "canonical promotion target admission passed",
+      { reason_code: promotion.reason_code, cycle_id: promotion.target_cycle?.cycle_id ?? null });
+    if (promotion.ok !== true) blockingReasons.push(...(promotion.blocking_reasons.length
+      ? promotion.blocking_reasons : [promotion.reason_code ?? "baseline promotion target admission failed"]));
+  }
 
   evaluatePreWriteGenericWorkflowGates({
     checks,
@@ -954,11 +988,11 @@ export async function preWriteAdmit({
     derivedFirstPlanStep,
     dorState,
     dorOverrideReason,
-    cycleState,
-    usageMatrixScope,
-    usageMatrixState,
-    usageMatrixRationale,
-    activeCycleLabel: activeCycle,
+    cycleState: promotion ? promotion.target_cycle?.state ?? "UNKNOWN" : cycleState,
+    usageMatrixScope: promotion ? promotion.validation_summary.usage_matrix_scope ?? "local" : usageMatrixScope,
+    usageMatrixState: promotion ? promotion.validation_summary.usage_matrix_state ?? "NOT_DEFINED" : usageMatrixState,
+    usageMatrixRationale: promotion ? promotion.validation_summary.usage_matrix_rationale ?? "none" : usageMatrixRationale,
+    activeCycleLabel: promotion ? promotion.target_cycle?.cycle_id ?? "none" : activeCycle,
     cycleBranch,
     mappedCycleBranch,
     canonicalNone,

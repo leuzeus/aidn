@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-merge-basis-output.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-pr-merge-basis-output.v1"
+    },
+    "operation_ref": {
+      "const": "session_pr_merge_basis"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "blocked"
+      ]
+    },
+    "effect_status": {
+      "const": "no_effect"
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {}
+    },
+    "observations": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "merge_operation_id"
+          ],
+          "properties": {
+            "merge_operation_id": {
+              "type": "string",
+              "pattern": "^op_[a-f0-9]{40}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reason_code"
+          ],
+          "properties": {
+            "reason_code": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+            }
+          }
+        }
+      ]
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 0,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "x-aidn-contract-version": "standard-pr-merge-basis-output.v1"
+}

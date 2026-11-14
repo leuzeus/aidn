@@ -316,6 +316,9 @@ export function validateAidnProjectConfig(data) {
     throw new Error("Invalid AIDN config install.artifactImportStore");
   }
   const runtime = data.runtime ?? {};
+  if (runtime.workflowEngine != null && !["agentic", "legacy"].includes(runtime.workflowEngine)) {
+    throw new Error("Invalid AIDN config runtime.workflowEngine: expected agentic|legacy");
+  }
   if (runtime.stateMode != null && !normalizeStateMode(runtime.stateMode)) {
     throw new Error("Invalid AIDN config runtime.stateMode");
   }

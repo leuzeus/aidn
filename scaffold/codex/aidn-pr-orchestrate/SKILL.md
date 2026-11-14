@@ -7,6 +7,25 @@ metadata:
 
 # PR Orchestrate Skill
 
+## STANDARD instance entry
+
+At a top-level user invocation with an explicitly selected
+`standard-workflow-execution.v1` configuration, use
+`aidn runtime workflow-run --target . --configuration <file> --json` to observe
+that same durable instance. Save its returned `preview` object. Apply only an
+explicitly authorized exact action with `--action-file <file> --execute
+--expect-plan <sha256>`. A human wait requires a fresh authenticated source;
+use `--decision-source <ref>` to prepare its delivery. Preserve typed wait,
+refusal, defer, cancellation and reconciliation outcomes. Continue through this
+entry instead of independently executing the manual orchestration below.
+
+This applies only to the top-level entry. A host-assigned Native activity or
+leaf completion hook must never recursively invoke `workflow-run`. Keep
+`codex workflow-step` in its admission/context/coordination role. Missing
+authority, configuration or capabilities do not authorize a manual fallback.
+The existing steps below remain the explicit compatibility route when STANDARD
+has not been selected. Source scaffolds require separate installed qualification.
+
 ## Project Activation
 
 Before loading workflow context or running the steps below, run `aidn runtime pre-write-admit --target . --skill pr-orchestrate --json`. Continue only when `activation.active` is `true` and `admission_status` is `admitted` or `admitted_with_warnings`.
@@ -31,7 +50,18 @@ Drive the session branch through the explicit PR lifecycle without skipping push
 - `docs/audit/CURRENT-STATE.md`
 - `docs/audit/RUNTIME-STATE.md` when runtime freshness or repair signals matter
 
-2) Confirm session PR metadata:
+2) Prepare local delivery and confirm session PR metadata:
+
+If still on a retained cycle branch, prepare local delivery explicitly before PR
+admission. A confirmed session closure and delivery checkpoint are prerequisites,
+not permission to integrate. Require a separate human `integrate-to-session`
+decision bound to the canonical CLOSED owner, retained DONE cycle, exact source
+and session refs/tips, index, filters, worktree registrations and checkpoint.
+Execute only the reviewed local fast-forward plan with a fresh grant. Refusal,
+deferral, cancellation and uncertain effects remain distinct; do not repeat an
+uncertain transaction. Re-anchor the branch context before PR admission. This
+preparation does not authorize push, PR creation, merge or post-merge sync.
+
 - `pr_status`
 - `pr_url`
 - `pr_number`
@@ -59,6 +89,16 @@ Drive the session branch through the explicit PR lifecycle without skipping push
 - `await_review`: continue review triage and update PR state only.
 - `merge_pull_request`: merge only after explicit approval and evidence.
 - `post_merge_sync_required`: reconcile the source branch locally before any new session or cycle creation.
+
+For an authenticated valid finding requiring product changes, explicitly reopen
+the same CLOSED owning session under the reviewed correction plan. Preserve the
+complete prior closure report and completion proof as historical records; reset
+closure/snapshot gates and keep active_cycle none. Reopening grants no product
+write. Create a new cycle through its ordinary admission and continuity choice,
+freeze its plan, satisfy readiness and enter IMPLEMENTING on its cycle branch
+before product edits. Run impacted validations for the new HEAD and close/deliver
+again through a fresh causal successor. Replies, resolutions and merge consent
+remain separate; refresh review observations after provider changes.
 
 5) Update `docs/audit/CURRENT-STATE.md` when present:
 - `updated_at`

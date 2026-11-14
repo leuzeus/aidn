@@ -1,12 +1,146 @@
 # ADR-0022 — Structured agentic process and constrained resource assignment
 
+## Shared replay-local model selection, 2026-11-06
+
+Two internal factories share one definition of frame-input selection and call
+transition validation. Public wrappers construct fixed dependencies and retain
+their existing destructuring, error order, option spread and reader callbacks.
+No existing entry accepts an index, table, dependency or token as trusted input.
+Internal files remain importable; the factories confer no effect authority.
+
+Within each complete synchronous replay, a descriptor/proxy/prototype guard
+permits lexical reuse of its already constructed model identities. Exotic data
+uses the original public lookup path through the same shared algorithms. The
+specialized witness reader is only the validated event's local Map.get. No
+function or model observation escapes replay or survives calls/awaits. Complete
+incoming/final validation, prefix fingerprints, schemas, intent/receipt/source
+checks and the final full root-model hash remain. Historical unpinned lookups
+retain their live instance.model behavior even if a public callback replaces it.
+
+A separate inlining experiment passed its pure equivalence controls and eight
+alternating inspection pairs. Its descriptive improvement and unmeasured
+instrumentation overhead do not qualify this factory implementation or imply
+service/whole-workflow performance. This source requires its own READY/GO and
+unchanged five-case qualification. The preceding cohort and observer FAIL remain;
+STANDARD extraction, general L4 and all L1-L8/A1-A10 are active/incomplete.
+
+## Final-validation cursor composition into SIM, 2026-11-06
+
+The internal synchronous advance-and-inspect composition returns the cursor
+already computed by the complete final validation/replay that seals the new
+instance. Both transition APIs use the same reducer and validate the entire
+incoming instance before inspecting the event, then the entire new instance
+before returning. Duplicate events still validate the incoming history; the
+old advance API preserves the caller's exact instance identity and mutability.
+No cursor supplied by a caller is accepted and no cursor, result or authority is
+cached between calls or awaited observations.
+
+SIM owns a cloned, deeply frozen scenario. It consumes the newly computed
+cursor in its snapshot before yielding. Initial inspection, every row's schema
+and 4 MiB bound, the aggregate 4 MiB bound, fingerprints, historical v1/v2
+readers and all operation/service/authentication/CAS boundaries remain intact.
+The iterator's next event performs complete validation again after resumption.
+
+An isolated diagnostic on the preceding source supported this composition with
+eight alternating last-event pairs, two complete 486-event SIM traces and
+adversarial controls. Its 487 row hashes were compared in worker memory rather
+than retained separately; the ordered full pair is descriptive and its overhead
+is unmeasured. It supplies no whole-workflow causal performance claim. The
+preceding five-case qualification remains FAIL (contract passed, sequential
+timed out, three cases not started). This source and its additional small
+contract controls require their own immutable READY and exact ROOT GO under the
+unchanged five-case workloads and bounds. STANDARD extraction, general L4 and
+all L1-L8/A1-A10 remain active/incomplete.
+
+## Synchronous canonical inspection, 2026-11-06
+
+For the exact frozen store created by the process adapter, application
+`inspect` composes a fresh canonical read and the complete core validation/replay
+once. A private identity registry holds read functions only, never authority,
+instances, cursors or results. The internal read variant is hidden from the
+returned store. Unknown, historical, copied, proxied or custom ports keep the
+existing read-plus-inspect validation; optional methods or supplied cursors are
+not trusted. Every invocation reads canonical storage again, including after
+awaits. Persistence binding, content hash, ID checks and CAS remain unchanged.
+
+`operationFrame` has an intervening authority callback and retains its separate
+validation. Prepare/accept, observations, awaits, authentication, independent
+CAS reads and final validations are unchanged. A frozen-source diagnostic
+supported only this local mechanism with eight alternating fresh-read pairs and
+two exact complete operation steps. Their ordered times are descriptive; this
+does not establish complete-workflow performance. Meaningful forged-port,
+mutability, callback and after-await regressions extend the existing contract
+selector in FILES/DUAL/real SQLite DB-only. New-source qualification remains
+required under the original bounds; STANDARD and L1-L8/A1-A10 stay incomplete.
+
+## Replay-local canonical suffix buffers, 2026-11-06
+
+The historical prefix hasher encodes the fixed canonical fields before/after
+`revision` once within a synchronous replay. Each digest still hashes every
+canonical suffix byte, the exact revision and ordered event prefix. Fingerprint
+format, historical validation, event bounds and all authority/CAS observations
+remain unchanged; no buffer or result crosses replay calls or awaits.
+
+A complete-step instrumented fixture diagnostic located this path, followed by
+a separate pure comparison against independent canonical hashes for 442
+prefixes and additional hashing shapes. The buffer candidate met the frozen
+eight alternating batch criteria. These observations support this local change,
+not a complete-workflow speedup. Current-source qualification remains required
+under the original bounds, with productive STANDARD and L1–L8/A1–A10 incomplete.
+
+## Embedded reusable call candidate, 2026-11-06
+
+V2 may explicitly retain a root `call_targets` library of complete immutable v2
+models, identified by `model_id`, `revision` and `model_sha256`. A new call uses
+`target`; historical `child` calls keep their existing tree semantics, bytes and
+events. Each local target keeps the 256-node bound. The common reducer validates
+expanded ancestry, rejects recursion and resolves local nodes by pinned model
+and occurrence, with the existing depth, JSON, ID, 1024-occurrence and 512-event
+limits. It performs no ambient package/path/network resolution.
+
+Private `process-data-bindings.v4`, `process-resolved-input.v3` and
+`process-call-transition.v1` describe this opt-in. `call_enter` durably records
+once-resolved typed parameters, sources and accepted source witnesses at the
+exact prefix. `call_return` records declared typed outputs only after all call
+children complete, verified against that call's accepted receipts. The service
+observes authenticated journals through its fixed host port and commits through
+the existing canonical artifact CAS. Facts and data are call-local; operation
+identities, authority, grants and cumulative accounting stay instance-bound.
+The same reducer validates execution, cold reconstruction, replay and SIM.
+These records are part of `agentic_process_instance`, with no new store or table.
+
+Only explicit `call_output` from a pinned `target` exports that call's declared
+return into its containing sequence scope. Enclosing loop, collection and call
+scopes remain mandatory, as do ordering and optional-branch restrictions.
+Internal operation values and historical `child` calls retain their previous
+scope checks; this does not introduce implicit exports.
+
+Input selection builds a model-identity table within that synchronous invocation
+and rechecks the complete root model hash after trusted journal callbacks. Each
+scope lookup uses those same pinned bytes; no table, cursor, journal output or
+authority survives the invocation. This avoids rehashing every model at every
+ancestor lookup and refuses model mutation during a reader callback. All source
+receipt/input/output checks and subsequent service authority/CAS fences remain.
+
+This is an executable source candidate pending exact-source qualification.
+Published STANDARD extraction, complete lifecycle coverage, ordinary-entry
+qualification and Native/Human/Provider/installed acceptance remain incomplete.
+The current Native configuration does not model-qualify activity instructions
+or output contracts; it explicitly refuses activities in embedded targets before
+allocation. The generic service's activity protocol remains distinct from that
+unqualified Native profile.
+
 ## Status
 
-Implemented as an opt-in internal source API and explicit owned native
+Initially implemented as an opt-in internal source API and explicit owned native
 composition, verified offline. One bounded pre-release Windows native case
 completed; the exact published archive and general native profile remain
 unqualified. See [the qualification record](../qualification/agentic-process/v0.19.0.md).
 No default client activation or general BPMN interpreter.
+
+[ADR-0024](ADR-0024-default-agentic-workflow-engine.md) supersedes the opt-in
+selection decision: this same engine is now the default for all new workflows,
+including direct JSON models. Historical readers and native admission remain.
 
 ## Context
 
@@ -24,6 +158,11 @@ multi-instance and same-participant calls are executable control semantics.
 Complex/mixed/instantiating gateways and autonomous participant review remain
 descriptive and refuse execution. Arbitrary graphs, cross-pool sequence and XML
 import are rejected, never translated silently.
+
+ADR-0023 subsequently adds explicit bounded XML compilation into this unchanged
+IR, plus synthetic simulation with the same reducer. Direct XML interpretation
+and generic BPMN import remain outside this engine. See
+[the profile decision](ADR-0023-bpmn-execution-profile-and-simulation.md).
 
 The reducer uses stable scoped occurrences, distinct flow identities, recorded
 conditions and replayed events. Concurrency is logical readiness, not an agent
@@ -63,12 +202,13 @@ native observations are documented in `docs/AGENTIC_PROCESS.md`.
 
 The required `runtime-agentic-process` gate executes portable contracts, reducer,
 service, durable-store and production-composition/fake-wire fixtures. The existing agent-reuse and workflow-instance
-suites remain separate regression checks. G03, XML, message review and unsupported
+suites remain separate regression checks. G03, general BPMN XML, message review and unsupported
 gateway semantics are not claimed as implemented; their boundaries are published
 in `docs/AGENTIC_PROCESS.md`. No native qualification or cost claim is made.
 
-Adoption is explicit composition, never automatic instance conversion. Stop new
-writes to disable adoption and retain the versioned reader for historical state.
+Original adoption used explicit composition. ADR-0024 makes selection the default
+for new workflows, without automatic instance conversion. Select compatibility
+for new sequential work and retain versioned readers for historical state.
 Neither rollback nor a new model hash weakens required policy pins or approves
 old verdicts for new revisions.
 

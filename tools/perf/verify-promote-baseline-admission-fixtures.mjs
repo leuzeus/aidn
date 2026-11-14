@@ -1,8 +1,12 @@
 #!/usr/bin/env node
+import { verifyCanonicalBaselinePromotion } from "./verify-promote-baseline-canonical-fixtures.mjs";
+import { verifyPromotionPrewrite } from "./verify-promote-baseline-prewrite-fixtures.mjs";
+import { verifyStandardBaselinePromotionComponent } from "./verify-standard-baseline-promotion-suite.mjs";
+import { prepareActivationFixture, isActivationFixtureSource } from "./test-activation-fixture-lib.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { copyFixtureToTmp, createTrackedFixtureFilter, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 const CASES = [
   {
@@ -133,9 +137,12 @@ function runJson(script, scriptArgs, env = {}) {
   }
 }
 
-function runCase(tmpRoot, testCase) {
+function runCase(tmpRoot, testCase, onCreated) {
   const sourceTarget = path.resolve(process.cwd(), testCase.fixture);
-  const targetRoot = copyFixtureToTmp(sourceTarget, tmpRoot, `tmp-promote-baseline-${testCase.id}`);
+  const tracked = createTrackedFixtureFilter(sourceTarget);
+  const targetRoot = copyFixtureToTmp(sourceTarget, tmpRoot, `tmp-promote-baseline-${testCase.id}`, {
+    onDestinationCreated: onCreated, filter: name => tracked(name) && isActivationFixtureSource(sourceTarget, name),
+  });
   if (typeof testCase.mutate === "function") {
     testCase.mutate(targetRoot);
   }
@@ -144,6 +151,7 @@ function runCase(tmpRoot, testCase) {
     workingBranch: testCase.workingBranch,
   });
 
+  prepareActivationFixture(targetRoot);
   const hook = runJson("tools/perf/promote-baseline-hook.mjs", [
     "--target",
     targetRoot,
@@ -206,46 +214,33 @@ function runCase(tmpRoot, testCase) {
   };
 }
 
-function main() {
-  const createdTargets = [];
+async function main() {
+  const createdTargets = []; let args, tmpRoot;
   try {
-    const args = parseArgs(process.argv.slice(2));
-    const tmpRoot = path.resolve(process.cwd(), args.tmpRoot);
-    const runs = CASES.map((testCase) => {
-      const run = runCase(tmpRoot, testCase);
-      createdTargets.push(run.target_root);
-      return run;
-    });
-    const pass = runs.every((run) => run.pass === true);
-    const output = {
-      ts: new Date().toISOString(),
-      runs,
-      pass,
-    };
-    if (args.json) {
-      console.log(JSON.stringify(output, null, 2));
-    } else {
-      for (const run of runs) {
-        console.log(`${run.pass ? "PASS" : "FAIL"} ${run.id}`);
-      }
+    args = parseArgs(process.argv.slice(2)); tmpRoot = path.resolve(process.cwd(), args.tmpRoot);
+    const runs = CASES.map(testCase => runCase(tmpRoot, testCase, target => createdTargets.push(target)));
+    const canonical = await verifyCanonicalBaselinePromotion(), pass = runs.every(run => run.pass === true) && canonical.every(run => run.pass);
+    const prewrite = [];
+    for (const mode of ["files", "dual", "db-only"]) prewrite.push(await verifyPromotionPrewrite(mode));
+    const component = await verifyStandardBaselinePromotionComponent();
+    const output = { ts: new Date().toISOString(), runs, canonical, prewrite, component, pass };
+    if (args.json) console.log(JSON.stringify(output, null, 2));
+    else {
+      for (const run of runs) console.log(`${run.pass ? "PASS" : "FAIL"} ${run.id}`);
+      for (const run of canonical) console.log(`PASS ${run.id}`);
+      for (const run of prewrite) console.log(`PASS promotion pre-write ${run.mode}: ${run.checks.length} cases`);
+      for (const run of component.cases) console.log(`PASS promotion record component ${run.id}: ${run.checks} cases`);
       console.log(`Result: ${pass ? "PASS" : "FAIL"}`);
     }
-    if (!args.keepTmp) {
-      for (const target of createdTargets) {
-        const cleanup = removePathWithRetry(target);
-        if (!cleanup.ok) {
-          throw cleanup.error;
-        }
-      }
-    }
-    if (!pass) {
-      process.exit(1);
-    }
+    if (!pass) process.exitCode = 1;
   } catch (error) {
-    console.error(`ERROR: ${error.message}`);
-    printUsage();
-    process.exit(1);
+    console.error(`ERROR: ${error.message}`); printUsage(); process.exitCode = 1;
+  } finally {
+    if (!args?.keepTmp) for (const target of createdTargets) {
+      const resolved = fs.realpathSync(target), relative = path.relative(fs.realpathSync(tmpRoot), resolved);
+      if (!relative || path.isAbsolute(relative) || relative === ".." || relative.startsWith(".." + path.sep) || !path.basename(resolved).startsWith("tmp-promote-baseline-")) throw Error("PROMOTION_FIXTURE_CLEANUP_SCOPE_INVALID");
+      const cleanup = removePathWithRetry(resolved); if (!cleanup.ok) throw cleanup.error;
+    }
   }
 }
-
-main();
+await main();

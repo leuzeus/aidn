@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-drift-cycle-initialize-input.v1",
+  "x-aidn-contract-version": "standard-drift-cycle-initialize-input.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "checkpoint_operation_id",
+    "cycle_id",
+    "cycle_type",
+    "title"
+  ],
+  "properties": {
+    "cycle_id": {
+      "type": "string",
+      "pattern": "^C[0-9]{3,6}$"
+    },
+    "cycle_type": {
+      "enum": [
+        "feature",
+        "spike",
+        "refactor",
+        "structural",
+        "migration",
+        "security",
+        "perf",
+        "integration",
+        "compat",
+        "corrective",
+        "hotfix"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+    },
+    "checkpoint_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    }
+  }
+}

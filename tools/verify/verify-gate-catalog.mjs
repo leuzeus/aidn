@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import agenticProcessCases from "../../package/catalogs/agentic-process-fixtures.v1.json" with { type: "json" };
 import path from "node:path";
 import { parseDocument } from "yaml";
 import {
@@ -86,6 +87,7 @@ function candidateRejected({
   candidateCatalog = catalog,
   candidatePackageJson = packageJson,
   candidateWorkflowSources = workflowSources,
+  candidateAgenticFixtureManifest = agenticProcessCases,
 }) {
   const syntaxIssues = candidateWorkflowSources.flatMap((source) => (
     validateWorkflowYamlSyntax(source.text, source.path)
@@ -97,6 +99,7 @@ function candidateRejected({
     catalog: candidateCatalog,
     packageJson: candidatePackageJson,
     workflowModels: candidateWorkflowModels,
+    agenticFixtureManifest: candidateAgenticFixtureManifest,
   }).length > 0 || syntaxIssues.length > 0;
 }
 
@@ -235,7 +238,7 @@ function nestFirstContextInvocation(candidate, duplicate = false, group = admiss
   candidate.packageJson.scripts[group] = ["npm run fixture:context-leaf", ...commands].join(" && ");
 }
 const contextPositiveProbes = {
-  current_43_invocations_preserved: contextPolicyProbe(() => {}).length === 0,
+  historical_invocations_and_explicit_additions_preserved: contextPolicyProbe(() => {}).length === 0,
   agent_reuse_addition_equivalent_transitive_accepted: contextPolicyProbe((candidate) => {
     nestFirstContextInvocation(candidate, false, coordinationGroup);
   }).length === 0,
@@ -838,6 +841,113 @@ for (const [name, candidate] of Object.entries({
 }
 
 const negativeProbes = {
+  agentic_manifest_order_required: (() => {
+    const candidate = clone(agenticProcessCases); candidate.cases.reverse();
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  agentic_manifest_duplicate_rejected: (() => {
+    const candidate = clone(agenticProcessCases); candidate.cases.push(candidate.cases[0]);
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  agentic_manifest_argv_regrouping_rejected: (() => {
+    const candidate = clone(agenticProcessCases); candidate.cases[0] = [candidate.cases[0].join(" ")];
+    candidate.cases[1] = [candidate.cases[1][0] + " --ignored"];
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  agentic_ordinary_entry_omission_rejected: (() => {
+    const candidate = clone(agenticProcessCases); candidate.cases.pop();
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  filtered_native_checkpoint_gate_rejected: (() => {
+    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
+      .replace("node tools/perf/verify-agentic-process-execution-fixtures.mjs", "node tools/perf/verify-agentic-process-execution-fixtures.mjs --checkpoint-only");
+    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  filtered_native_v2_gate_rejected: (() => {
+    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
+      .replace("node tools/perf/verify-agentic-process-execution-fixtures.mjs", "node tools/perf/verify-agentic-process-execution-fixtures.mjs --v2-only");
+    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  standard_workflow_control_invocation_omission_rejected: (() => {
+    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
+      .replace("node tools/perf/verify-standard-workflow-control-fixtures.mjs && ", "");
+    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  standard_pr_review_content_control_invocation_omission_rejected: (() => {
+    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
+      .replace("node tools/perf/verify-standard-pr-review-control-fixtures.mjs && ", "");
+    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  standard_pr_triage_invocation_omission_rejected: (() => {
+    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
+      .replace("node tools/perf/verify-standard-pr-triage-fixtures.mjs && ", "");
+    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  standard_pr_correction_host_invocation_omission_rejected: (() => {
+    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
+      .replace("node tools/perf/verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=session_pr_correction_decide --standard-composed-scenario=correction && ", "");
+    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  standard_workflow_cycle_invocation_omission_rejected: (() => {
+    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
+      .replace("node tools/perf/verify-standard-workflow-cycle-fixtures.mjs && ", "");
+    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  standard_workflow_model_invocation_omission_rejected: (() => {
+    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
+      .replace("node tools/perf/verify-standard-workflow-model-fixtures.mjs && ", "");
+    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  standard_workflow_mode_invocation_omission_rejected: (() => {
+    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
+      .replace("node tools/perf/verify-standard-workflow-mode-fixtures.mjs && ", "");
+    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  workflow_record_storage_invocation_omission_rejected: (() => {
+    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
+      .replace(" && node tools/perf/verify-workflow-record-storage-fixtures.mjs", "");
+    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  standard_workflow_host_invocation_omission_rejected: (() => {
+    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
+      .replace("node tools/perf/verify-standard-workflow-host-fixtures.mjs && ", "");
+    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  standard_workflow_ports_invocation_omission_rejected: (() => {
+    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
+      .replace("node tools/perf/verify-standard-workflow-ports-fixtures.mjs && ", "");
+    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  operation_contract_invocation_omission_rejected: (() => {
+    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
+      .replace("node tools/perf/verify-process-operation-fixtures.mjs && ", "");
+    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  default_workflow_engine_invocation_omission_rejected: (() => {
+    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
+      .replace("node tools/perf/verify-workflow-engine-fixtures.mjs && ", "");
+    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
+  bpmn_profile_invocation_omission_rejected: (() => {
+    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
+      .replace("node tools/perf/verify-bpmn-process-fixtures.mjs && ", "");
+    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
   agent_run_lifecycle_required: (() => {
     const candidate = clone(catalog);
     candidate.gates = candidate.gates.filter(gate => gate.id !== "runtime-agent-run-lifecycle");

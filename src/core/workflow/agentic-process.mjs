@@ -1,9 +1,18 @@
-import { assertAgenticProcessModel, AGENTIC_PROCESS_PROFILE, exactKeys, processId, processFail as fail } from "./agentic-process-model.mjs";
-import { checkShadowJson, freezeShadow, shadowHash } from "./shadow-json.mjs";
+import { assertAgenticProcessModel, AGENTIC_PROCESS_PROFILE, AGENTIC_PROCESS_OPERATION_PROFILE, exactKeys, processId, processFail as fail } from "./agentic-process-model.mjs";
+import { checkShadowJson, freezeShadow, shadowHash, canonicalShadowJson } from "./shadow-json.mjs";
+import { createHash } from "node:crypto";
 import { assertAgentReuseRequest, fingerprintAgentReuse } from "../agents/agent-reuse-policy.mjs";
 import decisionSchema from "../contracts/agent-reuse/agent-reuse-decision.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import instanceSchema from "../contracts/workflow-definition/agentic-process-instance.v1.schema.json" with { type: "json" };
+import instanceSchemaV2 from "../contracts/workflow-definition/agentic-process-instance.v2.schema.json" with { type: "json" };
+import { assertProcessOperationIntent, assertProcessOperationReceipt, assertProcessControlEvent } from "./process-operation-contracts.mjs";
+import { processFrameModel, processModels, resolveProcessCallTarget } from "./process-call-model.mjs";
+import { assertProcessCallTransition } from "./process-call-data.mjs";
+import { createProcessFrameInputSelector } from "./process-frame-input-selection.mjs";
+import { createProcessCallSelector } from "./process-call-selection.mjs";
+import { isPlainProcessReplayData } from "./process-replay-data.mjs";
+import { assertProcessParameters } from "./process-data-contracts.mjs";
 
 const terminal = status => ["COMPLETED", "FAILED", "CANCELLED"].includes(status);
 const digest = value => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
@@ -11,9 +20,31 @@ const factsValid = value => exactKeys(value, [], Object.keys(value ?? {})) && Ob
   && Object.entries(value).every(([key, item]) => processId(key) && typeof item === "boolean");
 const content = ({ instance_sha256, ...value }) => value;
 
-export function assertActivityAssignment(instance, node, occurrenceId, request, decision) {
+// Replay still authenticates every intent against its exact historical instance
+// fingerprint. Reuse only canonical bytes within this one validated replay:
+// neither an instance, a cursor nor any external authority is cached.
+function prefixHasher(instance) {
+  const keys = Object.keys(content(instance)).sort(), eventIndex = keys.indexOf("events"), revisionIndex = keys.indexOf("revision");
+  const entry = key => JSON.stringify(key) + ":" + canonicalShadowJson(instance[key]);
+  const head = "{" + keys.slice(0, eventIndex).map(entry).join(",") + ',"events":[';
+  // Encode only immutable canonical suffix bytes within this replay. Every
+  // historical fingerprint still hashes all of them and its exact revision.
+  // No authority, cursor or result survives this synchronous invocation.
+  const beforeRevision = Buffer.from("]," + keys.slice(eventIndex + 1, revisionIndex).map(entry).join(",") + ',"revision":', "utf8");
+  const afterRevision = Buffer.from("," + keys.slice(revisionIndex + 1).map(entry).join(",") + "}", "utf8");
+  const hash = createHash("sha256").update(head, "utf8"); let count = 0;
+  return eventCount => {
+    while (count < eventCount) {
+      if (count) hash.update(",", "utf8");
+      hash.update(canonicalShadowJson(instance.events[count++]), "utf8");
+    }
+    return hash.copy().update(beforeRevision).update(String(eventCount + 1), "utf8").update(afterRevision).digest("hex");
+  };
+}
+
+export function assertActivityAssignment(instance, node, occurrenceId, request, decision, model = instance.model) {
   assertAgentReuseRequest(request);
-  const role = instance.model.roles.find(row => row.id === node.role_ref), policy = instance.model.policies.find(row => row.id === node.policy_ref);
+  const role = model.roles.find(row => row.id === node.role_ref), policy = model.policies.find(row => row.id === node.policy_ref);
   if (request.activity_id !== occurrenceId || request.scope_id !== instance.scope_id || request.role !== role.role || request.action !== role.action
     || ["assurance_profile", "mode", "independent_review", "context_isolation_required", "required_permissions", "allowed_permissions"]
       .some(key => shadowHash(request[key]) !== shadowHash(policy[key]))) fail("PROCESS_ASSIGNMENT_BINDING_CHANGED");
@@ -33,7 +64,34 @@ export function assertProcessResult(result, assignment) {
 // Deterministic structured control tokens. There is no worker/thread count here.
 // All nodes and waits become visible before any external resource is assigned.
 function replay(instance) {
-  const nodes = new Map(instance.model.nodes.map(node => [node.id, node]));
+  const v2 = instance.contract_version === "agentic-process-instance.v2";
+  const prefixSha256 = v2 ? prefixHasher(instance) : null;
+  const pinnedCalls = instance.model.call_targets !== undefined;
+  const models = new Map(processModels(instance.model).map(model => [shadowHash(model), model]));
+  const hashes = new Map([...models].map(([hash, model]) => [model, hash]));
+  const nodeTables = new Map([...models].map(([hash, model]) => [hash, new Map(model.nodes.map(node => [node.id, node]))]));
+  const modelOf = frame => frame.model_sha256 === undefined ? instance.model : models.get(frame.model_sha256) ?? fail("PROCESS_CALL_TARGET_CHANGED");
+  const nodeOf = frame => nodeTables.get(hashes.get(modelOf(frame))).get(frame.node_id);
+  // Specialization never accepts a caller's index or callback. Every function
+  // and model observation below is private to this synchronous replay.
+  const plain = isPlainProcessReplayData(instance);
+  function resolveReplayTarget(root, reference) {
+    if (!plain) return resolveProcessCallTarget(root, reference);
+    const target = root.call_targets?.find(row => row.model_id === reference?.model_id && row.revision === reference?.revision);
+    if (!target) fail("PROCESS_CALL_TARGET_MISSING");
+    if (target.model_sha256 !== reference.model_sha256 || hashes.get(target.model) !== reference.model_sha256)
+      fail("PROCESS_CALL_TARGET_CHANGED");
+    return target.model;
+  }
+  const callSelection = plain ? createProcessCallSelector({
+    frameNode: (_root, frame) => nodeOf(frame),
+    resolveFrameInput: createProcessFrameInputSelector({
+      openModelSelection: root => ({ rootSha256: hashes.get(root), modelFor: modelOf }),
+      resolveCallTarget: resolveReplayTarget,
+    }),
+    resolveCallTarget: resolveReplayTarget,
+  }) : null;
+  const factsFor = frame => frame.call_scope_id ? frames.get(frame.call_scope_id).local_facts : facts;
   const frames = new Map(); let facts = { ...instance.initial_facts }, failure = null;
   function stop(frame, status, reason) {
     if (!failure) failure = reason;
@@ -42,7 +100,7 @@ function replay(instance) {
     frames.get("root").status = status;
   }
   function loopNext(frame) {
-    const node = nodes.get(frame.node_id);
+    const node = nodeOf(frame), facts = factsFor(frame);
     if (!Object.hasOwn(facts, node.until)) { frame.status = "WAITING"; frame.wait_reason = "routing_fact"; return; }
     if (facts[node.until]) { finish(frame); return; }
     if (frame.iteration >= node.max_iterations) { stop(frame, "FAILED", "PROCESS_LOOP_LIMIT"); return; }
@@ -52,10 +110,12 @@ function replay(instance) {
   function finish(frame) {
     frame.status = "COMPLETED"; frame.wait_reason = null;
     if (!frame.parent_id) return;
-    const parent = frames.get(frame.parent_id), node = nodes.get(parent.node_id);
+    const parent = frames.get(frame.parent_id), node = nodeOf(parent);
     if (terminal(parent.status)) fail("PROCESS_PARENT_TERMINAL");
     parent.completed_children.push(frame.occurrence_id);
-    if (node.kind === "sequence") {
+    if (node.kind === "call" && node.target) {
+      parent.status = "WAITING"; parent.wait_reason = "call_return";
+    } else if (node.kind === "sequence") {
       const next = parent.completed_children.length;
       if (next === node.children.length) finish(parent);
       else enter(node.children[next], `${parent.occurrence_id}/${next}`, parent.occurrence_id);
@@ -66,7 +126,7 @@ function replay(instance) {
     } else if (parent.completed_children.length === parent.expected_children) finish(parent);
   }
   function route(frame) {
-    const node = nodes.get(frame.node_id);
+    const node = nodeOf(frame), facts = factsFor(frame);
     let selected;
     if (["xor", "or"].includes(node.kind)) {
       if (node.branches.some(branch => branch.condition !== null && !Object.hasOwn(facts, branch.condition))) {
@@ -84,16 +144,29 @@ function replay(instance) {
       enter(branch.node_id, `${frame.occurrence_id}/${branch.flow_id}`, frame.occurrence_id);
     }
   }
-  function enter(nodeId, occurrenceId, parentId) {
+  function enter(nodeId, occurrenceId, parentId, calledModel = null, callScopeId = undefined) {
     if (frames.size >= 1024 || frames.has(occurrenceId)) fail("PROCESS_OCCURRENCE_LIMIT");
-    const node = nodes.get(nodeId);
+    const parent = parentId ? frames.get(parentId) : null;
+    const model = calledModel ?? (parent ? modelOf(parent) : instance.model);
+    const node = model.nodes.find(row => row.id === nodeId);
+    if (!node) fail("PROCESS_NODE_INVALID");
     const frame = { occurrence_id: occurrenceId, node_id: nodeId, participant_ref: node.participant_ref,
       parent_id: parentId, status: "RUNNING", wait_reason: null, correlation_id: `${instance.instance_id}:${occurrenceId}`,
       selected_flows: [], skipped_flows: [], completed_children: [], expected_children: 1, iteration: 0, assignment: null, result: null, last_refusal: null };
+    if (pinnedCalls) {
+      frame.model_sha256 = hashes.get(model);
+      frame.call_scope_id = callScopeId === undefined ? parent?.call_scope_id ?? null : callScopeId;
+    }
     frames.set(occurrenceId, frame);
-    if (node.kind === "activity") frame.status = "READY";
-    else if (node.kind === "sequence") enter(node.children[0], `${occurrenceId}/0`, occurrenceId);
-    else if (node.kind === "call") enter(node.child, `${occurrenceId}/call`, occurrenceId);
+    if (["activity", "operation"].includes(node.kind)) frame.status = "READY";
+    else if (node.kind === "sequence") {
+      if (!node.children.length) { frame.expected_children = 0; finish(frame); }
+      else enter(node.children[0], `${occurrenceId}/0`, occurrenceId);
+    }
+    else if (node.kind === "call") {
+      if (node.target) { frame.status = "WAITING"; frame.wait_reason = "call_entry"; }
+      else enter(node.child, `${occurrenceId}/call`, occurrenceId);
+    }
     else if (node.kind === "loop") { frame.iteration = 1; enter(node.child, `${occurrenceId}/iteration-1`, occurrenceId); }
     else if (node.kind === "multi_instance") {
       frame.expected_children = node.items.length;
@@ -106,7 +179,16 @@ function replay(instance) {
     else route(frame);
   }
   enter(instance.model.entry, "root", null);
-  const eventIds = new Set(), resultIds = new Set();
+  function resumeFactWaits() {
+    for (const frame of [...frames.values()]) {
+      if (failure) break;
+      if (frame.status === "WAITING" && frame.wait_reason === "routing_fact") {
+        if (nodeOf(frame).kind === "loop") loopNext(frame); else route(frame);
+      }
+    }
+  }
+  const eventIds = new Set(), resultIds = new Set(), operationIds = new Set(), receiptIds = new Set();
+  const deliveryIds = new Set(), sourceEvents = new Set();
   for (const event of instance.events) {
     if (!processId(event.event_id) || eventIds.has(event.event_id) || terminal(frames.get("root").status)) fail("PROCESS_EVENT_ORDER_INVALID");
     eventIds.add(event.event_id);
@@ -117,33 +199,73 @@ function replay(instance) {
     if (event.kind === "facts") {
       if (!exactKeys(event, ["event_id", "kind", "facts"]) || !factsValid(event.facts)) fail("PROCESS_FACTS_INVALID");
       facts = { ...facts, ...event.facts };
-      for (const frame of [...frames.values()]) {
-        if (failure) break;
-        if (frame.status === "WAITING" && frame.wait_reason === "routing_fact") {
-          if (nodes.get(frame.node_id).kind === "loop") loopNext(frame); else route(frame);
-        }
-      }
+      resumeFactWaits();
       continue;
     }
-    const frame = frames.get(event.occurrence_id), node = frame && nodes.get(frame.node_id);
+    const frame = frames.get(event.occurrence_id), node = frame && nodeOf(frame);
     if (!frame) fail("PROCESS_OCCURRENCE_UNKNOWN");
-    if (event.kind === "refusal") {
+    if (["call_enter", "call_return"].includes(event.kind)) {
+      if (!v2 || !pinnedCalls || node.kind !== "call" || !node.target) fail("PROCESS_CALL_ORDER_INVALID");
+      const entering = event.kind === "call_enter";
+      if (frame.status !== "WAITING" || frame.wait_reason !== (entering ? "call_entry" : "call_return")) fail("PROCESS_CALL_ORDER_INVALID");
+      (plain ? callSelection.assertCallTransition : assertProcessCallTransition)(event, { instance: { ...instance, instance_sha256: prefixSha256(eventIds.size - 1) },
+        cursor: { occurrences: [...frames.values()] }, occurrenceId: frame.occurrence_id });
+      if (entering) {
+        frame.call_entry = event.resolution; frame.local_facts = {};
+        frame.status = "RUNNING"; frame.wait_reason = null;
+        const target = resolveReplayTarget(instance.model, node.target);
+        enter(target.entry, `${frame.occurrence_id}/call`, frame.occurrence_id, target, frame.occurrence_id);
+      } else { frame.call_return = event.resolution; finish(frame); }
+    } else if (event.kind === "operation_intent") {
+      if (!v2 || !exactKeys(event, ["event_id", "kind", "occurrence_id", "intent"]) || node.kind !== "operation"
+        || !(frame.status === "READY" || frame.status === "WAITING" && ["blocked", "deferred"].includes(frame.operation?.receipt?.outcome))) fail("PROCESS_OPERATION_ORDER_INVALID");
+      assertProcessOperationIntent(event.intent, { instance, node, revision: eventIds.size, occurrenceId: frame.occurrence_id,
+        expectedInstanceSha256: prefixSha256(eventIds.size - 1), model: modelOf(frame) });
+      if (operationIds.has(event.intent.operation_id)) fail("PROCESS_OPERATION_ID_REUSED");
+      operationIds.add(event.intent.operation_id);
+      frame.operation = { intent: event.intent, receipt: null };
+      frame.status = "WAITING"; frame.wait_reason = "operation_result";
+    } else if (event.kind === "operation_result") {
+      if (!v2 || !exactKeys(event, ["event_id", "kind", "occurrence_id", "receipt"]) || node.kind !== "operation" || frame.status !== "WAITING"
+        || !frame.operation || frame.operation.receipt && frame.operation.receipt.outcome !== "reconciliation_required") fail("PROCESS_OPERATION_ORDER_INVALID");
+      assertProcessOperationReceipt(event.receipt, frame.operation.intent);
+      if (receiptIds.has(event.receipt.receipt_id)) fail("PROCESS_OPERATION_RECEIPT_REUSED");
+      receiptIds.add(event.receipt.receipt_id); frame.operation.receipt = event.receipt;
+      if (event.receipt.outcome === "completed") {
+        if (frame.call_scope_id) Object.assign(frames.get(frame.call_scope_id).local_facts, event.receipt.facts);
+        else facts = { ...facts, ...event.receipt.facts };
+        finish(frame); resumeFactWaits();
+      }
+      else if (["blocked", "deferred", "reconciliation_required"].includes(event.receipt.outcome)) frame.wait_reason = event.receipt.outcome;
+      else stop(frame, event.receipt.outcome === "cancelled" ? "CANCELLED" : "FAILED", `PROCESS_OPERATION_${event.receipt.outcome.toUpperCase()}`);
+    } else if (event.kind === "refusal") {
       if (!exactKeys(event, ["event_id", "kind", "occurrence_id", "stage", "reason_code", "request_sha256"])
         || node.kind !== "activity" || !["READY", "RUNNING"].includes(frame.status)
         || !["assignment", "verdict"].includes(event.stage) || !/^[A-Z][A-Z_]{0,95}$/.test(event.reason_code)
         || !(event.request_sha256 === null || digest(event.request_sha256))) fail("PROCESS_REFUSAL_INVALID");
       frame.last_refusal = { stage: event.stage, reason_code: event.reason_code, request_sha256: event.request_sha256 };
-    } else if (event.kind === "message") {
-      if (!exactKeys(event, ["event_id", "kind", "occurrence_id", "correlation_id", "event_key"]) || node.kind !== "event"
-        || frame.status !== "WAITING" || frame.correlation_id !== event.correlation_id) fail("PROCESS_EVENT_CORRELATION_INVALID");
-      const branch = node.branches.find(row => row.event_key === event.event_key);
+    } else if (["message", "control"].includes(event.kind)) {
+      let message = event;
+      if (event.kind === "control") {
+        if (!v2 || !exactKeys(event, ["event_id", "kind", "occurrence_id", "delivery"])) fail("PROCESS_CONTROL_INVALID");
+        assertProcessControlEvent(event.delivery, { instance, occurrence: frame, revision: eventIds.size,
+          expectedInstanceSha256: prefixSha256(eventIds.size - 1) });
+        const source = shadowHash([event.delivery.authority_id, event.delivery.source_kind, event.delivery.source_event_id]);
+        if (deliveryIds.has(event.delivery.delivery_id) || sourceEvents.has(source)) fail("PROCESS_CONTROL_REUSED");
+        deliveryIds.add(event.delivery.delivery_id); sourceEvents.add(source);
+        message = { event_id: event.event_id, kind: "message", occurrence_id: event.occurrence_id,
+          correlation_id: event.delivery.correlation_id, event_key: event.delivery.event_key };
+      } else if (v2) fail("PROCESS_AUTHENTICATED_CONTROL_REQUIRED");
+      if (!exactKeys(message, ["event_id", "kind", "occurrence_id", "correlation_id", "event_key"]) || node.kind !== "event"
+        || frame.status !== "WAITING" || frame.correlation_id !== message.correlation_id) fail("PROCESS_EVENT_CORRELATION_INVALID");
+      const branch = node.branches.find(row => row.event_key === message.event_key);
       if (!branch) fail("PROCESS_EVENT_CORRELATION_INVALID");
       frame.status = "RUNNING"; frame.wait_reason = null; frame.selected_flows = [branch.flow_id];
       frame.skipped_flows = node.branches.filter(row => row !== branch).map(row => row.flow_id);
       enter(branch.node_id, `${frame.occurrence_id}/${branch.flow_id}`, frame.occurrence_id);
     } else if (event.kind === "assign") {
       if (!exactKeys(event, ["event_id", "kind", "occurrence_id", "request", "decision"]) || node.kind !== "activity" || frame.status !== "READY") fail("PROCESS_ASSIGNMENT_ORDER_INVALID");
-      assertActivityAssignment(instance, node, frame.occurrence_id, event.request, event.decision);
+      assertActivityAssignment(instance, node, frame.occurrence_id, event.request, event.decision, modelOf(frame));
       frame.assignment = { request: event.request, decision: event.decision }; frame.status = "RUNNING";
     } else if (event.kind === "result") {
       if (!exactKeys(event, ["event_id", "kind", "occurrence_id", "result"]) || node.kind !== "activity" || frame.status !== "RUNNING" || !frame.assignment) fail("PROCESS_RESULT_ORDER_INVALID");
@@ -154,39 +276,67 @@ function replay(instance) {
       else stop(frame, "FAILED", event.result.outcome === "rejected" ? "PROCESS_REVIEW_REJECTED" : "PROCESS_ACTIVITY_FAILED");
     } else fail("PROCESS_EVENT_UNSUPPORTED");
   }
-  return { status: frames.get("root").status, first_failure: failure, occurrences: [...frames.values()],
+  const all = [...frames.values()];
+  const status = v2 && !terminal(frames.get("root").status) && all.some(frame => frame.status === "WAITING")
+    && !all.some(frame => frame.status === "READY" || nodeOf(frame).kind === "activity" && frame.status === "RUNNING")
+    ? "WAITING" : frames.get("root").status;
+  return { status, first_failure: failure, occurrences: all,
     ready: [...frames.values()].filter(frame => frame.status === "READY").map(frame => frame.occurrence_id),
     waiting: [...frames.values()].filter(frame => frame.status === "WAITING").map(frame => frame.occurrence_id) };
 }
 
-export function assertAgenticProcessInstance(instance) {
-  if (checkShadowJson(instance) || validateJsonSchema(instance, instanceSchema, "$", { contractKind: "workflow-definition" }).length || !exactKeys(instance, ["contract_version", "profile", "instance_id", "model", "model_sha256", "policy_pins", "scope_id", "initial_facts", "revision", "events", "instance_sha256"])
-    || instance.contract_version !== "agentic-process-instance.v1" || instance.profile !== AGENTIC_PROCESS_PROFILE
+function validateAndReplay(instance) {
+  const v2 = instance?.contract_version === "agentic-process-instance.v2";
+  if (checkShadowJson(instance) || validateJsonSchema(instance, v2 ? instanceSchemaV2 : instanceSchema, "$", { contractKind: "workflow-definition" }).length || !exactKeys(instance, ["contract_version", "profile", "instance_id", "model", "model_sha256", "policy_pins", "scope_id", "initial_facts", "revision", "events", "instance_sha256"], v2 ? ["initial_parameters"] : [])
+    || !["agentic-process-instance.v1", "agentic-process-instance.v2"].includes(instance.contract_version)
+    || instance.profile !== (v2 ? AGENTIC_PROCESS_OPERATION_PROFILE : AGENTIC_PROCESS_PROFILE)
+    || instance.model?.contract_version !== (v2 ? "agentic-process-model.v2" : "agentic-process-model.v1")
     || !processId(instance.instance_id) || typeof instance.scope_id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$/.test(instance.scope_id)
     || !factsValid(instance.initial_facts) || !Array.isArray(instance.events) || instance.events.length > 512
     || instance.revision !== instance.events.length + 1 || instance.model_sha256 !== shadowHash(instance.model)
     || instance.instance_sha256 !== shadowHash(content(instance))) fail("PROCESS_INSTANCE_INVALID");
-  assertAgenticProcessModel(instance.model, { policyPins: instance.policy_pins }); replay(instance); return instance;
+  assertAgenticProcessModel(instance.model, { policyPins: instance.policy_pins });
+  if (Object.hasOwn(instance, "initial_parameters") !== Object.hasOwn(instance.model, "data_bindings")) fail("PROCESS_PARAMETERS_INVALID");
+  assertProcessParameters(instance.model, instance.initial_parameters); return replay(instance);
 }
-function seal(value) {
+export function assertAgenticProcessInstance(instance) {
+  validateAndReplay(instance); return instance;
+}
+function seal(value, inspected = false) {
   const instance = { ...value, instance_sha256: shadowHash(value) };
-  assertAgenticProcessInstance(instance); return freezeShadow(instance);
+  const cursor = validateAndReplay(instance), sealed = freezeShadow(instance);
+  return inspected ? { instance: sealed, cursor: freezeShadow(cursor) } : sealed;
 }
-export function createAgenticProcess({ instanceId, model, policyPins, scopeId, facts = {} }) {
+export function createAgenticProcess({ instanceId, model, policyPins, scopeId, facts = {}, parameters }) {
   if (checkShadowJson({ instanceId, model, policyPins, scopeId, facts }) || policyPins === null) fail("PROCESS_INPUT_INVALID");
   assertAgenticProcessModel(model, { policyPins });
-  return seal({ contract_version: "agentic-process-instance.v1", profile: AGENTIC_PROCESS_PROFILE, instance_id: instanceId,
+  const v2 = model.contract_version === "agentic-process-model.v2";
+  const declared = Object.hasOwn(model, "data_bindings");
+  assertProcessParameters(model, declared ? parameters ?? {} : parameters);
+  return seal({ contract_version: v2 ? "agentic-process-instance.v2" : "agentic-process-instance.v1", profile: v2 ? AGENTIC_PROCESS_OPERATION_PROFILE : AGENTIC_PROCESS_PROFILE, instance_id: instanceId,
     model: structuredClone(model), model_sha256: shadowHash(model), policy_pins: structuredClone(policyPins), scope_id: scopeId,
-    initial_facts: structuredClone(facts), revision: 1, events: [] });
+    initial_facts: structuredClone(facts), ...(declared ? { initial_parameters: structuredClone(parameters ?? {}) } : {}), revision: 1, events: [] });
 }
-export function inspectAgenticProcess(instance) { assertAgenticProcessInstance(instance); return freezeShadow(replay(instance)); }
-export function advanceAgenticProcess(instance, event) {
+export function inspectAgenticProcess(instance) { return freezeShadow(validateAndReplay(instance)); }
+// A fully validated journal proves all of its prefixes. Hashing an earlier
+// checkpoint does not require replaying every prefix again or inventing a
+// second reducer. Keep the instance fingerprint format owned by this module.
+export function agenticProcessPrefixSha256(instance, eventCount) {
   assertAgenticProcessInstance(instance);
+  if (!Number.isSafeInteger(eventCount) || eventCount < 0 || eventCount > instance.events.length) fail("PROCESS_PREFIX_CHECKPOINT_INVALID");
+  return shadowHash({ ...content(instance), revision: eventCount + 1, events: instance.events.slice(0, eventCount) });
+}
+export function advanceAgenticProcess(instance, event) { return advance(instance, event, false); }
+// Internal synchronous composition: the cursor comes from this transition's
+// complete final replay, never a caller-supplied cursor or retained observation.
+export function advanceAndInspectAgenticProcess(instance, event) { return advance(instance, event, true); }
+function advance(instance, event, inspected) {
+  const cursor = validateAndReplay(instance);
   if (checkShadowJson(event)) fail("PROCESS_EVENT_INVALID");
   const existing = instance.events.find(row => row.event_id === event.event_id);
   if (existing) {
     if (shadowHash(existing) !== shadowHash(event)) fail("PROCESS_EVENT_ID_CONFLICT");
-    return instance;
+    return inspected ? { instance, cursor: freezeShadow(cursor) } : instance;
   }
-  return seal({ ...content(instance), revision: instance.revision + 1, events: [...instance.events, structuredClone(event)] });
+  return seal({ ...content(instance), revision: instance.revision + 1, events: [...instance.events, structuredClone(event)] }, inspected);
 }

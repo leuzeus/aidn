@@ -1,0 +1,80 @@
+{
+  "observed_at_utc": "2026-11-03T20:36:12.991Z",
+  "source": {
+    "commit": "ea863f4b32ef8eab0b4f9dcf0a3ad64dda3ef093",
+    "model_revision": 29,
+    "model_sha256": "5f6a5257e4e30c0efc547fafd5f3ef4c484ef25de70455053c4836318255fd1f",
+    "instance_sha256": "5885261623a467184cab907ea77aa3cf61ea1ddc4d013174a2ba51572f412783"
+  },
+  "composed": {
+    "status": "FAIL",
+    "exit_code": 1,
+    "ended_at_utc": "2026-11-03T20:31:02.8137537Z",
+    "last_operation": "drift_check_finalize",
+    "reason_code": "STANDARD_DRIFT_GATE_BLOCKED",
+    "gate": {
+      "result": "warn",
+      "reason_code": "L2_SIGNAL_TRIGGERED",
+      "signals": [
+        "scope_growth"
+      ],
+      "changed_files": [
+        "docs/audit/baseline/current.md",
+        "docs/audit/baseline/history.md",
+        "docs/audit/CURRENT-STATE.md",
+        "docs/audit/index.md",
+        "docs/audit/snapshots/context-snapshot.md"
+      ]
+    },
+    "R07_review": "NOT_REACHED"
+  },
+  "authenticated_fixture_journals": {
+    "accepted_operation_receipts": 46,
+    "human_captures": 4,
+    "native_allocations": 8,
+    "all_allocations_closed": true,
+    "provider": "FAKE_WIRE",
+    "signing_key": "FIXTURE_CONSTANT",
+    "authenticates": "fixture-host record integrity only; no real human/provider identity"
+  },
+  "owner": {
+    "local_effect_owner": "ABSENT",
+    "canonical_session": "OPEN"
+  },
+  "cleanup": "retained on failure intentionally; no effects retried or hooks re-executed",
+  "processes": {
+    "parent_pid": 51052,
+    "cold_child_pid": 58448,
+    "both_terminal": true
+  },
+  "replay": {
+    "status": "PASS",
+    "proof": "read-only replay and streamed synthetic simulation of retained blocked source",
+    "source_commit": "ea863f4b32ef8eab0b4f9dcf0a3ad64dda3ef093",
+    "model_revision": 29,
+    "model_sha256": "5f6a5257e4e30c0efc547fafd5f3ef4c484ef25de70455053c4836318255fd1f",
+    "instance_sha256": "5885261623a467184cab907ea77aa3cf61ea1ddc4d013174a2ba51572f412783",
+    "event_count": 108,
+    "cursor_status": "WAITING",
+    "steps": 109,
+    "fixture_tree_before": {
+      "files": 326,
+      "sha256": "baba622fb00ce10ca20bbc84e38321e1db7c218c8b1107733ff547a8e4a7eb3d"
+    },
+    "fixture_tree_after": {
+      "files": 326,
+      "sha256": "baba622fb00ce10ca20bbc84e38321e1db7c218c8b1107733ff547a8e4a7eb3d"
+    },
+    "host_ports_invoked": 0,
+    "model_calls": 0,
+    "composed_verdict": "FAIL",
+    "effects_retried": 0
+  },
+  "other_sources": {
+    "model32": "RUNNING at this observation",
+    "model33": "RUNNING at this observation",
+    "current_integration_candidate": "NOT_QUALIFIED_BY_THIS_RUN"
+  },
+  "native_real": "NOT_RUN",
+  "installed_archive": "NOT_RUN"
+}

@@ -17,6 +17,24 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-output");
 
 export const GOVERNED_CONCEPTS = Object.freeze([
+  { concept: "native_allocation_journal", source_of_truth_concept: "native_allocation_journal", metadata_concept: "native_allocation_journal",
+    required: ["source_of_truth", "metadata"], coverage_kind: "opt_in_candidate",
+    coverage_note: "Internal signed CAS reservation and actual owned-supervisor observation. Explicit native-only continuation authenticates closed checkpoints and later signed control events, retains contributions and excludes closed resources. Unknown generations block redispatch. Historical readers and ordinary pristine start remain unchanged. Mixed/expired-deadline continuation and full standard/native/installed qualification remain open." },
+  { concept: "standard_workflow_model", source_of_truth_concept: "standard_workflow_model", metadata_concept: "standard_workflow_model",
+    required: ["source_of_truth", "metadata"], coverage_kind: "opt_in_candidate",
+    coverage_note: "Versioned package JSON startup/cycle scaffold components, fixed code/skill bindings and pinned authorities. These components are not the full standard workflow or its ordinary default entrypoint. Signed source provenance and fixture consumers do not qualify native or installed-archive execution." },
+  { concept: "process_control_inbox", source_of_truth_concept: "process_control_inbox", metadata_concept: "process_control_inbox",
+    required: ["source_of_truth", "metadata"], coverage_kind: "opt_in_candidate",
+    coverage_note: "Signed human/external delivery capture, context-bound source identity and durable acknowledgement. Operation/control histories reopen without replaying accepted effects. Provider-specific authentication, native mixed resume and the complete standard model require separate qualification." },
+  { concept: "process_decision_inbox", source_of_truth_concept: "process_decision_inbox", metadata_concept: "process_decision_inbox",
+    required: ["source_of_truth", "metadata"], coverage_kind: "opt_in_candidate",
+    coverage_note: "Explicit trusted human source capture and durable deduplication. Fixture source authentication does not qualify a native human channel or external provider. No implicit success or repeated business effects follows from waiting/reopening." },
+  { concept: "process_operation_journal", source_of_truth_concept: "process_operation_journal", metadata_concept: "process_operation_journal",
+    required: ["source_of_truth", "metadata"], coverage_kind: "opt_in_candidate",
+    coverage_note: "Explicit, signed host-operation records use the existing canonical artifact CAS. Completed results survive host restart; an interrupted dispatch never acquires a new owner implicitly. Human/external inbox, native isolation and general recovery remain separate deliveries." },
+  { concept: "process_local_effect_owner", source_of_truth_concept: "process_local_effect_owner", metadata_concept: "process_local_effect_owner",
+    required: ["source_of_truth", "metadata"], coverage_kind: "opt_in_candidate",
+    coverage_note: "Internal worktree-local cooperative collision guard. Retained uncertainty blocks retry; a PID or timestamp never authorizes takeover. No distributed fence, durable effect journal or general recovery qualification is inferred." },
   { concept: "agent_working_memory", source_of_truth_concept: "agent_working_memory", metadata_concept: "agent_working_memory",
     cli_contract: "runtime-project-handoff-packet.v1.schema.json", required: ["source_of_truth", "metadata", "cli_contract"],
     coverage_note: "Explicit revision-bound checkpoint and read-only resume; advisory derived context and diagnostic metrics require independent fresh admission." },
@@ -210,8 +228,8 @@ export const GOVERNED_CONCEPTS = Object.freeze([
 ]);
 
 export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
-  ...["workflow-inspect", "workflow-action", "workflow-dashboard"].map(name => ({
-    id: `runtime-${name}`, linked_concepts: ["workflow_instance", "workflow_selection", "workflow_rules", "execution_run", "delegated_task", "execution_attempt", "project_activation", "cli_output_contract"],
+  ...["workflow-inspect", "workflow-action", "workflow-dashboard", "workflow-run"].map(name => ({
+    id: `runtime-${name}`, linked_concepts: ["agentic_process_instance", "workflow_instance", "workflow_selection", "workflow_rules", "execution_run", "delegated_task", "execution_attempt", "project_activation", "cli_output_contract"],
   })),
   ...["agent-run", "agent-run-status", "agent-run-resume", "agent-run-cancel", "agent-run-cleanup"].map(name => ({
     id: `runtime-${name}`, linked_concepts: ["execution_run", "delegated_task", "execution_attempt", "workspace", "project_activation", "cli_output_contract"],

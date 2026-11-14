@@ -1,0 +1,170 @@
+{
+  "date": "2026-11-04",
+  "scope": "versioned human-reviewed corrective-cycle candidate components",
+  "cases": [
+    {
+      "case": "source35-human-cycle-composition-20261104",
+      "source_commit": "ae4b08457c1de83abff21a694eea79ad81643d52",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "summaries": [
+        {
+          "status": "PASS",
+          "checks": 32,
+          "scope": "offline-source-composition",
+          "application_ports": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN",
+          "full_standard_workflow": "NOT_COMPLETE"
+        }
+      ]
+    },
+    {
+      "case": "source35-human-cycle-db-only-20261104",
+      "source_commit": "ae4b08457c1de83abff21a694eea79ad81643d52",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "summaries": [
+        {
+          "status": "PASS",
+          "checks": 6,
+          "mode": "db-only",
+          "decision_version": 2,
+          "canonical_cas_git": "ACTUAL",
+          "accepted_source_provider_human_authority": "FIXTURE_DOUBLES",
+          "production_dispatcher": "NOT_RUN",
+          "ordinary_plan_dor_implementation": "NOT_RUN",
+          "genuine_human": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN",
+          "full_standard_workflow": false
+        }
+      ]
+    },
+    {
+      "case": "source35-human-cycle-decision-20261104",
+      "source_commit": "ae4b08457c1de83abff21a694eea79ad81643d52",
+      "exit_code": 1,
+      "source_unchanged": true,
+      "summaries": []
+    },
+    {
+      "case": "source35-human-cycle-decision-r2-20261104",
+      "source_commit": "23db03a0145498fc1e8897b9beba9b36c4612625",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "summaries": [
+        {
+          "status": "PASS",
+          "checks": 18,
+          "proof": "component-contracts-trusted-source-double-and-durable-signed-human-inbox",
+          "model_calls": 0,
+          "genuine_human": "NOT_RUN",
+          "production_checkpoint_chain": "NOT_RUN",
+          "correction_cycle": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN",
+          "complete_standard_workflow": false
+        }
+      ]
+    },
+    {
+      "case": "source35-human-cycle-docrefs-r2-20261104",
+      "source_commit": "23db03a0145498fc1e8897b9beba9b36c4612625",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "summaries": []
+    },
+    {
+      "case": "source35-human-cycle-metadata-20261104",
+      "source_commit": "23db03a0145498fc1e8897b9beba9b36c4612625",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "summaries": []
+    },
+    {
+      "case": "source35-human-cycle-model-20261104",
+      "source_commit": "23db03a0145498fc1e8897b9beba9b36c4612625",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "summaries": [
+        {
+          "status": "PASS",
+          "checks": 22,
+          "evidence": "published-startup-component-and-authority-validation",
+          "full_standard_workflow": "NOT_YET_DELIVERED",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN"
+        }
+      ]
+    },
+    {
+      "case": "source35-human-cycle-operations-20261104",
+      "source_commit": "23db03a0145498fc1e8897b9beba9b36c4612625",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "summaries": [
+        {
+          "status": "PASS",
+          "checks": 6,
+          "proof_class": "pure-reducer",
+          "native_calls": 0,
+          "public_effects": 0
+        },
+        {
+          "status": "PASS",
+          "checks": 3,
+          "evidence": "bounded-structural-model-capacity-and-complete-control-only-replay",
+          "native_calls": 0,
+          "business_journey": "NOT_RUN"
+        },
+        {
+          "status": "PASS",
+          "checks": 9,
+          "evidence": "pure-versioned-closure-history",
+          "human": "fixture",
+          "canonical_writes": "NOT_RUN",
+          "actual_hook": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed": "NOT_RUN"
+        },
+        {
+          "status": "PASS",
+          "checks": 27,
+          "proof": "offline-contracts-reducer-service",
+          "native_calls": 0,
+          "standard_workflow_integration": "NOT_YET_DELIVERED"
+        }
+      ]
+    },
+    {
+      "case": "source35-human-cycle-source-policy-20261104",
+      "source_commit": "23db03a0145498fc1e8897b9beba9b36c4612625",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "summaries": []
+    }
+  ],
+  "pending_cases": [
+    "source35-human-cycle-files-20261104",
+    "source35-human-cycle-dual-20261104"
+  ],
+  "prelaunch_errors": [
+    {
+      "case": "source35-human-cycle-docrefs-20261104",
+      "status": "NOT_STARTED",
+      "reason": "incorrect script directory; guard stopped before source snapshot or Node start",
+      "successor_case": "source35-human-cycle-docrefs-r2-20261104"
+    }
+  ],
+  "limitations": [
+    "Same fixture stores must distinguish v1 and v2 source-event identity; initial FAIL is retained.",
+    "Accepted source, human and provider authorities remain doubles.",
+    "No full C2, general mode/cycle/topology choice or repeat correction qualification.",
+    "Production dispatcher UNKNOWN chain, full Runtime family and GovernanceAdmission remain NOT_PROVEN.",
+    "Genuine native/human/provider/OS, configured PostgreSQL and exact installed archive remain NOT_RUN.",
+    "Earlier source failures and UNKNOWN results remain unchanged.",
+    "Current production graph remains 186 nodes,113 operation occurrences,17 activities; startup157/cycle155/standard99; ordinary entry unchanged and complete_standard_workflow=false."
+  ],
+  "observation_utc": "2026-11-04T20:11:00Z"
+}

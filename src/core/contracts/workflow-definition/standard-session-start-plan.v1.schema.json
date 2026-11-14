@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-session-start-plan.v1",
+  "x-aidn-contract-version": "standard-session-start-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "input",
+    "prepared_at_ms",
+    "scope",
+    "mode",
+    "session_sha256",
+    "current_sha256",
+    "effects"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-session-start-plan.v1"
+    },
+    "operation_ref": {
+      "const": "session_start_finalize"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_id"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "pattern": "^S[0-9]{3,6}$"
+        }
+      }
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project",
+        "persistence",
+        "branch",
+        "head"
+      ],
+      "properties": {
+        "project": {
+          "type": "object"
+        },
+        "persistence": {
+          "type": "object"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40,64}$"
+        }
+      }
+    },
+    "mode": {
+      "enum": [
+        "THINKING",
+        "EXPLORING",
+        "COMMITTING"
+      ]
+    },
+    "session_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "current_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "effects": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "enum": [
+          "checkpoint",
+          "runtime_index",
+          "constraint_loop_if_required",
+          "context_telemetry"
+        ]
+      }
+    }
+  }
+}

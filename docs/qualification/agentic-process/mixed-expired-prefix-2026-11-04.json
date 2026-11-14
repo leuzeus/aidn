@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-04",
+  "scope": "published mixed startup prefix after an accepted expired initialization refusal",
+  "delivery_lane": "ASSURED",
+  "status": "OFFLINE_PREFIX_PASS",
+  "runtime_source_commit": "65b97f4df5ccb7f73c3864b1d098a068973dc14a",
+  "runtime_change": false,
+  "model": {
+    "revision": 71,
+    "sha256": "d5fe2ffa25200225e784622927207dd662777c0d07ad472b7693cefbd8ed6838",
+    "complete_standard_workflow": false,
+    "ordinary_entry_change": false
+  },
+  "validation": {
+    "PASS": { "files": 13, "dual": 13, "db-only": 13, "source_fingerprints_unchanged_during_each_suite": true },
+    "retained_failed_attempts": [{
+      "attempt": "initial files suite",
+      "exit_code": 1,
+      "passed_before_failure": 6,
+      "failure": "fixture expected one authorization consultation during successor staging; the real service also verifies the new intent",
+      "source_fingerprint_unchanged": true,
+      "product_failure_established": false
+    }],
+    "oracle_history": "The distinct passing files suite retained a stricter two-consultation assertion. The final suite uses fresh consultation plus distinct grant and intent; dual/db-only pass this functional oracle. Both exact suite versions and the failed original are retained outside the checkout.",
+    "SKIP": [],
+    "NOT_RUN": ["general expired business operations", "full runtime family and Governance Admission", "genuine native/provider/human identities", "live PostgreSQL", "exact installed archive"]
+  },
+  "observed_behavior": [
+    "actual mixed.step dispatch and acceptance retain an expired blocked/no_effect refusal in WAITING before business writes",
+    "cold preview and write step calls return operation_reprepare_required without authorization consultation, staging or checkout changes",
+    "stale history and subject overrides refuse without effects",
+    "fresh Node reprepare authenticates the predecessor and actual data bindings, prepares the same subject read-only and calls neither authorization nor native controller",
+    "explicit successor staging obtains a distinct grant and intent bound to accepted predecessor history",
+    "deferred and THINKING human decisions remain distinct, followed by real mode application and startup finalization",
+    "original signed refusal and grant remain readable; repeated dispatch returns retained results",
+    "same shipped IR and reducer reproduce the exact final hash and cursor in replay/simulation without checkout changes"
+  ],
+  "proof_boundaries": {
+    "actual": ["published standard JSON and data bindings", "mixed host and common authority", "admission and application ports", "canonical files/SQLite", "local Git", "startup hook", "HMAC journals", "child Node preparation"],
+    "fixture": ["test-process wall clock", "effect authorization", "authenticated human source", "native controller that rejects launches"],
+    "native_allocations": 0,
+    "native_model_calls": 0,
+    "pure_preparation_authorization_calls": 0,
+    "wait_authorization_calls": 0,
+    "ttl_or_native_budget_change": false,
+    "separate_frozen_trial": "revision-70 correction/receipt-loss experiment; no qualification transfers from this prefix or unchanged graph shape"
+  },
+  "remaining_plan": "Entire unqualified L1-L8/A1-A10 scope stays active, including general unknown reconciliation, native epochs, admitted correction cycles, physical correction/revalidation/delivery, review/merge/sync, ordinary entry, genuine native and exact archive qualification."
+}

@@ -1,0 +1,131 @@
+{
+  "observed_at_utc": "2026-11-04T00:14:09.419Z",
+  "source_commit": "20e374315306ef958ed35c46479e3d7b4da25776",
+  "model_revision": 50,
+  "model_sha256": "2ee71df4cf570cc492b3bcf8681aacc2cde556fdc728050794afcce5fd239d74",
+  "catalog_sha256": "d60647e51f6da6ec923a10f40ce30be3ff52f37221ef55ac2b9acda1c986cd88",
+  "runtime_pin_sha256": "e640186d868f5a578c3570a5cefe42f4043a138b907d8a6c6ec0ef01d1ec757c",
+  "pinned_files": 325,
+  "changed_behavior": "direct launch pin coverage; graph95/operations60 unchanged",
+  "evidence": [
+    {
+      "log_name": "github-review-evidence-direct-pins-20261103.log",
+      "sha256": "7efbcecbf5160f6297825138d97b1e58784b707005f7322adfdd03c6c941d6d4",
+      "bytes": 1239,
+      "result": {
+        "status": "PASS",
+        "checks": 14,
+        "proof_class": "actual-read-only-adapter-with-fixture-GitHub-transport",
+        "actual_network": "NOT_RUN",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      }
+    },
+    {
+      "log_name": "review-direct-pins-owned-fixtures-20261103.log",
+      "sha256": "021e9bba239fe42addf3a7ba6a9719fe0ba95d0a4cad414196018a67c57dcb1c",
+      "bytes": 3240,
+      "result": {
+        "ok": true,
+        "checks": [
+          "journal preview retains no files, reservation or native allocation",
+          "journal seals actual owned observations and reopens in a new Node process without effects",
+          "journal reservation fences a competing launch before any native effect",
+          "journal retains an interrupted reservation and never infers owner death or retries",
+          "journal never promotes unknown tree termination to a successful allocation",
+          "journal rejected results stay failed with contributions retained and no fresh attempt",
+          "journal refuses self-hashed records and changed signing capabilities",
+          "journal authenticates checkpoint, owned closure and nested native evidence bytes after restart",
+          "journal retains reconciliation when canonical state disappears after the native worker",
+          "journal refuses budget resets and malformed generation history",
+          "journal event wait closes only the allocation and retains an uncompleted workflow",
+          "journal canonical SQLite/dual retains authenticated allocation and projection policy",
+          "journal canonical SQLite/db-only retains authenticated allocation and projection policy",
+          "journal keeps actual completed worker outcome when canonical closure recording fails",
+          "owned reservation cannot spend the closure reserve and still launch a worker",
+          "owned entry transmits the original deadline and requires process-tree termination proof",
+          "owned footer preserves stdout-only worker results, unknown bytes and closure write failures"
+        ],
+        "proof_class": "offline-production-composition-with-fake-native-wire",
+        "model_calls": 0,
+        "native_client": "NOT_RUN",
+        "native_process_tree": "NOT_RUN"
+      }
+    },
+    {
+      "log_name": "review-direct-pins-composition-20261103.log",
+      "sha256": "61e58c714f6c5f2b8eaa4c2e6d304c85cfa825b015b73b71b2cdb2523ee2c328",
+      "bytes": 2354,
+      "result": {
+        "status": "PASS",
+        "checks": 25,
+        "scope": "offline-source-composition",
+        "application_ports": "NOT_RUN",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN",
+        "full_standard_workflow": "NOT_COMPLETE"
+      }
+    },
+    {
+      "log_name": "review-direct-pins-startup-20261103.log",
+      "sha256": "9f52503dc7311d43ad318235db96e70969140e921b7f2353052a3e412ee8cb45",
+      "bytes": 1724,
+      "result": {
+        "status": "PASS",
+        "checks": 22,
+        "evidence": "published-startup-component-and-authority-validation",
+        "full_standard_workflow": "NOT_YET_DELIVERED",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      }
+    },
+    {
+      "log_name": "review-direct-pins-inputs-20261103.log",
+      "sha256": "846fcd23f8441519d7e9b2f57e8c1070b8eb7e917495dbfecbcbb010483e7c02",
+      "bytes": 577,
+      "result": {
+        "status": "PASS",
+        "checks": 3,
+        "published_input_boundaries": 43,
+        "reducer_and_input_resolver": "ACTUAL",
+        "prior_operation_receipts": "SYNTHETIC_PURE_FIXTURE",
+        "service_git_provider": "NOT_CONSTRUCTED",
+        "historical_read_repair": false,
+        "full_standard_composition": "NOT_RUN"
+      }
+    }
+  ],
+  "owned_fixture_exit": {
+    "ended_at_utc": "2026-11-04T00:12:32.1652614Z",
+    "exit_code": 0,
+    "scope": "owned allocation fixtures on direct-pin candidate50"
+  },
+  "cleanup": "owned suite finally returned with exit0; fake native/controller resources only",
+  "prior_component_evidence": {
+    "source_commit": "73240f7108ebf6019230ca3b7784bd7c656a611b",
+    "path": "docs/qualification/agentic-process/pr-review-observation-components-2026-11-03.json",
+    "checks": [
+      13,
+      10,
+      10,
+      10
+    ],
+    "not_rerun_on_successor": true
+  },
+  "full_standard_workflow": false,
+  "ordinary_entrypoint": "UNCHANGED",
+  "composed49": "separate active source; cannot qualify50",
+  "composed50": "NOT_RUN",
+  "actual_network_provider": "NOT_RUN",
+  "native_human_provider": "NOT_RUN",
+  "native_process_tree": "NOT_RUN",
+  "installed_exact_archive": "NOT_RUN",
+  "PostgreSQL": "NOT_RUN",
+  "governance_admission_rollup": "NOT_RUN",
+  "skipped": [],
+  "limits": [
+    "no renewal of any original authorization",
+    "no retry or reconciliation of model39",
+    "same graph does not establish complete standard workflow"
+  ]
+}

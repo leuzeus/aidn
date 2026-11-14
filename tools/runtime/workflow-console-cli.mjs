@@ -11,7 +11,7 @@ export function parseWorkflowConsoleArguments(command, argv) {
     write: false, execute: false, syncRelay: false, dryRun: false, serve: false, expectPlan: null };
   if (args.help) return args;
   const values = new Map([["--target", "target"], ["--instance", "instanceId"], ["--workflow", "workflowId"], ["--configuration", "configuration"],
-    ["--run", "run"], ["--request", "request"], ["--expect-plan", "expectPlan"]]);
+    ["--run", "run"], ["--request", "request"], ["--expect-plan", "expectPlan"], ["--engine", "engine"]]);
   const flags = new Map([["--json", "json"], ["--write", "write"], ["--execute", "execute"], ["--sync-relay", "syncRelay"], ["--dry-run", "dryRun"], ["--serve", "serve"]]);
   const seen = new Set();
   for (let i = 0; i < argv.length; i++) {
@@ -24,7 +24,7 @@ export function parseWorkflowConsoleArguments(command, argv) {
   }
   if (args.write && args.execute || args.dryRun && (args.write || args.execute || args.serve || args.syncRelay)
     || command !== "workflow-action" && (args.write || args.execute || args.syncRelay || args.request || args.expectPlan)
-    || command !== "workflow-inspect" && (args.instanceId || args.workflowId || args.configuration || args.run)
+    || command !== "workflow-inspect" && (args.instanceId || args.workflowId || args.configuration || args.run || args.engine)
     || command !== "workflow-dashboard" && args.serve) throw new Error("WORKFLOW_CONSOLE_EFFECT_CONFLICT");
   return args;
 }
@@ -40,7 +40,7 @@ export async function runWorkflowConsoleCli(command, argv, { createService = cre
   try {
     args = parseWorkflowConsoleArguments(command, argv);
     if (args.help) return { ...workflowConsoleEnvelope(name), usage: `aidn runtime ${command} --target <root> [--json]` +
-      (name === "inspect" ? " [--instance <id>] [--workflow <id>] [--configuration <file> --run <id>]" : name === "action" ? " --request <file> [--write|--execute --expect-plan <sha256> [--sync-relay]]" : " [--serve]") };
+      (name === "inspect" ? " [--instance <id> [--engine agentic|legacy]] [--workflow <id>] [--configuration <file> --run <id>]" : name === "action" ? " --request <file> [--write|--execute --expect-plan <sha256> [--sync-relay]]" : " [--serve]") };
     if (name === "dashboard") {
       if (!args.serve) return { ...workflowConsoleEnvelope(name, "preview"), listening: false, url: null, token: null };
       const start = startDashboard ?? (await import("../../src/adapters/workflow-console/dashboard-server.mjs")).startWorkflowDashboard;
@@ -50,7 +50,7 @@ export async function runWorkflowConsoleCli(command, argv, { createService = cre
       return { ...workflowConsoleEnvelope(name, "executor"), dry_run: false, listening: true, url: server.url, token: server.token };
     }
     const service = createService({ targetRoot: args.target });
-    if (name === "inspect") return { ...await service.inspect({ instanceId: args.instanceId, workflowId: args.workflowId, configuration: args.configuration, run: args.run }), effect_class: effect };
+    if (name === "inspect") return { ...await service.inspect({ instanceId: args.instanceId, workflowId: args.workflowId, configuration: args.configuration, run: args.run, engine: args.engine }), effect_class: effect };
     if (!args.request) throw new Error("WORKFLOW_CONSOLE_REQUEST_REQUIRED");
     return service.action(readAgentRunFile(path.resolve(args.request)).value, args);
   } catch (cause) {

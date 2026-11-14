@@ -100,7 +100,7 @@ const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-outpu
 const AIDN_BIN = path.join(REPO_ROOT, "bin", "aidn.mjs");
 
 const CONTRACT_CASES = [
-  ...["workflow-inspect", "workflow-action", "workflow-dashboard"].map(name => ({
+  ...["workflow-inspect", "workflow-action", "workflow-dashboard", "workflow-run"].map(name => ({
     name: "runtime-" + name, schema: `runtime-${name}.v1.schema.json`, args: ["runtime", name, "--json"], allowNonZero: true,
   })),
   { name: "global-management", schema: "global-management.v1.schema.json", freshTarget: true,

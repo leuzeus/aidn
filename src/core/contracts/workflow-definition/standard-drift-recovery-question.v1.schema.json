@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-drift-recovery-question.v1",
+  "x-aidn-contract-version": "standard-drift-recovery-question.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_id",
+    "instance_id",
+    "scope_id",
+    "occurrence_id",
+    "intent_sha256",
+    "session_id",
+    "choices",
+    "review"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-drift-recovery-question.v1"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "instance_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "occurrence_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "intent_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{3,6}$"
+    },
+    "choices": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 6,
+      "items": {
+        "enum": [
+          "requirements_delta",
+          "new_cycle",
+          "rollback",
+          "refused",
+          "deferred",
+          "cancelled"
+        ]
+      }
+    },
+    "review": {
+      "type": "object"
+    }
+  }
+}

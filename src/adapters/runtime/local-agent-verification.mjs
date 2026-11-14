@@ -22,7 +22,7 @@ const ordinal = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 const refs = values => [...new Map(values.map(value => [canonical(value), clone(value)])).values()].sort((a, b) => ordinal(a.ref, b.ref));
 // A check emits one JSON document with exactly these three keys. An exit code
 // never supplies its verdict; the supervisor binds it to the observed Git SHA.
-function verdict(protocol, processResult, validationId) {
+export function interpretAgentVerificationCheck(protocol, processResult, validationId) {
   const valid = exactKeys(protocol, ["contract_version", "validation_id", "status"])
     && protocol.contract_version === "agent-verification-check.v1" && protocol.validation_id === validationId
     && ["passed", "failed", "unavailable"].includes(protocol.status);
@@ -405,7 +405,7 @@ export function createLocalAgentVerification({ resourcesRoot, scratchRoot, runId
         const stderrRef = await writeReference(resourcesRoot, `verification/logs/${invocation.invocation_id}.stderr`, stderr, stop.signal);
         outputRefs.push(stdoutRef, stderrRef);
         let protocol = null; try { protocol = JSON.parse(stdout.toString("utf8")); } catch { /* a successful exit alone never supplies a verdict */ }
-        const status = verdict(protocol, result, validationId);
+        const status = interpretAgentVerificationCheck(protocol, result, validationId);
         checks.push({ validation_id: validationId, status, invocation, request_sha256: requestHash,
           process: { exit_code: result.exit_code, signal: result.signal, termination_state: result.termination_state,
             ...(result.outcome === undefined ? {} : { outcome: result.outcome }) }, stdout: stdoutRef, stderr: stderrRef });
@@ -486,7 +486,7 @@ async function verifyPayload(envelope, authority, root, plan, evidenceClass, sig
         && ["passed", "failed", "unavailable"].includes(check.status), "VERIFICATION_INVOCATION_INVALID");
       let protocol = null; try { protocol = JSON.parse(await readReference(root, check.stdout, policy.limits.max_output_bytes, signal)); } catch (cause) { if (cause.code) throw cause; }
       await readReference(root, check.stderr, policy.limits.max_output_bytes, signal);
-      requireThat(check.status === verdict(protocol, check.process, check.validation_id), "VERIFICATION_VERDICT_INVALID");
+      requireThat(check.status === interpretAgentVerificationCheck(protocol, check.process, check.validation_id), "VERIFICATION_VERDICT_INVALID");
     }
   } else requireThat(payload.boundary_qualification === null && same(payload.output_refs, []) && same(binding.validation_ids, [])
     && same(payload.checks, auditChecks(plan, auditPolicy, facts, gitFacts)), "VERIFICATION_AUDIT_INVALID");

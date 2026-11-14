@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-post-merge-complete-plan.v1",
+  "x-aidn-contract-version": "standard-pr-post-merge-complete-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "project_scope_sha256",
+    "session_id",
+    "opening_operation_id",
+    "opening_receipt_sha256",
+    "merge_receipt_sha256",
+    "fetch_receipt_sha256",
+    "alignment_operation_id",
+    "alignment_receipt_sha256",
+    "source_ref",
+    "merge_oid",
+    "aligned_head"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-pr-post-merge-complete-plan.v1"
+    },
+    "project_scope_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{3,6}$"
+    },
+    "opening_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "opening_receipt_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "merge_receipt_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "fetch_receipt_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "alignment_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "alignment_receipt_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_ref": {
+      "type": "string",
+      "pattern": "^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]{0,191}$"
+    },
+    "merge_oid": {
+      "type": "string",
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    },
+    "aligned_head": {
+      "type": "string",
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    }
+  }
+}

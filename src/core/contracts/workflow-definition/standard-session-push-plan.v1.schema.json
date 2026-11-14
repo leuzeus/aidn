@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-session-push-plan.v1",
+  "x-aidn-contract-version": "standard-session-push-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "operation_id",
+    "input",
+    "prepared_at_ms",
+    "admission_sha256",
+    "session_id",
+    "git"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-session-push-plan.v1"
+    },
+    "operation_ref": {
+      "const": "session_push"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "admission_operation_id"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "standard-session-push-input.v1"
+        },
+        "admission_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        }
+      }
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "admission_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{3,6}$"
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "remote_identity_sha256",
+        "branch",
+        "ref",
+        "head",
+        "remote_head",
+        "local_sha256"
+      ],
+      "properties": {
+        "profile": {
+          "enum": [
+            "local-bare-remote.v1",
+            "github-https-git.v1"
+          ]
+        },
+        "remote_identity_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 192
+        },
+        "ref": {
+          "type": "string",
+          "pattern": "^refs/heads/"
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "remote_head": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "local_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  }
+}

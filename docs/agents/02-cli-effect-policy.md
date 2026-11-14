@@ -16,6 +16,10 @@ The classification keeps automation from confusing output format with write perm
 
 ## Rules
 
+- `convert-to-spike` creates a cycle from an active EXPLORING session. Its
+  generic pre-write admission uses the cycle-creation Git, continuity and
+  canonical initial-cycle freshness checks; it cannot require that new cycle
+  already exists. The separate specialized continuity admission remains required.
 - `--json` controls output format only and must never imply mutation.
 - `--help` and `-h` are always read-only, even when another selector is present.
 - `--dry-run` is always preview-only; parsers must reject contradictory write
@@ -38,9 +42,23 @@ The classification keeps automation from confusing output format with write perm
   creates preparation resources, reserves a run or observes native Codex state.
 - Every public stable command must have an effect class.
 - `workflow-inspect` is read-only; `workflow-action` requires the exact console
-  preview and explicit write/execute flags. Run actions also require shared
-  sync. `workflow-dashboard` is preview-only until `--serve` explicitly opens
+  preview and explicit write/execute flags. Sequential compatibility run actions
+  also require shared sync. `workflow-run` defaults to the structured agentic
+  engine, previews without model allocation and requires exact `--expect-plan`,
+  `--execute` and the owned runner's authorization/budgets before native effects.
+  `workflow-dashboard` is preview-only until `--serve` explicitly opens
   its foreground loopback listener. Both clients use the same admissions.
+  A STANDARD execution configuration selects the published mixed composition.
+  Its saved action-file plus execute/expect-plan admits one exact action;
+  preparing a durable host key and initializing an instance are separate actions.
+  A pinned call entry or return uses that same exact-action consent boundary.
+  Its preview writes nothing. Apply records only the canonical process
+  transition through the existing CAS. Decision/control selectors never imply
+  writes. Replay/SIM remain preview-only.
+  For STANDARD console actions, the returned `action.request` retains the closed
+  prepared action. Resubmitting that request and its outer digest preserves the
+  original plan; the host still rechecks freshness, authority and CAS. This JSON
+  object supplies no permission, actor, controller or new execution authority.
 - A command whose effect depends on an option carries a machine-readable
   invocation rule. Options do not inherit a command-level class as a shortcut.
 - Effect resolution uses an immutable copy of the original argument vector and

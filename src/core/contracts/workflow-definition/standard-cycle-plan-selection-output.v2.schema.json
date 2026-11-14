@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-plan-selection-output.v2",
+  "x-aidn-contract-version": "standard-cycle-plan-selection-output.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-plan-selection-output.v2"
+    },
+    "operation_ref": {
+      "const": "cycle_plan_select"
+    },
+    "outcome": {
+      "const": "completed"
+    },
+    "effect_status": {
+      "const": "no_effect"
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cycle_implementation_entry_required"
+      ],
+      "properties": {
+        "cycle_implementation_entry_required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_operation_id",
+        "cycle_id",
+        "session_id",
+        "cycle_path",
+        "record_sha256",
+        "source_kind",
+        "canonical_phase",
+        "task_count",
+        "imported_completed_task_ids",
+        "remaining_task_ids",
+        "implementation_authorized"
+      ],
+      "properties": {
+        "record_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "cycle_id": {
+          "type": "string",
+          "pattern": "^C[0-9]{3,6}$"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^S[0-9]{3,6}$"
+        },
+        "cycle_path": {
+          "type": "string",
+          "maxLength": 192
+        },
+        "record_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_kind": {
+          "enum": [
+            "native_record",
+            "canonical_plan",
+            "canonical_progress"
+          ]
+        },
+        "canonical_phase": {
+          "enum": [
+            "OPEN",
+            "IMPLEMENTING",
+            "VERIFYING"
+          ]
+        },
+        "task_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        },
+        "imported_completed_task_ids": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "pattern": "^TASK-[0-9]{3,6}$"
+          }
+        },
+        "remaining_task_ids": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "pattern": "^TASK-[0-9]{3,6}$"
+          }
+        },
+        "implementation_authorized": {
+          "const": false
+        }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

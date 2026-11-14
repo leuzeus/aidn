@@ -1,0 +1,97 @@
+{
+  "proof_class": "offline-canonical-baseline-promotion-component",
+  "status": "PASS",
+  "source_base": "a040314",
+  "source_sha256": {
+    "src/application/runtime/standard-baseline-promotion.mjs": "bf357b78288c22595d4d107c524da8583b22fa1e980fb7d0a86ee8660e844cdf",
+    "src/core/workflow/standard-baseline-promotion.mjs": "04a8ae1c1e72cb6c544f9dc056deb8dcc5d108703a9868c1f472b0da20ca2e27",
+    "src/core/contracts/workflow-definition/standard-baseline-promotion-request.v1.schema.json": "6c1df2a302f343e8f299c4be5a507aa807365c8813aa4567103ce1f3773393bf",
+    "src/core/contracts/workflow-definition/standard-baseline-promotion-input.v1.schema.json": "7e0a87445db29cec677145564bf72e6f4261bef7987e95796c54790acd3edd5d",
+    "src/core/contracts/workflow-definition/standard-baseline-promotion-plan.v1.schema.json": "3d467a495883d4fbd990b5883e8a34409c343eff63e1e13064a15db6e8698fef",
+    "src/core/contracts/workflow-definition/standard-baseline-promotion-output.v1.schema.json": "54c5e16ad8b679fbbab45988837b8daffa7242b1d668fc7346d05ecdc3ee9413"
+  },
+  "scope": "Private deterministic five-document CAS factory; mandatory host capabilities must authenticate the request/completed close and read current product/process. Those actual readers, human inbox and mixed-host binding are not implemented here.",
+  "authority": "FIXTURE human/close capabilities; typed success flags do not authenticate results.",
+  "fixed_footprint": [
+    "baseline/current.md",
+    "baseline/history.md",
+    "snapshots/context-snapshot.md",
+    "index.md",
+    "CURRENT-STATE.md"
+  ],
+  "invariants": [
+    "Exact reviewed plan and explicit write intent",
+    "Actual selected-target pre-write, product/context/preimage/metadata checks",
+    "Grant checked before fresh preparation, before writes and after postconditions",
+    "Original300000ms deadline checked after final grant before first write",
+    "History prefix preserved; version increases numerically/prerelease; duplicate versions/cycles refused",
+    "DB-only preserves initial bootstrap projections; files/dual require confirmed projections",
+    "Partial effects or post-effect revocation retain owner and empty facts",
+    "Confirmed baseline_recorded true, baseline_promotion_completed false; hook pending"
+  ],
+  "version_regression": {
+    "red": "Missing expected exception for rollback v0.0/numeric alias v00.2.0 over v0.2",
+    "green": "Pure9 including four schemas, numeric/prerelease ordering and complete history retention"
+  },
+  "validation": {
+    "prior_modes": "PASS files83857,dual23247,db_only75883; current positive recheck91038 PASS3 per files/dual/DB-only",
+    "faults": "PASS40791 partial/projection2 each; PASS78919 source/instance/pre-effect/post-effect grant2 each",
+    "required_suite": {
+      "status": "PASS",
+      "handle": 84812,
+      "cases": 81,
+      "admission_cases": 51,
+      "component_cases": 30,
+      "component_groups": 10
+    },
+    "published_models": "PASS22 on corrected59/57 base",
+    "gate_catalog": {
+      "status": "PASS",
+      "gates": 63
+    },
+    "pack_topology": {
+      "status": "PASS",
+      "handle": 28888,
+      "source_clients": 5,
+      "cleanup": "PASS",
+      "scope": "Source/scaffold topology, not exact installed archive workflow"
+    },
+    "source_of_truth": {
+      "status": "PASS",
+      "policies": 35
+    },
+    "metadata": {
+      "status": "PASS",
+      "policies": 37
+    },
+    "governance_coverage": {
+      "status": "PASS",
+      "concepts": 38,
+      "scope": "Policy coverage only, not complete standard workflow execution"
+    },
+    "docs": {
+      "status": "PASS",
+      "local_links": 388
+    },
+    "markdown_contract": {
+      "status": "PASS"
+    },
+    "diff_check": {
+      "status": "PASS"
+    }
+  },
+  "fixture_corrections": [
+    "Actual ff-only retained-cycle merge preserves product on session",
+    "Real pre-write focus/DoR refusal resolved separately in94a3d2b",
+    "DB-only projection compared to observed initial bytes, not assumed absent"
+  ],
+  "source_install": "Actual source installer, Codex discovery/login stub only; no native executor/model",
+  "common_reducer_replay": "NOT_RUN; duplicate raw apply refusal is not journal replay",
+  "standard_ir_binding": "NOT_IMPLEMENTED",
+  "promotion_human_inbox": "NOT_IMPLEMENTED",
+  "promotion_final_hook": "NOT_RUN",
+  "native": "NOT_RUN",
+  "installed_archive": "NOT_RUN",
+  "full_standard_model": "NOT_COMPLETE",
+  "updated_at": "2026-11-03T06:47:02.995332+00:00"
+}

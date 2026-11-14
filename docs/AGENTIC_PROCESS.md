@@ -1,6 +1,75 @@
 # Participants, roles and agentic control
 
+An accepted R05 objective review survives an expected R03 cache refresh,
+including compound invalidation reasons, when its authenticated canonical
+context and all other constraints are unchanged. The pure shared R03 reason
+classification carries no clock or permission decision. An unexplained digest,
+unknown or state-mode fallback reason, changed subject, intent or level3 still
+refuses; old
+review and result bytes remain intact.
+
+STANDARD entry accepts a fresh or admitted existing canonical session. Its
+typed admission binds the requested ID, session branch and objective to current
+canonical content and metadata. An existing selected mode is retained; UNKNOWN
+still requires the signed human mode decision and separate mode application.
+The composed model runs this deterministic/H setup in a pinned common-IR call,
+then rereads canonical admission in the root before mode preflight and the real
+startup hook. Creation stays create-only. This does not establish continuity
+of an existing cycle or change Native permission and resource accounting.
+
+The internal journaled allocator and mixed host expose read-only epoch
+preparation and explicit epoch activation. A host-composed source must verify
+fresh human approval and complete native/provider/process resource closure for
+the exact signed request. V2 journals retain the original signed v1 journal,
+all grants, checkpoints and cumulative debits. New worker ceilings subtract
+all previous consumption. An epoch does not grant business effects, bypass
+cycle admission or revive failed/unknown allocations. See
+[ADR-0026](ADR/ADR-0026-explicit-native-authorization-epochs.md) for contracts,
+unused-epoch expiry, source responsibilities and qualification limits.
+
+
+Selected task execution uses `cycle_task_select`, a distinct task-work native
+report, `cycle_task_work_evaluate` and authorized `cycle_task_advance` in the
+common IR loop. The host authenticates their ordered frozen-plan chain and
+requires actual task checks before progressing. The final task validates all
+cycle tests on the final code. A causal progress input bridges owned metadata
+changes before verification; it does not reuse a stale code verdict. Historical
+first-task contracts remain distinct. This component still requires assembly
+into the full standard graph and native/installed acceptance qualification.
+
+The internal standard ports also support `cycle_validation_evaluate` and
+`cycle_verification_enter`. The first reauthenticates code-check evidence; the
+second needs its accepted fresh result, all planned task work observed and a
+current explicit write grant. It records VERIFYING, evidence, snapshot and the
+next audit action through real canonical ports. Failed or missing checks stay
+pending; no requirement acceptance or lifecycle closure follows automatically.
+
+The internal mixed host can bind `cycle_validation_execute` after accepted
+`cycle_work_evaluate` through the same JSON IR. The host supplies a pinned,
+approved validation profile outside authored JSON. Deterministic checks use an
+exact product snapshot and the existing qualified sandbox boundary, without a
+model call. Completed execution can still report failed or unavailable checks;
+only an explicit passed fact can inform subsequent routing. An unknown stop or
+postcondition retains effect ownership for reconciliation. This component does
+not implement the full standard graph or lifecycle closure.
+
+Explicit `process-data-bindings.v2` also maps accepted operation identities into
+native activity inputs; v1 keeps its operation-only rules. Standard coding binds
+the accepted implementation-phase result and receives the frozen canonical first
+task. Its typed report is checked against host-observed file snapshots and the
+surrounding context by `cycle_work_evaluate`. That observation requires separate
+deterministic validation and does not authenticate a per-file writer. Product
+changes are retained when confirmation refuses; no rollback is inferred.
+
 ## Vocabulary and behavior
+
+For new cycle-plan activities, the trusted host derives session, cycle, cycle
+type and exact objective from the canonical activity context. These values and
+the context digest constrain the Native response schema and its local answer
+validation. The model proposes the planning content; it cannot reformulate
+these identity fields. This grants no readiness, write or implementation
+permission. Historical reports keep their original shape and bytes, and the
+independent business evaluator still refuses an objective or context mismatch.
 
 | Concept | Meaning in AIDN | Does not imply |
 | --- | --- | --- |
@@ -12,11 +81,47 @@
 | Gateway | Routing and synchronization of logical control flows | A model call or a number of workers |
 | Review | An activity bound to work, criteria and an assurance policy | Independence from a new label, pool or session alone |
 
-`structured-agentic-process.v1` is an opt-in internal application API. It is
-separate from shadow workflow descriptions and existing sequential instances.
-Existing callers and installed projects keep their behavior. The explicit owned
-runner below composes a native adapter; importing the engine or loading a model
-does not start a client or change an installed activation.
+`structured-agentic-process.v1` is the default execution engine for all new AIDN
+workflows, including directly authored JSON models. BPMN v2 compilation is one
+authoring route into this same engine. The public `aidn runtime workflow-run`
+entry and console select `agentic` without an engine flag. Explicit
+`--engine legacy`, `engine: "legacy"` on initialization, or project configuration
+`runtime.workflowEngine: "legacy"` selects sequential compatibility. Persisted
+contracts select their historical readers; a default change never converts them.
+The v2 adoption does not rename the existing versioned IR or reducer profile.
+Loading a model or previewing a command does not allocate a native client.
+
+Default engine selection does not yet mean that AIDN's standard session/cycle/PR
+lifecycle is driven by a shipped process IR model. Its historical shadow
+definition remains descriptive; the native launcher currently admits only a
+matching pristine initial checkpoint, rather than general eventful resume.
+The remaining deliverable is explicitly tracked in the
+[standard workflow IR integration plan](PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md):
+versioned standard model, actual skill/operation ports, durable human/external
+waits and resume, and separate offline/native/installed-package qualification.
+
+```text
+aidn runtime workflow-run --target <root> --configuration <execution.json> --authorization <authorization.json> --json
+aidn runtime workflow-run --target <root> --configuration <execution.json> --execute --authorization <authorization.json> --expect-plan <action_sha256> --json
+```
+
+The configuration and authorization retain the owned runner's existing contracts,
+implementation/authority/model/criteria pins, native permission checks, deadlines,
+response/storage budgets and process-tree closure. Preview pins the target,
+configuration, authorization content and product observation, and displays the
+typed budget fields. A preview without authorization lists that requirement and
+cannot be applied; provide the authorization and repeat the preview before
+execution. An explicit execution rechecks the exact
+preview before delegating to the owned host. No PostgreSQL or shared relay is
+introduced by this default; the configured canonical backend remains authoritative.
+`codex workflow-step` remains the admission/context observation port and does not
+start native work implicitly. The previous `agent-run*` commands are explicit
+sequential compatibility entrypoints.
+
+Console initialization writes an unstarted agentic instance only with `--write`.
+It may enter the owned runner when instance/model/facts/scope/policies exactly
+match its pristine initial checkpoint. Existing events or changed bindings require
+reconciliation; an execution is never restarted over historical results.
 
 The package's source startup contract and minimal workflow kernel also instruct
 agents to retain the current execution for compatible roles, without changing
@@ -25,6 +130,23 @@ than assuming independence. These assets apply through a future explicit normal
 installation/upgrade; this change does not edit an installed project.
 
 ## Model
+
+The L1 foundation for the standard workflow adds versioned
+`agentic-process-model.v2` / `agentic-process-instance.v2` readers to the same
+reducer. An `operation` references a fixed host binding for deterministic, human
+or external work, with an authenticated intent/receipt protocol. It requires no
+fake agent or native session. Deferred/blocked/unknown outcomes retain explicit
+waits; raw caller facts/messages cannot authorize v2 control through the service.
+V1 models, instances, native assignments and hashes retain their existing format.
+See [ADR-0025](ADR/ADR-0025-standard-workflow-runtime-binding.md).
+
+Partial standard business adapters and startup/cycle components are now bound
+through the operation/control host; they do not deliver the complete standard
+model. The native-only owned composition accepts v1 and v2 graphs without
+operation nodes. V2 rejects raw control-scenario facts/events before allocation;
+its human/external control requires authenticated delivery. Mixed execution and
+general native-history resume are not implied by that default entrypoint. The
+internal mixed host below supplies a separate, explicitly authenticated path.
 
 The closed `agentic-process-model.v1` contract declares participants, reusable
 roles/skills, versioned policies and a structured tree of nodes. Every node has
@@ -63,7 +185,8 @@ author. All roles can reference the same skills.
 | Complex, mixed, instantiating event gateways | yes | Explicit refusal; no silent fallback or automatic normalization |
 | Autonomous participant review | yes | Explicit refusal pending a supported participant message/authority contract |
 | Unstructured graph, shared OR child, cross-pool sequence | no | Explicit refusal |
-| BPMN XML import/export | no | No XML interpreter or import qualification |
+| BPMN XML profile compilation | yes, bounded subset | Default [v2](BPMN_EXECUTION_PROFILE_V2.md) compiles to the agentic engine, including message races, guarded loops, collections and local calls; explicit v1 remains compatible |
+| General BPMN XML import/export | no | Unsupported semantics refuse; no XML export or general interpreter |
 
 `agenticProcessCapabilities()` exposes `representable`, `validatable`,
 `executable` and `tested` separately. Unsupported constructs have `tested:false`;
@@ -78,6 +201,12 @@ wait; a completed activity can supply a later facts event through the host.
 No expression evaluation, generated code, model polling, thread creation or
 implicit resource allocation occurs at a gateway. The host delivers messages
 and timer outcomes; this profile does not itself schedule wall-clock timers.
+
+The [BPMN execution profile](BPMN_EXECUTION_PROFILE.md) connects modeling XML to
+this IR through explicit role/policy bindings and source maps. Its compiler
+subset is smaller than the IR capability set. `simulateAgenticProcess` produces
+bounded synthetic event traces with this same reducer, without host effects or
+write authorization. See ADR-0023 for authority and compatibility boundaries.
 
 Activity results are not merged at a join. If reconciliation requires judgment,
 declare another activity. A failed child fails the process and cancels remaining
@@ -188,6 +317,11 @@ commentary/partial-answer phases are not final answers; an ambiguous capture
 refuses. Native cumulative usage snapshots are retained per thread and never
 summed across turns as if they were independent totals. Missing or in-flight
 usage remains unknown. Streaming deltas are not duplicated into evidence files.
+Completed tool items additionally retain bounded kind/name labels, payload and
+output hashes, byte counts, native status/exit/duration when available, and an
+observed polling marker. Raw commands, arguments, outputs and reasoning are not
+copied. Each activity receipt counts distinct native responses and observed
+tool items; these are diagnostic observations, never result authority.
 
 The adapter checks effective configuration, allowed permission profile, existing
 Windows sandbox readiness and exact trusted project-hook hashes before a model
@@ -274,7 +408,8 @@ compatibility is retained and checked separately.
 The internal entry is `tools/runtime/run-agentic-process.mjs`. It requires exactly
 one of `--preview` (read only) and `--execute`; configuration bytes are pinned by
 `--configuration` and `--configuration-sha256`. Execution additionally requires
-`--authorization` and `--authorization-sha256`. Nothing is activated by default.
+`--authorization` and `--authorization-sha256`. Selecting the default engine does
+not allocate a native client; preview and execution retain distinct admissions.
 The configuration is closed at the root and includes:
 
 | Field | Required content |
@@ -283,8 +418,9 @@ The configuration is closed at the root and includes:
 | `target_root`, `product_root` | Active project; dedicated product subdirectory |
 | `control_root`, `review_root` | Existing, physical, separate external directories |
 | `product_files` | Exhaustive bounded relative product-file allowlist; no links, credential files or undeclared output |
-| `model`, `criteria`, `authorities`, `skills` | Explicit `{path,sha256}` byte pins; authorities require `project` pinned to target AGENTS.md plus the task's authorities; role skill IDs map to supplied procedures |
+| `model`, `criteria`, `authorities`, `skills` | Native-only v1/v2 model, explicit `{path,sha256}` byte pins; authorities require `project` pinned to target AGENTS.md plus the task's authorities; role skill IDs map to supplied procedures |
 | `instructions` | Bounded task instruction per activity; cannot choose an executable or authority port |
+| `control_scenario` (optional) | Pinned `{path,sha256}` to a v1-only bounded trusted-host scenario; v2 refuses nonempty raw facts/events before native startup |
 | `native` | Executable/SHA, existing home, model/effort, read-only tool roots, expected work/review hook hashes and the closed startup configuration |
 | `implementation_sha256` | `agenticProcessImplementationPins().sha256`; distributed direct engine sources plus VERSION/package manifest; retain the build lock and exact installed dependency versions separately |
 | `controller` | Existing helper path/SHA/source SHA, Node SHA and fixed worker SHA |
@@ -298,8 +434,21 @@ No configuration, home or authorization artifact is generated by this change.
 An existing instance refuses automatic execution and requires operator
 reconciliation. An external-event wait is retained without model polling; this
 one-batch runner does not implement a durable native-session resume protocol.
+
+An explicitly pinned `agentic-process-control-scenario.v1` can drive that one
+batch without polling a model. It supplies `initial_facts` and at most 64
+`{after_results,event}` steps, ordered by accepted activity-result count (0–120).
+Only existing `message`, `facts` and `cancel` events are accepted; assignments,
+verdicts, module paths, timers and callbacks cannot be supplied. The configuration
+authorization binds the scenario file SHA, and authority checks revalidate its
+bytes. The scenario lives outside product/review roots and creates no authority
+by itself. Each delivered event still passes the existing service, exact
+canonical CAS, correlation and projection controls. Undeliverable or unused
+events refuse rather than silently producing a successful benchmark. An absent
+scenario retains the previous durable-wait behavior. This is deterministic host
+input for a controlled run, not a broker, timer scheduler or native resume API.
 ADR-0014's fresh-attempt rule for the existing supervised task executor remains
-unchanged: this separate opt-in process profile does not retrofit persistent
+unchanged: this process profile does not retrofit persistent
 sessions into that executor.
 
 Native initialization has a 90-second ceiling clipped by the original workflow
@@ -330,6 +479,9 @@ refusals. Product-ancestor directory names can remain listable; original
 product contents must remain inaccessible.
 Before independent review on Windows the trusted broker re-publishes each
 declared product file through a newly created staging file and atomic rename.
+The exclusive temporary file is a sibling of the product file so publication
+works when the control directory resides on another volume. Failed staging is
+cleaned; bounded diagnostics retain the filesystem code and a path hash.
 It verifies the original, staging and resulting hashes and the complete product
 revision, and retains a publication receipt. This changes filesystem metadata,
 including creator ownership, but no product bytes. It is part of the explicitly
@@ -343,6 +495,20 @@ and [Permissions](https://learn.chatgpt.com/docs/permissions). These describe th
 protocol; they do not qualify a particular installed binary or Windows backend.
 
 ## Verification
+
+The partial standard-workflow bootstrap ports now compose real reload/admission
+use cases and local session effects. They remain internal components outside the
+ordinary workflow entrypoints. The standard model, authenticated mixed-host
+composition, durable recovery and full workflow qualification remain outstanding
+under the [standard workflow plan](PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md).
+Selecting the default engine does not establish this integration.
+An internal operation host journals and authenticates bootstrap, human mode
+capture/application and hook finalization through the same reducer, including
+result acceptance in a new Node process without business replay. The published
+[startup JSON component and traceability](architecture/STANDARD_WORKFLOW_IR_TRACEABILITY.md)
+pin their model, code bindings, SPEC and skill sources. The real-port startup
+fixtures consume this package asset. Their fixture human/grant capabilities do
+not establish the full standard model, native identity or mixed/native resume.
 
 Run `npm run perf:verify-agentic-process`. It exercises the real reducer,
 application service and durable artifact stores with portable fixtures. The
@@ -360,3 +526,292 @@ policy enforcement, real tree cleanup or provider reception. A separate bounded
 pre-release case observed those paths; its scope, retained failure and remaining
 NOT_RUN limits are in the [qualification record](https://github.com/leuzeus/aidn/blob/v0.19.0/docs/qualification/agentic-process/v0.19.0.md).
 No general performance benefit is inferred, and closed benchmark lots remain closed.
+
+The separate [BPMN v2 candidate benchmark](qualification/agentic-process/bpmn-v2-impact-2026-11-01.md)
+executes the XML/IR event, loop, multi-instance and call model with real native
+workers and independent review. It retains three earlier failed attempts and one
+successful IR/XML pair, including higher observed XML-case time and token usage.
+Its sample size and fresh Windows product roots limit the qualification; it does
+not establish a general performance gain or same-root reuse after review.
+
+The [controlled follow-up](qualification/agentic-process/bpmn-v2-controlled-2026-11-01.md)
+isolates XML above that same delivered agentic reducer using four counterbalanced
+cases. Each uses 12 native responses, one author verification command and one
+independent review command; unchanged-input verification evidence is reused
+within the author context. It records tool/exchange parity as well as functional
+results, and distinguishes protocol savings from compiler cost.
+
+
+### Native host-state evidence
+
+After closing its native clients, the production composition retains a bounded
+`native-host-state.v1` evidence object and returns its `native_checkpoint`
+reference/hash. It binds host-issued assignments/results, exact instance,
+executor identities, writer contributions, native usage and parent-close outcome.
+The envelope also retains hashed observed response identities/count and the
+authorization hash. It omits prompts and reasoning and uses the existing storage
+quota. Interrupted turns retain possible contributors and unknown usage.
+
+This evidence has no resume authority by itself. The parent-close flag is not
+the outer supervisor's process-tree proof. Historical authentication, allocation
+fencing, cumulative budget admission and an explicit new grant are still required;
+the default native launcher continues to refuse a non-pristine instance.
+
+The opt-in journaled allocation composition now supplies that consumer for
+native-only v2 graphs. Explicit `resume: true` verifies the signed owned closure,
+exact checkpoint, later signed control events, current context, projections and
+retained ceilings before reserving another worker. A fresh worker authenticates
+its private reservation capability; native model processes receive no key.
+Historical results/contributions remain evidence, old resources stay closed and
+new sessions carry the writer exclusions into review. Ordinary start, CLI/console
+integration remain separate. See
+[ADR-0025](ADR/ADR-0025-standard-workflow-runtime-binding.md) for the trust boundary,
+deadline limits and qualification distinctions.
+
+### Internal mixed operation/native composition
+
+`createStandardWorkflowMixedHost` composes existing operation, decision, control
+and journaled native ports around one v2 model, instance and reducer. It selects
+the port for a ready leaf; workflow routing stays in the IR. Deterministic work
+and human/external waits require no model call. Writes retain explicit intent,
+signed exact previews, trusted grants and authenticated receipts. Native slices
+close at an operation boundary and resume with fresh resources under the retained
+original ceilings and deadlines.
+
+The versioned `standard-mixed.v1` authority binds the actual project/persistence,
+model/source and host key. Reopening verifies every operation/control receipt
+and the native checkpoint covered by the signed allocation journal. A native
+slice holds the existing worktree effect owner also used by mutating business
+ports. Unknown effects or termination retain that owner and require explicit
+reconciliation; no PID/time takeover or automatic retry is provided. Legacy
+scopes and ordinary CLI/console entrypoints are unchanged.
+
+This internal adapter is a prerequisite for the standard workflow, not the
+complete standard model or its qualification. Its offline bootstrap fixture
+combines actual application ports with native/provider transport doubles.
+Full business coverage, ordinary selection, long-wait budget continuation,
+real native isolation/provider channels and exact installed-package acceptance
+remain separate deliveries in the integration plan.
+
+### Typed R05 diagnostic component
+
+An internal mixed execution may pin `activity_outputs` to
+`{ "diagnostic_node": "standard-drift-report.v1" }`. The node must carry the
+exact distributed `drift-check` skill. This selects a fixed host contract; model
+data cannot supply a schema or module. Existing activities keep their original
+outcome/summary answer. The adapter runs actual drift-check admission before
+loading canonical diagnostic context and binds the report to that context.
+
+The deterministic `drift_report_evaluate` binding accepts only a producer
+occurrence, not a caller-authored report. It authenticates the accepted native
+result through the owned checkpoint, rechecks admission, canonical context and
+reported evidence, then emits typed routing facts without another model call.
+`changes` describes reported deviations from the objective/baseline; the observed
+Git diff remains separate input evidence. Authentication is provenance, not
+semantic proof. Evaluation leaves R05 completion pending and grants no recovery
+writes or DoR. Human arbitration and authorized recovery artifact changes remain
+separate work; clean-report retention and hook finalization use the port below.
+
+The diagnostic receives raw diffs only for configured product files. Other
+changes retain hashes/counts, and private roots cannot be delivered as diagnostic
+documents. A partial observation emits `drift_context_complete: false` and
+`drift_recovery_required: true`; the standard IR must route it to review rather
+than finalization. A terminal cycle's completion context requires its actual
+closure admission and unique branch ownership; missing/ambiguous or contradictory
+context refuses instead of silently using a session objective. The context and
+signed evaluation retain their purpose and canonical cycle state. This read does
+not reactivate the cycle or admit ordinary work. Neither this component nor its
+configuration mapping selects the complete standard workflow by default.
+
+`drift_check_finalize` consumes an accepted evaluation identity under an exact
+preview and explicit effect grant. It requires a fresh clean report with complete
+observed coverage and the existing gating checks. The application persists the
+canonical diagnostic record, invokes the real fixed drift-check hook and verifies
+its own newly appended completion event. It publishes `drift_check_completed`
+only after those observations; uncertainty retains reconciliation and the local
+effect owner. Reopening or replay never repeats a receipted hook. This internal
+component does not implement human recovery or select the full standard model.
+The producer configuration must still match when consuming its report; a changed
+instruction or criterion refuses new evaluation/finalization while leaving
+historical inspection available.
+
+### Declarative inputs in v2
+
+An explicitly authored `data_bindings` (`process-data-bindings.v1`) declares
+`parameter_keys` and one `inputs` entry (`node_id`, `fields`) for every operation.
+Each field uses one closed expression: `literal`, `parameter`, `occurrence_id`,
+`operation_id`, `operation_input`, `operation_output` or current collection
+`item`. Parameter and journal selections use a bounded `path` array of keys,
+not JSONPath or executable code. Operation contracts still validate the result.
+
+Initialize the internal common host with `parameters: { ... }`; those values
+remain immutable `initial_parameters` in the instance hash. Subsequent `step`
+calls supply no operation input. The host resolves completed predecessors,
+authenticates their journal values, retains `input_resolution` in its signed
+preview and rechecks it at stage. Normalization belongs to the fixed operation.
+Existing models without bindings retain their explicit-input behavior and hashes.
+
+Only structurally preceding sources in the current or an ancestor activation
+scope are accepted. Another iteration/item/call cannot silently supply a value.
+Implicit compound exports, aggregation and forward/optional-branch dependencies
+are refused in this first contract. Durable parameters are data, not permission
+or routing approval facts. Grants and business admissions remain required.
+This internal mechanism does not yet select a complete standard workflow or add
+ordinary CLI/console parameter controls.
+
+The distributed startup and cycle-scaffold models now author these bindings.
+Initialize their fixed hosts with `parameters: { session: { session_id,
+session_branch, objective } }` and `parameters: { cycle: { session_id, cycle_id,
+cycle_type, title, objective } }` respectively. Their `preview` calls take no
+operation input. Startup resolves the accepted human decision operation; the
+cycle initializer resolves continuity/base from the successful admission journal
+and rechecks the actual admission before effects. Later cycle inputs come from
+the accepted initialization journal. The common reducer retains all waits and
+refusals. These are versioned components of the remaining full standard model,
+not an ordinary CLI/console selection of that complete model.
+
+### Recovery review and findings
+
+The internal mixed host also accepts `drift_recovery_decision` followed by
+`drift_recovery_record`. The first consumes an accepted evaluation identity and
+asks a human about a fresh confirmed diagnosis and exact documentation proposal.
+Its source cannot be a mode answer or an unverified human claim. A report,
+refusal, deferred answer or cancellation cannot approve recovery effects.
+The second consumes the accepted decision identity and requires a live write
+grant to persist findings in canonical parking-lot and update current-state's
+next-action summary. It records a checked causal context transition and retains
+uncertainty after any unconfirmed effect. Parameters cannot choose writable
+paths or discount other Git/canonical changes.
+
+Questions contain hashes and bounded proposed text edits, not repeated complete
+context documents. New recovery inbox records are v2; mode inbox v1 remains
+readable and unchanged. Subsequent diagnostics read canonical parking-lot too.
+These operations document the decision and findings. They leave the actual
+CR/cycle/rollback operation, fresh diagnosis and R05 checkpoint pending; no
+product-work permission follows from their completion.
+
+`drift_change_request_record` is a deterministic continuation of an accepted,
+confirmed recovery record selecting `requirements_delta`. The mixed authority
+authenticates its evaluation, human decision and causal findings receipt. The
+port requires their current canonical post-context and an admitted COMMITTING
+cycle/session owner. It derives exactly the owning cycle's change-request file
+and CURRENT-STATE next-action summary. Its signed preview exposes the exact
+append/replacement; a new live write grant authorizes those effects. It preserves
+old CR entries and canonical metadata, checks projections and records another
+causal transition. A changed context cannot reuse the old recovery record.
+
+The generated CR retains the authenticated diagnostic and stays `pending`, with
+requirements mapping explicitly pending. Medium/high impact requires a new
+admitted cycle. No requirement, baseline, cycle state or product scope is
+automatically accepted. CR creation leaves recovery/R05 incomplete until the
+subsequent action, fresh diagnosis and checkpoint prove their own completion.
+
+The requirements-delta admission used by this continuation and its ordinary
+hook reads canonical continuity asynchronously. In DB-backed modes it must
+recover the actual active anchors and existing CR impact without trusting a
+stale visible projection; unavailable/ambiguous canonical state stops it.
+
+An accepted `new_cycle` recovery, or a confirmed CR requiring a new cycle, can
+continue through `drift_recovery_context_refresh`,
+`drift_recovery_checkpoint_observe` and `drift_recovery_cycle_initialize`.
+The common IR resolves the authenticated predecessor identities. The first
+operation refreshes canonical runtime context under an exact grant; the second
+waits while Git is dirty and verifies an external checkpoint through actual
+read-only Git observations. It neither commits the checkout nor approves scope.
+A fresh intent resumes a blocked observation after reconciliation.
+
+The last operation uses the ordinary cycle-create ports and their admissions,
+with source/grant checks and causal postconditions under the effect owner.
+Cycle ID/type/title are explicit input data; the source supplies session and
+objective and the real continuity gate supplies base/rule. Private cycle/context
+plan v2 binds metadata preimages and required projections are checked. A created
+cycle remains at DoR NOT_READY and R05 incomplete until the later required
+planning/diagnosis/checkpoint steps. Unknown effects retain ownership.
+
+The cycle component also declares `cycle_checkpoint_finalize`, routed to the
+real cycle-create skill hook. The deterministic preview waits for any required
+R05 check before effects. Confirmation checks the nested gate and its fresh
+run-correlated event, document/metadata stability and process authority under
+the local owner. An `ok` hook wrapper with a warning is insufficient. Missing
+post-effect confirmation retains unknown effects; cycle readying and the full
+standard graph remain separate obligations.
+
+The internal typed output registry also supports `standard-cycle-plan-proposal.v1`
+for read-only cycle planning. Canonical context and an authenticated native
+occurrence feed `cycle_plan_evaluate`; `cycle_plan_record` consumes the accepted
+evaluation through IR mappings and writes the fixed cycle planning documents
+under an explicit grant. Requirements, tests and usage coverage are declared,
+with adaptive R04 depth; they are not executed validation or DoR approval.
+The cycle remains OPEN/NOT_READY and unfrozen. The existing native configuration
+bounds product paths, and the complete standard graph and ordinary entries
+remain separately required.
+
+The deterministic `cycle_readiness_evaluate` component now checks the recorded
+plan and its authenticated provenance against SPEC-R04 and actual branch
+admission. A separate granted `cycle_implementation_enter` transitions canonical
+status/current state to IMPLEMENTING/READY with frozen scope. Every native
+product write still needs specific admission for the exact task and operations;
+planned tests remain distinct from executed validation. Neither component
+completes the standard workflow graph or its installed qualification.
+
+
+The experimental read-only audit component uses `cycle_audit_select`, a distinct
+`standard-cycle-audit-report.v1` native proposal, and `cycle_audit_evaluate`. It
+revalidates accepted VERIFYING provenance, physical check evidence, exact code
+and complete canonical document presence. Document text is supplied as ordered,
+lossless `content_chunks` under the unchanged JSON scalar and total limits. The
+inventory scope pins required documents and the owning cycle namespace after
+a complete global inventory; unrelated dispatch receipts do not invalidate it.
+New conditional cycle documents still invalidate the audit context.
+
+Every frozen requirement, usage and supplied audit document must be assessed.
+Failed checks cannot become supported coverage; unresolved and risk findings
+retain their identities. An audit result remains an observation with human
+decision required, skill completion pending and no lifecycle transition. The
+human decision, approved canonical closure, final hook and full standard model
+remain separate deliverables. Qualification is recorded in the standard IR plan.
+
+
+The experimental `cycle_closure_decision` binding prepares a human review from
+the latest accepted audit after authenticating its native report, physical
+checks and current canonical material. Its review includes finding rationales
+and evidence. Retention is not offered with pending work, unmet coverage, failed
+checks, uncertain documents or blocking findings. Residual risk acceptance names
+each exact finding with a separate rationale; an audit model cannot supply it.
+
+The human adapter verifies the exact question/source through a bounded external
+authority and stores a versioned HMAC-protected inbox capture. Refusal, deferral
+and cancellation retain distinct outcomes with empty success facts. A completed
+decision records a requested disposition only: lifecycle transition remains none
+and cycle-close pending. Context is rechecked around source verification and
+receipt acceptance. Canonical closure writes and its final hook remain to be
+implemented; this binding grants neither writes nor promotion.
+
+
+The deterministic `cycle_close_record` binding records explicitly selected
+terminal metadata through fixed canonical CAS ports. It takes only an accepted
+decision operation identity; JSON cannot select a writer, supply permission or
+assert a successful closure. The component currently covers COMMITTING/VERIFYING.
+Its mixed-host component passed offline on files and DB-only. A confirmed terminal record
+leaves the real cycle-close hook pending and never sets `cycle_close_completed`
+to true. Earlier-phase exits, the final hook/drift retry, the complete standard
+model, ordinary entrypoints and installed/native qualification remain required.
+
+The deterministic `cycle_close_finalize` binding authenticates the accepted
+terminal record, human/audit provenance and current physical validation evidence.
+A closed gate blocks durably; only the actual correlated checkpoint and three
+confirmed completion postimages emit cycle_close_completed. Unknown effects
+retain ownership and cannot trigger another checkpoint. The component tests and
+[retained cold continuation](qualification/agentic-process/cycle-close-hook-continuation-2026-11-03.json)
+have distinct source snapshots. Git checkpoint, reload and R05 remain explicit
+fixture preconditions; their complete standard IR route and suffix reconciliation
+remain to implement, alongside ordinary entrypoints and native/archive proofs.
+
+The fixed baseline_promotion_finalize operation shares the real promotion
+admission/checkpoint application port with the ordinary wrapper. Its accepted
+record witness preserves target/spec/product/classification; only the checkpoint's
+derived RUNTIME-STATE refresh is excluded from the completion boundary. A unique
+physical event and five confirmed canonical postimages establish completion.
+History confirmation is appended. Unknown effects retain ownership and cannot
+rerun the checkpoint. Source-client mode/fault component tests are separate from
+the still required full standard IR/common-cursor, native and archive proofs.

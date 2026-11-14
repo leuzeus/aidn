@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-drift-objective-disposition.v1",
+  "x-aidn-contract-version": "standard-drift-objective-disposition.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "decision_operation_id",
+    "evaluation_operation_id",
+    "evaluation_sha256",
+    "context_sha256",
+    "review_sha256",
+    "question_sha256",
+    "source_sha256",
+    "receipt_sha256",
+    "inbox_id",
+    "authority_id",
+    "source_event_id",
+    "session_objective",
+    "cycle_objective",
+    "rationale",
+    "prepared_at_ms"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-drift-objective-disposition.v1"
+    },
+    "decision_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "evaluation_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "evaluation_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "context_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "review_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "question_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "receipt_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "inbox_id": {
+      "type": "string",
+      "pattern": "^decision_[a-f0-9]{40}$"
+    },
+    "authority_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "source_event_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "session_objective": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192
+    },
+    "cycle_objective": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

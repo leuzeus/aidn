@@ -13,7 +13,7 @@ import { workflowInstanceFail as fail } from "../../core/workflow/workflow-insta
 // reconciliation. Never infer owner death from a PID or automatically replay.
 export function createWorkflowRecordStore({ targetRoot, stateMode, descriptor, env = process.env, deadlineMs,
   artifactStoreFactory = createProjectArtifactStore }) {
-  const { pathForId, validate, idOf, hashOf, kind } = descriptor;
+  const { pathForId, validate, inspect, idOf, hashOf, kind } = descriptor;
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
   if (!["files", "dual", "db-only"].includes(stateMode)) fail("WORKFLOW_INSTANCE_STATE_MODE_INVALID");
   const resolution = () => resolveEffectiveRuntimePersistence({ targetRoot: root, env });
@@ -22,26 +22,46 @@ export function createWorkflowRecordStore({ targetRoot, stateMode, descriptor, e
   const assertBinding = () => { if (binding(resolution()) !== initialBinding) fail("WORKFLOW_INSTANCE_PERSISTENCE_CHANGED"); };
   const database = stateMode !== "files" || selected.backend === "postgres";
   const artifactStore = options => { assertBinding(); return artifactStoreFactory({ targetRoot: root, env, ...(deadlineMs === undefined ? {} : { deadlineMs }), ...options }); };
-  const location = id => agentRunPhysicalPath(path.join(root, "docs/audit", pathForId(id)), { missing: true });
-  function read(id) {
+  const filename = id => path.join(root, "docs/audit", pathForId(id));
+  const location = id => agentRunPhysicalPath(filename(id), { missing: true });
+  function read(id, inspected = false) {
     assertBinding();
     let text = null;
     if (!database) {
-      const file = location(id);
-      if (fs.existsSync(file)) text = readAgentRunFile(file, { json: false }).value.toString("utf8");
+      text = readAgentRunFile(filename(id), { json: false, optional: true })?.value.toString("utf8") ?? null;
     } else {
       const store = artifactStore({ readOnly: true });
-      try { const row = store.getArtifact(pathForId(id));
-        if (row && (row.content_format !== "utf8" || typeof row.content !== "string")) fail("WORKFLOW_INSTANCE_ARTIFACT_INVALID");
-        text = row?.content ?? null;
-      } finally { store.close(); }
+      try { text = artifactText(store.getArtifact(pathForId(id))); }
+      finally { store.close(); }
     }
+    return parseRecord(id, text, inspected);
+  }
+  function artifactText(row) {
+    if (row && (row.content_format !== "utf8" || typeof row.content !== "string")) fail("WORKFLOW_INSTANCE_ARTIFACT_INVALID");
+    return row?.content ?? null;
+  }
+  function parseRecord(id, text, inspected = false) {
     const instance = text === null ? null : JSON.parse(text);
-    if (instance) { validate(instance); if (idOf(instance) !== id) fail("WORKFLOW_INSTANCE_ID_CHANGED"); }
-    return { record: instance, content_sha256: text === null ? null : artifactContentHash(text) };
+    let cursor;
+    if (instance) {
+      // The descriptor inspector performs the complete validation itself, on
+      // these freshly parsed bytes. Ordinary reads and CAS keep their validator.
+      if (inspected) cursor = inspect(instance); else validate(instance);
+      if (idOf(instance) !== id) fail("WORKFLOW_INSTANCE_ID_CHANGED");
+    }
+    return { record: instance, content_sha256: text === null ? null : artifactContentHash(text), ...(inspected ? { cursor } : {}) };
   }
   return Object.freeze({
     read,
+    ...(selected.backend === "postgres" ? { readMany(ids) {
+      const store = artifactStore({ readOnly: true });
+      try {
+        const paths = ids.map(pathForId);
+        const rows = typeof store.getArtifacts === "function" ? store.getArtifacts(paths) : paths.map(name => store.getArtifact(name));
+        return ids.map((id, index) => parseRecord(id, artifactText(rows[index])));
+      } finally { store.close(); }
+    } } : {}),
+    ...(typeof inspect === "function" ? { readInspected: id => read(id, true) } : {}),
     compareAndSwap(instance, expectedContentHash) {
       assertBinding();
       validate(instance);

@@ -10,6 +10,26 @@ function freezeDeep(value) {
 
 const GOVERNANCE_COVERAGE_EXCEPTIONS = freezeDeep([
   {
+    concept: "native_activity_output",
+    coverage_kind: "subsumed",
+    governed_by: "agentic_process_instance",
+    source_of_truth_relation: "typed native answer retained as protected result evidence and authenticated through the owned allocation checkpoint; evaluated claims and verified fixed-hook completion stay in the signed operation journal; diagnostic copies use existing canonical artifact CAS",
+    metadata_relation: "fixed standard-drift-report.v1 contract, exact context/evaluation hashes, producer and retained diagnostic identity, and own hook event/run observation; no additional workflow state or permission follows from a diagnostic copy",
+    lifecycle_status: "observed -> authenticated retained result -> evaluated|stale|invalid; skill completion remains separate",
+    scope: "one accepted activity occurrence in one pinned model/instance and canonical project context",
+    rationale: "The host authenticates provenance and context, not semantic truth. Diagnostic availability never implies drift recovery, authorized CR/parking-lot writes, R05 completion or admission to product work.",
+  },
+  {
+    concept: "native_host_state",
+    coverage_kind: "subsumed",
+    governed_by: "agentic_process_instance",
+    source_of_truth_relation: "protected native allocation evidence of the host-issued canonical instance prefix; never a replacement for that instance or a resume authority",
+    metadata_relation: "native-host-state.v1 resources, contributions, issued results, parent closure, observed usage and exact instance hash; budget/response hashes retained by the owning composition",
+    lifecycle_status: "observed -> retained after parent close attempt -> historical allocation evidence",
+    scope: "one owned native allocation and its protected external control root",
+    rationale: "Native host state retains identities/results previously held only in memory. Its content hash does not authenticate a supervisor closure, authorize another allocation, reset budget or make an unknown/rejected result successful.",
+  },
+  {
     concept: "context_metrics",
     coverage_kind: "subsumed",
     governed_by: "agent_working_memory",

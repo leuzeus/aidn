@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "node:fs";
+import { nativeActivityAnswerSchema, assertNativeActivityAnswer } from "../../core/workflow/native-activity-output.mjs";
 import { randomUUID } from "node:crypto";
 import { createAgenticCodexRpc } from "./agentic-codex-rpc.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
@@ -55,6 +56,7 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
       if (message.method === "rawResponse/completed") {
         if (typeof p.responseId !== "string" || !p.responseId) fail("PROCESS_SESSION_RESPONSE_ID_MISSING");
         budget.response(threadId, p.responseId);
+        active.responseIds.add(p.responseId);
       } else if (message.method === "thread/tokenUsage/updated") {
         const valid = row => row && ["inputTokens", "cachedInputTokens", "outputTokens", "reasoningOutputTokens", "totalTokens"]
           .every(key => Number.isSafeInteger(row[key]) && row[key] >= 0);
@@ -62,6 +64,12 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
         active.usage = p.tokenUsage; // native counters, never inferred zero
         usageByThread.set(threadId, { thread_id: threadId, turn_id: turnId, native_usage: structuredClone(p.tokenUsage) });
         await evidence.retain("native-usage", usageByThread.get(threadId));
+      } else if (message.method === "item/completed" && p.item?.type !== "agentMessage") {
+        const observation = summarizeAgenticNativeToolItem(p.item);
+        if (observation) {
+          active.tools++;
+          await evidence.retain("native-tool", { thread_id: threadId, turn_id: active.turnId, ...observation });
+        }
       } else if (message.method === "item/completed" && p.item?.type === "agentMessage") {
         if (typeof p.item.text !== "string" || Buffer.byteLength(p.item.text) > 65536) fail("PROCESS_SESSION_ANSWER_LIMIT");
         if (![null, undefined, "commentary", "partial_answer", "final_answer"].includes(p.item.phase)) fail("PROCESS_SESSION_PHASE_UNKNOWN");
@@ -141,9 +149,13 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
         permissions: started.sandbox, profile: profileId, declared_guarantee_scope: "fresh thread, disabled memories and restricted native tool profile; not full-client OS confinement" });
     } catch (error) { await rpc.close(); throw error; }
     return Object.freeze({ observe,
-      async run({ instruction, request_sha256, signal }) {
+      async run({ instruction, request_sha256, signal, output_contract = null, output_context_sha256 = null, output_bindings = null, beforeTurn }) {
         if (active || closed || signal?.aborted) fail("PROCESS_SESSION_BUSY_OR_CANCELLED");
         await observe();
+        if (beforeTurn !== undefined) {
+          if (typeof beforeTurn !== "function") fail("PROCESS_SESSION_TURN_AUTHORITY_INVALID");
+          await beforeTurn();
+        }
         // Observation awaits RPC: an abort/close during it must prohibit the
         // next paid turn, even though no abort listener was installed yet.
         if (active || closed || signal?.aborted) fail("PROCESS_SESSION_BUSY_OR_CANCELLED");
@@ -152,25 +164,23 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
         let resolve, reject;
         const completion = new Promise((yes, no) => { resolve = yes; reject = no; });
         completion.catch(() => {}); // rejection may precede the turn/start reply
-        active = { turnId: null, pending: [], answers: [], usage: null, resolve, reject };
+        active = { turnId: null, pending: [], answers: [], usage: null, responseIds: new Set(), tools: 0, resolve, reject };
         const timer = setTimeout(() => reject(Object.assign(Error("PROCESS_SESSION_DEADLINE"), { code: "PROCESS_SESSION_DEADLINE" })), Math.max(1, turnRemaining));
         const abort = () => reject(Object.assign(Error("PROCESS_SESSION_CANCELLED"), { code: "PROCESS_SESSION_CANCELLED" })); signal?.addEventListener("abort", abort, { once: true });
         try {
           const result = await rpc.request("turn/start", { threadId, effort: native.effort,
-            input: [{ type: "text", text: instruction, text_elements: [] }], outputSchema: {
-              type: "object", additionalProperties: false, required: ["outcome", "summary"], properties: {
-              outcome: { type: "string", enum: ["completed", "failed", "rejected"] }, summary: { type: "string" } } } }, Math.max(1, turnRemaining));
+            input: [{ type: "text", text: instruction, text_elements: [] }], outputSchema: nativeActivityAnswerSchema(output_contract, output_context_sha256, output_bindings) }, Math.max(1, turnRemaining));
           if (typeof result?.turn?.id !== "string") fail("PROCESS_SESSION_TURN_ID_MISSING");
           active.turnId = result.turn.id;
           for (const event of active.pending.splice(0)) await notification(event);
           await completion; await rpc.flush();
           if (active.answers.length !== 1 || active.usage === null) fail("PROCESS_SESSION_CAPTURE_INCOMPLETE");
           let answer; try { answer = JSON.parse(active.answers[0].text); } catch { fail("PROCESS_SESSION_ANSWER_INVALID"); }
-          if (!["completed", "failed", "rejected"].includes(answer?.outcome) || typeof answer.summary !== "string"
-            || Object.keys(answer).some(key => !["outcome", "summary"].includes(key))) fail("PROCESS_SESSION_ANSWER_INVALID");
+          assertNativeActivityAnswer(answer, output_contract, output_context_sha256, output_bindings);
           context.push(shadowHash(instruction));
           const ref = await evidence.retain("native-result", { thread_id: threadId, turn_id: active.turnId,
-            request_sha256, binding_sha256: binding, answer, native_usage: active.usage,
+            request_sha256, binding_sha256: binding, answer, ...(output_contract ? { output_contract, output_context_sha256 } : {}), native_usage: active.usage,
+            exchanges: { native_responses: active.responseIds.size, observed_tool_items: active.tools },
             usage_scope: "native thread counters; cumulative snapshots are not summed" });
           return { session_id: sessionId, binding_sha256: binding, outcome: answer.outcome, evidence_refs: [ref] };
         } finally { clearTimeout(timer); signal?.removeEventListener("abort", abort); active = null; }
@@ -178,6 +188,23 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
       async close() { closed = true; return rpc.close(); },
     });
   } });
+}
+
+// Observational evidence only. Never retain command text, tool arguments,
+// stdout, reasoning or arbitrary tool labels; none of these counters authorizes
+// a result or predicts a verdict. Unknown item kinds remain transport hashes.
+export function summarizeAgenticNativeToolItem(item) {
+  if (!["functionCallOutput", "commandExecution", "mcpToolCall", "dynamicToolCall"].includes(item?.type)) return null;
+  const label = item.name ?? item.tool;
+  const name = typeof label === "string" ? label.split(".").at(-1) : "";
+  const output = JSON.stringify(item.output ?? item.aggregatedOutput ?? item.result ?? item.contentItems ?? null);
+  return { item_type: item.type,
+    tool: ["exec", "wait", "exec_command", "write_stdin", "shell_command", "apply_patch", "Edit", "Write"].includes(name) ? name : "other",
+    item_sha256: shadowHash(item), output_sha256: shadowHash(output), output_bytes: Buffer.byteLength(output),
+    poll_marker_observed: /Script running with cell ID|Process running with session ID|"session_id"\s*:\s*\d+/.test(output),
+    status: ["completed", "failed", "declined", "inProgress"].includes(item.status) ? item.status : null,
+    exit_code: Number.isSafeInteger(item.exitCode) ? item.exitCode : null,
+    duration_ms: Number.isSafeInteger(item.durationMs) && item.durationMs >= 0 ? item.durationMs : null };
 }
 
 function toml(value) {

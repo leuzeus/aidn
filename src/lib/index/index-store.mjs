@@ -488,7 +488,7 @@ function writeSqliteIndex(outputPath, payload, schemaFile, protectWorkflowRecord
     db.exec("BEGIN TRANSACTION;");
     try {
       if (protectWorkflowRecords) assertWorkflowRecordProjection(
-        db.prepare("SELECT path, content_format, content FROM v_materializable_artifacts WHERE path LIKE 'workflows/instances/%' OR path LIKE 'workflows/definitions/%'").all(),
+        db.prepare("SELECT path, content_format, content FROM v_materializable_artifacts WHERE path LIKE 'workflows/instances/%' OR path LIKE 'workflows/definitions/%' OR path LIKE 'workflows/process-instances/%' OR path LIKE 'workflows/operation-records/%' OR path LIKE 'workflows/decision-inbox/%' OR path LIKE 'workflows/control-inbox/%' OR path LIKE 'workflows/native-allocations/%'").all(),
         payload.artifacts, { allowMissing: true });
       db.exec("DELETE FROM artifact_tags;");
       db.exec("DELETE FROM tags;");

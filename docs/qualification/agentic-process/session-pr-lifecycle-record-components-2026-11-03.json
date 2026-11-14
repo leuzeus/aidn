@@ -1,0 +1,90 @@
+{
+  "observed_at_utc": "2026-11-03T22:20:13.159741+00:00",
+  "source_commit": "bd652f6fc6c4d16f95093240ce3cef54a3a27342",
+  "model_revision": 43,
+  "model_sha256": "8633d7de96ca9173f2ef9bcffbc1bef474ed3d1c89158a5d1fd9c6b1821153d4",
+  "implementation_pin": "7f1c8adac9c3028b07944f7d2f9b45ae2c47e1346dfbc26c461d292b8e2cb71c",
+  "application_components": [
+    {
+      "mode": "files",
+      "ended_at_utc": "2026-11-03T22:17:36.4294252Z",
+      "exit_code": 0,
+      "summary": {
+        "status": "PASS",
+        "checks": 5,
+        "state_mode": "files",
+        "canonical_cas_projection_git": "ACTUAL",
+        "accepted_closure_pr_sources": "INJECTED_FIXTURE",
+        "full_standard_composition": "NOT_RUN",
+        "checkpoint_push_review": "NOT_RUN",
+        "real_github": "NOT_RUN",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "cleanup_completed": true,
+      "log_sha256": "0951379ec40b52e6fd2420ebedcf5f96e7bce91f86d30cf650ca54ad2114392e"
+    },
+    {
+      "mode": "dual",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-03T22:17:02.5507993Z",
+      "summary": {
+        "status": "PASS",
+        "checks": 4,
+        "state_mode": "dual",
+        "canonical_cas_projection_git": "ACTUAL",
+        "accepted_closure_pr_sources": "INJECTED_FIXTURE",
+        "full_standard_composition": "NOT_RUN",
+        "checkpoint_push_review": "NOT_RUN",
+        "real_github": "NOT_RUN",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "cleanup_completed": true,
+      "log_sha256": "a32844ad8bfbbd175599581d4501d683801b556cd400dda6aa5e0a7bbed84937"
+    },
+    {
+      "mode": "db-only",
+      "ended_at_utc": "2026-11-03T22:17:02.2897984Z",
+      "exit_code": 0,
+      "summary": {
+        "status": "PASS",
+        "checks": 4,
+        "state_mode": "db-only",
+        "canonical_cas_projection_git": "ACTUAL",
+        "accepted_closure_pr_sources": "INJECTED_FIXTURE",
+        "full_standard_composition": "NOT_RUN",
+        "checkpoint_push_review": "NOT_RUN",
+        "real_github": "NOT_RUN",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "cleanup_completed": true,
+      "log_sha256": "66a9b26057bd1b0940ac7328902ece64da57f861c906ae73e49613d808d89e75"
+    }
+  ],
+  "authority_component": {
+    "verdict": "PASS",
+    "summary": {
+      "status": "PASS",
+      "checks": 4,
+      "physical_files": "ACTUAL",
+      "accepted_operation_capability": "INJECTED_FIXTURE",
+      "provider_observation": "INJECTED_FIXTURE",
+      "canonical_writer": "NOT_RUN",
+      "full_standard_composition": "NOT_RUN"
+    },
+    "log_sha256": "9b1b9f8aeb9fc8699651176bd44b22c16242f8e20649eb8b8f4f5092564368d9",
+    "cleanup_completed": true
+  },
+  "proof_boundary": "actual canonical CAS/projection and isolated Git observation; closure/PR source injected in application components; accepted-record/provider capabilities injected in authority component; no full signed-chain model43 run yet",
+  "historical_delivery_evidence": "original preimage hashes remain unchanged; this writer emits successor content and metadata postimages and does not relax the old delivery reader",
+  "checkpoint_update_push_review": "NOT_YET_CONNECTED; no Git commit/ref/index or remote operation is performed by the writer; db-only preserves physical files",
+  "composed_model43": "NOT_RUN",
+  "agentic_aggregate_gate": "RUNNING on source93958bf/model41; cannot qualify the new PR/canonical writer code",
+  "full_runtime_family": "NOT_RUN",
+  "real_github": "NOT_RUN",
+  "native_real": "NOT_RUN",
+  "installed_archive": "NOT_RUN",
+  "full_standard_workflow": false
+}

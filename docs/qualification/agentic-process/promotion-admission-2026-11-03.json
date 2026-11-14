@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "evidence_kind": "canonical-baseline-promotion-admission",
+  "status": "PASS",
+  "date": "2026-11-03",
+  "source_base_commit": "9df62dbc6a8a377e205b5154ca7ebe725f6766ef",
+  "qualification_scope": "promotion admission prerequisite and preservation of canonical evidence on refusal; no baseline mutation binding",
+  "baseline_observation": {
+    "status": "FAIL",
+    "case": "canonical DONE cycle and traceability with stale visible C999/current/status/trace files",
+    "actual": "old admission reported missing target from visible data instead of the canonical C101 target",
+    "fixture_preparation_failure": "initial tracked corpus lacked traceability; an explicit canonical traceability fixture was added before observing the admission defect"
+  },
+  "checks": {
+    "historical_hook_and_codex_wrapper": 5,
+    "canonical_sqlite_and_pg_adapter": 17,
+    "published_component_models": 22,
+    "source_policies": 35,
+    "metadata_policies": 37,
+    "governed_concepts_complete": 38,
+    "gate_catalog": 63,
+    "pack_topology": "PASS fresh current-package clients and injected cleanup failure",
+    "documentation_links": 386,
+    "markdown_contract": "PASS"
+  },
+  "assertions": {
+    "single_snapshot_for_authoritative_focus_cycle_and_validation": true,
+    "stale_visible_projections_ignored_in_dual_db_only": true,
+    "configured_postgres_no_sqlite_or_markdown_fallback": true,
+    "unavailable_missing_ambiguous_foreign_authority_refused": true,
+    "trace_gap_and_usage_criteria_remain_required": true,
+    "non_retained_cycle_refused": true,
+    "explicit_internal_selection_keeps_current_focus_unchanged": true,
+    "invalid_or_missing_selection_never_infers_another_target": true,
+    "missing_sqlite_not_bootstrapped": true,
+    "actual_wrapper_refusal_preserves_sqlite_bytes": true,
+    "refused_hook_skips_post_hook_import": true,
+    "files_keep_visible_authority": true,
+    "real_activation_installed_for_historical_wrapper_cases": true,
+    "fixture_cleanup_on_failure": true,
+    "public_skill_alias_and_explicit_sync_preserve_refusal": true,
+    "read_only_sqlite_admission_preserves_database_bytes": true,
+    "configured_postgres_canonical_in_files_mode": true
+  },
+  "proof_boundaries": {
+    "actual": [
+      "canonical SQLite stores and projector",
+      "actual configured PostgreSQL adapter",
+      "actual hook and Codex JSON wrapper subprocesses",
+      "current source installation and activation on disposable corpora"
+    ],
+    "fixtures": [
+      "PostgreSQL transport",
+      "typed canonical fixture preconditions"
+    ],
+    "actual_promotion": "NOT_RUN",
+    "promotion_IR_binding": "NOT_IMPLEMENTED",
+    "full_standard_workflow": "NOT_YET_DELIVERED",
+    "native_provider": "NOT_RUN",
+    "exact_installed_archive": "NOT_RUN",
+    "full_pr_admission": "NOT_RUN"
+  },
+  "source_files": {
+    "src/application/runtime/promote-baseline-admit-use-case.mjs": "f4e9d0c00ed54063846d47a2fd0c1c84614aca094f3b0088c305a5cd58322736",
+    "src/application/runtime/promote-baseline-context-service.mjs": "ffda66f6d5ccaf0aca1c0b34400c3ad228af7c9a1969a757e68aafdd27b0178a",
+    "src/application/codex/run-json-hook-use-case.mjs": "405c379e8c005808e1698f7fd97ccc1a87fe927e7ae451ab55095f926ea23f1e",
+    "tools/perf/promote-baseline-hook.mjs": "e99d17703dc95da92d93884a561cdece47ac50106a208581e2d361adf41f1511",
+    "tools/perf/verify-promote-baseline-admission-fixtures.mjs": "68e91ab602a319859fccd1e6ffac54486d77faec59acf90dd71a82947aefe68b",
+    "tools/perf/verify-promote-baseline-canonical-fixtures.mjs": "4068b60142b72f45abd7fd0071987604950186190f3c4236d891eb1b21634b6b",
+    "package.json": "4e0c7a5eca689acf5250fbed1a424c4eada8cf27a7da22c1d4beb1e3ccfe4ca4",
+    "tools/verify/context-resilience-policy.mjs": "94d5f4e05e8fcf9e3a16d1d944c7bb248919ce8fb9b2f18271b62bcedf009370",
+    "tools/verify/verify-gate-catalog.mjs": "096bccc7f59004df8a471b1bfec8e71870d72c23c03abf86f0b0cbe326859059"
+  },
+  "remaining": [
+    "authenticated optional promotion decision with explicit target/version",
+    "baseline current/history/snapshot/index writes and postconditions",
+    "actual completed-cycle-close provenance",
+    "final promotion checkpoint and overall nested failure propagation",
+    "complete standard IR and ordinary entrypoints",
+    "native and installed archive qualification"
+  ],
+  "ci_coverage": {
+    "required_group": "perf:verify-context-completion",
+    "historical_43_invocations": "unchanged",
+    "explicit_completion_addition": "node tools/perf/verify-promote-baseline-admission-fixtures.mjs",
+    "native_or_archive_evidence": "NOT_RUN"
+  },
+  "dependency_prerequisite": "npm ci --ignore-scripts from tracked lockfile; yaml and pg available"
+}

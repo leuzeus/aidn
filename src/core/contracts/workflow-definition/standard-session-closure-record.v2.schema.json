@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-session-closure-record.v2",
+  "x-aidn-contract-version": "standard-session-closure-record.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "decision_operation_id",
+    "question_sha256",
+    "source_sha256",
+    "admission_operation_id",
+    "drift_evaluation_operation_id",
+    "drift_finalization_operation_id",
+    "session_close_completed",
+    "final_hook",
+    "report",
+    "subject_sha256",
+    "head",
+    "history"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-session-closure-record.v2"
+    },
+    "decision_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "question_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "admission_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "drift_evaluation_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "drift_finalization_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "session_close_completed": {
+      "const": false
+    },
+    "final_hook": {
+      "const": "pending"
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "summary",
+        "open_loops",
+        "blockers",
+        "next_entry_point"
+      ],
+      "properties": {
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "pattern": "^[^\\r\\n\\u0000-\\u001f]+$"
+        },
+        "open_loops": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^[^\\r\\n\\u0000-\\u001f]+$"
+          }
+        },
+        "blockers": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^[^\\r\\n\\u0000-\\u001f]+$"
+          }
+        },
+        "next_entry_point": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "pattern": "^[^\\r\\n\\u0000-\\u001f]+$"
+        }
+      }
+    },
+    "subject_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "head": {
+      "type": "string",
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    },
+    "history": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "before_triage_operation_id",
+          "record_sha256",
+          "completion_sha256"
+        ],
+        "properties": {
+          "before_triage_operation_id": {
+            "type": "string",
+            "pattern": "^op_[a-f0-9]{40}$"
+          },
+          "record_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "completion_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

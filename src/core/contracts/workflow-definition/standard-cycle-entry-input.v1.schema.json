@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-entry-input.v1",
+  "x-aidn-contract-version": "standard-cycle-entry-input.v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "session_id", "cycle_id"],
+  "properties": {
+    "contract_version": { "const": "standard-cycle-entry-input.v1" },
+    "session_id": { "type": "string", "pattern": "^S[0-9]{3,6}$" },
+    "cycle_id": { "type": ["string", "null"], "pattern": "^C[0-9]{3,6}$" }
+  }
+}

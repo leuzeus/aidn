@@ -327,7 +327,81 @@ finalization; `--verify` retains its read-only verification behavior.
 - `aidn runtime shared-coordination-projects --json`
 - `aidn runtime agent-run --configuration <file> --plan <file> --json`
 - `aidn runtime workflow-inspect --target <root> --json`
+- `aidn runtime workflow-run --target <root> --configuration <file> --json`
+  - Defaults to the structured agentic engine for every new workflow. Execution
+    requires `--execute --authorization <file> --expect-plan <sha256>`; JSON and
+    preview start no native client. `--engine legacy` explicitly selects the
+    sequential compatibility lifecycle and retains its plan/shared-sync admission.
+    An explicit `standard-workflow-execution.v1` configuration selects the
+    published STANDARD catalog/model and the common mixed host. Its `execution`
+    supplies project/native pins and roots; the host supplies the model, skills,
+    typed activity outputs and implementation pins. Save the returned `preview`
+    object and apply it with `--action-file <file> --execute --expect-plan <sha256>`.
+    Each invocation admits one exact action. A pinned call entry or return
+    previews as `standard-workflow-call-action.v1`. The saved action binds the
+    instance, model, authority context, occurrence, event and predicted hash.
+    Explicit application records one canonical call transition and reports
+    `standard-workflow-call-result.v1`. It uses no native authorization or
+    business operation. A missing durable key first offers
+    a separate `prepare_host` action; initialization follows with the real key
+    identity. `AIDN_STANDARD_HOST_HOME` is an existing external protected host
+    directory, never a request-selected authority. Decisions use
+    `--decision-source <ref>`. Control delivery uses `--control-source <ref>`.
+    At a published initial or corrective review wait, `aidn:external-merge`
+    selects a protected, read-only merge observation. Exact action-file
+    execution with the same selector reserves and delivers the external
+    observation. The incident disposition and R09 effects have separate
+    authorization. An open PR waits, and a closure without merge is reported
+    separately.
+    With no source selector, a recoverable R09 question previews a
+    `question_recovery` action. Apply the saved action with the same exact
+    `--action-file --execute --expect-plan` boundary. The action records the
+    disposition of the previous intent. The next preview either prepares a
+    new question or continues through the verified alignment and completion
+    operations.
+    For an interrupted corrective reopening with an original UNKNOWN receipt
+    and all three exact postimages,
+    STANDARD can preview an `operation_disposition` action. Applying its exact
+    action file records one confirmed receipt and preserves the original
+    UNKNOWN. The next preview is a separate `operation_disposition_accept`
+    action bound to that receipt and current journal. Apply that exact action
+    to advance the reducer to the corrective checkpoint. Each action needs
+    its own explicit execution and current protected authority.
+    `--replay` and `--simulate` observe retained model/events without writes or
+    Native allocation. The console run action forwards these same selectors.
+    Custom native-only v1/v2 graphs keep their owned runner; raw v2 control facts
+    remain refused. Historical instances are not converted. Source wiring is
+    partial. An optional protected host manifest binds GitHub push, PR opening,
+    review reads, inline replies and thread resolution as specified in ADR-0025. Exact initialization checks
+    the configured identity. For either PR review wait, a reviewer pinned in
+    the protected manifest enables `--control-source` with the opaque GitHub
+    review node ID. Delivery requires the authenticated review and signed
+    context. Replay and simulation perform no GitHub or credential I/O.
 - `aidn runtime workflow-action --target <root> --request <file> --json`
+  - A STANDARD run preview returns `action.request` with its closed
+    `input.preparedAction`. Save this returned request and resubmit it with
+    `--execute --expect-plan <outer action_sha256>`. The browser retains the same
+    request under its explicit approval. The original operation or call plan is preserved;
+    current authority, freshness and CAS are still checked. A retained R08
+    reply, resolution or merge dispatch uses the same explicit action to record the
+    postimage through read-only provider recovery. An absent postimage keeps
+    the occurrence waiting.
+    For an R08 resolution exception, `--decision-source` selects an authenticated
+    human source for the exact question and documented rationale. Applying the
+    reviewed action records a typed no-effect receipt. The receipt covers only
+    the unresolved thread gate and leaves checks and merge consent separate.
+    A protected GitHub manifest can pin required checks to its target ref.
+    STANDARD records a read-only check receipt on the exact HEAD. A separate
+    `--decision-source` selects a signed merge decision for the current
+    question. Approval is time-limited. A protected host that opts in with
+    `merge_method: "MERGE"` can prepare the separate exact merge action.
+    Applying that action requires its reviewed digest and host grant. A
+    confirmed or exactly recovered merge enables a distinct authorized R09
+    fetch on the local source branch. The next read-only observation
+    measures current divergence. Divergence stays pending. An aligned
+    observation leaves the workflow waiting for final local reconciliation.
+    A prepared action and
+    `actionFile` cannot be combined. JSON alone grants no effect.
 - `aidn runtime workflow-dashboard --target <root> --json`
 - `aidn runtime agent-run-status --configuration <file> --run <id> --json`
 - `aidn runtime agent-run-resume --configuration <file> --run <id> --json`
@@ -590,6 +664,15 @@ The wrapper skips post-hook DB synchronization on closure warning/refusal with
 reason `cycle_close_not_completed`; it must not replace the canonical evidence
 that prevented completion with local projections.
 
+The `promote-baseline` admission reads focus, cycle identity, status, usage matrix,
+traceability and gaps from one canonical snapshot in dual/db-only or configured
+PostgreSQL mode. Missing, ambiguous or inconsistent canonical data returns
+`PROMOTE_BASELINE_CANONICAL_RUNTIME_INVALID`; a local projection cannot supply
+missing evidence. A refused promotion skips post-hook DB synchronization with
+reason `baseline_promotion_not_completed`, including an explicitly requested
+sync and the public skill-name alias. An explicit false hook verdict also
+prevents import when an older nested payload still carries an admission result. Admission alone neither updates baseline artifacts nor proves promotion.
+
 The final `close-session` hook reads current state, session close decisions and
 cycle ownership from one canonical snapshot in db-backed or configured
 PostgreSQL mode. Stale bootstrap projections cannot satisfy admission. On the
@@ -708,6 +791,9 @@ These are currently implemented as package scripts, tools, or internal wrappers,
     observations from one selected nested gate, including checkpoint and workflow
     wrappers. Missing repair evidence remains unknown: a null diagnostic is not
     evidence that the repair layer is clean.
+  - the requirements-delta hook awaits canonical continuity for active anchors,
+    ownership and CR impact. Unavailable or ambiguous DB-backed continuity stops
+    admission; visible projections cannot supply a fallback approval.
 - `aidn runtime local-daemon` (public, experimental)
   - experimental opt-in local daemon prototype
   - `--start`, `--status`, and `--stop` use a worktree-local endpoint file under `.aidn/runtime/daemon/`
@@ -746,6 +832,13 @@ gate invocations do not record drift completion; `--no-emit-event` remains
 observational. This stays within the internal perf surface and does not change
 stable public JSON contracts or grant write admission.
 
+Internal `gating-evaluate` and `branch-cycle-audit-hook` have no default elapsed
+R05 threshold. Their optional `--threshold-minutes <integer>` selects an explicit
+safe nonnegative caller policy; missing proof and material drift remain signals.
+STANDARD checkpoints, closure and promotion do not supply an implicit45-minute
+policy. Accepted objective evidence still requires its current authenticated
+subject, exact physical witnesses and independent effect authorization.
+
 `bootstrap --authorize|--revoke` uses `codex-integration` scope and previews by default; application requires `--write --expect-plan PLAN_ID`. A revoked project stays revoked through repair, resume and rollback. Diagnostic and pre-write admission outputs include compact activation state before backend access. Native Codex trust is separate.
 
 Nominal bootstrap or upgrade accepts `--expect-plan PLAN_ID` from its matching preview. `--persistence-policy verify-only` checks existing backend compatibility without requesting migration, adoption or import; `adopt` retains declared installation effects. `--verify` remains the read-only verification option.
@@ -772,3 +865,17 @@ preparation, then the existing bootstrap preview/apply/diagnose and persistence
 status commands. It has human-readable output, no public JSON contract.
 `-PersistUserConnection` is an explicit optional Windows user-environment write;
 native Codex trust is never changed. See [the setup guide](WINDOWS_PROJECT_SETUP.md).
+
+For `runtime pre-write-admit --skill promote-baseline`, the selected DONE cycle
+is checked by that canonical admission and exposed as the
+`checks.baseline_promotion_target` diagnostic. The cycle need not remain active,
+and promotion does not re-enter implementation DoR. Runtime freshness, repair,
+activation and source-of-truth gates remain. Missing or ambiguous targets still
+block; the internal host selection argument adds no CLI flag and changes no
+focus. The public output keeps its extensible v1 contract and read-only effect.
+
+For `runtime pre-write-admit --skill cycle-create` on the configured source
+branch, a STANDARD PR opening record requires the origin instance's accepted
+R09 completion. The check verifies the source HEAD against the protected
+remote and can use that measurement when the origin tracking ref is stale.
+It uses the existing upstream diagnostic and performs no fetch or ref update.

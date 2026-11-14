@@ -1,0 +1,72 @@
+{
+  "contract_version": "qualification-record.v1",
+  "recorded_at": "2026-11-03T19:12:21.307Z",
+  "source_snapshot": "0c800019c9b90d561d29993e925b13d2a9240b91",
+  "base_commit": "ea863f4b32ef8eab0b4f9dcf0a3ad64dda3ef093",
+  "tested_source_files": [
+    {
+      "path": "src/adapters/runtime/local-workflow-branch-integration.mjs",
+      "sha256": "285d8aedb8f9c51d6e33a3c46f5e3d087d81e8a2bcaf5c29d75feb036b921167"
+    },
+    {
+      "path": "src/core/ports/workflow-branch-integration-port.mjs",
+      "sha256": "95fe119862fd944d0abef3b981d9dc554270d238c44a4f5be09bc4e7381b337e"
+    },
+    {
+      "path": "tools/perf/verify-workflow-branch-integration-port-fixtures.mjs",
+      "sha256": "9141decb8314e3a059a73043bb9de097adf90f224ed674623cd675458e761936"
+    }
+  ],
+  "command": "node tools/perf/verify-workflow-branch-integration-port-fixtures.mjs",
+  "proof_class": "offline-real-Git-port-only",
+  "result": "PASS",
+  "checks": 15,
+  "exit_code": 0,
+  "cleanup": "completed",
+  "log_sha256": "df61e041c46f1b3693630af4a248916830375bc8875023c759e6880ccde7c114",
+  "gate_catalog": "PASS",
+  "doc_references": "PASS",
+  "standard_model_binding": false,
+  "canonical_lifecycle_or_human_authority": "NOT_RUN",
+  "native": "NOT_RUN",
+  "installed_archive": "NOT_RUN",
+  "workflow_complete": false,
+  "limitations": [
+    "The port is not dispatched by the standard model or operation host.",
+    "A state match or cold Git observation grants neither authorization nor process success.",
+    "External Git/filesystem actors are not governed by a universal transaction.",
+    "Source adapter, port assertion and verifier bytes are those directly tested. Manifest wrappers and documentation were aligned afterward; they do not change the tested port bytes."
+  ],
+  "inherited_composed_attempt": {
+    "source_snapshot": "0e469fd21acc9ab8a4444adb7720a766d3036d57",
+    "model_revision": 24,
+    "result": "FAIL",
+    "exit_code": 1,
+    "log_sha256": "57ffc8dc6172b55cf2f7a49e9543f537d417ead737709c763d97465849d78cb6",
+    "last_passed": "session_close_admit and session closure drift evaluation",
+    "failed_operation": "drift_check_finalize",
+    "reason_code": "STANDARD_DRIFT_GATE_BLOCKED",
+    "signal": "scope_growth",
+    "changed_files_count": 5,
+    "r07_human_review": "NOT_RUN",
+    "classification": "product_failure",
+    "classification_scope": "executed old-snapshot standard composition only",
+    "current_model29_verdict": "IN_PROGRESS; no inherited verdict",
+    "retained": true,
+    "retry_hook": false
+  },
+  "targeted_governance_observation": {
+    "authorities": [
+      "src/core/gating/gating-policy.mjs",
+      "src/core/gating/gating-signal-policy.mjs",
+      "src/application/runtime/gating-evaluate-use-case.mjs",
+      "src/application/runtime/standard-drift-finalization.mjs",
+      "scaffold/codex/aidn-drift-check/SKILL.md"
+    ],
+    "finding": "Current drift completion discharges age only; other L2 signals remain. The final promotion CAS leaves five tracked governance postimages. No threshold or signal policy was changed.",
+    "correction_status": "NOT_IMPLEMENTED",
+    "next_discriminating_change": "Checkpoint only authenticated final business postimages with fresh grant before the session R05.",
+    "attempt_outcome_integrity": "partially_conformant",
+    "integrity_limit": "Exit code and failed operation are preserved; no canonical GFD attempt validator was executed for these local qualification records."
+  }
+}

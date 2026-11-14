@@ -1,0 +1,150 @@
+{
+  "contract_version": "qualification-standard-startup-r05.v1",
+  "date": "2026-11-03",
+  "status": "PASS_BOUNDED_STARTUP_R05_PREFIX_WITH_GIT_GAP",
+  "base_commit": "61f0a6e65b001c3c8cf7e26397fb0dbee6784fd2",
+  "model_revision": 7,
+  "model_sha256": "795b2b1ea9f81c133fda349b4c9897cdedd2a161be2535ad0d40e2921f10a233",
+  "catalog_sha256": "05596d48313310e25e7d1760d093ca935eb23afe76657ace8857ffcbb0d2d8f9",
+  "composition": {
+    "nodes": 68,
+    "operation_occurrences": 39,
+    "native_activity_declarations": 7,
+    "complete_standard_workflow": false
+  },
+  "attempts": [
+    {
+      "snapshot": "07c9abcc419ba19b3bed3e86c4ab13cd0e61d470",
+      "retained_ref": "refs/aidn/qualification/standard-committing-probe1-20261103",
+      "execution": "FAIL",
+      "scope": "initial-composed-prefix",
+      "classification": "composition-order-gap",
+      "native_wire": "NOT_RUN",
+      "observed_binding": "session_start_finalize",
+      "observed_outcome": "reconciliation_required",
+      "facts": {},
+      "underlying_hook": "ok",
+      "gate_result": "warn",
+      "gate_reason": "L2_SIGNAL_TRIGGERED",
+      "required_gate": "R05",
+      "guard_relaxed": false
+    },
+    {
+      "snapshot": "a3513237dd4baeaaf7a82d0a703bfa71417a7d55",
+      "retained_ref": "refs/aidn/qualification/standard-committing-probe2-20261103",
+      "execution": "FAIL",
+      "scope": "cycle-before-start-finalizer-probe",
+      "classification": "missing-governed-git-checkpoint",
+      "native_wire": "NOT_RUN",
+      "observed_binding": "cycle_admit",
+      "observed_outcome": "blocked",
+      "facts": {},
+      "blocking_check": "git_cycle_create_clean",
+      "lifecycle_action": "proceed_r2_session_base_with_import",
+      "guard_relaxed": false
+    },
+    {
+      "snapshot": "d9945be5e137542d2ad1ba81908e173b74e76cfc",
+      "retained_ref": "refs/aidn/qualification/standard-startup-r05-prefix-20261103",
+      "execution": "PASS",
+      "scope": "startup-R05-until-cycle-admission-entry",
+      "command": "node tools/perf/verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=cycle_admit --retain-on-failure",
+      "proof_class": "offline-production-composition-with-fake-native-wire",
+      "native_activities_executed": 1,
+      "model_calls": 0,
+      "native_allocation_journal": "closed",
+      "r05_context_complete": true,
+      "r05_other_changes": 0,
+      "r05_finalization": "confirmed",
+      "session_start_finalization": "confirmed",
+      "host_reopen_after_native": "same-process-new-host",
+      "native_reexecution": false,
+      "replay_simulation": "same-model-same-reducer-exact-instance-hash",
+      "terminal_ready_node": "cycle_admit",
+      "terminal_workflow_status": "RUNNING",
+      "package_manifest_note": "The later required-gate command changes the native implementation pin; a current-manifest repetition is pending."
+    },
+    {
+      "snapshot": "58c88fe0b2fa8e82561fd70517ebedd5b51b896d",
+      "retained_ref": "refs/aidn/qualification/standard-startup-r05-current-20261103",
+      "execution": "PASS",
+      "scope": "current-manifest-startup-R05-until-cycle-admission-entry",
+      "command": "node tools/perf/verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=cycle_admit --retain-on-failure",
+      "proof_class": "offline-production-composition-with-fake-native-wire",
+      "native_activities_executed": 1,
+      "model_calls": 0,
+      "application_operation_occurrences": 9,
+      "human_source": "fixture-source-adapter",
+      "r05_context_complete": true,
+      "r05_other_changes": 0,
+      "r05_finalization": "confirmed",
+      "session_start_finalization": "confirmed",
+      "host_reopen_after_native": "same-process-new-host",
+      "native_reexecution": false,
+      "replay_simulation": "same-model-same-reducer-exact-instance-hash",
+      "terminal_ready_node": "cycle_admit",
+      "terminal_workflow_status": "RUNNING",
+      "owned_fixture_cleanup": "PASS"
+    }
+  ],
+  "structural_checks": {
+    "command": "node tools/perf/verify-standard-workflow-composition-fixtures.mjs",
+    "status": "PASS",
+    "checks": 14
+  },
+  "source_state_modes": {
+    "files": "PASS_CURRENT_MANIFEST_BOUNDED_PREFIX",
+    "dual": "NOT_RUN_FOR_THIS_PREFIX",
+    "db-only": "NOT_RUN_FOR_THIS_PREFIX"
+  },
+  "full_committing_cycle": "NOT_RUN",
+  "governed_git_checkpoint": "MISSING_DELIVERABLE",
+  "ordinary_entrypoints": "NOT_INTEGRATED",
+  "general_native_resume": "NOT_QUALIFIED",
+  "native_client": "NOT_RUN",
+  "installed_archive": "NOT_RUN",
+  "aggregate_agentic_gate": "NOT_RUN",
+  "merge_readiness": "NOT_CLAIMED",
+  "full_standard_workflow": "NOT_COMPLETE",
+  "source_snapshot": "58c88fe0b2fa8e82561fd70517ebedd5b51b896d",
+  "retained_snapshot_ref": "refs/aidn/qualification/standard-startup-r05-current-20261103",
+  "current_manifest_gate_registration": "required bounded prefix command retained in strict aggregate command policy",
+  "additional_gates": [
+    {
+      "command": "node tools/perf/verify-standard-workflow-model-fixtures.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node tools/perf/verify-process-operation-fixtures.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node tools/verify/verify-gate-catalog.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node tools/perf/verify-source-of-truth-policy.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node tools/perf/verify-metadata-policy.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node tools/perf/verify-governance-completeness.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node tools/verify/verify-doc-references.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node tools/perf/verify-markdown-contract-conformance-fixtures.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node tools/perf/verify-pack-topology-fixtures.mjs",
+      "status": "PASS"
+    }
+  ]
+}

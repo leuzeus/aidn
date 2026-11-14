@@ -2,9 +2,14 @@ import { checkShadowJson, freezeShadow, shadowHash } from "./shadow-json.mjs";
 import { canAgentRolePerform, normalizeAgentRole, normalizeAgentAction } from "../agents/agent-role-model.mjs";
 import { isKnownAgentMode } from "../agents/agent-transition-policy.mjs";
 import schema from "../contracts/workflow-definition/agentic-process-model.v1.schema.json" with { type: "json" };
+import schemaV2 from "../contracts/workflow-definition/agentic-process-model.v2.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
+import { DEFAULT_BPMN_EXECUTION_PROFILE, BPMN_EXECUTION_PROFILES } from "./bpmn-profile.mjs";
+import { assertProcessDataBindings } from "./process-data-contracts.mjs";
+import { processModels, resolveProcessCallTarget } from "./process-call-model.mjs";
 
 export const AGENTIC_PROCESS_PROFILE = "structured-agentic-process.v1";
+export const AGENTIC_PROCESS_OPERATION_PROFILE = "structured-agentic-process.v2";
 export const processFail = code => { throw Object.assign(new Error(code), { code }); };
 const fail = processFail;
 export const processId = value => typeof value === "string" && /^[a-z][a-z0-9_-]{0,63}$/.test(value);
@@ -16,23 +21,29 @@ export const exactKeys = (value, required, optional = []) => value && typeof val
 const implemented = ["activity", "sequence", "xor", "and", "or", "event", "loop", "multi_instance", "call"];
 const descriptive = ["complex", "mixed", "event_start_exclusive", "event_start_parallel", "message_review"];
 export const agenticProcessCapabilities = () => freezeShadow({ profile: AGENTIC_PROCESS_PROFILE,
-  formats: ["agentic-process-model.v1"], bpmn_xml_import: false,
+  profiles: [AGENTIC_PROCESS_PROFILE, AGENTIC_PROCESS_OPERATION_PROFILE],
+  formats: ["agentic-process-model.v1", "agentic-process-model.v2"], bpmn_xml_import: true, bpmn_xml_profile: DEFAULT_BPMN_EXECUTION_PROFILE,
+  bpmn_xml_profiles: [...BPMN_EXECUTION_PROFILES],
   constructs: [...implemented, ...descriptive].map(kind => ({ kind, representable: true, validatable: true,
     executable: implemented.includes(kind), tested: implemented.includes(kind),
-    verification: implemented.includes(kind) ? "offline_runtime_fixtures" : "explicit_execution_refusal" })),
+    verification: implemented.includes(kind) ? "offline_runtime_fixtures" : "explicit_execution_refusal" })).concat([
+    { kind: "operation", profile: AGENTIC_PROCESS_OPERATION_PROFILE, representable: true, validatable: true, executable: true, tested: true, verification: "offline_contract_service_fixtures" },
+  ]),
+  operations: { contract: "agentic-process-model.v2", reducer: true, trusted_authority_required: true, native_only_host_support: false },
   limits: { structured_single_entry: true, cross_pool_sequence: false, arbitrary_graphs: false,
     physical_parallelism_required: false, native_execution_qualified: false } });
 
-export function assertAgenticProcessModel(model, { executable = true, policyPins = null } = {}) {
-  if (checkShadowJson(model) || validateJsonSchema(model, schema, "$", { contractKind: "workflow-definition" }).length || !exactKeys(model, ["contract_version", "model_id", "revision", "participants", "roles", "policies", "nodes", "entry"])
-    || model.contract_version !== "agentic-process-model.v1" || !processId(model.model_id)
+function assertLocalModel(model, { executable = true, policyPins = null } = {}) {
+  const v2 = model?.contract_version === "agentic-process-model.v2";
+  if (checkShadowJson(model) || validateJsonSchema(model, v2 ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length || !exactKeys(model, ["contract_version", "model_id", "revision", "participants", "roles", "policies", "nodes", "entry", ...(v2 ? ["operation_pins"] : [])], v2 ? ["data_bindings", "call_targets", "call_interface"] : [])
+    || !["agentic-process-model.v1", "agentic-process-model.v2"].includes(model.contract_version) || !processId(model.model_id)
     || !Number.isSafeInteger(model.revision) || model.revision < 1) fail("PROCESS_MODEL_INVALID");
-  const table = (rows, max) => {
-    if (!Array.isArray(rows) || !rows.length || rows.length > max || rows.some(row => !processId(row?.id))
+  const table = (rows, max, allowEmpty = false) => {
+    if (!Array.isArray(rows) || !allowEmpty && !rows.length || rows.length > max || rows.some(row => !processId(row?.id))
       || new Set(rows.map(row => row.id)).size !== rows.length) fail("PROCESS_IDS_INVALID");
     return new Map(rows.map(row => [row.id, row]));
   };
-  const participants = table(model.participants, 32), roles = table(model.roles, 32), policies = table(model.policies, 32), nodes = table(model.nodes, 128);
+  const participants = table(model.participants, 32), roles = table(model.roles, 32, v2), policies = table(model.policies, 32, v2), nodes = table(model.nodes, v2 ? 256 : 128);
   for (const participant of participants.values()) if (!exactKeys(participant, ["id"])) fail("PROCESS_PARTICIPANT_INVALID");
   for (const role of roles.values()) if (!exactKeys(role, ["id", "role", "action", "skills"])
     || normalizeAgentRole(role.role) !== role.role || normalizeAgentAction(role.action) !== role.action
@@ -49,22 +60,27 @@ export function assertAgenticProcessModel(model, { executable = true, policyPins
     || [...policies].some(([id, policy]) => policyPins[id] !== shadowHash(policy)))) fail("PROCESS_REQUIRED_POLICY_CHANGED");
   const references = new Map();
   for (const node of nodes.values()) {
-    if (!participants.has(node.participant_ref) || ![...implemented, ...descriptive].includes(node.kind)) fail("PROCESS_NODE_INVALID");
+    if (!participants.has(node.participant_ref) || ![...implemented, ...descriptive, ...(v2 ? ["operation"] : [])].includes(node.kind)) fail("PROCESS_NODE_INVALID");
     const base = ["id", "kind", "participant_ref"];
     let children = [];
     if (descriptive.includes(node.kind)) {
       if (!exactKeys(node, [...base, "specification"]) || !node.specification || typeof node.specification !== "object") fail("PROCESS_DESCRIPTION_INVALID");
       if (executable) fail("PROCESS_CONSTRUCT_UNSUPPORTED");
+    } else if (node.kind === "operation") {
+      if (!exactKeys(node, [...base, "binding_ref"]) || !processId(node.binding_ref)) fail("PROCESS_OPERATION_NODE_INVALID");
     } else if (node.kind === "activity") {
       if (!exactKeys(node, [...base, "role_ref", "policy_ref"]) || !roles.has(node.role_ref) || !policies.has(node.policy_ref)) fail("PROCESS_ACTIVITY_INVALID");
       const role = roles.get(node.role_ref), policy = policies.get(node.policy_ref);
       if (policy.independent_review && (role.role !== "auditor" || role.action !== "audit")) fail("PROCESS_REVIEW_ROLE_INVALID");
+    } else if (v2 && node.kind === "call" && Object.hasOwn(node, "target")) {
+      if (!exactKeys(node, [...base, "target"]) || !exactKeys(node.target, ["model_id", "revision", "model_sha256"])) fail("PROCESS_CALL_REFERENCE_INVALID");
+      if (model.data_bindings?.contract_version !== "process-data-bindings.v4") fail("PROCESS_CALL_BINDINGS_REQUIRED");
     } else if (["sequence", "call", "loop", "multi_instance"].includes(node.kind)) {
       const extras = node.kind === "sequence" ? ["children"] : node.kind === "loop" ? ["child", "until", "max_iterations"]
         : node.kind === "multi_instance" ? ["child", "items", "ordering"] : ["child"];
       if (!exactKeys(node, [...base, ...extras])) fail("PROCESS_STRUCTURE_INVALID");
       children = node.kind === "sequence" ? node.children : [node.child];
-      if (!Array.isArray(children) || !children.length || children.length > 32 || !children.every(processId) || new Set(children).size !== children.length) fail("PROCESS_STRUCTURE_INVALID");
+      if (!Array.isArray(children) || !children.length && !(v2 && node.kind === "sequence") || children.length > 32 || !children.every(processId) || new Set(children).size !== children.length) fail("PROCESS_STRUCTURE_INVALID");
       if (node.kind === "loop" && (!processId(node.until) || !Number.isSafeInteger(node.max_iterations) || node.max_iterations < 1 || node.max_iterations > 32)) fail("PROCESS_LOOP_INVALID");
       if (node.kind === "multi_instance" && (!Array.isArray(node.items) || node.items.length > 32 || !node.items.every(processId)
         || new Set(node.items).size !== node.items.length || !["sequential", "parallel"].includes(node.ordering))) fail("PROCESS_COLLECTION_INVALID");
@@ -87,6 +103,10 @@ export function assertAgenticProcessModel(model, { executable = true, policyPins
       references.set(child, (references.get(child) ?? 0) + 1);
     }
   }
+  if (v2) {
+    const bindings = [...new Set(model.nodes.filter(node => node.kind === "operation").map(node => node.binding_ref))];
+    if (!exactKeys(model.operation_pins, bindings) || Object.entries(model.operation_pins).some(([id, sha]) => !processId(id) || !/^[a-f0-9]{64}$/.test(sha))) fail("PROCESS_OPERATION_PINS_INVALID");
+  }
   // A tree gives every split a bounded, unambiguous join. Unsupported arbitrary
   // graphs must not be silently interpreted as structured OR or as AND.
   if (!nodes.has(model.entry) || references.has(model.entry)
@@ -107,6 +127,71 @@ export function assertAgenticProcessModel(model, { executable = true, policyPins
   }
   visit(model.entry, 0);
   if (visited.size !== nodes.size) fail("PROCESS_NOT_STRUCTURED");
+  if (model.data_bindings !== undefined) assertProcessDataBindings(model.data_bindings, model.nodes);
+  return model;
+}
+
+export function assertAgenticProcessModel(model, options = {}) {
+  assertLocalModel(model, options);
+  const models = processModels(model), identities = new Set([`${model.model_id}:${model.revision}`]);
+  for (const row of model.call_targets ?? []) {
+    if (row.model?.contract_version !== "agentic-process-model.v2" || row.model.call_targets !== undefined
+      || row.model_id !== row.model.model_id || row.revision !== row.model.revision || row.model_sha256 !== shadowHash(row.model)) fail("PROCESS_CALL_TARGET_CHANGED");
+    const identity = `${row.model_id}:${row.revision}`;
+    if (identities.has(identity)) fail("PROCESS_CALL_TARGET_CONFLICT");
+    identities.add(identity);
+    assertLocalModel(row.model, { executable: options.executable });
+    if (!row.model.call_interface) fail("PROCESS_CALL_INTERFACE_REQUIRED");
+  }
+  for (const current of models) if (current.call_interface) {
+    const spec = current.call_interface;
+    const safeKey = key => /^[a-z][a-z0-9_]{0,63}$/.test(key) && !["__proto__", "prototype", "constructor"].includes(key);
+    if (!current.data_bindings || shadowHash(Object.keys(spec.parameters).sort()) !== shadowHash([...current.data_bindings.parameter_keys].sort())
+      || [...Object.keys(spec.parameters), ...Object.keys(spec.returns)].some(key => !safeKey(key))) fail("PROCESS_CALL_INTERFACE_INVALID");
+    for (const output of Object.values(spec.returns)) {
+      if (current.nodes.find(node => node.id === output.node_id)?.kind !== "operation"
+        || output.path.some(part => !/^(?:[A-Za-z][A-Za-z0-9_-]{0,63}|0|[1-9][0-9]{0,3})$/.test(part) || ["__proto__", "prototype", "constructor"].includes(part))) fail("PROCESS_CALL_RETURN_INVALID");
+    }
+  }
+  const byIdentity = new Map(models.map(current => [`${current.model_id}:${current.revision}`, current]));
+  const checked = new Set();
+  function dependencies(current, stack) {
+    const identity = `${current.model_id}:${current.revision}`;
+    if (stack.includes(identity)) fail("PROCESS_CALL_RECURSION");
+    if (checked.has(identity)) return;
+    for (const node of current.nodes) if (node.target) {
+      const target = byIdentity.get(`${node.target.model_id}:${node.target.revision}`);
+      if (!target) fail("PROCESS_CALL_TARGET_MISSING");
+      dependencies(target, [...stack, identity]);
+    }
+    checked.add(identity);
+  }
+  dependencies(model, []);
+  // Keep each local graph a tree. Only explicit pinned edges cross models;
+  // validate the expanded ancestry, depth and IDs without overwriting parents.
+  const reached = new Set(); let expanded = 0;
+  function visit(current, id, depth, occurrence, stack) {
+    if (++expanded > 1024) fail("PROCESS_OCCURRENCE_LIMIT");
+    // Each local tree remains limited to depth 16. A pinned call adds the
+    // component's ancestry while preserving the global occurrence/path bounds.
+    if (depth > 20) fail("PROCESS_NOT_STRUCTURED");
+    if (options.executable !== false && occurrence.length > 256) fail("PROCESS_OCCURRENCE_ID_LIMIT");
+    const node = current.nodes.find(row => row.id === id);
+    if (node.target) {
+      const identity = `${node.target.model_id}:${node.target.revision}`;
+      if (stack.includes(identity)) fail("PROCESS_CALL_RECURSION");
+      const target = resolveProcessCallTarget(model, node.target);
+      if (target.participants.length !== 1 || target.participants[0].id !== node.participant_ref) fail("PROCESS_CROSS_PARTICIPANT_SEQUENCE");
+      const fields = current.data_bindings.inputs.find(row => row.node_id === id)?.fields;
+      if (!fields || shadowHash(Object.keys(fields).sort()) !== shadowHash(Object.keys(target.call_interface.parameters).sort())) fail("PROCESS_CALL_PARAMETERS_INVALID");
+      reached.add(identity);
+      visit(target, target.entry, depth + 1, `${occurrence}/call`, [...stack, identity]);
+    } else if (node.kind === "sequence") node.children.forEach((child, index) => visit(current, child, depth + 1, `${occurrence}/${index}`, stack));
+    else if (node.child) visit(current, node.child, depth + 1, `${occurrence}/${node.kind === "loop" ? `iteration-${node.max_iterations}` : node.kind === "multi_instance" ? `item-${Math.max(0, node.items.length - 1)}` : "call"}`, stack);
+    else for (const branch of node.branches ?? []) visit(current, branch.node_id, depth + 1, `${occurrence}/${branch.flow_id}`, stack);
+  }
+  if (models.some(current => current.nodes.some(node => node.target))) visit(model, model.entry, 0, "root", [`${model.model_id}:${model.revision}`]);
+  if (reached.size !== (model.call_targets?.length ?? 0)) fail("PROCESS_CALL_TARGET_UNREACHABLE");
   return model;
 }
 

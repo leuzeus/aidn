@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-triage-report.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "context_sha256",
+    "items"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-pr-triage-report.v1"
+    },
+    "context_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "node_id",
+          "thread_id",
+          "body_sha256",
+          "disposition",
+          "rationale",
+          "proposed_response",
+          "correction",
+          "evidence_refs"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "review",
+              "comment",
+              "thread"
+            ]
+          },
+          "node_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "thread_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "body_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "disposition": {
+            "enum": [
+              "valid",
+              "invalid",
+              "not_a_finding",
+              "uncertain"
+            ]
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8192
+          },
+          "proposed_response": {
+            "type": "string",
+            "maxLength": 8192
+          },
+          "correction": {
+            "type": "string",
+            "maxLength": 8192
+          },
+          "evidence_refs": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "ref",
+                "sha256"
+              ],
+              "properties": {
+                "ref": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

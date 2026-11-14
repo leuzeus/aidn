@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#", "$id": "aidn://contracts/workflow-definition/process-resolved-input.v1",
+  "x-aidn-contract-version": "process-resolved-input.v1", "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "instance_sha256", "occurrence_id", "bindings_sha256", "input", "sources"], "properties": {
+    "contract_version": { "const": "process-resolved-input.v1" },
+    "instance_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "occurrence_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "bindings_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "input": { "type": "object", "maxProperties": 32 },
+    "sources": { "type": "array", "maxItems": 32, "items": { "type": "object", "additionalProperties": false,
+      "required": ["field", "source", "occurrence_id", "operation_id", "sha256"], "properties": {
+        "field": { "type": "string" }, "source": { "enum": ["literal", "parameter", "occurrence_id", "operation_id", "operation_input", "operation_output", "item"] },
+        "occurrence_id": { "type": ["string", "null"], "maxLength": 256 }, "operation_id": { "type": ["string", "null"], "maxLength": 64 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      } } }
+  }
+}

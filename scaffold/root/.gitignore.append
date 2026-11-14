@@ -9,3 +9,32 @@
 .aidn/runtime/context/
 .aidn/runtime/perf/current-run-id.txt
 .aidn/runtime/perf/workflow-events.ndjson
+
+# Derived constraint telemetry required by session close in DB-backed modes
+.aidn/runtime/perf/constraint-report.json
+.aidn/runtime/perf/constraint-thresholds.json
+.aidn/runtime/perf/constraint-actions.json
+.aidn/runtime/perf/constraint-history.ndjson
+.aidn/runtime/perf/constraint-trend.json
+.aidn/runtime/perf/constraint-trend-thresholds.json
+.aidn/runtime/perf/constraint-trend-summary.md
+.aidn/runtime/perf/constraint-lot-plan.json
+.aidn/runtime/perf/constraint-lot-advance.json
+.aidn/runtime/perf/constraint-lot-plan-summary.md
+.aidn/runtime/perf/constraint-summary.md
+
+# Local canonical database and authenticated process control records.
+# These retain their on-disk authority; business artifacts remain reviewable.
+.aidn/runtime/index/
+.aidn/runtime/standard-workflow/
+docs/audit/workflows/process-instances/
+docs/audit/workflows/operation-records/
+/docs/audit/workflows/dispatch-records/
+/docs/audit/workflows/operation-control-intents/
+/docs/audit/workflows/operation-dispositions/
+/docs/audit/workflows/resource-fences/local-artifacts.json
+docs/audit/workflows/decision-inbox/
+docs/audit/workflows/control-inbox/
+
+docs/audit/workflows/native-allocations/
+docs/audit/workflows/drift-reports/

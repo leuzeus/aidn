@@ -173,6 +173,9 @@ function inspectPackageDocsAllowlist(files) {
     "docs/CODEX_INTEGRATION.md",
     "docs/AGENT_WORKING_MEMORY.md",
     "docs/AGENTIC_PROCESS.md",
+    "docs/architecture/STANDARD_WORKFLOW_IR_TRACEABILITY.md",
+    "docs/BPMN_EXECUTION_PROFILE.md",
+    "docs/BPMN_EXECUTION_PROFILE_V2.md",
     "docs/CODEX_NATIVE_QUALIFICATION.md",
     "docs/CODEX_CLIENT_MIGRATION.md",
     "docs/WINDOWS_PROJECT_SETUP.md",
@@ -350,6 +353,12 @@ function main() {
     const extendedVerify = runInstall(repoRoot, extendedTarget, codexStubBin, "extended", ["--verify", "--skip-artifact-import"]);
     const packageLeakGuard = inspectPackageLeakGuard(repoRoot);
     const packageDocsAllowlist = inspectPackageDocsAllowlist(packageLeakGuard.files);
+    for (const asset of ["package/catalogs/standard-workflow-startup.v1.json", "package/catalogs/process-models/aidn-standard-startup.v1.json",
+      "src/application/runtime/standard-workflow-startup-composition.mjs", "src/core/workflow/standard-workflow-model-catalog.mjs",
+      "src/core/contracts/workflow-definition/standard-workflow-startup-catalog.v1.schema.json", "src/core/contracts/workflow-definition/standard-workflow-model-source.v1.schema.json",
+      "scaffold/codex/aidn-context-reload/SKILL.md", "scaffold/codex/aidn-start-session/SKILL.md", "tools/verify/refresh-standard-startup-bindings.mjs"]) {
+      assert(packageLeakGuard.files.some(file => file.path === asset), `standard startup package asset missing: ${asset}`);
+    }
 
     assert(/packs:\s*\r?\n\s*-\s*core/i.test(workflowManifest) || /packs:\s*\n\s*-\s*core/i.test(workflowManifest), "workflow manifest should default to core only");
     assert(/depends_on:\s*\[core]/i.test(runtimeLocalManifest), "runtime-local should depend on core");

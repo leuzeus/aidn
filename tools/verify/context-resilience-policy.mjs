@@ -61,6 +61,7 @@ const GROUPS = Object.freeze([
 })));
 const WRAPPER = "perf:verify-context-resilience";
 const GROUP_ADDITIONS = Object.freeze({
+  completion: Object.freeze(["node tools/perf/verify-promote-baseline-admission-fixtures.mjs"]),
   coordination: Object.freeze(["node tools/perf/verify-agent-reuse-fixtures.mjs"]),
 });
 

@@ -1,0 +1,71 @@
+{
+  "contract_version": "qualification-record.v1",
+  "recorded_at": "2026-11-03T19:46:04.330Z",
+  "attempts": [
+    {
+      "model_revision": 24,
+      "snapshot": "0e469fd21acc9ab8a4444adb7720a766d3036d57",
+      "log": "standard-session-closure-authenticated-files-20261103.result.txt",
+      "pid": 3576,
+      "operation_id": "op_06e7507049d4aebf0e42ab7c7db85d0d3f400d41",
+      "result": "FAIL",
+      "exit_code": 1,
+      "terminal_observation": {
+        "started_at_utc": "2026-11-03T17:41:46.6953885Z",
+        "observed_terminal_at_utc": "2026-11-03T19:07:18.6508681Z",
+        "pid": 3576,
+        "exit_code": 1
+      },
+      "log_sha256": "57ffc8dc6172b55cf2f7a49e9543f537d417ead737709c763d97465849d78cb6",
+      "last_observed_pass": "baseline promotion finalization, session close admission and session closure drift evaluation",
+      "failed_operation": "drift_check_finalize",
+      "reason_code": "STANDARD_DRIFT_GATE_BLOCKED",
+      "active_signals": [
+        "scope_growth"
+      ],
+      "changed_files_count": 5,
+      "failed_gate_executed": true,
+      "classification": "product_failure",
+      "classification_scope": "old-snapshot standard-model composition only",
+      "human_R07": "NOT_EXECUTED",
+      "fixture_cleanup": "retained-after-failure",
+      "hook_retry": false
+    },
+    {
+      "model_revision": 26,
+      "snapshot": "8d99b05417dd868ba7171a1b754f569c0f01c6de",
+      "log": "standard-session-close-effects-composed-files-20261103.result.txt",
+      "pid": 35252,
+      "operation_id": "op_8e6faaf5435de7ce83af444abd6664d21d2e2993",
+      "result": "FAIL",
+      "exit_code": 1,
+      "terminal_observation": {
+        "started_at_utc": "2026-11-03T18:09:07.7882005Z",
+        "observed_terminal_at_utc": "2026-11-03T19:43:15.8919044Z",
+        "pid": 35252,
+        "exit_code": 1
+      },
+      "log_sha256": "e957d32d7ca32cf8227b28513eae10cc69bfe9c9e92a531f94b32206cef5c5b1",
+      "last_observed_pass": "baseline promotion finalization, session close admission and session closure drift evaluation",
+      "failed_operation": "drift_check_finalize",
+      "reason_code": "STANDARD_DRIFT_GATE_BLOCKED",
+      "active_signals": [
+        "scope_growth"
+      ],
+      "changed_files_count": 5,
+      "failed_gate_executed": true,
+      "classification": "product_failure",
+      "classification_scope": "old-snapshot standard-model composition only",
+      "human_R07": "NOT_EXECUTED",
+      "fixture_cleanup": "retained-after-failure",
+      "hook_retry": false
+    }
+  ],
+  "current_revision32": "IN_PROGRESS on a distinct frozen snapshot; no verdict is inherited",
+  "new_delivery_revision33": "NOT_RUN as a composed model; component proof is separate",
+  "original_schema_prediction": "Uppercase/null/schema possibilities were not the observed failure of either inherited run.",
+  "limitations": [
+    "Intermediate success does not establish completed replay or simulation.",
+    "No current-model, native-provider, GitHub or installed-archive verdict follows from these old-snapshot failures."
+  ]
+}

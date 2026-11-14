@@ -93,7 +93,7 @@ export async function qualifyWorkflowPackage({ tarball, root, descriptors }) {
     for (const asset of ["/", "/dashboard.js", "/dashboard.css"]) assert.equal((await fetch(server.url + asset)).status, 200);
     assert.equal((await api("inspect", {}, { Authorization: "" })).status, 403);
     assert.equal((await api("inspect", {}, { Origin: "https://foreign.invalid" })).status, 403);
-    const request = { operation: "initialize", input: { instanceId: "initial", definition, context } };
+    const request = { operation: "initialize", input: { engine: "legacy", instanceId: "initial", definition, context } };
     const planned = await preview(request), before = snapshot(target);
     const stale = await action(request, { write: true, expectPlan: "0".repeat(64) });
     assert(stale.errors.includes("WORKFLOW_CONSOLE_PREVIEW_CHANGED")); assert.equal(snapshot(target), before);
@@ -115,7 +115,7 @@ export async function qualifyWorkflowPackage({ tarball, root, descriptors }) {
     const reviewHash = proposed.action.preview.preview_sha256;
     const selected = await apply({ operation: "activate", input: { ...proposal.input, expectedPreviewSha256: reviewHash,
       review: { decision: "approve", preview_sha256: reviewHash, evidence } } });
-    const future = { operation: "initialize-selected", input: { workflowId: definition.workflow_id, instanceId: "future", expectedSelectionSha256: selected.selection.selection_sha256 } };
+    const future = { operation: "initialize-selected", input: { engine: "legacy", workflowId: definition.workflow_id, instanceId: "future", expectedSelectionSha256: selected.selection.selection_sha256 } };
     const initialized = await apply(future);
     assert.equal(initialized.instance.definition.revision, candidate.revision);
     assert.equal(cli("workflow-inspect").view.instances.find(row => row.instance_id === "initial").definition.revision, definition.revision);

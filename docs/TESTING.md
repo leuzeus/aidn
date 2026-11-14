@@ -1,6 +1,2665 @@
 # Testing Guide
 
+## Canonical cycle-choice human port component
+
+`node tools/perf/verify-standard-cycle-choice-fixtures.mjs --mode=files --retain-always`
+(and `--mode=dual` / `--mode=db-only`) exercises closed cycle-choice contracts,
+per-reported-cycle integrate/import/defer/drop intent, independent source-port
+verification and inbox v19 deduplication. It keeps the historical recovery-cycle
+question v1/v2 and inbox v17 vectors as related regression checks.
+
+The actual local common host observes canonical cycles, retains a human wait,
+refuses a changed branch and a mutation at the final human verification await,
+then accepts in a fresh Node process. A virtual host clock advance must not add
+an internal question expiry. Canonical business content/metadata and Git state
+remain unchanged, replay matches, and repeated delivery retains the same receipt.
+The H receipt records intent only; the original admission still requires actual
+selection realization and fresh permission. D/H allocate no Native session.
+
+The competing cycle is an explicit fixture preimage with a real local ref.
+Controlled human verification is not genuine human identity. These cases do not
+connect the published STANDARD choice route, execute selection/carryover effects,
+qualify imported work, R3, real PostgreSQL, genuine actors or an installed archive.
+`--contracts-only` isolates the cheap protocol checks; it does not replace the
+three required canonical-store cases. Successful fixtures may clean their owned
+scratch data; `--retain-always` keeps it for a scoped evidence review.
+
+## Native epoch fixture clock sampling
+
+Initial-entry and continuation fixtures build each fresh authorization from one
+clock sample. The workflow and global deadlines keep their original ten-minute
+or four-minute duration and agree even when the clock advances between reads.
+A ticking-clock regression exercises the real authorization validator and
+checks that the original authorization remains unchanged.
+
+The targeted selectors are `--native-initial-epoch-mode=files|dual|db-only`
+and `--native-epoch-mode=files|dual|db-only` on
+`verify-agentic-process-execution-fixtures.mjs`. These are controlled fixture
+checks. Native budgets, expiry checks, source authentication and resource-closure
+requirements in production remain unchanged.
+
+The required default corpus also checks the absent journal before allocation.
+Its `--journal-preview-only` selector rejects renewal while the original consent
+is live, then prepares an initial-entry v2 request from an explicitly expired
+original. The request binds an empty history, zero consumption and the initial
+scope. Preview and request preparation leave the journal absent and allocate
+no worker or Native session. The historical expectation that every empty
+history must be rejected predates initial-entry epochs and is no longer valid.
+
+## Required STANDARD review effects and current OPEN work
+
+The published composition fixture checks the four corrective R05 calls, their
+own evaluation inputs and the typed finalizer return consumed by session
+closure. Reusing the shared corrective-drift target leaves 141 direct and 50
+target binding rows (191 total), including 34 counted corrective operations;
+the 23 Native activities remain distinct. These structural assertions do not
+substitute for the actual scoped R05 fixture or the full corrective journey.
+
+The required agentic corpus runs the R08 reply cases `normal`, `lost`,
+`missing` and `interrupted`, both thread-resolution recovery cases, the
+session/correction resolution exceptions and their refusal/deferral/cancellation
+choices. It also covers external merge at checks, pre-merge and the pre-send
+boundary, refused/cancelled dispositions, and the three pre-triage call paths.
+Each selector keeps its original fixture assertions and child-call bounds.
+
+These cases exercise the operation host, real local Git and FILES artifacts
+with identified provider and issuer doubles. Their signed synthetic upstream
+prefix is declared explicitly; they do not qualify an entire STANDARD journey,
+genuine Native, a real provider or an installed archive.
+
+The same required corpus includes
+`--standard-existing-open-work-mode=files|dual|db-only`. These cases use the
+published STANDARD model and real canonical stores for plan adoption, two
+admitted tasks, validation, linked progress and the final-verification call.
+They use identified Native transport doubles and stop at VERIFYING.
+
+The ordered manifest and its exact-command policy guard are changed together.
+The previous cases retain their relative order and the full nominal remains
+the final case. The dispatcher adds no aggregate or per-case wall-clock limit.
+
+## Delivered root work from an owned OPEN plan candidate, 2026-11-12
+
+The focused `--standard-existing-open-work-mode=files|dual|db-only` cases load
+the exact delivered STANDARD model, arrange an owned canonical two-task plan,
+then execute entry, adoption, selection, DoR, implementation, scoped work, real
+checks and advancement through the final-verification call. They stop before
+auditor selection. One startup and two task responses use identified Native
+doubles; no planner or imported task receipt is supplied. Each product write
+first requires actual Native write admission. The case checks progress linkage,
+three actual test checks, unchanged declared write scope, stable intent
+documents and classification metadata, the original traceability plus its exact
+accepted verification evidence append and refreshed DB `updated_at`, same
+cycle/branch/HEAD, owner clearance and streamed exact replay. Metadata CAS still
+binds the full preimage fingerprint, including its prior timestamp.
+The six-response/10-MiB finite fixture grant is established before its first
+allocation. The symbolic `audit_select` stop sizes three responses only and
+provides no business authority. This remains separate from genuine actors,
+imported progress, general phase resume, human cycle choices and archive proof.
+
+## Mode-closure structure coverage, 2026-11-12
+
+The mode-work fixture checks each root analysis/R05 prefix and its actual call
+to the shared deterministic/human closure suffix. It verifies the ordered four
+ports, the closed three-parameter interface and each mode-specific caller
+source. Existing permissions, typed findings, refusal and common-reducer replay
+checks remain. Logical preflight labels retain their mode prefixes; the
+structural check does not require removed inline root leaves. This fixture
+correction changes neither model, runtime, contract nor authority.
+
+## Isolated R05 mode preimages, 2026-11-12
+
+The report and authenticated recovery-review fixtures admit their canonical
+COMMITTING mode through the existing prepare/apply ports before starting R05.
+They assert that the diagnostic observes that mode, then retain the actual
+report, forged-source refusals, recovery waits and accepted human-source checks.
+Mode preparation is fixture setup; these cases do not qualify a human mode
+choice. The selectors are `--drift-mode=files|dual|db-only` and
+`--drift-recovery-mode=files|dual|db-only`. Native budgets and the production mode
+guard stay unchanged. Original failed attempts, including pending logical
+ownership, remain separate from corrected fresh scopes.
+
+## Published owned OPEN entry candidate and catalog v5, 2026-11-12
+
+Structural checks cover shared context refresh, read-only entry observation,
+the fresh-only initial-session Git checkpoint before full creation admission,
+preserved fresh Native planning and the canonical adoption route. The existing
+entry corpus checks dirty fresh observation while actual creation stays blocked,
+owned context, unresolved carryover and both signed cold operation dispatches
+in all three persistence modes. Observation grants no creation or implementation. Catalog v5 declares the new entry
+scope; the v4 schema stays byte-identical. Both schemas are direct runtime
+and process pins. Identified symbolic preflight selects fresh or owned OPEN
+entry to size the actual delivered graph; its replay and response counts
+provide no business authority or product qualification. The focused
+`--standard-existing-open-mode=files|dual|db-only` cases execute the delivered
+root through actual canonical/session/Git/DoR/phase ports, with one identified
+startup Native diagnostic double and no planner or work response. They retain
+the actual C001 plan instead of applying an unused C002 constructor proposal,
+and assert unchanged planning content/metadata and product, actual phase entry,
+closed allocation, owner clearance and exact simulation. Fresh-path regression
+remains separate. The owned path asserts no initial-session Git checkpoint,
+no branch/HEAD change and preserved planning metadata. Human choice/carryover, other phases, genuine Native, archive and full
+STANDARD acceptance remain separate outstanding qualifications.
+
+## Accepted canonical plan selection, 2026-11-12
+
+The focused `--canonical-plan-selection-mode=files|dual|db-only` cases execute
+signed cold canonical adoption, the actual read-only selector, real DoR and
+phase entry. The selector reobserves the canonical source and authenticates the
+accepted origin ID and record digest. Deliberately changed plan content must
+refuse in actual selector preview without changing process state; restoration
+is explicit fixture setup. No Native plan or completed task is fabricated.
+The focused `--cycle-plan-select-native-only` case inserts the same selector
+after one actual Native planning transport double and real plan recording,
+then retains ordinary DoR/phase assertions. These component cases do not prove
+published existing-cycle routing, imported progress, genuine actors or delivery.
+
+## Current-instance task work from an adopted canonical plan, 2026-11-12
+
+The focused `--canonical-plan-work-only` FILES case prepares a neutral existing
+two-task plan through actual canonical ports. Its process adopts that source,
+satisfies real DoR and enters implementation, then uses the existing task loop,
+specific Native write admission, actual validation commands and task advancement
+to reach verification. Planning preimages are fixture setup. The two work
+responses use an identified Native transport double; no planner response or
+historical task receipt is fabricated. The shared task fixture retains scope
+preservation, revoked-operation refusal, cold advancement, chained progress and
+validation assertions. Before any Native work, the actual phase effect must
+project the adopted plan's first step and pass canonical context consistency.
+This case does not establish imported progress,
+published existing-cycle routing, other backends, genuine actors or an archive.
+
+## Dataflow mode precondition, 2026-11-12
+
+The three real-port dataflow cases reach an authenticated mode question before
+starting R05. A missing source leaves the wait unchanged; the accepted fixture
+human choice and real mode application then precede Native context observation.
+The cases retain parameter/input/output identity checks, accepted operation and
+occurrence resolution, one identified Native double, actual R05 finalization,
+retained dispatch and exact simulation at the wait and at completion. The focused
+selector is `--dataflow-mode=files|dual|db-only`. This fixture correction changes
+neither the runtime mode guard nor Native budgets and proves no genuine Native
+execution or full admission.
+
+## Canonical OPEN plan to DoR and phase entry, 2026-11-12
+
+The focused `--canonical-plan-readiness-mode=files|dual|db-only` execution
+cases use the same real canonical preimage and signed cold adoption as the
+observation component, then actual DoR evaluation and an explicitly authorized
+phase effect. The source remains canonical content/metadata. No Native
+producer or completed work is fabricated. Source mutation before readiness
+must refuse, restoration is explicit fixture arrangement, and implementation
+entry preserves plan content while applying the normal phase CAS. This
+component does not qualify task execution, published routing, imported
+progress, PostgreSQL, genuine actors or an installed archive.
+
+## Canonical plan adoption observation component, 2026-11-12
+
+The private `cycle_plan_adopt` operation observes a current owned OPEN plan
+without recording a new proposal or changing phase. Its contract distinguishes
+canonical provenance from Native evidence, leaves DoR and implementation
+permission pending, and permits no imported completed tasks in this first path.
+Current source, metadata, backend, scope, process and owner checks surround the
+actual entry admission. Task paths must fit the configured product scope.
+The execution fixture selects `--canonical-plan-adoption-mode=files|dual|db-only`
+for real canonical setup, context/entry ports, controlled refusal probes and
+signed dispatch with acceptance in a separate Node process. Planning preimages
+are fixture setup; the process-change probe is injected. FILES has no SQL-only
+metadata-writer case, which stays explicitly not applicable. Component results
+do not establish productive or installed existing-cycle routing.
+
+## Canonical plan projection reader, 2026-11-12
+
+The cycle planning contract suite includes a pure projection of the existing
+standard canonical document format. It reconstructs declared plan fields and
+ordered progress data, validates the closed planning contract, and requires an
+exact roundtrip through the existing plan/progress renderers. Missing or
+competing documents, hashes, unknown permission fields, ambiguous sections,
+changed identity and inconsistent progress refuse. Parsing does not authenticate
+approval, prove completed work, satisfy DoR or grant an effect. Runtime adoption,
+current metadata/provenance and productive phase resumption remain separate work.
+
+## Reusable mode closure suffix, 2026-11-12
+
+THINKING and nonretained EXPLORING keep their real R05 Native activity in the
+root and call the same deterministic/human final closure suffix. Three accepted
+operation IDs enter the call; the target retains ordinary decision, record,
+checkpoint and final-hook order. The actual mode fixture consumes the final
+call return before claiming caller completion. Transport/H fixture results,
+source model checks, synthetic preflight, genuine Native and installed archive
+qualification remain separate. The root keeps the existing 256-node bound.
+
+## Authenticated completion startup bridge, 2026-11-12
+
+The default startup-mode fixture includes the startup completion component on
+FILES, DUAL and DB-only. It uses real canonical initialization, checkpoint and
+start-hook effects with an explicitly synthetic completion-reader capability.
+Preview and refusal checks distinguish the original warning, a missing or
+substituted proof, revoked effect authorization, process changes and a
+substituted run identity. A successful checkpoint emits no fabricated R05
+completion event. The original v1 reader remains separate. This component does
+not establish a signed R05 chain, the published corrective journey, Native or
+installed-archive qualification; those require their own exact-source proofs.
+
+## Existing canonical cycle admission component, 2026-11-12
+
+The standard ports fixture includes FILES, DUAL and DB-only COMMITTING cycle
+entry checks. Creation stays create-only; current ownership, competing cycles,
+carryover, held effects, changed canonical bytes and forged output facts are
+checked separately. A signed single-operation fixture checks cold acceptance
+and exact simulation. Its phase and progress preimages are explicit fixture
+setup. Admission preserves those bytes and grants no implementation permission.
+Each storage case also retains more than 16 MiB of unrelated canonical history.
+Cycle admission reads the current/session rows, cycle status inventory and the
+selected cycle documents; it preserves their content and metadata. The full
+artifact collector still refuses that corpus under its unchanged byte limit.
+The published STANDARD route, legacy plan adoption and productive resumption
+remain separate required work; this component claims no Native or archive proof.
+
+## Catalog version capacity fixtures, 2026-11-12
+
+The process binding input fixture tests the four closed catalog versions with
+each version's own entry vocabulary. V1 keeps its 128-row bound; V2, V3 and V4
+keep 256 rows. Old readers reject the newer entry vocabulary, V4 rejects the
+older entry vocabulary, and V1/V2 still refuse embedded model references.
+The current published catalog is validated separately against its actual model.
+These are schema and pure input resolver checks, without product or Native effects.
+
+## Scoped model lookup, 2026-11-12
+
+The reusable-call contract fixture verifies fresh selected model bytes after a
+previous lookup, implicit and explicit root frames, historical computed lookup,
+unknown hashes and full model admission. A declared target pin guides selection;
+it never replaces hashing the embedded model. There is no model-object or
+timestamp cache. Local pure lookup timings remain distinct from full workflow
+performance, Native execution and installed-archive qualification.
+
+## Reviewed public validation client artifact, 2026-11-12
+
+The sandbox-boundary fixture checks both the historical app artifact and the
+exact public Windows x64 artifact of the reviewed Codex source. V1/V2 retain
+their refusals. V3/V4 admit only qualification probes; an unsigned or absent
+qualification never grants runtime availability. The current SDK model client
+remains unqualified for this distinct validation port. Identity/version checks
+and portable fixtures do not replace the selected artifact's native canaries.
+
+## Mode fixture call transitions, 2026-11-12
+
+The analysis, continuation and SPIKE execution fixtures follow actual mixed-host
+call results before interpreting operation or Native results. Every call appends
+one event, preserves its prior prefix and starts no Native allocation. Existing
+mode, human-decision, clock/epoch, refusal, business and replay assertions remain
+in place. Focused FILES selections exercise each consumer; the required manifest
+retains its storage variants. Their transport and human authorities are fixtures,
+and controlled expiry is distinct from genuine wall-clock qualification.
+
+## Composed fixture startup call, 2026-11-12
+
+The pure preflight and actual composed-execution fixture follow the published
+session-setup call. Preflight supplies identified synthetic entry facts at the
+callee and root scopes; actual execution authenticates each accepted setup
+journal and applies the proposed call transition unchanged. Setup adds no
+Native response: nominal remains nine and full correction seventeen. Its one
+additional admission operation and two call transitions explain four extra
+events. A deferred mode choice leaves the setup call open without applying a
+mode. These fixture adaptations do not qualify an installed archive or genuine
+actors and do not change any production model, pin or grant.
+
+## R05 review after expected compound R03 invalidation, 2026-11-12
+
+The required drift-recovery fixture covers both a single artifact invalidation
+and a real DUAL/SQLite cache retained from before session/cycle construction.
+The latter produces combined branch, HEAD, artifact, active-cycle and digest
+reasons. A fresh cache must preserve the original accepted review bytes and
+canonical business witnesses while intent is reread. Unknown reasons, an
+unexplained digest, state-mode fallback, stop, changed context and changed live
+intent still refuse. The model fixture also checks that the shared policy
+bytes are fresh direct STANDARD and process implementation pins.
+
+These are controlled component capabilities with real R03/cache/store ports
+and no Native allocation. The original full corrective journey failed at its
+cycle checkpoint; only a separate fresh full journey can qualify that path.
+
+## Existing canonical session entry, 2026-11-12
+
+The default required startup-mode fixture also runs the existing-session entry
+checks in FILES, DUAL and DB-only. The standalone selector is
+`verify-standard-existing-session-entry-fixtures.mjs [--mode=files|dual|db-only]`.
+It checks typed identity/mode admission, the preserved legacy empty admission,
+create-only refusal, no mode renewal, unchanged canonical content/metadata and
+the real THINKING startup hook with exact SIM and no human/model task.
+
+The composed prefix selector adds `--existing-session` to attach a new published
+STANDARD instance to a real canonical THINKING session through the pinned setup
+call, root admission, mode preflight and real startup hook. Its final state is
+RUNNING at `thinking_analysis`; it proves neither existing-cycle continuity nor
+Native analysis. Default prefix selectors retain their deferred human choice.
+The obsolete private `--expire-initialize` selector is removed: it asserted an
+internal age refusal that current unchanged session plans no longer require.
+The retained elapsed-plan fixtures still check real context and issuer bounds.
+
+The required ordinary-entry CLI fixtures also apply the pinned setup call via
+the public exact-action protocol. They preserve forged-source refusal and the
+deferred/resumed signed H decision, then execute mode application, call return,
+root admission, mode preflight and the real startup hook. They stop before the
+first Native activity and compare readonly replay/SIM of that same instance.
+
+## Published THINKING startup prefix, 2026-11-12
+
+The three required composition-prefix fixtures compose the real common process
+authority, canonical mode preflight and startup finalizer. Their fixture product
+has an observed digest. Human sources remain identified fixture sources.
+The fixtures retain one deferred mode choice and accept each operation in a
+separate Node process before checking its retained dispatch and exact SIM.
+They stop at the ready `thinking_analysis` activity after successful startup;
+the workflow remains RUNNING. This prefix does not execute Native analysis or
+establish full STANDARD completion. The original authority refusal is preserved
+separately from the corrected fixture result.
+
+## Required full nominal published journey, 2026-11-11
+
+The existing runtime-agentic-process family appends command211 after its exact
+unchanged210-command prefix: verify-agentic-process-execution-fixtures.mjs
+--standard-composed-mode=files --standard-composed-stop=nominal_post_merge_complete.
+This executes the shipped composed model through the accepted post-merge
+reconciliation on the same instance. Planning, a prefix or catalog inventory
+does not satisfy this case. The original finite Native fixture grant and
+response count remain unchanged; the runner invents no elapsed deadline.
+
+Local qualification adds --retain-always to retain the canonical evidence
+packet after success. That retention flag does not change business authority.
+The fixture uses real local Git/SQLite and identified Native/provider doubles;
+genuine agents, live provider work, exact installed archives and other storage
+claims retain their own evidence. Full-manifest and admission outcomes are
+reported separately from the retained local journey.
+
+## Signed source issuer validity and historical clock movement, 2026-11-11
+
+The protected host-source fixture checks issuer-selected durations longer than
+the removed three-hour blanket ceiling. For each source kind, current verification
+still refuses future issuance and the unchanged issuer expiry; historical
+verification retains original bytes across clock regression and expiry, and
+still rejects a removed principal role. These transport claims are deliberately
+untyped fixtures, not Native epoch or human workflow authorization evidence.
+
+The R05 recovery fixture additionally uses its actual typed human router,
+protected source adapter and fixture Ed25519 principal. Its accepted primary
+history remains authentic after clock regression; current linked permission
+refuses future issuance. Existing expiry, revocation, exact evaluation/context
+and receipt checks remain. Accepted instance/inbox capabilities in that component
+are fixtures. Canonical-host journey, genuine actors and installed qualification
+are reported separately; no component verdict replaces them.
+
+## Exact-current disposition consent, 2026-11-11
+
+The existing original-return disposition selector exercises an old signed plan
+without refreshing its timestamp. Its v2 fixture grant crosses a controlled
+host-clock advance during awaited verification; cold control-history reads and
+receipt redelivery retain the original bytes. Its separate cold acceptance
+uses an old legacy v1 issuer grant whose declared lifetime exceeds the removed local
+sixty-second ceiling. Existing real issuer expiry, revocation, prefix CAS,
+foreign owner/fence and crash cases remain required in all three storage modes.
+
+The host-source fixture separately checks local v2 exact-action authorization,
+legacy v1 MAC compatibility and original expiry, including malformed and
+substituted permits. These use fixture principals or fixture consent and do
+not establish genuine H, Native, provider or complete published STANDARD.
+
+## Recovery cycle question validity, 2026-11-11
+
+The private recovery cycle selection question v2 has no host-generated expiry.
+Original v1 preparations reconstruct the same original question and digest;
+readers do not rewrite them into v2. The recovery component fixture checks
+fixed v1 snapshots, v1/v2 routing through the actual human component, inbox17,
+exact question/subject/cycle minimum, wrong authority and current source
+revocation after capture. Source, inbox and receipt capabilities remain fixtures.
+
+The published recovery-call selector prepares its original H question with a
+previous-day explicit host clock before source capture. It then captures and
+accepts at the current clock and initializes a cycle through the existing
+separately authorized port. Context, checkpoint, inventory, authority and CAS
+checks remain in place. This scenario is appended as command210 after the
+unchanged209-command manifest prefix. Full210 and genuine actor qualification
+remain separate requirements. Unexpected failures retain their original realms.
+
+## Retained objective review across R03 cache refresh, 2026-11-11
+
+The original singleton scope below is historical. The 2026-11-12 compound
+invalidation coverage above supersedes its reason-set restriction.
+
+The focused recovery component builds an actual DUAL project, session and
+cycle through source ports, then writes a valid process instance through the
+canonical store. It prepares the review with `ARTIFACTS_CHANGED`, refreshes the
+actual R03 cache and revalidates the original review on the incremental fast
+path. Business document bytes/metadata and original review bytes stay fixed.
+Evaluation/context capabilities remain fixtures; no Native process is used.
+
+Revalidation must explicitly reread intent. Only the exact missing/changed-cache
+to incremental transitions are normalized. Changed context, another R03 reason,
+stop and changed live intent remain refusals. This component result does not
+reconcile an earlier UNKNOWN closure or replace full FILES/DUAL/DB-only runs.
+
+## Current R05 objective validity, 2026-11-11
+
+The focused recovery/opinion and completion fixtures retain original old review,
+receipt and event bytes. They accept elapsed time or clock regression alone and
+still reject changed evaluation/context/report/event/receipt/CAS, incomplete or
+UNKNOWN completion and source revocation. Unsafe or negative preparation
+timestamps remain invalid independently of age. Linked legacy reviews retain
+their exact historical anchor and current permission boundary.
+
+The recovery fixture also uses the actual protected host source adapter and
+fixture Ed25519 principals. An old accepted primary fact remains authentic after
+the unchanged source envelope expires; current linked verification and direct
+current verification refuse that expiry, and both readers reject a revoked
+principal. These cases allocate no host key, Native process or worker evidence.
+Reducer history/inbox capabilities remain fixtures; this is not genuine H proof.
+
+The parent/independent-worker `expired` and `expired-after-observe` selectors are
+retained compatibility labels for positive day-old diagnosis reviews. Their
+producer clock supplies the old timestamp before signing; no accepted plan,
+source or original Native grant is rewritten. Wrong author/subject, revocation
+and context/HEAD changes during the final H await keep their negative controls.
+The real worker reconstructs in a separate Node process with fixture actors.
+
+The dedicated objective-closure selector produces its actual R05 report and
+event with a controlled previous-day producer clock, then resumes closure in a
+cold Node process at the current time. FILES, DUAL and DB-only retain the
+original signed material and Native authorization. Nine independent-worker
+cases and these three closure cases are appended to the CI manifest. The exact
+197-command prefix is unchanged; all 209 cases still require full execution.
+
+The retained host receives an explicit producer clock before bootstrap. The
+closure scenario verifies the old review before human capture and the old
+finalizer plan in a nonmutating preview before writing its report or event.
+The invocation/event causal window remains enforced. Unexpected execution
+fixture failures retain their owned temporary realms by default; retention
+preserves evidence and does not replay or reconcile an uncertain effect.
+
+The cycle-close completion fixture checks the production detector and actual
+FILES/DUAL/DB-only gating CLI. Original constructed old generic-event inputs do
+not trigger a default age signal; explicit caller thresholds still do, and
+missing proof/material drift remain signals. That generic input is not a signed
+objective-completion receipt. Read-only invocations preserve checkout bytes.
+The objective effect-fence fixture separates elapsed time from an actual denied
+or expired fixture-source grant. Full required gates, whole STANDARD, actual
+Native/provider/H, PostgreSQL and installed qualification remain separate.
+
+## Complete fixture supervision, 2026-11-11
+
+The `runtime-agentic-process` gate still executes the declared
+`perf:verify-agentic-process` npm script and its exact ordered manifest. Neither
+the gate wrapper nor the dispatcher supplies an implicit wall-clock cutoff for
+that aggregation or its cases. The former900000ms cutoff interrupted valid
+work as the corpus accumulated; it is removed rather than enlarged. Other
+single-command gate defaults are outside this change.
+
+An explicit caller deadline remains exact through nested supervision and all
+cases; no case renews it. On Windows, verification-only construction explicitly
+permits supervision without a deadline. The helper still assigns the owned Job
+before resume, stops on cancellation or supervisor pipe loss, watches the exact
+synchronous caller identity, and records observed closure. A null
+`deadline_at` in verification evidence means no execution deadline was supplied;
+it does not mean that closure was inferred. Output and protocol limits remain.
+The default process controller used by Native execution still refuses an absent
+or null duration; Native request validation and authenticated resource grants
+are unchanged.
+
+`verify-node-fixture-runner-fixtures.mjs` tests exact argv/order, fail-first,
+default absence of a deadline, fixed explicit deadline across two cases and
+cancellation. Its real Windows tree checks include the explicit deadline
+control plus cancellation, caller death and supervisor death without an
+invented execution cap, preserving an unrelated spectator process.
+`verify-gate-runner-fixtures.mjs` executes the actual npm/Windows wrapper with
+and without a deadline and verifies explicit override selection. The portable
+process-tree fixtures separately reject missing Native durations before spawn
+and verify that optional verification supervision installs no execution timer.
+The generic real Windows process-tree and Codex-executor fixtures cover the
+unchanged finite path. These controls do not qualify actual Codex work,
+business-resource disposition, the full197 cases, L7 or an installed archive.
+
+The real process-tree fixture keeps its original600ms and700ms fixed-deadline
+controls separate from preparation, stdout and descendant readiness. Callback
+and descendant controls use the existing ordinary10000ms fixture request and
+shorten it through `timeoutSignal` only after their observed milestone. The
+closed-helper control observes both actual stdout and the real helper's close
+event before timing out its unsettled callback. Shutdown measurements start at
+the observed stop, independently of startup latency. The fixture retains each
+complete controller result before assertions. This changes its observation
+protocol, not a Native grant or runtime deadline.
+
+Original failed and interrupted attempts remain separate evidence. A successful
+component rerun never rewrites their original deadline, exit or UNKNOWN effect.
+
+## Current interrupted correction reopening, 2026-11-11
+
+The FILES reopening/disposition fixture produces an actual post-effect grant
+loss after all three canonical postimages. The observer, disposition and
+ordinary entry selection no longer require a legacy expiry reason. Existing signed-dispatch, terminated
+owner, physical lock/fence, exact metadata/projection/Git and current provider
+checks remain mandatory. The fixture rejects a completed result supplied as an
+interruption, incomplete postimages, changed ownership/material and lost source.
+It observes the complete current UNKNOWN result without repeating a write,
+then exercises cold transfer/disposition and separate current authorization.
+
+A cloned legacy reason tests output-shape compatibility only; it leaves the
+original signed grant-loss result unchanged and does not qualify an old
+historical instance. Original failed qualification attempts remain retained.
+This source correction requires its focused reopening/disposition, generic
+disposition, public FILES CLI entry and published-model checks. Other complete storage variants,
+general resource reconciliation, actual Native/provider/H and exact installed
+archive execution remain separate requirements.
+
+## External merge at the pre-triage review wait
+
+Run the targeted `--case=external-pretriage-session`,
+`--case=external-pretriage-correction` and `--case=external-pretriage-nominal`
+cases in `tools/perf/verify-standard-pr-review-reply-fixtures.mjs` on disposable
+projects. The reduced graphs retain the published capture call, route and
+incident/R09 call. The cases separate the signed synthetic upstream prefix,
+the real Git and FILES ports, and the doubled GitHub transport. The initial case
+follows the incident through both admissions and replay/SIM. The corrective
+case stops at the exact R09 fetch preview. Nominal review exercises the
+provider event and inbox against a fixture-resolved prefix and checks the
+transition to the review receiver. Recheck the older external checks and
+pre-merge paths separately. Native, real GitHub, PostgreSQL, installed package
+and the full required family are separate qualification gates.
+
+## Ordinary STANDARD call actions
+
+The workflow-console fixture runs `verifyStandardWorkflowCallAction` from
+`tools/perf/standard-workflow-call-action-test-lib.mjs`. That check can also be
+called directly. It uses the ordinary action handler, mixed-host call adapter,
+process service and common reducer with an in-memory CAS, synthetic signing
+key and an accepted fixture journal. It checks both call directions, stable
+preview, console resubmission, two single-event commits, stale and tampered
+actions, predicted-result mismatch, journal authentication and occurrence
+correlation, and revoked authority before commit. No child effect is
+dispatched. Persistent FILES/DUAL/DB-only, full CLI/console execution,
+distributed STANDARD, native, providers and installed package qualification
+remain separate.
+
+## Fixture module isolation on the supported Node baseline
+
+Prepared-plan and retained-legacy fixtures use `node:module.register`, available
+on the supported Node 22.13 baseline, rather than the newer synchronous hook
+API. Their shared fixture resolver substitutes only explicitly queried parent
+modules and exact import specifiers. It deactivates through an acknowledged
+message before the fixture continues; evaluated mock modules still use the
+main realm's controlled artifact ports. Ordinary runtime imports, original case
+arguments, Native bounds and production implementations remain unchanged.
+Run the composed preflight, cycle readiness, task advancement and drift
+finalization selectors on the minimum Node version when changing this helper.
+
+## Exact committed whitespace verification, 2026-11-06
+
+The earlier working-tree whitespace check excluded the three then-untracked
+modules; its PASS did not cover the complete committed change. The correction
+removes only whitespace on one blank line and explicitly refreshes the existing
+asset pins. Verify the staged change with `git diff --cached --check` and the
+complete committed range from `5cbcc6d8cfed3d4f19ca17b1d8fd1d064894e02b`
+with `git diff --check <base> <new-head>`. Syntax and these static checks do not
+execute the fixtures; a fresh READY and exact ROOT GO remain required.
+
+## Shared replay-local selection factories, 2026-11-06
+
+The reusable-call `contract` selector adds small comparisons between ordinary
+and exotic-data lookup paths over the same retained fixture prefixes. It checks
+ignored forged dependency options, the existing transition option getter/spread,
+missing-frame error order, live root replacement in historical public selection,
+callback mutation and fresh lookup after await, a forged witness, and the
+1024-occurrence/512-event bounds. Existing tests retain v1/v2, 256-node limits,
+model/intent/receipt forgeries, duplicate identity and SIM isolation. No production
+algorithm copy supplies the oracle; both paths share the single selection body.
+
+These new-source checks are NOT_RUN pending a new immutable READY and exact ROOT
+GO. Syntax, routing and explicit asset authoring are preparation only. Execute
+contract/sequential/concurrent/cold/negative under 15/180/180/180/60 seconds and
+660 seconds global, fail-first with following cases NOT_STARTED. Preserve every
+existing workload, return, history, concurrent/cold/negative, redelivery, stale
+CAS and streaming SIM obligation. The separate pure inlining experiment's
+descriptive improvement does not transfer to these factories. Earlier cohort
+FAIL and diagnostic-observer FAIL remain. Full STANDARD and L1-L8/A1-A10 stay due.
+
+## Final-validation SIM composition candidate, 2026-11-06
+
+The existing reusable-call `contract` selector additionally compares every row
+and canonical row hash of a small authenticated call history against separate
+advance-then-inspect calls. It checks aggregate trace equality, historical v1
+and current v2, initial rows, cancellation, identical and divergent deliveries,
+the mutable duplicate API's exact identity, frozen cursors, re-sealed forged
+model/intent/receipt histories, accessor refusal without getter execution, and
+caller mutation plus iterator resumption after an await. These are synthetic
+component controls, not real actors or productive STANDARD evidence.
+
+The composition retains full validation before and after each new event and
+the same reducer, row schema/4 MiB and aggregate 4 MiB limits. Only the immediately
+adjacent final-validation-to-snapshot replay is composed. No supplied cursor,
+authority, result or cross-call cache is trusted. The earlier isolated diagnostic
+compared 487 row hashes in worker memory, without retaining the arrays separately;
+its ordered full SIM pair and unmeasured overhead imply no global causal gain.
+
+New-source checks are NOT_RUN pending an immutable READY and exact ROOT GO.
+Execute `contract`, `sequential`, `concurrent`, `cold`, `negative` in that order,
+under 15/180/180/180/60 seconds and a 660-second global bound. Stop at the first
+failure and keep following cases NOT_STARTED. The new small checks replace none
+of the original 241/240 operations, two consumed returns, more than 256 expanded
+occurrences, historical/concurrent/cold/negative controls, redelivery, stale CAS,
+512-event/1024-occurrence/256-node bounds or streaming SIM. The earlier cohort
+remains FAIL (one PASS, one FAIL, three NOT_STARTED, both Jobs closed with zero
+processes); its canonical completed prefix did not timestamp the timeout phase.
+Published loaders, complete STANDARD and all L1-L8/A1-A10 remain separately due.
+
+## Synchronous canonical inspection candidate, 2026-11-06
+
+The existing reusable-call `contract` selector additionally covers FILES, DUAL
+and real SQLite DB-only inspection: exact adapter-created stores, full fallback
+for historical/custom/copied/proxied stores, ignored forged cursor methods,
+mutable returned records versus frozen cursors, a fresh canonical read after
+await, changed canonical bytes and authority-callback mutation refusal before
+operation staging. These are synthetic fixtures; PostgreSQL and real actors
+are not covered. The callback-bearing operationFrame path remains unchanged.
+
+A separate exact-source diagnostic supported the adjacent read/inspection
+mechanism with eight alternating pairs and two full operation steps, each with
+two CAS and two final validations. It preserved original failed evidence.
+One ordered full-step pair is not causal whole-workflow performance proof.
+The candidate and refreshed published pins are NOT_RUN until their own immutable
+READY and exact ROOT GO. The five existing cases, original bounds, 241/240
+operations, returns, history, concurrency, cold, negatives and common-reducer
+replay/SIM remain required. All L1-L8/A1-A10 remain active/incomplete.
+
+## Replay-local suffix buffer candidate, 2026-11-06
+
+The reusable-call `contract` selector also executes a small synthetic fixture
+with two calls, five operations and Unicode/escaped values. Every retained
+prefix hash is compared against independent canonical full-prefix hashing;
+re-sealing an altered historical intent must still fail its binding check.
+This does not replace the unchanged full-size sequential/concurrent/cold cases,
+their 241/240 operations, final return consumption, streaming SIM or bounds.
+
+A preceding exact-source complete-step diagnostic passed separately, followed
+by a pure prefix-hasher comparison that met all frozen equality and alternating
+timing criteria. One earlier diagnostic failed on an access-timestamp assertion;
+an invalid copied preparation was not started. Both remain preserved. The
+corrected harness retains access times separately and compares protected file
+identity/content fields. The new source and explicitly refreshed published pins
+are NOT_RUN until their own immutable READY and exact ROOT GO. No causal global
+performance, real actor, installed-client or complete STANDARD claim follows.
+
+## Embedded reusable-call source candidate, 2026-11-06
+
+The reusable-call `negative` selector distinguishes a global waiting cursor
+from its active parent call: blocked, deferred and uncertain child operations
+wait inside a `RUNNING` call, without an implicit return or effect. The composed
+`pr_effects_pending` selector applies the same distinction to its actual
+deferred pre-merge observation.
+
+`node tools/perf/verify-process-reusable-call-fixtures.mjs contract|negative|sequential|concurrent|cold`
+has exact selectors; execute each as a separate bounded Windows Job cohort case.
+`sequential` and `concurrent` embed one 131-node target twice and exceed 256
+expanded occurrences, with 240 signed deterministic fixture writes, local values
+and declared outputs. The sequential parent consumes its second return. `cold`
+reopens canonical instances in actual new Node processes at entry, intention,
+effect and accepted-return boundaries; no package model file resolves a target.
+All cases retain their arenas and report synthetic authority explicitly.
+Streaming SIM uses the common reducer and no effect/model ports. `negative`
+covers unchanged state on wrong types, concurrent CAS, changed witnesses,
+occurrence/author mismatch, distinct refusal/defer/cancel/UNKNOWN and no implicit
+success. `contract` checks closed references, recursion, stale/conflicting/missing
+pins, local tree, 257-node rejection and a frozen historical v1 hash.
+It also checks declared-return ordering within an enclosing loop, refusal across
+loop/collection/historical-call scopes or parallel branches, and implicit-export
+refusal for data-binding versions 1 through 4. The indirect-recursion fixture
+uses `call_output` after converting its source operation to a call, so an invalid
+operation-output reference does not mask the recursion assertion.
+
+Each fixture step takes its model and cursor from one fresh canonical service
+inspection, including in cold workers. The operation service uses that same
+store and retains its own validated reads, authority checks and CAS. On the
+first authority check within a step, the fixture derives its synthetic scope,
+model hash and validated policy pins from that inspected model. Each check
+receives an independent copy. The preceding cohort remains FAIL at the cold
+deadline, with negative NOT_STARTED. The revised fixture is NOT_RUN pending
+a fresh immutable READY and exact ROOT GO under the original order and bounds.
+
+The initial SOURCE83 contract run failed nominal validation with
+`PROCESS_INPUT_SOURCE_SCOPE_INVALID`; the other four cases were NOT_STARTED.
+That original result remains retained. On the corrected source these selectors
+are **NOT_RUN** pending a new frozen-source READY and specific ROOT GO.
+The first corrected-source cohort passed `contract`, then timed out at the
+unchanged 180-second sequential bound; concurrent/cold/negative were NOT_STARTED.
+Both Jobs closed with zero active processes. Its read-only retained-prefix CPU
+diagnostic identified repeated model hashing in the fixture's frame filter.
+The fixture now selects eligible statuses before resolving their model, keeping
+the same ordered operation subset, all 241 sequential operations, authenticated
+effects, CAS, replay/SIM assertions and original bounds. This changes fixture
+selection cost only; it establishes no product performance improvement. The
+changed fixture requires its own READY/GO and does not erase either earlier FAIL.
+The mixed host's pending-operation search also checks WAITING and receipt
+eligibility before model lookup, after full cursor validation. Its real-port
+regressions remain separately required; direct-IR fixture success alone cannot
+qualify that host change.
+The later sequential run also timed out at 180 seconds with 221 accepted fixture
+effects; it remains FAIL, with concurrent/cold/negative NOT_STARTED and both Jobs
+closed. The next source candidate resolves model identities once per synchronous
+input selection, rechecking the full root hash after journal callbacks. Its
+negative selector includes mutation during such a callback. There is no cache
+across invocations or awaits and no retained external observation; qualification
+of the changed source remains required under the same operations and bounds.
+They do not qualify the actual STANDARD host, every bound, every historical v2
+refusal, every cold/CAS/crash boundary, db-only/DUAL/PG, Native/Human/Provider,
+ordinary installed use or L1-L8/A1-A10. Follow with the existing common reducer,
+operation, metadata/source-of-truth and published loader gates; report each
+actual execution separately. Do not transfer a candidate's result to the
+published STANDARD extraction or a different source HEAD.
+
+## PostgreSQL readiness document observations
+
+The readiness fence uses fresh PostgreSQL batches for the context metadata
+and for the two implementation artifacts. Check that metadata pins are bound
+to the content hashes already observed. Run the existing readiness contract
+checks and a disposable real-PostgreSQL comparison of the exact preview,
+invalidation, and pre/postimage observations. Plan recording, entry into
+implementation or verification and task advancement accept elapsed plans
+when their current authority, rebuilt
+plan, context, prefix and preimages still match. Test an application beyond
+the former 300-second age, revocation and actual source changes separately.
+The nominal fixture retains its separate terminal verdict.
+
+`standard-preview-validity-fixture-lib.mjs` stages a signed preview after one
+day through the ordinary host in FILES, DUAL and SQLite DB-only. It checks
+changed context, current authorization refusal and a changed process prefix,
+then verifies the retained staged journal. Authorization is controlled by the
+fixture. Business dispatch, PostgreSQL and installed qualification have their
+own evidence. The existing expired-plan fixture also runs these staging cases.
+
+The readiness contract fixture also exercises plan recording and verification
+entry after the former age, including a changed rebuilt evaluation, revocation,
+context, prefix, content and metadata changes, and a partial conditional write.
+Its artifact and admission ports are controlled. The validation fixture moves
+the plan clock past the former age before apply and by another day during
+authorization, then runs the actual controlled Node check. It separately
+checks authority, process-prefix and work changes before any check invocation.
+Existing unresponsive and nonterminating command cases exercise the profile's
+execution budget and uncertain-stop handling.
+
+For PostgreSQL task advancement, compare the three ordered content and metadata
+observations against individual reads. Verify a fresh preimage after locked
+re-preparation and a separate postimage after CAS. Retain a metadata-only
+change, a stale plan or context, and any partial write as distinct outcomes.
+An isolated observation or transition is insufficient for a nominal verdict.
+
+For the PostgreSQL cycle validation subject, compare the complete selected
+plan and work result with individual authenticated reads. Check an altered
+journal and altered native evidence, and verify that another subject read
+observes a later change. Record the number of history authentications
+separately from wall time and from the full nominal result.
+
+For a PostgreSQL topology observation, compare the complete session and cycle
+records against the individual canonical reads, including their order and
+source. Check that duplicate numeric identities are refused and that a new
+observation sees a later canonical change. In a disposable PostgreSQL
+readiness comparison, count artifact worker calls separately for each fresh
+context read and compare complete context hashes. Include the current state
+and workflow kernel from the cycle-plan inventory, then change a required
+document in the disposable PostgreSQL target and repeat the observation.
+A context comparison covers neither signed nominal history nor the full
+freshness budget.
+
+For STANDARD host preconditions on PostgreSQL, compare the complete signed
+snapshot input with individual document reads and count artifact worker
+calls. Change a required document in a disposable target and verify that both
+read paths observe the new hash.
+
+## Adjacent installation-record scans, 2026-11-06
+
+The activation fixture retains all earlier assertions and adds four checks for
+the receipt, package VERSION/entry and completed transaction reads. With null or
+undefined observers, each retains one complete final ancestor/leaf scan before
+the original size and content read. An observer retains both original scans and
+its original two leaf callbacks; these record reads never supplied that callback
+to the final read. Mutation at the final callback must still refuse. A fresh read
+after an await rejects changed, missing, oversized and hardlinked records.
+Nonmutating reads and the existing ancestor-redirection checks remain required.
+Migration/pending guards, authority reads and transaction-operation validation
+are unchanged. No observation is cached across calls or awaits.
+
+A newly instrumented first FILES report writer on the preceding source reached
+its durable return inside the original 15-second worker bound. Its pre-ownership
+interval contained 28 complete child pairs and 126 bounded FS samples; this
+identified activation and scope readers as actual callers. The trace lost one
+post-ownership FS sample at its byte cap, and instrumentation overhead is unknown.
+The selected fixture also exercised cold disposition, one original receipt,
+acceptance and replay/SIM, with fixture admission/consent below the ordinary host.
+It establishes no causal speedup, complete trace, full63, general L4, productive
+STANDARD, required193, genuine actors or installed-client qualification. The
+earlier uninstrumented timeout remains. This changed source needs its own
+activation, authored-loader, real-writer and full ordered qualifications under
+their existing bounds and separately frozen preparations.
+
+## Adjacent native-asset path scans, 2026-11-06
+
+The activation suite retains every previous assertion and checks the native
+asset reader with and without a `beforeObserve` callback. Without a callback,
+one complete final ancestor/leaf scan precedes the size and content read. With
+a callback, both original scans and all six targeted leaf callbacks remain;
+mutation or hardlink substitution at the last callback must refuse. Fresh reads
+after an await also reject changed, missing, oversized, hardlinked and redirected
+assets. Null/undefined observers follow the same callback-free path. Reads remain
+nonmutating. The startup model fixture substitutes activation source bytes in
+memory and requires both the current standard implementation fence and the
+direct process pin to detect the change, then verifies restoration.
+
+On the preceding source, a separately governed activation-suite baseline passed
+22 assertions with confirmed Job closure and zero active processes. Its bounded
+counter actually recorded 14 `localPath` and 14 `readBytes` leaf scans under
+`validateNativeAssets` for `aidn-session-start.mjs`. This establishes the targeted
+adjacent repetition with the synchronous caller; it is neither all-FS attribution
+nor a causal timing gain. Instrumentation overhead is unknown. That baseline does
+not qualify the changed source, actual writer, ordered63, resource disposition,
+productive STANDARD or the full L1-L8/A1-A10 objective. Qualify the changed
+activation and loader fixtures first, then the real writer, inventory and policy
+checks and every ordered disposition case under their original bounds, each with
+its own immutable preparation and coordination. Historical failures remain.
+
+## Fresh branch and HEAD observations without a shell, 2026-11-05
+
+`verify-vcs-adapter-fixtures.mjs` retains its existing Git checks and also reads
+the linked checkout's branch, switches and detaches HEAD on the same adapter,
+reattaches it and checks the missing-directory fallback. HEAD checks cover a new
+commit on the same adapter, detached HEAD, an independent linked checkout and
+the missing-directory fallback. Each branch and HEAD read invokes Git afresh
+through the existing shell-free string adapter. No observation is
+cached across calls or awaits, and admission/effect fences remain unchanged.
+
+An instrumented DB-only writer on the preceding source reached its ownership fence within
+the original 15-second worker bound. Correlated trace begin/end IDs identify two
+shell-based branch reads and one HEAD read. The candidate replaces their shell
+launches, retaining the Git reads, with no measured speedup claim.
+That diagnostic PASS does not qualify this changed source, the ordered 63 cases,
+general L4 or productive STANDARD. Published implementation pins require explicit
+authoring and fresh loader, real-writer, inventory and policy qualification.
+
+## Normal-writer preallocation declarations, 2026-11-05
+
+The disposition selector appends `artifact-owner-reserved`,
+`artifact-owner-fence-acquired` and `artifact-owner-declared` after the previous
+18 cases in each mode. The full ordered three-mode manifest now has 63 cases;
+every earlier ID, assertion and order remains. Selected cases do not replace
+that global verdict. Actual independent writer workers keep the 15000 ms bound;
+the governed case bound remains 120000 ms. No failed arena is resumed or repaired.
+
+Each appended case terminates the actual session-report writer at a synchronous
+preallocation/ownership boundary, then constructs new stores and a new inventory.
+It authenticates the signed v2 proposal and exact OS identity, checks the fence
+and lock appropriate to that boundary, retains all business preimages and zero
+receipts, and refuses a second dispatch. UNKNOWN and all unresolved resources
+remain. Separate controls cover v1 reader shape, substituted process identity and
+the nominal v2 proposal-to-released-lease link. These are fixture-authorized
+components below the ordinary host, not general writer takeover or complete L4.
+
+The preceding uninstrumented source81 quiet partition stopped in DUAL's first
+artifact writer, before dispatch_returned: 27 PASS, 1 FAIL and 26 NOT_STARTED.
+All 28 Jobs closed. Its first worker reached its original 15-second limit; no
+second disposition worker started, so it attributes no audit-path cost. That
+failure and the earlier full FILES failures remain. New-source evidence is
+required after explicit published pin authoring. No causal speedup is claimed.
+
+## Compound reconciliation observations, 2026-11-05
+
+The ordinary host derives the authority and context of each synchronous
+reconciliation boundary from one fresh activation. The inventory still captures
+both boundaries, scans resources twice, authenticates canonical history and
+compares the exact prefix, authority and context. The mixed host keeps its
+existing independent authority/authentication path. No observation is cached
+across a call or await. The inventory fixture changes real Git HEAD between two
+calls on the same open host and requires a changed context with no authorization.
+Run it in files, dual and db-only, then the unchanged real-crash disposition
+selectors and the ordered full manifest. Published loaders separately check the
+explicitly authored pins. An earlier current-source diagnostic timed out in the
+first worker before the instrumented second worker; it measured no audit-path
+cost. Qualification of this source, general L4 and full STANDARD remain required.
+
+## Operation-host execution-authority observation, 2026-11-05
+
+After changing authority composition, select the isolated ordinary-host
+`verify-standard-operation-disposition-fixtures.mjs files --case=disposition_recorded`
+case before the full ordered disposition partition. Keep its actual independent
+workers and original 15000 ms/120000 ms bounds. Startup, cycle and composed
+loaders must separately verify explicitly authored implementation pins. A
+selected-case result is not the full suite verdict. Diagnostic preloaders and
+their failed measurements remain distinct from uninstrumented qualification.
+
+## Original return disposition and real crash boundaries
+
+`node tools/perf/verify-standard-operation-disposition-fixtures.mjs files`
+(or `dual` / `db-only`) selects the new internal public-host component fixture.
+It freezes a real one-operation context_reload model, stages through the actual
+host, then terminates a separate Node process at the reserved, effect-returned
+and durable-return boundaries. Missing original returns stay UNKNOWN. Later
+cases terminate disposition after its signed preparation and after receipt CAS,
+reopen the host, obtain new fixture consent, retain every earlier attempt and
+redeliver the original output without another evaluation. They cover exact
+common-reducer replay/SIM, scope forgery, concurrent repreneurs and a foreign
+fence/ABA refusal. Every disposable arena, failed prefix and process exit is
+retained outside the checkout. The existing required host case includes all
+three modes without deleting any previous scenario or changing dispatcher argv.
+
+The same suite additionally runs `artifact-redelivery`,
+`artifact-disposition-recorded` and `artifact-disposition-receipted` (also
+selectable with `--case=`). These exercise the actual session-report writer,
+signed dispatch, exact canonical postimages/metadata, inventory, disposition
+and common process service with a fixture-composed admission and closure
+decision. Each case terminates a real child at the original durable return;
+the latter two also terminate a new disposition process. Cold reconstruction
+must retain one original output/receipt, recover the exact postimages and accept
+through the common service/reducer and SIM. Session closure remains pending.
+This component runs below the ordinary operation host; it is not a productive
+published STANDARD journey or a genuine human authorization.
+
+`disposition_control_reserved` and `disposition_fence_acquired` additionally
+terminate actual separate processes immediately before and after acquisition,
+before the audit exists. The retained signed control intention must identify
+the exact proposed/held token and original inventory. A new cold host obtains
+new consent and delivers one original result through acceptance and replay/SIM.
+They are appended after all previous cases in each full selector. The further
+`control-expired`, `control-revoked`, `acquired-revoked` and `audit-revoked` cases
+invalidate consent at the real awaited boundary. Expiry uses a real 5200 ms wait
+against a fixture grant with its original five-second lifetime. Before acquisition,
+the prepared fence must stay unchanged; later refusal retains the signed control
+and any existing audit, appends no receipt and releases only the newly held lease.
+The ordered three-mode manifest therefore has 54 cases, preserving all earlier
+36 plus the two preaudit boundaries and all assertions. New-source qualification
+is required. Actual OS-owner replacement,
+reused PID, every acceptance/CAS crash, normal-writer concurrency, independent
+external discovery and general L4 remain separate obligations.
+
+The full invocation includes every case. Selected-case results alone do not
+replace its global verdict. A bounded partition must freeze all case IDs, order,
+assertions, logical full argv and exact child argv before starting, retain common
+immutable source/dependency/tool captures, revalidate them before each case,
+stop at the first failure and emit a global result with unstarted cases explicit.
+The earlier 120-second full FILES failure remains historical failure evidence.
+`prefix-change-during-grant` additionally changes the canonical instance by CAS
+during authorization. The post-grant fence must still reobserve and refuse the
+changed prefix before audit/result writes, retaining cancellation and releasing
+only its newly acquired bookkeeping lease.
+
+This does not qualify all normal-writer
+concurrency boundaries, every crash/acceptance boundary, general resource
+discovery/closure, new admission, the published STANDARD journey, genuine
+Native/H/provider, PostgreSQL or installed execution. An OS process-creation
+identity supports only its bounded owner observation; it is not all-resource
+closure. Report these unexecuted obligations separately from component PASS.
+
+
+## Retained-resource inventory foundation
+
+`node tools/perf/verify-standard-reconciliation-inventory-fixtures.mjs files`
+(or `dual` / `db-only`) exercises the actual internal operation-host inventory
+port, canonical files or SQLite, signed orphan journals absent from instance
+events, dispatching/no-receipt and receipted/UNKNOWN, retained owners/debits,
+unreferenced evidence, substituted grants, stale prefixes and db-only projection
+non-adoption. Bigint physical identities distinguish adjacent values above
+2**53 and roundtrip through JSON; actual files are reobserved before/after reads.
+The embedded-operation check stages a child operation whose node ID matches
+the parent call. It verifies the child's operation pin and the absence of
+inventory writes or effect authorization after reopening the host.
+The control case distinguishes a reserved review wait from its captured event.
+It checks a reservation before capture, a reserved capture after reducer
+acceptance, an exact delivered acknowledgement and refusal of a substituted
+selection. The human case also verifies a retained reservation before the
+operation receipt exists. A separately signed question substitution or a
+premature acknowledgement fails. Read-only inventory preserves each
+canonical snapshot and invokes no human source.
+The same checks join the existing required host fixture case; no previous gate
+case or argv is removed. Fault-injected journal/Native states are fixtures,
+not real crashes, external closure, a disposition or the full STANDARD model.
+No authorization callback or model call is expected. General reconciliation
+and the entire L1-L8/A1-A10 objective remain unqualified.
+
+Add `--process-owner-observation` to this fixture for the internal owner
+observation. The fixture signs a dispatch linked to a real disposable local
+child. It reads the same identity while the child is alive and after its
+direct exit. It also covers missing dispatch evidence and refusal of a
+substituted digest or a closure claim. Canonical artifacts and the unknown
+receipt remain byte-identical, with no authorization. The injected journal
+is a fixture. The direct-child observation does not cover descendants or a
+business-effect disposition.
+
+## Historical mixed diagnostic and reconciliation boundary, 2026-11-05
+
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --historical-diagnostic-only` selects the signed historical diagnostic regression in the existing execution gate. It calls the public mixed port and tests old implementation pins, expired retained previews, scope/instance/HMAC/binding/result/configuration substitution, missing or changed checkpoints, unchanged physical witnesses and current effect refusal despite untrusted diagnostic options. Its allocation/checkpoint corpus is synthetic and invokes no Native, human or provider. It supplies no resource closure, general reconciliation or productive-resume proof. Exact-source qualification and an unchanged read of a retained historical corpus are recorded separately; no old failure is reclassified.
+
+The same selector covers the mixed read-only inventory and process-owner
+observation with a signed reserved allocation, then a signed failed allocation
+with retained debit. The fixture checks ordinary inspection and disposition
+refusal, checkpoint tamper rejection, physical non-mutation, and zero Native
+calls. The allocation and closure evidence is synthetic.
+
+## Published binding alignment after implementation changes, 2026-11-05
+
+A component check does not load the published STANDARD assets. After changing an implementation-covered file, run the startup/model, cycle-component and composed-workflow fixture suites. Their real loaders compare every published binding to the current registry. Refresh only through explicit source authoring: `tools/verify/refresh-standard-startup-bindings.mjs --write`, the same command with `--cycle-create --write`, then `tools/author/build-standard-workflow-model.mjs --write`. Each changed component gets a new revision; runtime reads never refresh pins. This source alignment does not qualify historical diagnostic authentication, productive execution, resource disposition or L1-L8/A1-A10.
+
+## Exact fixture file identities, 2026-11-05
+
+The Git-head component also verifies decimal-string device/inode identities from bigint lstat observations in both physical witnesses, distinct adjacent IDs beyond 2**53, JSON round trips, bounded mode/size conversion and unchanged diagnostic reads. Earlier Number-based captures remain approximate and are retained unchanged. This component establishes no resource disposition, Native resumption or complete STANDARD result.
+
+## Fresh Git identity component, 2026-11-05
+
+`node tools/perf/verify-standard-drift-session-scope-fixtures.mjs --git-head-only`
+compares the combined HEAD/branch observation with the previous two Git commands
+on a disposable real repository: attached, changed HEAD, symbolic branch chain,
+detached, changed branch and unborn HEAD. It checks one invocation per read,
+complete file/identity witnesses around reads, and malformed-output refusal.
+The regular storage-mode selector also runs this component. Existing canonical
+context fences remain required separately; this component grants no effects and
+does not qualify the interrupted setup, general reconciliation or STANDARD.
+
+## Terminal refusal observation and optional creation candidate, 2026-11-05
+
+The independent drift-worker selector now requires authenticated diagnostic
+history after a failed allocation, unchanged signed allocation/debits, continued
+execution exclusion and a denied closed H channel without another H callback.
+The new internal diagnostic port is read-only and grants no reconciliation or
+resume authority. Native and human actors remain fixtures; this scenario does
+not establish published STANDARD execution or business-resource disposition.
+
+Run `verify-standard-drift-session-scope-fixtures.mjs --mode=files`, `--mode=dual`
+and `--mode=db-only` separately under recorded bounds. Each new disposable corpus
+explicitly starts with absent canonical baseline history, captures its fence,
+then creates it through the artifact CAS port during an await. The test requires
+the original fence to refuse. Database cases keep its projection absent until
+the later explicit projection; SQLite fixture setup is not a business delete.
+The corpus excludes that document before its first explicit canonical import
+and fixture commit; no referenced artifact or history is deleted. These controls
+are not a complete DB-only workflow or installed qualification.
+
+### Expired R05 completion during cycle closure
+
+The objective-completion fixture verifies the exact 45-minute event boundary
+with the original physical report and event bytes. A current alignment review
+cannot refresh that event. Beyond the boundary, the linked renewal question
+offers a new diagnosis, refusal, deferral and cancellation. The human-port
+fixture rejects alignment on this question and records the authenticated
+diagnosis request as no-effect. Actual Native allocation and full published
+NO_GO closure remain separate gates.
+
+## Pre-effect close expiry continuation, 2026-11-05
+
+The close-record component accepts --mode=files --final-hook
+--late-objective-expiry --retain-always. It uses the production close-hook port
+and canonical files with synthetic completion/H capabilities. Controls cover
+expiry before preparation and after successful preview, independent port
+reconstruction, no-effect owner release, unchanged artifacts/events, separate
+operation authorization, wrong witnesses, revoked H, process CAS and rejection
+of success hybrids. This is not a durable published-process restart or genuine
+actor proof. The composed budget preflight now supplies the explicit diagnostic,
+completion-selector and close-loop facts required by the published IR; these
+remain synthetic planning events, never authenticated execution results.
+
+
+## Linked objective review component, 2026-11-05
+
+The scenario closure fixture now reuses one warm host while retaining a distinct
+new Node reconstruction and every method's fresh fences. Phase timing fields
+are prepared for its next new-arena run. This cost candidate is NOT_RUN on this
+source; no runtime speedup, closure success or causal performance claim follows.
+
+`node tools/perf/verify-drift-recovery-fixtures.mjs --objective-disposition-only`
+adds nine linked-review H checks and eight renewed-completion reader checks.
+They cover current source revocation/expiry during awaited context/history,
+wrong anchors, refusals, defer/cancel/wait, immutable original report/event
+witnesses and receipt/process changes after authentication. Source/evaluation/
+operation capabilities are doubles. Physical report/event bytes are temporary
+fixtures. The separate `verify-standard-drift-route-fixtures.mjs` adds eleven
+selector controls: nominal/fresh bypass a second H opinion; only recognized
+expiry selects historical completion and fresh H review. Invalid subjects,
+revoked sources, wrong witnesses, UNKNOWN and unaccepted effects refuse.
+
+The composition suite checks the published source and bindings, not productive
+route execution. Real host cycle closure, post-selector expiry, other R05
+contexts, cold productive published execution, required193, genuine actors,
+canonical persistence and exact installation remain separate obligations.
+
+
+## Reload cache authorization boundary, 2026-11-05
+
+`node tools/perf/verify-reload-cache-fence-fixtures.mjs` runs an isolated child
+with a delayed snapshot and clock/authority doubles. The real completion
+checkpoint, reload collector, Git adapter and cache writer must refuse revoked
+or expired authority after collection, preserving absent caches and exact prior
+bytes. Nominal authorized write, capability-free preview and actual CLI JSON
+preview/explicit cache write remain separate controls. The snapshot placeholder
+is not SQLite evidence. Failed arenas are retained; `--retain-always` also keeps
+a successful arena. The disposition-only recovery selector includes this small
+component without changing the ordered required gate cases or their obligations.
+Before the fix on SOURCE60, four controlled cache writes crossed revoked/expired
+authority; retain that result separately from corrected-source qualification.
+
+
+## SOURCE60 completion admission selectors, 2026-11-05
+
+The objective fence component now has 24 controls: the prior finalization
+fences plus independent read-only admission, checkpoint summary emission,
+missing/JSON-only proof, delayed revocation/expiry/replacement, changed goals,
+other signals, STOP/L3 and event authorization. Working-source preflight passed
+with observation/artifact doubles; frozen qualification is separate.
+
+`verify-standard-cycle-close-record-fixtures.mjs --mode=files --final-hook
+--delayed-hook-fences` checks one exact preparation under ownership and
+an independent final grant check. It also covers delayed revocation and a
+current process revision change before checkpoint. The grant_after fault uses observed event growth
+and must retain UNKNOWN.
+
+`verify-agentic-process-execution-fixtures.mjs --cycle-close-finalize-mode=files
+--cycle-close-objective-completion --retain-always` selects a new scenario graph
+with real planning/work/validation/audit/terminal record ports, then a fresh
+terminal diagnostic and authenticated fixture alignment. It requires cold host
+cycle_close_finalize, canonical completion, nonmutating preview, independent
+checkpoint gating and retained redelivery/replay/SIM. Native/Human are fixtures;
+published routing, general causal transitions and genuine actors remain due.
+Record frozen-source outcomes separately.
+
+
+The recovery fixture also runs seventeen read-only completion-reader checks.
+They distinguish the latest accepted v3 finalization from an opinion, historical
+finalizer or UNKNOWN result; bind current evaluation/context/HEAD and physical
+report/event bytes; and refuse substitution, wrong offset, revocation, expiry
+and process CAS changes. Operation/evaluation/disposition capabilities are
+synthetic. Temporary report/event bytes are real, and all reads leave them
+unchanged. The reader is not connected to closure admission, the checkpoint
+hook or the published route. These checks establish no successful closure.
+
+`node tools/perf/verify-gating-objective-fence-fixtures.mjs` runs focused
+checks with the production evaluator, signal policies, finalizer and temporary
+event append. Delayed observation and artifact capabilities are doubles. A
+revocation, expiry or replacement during the final collection must leave the
+existing event prefix unchanged. Revocation or an actual process change during
+the finalizer's context read must refuse before report CAS, projection or hook.
+Preparation age alone is not a finalizer refusal under the 2026-11-11 decision.
+Goal/signal
+changes, STOP, preview and inert JSON claims retain their guards. This suite is
+also included in the existing recovery fixture command, without changing the
+required dispatcher's ordered case list. The parent retains child transcripts
+and includes their named PASS assertions in its reported check total. Failed
+component arenas are retained.
+These components do not qualify canonical storage, actual actors, closure,
+the published review route or the whole STANDARD workflow.
+
+`node tools/perf/verify-drift-recovery-fixtures.mjs --objective-disposition-only`
+checks the synthetic human/disposition boundary and the focused effect fences
+above. It refuses unaccepted receipts, wrong instance/evaluation/context,
+newer evaluation, expiry, unverified retained source and changed canonical
+review. A diagnosis request cannot become alignment or an allocation.
+
+The separate execution selector `--drift-objective-mismatch-only
+--drift-objective-finalize-accept --retain-always` prepares the exact objective
+pair on new projects and, after a valid v2 question and fixture-authenticated
+opinion, exercises candidate finalization plan v3, the owned in-process gate
+hook, correlated event/report and retained dispatch/replay/SIM. This distinct
+case must be qualified on its own exact source; the earlier question/capture
+case does not prove it. Neither case qualifies published-model routing, actual
+human/native actors, installed execution or the entire standard workflow.
+
+Add `--drift-objective-published-corrective` to `--drift-objective-mismatch-only`
+to exercise the exact published corrective checkpoint call inside a disposable
+mixed fixture with an active cycle. The direct finalizer first retains its
+objective refusal. The call then binds the accepted evaluation, waits for the
+signed fixture opinion across host reopening, and returns after the confirmed
+R05 result and the fresh review linked to that completion. Use `--drift-objective-published-checkpoint` with
+`--drift-objective-mismatch-only` to also exercise the next real cycle checkpoint,
+including its linked plan, separate grant, gate invocation and retained result.
+The full correction sequence, installed package and actual actors have separate
+gates.
+Add `--drift-objective-checkpoint-only` with the published-checkpoint selector
+to isolate its positive route within the same execution bound. The direct
+refusal is verified by a separate execution.
+Add `--drift-objective-terminal-context` with the published-corrective selector
+to repeat the real refusal, current human alignment, physical R05 completion
+and typed finalizer return with an explicitly staged `DONE` cycle. This is a
+terminal-context port regression, not proof of cycle closure or promotion.
+The published correction graph uses that same pinned call at cycle entry,
+cycle closure, promotion and session closure. Each call receives its own
+accepted evaluation. Its `finalization_operation_id` return is witnessed by
+the finalizer's signed output (`observations.operation_id`); session closure
+consumes that return through `call_output`, then authenticates the original
+operation, receipt and physical completion. Historical outputs may omit the
+additive observation; new model pins require the current implementation.
+The positive fixture stages the exact preview returned by the mixed host and
+then dispatches and accepts that occurrence through the ordinary step. It
+records preview, staging and dispatch/acceptance elapsed times separately.
+The missing-cache case exercises a reload write followed by continued live v3
+review validation, with a real checkpoint summary and one confirmed effect.
+
+The console fixture includes a changing prepared-plan clock. It retains the exact
+STANDARD action in the returned request, rejects a missing prepared request,
+changed action and changed live authority before effects, and checks that the
+browser submits the retained consent subject. The isolated helper can run with
+`node --input-type=module -e "import { verifyStandardConsoleExactAction as verify } from './tools/perf/standard-console-action-test-lib.mjs'; console.log(await verify());"`.
+This is an offline application-port/browser boundary check, not a genuine human
+or complete published-model execution proof. Existing CLI action-file and
+closed-action validation still apply to the inline console form.
+
+`node tools/perf/verify-standard-console-entry-fixtures.mjs` uses a fresh activated
+FILES project and the real public `workflow-action` CLI. It checks immutable
+preview, separate host-key/instance actions, exact cold preservation of the first
+timed operation, absent/unknown action refusal, actual `context_reload` receipt,
+and same-reducer replay/SIM without effects. The existing console fixture invokes
+this case as well. No runner/controller double is passed to the entry; its Native
+configuration is deliberately unusable. This prefix does not qualify a session,
+other storage modes, genuine actors or an installed package.
+
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --drift-objective-mismatch-only --retain-on-failure`
+uses the exact session/cycle objective pair from the preserved SPIKE failure
+on two NEW FILES projects. Real canonical creation/context, authenticated fixture
+Native output and evaluation retain the finalizer's `objective_delta` refusal.
+The candidate recovery port prepares a v2 question for a separate suspect signal
+review. Add `--drift-objective-human-accept` to retain an authenticated fixture
+alignment opinion, then verify that findings remain refused and same-reducer
+simulation retains accepted events. This does not discharge the signal, integrate
+the published-model route or complete R05. Terminal status is a synthetic fixture
+precondition; no original authority is reused.
+Add `--drift-objective-construction-only` for the distinct construction preflight:
+it proves two authority constructions and zero Native allocations only, without
+diagnosis, finalization or human preparation. The preserved first SOURCE57
+preflight used an overbroad title; that evidence remains construction only.
+
+Branch-integration inspection resolves its source/target/HEAD object IDs in one
+fresh Git call and its finite lock/reflog paths in another. Every physical path,
+filter context, worktree binding, lock, index and reflog remains freshly observed
+at each existing fence, including after awaited authorization. The port suite
+also refuses missing references and checks a linked worktree with spaces. This
+reduces subprocess launches without caching an admission or changing CAS. The
+preserved source55 gate timings motivated this bounded change; no timing rerun or
+complete 193-case result is implied.
+
+Inspection of distinct branch references batches the symbolic-ref observation.
+It reads HEAD separately on that path. Equal source and target can share a
+fresh enumeration with HEAD. Exercise both paths, including a chained alias,
+detached HEAD, a missing row, warnings and Git versions without root-reference
+enumeration. The port fixture checks both directions of symbolic aliasing and
+verifies refusal before a write.
+
+The [dated component record](qualification/standard-workflow/console-and-branch-observation-2026-11-05.json)
+separates the actual 14-call public-console PASS on ancestor `f9899b41` from the
+33-check composition PASS on `4635836b`. Neither result qualifies the newer
+branch-integration port, unresolved R05 route, full console/contracts, complete
+required agentic gate or installed workflow. Pending observations retain their
+recorded date and require a later terminal supplement.
+
+The synthetic composed preflight follows `cycle_work_requested` from its modeled
+mode decision. THINKING and nonretained EXPLORING count two Native activities:
+analysis and session-closure drift. They terminate after their actual closure
+operations without inventing a cycle plan. The common reducer still waits when
+a routing fact is absent; the helper reports the waiting node and reason. These
+are synthetic planning checks, not authenticated application execution.
+
+The composition fixture also feeds the ordinary-entry control selector an
+actual event-wait cursor from the common reducer. The selector requires exactly
+one WAITING/event occurrence and rejects absent, ambiguous, deferred and operation
+waits. The production entry then prepares its existing signed control request.
+This component check does not authenticate or deliver an external review.
+
+The required `perf:verify-agentic-process` gate uses a shell-free Node dispatcher
+and the ordered argv cases in `package/catalogs/agentic-process-fixtures.v1.json`.
+Its first 187 cases preserve the previous command exactly; six appended cases
+cover the dispatcher, host sources, combined authority and ordinary CLI in three
+storage modes. The independent private policy checks the complete argv/order,
+the exact npm wrapper, unique required placement and absence of lifecycle hooks.
+The dispatcher waits for each child, forwards its output and fails at the first
+nonzero exit. On Windows, both the family command (including npm descendants)
+and each dispatcher child use the existing process-tree controller. Job membership
+is established while suspended, before application execution; an independent
+helper enforces the original deadline and kills its Job on supervisor-pipe EOF.
+The supervisor also admits and retains a Windows handle to the synchronous
+family caller, checking its OS creation identity before any command starts.
+Caller death cancels the owned command tree. The watcher retains a supervisor
+handle too, so it exits when either lifetime ends; no numeric-PID kill is used.
+The family command keeps its 900000 ms bound. A separate bounded closure interval
+collects evidence after execution stops; it permits no new fixture allocation.
+The dispatcher checks the inherited absolute deadline before each launch and
+again before resuming a prepared Windows child. Standalone dispatch has the same
+900000 ms overall bound. POSIX retains direct-child signal forwarding.
+
+Every dispatcher invocation retains the complete ordered case list, per-child
+index/argv, PID and OS creation identity, start/end, result and Job closure proof
+in a separate temporary evidence directory. `AIDN_VERIFICATION_EVIDENCE_ROOT`
+can select an existing absolute directory outside the checkout for family evidence.
+Child stdout/stderr are bounded original logs; their digests are compared with the
+controller's observed digests. A partial transcript is explicitly incomplete.
+If the enclosing Job interrupts a child before it records its result, a separate
+enclosing-Job observation retains the exact case and OS closure proof without
+inventing that child's exit code. Original records are never overwritten.
+The directory survives failures and its reference appears in the family result.
+This supplies case coverage and measured wall times, without implying that an
+unexecuted suffix passed or that aggregate tails are full coverage.
+
+`verify-node-fixture-runner-fixtures.mjs` checks literal argv and paths with
+spaces, ordered success, fail-fast exit 23 and stop propagation. Windows also
+executes relative-argv dispatchers with real parents, children and grandchildren,
+observes their PID/parent/creation/executable/argv identities, expires the command
+or forcibly kills its supervisor or actual synchronous caller, and verifies no next allocation, owned-tree
+death and an unchanged foreign process identity. These are OS launcher fixtures;
+business resource closure, genuine Native actors and full STANDARD remain separate.
+
+The required PostgreSQL execution fixture retains a separate `postgres-fixture.jsonl`
+outside the checkout. It records every executed check's start/end/failure, complete
+Git-inspection timings, and calls made by the real PostgreSQL scheduler scenario
+with their observed server/run dates and terminal child timings. Arguments,
+connection credentials and SQL payloads are excluded. The scheduler retains its
+original 120000 ms run and 60000 ms task ceilings; instrumentation supplies cost
+and failure evidence for the next required qualification, not a new success or
+a diagnosis of a previously expired run. A functional verdict and owned-cluster
+cleanup remain separate. The required default still executes the full suite;
+existing explicit partial selectors keep their partial qualification labels.
+
+`node tools/perf/verify-workflow-execution-authority-fixtures.mjs` checks that a
+combined synchronous project/persistence observation matches the separate
+descriptions and reads one full activation receipt. A later call reads again;
+same-size changed skill bytes with restored mtime, missing activation and changed
+state mode remain freshly observed. It uses a new source-installed fixture.
+`node tools/perf/verify-standard-host-source-fixtures.mjs` isolates signature,
+encoding, closed-envelope schema, expiry, subject, source reference, source kind
+and payload-author boundaries with fixture Ed25519 principals. Its explicit
+historical-verification capability is not reducer acceptance evidence.
+
+`node tools/perf/verify-standard-ordinary-entry-fixtures.mjs --mode=files|dual|db-only`
+drives the public CLI's production STANDARD composition on a fresh activated
+fixture. It checks immutable preview, exact host-key preparation/initialization,
+deterministic operations, cold H wait/resume, Ed25519 fixture-source forgery and
+stale-question refusal, and same-model/reducer replay/SIM. It passes no controller
+or authorization doubles to the production entry. Its Native configuration is
+deliberately unlaunchable and its signed principals are fixtures. Report real
+Native/Human/Provider/OS, installed package and full STANDARD separately.
+Each new decision envelope declares ten minutes of validity, covering two
+180-second CLI calls without changing command limits or prior authorities. The
+forgery assertion independently requires the envelope still be fresh. Invocation
+timings are descriptive wall times under the reported concurrent load.
+
+`node tools/perf/verify-standard-ordinary-github-fixtures.mjs` uses the same
+application entry as the CLI and console on a fresh FILES project. Only the
+external GitHub subprocess transports are doubled. Exact initialization reads
+the expected actor and repository. A mismatched actor and a changed manifest
+refuse before the instance write. The fixture also checks ambiguous origin,
+foreign instance, executable drift, request injection and offline replay/SIM
+with an invalid provider configuration. A separate host read exercises the
+real merge adapter protocol with the same transport double. The effect ports
+refuse missing grants before transport, and both named review waits retain
+their instance when the dedicated event source is absent. The ordinary entry
+also binds the explicit reviewer into the exact host trust digest.
+The review event component (`--review-event-only`) starts at a bounded event
+wait with fixture-seeded signed business context. It exercises the same
+private host and fixed GitHub query with a small pinned transport fixture and
+real local Git, substitution/refusal before capture,
+v2 reservation, delivery from a fresh Node process, idempotent acknowledgement
+and historical reverification with the original base and a different current
+tip. The elapsed-time result applies to that fixture transport. The published
+PR path to either wait and its full receipt chain, production
+credentials and network effects, Native and the installed archive require
+separate qualification.
+
+The SPIKE wrapper-precondition suite also exercises both session checkpoint
+inventories with real initializer CAS postimages and synthetic signed writer
+records. It checks the exact finite path/hash set, signature tampering, wrong
+instance/scope, unaccepted receipt, dispatching phase, non-deterministic writer,
+unknown effect and foreign path refusal. Conversion finalization is not admitted
+as a separate canonical writer. These are component checks; published-model
+session closure, cold restart and full Runtime require their own evidence.
+
+For a new disposable project, add `--standard-spike-session-close` to an explicit
+`--standard-spike-experiment=retain|no_go|drop` case. This extends the actual cycle
+closure through preclose checkpoint, session admission, R05, a fresh authenticated
+session decision, report, checkpoint and final close hook. Retained-cycle promotion
+is separately declined by a fresh `not_requested` decision. It stops before delivery
+or external provider actions, then cold-polls the retained instance and replays the
+same model/reducer while comparing canonical bytes/metadata, projections, Git,
+product and journal evidence. It is not an observed merge or a genuine actor test.
+
+Before opening the mixed host, every new effectful SPIKE fixture creates its
+host-owned pinned `TEST-001` validation profile. A bounded setup preflight checks
+its schema, hashes, planned test availability and fixture boundary availability,
+then runs the actual check against separate value-2 and value-1 controls. The
+positive and negative verdicts prove this setup is usable and nonpermissive;
+they do not validate the product. The actual generated plan and each task must
+select those checks again. Runtime machine validation remains mandatory. The
+validation fixture suite retains the independent missing-profile refusal. These
+controlled Node checks and fixture boundary do not qualify genuine Native or
+its sandbox, and do not repair any prior failed SPIKE authority or arena.
+
+The new full-session case starts with its own three-hour, eight-response grant,
+10-MiB output cap and 300000-ms per-turn bound. The duration accounts for observed
+deterministic admission costs in the one-hour cases, which refused at the product
+allocation reserve. Original dates, caps, failures, owners and arenas remain intact.
+This selector does not implement their resource reconciliation or renew authority.
+Its source wiring, component checks and full-path execution verdicts are separate.
+
+## SOURCE48 SPIKE execution path, 2026-11-04
+
+The published model shares its existing COMMITTING work/validation/audit/closure
+subgraph between ordinary new-cycle planning and human-selected COMMITTING SPIKE
+planning. A read-only `cycle_plan_select` port authenticates the latest accepted
+canonical plan for the actual active cycle. The initial cycle parameter cannot
+substitute for that cycle. Selection grants no DoR, product write or retention.
+EXPLORING experiments still require their own conformant execution ports or a
+fresh authenticated mode transition and remain blocked explicitly.
+
+On a new frozen source, `node tools/perf/verify-agentic-process-execution-fixtures.mjs
+--standard-spike-mode=files --standard-spike-experiment=retain --retain-always`
+selects the real COMMITTING SPIKE task/validation/audit/human closure path. Select
+`no_go` and `drop` independently. Each new fixture case has its own initial
+eight-response grant; no previous one-response conversion grant is renewed.
+These fixture actors and transport do not establish genuine Native/Human or
+complete STANDARD acceptance. Registration and source wiring are not execution
+evidence; exact-source terminal results are required.
+
+SPIKE finalization retains immutable local port evidence beneath
+`.aidn/runtime/standard-workflow/evidence/`: hook bytes serialize the returned
+port object. Canonical projection sync bytes serialize that port's result;
+historical selective-import evidence retains its original stdout. Outputs contain bounded
+references, byte counts and SHA256 instead of importing noninteger timing data
+into the reducer. The original JSON limits remain unchanged. Evidence belongs to
+the operation host in all storage modes; missing blobs remain unavailable, with
+no reconstruction or DB/file fallback. The nominal real SQLite DUAL case is
+separate from after-hook tampering; a confirmed hook/sync alone does not prove
+unchanged postimages. Use `--dual-nominal` for that separate wrapper case.
+Use `--db-only-nominal` separately to verify no visible projection is requested.
+Both nominal cases compare the complete canonical rows before and after the
+real finalizer, including ownership, classification and timestamps. The bounded
+projection synchronizes only accepted CAS postimages; it never reimports them.
+For a new diagnostic project, `--dual-port-diagnostic` runs the actual hook and
+selective sync once each, without calling wrapper finalization afterwards. It
+retains full canonical rows and projection bytes before the hook, after the hook
+and after sync under `.aidn/runtime/spike-port-diagnostic/`. Its report identifies
+changed content and metadata fields. This diagnostic cannot establish wrapper
+completion or authorize a postimage change; original failed arenas stay intact.
+
+The conversion-only fixture verifies the accepted governed Git checkpoint,
+its actual parent, committed paths and blob bytes, together with unchanged
+product bytes. It does not require HEAD to stay at its pre-checkpoint value.
+L1-L8/A1-A10, ordinary entry, installed evidence, genuine actors and full current
+Runtime/Governance Admission remain open.
+
+## SOURCE47 SPIKE wrapper correction, 2026-11-04
+
+Nested wrapper inputs omit root-only schema declarations while retaining their
+input constraints. EXPLORING preflight now invokes the existing canonical
+context-refresh port before analysis; its repair and freshness observations
+come from the real projector and artifact CAS. Unknown values remain unknown.
+The final conversion hook validates the existing canonical SPIKE, its R2
+continuity and branch/session ownership using the private completion selector;
+it does not select continuity for another cycle. The host still authenticates
+the accepted decision and checks exact postimages, metadata and authorization.
+Exact-source qualification is required. Experiments and the entire L1-L8/A1-A10
+remain unfinished; ordinary entry and complete_standard_workflow are unchanged.
+
+
+The 135 operation occurrences also exceed catalog v1's 128-entry bound.
+Explicit standard-workflow-catalog.v2 allows 256; v1 keeps its original bound.
+The first frozen SOURCE44 candidate failed catalog validation before dispatch;
+that failure is retained separately from any corrected-source qualification.
+
+## SPIKE conversion component
+
+Run `node tools/perf/verify-standard-spike-wrapper-preconditions.mjs` for the
+short delayed-wrapper case, and append `--metadata-tamper` for a fresh real
+SQLite dual project with content-preserving metadata mutation. The latter must
+refuse before the conversion hook; actor sources remain synthetic. These two
+cases do not qualify the complete IR path, post-hook tampering or experiments.
+The separate `--metadata-stage=before-authorization` and
+`--metadata-stage=after-hook` cases inject during the first or second awaited
+authorization in a fresh real SQLite DUAL project. The first must refuse before
+the hook with no effect; the second must retain confirmed hook/sync observations
+and return reconciliation_required/unknown with no positive fact. Registration
+alone does not establish either result.
+
+
+The separate selector `node tools/perf/verify-agentic-process-execution-fixtures.mjs
+--standard-spike-mode=files --retain-always` executes the published model through
+the actual conversion wrapper, including a delayed initializer and the final
+strict hook. `--standard-spike-choice=refused|deferred|cancelled` selects a
+non-success decision. Actor authentication and Native transport are fixtures;
+the selector must retain its own fresh project and original authorization.
+Execution results, DB-backed variants and cold restart require their own evidence.
+
+Run `node tools/perf/verify-standard-spike-conversion-fixtures.mjs --mode=files`
+(also `dual` and `db-only`) on a new frozen source. This suite separates typed
+human claims, signed fixture inbox reads and actual canonical cycle creation
+with recommendation, EXPLORING branch creation and COMMITTING branch audit.
+It retains disposable projects and reports mixed conversion, strict conversion
+hook, experiments and genuine human qualification as NOT_RUN. A component PASS
+does not establish the full conversion wrapper or same-IR execution. Existing
+retain-request continuation fixtures need the new explicit conversion route;
+do not transfer historical results to this revised model.
+
+## Mode session closure and data capacity
+
+Use `node tools/perf/verify-standard-process-binding-input-fixtures.mjs` for
+versioned data-binding capacity: v1/v2 at 128 and refusal at 129, v3 at 141/256
+and refusal at 257, followed by actual published expression/resolver checks.
+`verify-standard-mode-work-fixtures.mjs` checks the common reducer's closure
+ordering and distinct blocked paths; synthetic receipts are not port evidence.
+
+For real source ports with fixture Native/Human authorities, select
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs
+--standard-mode-work-mode=files --standard-mode-work-session=THINKING
+--standard-mode-work-close --retain-always`. Select EXPLORING and each storage
+mode separately; negative FILES choices use
+`--standard-mode-closure-choice=refused|deferred|cancelled`. These are fixture
+selectors, not public CLI flags. Each creates a new project and initial grant
+of two responses and 3600000 ms before execution; no original grant is renewed.
+The case must observe the actual R05 mode, fresh human subject, canonical CLOSED
+postimage and final hook/run-file removal, then cold read-only resume and exact
+replay/simulation without new allocations or effects. Non-close choices must
+preserve the open session and their distinct workflow outcomes.
+
+Analysis-only and continuation fixtures now stop at RUNNING after successful
+analysis, because actual closure is still ahead. A completed analysis is not a
+closed session. Report exact-source PASS/FAIL/NOT_RUN separately. SQLite, genuine
+Native/Human/OS, PostgreSQL, installed archives and full STANDARD require their
+own evidence; no result transfers implicitly.
+
+
+New mode continuation source wiring has a separate contract suite:
+`node tools/perf/verify-standard-mode-work-continuation-fixtures.mjs`.
+The mixed fixture selector is `node tools/perf/verify-agentic-process-execution-fixtures.mjs
+--standard-mode-work-resume-mode=files --standard-mode-work-session=THINKING
+--retain-always` (also `dual` and `db-only`). It must use a NEW project and model,
+receive a NEW authenticated human fixture decision in a cold process after the
+original Native grant expires under an injected fixture clock, activate a separately authenticated epoch with
+closed Native resources and retained cumulative consumption, and execute a
+second distinct read-only occurrence. The original report, allocation, grant
+and event prefix must remain immutable. Replay/simulation use the same reducer.
+These are fixture authorities with real local ports, not genuine human/provider,
+general UNKNOWN-effect recovery, SPIKE/experiment/closure or installed evidence.
+Full STANDARD and current Runtime/Governance Admission remain unproved.
+
+The mode continuation fixture supplies the exact retained original authorization
+when preparing an epoch from a historical v1 allocation journal. That journal
+stores its hash and limits, so omission is refused before duration checks. The
+fixture checks missing and substituted authorization without mutation, preserves
+the signed origin journal and first allocation, and verifies cumulative response
+and storage debits against the new grant. SOURCE42's missing-argument terminal
+failure remains historical evidence; a corrected run needs a new project and
+authority. This correction changes no application admission, TTL or ceiling.
+
+For the same cold authenticated receive/accept path, select
+`--standard-mode-work-resume-choice=refused|deferred|cancelled` separately to
+verify `FAILED`, `WAITING` and `CANCELLED` without another Native allocation or
+epoch. Repeated missing-source polls and duplicate receipt reads preserve the
+instance; replay/simulation and read-only host previews preserve it as well.
+For EXPLORING, `--standard-mode-work-resume-disposition=retain_requested`
+selects a blocked retention request before the new decision. Continuing still
+authorizes analysis only. These selectors are fixture inputs, not runtime CLI
+flags or new workflow permissions; their execution results must be reported
+separately from contract coverage.
+
+The full correction fixture prepares its expected source identifiers before the
+mixed host reserves Native. Run `node tools/perf/verify-standard-composed-cycle-fixtures.mjs
+--retain-always` for accepted-source and new-review binding checks, and
+`node tools/perf/verify-standard-pr-triage-fixtures.mjs` for typed proposed replies
+against the corrected product. The callback consumes its authenticated activity
+context without reentering unreserved host inspection. Fixture expectations do
+not grant authority; the production reservation guard stays unchanged. These
+checks do not qualify the complete correction journey or actual provider effects.
+
+For the read-only THINKING/EXPLORING analysis component, run
+`node tools/perf/verify-standard-mode-work-fixtures.mjs` for typed reports,
+negative/wait outcomes and the published IR/common reducer simulation. Run
+`node tools/perf/verify-standard-mode-work-context-fixtures.mjs --mode=files`
+(also `dual` and `db-only`) for actual canonical artifact and Git context reads.
+The latter retains every disposable fixture project, including failed cases.
+These are separate evidence scopes: context ports and synthetic receipts do not
+qualify mixed native execution, SPIKE conversion, resumed decisions, genuine
+human decisions or installed archives. Run the composition and startup-model
+checks when their published pins change; keep full A2 and STANDARD acceptance
+open until their missing routes and execution evidence exist.
+
+`node tools/perf/verify-standard-pr-correction-decision-fixtures.mjs` checks the
+closed correction-review/human-source contracts, distinct wait/refuse/defer/cancel
+outcomes, exact subject binding, source reuse refusal and durable signed inbox v7
+on files/dual/db-only. It uses a trusted checkpoint-source double and a human
+provider double. `node tools/perf/verify-standard-pr-correction-review-ports-fixtures.mjs
+--mode=files|dual|db-only` separately checks review of actual canonical reopening
+and Git checkpoints, including the accepted no-effect DB-only boundary, fresh
+provider refusal, cancellation, retained ownership and foreign HEAD refusal.
+Its accepted records and provider authority are fixture doubles. Neither suite
+proves the production dispatcher chain, genuine human consent, admitted
+correction-cycle work, native execution or an installed archive. Published IR
+ordering and fixed bindings are checked by the composition suite.
+
+### Explicit native authorization epochs
+
+Run `node tools/perf/verify-agentic-process-execution-fixtures.mjs
+--native-epoch-mode=files|dual|db-only --retain-on-failure` separately per mode.
+Actual allocator/worker admission, authenticated journals and canonical stores
+consume a fresh explicit grant, retaining the unchanged initial deadline and
+all cumulative debits. The injected fixture clock passes the old deadline.
+Refusals cover incomplete/foreign closure, missing/unverified/reused consent,
+stale current state, wrong exact grant and unknown accounting. FILES also retains
+an unused expired epoch and uses the mixed IR host across a deterministic
+operation, external wait and native continuation. Cold reads and simulation
+must preserve every original accepted event and checkpoint.
+
+Approval, native transport and process control are doubles. Genuine human,
+provider and native all-resource closure, general unknown-effect reconciliation,
+correction-cycle admission and exact installed archive qualification remain
+separate. `--native-initial-epoch-mode=files|dual|db-only` selects the separate
+expired-unused-initial-grant route. It checks the explicit v3 journal's empty
+origin, scope-bound authenticated closure, no launch during preparation or
+activation, exact new grant at generation one, cold readers and common replay.
+Its approval, resource discovery and native transport remain fixture doubles.
+Existing `--journal-only`, `--resume-only` and `--mixed-only` remain separate
+regression checks. See ADR-0026 for the source and persistence contract.
+
+Run `node tools/perf/verify-agentic-process-execution-fixtures.mjs
+--large-checkpoint-only --retain-on-failure` for the checkpoint size boundary.
+The dual SQLite case writes and collects a checkpoint and instance projection
+both larger than 256 KiB, rejects substitution of either file and oversized
+generic evidence, then resumes in a fresh Node process with the original debit.
+The files case consumes enough
+retained storage at native close to refuse the checkpoint while preserving the
+footer reserve and blocking another allocation. The allocator, worker
+composition, signed journal and canonical stores are real. The fixture uses
+the existing RPC, process-controller and external control source doubles.
+
+
+`node tools/perf/verify-standard-expired-plan-fixtures.mjs` checks a restricted
+explicit preparation path after an accepted `STANDARD_PLAN_EXPIRED` refusal.
+The fixed operation host rereads the current authority and prepares the same
+input for the same occurrence. The preview is read-only; staging a successor
+still requires explicit write and a fresh grant. Its new operation identity
+binds the accepted predecessor history through the existing v2 intent contract.
+The original preview, grant, receipt and event are retained without modification.
+The mixed host forwards this capability and returns
+`operation_reprepare_required` when its ordinary step encounters that refusal;
+it does not automatically stage a replacement.
+
+The dedicated legacy-reader fixture constructs its first expiry result with
+a scoped synthetic initializer refusal. Current session initialization does
+not expire for elapsed preparation age. The host, admission, Git, canonical
+stores and HMAC journals on files/dual/db-only are actual, with an injected
+clock and fixture authorization capability. A fresh Node process prepares the
+successor without an authorization call or any checkout-file change, then a
+separate explicit stage obtains a distinct grant. The suite checks the retained
+synthetic no-effect refusal, missing acceptance, stale revision, subject
+override, abort, refused new authorization, changed storage authority, a real
+local effect owner and a conflicting Git branch. After one successful effect,
+both original and successor receipts remain readable, repeated dispatch retains
+them, and common-reducer replay/simulation reproduces the exact final state.
+The generic signed-host suite includes these checks and separately rejects this
+path for a genuinely partial SQLite effect with an accepted unknown outcome.
+
+`node tools/perf/verify-standard-workflow-composition-prefix-fixtures.mjs
+--mode=files --expire-initialize` additionally consumes the actual shipped
+standard JSON and its data bindings. It accepts and retains an expired
+initialization refusal, prepares the same resolved input in a fresh Node,
+stages a new identity and continues through deferred/THINKING decisions to
+exact replay. This is a source-installed fixture prefix, with no native model
+or exact installed-archive claim.
+
+These are session-initialization and fixed-host published-prefix proofs. The
+separate `node tools/perf/verify-standard-mixed-expired-prefix-fixtures.mjs
+--mode=<files|dual|db-only>` suite exercises the published revision-71 model and
+its actual data bindings through `createStandardWorkflowExecution` and mixed.step.
+Its 13 checks per mode cover an actual expired dispatch, accepted WAITING/no_effect,
+read-only cold wait calls with either write setting, explicit new-Node preparation,
+fresh authorization and a distinct successor intent. The original signed refusal
+and grant remain readable. Real deferred/THINKING decision ports, mode application,
+the startup hook, retained dispatch and exact replay/simulation complete the prefix.
+The test-process wall clock is injected; authorization and human identities are
+fixtures. A controller that rejects any native launch and an empty allocation
+journal establish zero native calls for this D/H prefix. Checkout fingerprints
+are unchanged during each suite. The files proof retained an earlier, stricter
+two-consultation assertion; the final test asserts fresh authorization and distinct
+grant/intent without prescribing the number of internal verification calls.
+
+These tests do not prove expired-plan continuation for every business operation.
+Only an accepted, authenticated deterministic
+`blocked/no_effect/STANDARD_PLAN_EXPIRED` legacy receipt whose timestamp meets
+the recovery reader's historical expiry predicate is eligible. Unreceipted
+dispatches, uncertain effects, confirmed results and changed subjects are
+excluded. Native allocation authorities and historical readers remain
+separate. No model is called; full standard, genuine native/
+provider/human and exact installed-archive qualification remain separate.
+
+The same suite calls `standard-session-plan-validity-fixture-lib.mjs` for actual
+ordinary-host initialization after one day. Its FILES, DUAL and DB-only SQLite
+cases check a current valid plan, dispatch-time revocation, changed canonical
+context or HEAD, and a conflicting destination branch. Refusals preserve the
+business preimages and Git state; success applies the original plan once.
+Run that helper directly with `--mode=files|dual|db-only` for a selected backend.
+The synthetic legacy receipt above supplies no current execution proof.
+Use `--legacy-reader-only` on the legacy suite to select its reader corpus
+separately from current preview and session validity components.
+
+PR correction continuation has separate internal component suites. The candidate
+standard graph and signed operation host select the reopening operation, but
+these suites do not prove that complete composition.
+`verify-standard-pr-correction-authority-fixtures.mjs`
+uses actual complete-content adapter/observer code with accepted-receipt,
+triage reevaluation, event, product, Git and transport capabilities doubled.
+It checks changed content at the same HEAD, changed head/base/source/product,
+event races, lost authority, remote divergence and cancellation. It does not
+authenticate a canonical native producer. The candidate host binds the source
+factory separately.
+`verify-standard-pr-correction-reopen-fixtures.mjs --mode=files|dual|db-only`
+uses actual canonical CAS, metadata, projection, local Git and pre-write admission,
+with a doubled source/continuation authority. It reopens the CLOSED owner,
+preserves closure report/completion bodies, resets closure gates and leaves
+active_cycle none. A forged exact-plan payload is refused. Lost authority after
+the first CAS retains unknown state/owner; re-dispatch is refused. Product writes
+remain denied by ordinary native admission. Source-install fixture preparation
+is not exact installed-archive qualification. Authenticated producer-to-writer
+execution, ordinary cycle continuation and actual correction work remain open.
+
+The FILES reopening fixture also expires the plan after the three writes and
+uses the read-only observer. It refuses an incomplete result, a foreign
+owner, a changed canonical postimage and a stale provider. The retained owner
+and bytes survive the observation. The case uses an actual child dispatch,
+signed owner, local fence, process closure and physical lock. The correction
+source and provider are fixtures. The same FILES case transfers the held
+fence through signed fixture intents across process exits before and after
+the archive operation. It retains the physical lock bytes, original
+dispatch and three business postimages, and refuses duplicate locks and
+revoked fixture consent.
+
+The FILES case also runs the operation disposition fixture on a small process
+graph with real canonical records and the original writer. It exits one child after fence
+transfer and a second after archiving the lock, then resumes to append and
+accept a distinct result. The fixture also checks current provider refusal,
+separate acceptance consent, retry without a second append, and the next
+checkpoint in the reducer. The exact entry actions use the protected local
+operator issuer and the same canonical fixture. Its provider and consent are fixtures. The
+published corrective workflow and redelivery require separate evidence.
+
+`verify-standard-pr-correction-checkpoint-fixtures.mjs --mode=files|dual|db-only`
+checks the internal checkpoint component now selected after reopening by the
+candidate host and IR. This suite does not execute that host route. It derives
+its finite scope from an accepted reopening plan and output,
+checks canonical metadata and physical projections, then uses the existing Git
+objects/ref/index port. A new Node process applies the same exact plan. Files
+and dual commit only the three reopening postimages; db-only creates no export
+or commit. Untrusted accepted receipts, changed postimages, foreign dirty paths,
+expiry and provider loss refuse before effect. A second dispatch after a
+confirmed commit refuses without another commit. Authority loss after Git and
+an unrelated concurrent commit retain unknown state and ownership, blocking
+retry. Native product admission remains denied without a correction cycle.
+The same suite separately authenticates a fixture dispatch journal with its
+public fixture HMAC key and observes a completed checkpoint from a new Node
+process after its local effect owner was released but before a receipt exists.
+Actual Git parent, operation/plan trailers, exact paths/blobs/modes, clean index/tree,
+canonical postimages and fresh provider observation are required. Tampered
+dispatches, absent witnesses, missing authority, changed provider/postimages and
+foreign successors refuse. This read-only observation neither dispatches Git nor
+changes the original journal; the host alone may append its missing signed
+receipt through CAS under the original intent and currently verified grant.
+An expired effect preview is only historical evidence here; no TTL is extended.
+An expired original authority still refuses receipt finalization. It requires
+separate future recovery while preserving the historical grant and results.
+Db-only has no operation-specific commit witness and cannot use this recovery.
+The generic signed-host suite checks explicit-write and wrong-binding refusal;
+positive correction-host recovery remains unexecuted by these component suites.
+Earlier results remain immutable. The checkpoint component can also inspect a
+signed, already-receipted unknown when its exact Git witness exists and its local
+owner is absent. The files and dual suites construct that signed unknown with a
+public fixture key, invoke the real observer in a new Node process, and verify
+that Git and the prior journal remain unchanged. This is component evidence.
+The fixed host now appends distinct receipt/output indexes and result event IDs;
+index zero retains its historical identifiers. Its 38-check suite constructs
+signed result histories to exercise exact old-receipt lookup, acceptance and
+common-reducer replay/simulation in all three modes. These separate suites do
+not execute the host's reconciliation/append/CAS path after an unknown produced
+by its actual business dispatcher. That composed positive proof remains open.
+An unknown effect with a retained owner still requires authenticated resource
+closure and recovery authority. Expired original authorization and positive
+DB-only recovery also remain unimplemented. See the
+[bounded result-history record](qualification/agentic-process/operation-result-history-2026-11-04.json).
+Accepted-source authentication, native triage, provider and event capabilities
+are doubled here. The source-authority suite separately checks that its new
+provider-only observation still rejects external changes and explicitly requires
+a local checkpoint proof. These separate checks do not establish the complete
+authenticated composition, subsequent cycle admission or installed behavior.
+Registered private input/output/plan dispatch and the finite plan path guard
+are checked here; the source composition and synthetic preflight suites check
+the new ordered IR branch separately. The long driver's checkpoint assertions
+are conditional on reaching that branch and are not execution evidence by
+themselves. It still denies product writes without the next admitted cycle.
+
+`node tools/perf/verify-standard-composed-preflight-fixtures.mjs` checks the
+composed fixture's initial cumulative response allowance before a long run.
+The fixture driver also runs this check before creating temporary roots or
+authorizing execution; `--standard-composed-preflight-only` stops there.
+Its versioned positive scenario chooses COMMITTING, one task, retained closure,
+promotion, cold continuation and PR triage, with nine original responses.
+Synthetic receipts and choices drive the actual published model and common
+reducer. The owned/selected cycle entry, work preparation and canonical
+verification calls use their published typed data bindings. Assertions preserve
+the accepted planning-origin ID through plan selection, readiness, call return
+and execution-source selection; owned continuation does not alias plan adoption.
+The nine-response and seventeen-response scenarios retain their original
+allowances. Operation/event counts reflect the current phase selector and call
+boundaries; these counts authenticate no human, Native producer or effect. Task-loop occurrences, skipped promotion, non-retained closure,
+admission refusal, native failure and human non-success are checked separately;
+the catalog's activity count is not a consumption estimate. THINKING and EXPLORING each
+plan one read-only native analysis. Mode decisions and deterministic preflight/
+evaluation add no response; blocked, deferred, rejected, failed and cancelled
+operations preserve only the analysis responses already consumed. These are
+synthetic planning assertions, not mixed-host or genuine Native evidence. The fixture wire
+emits one completed response per successful native turn. This estimate is not
+a general model-response bound or live-provider qualification. A cold resume
+keeps the scenario, exact model and original allowance/deadline; production
+allocation journals still enforce actual cumulative consumption. Existing
+trials and production defaults are unchanged. The explicit fixture-only
+`--standard-composed-max-responses=<n>` selects an initial allowance for a new
+trial and fails if insufficient; it never renews an existing authorization.
+
+The execution fixture's separate `--standard-mode-work-mode=files|dual|db-only`
+selection runs the published model through the mixed host for one authenticated
+mode choice and typed analysis. `--standard-mode-work-session=THINKING|EXPLORING`
+and `--standard-mode-work-disposition=thinking_complete|nonretained|waiting|retain_requested`
+select compatible new cases. Native transport and human authentication remain
+fixture capabilities; artifact, SQLite, Git, admission and dispatcher ports are
+real. The fixture rejects missing/malformed product snapshots with a typed code
+before Native allocation. The accepted mode result must retain context, product
+output and native-result evidence. The fixture preserves the product. If
+EXPLORING creates its governed session metadata checkpoint, the fixture checks
+its receipt, parent and paths against Git and pins the resulting HEAD. A
+retention request also checks the SPIKE admission and staged decision against
+the same observed report and confirms the decision still awaits a result. The
+fixture checks D/H and missing-answer polling allocate no Native, then tests read-only
+polling in a new Node and common-reducer
+replay/simulation with canonical/product/Git/allocation/journal witnesses.
+Read-only cold polling is not continuation after a new decision, SPIKE admission,
+session closure, installed behavior or genuine Native/Human qualification.
+The mixed THINKING fixture's product refusal also lacks a cycle and implementation
+phase; its diagnostic is not an isolated proof of the mode invariant. The native
+write-admission suite separately holds an admitted cycle, IMPLEMENTING, READY,
+branch and task scope fixed, switches only COMMITTING to THINKING and requires
+the sole refusal `MODE_EXCLUDES_IMPLEMENTATION`, then restores an allowed control.
+Its `--retain-always` option preserves the new project for diagnosis.
+
+The candidate standard also selects deterministic `session_pr_triage_select`,
+the read-only independent `session_pr_triage` native activity, then deterministic
+`session_pr_triage_evaluate`. `verify-standard-pr-triage-fixtures.mjs` checks full
+body coverage, dispositions, required corrections/replies, context/product pins,
+stale sources and cancellation through application capability doubles. Its direct
+launch-pin checks alter only returned read bytes. It does not authenticate a
+canonical receipt, real provider or native result. The composed fixture's typed
+triage answer classifies its synthetic acknowledgement only; it cannot qualify
+physical corrections, replies, resolutions or the full R08 lifecycle. Native
+results must bind the exact accepted selection and observed product; the actual
+host reauthenticates the event and collects complete current provider content
+after the result. Separate observations identify each executed model revision.
+
+The published candidate standard now selects `session_pr_review_wait` after its
+accepted complete-content observation and `session_pr_review_receive` afterwards.
+The composed execution fixture (`--standard-composed-mode=<mode>
+--standard-composed-stop=pr_effects_pending`) exercises that actual graph with
+real local operations, a bare Git remote, signed journals and fixture identity/
+provider/native transports. At this wait it checks a missing event, refusal of
+claim-only delivery and denied authentication, persists the complete payload,
+then delivers and consumes it in a fresh Node process without native allocation.
+The receiver preserves pending triage and no merge authorization. The component
+suite below also checks same-head edits, a changed event after delivery,
+cancellation and false success facts at this new application boundary. Results
+from the component model alone do not qualify the composed standard path.
+
+`node tools/perf/verify-standard-pr-review-control-fixtures.mjs` selects complete
+PR event/content capture on files, dual and db-only; `--mode=<mode>` selects one.
+The actual canonical inbox, host/service, SQLite CAS and common reducer are used.
+Event authentication, accepted update authority and provider responses are fixture
+capabilities. Cases reject stale/foreign/current-revision/actor failures, preserve
+full content before delivery, reject same-head changes and conflicting duplicates,
+then resume in a new Node process and compare exact replay/simulation. DB-only
+also injects a failed acknowledgement after the canonical event and repairs it
+without the source. These are component checks; the candidate standard graph's
+PR wait/triage route, live provider/native and exact archive remain separate.
+
+`node tools/perf/verify-github-observation-async-fixtures.mjs` includes cancellation
+through the external inbox, application PR observer and actual direct subprocess.
+It observes that subprocess's close separately from the inbox return. Human
+capture cases exercise caller abort and the internal five-second timeout in both
+read and verification while a caller signal is present. Provider/human identities
+remain fixture capabilities. These checks do not bound synchronous Git readers,
+qualify general native process-tree closure or establish durable PR event delivery.
+The focused PR-review component suite checks cancellation at each collection and
+the final source reread, with empty facts and no accepted late content.
+
+`--cycle-task-mode=contract|files|db-only|unchanged|partial|projection` selects
+ordered two-task execution in the existing agentic execution corpus. The pure
+contract covers cursor/progress integrity, versioned task parsing and explicitly
+unchanged typed work. Integrated cases use actual canonical/admission/operation
+and source ports with fixture native, grant and validation-boundary transports.
+They require two selected tasks, final checks against the same final product,
+retained progress without repeated effects, and common-reducer simulation.
+Files resumes the first advance in a fresh Node process. Refused authorization,
+partial writes and missing projection preserve explicit non-success; unchanged
+work remains subject to checks. Native provider and exact installed archive
+qualification are separate. See the standard workflow plan for observed runs.
+
+`--cycle-verification-mode=contract|files|dual|db-only|partial|projection` in the
+agentic execution corpus selects evidence consumption and verification-entry
+checks. The contract case distinguishes incomplete task/test coverage from
+lifecycle completion. Integrated cases reuse actual admissions, canonical ports,
+signed source/journals and deterministic checks, with fixture native/grant and
+execution-boundary capabilities. Files resumes entry in a new Node process.
+Partial SQLite writes and lost dual projection must keep the owner, empty success
+facts and retained dispatch. The same model/reducer must reproduce the exact
+final hash, with no additional native allocation or verifier invocation.
+The standalone cycle-validation fixture additionally rereads manifests/logs and
+snapshots, refuses tampering/stale sources and prevents a fixture/native relabel.
+Full standard, native provider/boundary and installed archive proofs are separate.
+
+`node tools/perf/verify-standard-cycle-validation-fixtures.mjs` exercises eleven
+offline validation cases: passed/failed/unavailable, changed snapshot, unknown
+termination, a real Node timeout, wrong product behavior, refused authorization,
+a stale pinned profile, an authorization-time source race and writable controls.
+It executes a controlled Node check; source authentication and the execution boundary are
+fixture capabilities. Every result remains labelled `proof_class: fixture`.
+The existing agentic execution corpus includes this suite, selectable with
+`--cycle-validation-mode=contract`, and integrates the real source authority,
+operation journal and IR with `--cycle-validation-mode=files|dual|db-only`.
+Those integrated cases require the admitted product update, no extra model
+allocation, retained dispatch without repeating the verifier, and exact common
+reducer simulation. Files also requires continuation in a fresh Node process.
+Native sandbox/provider and exact installed-archive proofs remain separate.
+
+`--cycle-work-mode=contract|files|dual|db-only|report|source` selects native task
+input and observed-work checks in the existing agentic execution corpus. The
+native transport is a fixture capability; canonical operations, admissions,
+source authentication and work evaluation use production ports. The task's
+product update is real, its report cannot claim tests passed, and the evaluator
+must refuse a mismatched report or changed surrounding context without erasing
+the product. A fresh Node resumes files evaluation without a third allocation.
+These checks do not qualify a real native provider or deterministic code tests.
+
+`--cycle-readiness-mode=contract|files|dual|db-only|partial|projection|refusal|stale`
+in the agentic execution corpus selects deterministic DoR and explicit phase
+transition checks. The contract selector also advances an injected clock past
+the plan limit during the final context observation and checks that the writer
+refuses before changing either artifact or retaining an owner. The integrated
+cases reuse authenticated native planning,
+real canonical/branch/admission ports, refused grants, cold Node continuation,
+partial writes, missing projection and common-reducer simulation. The native
+transport and granting identity remain fixture capabilities; they do not prove
+real provider or installed-archive execution. Run results are recorded in the
+standard workflow implementation plan.
+
+`--cycle-plan-mode=contract|files|dual|db-only|partial|projection` in the existing
+agentic execution corpus selects typed planning checks. Contract checks exercise
+adaptive depth, REQ/test mapping, usage classes, stale/foreign scope, a single
+safe permission block and refusal of a writable native profile before sessions.
+The qualification IR resolves the accepted native occurrence and evaluation ID;
+only native transport and grants are fixture capabilities. Actual mode/cycle
+ports establish explicit preconditions, not proof of the complete startup graph.
+The real planning writer must retain canonical metadata, refuse denied grants,
+handle a metadata-only race, preserve product bytes and remain NOT_READY/OPEN.
+Files records the plan in a fresh Node process after native closure, without
+another allocation. Partial SQLite writes and a lost dual projection must retain
+unknown effects, empty success facts and ownership, with no repeat dispatch.
+The same model/reducer must reproduce the exact final simulation hash. This
+does not qualify real native/human identity, DoR/implementation or an archive.
+
+`drift-cycle-fixture-lib.mjs`, called by the existing recovery fixture, exercises
+real runtime-refresh/cycle application ports under a doubled provenance reader.
+`--cycle-port-mode=files|dual|db-only|partial|projection` selects its five cases;
+the unfiltered recovery fixture includes all five. They verify explicit grants,
+canonical metadata retention, a blocked dirty-worktree checkpoint, observed
+external Git reconciliation, exact cycle effects and stale-source refusal.
+An unrelated external commit must refuse. Failed post-effect observation and
+lost required projection retain unknown effects and the owner, with no success
+facts or repeat effect. This does not authenticate a real human/native provider.
+
+`--drift-cycle-mode=files|dual|db-only` in the execution corpus uses a qualification
+IR with durable cycle parameters and journal-derived identities. The dual case
+follows the CR branch; the others follow the accepted new-cycle choice. Actual
+mode/initial-cycle ports establish fixture preconditions. Native/human/grant
+transports are doubled; subsequent source authentication, runtime refresh, Git
+observation and cycle creation use production composition. A files/dual Git
+commit is an explicit external fixture action, not an application effect. The
+files case resumes cycle creation in a fresh Node process with no human source
+and no new native allocation. The same model/reducer must preserve the exact
+simulation hash. Full standard, native and installed archive proofs are separate.
+
+The dedicated recovery fixture also uses a real admitted dual cycle to check
+the CR writer under a doubled recovery-provenance reader: no authored paths or
+code, wrong recovery choice, denied grant, metadata-only races, retained old
+entries/classification, pending scope acceptance and stale-context refusal.
+Its `--cr-fault-only` selection retains the pure capture/boundary checks and
+uses a separate admitted files project to deny the second CR write. The first
+write must remain visible, the result unknown with no facts, the local owner
+retained and another effect refused. The unfiltered fixture includes this case.
+`--cr-admission-mode=db-only` checks canonical active anchors and CR impact
+despite a stale visible current-state file, then hides the SQLite store and
+requires stopped admission. The unfiltered fixture includes this scenario too.
+The requirements-delta admission corpus installs current activation assets and
+uses fresh context/coordination in its temporary clients; relocated historical
+Codex context remains refused and the tracked corpus is not converted.
+`--drift-cr-mode=<files|dual|db-only>` in the production execution fixture uses
+the mixed authority and a qualification IR resolving the confirmed recovery
+record identity. Its actual evaluation/decision/record journals are authenticated;
+only the native wire, human and write-grant capabilities are fixtures. It must
+create a pending CR through real admitted canonical ports, retain its dispatch,
+and reproduce the same reducer hash in simulation. Its files variant executes
+the CR in a fresh Node process after human-source disappearance without another
+native allocation. Cycle setup is a real-port
+precondition, not proof of the missing complete cycle/standard graph. Native,
+provider and exact installed-archive qualification remain separate.
+
+The published primary cycle-closure recovery branch now calls the existing CR
+writer for a confirmed requirements delta. The composition fixture checks the
+pinned call, its exact accepted operation input, and the shared reducer's
+selection of the CR writer. New-cycle and rollback choices do not select it.
+The direct new-cycle choice instead refreshes canonical context and observes
+the external Git checkpoint. Run the execution fixture with
+`--drift-cycle-mode=files --drift-cycle-published-selection --retain-always`
+to exercise the published call in a focused IR. It requires a dirty-worktree
+wait, an observed external checkpoint, a signed choice of a fresh cycle and
+separately admitted initialization after a cold restart. It refuses an old
+cycle number and compares replay with simulation. The CR path stays pending.
+
+`node tools/perf/verify-standard-drift-rollback-fixtures.mjs` exercises the
+rollback adapter with actual disposable Git objects and worktree files. It
+checks a read-only preview, exact restoration, preserved Git and canonical
+boundaries, refusal before writes, and a retained owner after a partial effect.
+The focused execution fixture
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --drift-published-rollback --retain-always`
+requires the published recovery call, a signed pre-implementation checkpoint, a
+separately authorized write, a retained result, and equivalent replay and
+simulation. Its Native, human-source, and grant capabilities are fixtures.
+Fresh R05 evaluation and terminal closure remain distinct checks.
+
 ## Structured agentic process
+
+The separate `--standard-composed-scenario=correction-full` selects
+`composed-correction.v3.json`. With `--standard-composed-stop=pr_effects_pending`,
+it targets the published model's full corrective cycle, fresh session closure,
+integration, redelivery and a second authenticated review delivery. The new
+scenario declares 17 responses before its own authorization. It cannot be
+substituted into an older cold prefix. The fixture person selects fresh cycle
+fields in the actual v3 question; the initializer and Native fixture consume
+accepted output and host-supplied context. The first and corrective plans select
+different checks expecting exactly 2 and 3. Native transport and human/provider
+identities remain doubles; Git/bare, canonical storage and application ports
+remain real. Adding this scenario or passing preflight does not qualify it.
+The fixture reaches the deterministic reply and resolution verification
+occurrence. Its provider lacks the reply and resolution observation capability,
+so the receipt is deferred and the cursor remains WAITING. The historical `component_complete` records retain their original model and scope.
+
+`node tools/perf/verify-standard-session-pr-merge-fixtures.mjs` checks the fixed
+read-only GitHub query through a transport double and uses signed fixture
+receipts and the execution reducer to replay both observation occurrences.
+It checks OPEN to MERGED on a fresh attempt, typed refusals, immutable receipt
+inputs and continued waiting with no review or sync facts. For R08, the fixture
+exercises both published call sites and their shared verification occurrence
+from a signed fixture prefix. It refuses a substituted triage input and
+reopens the waiting child from the FILES store in a fresh Node process with
+the same call identity and input. Missing, changed, premature, draft, minimized and ambiguous replies
+remain in waiting. A fresh exact reply and a resolved thread let the reducer reach the
+merge observation. The companion composition fixture verifies the shipped
+graph and implementation pins.
+Live provider, installed execution and the long corrective journey are
+separate qualifications.
+The GitHub content fixture checks the separate review-effect read-back schema
+through the fixed provider transport. It covers the reply target, published and
+pending comments, minimized comments, author IDs, body digest, resolution,
+malformed or altered evidence, and refusal on foreign repository, draft and
+closed PRs. The ordinary host fixture exercises the authenticated port with the
+GitHub transport doubled. GitHub network qualification and a full execution
+from the ordinary entry remain separate.
+
+The provider content fixture also exercises the private reply protocol with
+a doubled transport. It checks exact plan grants, changed thread and HEAD,
+single publication, lost acknowledgement and read-only recovery. The
+ordinary GitHub host fixture checks the separate write transport and revokes
+the grant at its boundary. Published operation dispatch and live GitHub
+qualification remain separate.
+
+`verify-standard-composed-cycle-fixtures.mjs --retain-always` separately checks
+context-derived identities and the two actual Node verifiers: each must reject
+the other cycle's value. It does not run admission or the full composed journey.
+The full scenario compares canonical artifact/metadata, product, allocation,
+validation-call and provider witnesses before and after common replay/simulation.
+
+The candidate correction-host route is selected by
+`verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files
+--standard-composed-stop=session_pr_correction_decide --standard-composed-scenario=correction`.
+Its distinct `composed-correction.v2.json` scenario retains nine initial responses
+and its own cold prefix. Before any temporary root or initial authorization,
+preflight uses the current model/common reducer, including the valid-finding
+branch. A correction variant cannot be substituted into a positive v1 resume.
+The driver exercises actual host-signed accepted producers, delivered control,
+native producer authentication and exact canonical writer composition. Provider,
+native transport, identities and human/effect consent remain fixtures, with local
+Git/bare and application/CAS ports real. It must preserve closure history, leave
+active_cycle none, deny native product writing without a new cycle, and replay
+the exact model/journal. Merely adding this driver or passing its synthetic
+preflight is not a completed composed proof. The source and canonical component
+suites remain separate evidence and now also test registered contracts and the
+direct byte pins. Ordinary standard entry, real native/provider/human and exact
+installed archive qualification remain outstanding.
+
+The separate files/correction experiment adds
+`--standard-composed-host-trace --standard-composed-checkpoint-ack-loss` to that
+command. Its initial experiment selection is retained in the resume record and
+must match in the cold child. Bounded JSONL rows identify each host, PID, method,
+wall clock and elapsed call time, without result bodies or signing material.
+They measure the named public call, including its nested work and waits; they
+are not timings of individual internal functions or actual model usage.
+
+The fault interrupts only the atomic rename of a completed checkpoint receipt.
+The real signed dispatch remains, with its actual Git commit and released local
+effect owner. A new Node process invokes the mixed host's explicit-write
+`reconcileCorrectionCheckpoint`, preserves the original intent/preview/grant/
+dispatch owner, retains one result, accepts it through the real service, and
+checks that neither Git commits nor native allocations increased. Repeated
+observation must return the retained result. No journal is authored to imitate
+that interruption. The trace helper and synthetic preflight are preparation
+checks; this composed recovery is proved only if the driver actually reaches
+and passes it. General retained-owner or already-receipted unknown recovery,
+expired authority and positive db-only recovery remain outside this experiment.
+The fixture's native-session expectation now uses selected preflight occurrences
+instead of the obsolete eight-session constant that omitted PR triage.
+
+The frozen source experiment ended with parent exit 1. The retained child status
+was null; its last accepted prefix contained 136 events through PR update/push,
+with a staged review-content observation outside that prefix. The original
+watchdog expired about one minute after the native authorization deadline. Its
+code and timing support a watchdog explanation, but the old assertion did not
+retain `child.error` or `signal`, so the exact child termination cause is unknown.
+It did not reach the correction/recovery proof. Snapshot-only replay and streaming
+simulation reproduce the retained RUNNING prefix exactly; eight signed fixture
+allocation entries retain their cumulative consumption and checkpoint/closure
+bytes. This does not qualify the current model or general OS resource closure.
+The current driver emits bounded child status, signal, error code, PID, timeout,
+elapsed time and output sizes before its assertion. That diagnostic change does
+not extend any deadline, renew authority or rerun the frozen experiment.
+
+`verify-github-review-content-fixtures.mjs` exercises the explicit v2 review
+content and thread observations. Complete bounded review bodies, their hashes,
+comment actor node IDs and exact base/ref identities are required; oversized,
+missing or changed content refuses. Historical v1 interfaces retain their own
+envelopes. `verify-standard-session-pr-review-fixtures.mjs --mode=files|dual|db-only
+--content` selects the distinct content binding over actual canonical/Git/bare
+successor ports with doubled accepted-history lookup and GitHub transport. The
+published model uses that content binding without changing the historical one.
+Full text availability still establishes neither triage nor policy acceptance,
+resolution, merge consent or a completed PR orchestration skill.
+
+For the R08 check and consent boundary, run
+`node tools/perf/verify-github-required-checks-fixtures.mjs` for contract and
+inventory refusals. The standalone
+`verify-standard-pr-review-reply-fixtures.mjs --case=consent-refused`
+and `--case=consent-correction` exercise the two published call sites
+with signed synthetic upstream records, real FILES ports, an Ed25519 fixture
+authority and doubled GitHub transport. The corrective case resumes the signed
+decision in a fresh process. A separate `--case=exception-consent-correction`
+exercises check acceptance with a current documented exception and refusal
+with an expired signed source. Replay and SIM perform no provider calls. These
+cases remain outside the required 900-second family. The composed driver's
+existing partial PR milestone now waits at the preflight merge observation
+when its provider fixture lacks that port. Provider, Native,
+PostgreSQL and installed behavior require separate qualification.
+
+For the merge executor, run the same standalone script with
+`--case=merge-consent-session` for an acknowledged merge after a required
+check rerun and `--case=merge-consent-correction` for lost acknowledgement
+and cold recovery. `--case=merge-refusals` exercises pre-send refusals.
+`--case=exception-merge-consent-correction` exercises the corrective route
+with a documented exception and its own validity.
+`--case=exception-merge-consent-correction-grant-expired` moves the final
+transport clock to expiry of the signed exception envelope while the
+exception question and consent grant are still valid. It expects zero sends.
+These cases use the two
+published child call sites, synthetic upstream receipts, real FILES host,
+inbox, CAS and journal, a fixture signer and doubled GitHub transport.
+The recovery case retains UNKNOWN for an open PR and an uncorrelated
+merge, then accepts the exact postimage and opens R09 with a single send.
+`--case=merge-consent-target-advanced` refuses a divergent base, another
+target and edited review content. It stages a plan for the original tip,
+observes a no-effect refusal after the advance and prepares a new plan
+using the retained signed approval. Its oracle is one send, the new base
+as first merge parent and an accepted R09 basis. The inventory fixture
+covers the bounded provider comparison separately.
+
+`--case=merge-consent-elapsed` waits more than five minutes after the question
+and dispatches with the original signed approval. `--case=merge-consent-transport`
+advances the final provider clock sample into the old ten-second margin
+and checks that the approved merge sends once with the ten-second transport
+timeout. `--case=merge-consent-grant-expired` moves that same clock sample to
+the expiry of the signed authority envelope and expects zero sends. The refusal
+fixture also exercises a GitHub blocked state and a newly signed envelope
+with unchanged decision contents. These cases run outside the required family. The historical
+`--case=merge-consent-renewal` and `--case=merge-consent-send-window` selectors
+belong to the archived v1 model and its matching checkout. Use the composition
+and historical merge-reader fixtures for binding and reader regressions.
+The elapsed-time nominal case reads the fixture check evidence before issuing
+the question. Missing-source probes remain in the focused consent and R09 cases.
+Run `verify-cycle-create-admission-fixtures.mjs --pr-continuity` separately
+for the direct cycle-admission guard and the reopened correction path.
+
+Run `node tools/perf/verify-standard-post-merge-fetch-fixtures.mjs` for the
+R09 adapter. It transfers objects from a disposable bare remote and checks
+divergence against the exact fetched OID, with a stale tracking ref as a
+control. It covers an authorized fetch, refusal, remote movement, dirty or
+wrong checkout, a missing or substituted recovery witness and read-only
+recovery. A second case exercises the protected host with GitHub and HTTPS
+transport doubled and Git still real. This gate qualifies the adapter.
+Use `--case=post-merge-fetch-session` and
+`--case=post-merge-fetch-correction` with
+`verify-standard-pr-review-reply-fixtures.mjs` for the two R09 call sites.
+These cases keep the two published call sites and the exact R09 subtree in a
+reduced graph with synthetic signed opening, triage and merge receipts. They
+use disposable Git, real FILES journals and inbox, an Ed25519 fixture principal
+and a doubled GitHub transport. The session case covers 0/2, absence of a
+decision, a tampered subject, movement before receipt and acceptance, report
+and a fresh question in a new Node process. After an accepted strategy, it
+covers a deleted remote ref, an unknown object and external fetch/fast-forward.
+The correction case recovers the fetch in a new process, measures 1/2 and
+requires the signed manual strategy. An external merge and an independent
+bare-remote fixture update bring the tips together. Both cases keep admissions
+blocked until a fresh 0/0 and the accepted canonical receipt. The same reducer
+replays the journal and runs SIM without effects. Use
+`--case=post-merge-fetch-nominal` to exercise direct 0/0 and
+`--case=post-merge-fetch-refused` and `--case=post-merge-fetch-cancelled` for
+the other signed outcomes. The composition suite checks the exact child pins
+and both call sites. Run the historical readers separately. DUAL and DB-only
+completion, real GitHub, Native and installed archive qualification require
+their own evidence.
+
+Run `verify-standard-pr-review-reply-fixtures.mjs` with
+`--case=post-merge-delivered-session` for the FILES source branch whose
+session exists only in the delivered Git tree. Before the signed choice,
+both creation admissions must block. The question reads the fetched session
+without materializing it. The separate grant permits one real fast-forward
+and the canonical document then participates in completion. Admissions stay
+closed until the accepted receipt. The fixture uses a signed synthetic
+opening and merge, a doubled provider transport, real Git and FILES journals.
+
+Run `verify-standard-pr-review-reply-fixtures.mjs` with
+`--case=post-merge-recover-expired`, `--case=post-merge-recover-moved` and
+`--case=post-merge-recover-aligned` separately. They exercise the ordinary
+action dispatcher and mixed host over the reduced published R09 call sites,
+with the same disposable Git and FILES ports, signed synthetic upstream
+receipts and doubled GitHub transport. The expired case controls the host clock
+at the five-minute boundary. The moved case interrupts an inbox reservation
+and resumes the same source. The aligned case reaches admission only through
+the accepted canonical completion. Reopening after a recorded disposition
+exercises the retained receipt and exact action in another Node process. Replay
+and simulation exercise the same accepted history without provider dispatch.
+
+`verify-github-observation-async-fixtures.mjs` exercises the explicit async
+interfaces of both GitHub readers through the same observation protocol as
+their historical synchronous interfaces. It compares complete typed outputs,
+rejects cancelled/foreign/partial responses and terminates real direct Node
+subprocesses on abort, deadline and buffer overflow. A real async transport under
+the control inbox's five-second timeout must observe cancellation, close its
+direct subprocess and leave no capture or late success. Capture also propagates
+caller cancellation through read and verification. Provider responses are
+fixtures; no network, model, native process-tree reconciliation, durable PR wait
+route or complete standard workflow is qualified by this transport suite.
+
+`verify-github-review-evidence-fixtures.mjs` observes exact PR head/base refs,
+review authors and revisions, check app identities and legacy status creators
+through fixed read-only GraphQL. It exhausts and compares two full collections;
+same-head reruns, dismissals, pagination drift, transport failures and stale
+sources refuse. The GitHub transport is doubled. No merge permission follows.
+The direct-pin case additionally requires both readers, their schemas and the
+common operation registry in the launch fingerprint. It simulates altered reader
+bytes through an intercepted file read, checks that the actual fingerprint
+changes, restores the reader and verifies the original fingerprint again; it
+does not alter the checkout.
+`verify-standard-session-pr-review-fixtures.mjs --mode=files|dual|db-only`
+connects the actual successor checkpoint/push and canonical postimages to this
+reader and the thread observer. Preview makes no provider call. Observation
+retains both fresh snapshots, with triage and policy acceptance still pending.
+The accepted-history lookup and provider transports are fixture capabilities;
+canonical CAS, Git, bare remote and application ports are real. Its common
+reducer replay/simulation uses the actual observation output with a synthetic
+boundary intent. Full signed IR composition, external inbox delivery, actual
+triage, native human/provider and exact installed archive qualification remain
+separate requirements.
+
+The composed fixture accepts `--standard-composed-budget-ms=10800000` only with
+`--standard-composed-mode` and a `promotion_decide` or `component_complete` stop.
+It selects a new fixture's initial offline authorization, within the existing
+three-hour runtime ceiling; the default stays two hours. A cold child must
+reuse the exact original authorization and explicitly matching budget. Its
+outer observation timeout follows that original deadline plus a bounded minute
+for terminal collection. This test option cannot renew an earlier run or
+qualify native reauthorization after a long human wait.
+
+`verify-drift-recovery-fixtures.mjs` checks closed recovery questions/plans and
+typed human outcomes with a synthetic source/inbox, real Git boundary checks,
+and actual canonical CAS/projection ports under a doubled evaluation authority.
+Its independent canonical recovery and projection projects explicitly prepare
+and apply COMMITTING mode before the first drift-context read. These required
+fixture preconditions assert successful admission and the observed canonical
+mode; an unavailable precondition fails rather than becoming SKIP. The separate
+partial-CR and cycle-port setups already apply their mode before reading context.
+It separates MAC retention from live human verification, bounds long append
+text, refuses stale context/authorization, and injects a real partial SQLite
+write that must retain uncertainty and ownership. Seeded canonical annotations
+must survive recording; a metadata-only edit after review must refuse. Its inclusion in the existing
+agentic gate does not qualify a native human source or complete recovery.
+An independent dual project loses a required projection under a filesystem
+fault: no confirmation or owner release is allowed. A redirected projection
+directory must refuse before evaluation/write; unavailable host link privilege
+is reported separately as SKIP.
+
+`--drift-recovery-mode=<files|dual|db-only>` in the execution suite exercises the
+production mixed host, authenticated typed native diagnostic (transport double),
+durable human report/resume and actual canonical findings writer. No operator
+passes evaluation/decision IDs to steps: the qualification IR resolves them.
+Missing/unverified/unoffered choices cannot authorize writes. Accepted decisions
+survive source disappearance; confirmed dispatch is retained, and replay/
+simulation use the same model/reducer. The resulting instance stays waiting for
+actual recovery, with R05 incomplete. Real native/human/provider, exact archive
+and full standard acceptance remain separate proofs.
+
+The published startup/cycle component suites initialize immutable parameters
+once, then select leaves from the common cursor with no operation input. Startup
+resolves its accepted mode decision identity and its fresh db-only scenario
+defers that decision, reopens in a new Node process and resumes before applying
+the eventual choice. Cycle creation consumes successful admission output for
+continuity and uses accepted initializer input for later leaves; files/dual/
+db-only include blocked admission, reopen/retained receipts and exact simulation.
+The partial-effect scenario must retain uncertainty and prohibit another effect.
+`--case=files|dual|db-only|exploring|partial|checkpoint-partial` selects one cycle scenario; the
+unfiltered command retains all six. The cycle port must also refuse another
+session identity; successful admission data does not replace the selected session.
+These source-installed, real-port fixtures use human/grant fixture capabilities;
+they do not qualify a native human channel, complete skill, complete standard
+workflow or exact installed archive.
+
+The common reducer suite includes `process-data-fixture-lib.mjs`: durable
+parameters without approval facts, completed identities/journal values, tampering,
+missing data/readers, scoped loops, parallel collections nested in calls, exact
+simulation and early refusal of unsafe/ambiguous mappings. These are synthetic
+core records, not journal-authentication or effect qualification.
+`--dataflow-mode=<files|dual|db-only>` in the production execution suite uses
+actual bootstrap and R05 ports on a disposable source-installed project. The IR
+supplies parameter-derived inputs and prior result identities without a driver
+passing report/evaluation IDs. It also derives a human question from a MAC-checked
+journal input/output and remains waiting without another model call. Fresh hosts,
+retained dispatch, closed native resources and parameter-preserving simulation
+are checked. Native transport is substituted; these fixtures do not deliver the
+full standard graph, native isolation or exact installed archive qualification.
+
+`--drift-only` selects typed R05 output checks in the production native suite.
+Closed report/schema negatives cover missing output, wrong context, invented
+evidence, inconsistent diagnosis and failed/refused responses. Disposable
+source-installed files/dual/db-only projects execute actual bootstrap ports,
+produce a native report through the production adapter with a transport double,
+and evaluate it through the deterministic signed operation port. The same IR
+routes clean and confirmed drift to explicit finalization/recovery waits and
+replays/simulates exactly. Context changes and modified protected evidence must
+refuse. A report or routing fact is not R05 completion, recovery authorization
+or DoR. No real model, provider or exact archive installation is qualified.
+`--drift-contract-only`, `--drift-git-only` and `--drift-mode=<files|dual|db-only>`
+split this set without altering the required default. A tracked private-file
+change must stay absent from the native diagnostic input and make a clean scoped
+report enter recovery wait. Git observations retain hashes/counts outside the
+declared product scope. These are adapter data-boundary proofs, not native OS
+confinement or semantic diagnostic qualification.
+
+`--drift-finalize-contract-only` checks the closed followup contract, fixed
+internal hook/run wiring and refusal of drift/partial/recovery preconditions.
+Its hook adapter is a spy, not an execution claim.
+`--drift-finalize-mode=<files|dual|db-only>` selects disposable source-installed
+project checks: actual canonical report persistence and fixed R05 hook, own new
+completion event, retained result without a second hook, and identical reducer
+simulation. Files also refuses a changed producer configuration and an explicit
+effect denial without changing history. `--drift-finalize-case=revoked` revokes
+the grant at the last pre-effect boundary. `--drift-finalize-case=unknown`
+executes the actual hook then faults its observation: no success fact, durable
+reconciliation and owner retention, no automatic rerun. These selectors do not
+remove cases from the default suite. They use a native transport double and
+do not qualify a real model, OS confinement, exact archive or complete workflow.
+
+`--drift-completion-mode=<files|dual|db-only>` selects terminal-context fixtures
+in the same suite. Actual bootstrap, mode and cycle-creation ports prepare the
+project; terminal state is then seeded as an explicit fixture precondition, not
+proof of validation or terminal transition. DONE/NO_GO/DROPPED owners include an
+intermediate branch. The canonical cycle objective supplies the authenticated
+report/evaluation and real R05 hook; the ordinary reload stays blocked and the
+terminal state/cleared active anchor remain unchanged. Replay/simulation reuse
+the same IR/reducer and confirmed dispatch cannot repeat the hook. Files covers
+incomplete usage evidence, missing/ambiguous owner, a missing open-cycle anchor,
+a conflicting active cycle and a stale brief. Db-only poisons a visible brief
+without replacing canonical context. Native transport is substituted; installed
+archive, real native/provider and full standard workflow claims remain separate.
+
+`--mixed-only` selects the production mixed-host checks in
+`verify-agentic-process-execution-fixtures.mjs`; the required unfiltered suite
+retains them. A disposable source-installed project supplies actual activation,
+Git, session admission/initialization and canonical files/SQLite ports. One
+qualification IR interleaves these operations, native activities and a signed
+external event, then uses the same reducer for replay/simulation. Files, dual
+and db-only include fresh host reconstruction; the files continuation starts a
+new Node process. Refused grants, competing dispatch and interrupted allocation
+must leave explicit refusal/uncertainty and retain the existing effect owner.
+Controller/native/provider transports are doubles and make zero real model
+calls. This is an offline bootstrap fixture, not the complete standard workflow,
+live Windows/model qualification or an exact archive installation.
+`--nonmixed-only` selects the preceding native-composition regressions when the
+mixed partition is already running on the same immutable production sources;
+the required default command still includes both partitions.
+
+The production native-composition suite also tests the internal authenticated
+allocation composition: canonical reservation before owned launch, a competing
+launch refusal, signed closure/checkpoint reopening in a new Node process,
+interrupted/unknown/rejected outcomes, record/key/evidence tampering, cumulative
+ceiling refusal and canonical storage failures. Real files/SQLite and the actual
+owned/native code are exercised with controller/RPC transport doubles. No native
+model or real process tree is allocated by these checks. `--journal-only` is a
+focused selector; the required gate retains the entire suite. A successful
+allocation journal does not qualify general native resume or mixed dispatch;
+ordinary start still enforces the pristine-history guard. Explicit authenticated
+native-only continuation is covered separately below.
+
+`--resume-only` selects production owned/native continuation checks. The fixtures
+use signed allocation/control stores, actual Git context, canonical files/SQLite,
+the fixed worker admission and the same reducer. They exercise prior accepted
+results, event waits, fresh sessions and retained writer exclusions, including a
+new Node process. Controller/native/provider transports are fixture capabilities;
+this does not qualify live native execution or a real PR provider. Forged history,
+changed context, missing required projection and an altered reservation must
+stop before any new model turn. The complete required suite retains these cases.
+
+`--worker-only` executes the fixed worker entry in an actual new Node process,
+using its real private allocation input. V1 waiting and mixed v2 operation-boundary
+graphs require no native client. A changed owner is refused; key bytes must be absent from output
+and retained JSON. The outer controller remains a fixture capability, so this
+proves private worker wiring, not the Windows Job controller or model confinement.
+
+The production native-composition fixtures include native-only v2 role execution,
+exact replay, resource closure on an event wait, refusal to restart that history
+as pristine, and pre-allocation refusal of raw v2 facts/events. They retain the
+v1 and mixed-operation refusal regressions. `--v2-only` is a focused selector;
+the required gate runs the complete suite. Native transport is simulated; these
+checks do not qualify live native execution, mixed dispatch or general resume.
+
+
+`verify-standard-workflow-control-fixtures.mjs` verifies authenticated durable
+human/external capture and delivery through the standard operation host with the
+common service/reducer. Real session effects precede an event wait; a new Node
+process delivers without repeating those effects. It covers missing/untrusted
+sources, context/head mismatch, event deduplication, signed history, later work,
+replay/simulation and failed acknowledgement after canonical SQLite delivery.
+Files/dual/db-only and actual canonical stores are used; source authentication
+is a fixture capability. It does not qualify a native/provider channel, review
+approval, R05 completion, mixed native resume or the full standard workflow.
+
+
+`verify-standard-workflow-cycle-fixtures.mjs` consumes the separately distributed
+cycle scaffold JSON through real canonical files/SQLite, admission, Git, CAS,
+audit, checkpoint hook and projector ports. It requires real dirty-work waiting, explicit external
+Git reconciliation, a refused grant, authenticated receipt acceptance in a new
+Node process, a native product-patch denial in OPEN/NOT_READY, and exact replay /
+simulation with the execution reducer. Files/dual/db-only plus db-only EXPLORING
+are offline checks. Installer Codex discovery and host identity/grants are fixture
+capabilities. Completing this component does not complete DoR, cycle readying,
+the standard workflow, native identity or exact installed-archive
+qualification. A real SQLite trigger also refuses the last cycle CAS after ten
+committed artifacts: the authenticated unknown result must retain ownership and
+WAITING, survive reopening, refuse fresh dispatch and replay exactly. Conditional
+drift from R05 remains an explicit route: COMMITTING first waits with no hook
+effects, then a real external legacy drift hook establishes a test precondition
+before retry. This external precondition is not the full modeled/native analysis
+graph. The actual cycle hook must prove a non-skipped clear gate and a fresh
+correlated checkpoint event. Denied authorization writes no checkpoint event.
+The checkpoint-partial selection loses event observation after the real hook;
+its effects remain unknown, ownership retained and another invocation refused.
+The files selection dispatches the ready checkpoint in a fresh Node process
+after the R05 wait, then accepts and retains its receipt without another hook.
+An old direct-port preview also cannot repeat the checkpoint after its event
+append. A branch change during authorization must refuse before hook effects.
+
+
+`verify-workflow-record-storage-fixtures.mjs` exercises the actual SQLite index
+writer and PostgreSQL bulk producer (SQL transport double). It protects both
+historical instance namespaces, definitions, operation journals, decision/control
+inboxes and native allocation journals against stale
+visible replacement. SQLite preserves omitted canonical artifacts; PostgreSQL
+full replacement refuses omission. This covers producer SQL selection as well
+as the common predicate and does not establish live PostgreSQL qualification.
+
+`verify-standard-workflow-host-fixtures.mjs` adds an IR consumer of the three
+real bootstrap ports. It uses canonical files/SQLite in files/dual/db-only,
+signed previews, journal CAS and actual business effects. Acceptance runs in
+new Node processes with the retained host key; it verifies no business replay,
+single dispatch under contention, durable waits and exact reducer simulation.
+It rejects self-hashed journal/process forgeries and revoked fixture grants.
+A stopped-state fixture refuses PID takeover; an injected real SQLite partial
+effect retains an unknown result. The authorization capability is a fixture
+double and the key resides outside the disposable product. This does not prove
+native key isolation or human identity. The consumed model is explicitly a
+bootstrap port fixture, not the shipped full standard model. Full mixed-host
+resume, provider inbox, native Codex, live PostgreSQL and archive qualification remain open.
+
+`verify-standard-workflow-mode-fixtures.mjs` extends the offline IR consumer to
+authenticated human mode capture, real canonical mode application and the actual
+start-session hook/checkpoint/constraint route. The files/dual startup paths use
+actual ports with fixture human-source and explicit-grant capabilities. The
+db-only legacy corpus has an open canonical cycle without a defined goal; its
+real nested gate warns and the host retains an unknown effect and WAITING cursor,
+even though the outer hook reports success. This is a refusal proof, not a
+successful db-only standard startup or a reason to relax the gate.
+A separate fresh db-only project is created by the actual source installer,
+with explicit SQLite persistence and a Codex discovery/login stub. The same
+published component reaches completed startup on that coherent state; it does
+not inherit or remove the legacy corpus's open cycles.
+Acceptance runs in new Node processes; redispatch returns retained results.
+Absent/unverified/wrong-question/reused sources cannot complete an operation.
+Refusal and cancellation stop; deferral waits for a new explicit intent and
+authenticated answer. Every resulting history is simulated by the same reducer.
+The startup path consumes the published JSON component through
+`createStandardWorkflowStartupHost`; its next operation comes from the reducer
+cursor. Source provenance enters signed previews and host scope. Isolated human
+protocol cases still use a dedicated fixture model. This is not the shipped full
+standard workflow or native human-channel qualification. Full A1–A10 and exact
+installed-package proofs remain required by the standard workflow plan.
+
+`verify-standard-workflow-model-fixtures.mjs` validates the published component,
+catalog, SPEC/skill/binding pins, source descriptor, changed-authority refusals
+and explicit implementation-only revision refresh. The default refresh command
+has no writes; runtime loading never repairs a stale catalog. Package-relative
+loading is checked from an unrelated working directory, while package topology
+checks the distributed assets. Neither proves execution from an installed archive.
+
+When registering an operation binding before its published routing is complete,
+run `verify-standard-workflow-ports-fixtures.mjs` with the binding checks. Its
+explicit standalone/compatibility inventory must match the actual catalogs;
+adding an entry does not qualify that component as productive STANDARD routing.
+Remove that entry when its binding is connected to a published catalog.
+
+The required gate also includes `tools/perf/verify-standard-workflow-ports-fixtures.mjs`
+for the partial L2 bootstrap ports. It uses real local business use cases,
+Git branches, canonical files/SQLite, CAS and projection, plus actual activation
+asset installation into disposable clients. Business state is fixture data and
+the session template comes from the current scaffold. It checks explicit effect
+plans, unchanged admissions, UNKNOWN-mode bootstrap, closed inputs, stale
+preimages, backend absence without fallback, local owner contention and a real
+SQLite trigger failure after session creation. The read-only reload case uses
+a synthetic SPEC longer than 16,384 characters. It checks that the six
+canonical documents contribute path and SHA-256 descriptors to the result,
+that the reload observation and facts are preserved, and that the signed
+`returned` dispatch candidate validates in memory within the existing JSON
+limits. This case stops before persistent dispatch. Unknown effects retain their
+owner and block retries. Read-only reconciliation observes completed state;
+it does not recover an uncertain owner or replay effects. These fixtures do not
+run a standard IR model or the full start-session skill. Native, live PostgreSQL
+and installed archive qualification remain NOT_RUN; see the
+[remaining lots](PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md).
+
+The required gate includes `tools/perf/verify-process-operation-fixtures.mjs`
+for the L1 v2 operation foundation: closed bindings/intents/receipts, explicit
+non-success outcomes, unknown-effect reconciliation, exact shared-reducer
+replay/simulation, authenticated bounded ports, receipt CAS races and durable
+waits in files/dual/db-only. It uses real local stores with authority doubles
+and checks v1 hashes against a frozen `dd1dbab` oracle, mixed native/operation
+semantics, authenticated control delivery and provider-event reuse refusal.
+It does not use the standard business adapters. The native-only composition also refuses
+the operation profile before allocation. These checks do not qualify the
+standard workflow or native/installed mixed-host execution.
+
+The required agentic-process gate also runs
+`tools/perf/verify-workflow-engine-fixtures.mjs`: direct JSON creation defaults to
+the structured engine through the common composition, console and actual public
+CLI dispatch. It checks explicit legacy creation, historical readers, config
+override validation, ambiguous IDs, exact preview/authorization delegation and
+pristine initial-checkpoint admission. The production-host fake-wire suite also
+executes an instance created through that default composition. No native model
+call is made by these selection tests. See
+[ADR-0024](ADR/ADR-0024-default-agentic-workflow-engine.md).
+
+The same gate includes `verify-bpmn-process-fixtures.mjs`: strict namespace
+parsing, supported structured XML compilation, role/policy bindings, source
+maps, nested joins and explicit refusal of unsupported graphs/semantics. The
+reducer suite checks BPMN → IR → synthetic trace parity, parallel readiness,
+compatible reuse, contributor exclusion and independent review. Simulation
+retains waits, event races, failures and duplicate-event semantics. These are
+tracked offline fixtures; graphical editor import, new native model execution
+and installed-package qualification are NOT_RUN. See
+[the profile](BPMN_EXECUTION_PROFILE.md) for separate compiler/IR support levels.
+
+The same compiler suite also pins v1 compatibility and challenges the
+[default v2 XML mappings](BPMN_EXECUTION_PROFILE_V2.md): message correlation scopes,
+post-test loop polarity and explicit limit failures, fixed item identities,
+repeated/nested calls, recursion and expansion limits. The canonical service
+suite executes the combined v2 model in files/dual/db-only with real temporary
+stores and authority doubles, then compares the exact journal cursor/hash with
+synthetic simulation. Native execution, live PostgreSQL, graphical import and
+installed-package qualification remain NOT_RUN.
+
+The production-composition suite also executes the combined v2 XML model with
+an explicitly pinned host scenario: a correlated message, two loop iterations,
+multi-instance calls and independent review, with ten accepted native-wire-double
+results. It checks no polling during waits, exact result-triggered facts,
+scenario mutation refusal and forbidden assignment inputs. Real provider tokens
+remain a separate benchmark. `tools/perf/benchmark-bpmn-process.mjs` compares a
+frozen baseline reducer and the candidate over the same ten-result event log,
+counterbalances CPU samples, and reports XML compilation separately from IR
+parsing. Its synthetic CPU stage has no model calls and cannot establish native
+token savings.
+
+Broker fixtures require product-adjacent atomic staging and retain bounded
+EXDEV/EACCES failures without changing original bytes or leaving temporary
+files. A real cross-volume probe and native review remain separate qualification
+evidence; a same-volume filesystem fixture alone cannot prove that boundary.
+
+The separate [BPMN v2 benchmark record](qualification/agentic-process/bpmn-v2-impact-2026-11-01.md)
+retains real installed-candidate execution, usage counters, native rejection and
+corrections, plus one successful IR/XML pair. Its native evidence does not change
+the offline suites' NOT_RUN labels or qualify a public release.
+The [controlled follow-up](qualification/agentic-process/bpmn-v2-controlled-2026-11-01.md)
+uses four counterbalanced native cases, a fixed batched verification command and
+same-context evidence reuse on unchanged inputs. All ten activities retain their
+own authenticated result. The benchmark-only instruction builder is
+`tools/perf/agentic-process-benchmark-protocol.mjs`; ordinary work and independent
+review policy are not replaced by a global cache.
 
 `npm run perf:verify-agentic-process` runs the required `runtime-agentic-process`
 gate without a Codex client, model, network or installed activation. It verifies
@@ -15,12 +2674,21 @@ snapshot integrity, preexisting backend/profile/hook refusals, foreign events,
 missing usage, protected rejection, original deadlines, closure and partial
 storage/timeout stops. The real RPC parser uses in-memory pipes. These are not
 native identity, provider reception or OS-isolation evidence; all remain NOT_RUN.
+Host execution failures retain a bounded safe code, including STANDARD_MODE_WORK_,
+and a host-selected stage in owned execution-failure evidence. The private worker
+authority reads current product hashes through its actual executor preview on
+every observation, including typed mode preparation; it does not cache them. Raw exception
+messages/stacks are not retained; a failed entry remains failed.
 See [the execution profile](AGENTIC_PROCESS.md) for the exact support boundaries.
 The suites also cover the exact 256-character occurrence boundary and oversized
 path refusal, cancellation during configuration observation, pre-aborted entry,
 expired pre-turn deadlines, unobservable storage and failed footer writes. These
 retain the first failure and known usage without launching a paid turn or
 turning unknown bytes into zero.
+The native adapter fixtures also check completed-tool observations: only bounded
+labels, counts and hashes survive, with no raw command, argument, output or
+reasoning text. The combined XML composition uses the default compiler and the
+same agentic engine without a profile opt-in.
 Live storage fixtures distinguish a listed child disappearing with ENOENT from
 an unreadable child or a missing required root, and verify bounded diagnostics
 and retained consumption on refusal. They do not attribute an earlier native
@@ -400,6 +3068,10 @@ merge, and post-merge sync. CLI, in-process daemon and Codex wrapper must agree
 despite misleading local projections. Canonical identity conflicts, duplicate
 session artifacts and unavailable storage refuse. Default wrapper diagnosis
 must not synchronize projections or mutate the database. The dedicated
+FILES R09 regression requires the pending sync action even when a local
+tracking ref reports zero divergence. The workflow transition fixture
+requires recorded completion at session admission for missing, unknown and
+pending merged-session sync statuses. The dedicated
 PostgreSQL artifact-store smoke exercises the same paths, checks both owned
 scopes and retained local files, and proves cleanup separately from fixtures.
 Neither suite represents native provider/client execution.
@@ -436,7 +3108,10 @@ native qualification; fixtures do not establish that host visibility.
 Branch-audit regressions use `perf:verify-branch-cycle-audit-admission`: complete
 cycle success, propagated warning/refusal, ownership failures, whitespace-valid
 event JSON, old and other-branch events, mixed anomaly reasons, and unchanged
-journal bytes. The live artifact-store smoke additionally exercises automatic
+journal bytes. A valid completion remains accepted without an implicit age
+ceiling; an explicit `--threshold-minutes` still reports elapsed time. Both
+observations preserve the original journal, while unresolved objective changes
+still refuse completion. The live artifact-store smoke additionally exercises automatic
 PostgreSQL selection, misleading local projections, normal reload history and a
 real repeated-anomaly stop through the standard hook and Codex JSON wrapper.
 These subprocess tests do not qualify native hook approval or client execution.
@@ -629,6 +3304,14 @@ When a change affects the simplified install/upgrade orchestrator, run:
 - `npm run perf:verify-project-config`
 - `npm run perf:verify-install-idempotence`
 
+The install idempotence fixture checks that a core install and reinstall
+preserve user ignore rules and add the private dispatch directory and exact
+local artifact fence path. On a disposable source-installed FILES project,
+the signed dispatch writer and local fence leave the real Git drift observation
+stable. Product changes, sibling audit artifacts and modifications to files
+already tracked under an ignored path remain visible. Run this case alone with
+`npm run perf:verify-install-idempotence -- --runtime-gitignore-only`.
+
 The bootstrap and Codex integration composites also run
 `tools/perf/verify-multi-project-setup-fixtures.mjs` for registry isolation,
 version detection, no-op/downgrade behavior, candidate-before-package ordering
@@ -684,6 +3367,13 @@ path, preserving unrelated rows and another test scope. Fixture success does not
 substitute for this live database evidence or for native hook execution.
 The Codex DB-only skill readiness gate also rejects documented runtime commands
 that have no executable registry entry.
+
+The DB-only readiness source scan recognizes the STANDARD canonical artifact
+port, including its inspected injection into the cycle checkpoint. This source
+classification indicates database awareness; it does not prove every path is
+fileless. Operational SQLite/PostgreSQL readiness, missing canonical data and
+projection-fallback refusals remain separate checks. Exercise both the shared
+DB-first regression and DB-only readiness fixtures when changing these markers.
 
 Runtime head fixtures cover both artifact orders, exact PostgreSQL pointer
 resolution, checksum/identity mismatch, missing targets, ambiguous fallback and
@@ -1349,6 +4039,14 @@ canonical stores required by a scenario must still be initialized explicitly.
 
 ### 4. Documentation / Generated Output Verifications
 
+The generated-document golden corpus retains its explicit workflow snapshot
+version `0.12.0`. The gate renders with the current package `VERSION`, checks
+that exact single metadata field independently, and compares all remaining
+bytes against the retained snapshot. It does not rewrite the corpus or ignore
+arbitrary version changes. Negative controls reject a wrong rendered version,
+an unpinned snapshot version and drift outside this scalar. This separates
+current version propagation from historical rendering content.
+
 Examples:
 
 - `npm run perf:verify-generated-docs`
@@ -1546,6 +4244,24 @@ second admission invocation.
 
 ## Artifact efficiency intent
 
+The STANDARD drift context uses a bounded canonical document read after
+closure admission. The fixture comparison checks byte-identical ordered
+context and evidence on PostgreSQL, missing required artifacts, optional
+omissions, and fresh reads after a later canonical revision. This comparison
+measures that context read only.
+
+The cycle checkpoint's PostgreSQL document comparison covers the same ordered
+paths, content fingerprints and metadata fingerprints as individual canonical
+reads. A later metadata revision must appear in the next observation. The
+checkpoint retains its separate preparation, authorization and effect checks.
+
+The project artifact command fixture checks bounded PostgreSQL journal reads
+with a doubled SQL transport. It covers canonical scope selection, requested
+order, missing paths, invalid requests, bounded output and a failed worker.
+Use a private PostgreSQL cluster to measure worker starts and wall time.
+Qualification of the composed DB-only workflow requires its separate terminal
+run and retained evidence.
+
 `node tools/perf/measure-artifact-query-parsing.mjs --out <new-file>` measures
 whole active-state.v2 selection on the tracked four-source corpus, after warmup,
 in five batches of forty selections. Every output must remain exactly equal.
@@ -1658,7 +4374,1638 @@ change. Its real database evidence remains outside PR admission.
 The installed skill namespace fixture checks the compatible startup admission
 and eleven ordinary hook examples after the combined nominal compact-selector
 experiment was withdrawn. Activation and fresh admission guards remain required.
+The hook context-example verifier resolves the same namespaced skill identity
+table; read-only context reload requires canonical admission without an ordinary
+mutating hook, while the other eleven skills retain their hook/context examples.
 The agent-view fixture independently compares actual full/agent strict admission,
 activation, source binding, blockers, checks and unchanged target bytes; explicit
 compact APIs remain available. Source procedure verification does not qualify a
 new package, native lifecycle, or whole-task performance result.
+
+
+Native state capture fixtures also verify that the production composition retains
+its host-issued assignment/result identities, writer contributions, observed
+usage, response hashes and parent-close state through the existing bounded
+protected evidence writer. Rejection remains terminal; a possible contributor
+survives an interrupted turn without an accepted result. `--checkpoint-only`
+selects these cases locally and cannot replace the complete required suite.
+The native-host-state content hash is not inter-host authentication, a supervisor
+closure proof, a new allocation grant or a general resume qualification.
+
+
+### Standard cycle audit components
+
+`node tools/perf/verify-standard-cycle-audit-fixtures.mjs` checks typed report
+coverage and semantic refusals. `node tools/perf/verify-standard-workflow-inventory-fixtures.mjs`
+checks complete canonical presence, redirection refusal and DB-only behavior.
+`node tools/perf/verify-standard-cycle-audit-context-fixtures.mjs` checks lossless
+long normative text and Unicode, scope-stable dispatch receipts, changed audit
+documents, new conditional documents and the unchanged total context ceiling in
+files/dual/db-only. These component checks use a fixture verification bridge.
+
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --cycle-audit-mode=contract`
+includes all three. Its `files` and `db-only` selections exercise actual local
+application ports with fixture native transport, grants and execution boundary;
+they do not prove native provider or exact installed archive execution. The
+audit fixture fixes its longer original deadline before any native allocation;
+no live authority or production limit is extended during execution. A favorable
+report must retain VERIFYING, pending human closure and no-effect status.
+
+
+Standard workflow corpus clients created by `standard-workflow-fixture-lib.mjs`
+copy tracked corpus bytes and install current integration assets. They never copy
+an ignored developer SQLite index. In dual/db-only fixture construction, the real
+index projector explicitly builds a temporary canonical store with content from
+the copied Markdown before DB-first reads. The current session template and
+runtime digest are then aligned through the artifact store. This is disposable
+fixture preparation, not a runtime missing-store fallback or a conversion of
+historical instances. Missing-store admission tests still remove that prepared
+store and require refusal without recreation. Source-install, native transport
+and exact installed-archive qualification remain separate evidence classes.
+
+The [fixture construction record](qualification/agentic-process/fixture-construction-2026-11-03.json) records the offline port/host checks and their proof boundaries.
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --cycle-closure-mode=contract`
+runs closure decision and review semantics plus the actual file/SQLite inbox
+adapter in files/dual/db-only. It checks a cold Node restart, deduplication,
+MAC tampering, unavailable/unverified human sources, distinct declined outcomes
+and exact historical v1/v2 reads. The human verifier and accepted-audit bridge
+are fixture capabilities. These checks do not qualify the full operation-host
+path, canonical cycle closure, final hook, native provider or installed archive.
+
+
+The [human closure qualification record](qualification/agentic-process/cycle-human-closure-2026-11-03.json)
+records both actual mixed-host component cases on files and DB-only, including
+cold acceptance, changed product refusal, durable wait and exact replay. The
+human provider, native transport and validation boundary are fixture capabilities.
+The decision leaves VERIFYING and performs no canonical closure effects; neither
+full standard workflow nor native/installed-archive qualification is claimed.
+
+
+`verify-promote-baseline-admission-fixtures.mjs` also runs the canonical
+promotion regressions from `verify-promote-baseline-canonical-fixtures.mjs`.
+They use actual SQLite dual/db-only stores and the configured PostgreSQL adapter
+with fixture transport, plus stale visible files, missing/ambiguous identities,
+non-retained cycles, canonical trace/gap/usage evidence and explicit internal
+selection. Missing authority must not fall back or create a SQLite store. The
+actual Codex JSON wrapper refusal must preserve the SQLite bytes and skip DB
+import. Files authority remains separate. Historical wrapper cases install
+current activation assets on tracked temporary corpora, and cleanup also runs
+on assertion failure. These tests prove admission, not baseline writes, the
+full standard IR, native execution or an installed archive.
+
+The required `perf:verify-context-completion` gate includes this promotion suite.
+Its real wrapper refusal checks both skill identities and explicit `--db-sync`;
+SQLite admission reads and refused wrapper calls must preserve database bytes.
+Configured PostgreSQL remains canonical even when the state-mode label is files.
+
+The same required promotion suite calls
+`verify-promote-baseline-prewrite-fixtures.mjs` for files, dual and DB-only.
+The actual pre-write port and public CLI must admit a selected DONE target after
+focus release without re-entering implementation DoR, preserve every observed
+file/SQLite byte, reject ambiguous/missing/non-retained targets, incomplete
+traceability/gaps/usage and stale runtime, and evaluate the selected target when
+another cycle is active. Dual/DB-only also remove the visible current/runtime,
+status/trace/gap projections before admission. These remain admission proofs;
+human promotion capture, baseline effects, final hooks and complete standard
+IR execution require separate evidence.
+
+Changes to the shared pre-write implementation also change fixed-operation
+implementation pins. Run `verify-standard-workflow-model-fixtures.mjs` for that
+consumer even when the edited skill is not a node in the published components.
+Refresh reviewed component bindings explicitly during source authoring, producing
+a new model/catalog revision; runtime loading must continue to refuse stale
+pins. Admission-only and pack-topology checks do not establish model loading.
+
+The required promotion suite also invokes
+`verify-standard-baseline-promotion-suite.mjs`. Its isolated private producers
+emit one JSON document with --json. Nine pure checks cover four schemas, version
+ordering, complete history/Unicode retention and refusal boundaries. Actual
+source-installed component cases cover files/dual/DB-only, duplicate apply,
+partial SQLite, lost dual projection, changed product/process and permission
+revoked before or after effects. Human/close capabilities remain fixtures.
+DB-only compares an existing bootstrap projection to its initial bytes instead
+of assuming absence. These are record-component proofs, not the missing human
+inbox, mixed-host replay, final hook, complete standard IR, real native client
+or exact installed archive.
+
+`verify-github-pr-observation-fixtures.mjs` is included once in the existing
+required agentic-process gate. It verifies closed private schemas and the actual
+adapter with fixture transport: complete nested pages, stale/foreign identities,
+partial errors, global bounds/deadline, Unicode bodies, deleted authors, nullable
+anchors, stable content digests and explicit unresolved/outdated state. The
+immutable expected command includes this addition while preserving old checks.
+Read-only actual GitHub observations are recorded separately from fixture API
+coverage; they do not establish authenticated durable inbox delivery, IR routing,
+triage/merge authorization, native execution or exact installed-archive workflow.
+
+`verify-standard-cycle-close-render-fixtures.mjs` tests the pure six-document
+terminal renderer, exact risk acceptance, non-retained evidence, Unicode chunks
+and refusal without effects. `verify-standard-cycle-close-contract-fixtures.mjs`
+checks the private input/plan/output boundaries and prevents uncertain or blocked
+results from carrying completion facts.
+
+`verify-standard-cycle-close-record-fixtures.mjs` uses a fresh source install and
+actual session, mode, cycle and runtime-refresh ports before its explicitly
+seeded VERIFYING precondition. The human/audit source remains a fixture authority.
+Selectors cover files, dual/DROPPED, db-only/NO_GO, actual partial SQLite writes,
+lost required dual projection and a product change during authorization. They
+prove canonical metadata recording, not the full native/human chain or final
+hook. The pending hook, frozen plan and retained reconciliation owner are
+asserted. These focused components are included in the existing agentic gate.
+
+
+The terminal-record component's `--aged-plan` selector prepares in the past
+and applies the original day-old plan under current decision/context/grant
+checks. `--mode=slow-authority` advances its private clock per trusted decision
+read and requires fresh post-grant validation. The legacy `--mode=expired`
+spelling now advances a day inside the grant callback and requires a confirmed
+record when all current material remains valid. Earlier expiry-refusal records
+stay tied to their original source. The private clock measures neither wall
+performance nor Native execution; the full process host remains separate.
+
+The session-report and baseline-promotion port fixtures also accept
+`--aged-plan` on FILES, DUAL and DB-only SQLite. Current source, grant,
+preimage/postimage, refusal and partial-effect checks retain their original
+boundaries. Successful reports/records still leave final hooks pending.
+`verify-standard-workflow-mode-fixtures.mjs --source-installed --mode=files|dual|db-only --aged-plan`
+exercises the published startup component's original old mode-application and
+start-finalization plans. Human-source authentication is a fixture capability;
+the effect ports and fixed start hook are actual, with real hook time progressing.
+The question's own intake protocol is unchanged by these prepared-effect tests.
+
+The canonical cycle/session record fixtures and baseline-promotion ports fixture
+accept `--aged-checkpoint` together with their existing terminal, close or
+promotion checkpoint selector. The session fixture also accepts `--aged-delivery`
+with `--delivery-checkpoint`. Each clock applies only while preparing that
+original checkpoint; application and any later fixed hook use real current time.
+The components verify actual finite Git effects (or admitted DB-only no-effect),
+current postimages, live grant and the existing cache/reload behavior. Foreign
+work and lost authorization retain their refusal or uncertainty assertions.
+These clocks provide no wall-time, Native, full-model or exact-archive proof.
+The mode fixture also exercises safe nonnegative timestamp validation before a
+controlled ownership boundary; `--timestamp-shape-only` runs those checks without
+a project or effect. `--startup-effects-only` retains the ordinary installed
+startup and exact simulation while selecting out the separate human-only cases.
+The full default fixture retains those cases. Terminal Git checkpoint components
+also reject unsafe timestamps before their live grant or Git mutation.
+
+`verify-standard-session-preclose-checkpoint-fixtures.mjs --aged-plan` exercises
+the original day-old preclose plan across its selected backend, retaining
+exact-plan, explicit effect, live-grant, foreign-path and canonical-source
+refusals. `--grant-after-git` retains UNKNOWN after a real commit loses its grant.
+
+The cycle, session and baseline port components accept `--aged-hook` with their
+existing final-hook selectors. Preparation uses a past private clock until the
+final successful preview; application restores real time and uses that original
+day-old plan with actual fixed hook/event/CAS ports. Post-effect confirmation
+loss retains UNKNOWN and prohibits repeating the hook. The cycle renewal
+component also applies an original day-old typed review-return plan under an
+unchanged current completion-expiry double; it produces no hook or completion
+success. These clocks do not prove wall-time or genuine Human/Native execution.
+
+The final checkpoint component extends the terminal-record component selector
+with `--final-hook`. It runs the actual cycle-close hook after explicit Git,
+reload and R05 fixture preconditions, checks the correlated checkpoint event and
+confirms three current completion documents. The accepted record/human/audit
+authority remains a fixture. `--final-hook-fault=event|suffix|projection|grant_after`
+selects loss after real hook execution; uncertainty must retain ownership and
+prevent a second checkpoint. The suffix fault requires SQLite and projection
+fault requires dual mode. These selectors do not establish the full standard
+IR workflow or native human/model execution.
+
+`verify-standard-cycle-close-checkpoint-fixtures.mjs` checks read-only capture and
+actual Git history/content observations, including unrelated committed paths,
+changed physical bytes and changed context. A plausible clean Git state alone
+cannot replace the captured reviewed evidence.
+
+
+`verify-standard-cycle-close-hook-contract-fixtures.mjs` also validates the
+renewal-plan, close-hook v2 and confirmed-close selection schemas with the
+production validator. Its pure controls check both exact expiry reasons, closed
+nested data, invalid identities/hashes/types and incompatible typed outputs.
+These contract checks do not execute a closure or qualify current human authority.
+
+`verify-native-human-verification-port-fixtures.mjs` checks the actual private
+loopback transport with an explicit current-H double, including revocation,
+wrong subject/authority/reservation, expiry during an await, cancellation,
+closure and an exception carrying the reserved success code. It does not execute
+the production worker. `verify-agentic-process-execution-fixtures.mjs
+--native-human-turn-only` isolates the production session adapter's private
+pre-turn fence with doubled native RPC. `--drift-worker-mode=nominal|revoked|
+expired|wrong-authority|wrong-subject` selects a newly authored bounded diagnostic
+loop through parent/worker application ports, with fixture actors and unchanged
+signed historical opinions and separate Native grants. Terminal evidence is
+required for each case; none of these selectors alone qualifies the published
+STANDARD model or an independent worker process.
+
+Adding `--drift-worker-process` to a drift-worker selection reconstructs the
+production worker authority and executor in an asynchronous child Node process.
+The static fixture entry keeps Native RPC doubled and the parent event loop live
+for actual authenticated H transport requests. Private admission travels only in
+stdin; fixture IPC carries observation markers and counters. `revoked-after-observe`
+and `expired-after-observe` select the final awaited Native observation before the
+production turn fence. The child records its PID/parent PID, RPC/session/turn
+counts and exact close-call counts. The enclosing qualification Job remains
+required for OS closure; these fixtures do not qualify the fixed production entry,
+genuine actors, published STANDARD execution or business ALLresources closure.
+These new selections require exact-source terminal evidence before any PASS claim.
+
+Independent-worker fixture termination now persists a bounded telemetry file in
+the owned fixture directory before assertions. It retains child/parent identity,
+exit, RPC/session/turn counters, limited transcripts and the scenario mutation.
+An early failed assertion therefore cannot hide the collected terminal counters.
+Missing counters remain missing; this file is neither a production receipt nor
+proof of a genuine Native actor, and it does not repair earlier failed cases.
+
+The shared RPC double follows production close idempotence. It retains both
+`closeCalls` and `confirmedClosures`; one resource may receive multiple close
+attempts while confirming its effective closure exactly once. SOURCE65's first
+partition setup retained two close attempts and failed an overstrict fixture
+assertion before any race started. That failure is retained separately; the
+corrected counter is not a production closure or genuine Native qualification.
+The short `--native-human-turn-only` selection now exercises both production
+session close paths for nominal/revoked/expired turns and retains both attempt
+counts. Its separate production-RPC control uses a child-process double to prove
+that repeated close calls issue only one stop/kill. OS child/Job closure and
+independent worker authentication remain separate obligations.
+
+The independent worker's final observation is identified by two observations
+after the actual durable assignment, rather than an absolute RPC count. The
+`head-last-human-await` and `context-last-human-await` cases change only HEAD or
+a canonical context document during the following current H verification.
+Their signed source, TTL and separate Native grant remain current.
+
+On the pre-fence source, both last-awaited-H selectors reached a fixture Native
+turn after the mutation; those failed arenas and original results remain
+separate. The current authority captures a fresh synchronous context fence
+before H verification and reobserves it after that await, followed by the
+existing TTL and history/reservation guards. The session-scope suite additionally
+checks unchanged witnesses, an empty HEAD commit and canonical-only parking-lot
+changes in each selected storage mode. These component checks do not replace
+new independent-worker cases or qualify genuine actors or published STANDARD.
+
+`--drift-worker-phase=setup` stops after the first accepted diagnostic evaluation
+and emits a retained fixture-state path. `--drift-worker-phase=race` with
+`--drift-worker-state=<path>` reconstructs that successful fixture preparation,
+then obtains and accepts the current H request before spawning the independent
+child. The setup file is test arrangement, never production permission; the
+host and child still authenticate canonical histories, current H and the
+unchanged Native grant. Each phase requires its own predeclared OS deadline and
+receipt. Setup-only success is not race success. No interrupted or UNKNOWN arena
+may enter this successful-setup path. The monolithic SOURCE65 nominal attempt
+timed out before terminal worker evidence and remains UNKNOWN; this partition
+uses a new project and preserves that attempt separately.
+
+`verify-standard-cycle-close-hook-contract-fixtures.mjs` verifies the closed
+fixed input, supported schema vocabulary and correlation of confirmed, blocked
+and uncertain outcomes. `--cycle-close-finalize-mode=contract|files|db-only` in
+`verify-agentic-process-execution-fixtures.mjs` selects the new common-host
+consumer. The contract case checks IR identity mapping without execution. The
+execution case must cover a durable blocked receipt, separate actual Git,
+reload/R05 fixture preconditions, current product/log tampering, denied effect
+authorization and a cold-process finalizer without native allocation. Its
+replay uses the same authored model and reducer. These external fixture
+preconditions do not establish the still missing complete standard IR route.
+The retained common-host continuation passed on its exact earlier snapshot.
+Current actual-hook components are recorded separately; selector availability
+alone never proves common-host execution or the full standard workflow.
+
+The required agentic gate includes the real final-hook component for all three
+canonical modes and event/suffix/projection/post-effect-grant faults. These
+explicit selectors exercise actual application effects; schema/checkpoint
+observation tests alone do not prove hook execution. The retained common-host
+continuation and its original prefix failure are recorded separately in
+[the bounded proof](qualification/agentic-process/cycle-close-hook-continuation-2026-11-03.json).
+The private retained-fixture verifier only accepts owned disposable roots and
+uses the existing instance; it must never rerun its six writes or allocations.
+
+Promotion request qualification uses three required agentic fixtures:
+`verify-standard-baseline-promotion-decision-fixtures.mjs` checks closed data,
+fixed bindings and outcome separation; `verify-standard-baseline-human-fixtures.mjs`
+checks the actual signer/capture logic on memory plus files/dual/DB-only stores;
+`verify-standard-baseline-authority-fixtures.mjs` checks the real bounded event
+reader with a fixture accepted-journal capability. Human provider and completed
+closure remain fixture authorities in these component cases. They do not prove
+that the common cursor reached the bindings from a real preceding closure.
+The existing source-installed baseline port producers also exercise read-only
+canonical review and blocking by an outstanding effect owner before writes.
+Required context-completion coverage retains every historical admission check.
+A complete frozen standard model and common-host/native/archive qualification
+remain separate requirements.
+
+Final promotion uses private hook input/plan/output fixtures and the shared
+application dispatcher fixture. Required agentic coverage adds the actual
+source-installed baseline producer --final-hook on files/dual/DB-only and
+--final-hook-fault=event|suffix|projection|grant_after. Each fault delegates the
+real application checkpoint before losing confirmation; owner/facts/no-repeat
+are asserted. Human and completed-close authorities remain fixtures. Git commit,
+reload and R05 are explicit fixture preconditions, not a delivered standard IR
+route. --retain-on-failure preserves an owned diagnostic root for inspection.
+The renderer appends history confirmation without rewriting the pending entry.
+These component checks do not establish a common-cursor path or native/archive
+execution, even when the fixed binding is registered.
+
+
+### Published standard startup R05 prefix
+
+`verify-standard-workflow-composition-fixtures.mjs` validates the distributed
+partial standard JSON, fixed operation/source pins and exact typed native
+outputs. The distributed model calls the same pinned `final_verification`
+target in the main and correction paths. The fixture also substitutes
+adversarial variants in memory at the ordinary loader's two package reads.
+It checks exact v3 coverage, repeated local
+IDs across models, v1/v2 compatibility, root activity contracts, rejection of
+embedded activities and events, and tampering with target, binding,
+implementation, skill or SPEC pins. The embedded-event fixture repins the
+target and parent exactly before checking the loader refusal. The
+binding-refresh check requires explicit reauthoring of a stale target pin.
+The suite also passes the ordinary STANDARD configuration for the published
+v4 data bindings to the project execution constructor. It verifies that
+all root activity outputs pass validation before the project authority
+precondition, and that mismatched audit and task work output bindings are
+refused. Execution of the candidate, persistent replay and qualification of
+distributed calls require separate evidence.
+
+`node tools/perf/verify-standard-composed-preflight-fixtures.mjs --final-verification`
+uses the common reducer and call-data resolver with the distributed assets.
+The current positive route plans 74 operations and 9 response slots, with 178 events.
+The current correction route through the pre-merge wait plans 137 operations and
+17 response slots, with 333 events. Both routes check entry and return of
+the shared review-capture call with empty parameters and no result witnesses.
+The suite also checks the per-iteration input IDs, the scoped evaluation ID,
+the empty return, exact replay, and a blocked evaluation that cannot return.
+The real composed driver previews and applies the exact call transition
+through the host, then checks the single appended event, preserved journals,
+reopened prefix and unchanged allocations. Its cold continuation and
+streamed replay cover the retained call history when the driver is run.
+Persistent call-boundary qualification, real Native and provider execution,
+and the installed archive require their own evidence.
+
+`verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=cycle_admit`
+loads that same published JSON through `createStandardWorkflowExecution`. The
+cursor drives real startup, authenticated mode choice, typed R05 diagnostic
+consumption, the actual R05 hook and startup checkpoint, then context refresh.
+The transport/controller wire is simulated; the application, admissions,
+canonical artifacts, operation/native journals and replay/simulation are real.
+A same-process host reopen follows the retained native result without rerunning
+that activity. This is not qualification of a real native client or process
+resume. The current model includes the governed Git checkpoint before this
+stop; older startup records retain their earlier model and evidence boundary.
+
+The selector also accepts `dual` and `db-only`; those variants must be reported
+separately. `--standard-composed-stop=plan` requests the longer cycle prefix,
+which has a separate recorded files qualification through the governed Git
+checkpoint and actual cycle admission/finalization. Preserve failures with `--retain-on-failure`, inspect the signed
+journal and actual gate, and start a fresh disposable instance after an authored
+model revision. Never silently convert or rerun an uncertain old instance.
+
+
+### Governed session Git checkpoint
+
+`verify-workflow-git-checkpoint-port-fixtures.mjs` uses real disposable Git
+repositories. It checks a metadata-only local object/ref/index checkpoint,
+read-only inspection, foreign/index/postimage/authorization refusals and
+post-ref uncertainty. `inspectCommit` distinguishes an observed commit from a
+fully reconciled index; replaying the effect is not recovery.
+
+The port samples the repository root, gitdir, index path and HEAD in one Git
+invocation per inspection. The port fixture covers the existing unborn and
+detached HEAD refusals, and `verify-retained-workflow-git-binding-fixtures.mjs`
+checks refusal after a same-content gitfile redirection. Each inspection uses
+a fresh observation across provider, authorization and effect boundaries.
+Multi-path checkpoints sample modes together per commit tree. The terminal
+profile checks executable modes, absent parent entries and literal path names
+with spaces and brackets. Single-path reads and the fallback retain the
+original Git mode command.
+
+The same fixture proves that a configured reference-transaction hook and clean
+filter actually execute under ordinary Git, then requires the adapter's inspect,
+commit and confirmation to execute neither. Live/cold filter changes and an old
+unpinned preview must refuse fresh effects; substituted filter context cannot
+supply cold confirmation. Private historical plan records remain readable.
+
+The distributed standard model places `session_git_checkpoint` after context
+refresh and before unchanged cycle admission. The longer composed selector
+`--standard-composed-mode=files --standard-composed-stop=plan` exercises that
+connection through the actual application ports and a simulated native wire.
+Its PASS must come from the current frozen model/package, not these port
+fixtures. True native and exact installed-archive qualification remain separate.
+
+`standard-session-git-plan-validity-fixture-lib.mjs` exercises the actual session
+checkpoint factory after one day using real bootstrap, admission, canonical
+artifact/owner and finite Git ports. Its accepted start/context reader is
+controlled. FILES and DUAL require the exact new commit; DB-only requires the
+admitted no-visible-file/no-effect result. Revoked authority, changed accepted
+source, HEAD or canonical metadata still refuse. A confirmation-loss double
+after the actual Git commit leaves an uncertain result and held effect owner.
+The existing workflow-ports suite also includes these cases. This does not
+authenticate a complete native start receipt or an installed archive.
+Use `--case=files:valid|dual:valid|db-only:valid|files:revoked|files:accepted-source|files:head|dual:metadata|files:ack-loss`
+on the helper to allocate one logical fixture at a time. The workflow-ports
+suite's `--base-ports-only` selection runs its earlier port cases separately.
+
+The [recorded files qualification](qualification/agentic-process/standard-governed-git-prefix-2026-11-03.json)
+separates the failed fixture deadline recreation, a cold-resumed objective-delta
+refusal, and the nominal PASS through 17 application operations and two
+fake-wire diagnostics. The nominal case keeps one admitted objective and one
+native authorization; it never refreshes a deadline per activity. This does not
+acknowledge a distinct goal or implement its recovery route. The retained
+refusal has an exact replay and remains WAITING, with one session, one governed
+commit and one cycle creation. The successful prefix stops READY at `plan`;
+full standard, other storage modes, real native and archive evidence remain open.
+
+### Published standard work and audit prefix
+
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=closure_decide --retain-on-failure`
+continues the published JSON through plan recording, DoR, implementation entry,
+host-selected work, real pre-write admission, deterministic Node verification,
+progression, VERIFYING and audit. The verifier executes the real Node check;
+its containment/qualification authority remains a fixture. No model is called
+for deterministic operations. The native transport and human/grant capabilities
+remain fixtures. The original native authorization is shared across activities.
+
+The [recorded result](qualification/agentic-process/standard-composed-work-audit-2026-11-03.json)
+covers 30 application operations, five simulated native activities and exact
+replay/simulation. This targeted selector stops before the human closure
+operation: READY `closure_decide`, workflow RUNNING, cycle VERIFYING. It proves
+neither the human wait nor closure/promotion/session/PR completion. Dual/DB-only,
+multiple tasks, refused/resumed closure, real native/boundary and exact archive
+remain separate acceptance work. This targeted result does not claim execution
+of the aggregate suite or merge readiness.
+
+
+### Standard terminal checkpoint, restart and streamed replay
+
+`node tools/perf/verify-standard-cycle-terminal-checkpoint-contract-fixtures.mjs`
+checks closed supported schemas and matching identifiers, model-supplied path/command refusal, and the
+separation between checkpoint and completed cycle-close skill. The real Git port
+suite also covers trusted terminal scope, literal paths, tracked executable mode,
+oversized or foreign files. The default session scope remains three files.
+
+`node tools/perf/verify-standard-cycle-close-record-fixtures.mjs --mode=files --outcome=retain --final-hook --terminal-checkpoint`
+executes the actual application checkpoint/reload between the canonical writer
+and final hook. Also run `--mode=dual --outcome=drop` and
+`--mode=db-only --outcome=no_go` with the same two finalization flags for storage
+intent. These are component proofs with fixture human/audit/R05 preparation.
+`--terminal-checkpoint-fault=grant_after_git` exercises a real confirmed commit
+followed by denied authorization: expect unknown, empty facts and owner retained.
+A no-effect permission error must never erase the prior Git effect.
+
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=promotion_decide --retain-on-failure`
+requests the longer published-model path: human missing-source wait, explicit
+deferral, a new Node process using the original authorization and durable inbox,
+retention, terminal Git/reload, R05 and real final hook. It stops before promotion,
+with workflow RUNNING. The parent compares prior journal hashes and event prefix;
+its private preservation baseline is retained before the child starts. Transport,
+human/grants and containment qualification remain fixtures. Do not replay effects
+to repair a failed proof; inspect the retained record and exact source first.
+
+`verify-agentic-process-fixtures.mjs` covers aggregate/stream row equality, the
+unchanged aggregate 4 MiB refusal, a 512-event streamed case, early disposal,
+malformed inputs/events and caller mutation between pulls. The internal pull
+iterator retains one bounded immutable snapshot; the caller must discard rows.
+Its rows are synthetic and do not authorize writes. Public CLI streaming is not
+claimed. The composed selector uses that iterator for exact replay/simulation.
+The [recorded qualification](qualification/agentic-process/standard-terminal-checkpoint-2026-11-03.json)
+keeps the earlier aggregate trace-limit failure and exact streamed recovery
+separate from the corrected full-harness result, real native and installed archive.
+
+
+### Planned traceability producer and promotion reader
+
+The cycle-plan contract selector below also verifies host-owned identity
+constants in the Native response schema, refusal of altered identities and
+unchanged business refusal of historical proposals with a reformulated
+objective. The `--cycle-plan-mode=files` selector checks that the actual
+composition, execution host and session adapter deliver those constants to
+`turn/start`. Native RPC remains a fixture wire in these checks.
+
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --cycle-plan-mode=contract`
+includes a producer/consumer regression: the real plan renderer writes canonical
+planned REQ/TEST links, and actual promotion admission reads them on a disposable
+Git root. It verifies read-only behavior, unsupported-list refusal and a spike
+with no fabricated production REQ. The fixture's DONE state is setup; this test
+proves format compatibility only. It does not prove test execution, retention,
+cycle-close completion, composed promotion or native/installed behavior.
+
+
+### Governed baseline Git checkpoint and composed promotion
+
+`node tools/perf/verify-standard-baseline-promotion-checkpoint-contract-fixtures.mjs`
+checks the three closed predecessor IDs, schema identifiers and checkpoint versus
+skill completion. For the actual component, use
+`node tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs --mode=files --final-hook --promotion-checkpoint --keep-cycle-branch --retain-on-failure`.
+Repeat with dual and DB-only for canonical/projection intent. These selectors use
+the real checkpoint application, Git, cache reload and final hook, while closure
+and decision authority remain fixture capabilities. The selected path cannot fall
+back to the helper's manual Git/reload precondition. No merge to session is needed
+merely to reproduce the older fixture setup.
+
+`--promotion-checkpoint-fault=grant_after_git` confirms unknown, empty facts,
+unchanged cache and retained owner after a real commit. `foreign_parent` and
+`foreign_path` refuse before the new effect. Those cases do not execute the final
+hook and must not claim promotion completion; the pending marker is
+`checkpoint_pending`. Keep the original mistaken marker assertion as an oracle
+failure, separately from the runtime outcome.
+
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=component_complete --retain-on-failure`
+requests the longer published-model path through explicit promotion, governed
+checkpoint, R05 and final hook. It keeps the missing-human-source checks and
+closure deferral/cold restart with the original authorization. Seven fake-wire
+activities cover this bounded one-task case; deterministic operations and human
+waits allocate none. A COMPLETED component is still partial: the catalog is
+required to keep `complete_standard_workflow: false`. Native/boundary/human/grant
+fixtures, real native and exact installed archive remain different evidence.
+
+
+The revision-18 composed promotion selector passes on frozen source `c18320d`
+with 100 events and exact 101-row streamed simulation. Interpret its 43 operation
+records as 42 completed plus one deferred, and its seven native sessions as
+fake-wire allocations (five parent, two child). Cold continuation preserves the
+original authorization and prior journals/event prefix. Both process exits and
+cleanup must be terminal before editing that worktree. This bounded result does
+not qualify the session/PR tail, real native calls or an exact installed archive.
+
+### Standard session-close admission and canonical session projection
+
+Run `node tools/perf/verify-standard-session-close-admission-fixtures.mjs` for
+files, then `--mode=dual` and `--mode=db-only` when changing the canonical path.
+`--retain-on-failure` preserves owned failed corpus for diagnosis. The fixture
+executes actual admissions, wrong-owner/open-cycle/incomplete-canonical refusals,
+and a focused IR through the actual operation host with signed retained results
+and exact replay/simulation. Completed means admission only; blocked stays WAITING.
+All direct reader checks preserve the project bytes. Explicit protocol writes
+belong to the host fixture. No model, business effect grant or native allocation
+is required. This focused IR is not the published standard-model acceptance run.
+
+`node tools/perf/verify-project-artifact-store-fixtures.mjs` adds actual SQLite
+session creation/update, stale CAS, identity conflict and late projection rollback;
+its PostgreSQL path remains a double. The canonical reader regressions are
+`node tools/perf/verify-close-session-canonical-fixtures.mjs`. Incomplete historical
+canonical rows must refuse without importing visible Markdown or silently repairing
+state. Keep the first simulation-fixture call with an undefined optional input
+classified as a fixture API failure, separately from product/runtime failures.
+
+Record offline/source-install, real native, live PostgreSQL and exact installed
+archive outcomes separately. Governance completeness does not establish complete
+standard-workflow execution. Session report/write/checkpoint/final hook and the
+later PR/post-merge path still require their own full acceptance evidence.
+
+
+### R05 scope after canonical baseline completion
+
+`node tools/perf/verify-standard-drift-session-scope-fixtures.mjs` checks files;
+use `--mode=dual` and `--mode=db-only` for canonical DB behavior. The fixture seeds
+baseline completion postimages explicitly, including a missing canonical INDEX,
+and checks actual audit references/content hashes, complete known scope, unchanged
+canonical metadata and detection of an unrelated path. Inspection must not create
+or import an absent canonical document. Keep a wrong `.path` assertion distinct
+from the corrected `audit:` reference reproduction; a required-but-absent fixture
+INDEX is a precondition error before the context reader, not a runtime regression.
+
+The focused report contract selector is
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --drift-contract-only`;
+`--drift-completion-mode=files` exercises terminal owning context, authenticated
+report and actual hook without cycle reopening. These selectors use fake native
+transport and make no session-close, full-model or archive claim.
+
+### Session closure decision and R05 physical authority
+
+`node tools/perf/verify-standard-session-closure-history-fixtures.mjs` checks the
+private v2 record/completion contracts, repeated pure reopen/reclosure, exact old
+body preservation, legacy compatibility, fresh question binding, current and
+historical completion links and every archived report's prior prefix. It is
+also selected once by the process-operation fixture suite. This is a pure source
+check; canonical writes, actual start/close hooks, native human/provider identity
+and the complete published correction journey need separate evidence.
+
+The branch integration authority fixture now also checks authenticated terminal
+siblings in the fresh subject and refuses marker-only, changed, open or unknown
+siblings. It still injects accepted journal capabilities. The composition fixture
+checks distinct new promotion/R05/human/closure/delivery/integration references;
+source structure does not prove that those effects ran.
+
+For final delivery postimages, append `--delivery-checkpoint` to
+`verify-standard-session-close-record-fixtures.mjs --mode=files --checkpoint --final-hook`.
+Repeat with dual/db-only. `--delivery-grant-after-git` (files/dual) checks unknown
+ownership after the real commit. The fixture still uses injected decision/R05
+source authority, while start/close hooks, CAS, Git and stores are real. Delivery
+must preserve CLOSED content/metadata, event bytes and cache, leave Git clean and
+keep HEAD for DB-only with no physical changes. It neither replays the final hook
+nor refreshes the cache, integrates a branch or proves the full composed model.
+
+`node tools/perf/verify-standard-session-preclose-checkpoint-fixtures.mjs --mode=files`
+checks the finite checkpoint before session admission/R05. Repeat with dual and
+db-only; use `--mode=files --grant-after-git` for unknown ownership after the real
+commit and before cache refresh. These component tests inject closure/writer
+authority. They use actual canonical content/metadata, Git, reload and unchanged
+R05 gating, and do not close the session. A DB-only no-op must keep HEAD. The
+published-model selector is the separate authenticated composition test. Keep
+failed setup, component, composed, native and exact-archive results distinct.
+
+For the separate local Git integration port, run
+`node tools/perf/verify-workflow-branch-integration-port-fixtures.mjs`.
+It exercises real disposable repositories and linked worktrees, exact FF/ref/HEAD
+effects, preserved index/product bytes, disabled filter execution, explicit grants,
+negative preconditions, concurrency and cold reflog observation. The final result
+and cleanup must both succeed. This is a port-only proof: no standard-model
+binding, canonical lifecycle decision, PR transport, native provider or installed
+archive is exercised. See ADR-0025 for its authority boundary.
+
+For the separate standard integration components, run:
+
+- `node tools/perf/verify-standard-session-branch-integration-human-fixtures.mjs`
+- `node tools/perf/verify-standard-session-branch-integration-authority-fixtures.mjs`
+- `node tools/perf/verify-standard-session-branch-integration-port-fixtures.mjs`
+
+The first uses actual canonical inbox stores in files/dual/DB-only with a fixture
+human verifier. `--contract-only` covers pure contracts without claiming those
+stores. The authority fixture reads actual canonical files and physical event
+bytes but injects accepted-journal and R07 capabilities. The application fixture
+performs the real Git transaction with injected accepted human/closure sources;
+it checks immutable product/documents/index, cold application, refusal and
+post-effect grant loss retaining an unknown owner. Output-contract positives and
+negatives run before Git so checkpoint-specific facts/evidence cannot silently
+transfer to integration success. All owned fixture roots must finish cleanup.
+The published-model composed selector supplies a separate proof of the complete
+authenticated local chain when it passes; these component counts do not do so.
+
+`verify-standard-session-pr-admission-fixtures.mjs --mode=files|dual|db-only`
+checks the next read-only re-anchor and actual PR admission. Each mode uses real
+Git integration, canonical files or SQLite, a source-installed disposable project
+and an executable clean-filter control. The complete project tree must remain
+byte-identical during preparation and observation, including the cache and Git
+index. Unknown integration, changed refs or filter context block admission.
+Human/closure acceptance is injected fixture authority, not an actual R07 chain.
+DB-only keeps its real no-physical-change/equal-HEAD case without exporting data
+or creating an unnecessary commit. `--contract-only` checks only the private
+input/output vocabulary and exact no-effect routing facts. No test here pushes
+or creates a PR, authenticates a real provider, or qualifies an installed archive.
+
+`verify-standard-session-closure-human-fixtures.mjs` checks the closed private
+contracts, provider verification, immutable v5 captures, refusal/deferral/cancellation
+and actual files/SQLite stores. `verify-standard-session-closure-context-fixtures.mjs`
+accepts `--mode=files|dual|db-only`: canonical reads must leave every project byte
+unchanged, and a changed document must yield a new admitted hash. The fixture
+writer explicitly confirms its effect so a retained lock cannot masquerade as
+subject invalidation. Earlier fourth-check results without that assertion are
+superseded; the first three independent observations retain their original scope.
+
+`verify-standard-session-closure-authority-fixtures.mjs` checks actual canonical
+report bytes and the exact physical R05 event offset, with injected accepted-source
+authorities. Unknown effects, changed evaluations, correlation, event path/offset,
+missing/forged events, branch changes and changed reports refuse. This does not
+authenticate an actual native R05 chain; the published-model composed selector
+provides that separate offline proof when it passes.
+
+The published partial model routes through a new session-close R05 and a human
+`session_closure_decision`. Its accepted fact requests closure and explicitly
+retains `session_close_completed: false`. Report writes, finite Git checkpoint,
+real session-close hook and final canonical completion remain separate effects.
+No source/static/component proof qualifies the full standard workflow, native
+provider or exact installed archive.
+
+#### R07 report, finite checkpoint and actual final hook — candidate
+
+The candidate now also registers `session_close_record`,
+`session_close_checkpoint` and `session_close_finalize` in the same partial IR.
+The record writes exactly session/snapshot/current through canonical content and
+metadata CAS, keeping OPEN, the selected owner and unchecked completion fields.
+The checkpoint derives a finite latest postimage set from accepted deterministic
+business writers. It uses the existing trusted terminal allow-list Git port; the
+ordinary three-file session profile is unchanged. Foreign paths refuse. The
+actual commit and cache reload precede the final hook.
+
+The finalizer authenticates the original accepted start output and physical
+start event/run file. The actual close-session hook consumes that same run; no
+caller-selected run ID is supplied. Overall result, nested checkpoint/gate and
+required constraint artifacts must succeed. DB modes additionally execute the
+selective sync with full fallback disabled; no projection is imported as a
+canonical substitute. Only confirmed hook evidence permits the three final CAS
+writes of CLOSED, checked gate and snapshot. The closed owner remains selected
+for explicit PR orchestration. Unknown effects retain ownership and empty facts,
+with no blind hook retry after run consumption.
+
+The focused `verify-standard-session-close-record-fixtures.mjs` takes
+`--mode=files|dual|db-only`, `--checkpoint`, `--final-hook`, and the separate
+`--checkpoint-fault=grant_after_git` injection. Files components passed 15 checks
+through the actual start/close hooks and local Git; their decision/R05 source
+capabilities are fixture injections. This is separate from a composed-model
+proof with authenticated native R05. The schema metadata fingerprints now allow
+null in files and remain required strings when returned by a DB-backed subject.
+DB modes, failures, published-model execution/replay/simulation and broader gates
+are still pending for this candidate. Other R07 resolution/integration paths,
+PR/review/sync, general waits/reconciliation, A1–A10, real native and exact archive
+remain required. The standard catalog and ordinary selection remain incomplete.
+
+The first DB-mode component attempts retained unknown effects after the actual
+close event. The candidate had added `--constraint-loop-strict` beyond the
+existing skill route, promoting canonical warning targets to blockers. The
+TARGETED governance check distinguished runtime strictness from warning/error
+threshold policy; the adapter now preserves the existing threshold policy and
+explicitly rejects blocking, missing or invalid threshold checks. No normative
+rule or target is relaxed. Those failed attempts remain retained.
+
+The subsequent complete chain exposed eleven unignored runtime constraint
+outputs. The scope matrix already classifies `.aidn/runtime/perf/*` as ephemeral.
+The scaffold now ignores exactly those generated telemetry names, and finalizer
+preparation verifies that all are untracked and ignored before consuming the
+start run. This does not enlarge the Git business allow-list or modify an
+existing client's ignore rules implicitly. A db-only checkpoint with no physical
+changes correctly preserves HEAD; the component fixture no longer requires an
+invented commit or a visible canonical export. These corrections require fresh
+DB-mode component proof; they do not retroactively turn the failed runs into PASS.
+
+The DB attempts after telemetry-policy correction reached actual CLOSED CAS
+but failed the process-output guard when embedding the raw hook/sync telemetry.
+The process IR intentionally admits only safe integer numbers. The finalizer now
+retains verified hook/sync summaries and SHA-256 of their complete JSON payloads,
+plus the actual event/document/constraint evidence references, rather than
+embedding runtime measurements. This preserves the IR vocabulary. The failed
+output attempts remain failures, with their local owner retained.
+
+The focused fixture also has `--constraint-policy-fault` (DB mode),
+`--final-hook-fault=grant_after_hook`, `--final-hook-fault=suffix` (DB mode) and
+`--final-hook-fault=constraints` (DB mode). These inject policy absence, lost
+permission, actual SQLite suffix failure or a blocking project-local threshold.
+No failure may emit a completion fact, consume the run twice, or release an
+uncertain owner. A partial CLOSED artifact is not successful process completion.
+The positive path also rejects a changed physical start run before executing
+the final hook.
+
+### Session push with an explicit local remote
+
+`verify-standard-session-push-fixtures.mjs --mode=<files|dual|db-only>` exercises
+closed private contracts, exact-plan permission checks, actual Git push to a
+host-supplied temporary bare remote, branch/ref postconditions, unchanged local
+refs/index, stale remote rejection and the equal-head path without another push.
+Loss of authority after the remote effect retains an unknown result and the
+local owner, without completion facts or automatic retry. Admission/closure and
+current-instance capabilities are injected in this focused component test;
+this does not authenticate the complete standard chain or a real operator.
+The SQLite modes use source-installed fixture stores; they do not prove canonical
+admission through the push component's injected source. The common composed
+fixture supplies the production signed chain separately.
+
+The local transport is fixed by the trusted embedding host, outside authored IR
+and native input. It accepts an absolute bare repository and refuses URL rewrites;
+it is not a GitHub transport qualification. The operation journal remains the
+owner of intent, dispatch and receipts. An external Git effect with no confirmed
+receipt requires reconciliation. Ordinary entrypoints and
+complete_standard_workflow remain unchanged. Native, GitHub and exact-archive
+qualification remain NOT_RUN.
+
+### Session PR creation and recovery
+
+Before a long composed PR trial, run
+`node tools/perf/verify-standard-pr-review-control-fixtures.mjs --body-transfer-only`.
+It exercises the same positive/correction scenario arrangement and exact-body
+assertion used by the composed driver, through the durable fake provider,
+actual local bare Git refs, content reader and signed host capture. Independent
+declared expectations reject a wrong-scenario or altered body; event
+authentication and signature verification remain required. These checks also
+run in the ordinary control fixture suite. Accepted update/context and provider
+identity remain fixture capabilities, with no native calls. This short transfer
+check does not establish complete correction producer-to-writer composition.
+
+`verify-standard-pr-correction-reopen-fixtures.mjs --mode=files` also checks the
+next-cycle boundary: the reopened context snapshot is a foreign change for the
+ordinary three-file session Git checkpoint, which must refuse without a commit.
+The actual new-cycle admission remains blocked by the pending canonical changes.
+This negative component proof does not supply the missing authenticated correction
+checkpoint, new-cycle plan/IMPLEMENTING route or fresh delivery lineage.
+
+`verify-github-pr-open-fixtures.mjs` uses the actual pinned gh/REST adapter and
+closed request/plan/link contracts, with HTTP transport doubled. It covers
+creation followed by complete re-observation, exact existing PR recovery with no
+POST, repository/ref/URL correlation, pagination limits, changed head/base,
+closed/merged/draft refusal, lost authority and unconfirmed effects. No API
+response or metadata marker grants review approval, merge or synchronization.
+
+`verify-standard-session-pr-open-fixtures.mjs --mode=<files|dual|db-only>` adds
+the actual application/owner protocol and provider adapter. Its doubled REST
+transport reads actual local bare Git refs and retains fake provider records
+outside the checkout. Accepted push/admission/current-instance capabilities are
+injected, so these components do not authenticate the standard host chain.
+Malformed timestamps, source changes, exact grants, recovery and unknown-owner
+retention are verified independently. The composed fixture supplies the real
+signed upstream chain on a separate frozen source. A new source branch is seeded
+on its remote during fixture arrangement; only later session delivery is a
+workflow push receipt. GitHub/native/exact-archive qualification remains NOT_RUN.
+
+For interruption after the PR successor checkpoint returns, distinguish the
+signed dispatch capsule from the operation journal receipt. Qualification uses a
+fresh FILES repository, the real Git checkpoint, an interruption at
+dispatch_returned, and the common disposition and acceptance ports. An active
+owner, missing disposition authority, or changed canonical postimage must block
+adoption. A valid disposition appends the identical original output once and
+accepts one result event. Compare the dispatch capsule, Git refs, reflogs, index,
+physical artifacts and Native allocations across recovery. The original
+interrupted case keeps its original terminal verdict. A DB-only no-change
+result and a dispatch without a retained return are outside this profile.
+
+Run `node tools/perf/verify-standard-pr-review-reply-fixtures.mjs` for the
+published R08 child at the initial and corrective sites on disposable FILES
+projects. A signed synthetic prefix seeds delivery, review inbox and triage.
+From the published call onward, the real application ports handle selection,
+exact grants, intent/owner CAS, result acceptance and recovery. Only the
+GitHub transport is doubled. The retained fixture roots include the journals
+and provider state. The cases exercise multiple obligations, refusal at the
+send edge, lost acknowledgement, absent postimage, a dispatching owner
+reopened in another Node process, and effect-free replay/simulation.
+Use --case=normal, --case=lost, --case=missing or --case=interrupted for one
+case. Use --verify-retained with the printed evidence directory to recheck the
+signed journals without another dispatch.
+Run these cases as a separate qualification. The recorded initial attempt
+took 950 seconds on Windows, above the 900-second deadline for the entire
+required runtime family. This scope leaves upstream composed execution and
+live GitHub behavior open.
+
+Run `node tools/perf/verify-github-review-resolution-fixtures.mjs` for the
+resolution port and closed contracts. The standalone FILES cases use
+`verify-standard-pr-review-reply-fixtures.mjs --case=resolve-missing` for the
+initial delivery and `--case=resolve-interrupted` for corrective redelivery.
+Each uses a disposable project, a seeded signed upstream prefix, real host and
+journal ports, and a doubled GitHub transport. The initial case checks refusal
+at transport, a changed review, UNKNOWN after an acknowledgement with no
+postimage, and later read-only confirmation. The corrective case reopens a
+dispatching owner in a new process. The two cases check one send, retained
+owner/grant/intent, accepted effects, and effect-free simulation/replay.
+Keep the FILES cases outside the required 900-second family. Their evidence
+covers the published child from call entry through effects verification.
+Live GitHub, Native, PostgreSQL, installed-package and full workflow
+qualification are separate.
+
+Run the standalone `verify-standard-pr-review-reply-fixtures.mjs` cases
+`--case=exception-session`, `--case=exception-correction`,
+`--case=exception-refused`, `--case=exception-deferred` and
+`--case=exception-cancelled` for the documented exception. These exercise the
+published call sites with signed fixture predecessors, a protected fixture
+Ed25519 authority, real FILES journal and inbox, and doubled GitHub transport.
+The initial case checks missing, blank, expired and mismatched decisions and
+a changed open set. The corrective case resumes the staged decision in a new
+Node process. Each case retains its receipt and verifies replay without
+provider calls. Keep these cases outside the required runtime family.
+
+The PR creation component retains its link in the authenticated process journal.
+A separate session_pr_record now consumes that receipt, its historical delivery
+postimages and current physical/provider evidence. It advances the canonical
+session, CURRENT-STATE and context snapshot through explicit CAS/projection,
+retaining CLOSED and recording review pending. Its new receipt binds successor
+content and metadata hashes; the original delivery hashes are preserved. The
+corresponding governed checkpoint/update push and review/merge/sync remain open.
+
+`verify-standard-session-pr-record-authority-fixtures.mjs` checks the authority's
+historical lookup and physical-event/provider guards with accepted-record and
+provider capabilities injected. `verify-standard-session-pr-record-fixtures.mjs
+--mode=<files|dual|db-only>` checks the real canonical writer, stores, projection
+and isolated Git status on source-installed fixtures. Its closure/PR source is
+injected. It tests exact preimages/grants, real postimages and the db-only path
+without export or invented commit; a files-mode fault loses authority after the
+first CAS and requires unknown-owner retention. These components do not prove
+real human/provider identities or the complete signed standard chain.
+
+The canonical PR continuation is checked by
+`verify-standard-session-pr-successor-fixtures.mjs --mode=<files|dual|db-only>`.
+It runs the actual canonical writer, successor authority, Git checkpoint, bare
+remote push and GitHub PR adapter. Only accepted-operation lookup/closure history
+and the REST transport are injected. It checks immutable historical hashes,
+exact successor content and metadata, wrong/stale grants, PR identity changes,
+HEAD re-observation and pending review/checks. DB-only requires the same HEAD
+without export or invented commit. Lost authority after an actual files-mode
+push must retain unknown ownership and block a second dispatch. These components
+do not qualify the complete signed standard chain or production GitHub.
+
+`verify-standard-process-binding-input-fixtures.mjs` resolves the published
+literal and operation-ID expressions through the actual reducer and
+resolveStandardProcessInput boundary, then validates against each registered
+closed input contract. Synthetic pure predecessor receipts replace all ports.
+A model37-shaped missing integration version and wrong authored versions must
+fail before dispatch without changing the model. Source authoring fixes future
+IR only; retained instances keep their original bytes and verdicts.
+
+`verify-github-session-push-fixtures.mjs` exercises the authenticated HTTPS
+adapter and the actual session push application with real local Git, object
+transfer, bare remote refs, force-with-lease and owner handling. HTTP and HTTPS
+transports are doubled; provider identities and upstream admission are fixture
+capabilities. Executable pins, actor/repository/permission changes, URL/HTTP/
+credential overrides, no-effect tips, cumulative deadlines, lost grants,
+post-effect timeouts and concurrent remote creation are checked separately.
+The isolated transport preparation has a closed manifest and contains no token.
+A checkout rewrite introduced at dispatch must not redirect credentials or the
+Git effect. Unknown results retain their preparation and cannot retry the same
+head; fixture cleanup explicitly removes its own retained preparations.
+These are bounded component checks, not real GitHub network/native/archive or
+full standard qualification.
+
+### R09 authorized local fast-forward
+
+Run `node tools/perf/verify-standard-post-merge-fast-forward-fixtures.mjs`
+for disposable Git checkout and refusal evidence. Run
+`node tools/perf/verify-standard-pr-review-reply-fixtures.mjs` with
+`--case=post-merge-fast-forward-session` or
+`--case=post-merge-fast-forward-correction` for the two published call sites.
+These bounded FILES fixtures use the actual signed decision inbox, effect
+journal and disposable Git checkout. They seed upstream receipts and double
+GitHub transport. The corrective selector interrupts after the Git postimage
+and reopens the journal in a new Node process. The final gate measures alignment,
+records canonical completion, checks admissions and replays the events.
+These selectors run separately from the required family.
+
+### R08 external merge during pre-merge or check waits
+
+Run `node tools/perf/verify-standard-pr-review-reply-fixtures.mjs` with
+`--case=external-checks` or `--case=external-premerge`. The FILES fixtures use
+real operation and decision journals, the protected provider host with a
+doubled transport, a disposable Git checkout and remote, and signed synthetic
+upstream receipts on reduced graphs. They retain the two published call sites
+and exercise the published incident and R09 bindings.
+`--case=external-premerge-boundary` stops at the corrective fetch preview,
+after recovering the incident decision and checking capture contention.
+Additional selectors `--case=external-refused` and `--case=external-cancelled` exercise the two
+terminal disposition outcomes. A cold retry consumes the exact reserved
+decision. The fixtures check zero GitHub merge sends, one local fetch,
+continuity before and after accepted completion, and reducer replay/SIM.
+These bounded cases are separate from the required family.
+
+### Canonical process-prefix replay
+
+`verify-process-operation-fixtures.mjs` also runs
+`verify-process-prefix-hashing-fixtures.mjs`. Its six pure checks construct
+96 events with independently hashed intent prefixes, unknown results and their
+distinct completed receipts. Every streamed simulation cursor and fingerprint
+must equal execution. Rehashed tampering, duplicate receipts and changed mutable
+input still refuse; inspection retains its frozen-cursor behavior. The replay
+reuses canonical bytes only within one call and does not cache external state
+or authorization. Keep the existing v1, agentic, BPMN and operation-host suites
+when changing this common reducer. The
+[local profile](qualification/agentic-process/reducer-prefix-replay-2026-11-04.json)
+is descriptive, separate from native and full-workflow performance.
+
+The explicit composed-driver option
+`--standard-composed-checkpoint-owner-ack-loss` requires the correction scenario,
+component-complete stop and files or dual mode. It loses the acknowledgement
+after the real local-owner unlink, allowing the real dispatcher to retain an
+unknown result. The cold helper then checks authenticated history, competing
+observations, a single appended result, exact old-receipt acceptance and exact
+replay/streamed simulation without another Git effect or native allocation.
+The preparation evidence precedes a new retained FILES execution on a frozen
+source snapshot. That original run is terminal FAIL at native PR triage, before
+the correction checkpoint. Its 144-event prefix replays and simulates exactly;
+no checkpoint unknown or recovered receipt exists. The
+[terminal failure record](qualification/agentic-process/composed-triage-terminal-failure-2026-11-04.json)
+preserves all nine fixture-response debits and the failed allocation. The original
+success-only native audit refuses that failed phase. A separate archive-only audit
+authenticates the eight closed and one failed allocations, controls and counters;
+it does not change the case verdict or prove general OS resource closure.
+
+The composed triage fixture now resolves product evidence from each supplied
+snapshot path and hash. Its earlier hard-coded `product:product/app.mjs` did not
+exist in the actual `product:app.mjs` context and produced a null evidence entry
+rejected by the existing native-answer guard. A focused check reconstructs that
+refusal from the exact archived context, then validates the corrected answer and
+triage. The 16-check triage suite covers root-relative, checkout-prefixed and nested
+paths, missing/hash-mismatched evidence and the old null-answer refusal. The raw
+old answer itself was not retained. These checks qualify fixture construction;
+they do not complete the composed recovery chain. Provider, human and native
+identities remain fixture capabilities. Retained-owner closure, fresh recovery
+authority and positive db-only reconciliation require separate implementation.
+Use `--retain-always` to preserve the owned corpus after either success or
+failure; it propagates to the composed cold continuation. The cold continuation
+and checkpoint recovery child leave separate stdout, stderr and exit observations
+in the control root before their status assertions. Retention changes no scenario,
+authorization ceiling or deadline and does not establish resource-tree closure.
+
+`verify-standard-mixed-expired-prefix-fixtures.mjs` accepts an explicit
+`--expire-bindings=session_initialize,session_mode_apply,session_start_finalize`.
+The three-mode corpus passes 23 checks per mode. A separate FILES finalization
+case passes 13 checks and compares all hidden runtime bytes/directories around
+the expired dispatch, including paths a hook could write. DB cases prove the
+canonical artifact observation; physical SQLite/runtime byte absence is not
+qualified. Each cold preparation preserves the accepted refusal and requires a
+new explicit grant/intent before execution. See the
+[bounded results](qualification/agentic-process/expired-startup-bindings-2026-11-04.json).
+The initial CAS-list fixture failure and its source remain retained separately.
+
+
+### Expired cycle bindings through the complete component
+
+`node tools/perf/verify-standard-cycle-expired-prefix-fixtures.mjs --mode=files --retain-always`
+passes 20 checks using the actual published cycle-130 component. It follows
+refresh_before, admission, initialization, branch audit, the real fixed checkpoint
+hook and refresh_after. Both context refreshes and initialization expire before
+effects. Accepted no-effect refusals survive cold same-subject preparation, fresh
+explicit grants/intents, retained redispatch and exact common-reducer simulation.
+FILES checks canonical business state, Git and every hidden runtime byte/directory
+around expired dispatch. DUAL and db-only also pass 20 checks each. These two
+modes verify canonical business state and Git; physical DB/runtime byte invariance
+remains NOT_QUALIFIED. DB-only's initial already-clean checkout uses a real
+`--allow-empty` session checkpoint, without generating visible DB exports. Its
+earlier nothing-to-commit failure remains retained.
+
+The component receives an actual external session Git checkpoint and an actual
+R05 hook on a stable session/cycle objective. The checkpoint itself is not expired.
+TTL probes use an isolated host clock; the normal hook uses real wall time. No
+native authority, budget or response counter is renewed. Earlier failed fixtures
+and the intermediate pre-checkpoint success remain retained. Their diagnostics
+cover missing clean Git, wrong graph order and a real objective_delta refusal.
+The [bounded evidence](qualification/agentic-process/expired-cycle-bindings-2026-11-04.json)
+distinguishes these attempts from full component success. This is source-installed
+fixture proof, with no mixed facade, model call, genuine native/provider/human or
+exact installed archive qualification. General expiry and L1-L8/A1-A10 remain open.
+
+The 2026-11-11 validity decision supersedes checkpoint and drift finalization
+preparation-age restrictions. Run
+`node tools/perf/verify-standard-cycle-checkpoint-expiry-guards-fixtures.mjs`
+for explicit intent, schema, signed hash and owner-boundary checks. Its legacy
+filename no longer means that a valid old plan must expire. Malformed timestamps
+remain schema errors; elapsed time and a backwards wall clock alone reach the
+owner boundary without granting an effect.
+
+Run `node tools/perf/verify-standard-cycle-expired-prefix-fixtures.mjs --mode=files --aged-checkpoint`
+and repeat with dual and db-only to exercise the actual fixed checkpoint hook
+from the original day-old plan, with one intent and current authorization.
+The old `--expire-checkpoint` spelling is an alias for this current behavior.
+The legacy filename now forwards to `verify-standard-cycle-plan-age-fixtures.mjs`.
+That component also dispatches context refresh and cycle initialization from
+their original day-old plans, checks current grant revocation before dispatch,
+then proves changed current source refuses direct reapplication. The real hook
+keeps a progressing clock. Historical expiry receipts and their recovery readers
+keep their recorded semantics in their separate legacy corpus.
+
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --drift-finalize-contract-only`
+adds controlled v3 finalizer tests for a day-old plan, elapsed time after report
+write, pre-effect authority/prefix/context refusal, and post-report revocation,
+changed context/alignment or lost hook confirmation. These last cases remain
+uncertain with the written report retained. The gate, evaluation and
+artifact/owner ports are controlled in those v3 tests. The existing
+`--drift-finalize-mode=files|dual|db-only` selection instead executes real report
+persistence and the actual R05 hook with an old prepared plan. Prepare in the
+past, then use progressing real time during the hook so its independent event
+timestamp still proves correlation to the invocation. Neither selection proves
+a complete native or installed STANDARD workflow.
+
+The historical opt-in `--expire-checkpoint` probe extended this component to expiry of
+`cycle_checkpoint_finalize`. Its first files/dual/db-only runs are retained FAIL,
+after 13 passing checks each: the initial hook guard returns
+`blocked/no_effect/STANDARD_CYCLE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED` for expired
+age, before the later specific `STANDARD_PLAN_EXPIRED` check. The explicit
+reprepare path cannot accept that generic reason. The
+[gap record](qualification/agentic-process/cycle-checkpoint-expiry-gap-2026-11-04.json)
+pins all three failed sources/logs. Those failures remain historical evidence.
+That historical adapter checked explicit intent and clock validity before reporting
+otherwise-valid expired plans as `STANDARD_PLAN_EXPIRED`, with `no_effect`
+before owner acquisition. It used
+`node tools/perf/verify-standard-cycle-checkpoint-expiry-guards-fixtures.mjs`
+for 18 pre-owner guard cases, including missing intent/callbacks, mismatched
+hashes, negative admission, malformed plans and future/invalid clocks. At that
+revision valid ages through 300000 ms reached the owner boundary. This isolated
+check did not exercise the hook or fresh continuation; the historical
+`--expire-checkpoint` components supplied that evidence. Earlier 20-check
+results remain tied to their exact pre-option snapshots.
+
+The corrected historical opt-in probe passed 25 checks per files/dual/db-only on the
+published cycle-131 component. It prepares the original expiring intention in
+the past and observes age 300001 ms before returning to the progressing real
+clock for cold preparation and the hook. Four original refusals remain accepted;
+each successor needs a distinct explicit grant and intent. The final assertion
+requires both checkpoint intentions, one retained expired no-effect result and
+exactly one confirmed checkpoint. Same-IR replay and simulation are exact.
+At that revision the cycle suite included 18 guard cases and passed 32 checks for
+FILES; the real operation-port suite passed 14 checks.
+
+The direct expired checkpoint adapter also preserves every physical checkout
+byte and directory, including SQLite/runtime, in all three modes. This check
+precedes dispatch journaling. Total DB/runtime byte invariance across the host's
+intentional journal writes remains NOT_QUALIFIED; canonical business state and
+Git remain checked. See the
+[bounded qualification and preserved attempts](qualification/agentic-process/cycle-checkpoint-expiry-2026-11-04.json).
+Its nine SOURCE24 failures retain their original verdicts, including uncertain
+checkpoint successors from the first clock probe. Separate archive-only pure
+postflights authenticate the completed prefix of the final-selector failures
+without upgrading their exits or reopening original paths. These are fixture
+components with zero model calls, not full standard, native/provider/human,
+configured PostgreSQL or exact installed-package acceptance.
+
+
+### Real-port correction observation preflight
+
+For the 2026-11-11 delivery plan-validity decision, add `--aged-plan` to
+`verify-standard-session-branch-integration-port-fixtures.mjs` for actual FILES
+finite Git integration. Add `--mode=files|dual|db-only --aged-plan` to each of
+`verify-standard-session-push-fixtures.mjs`,
+`verify-standard-session-pr-open-fixtures.mjs`,
+`verify-standard-session-pr-record-fixtures.mjs`,
+`verify-standard-session-pr-successor-fixtures.mjs` and
+`verify-standard-pr-redelivery-fixtures.mjs` for their actual ports. Successor
+cases include both the finite checkpoint and initial update; redelivery covers
+the shared corrective update path. Each selected effect prepares its original
+plan with a private past business clock, restores current time before applying,
+and preserves the exact plan/hash. Provider observations and authorization stay
+current; literal day-long execution is not measured. Invalid timestamps refuse
+before owner/grant/effect, while actual late grant/source loss still retains
+UNKNOWN and its owner. Initial/corrective HEAD qualification leaves checks and
+review pending and inherits no previous-head approval. FILES integration does
+not establish a three-backend integration proof. The synthetic accepted sources
+and doubled REST do not qualify genuine actors, PostgreSQL, installed archives
+or the full STANDARD journey. Selected suites require terminal capture before
+any PASS claim.
+
+The required agentic manifest now selects the private past-preparation mode in
+its existing affected hook, recovery, SPIKE and delivery entries. It retains
+all194 prior cases in order, with the explicit selector added, and appends one
+FILES rollback, one FILES context/checkpoint/cycle recovery and one FILES
+corrective redelivery case (197-command prefix). Twelve R05/objective regression
+cases extend that unchanged prefix to209 commands. The protected command inventory
+must match that exact argv/order and still rejects omitted or duplicate
+coverage. This registry change grants no family PASS: selected component proofs
+and the gate-catalog policy check remain separate from executing all209 cases.
+
+`verify-node-fixture-runner-fixtures.mjs --manifest-only` checks the preserved
+188-case historical prefix and six supplemental cases after removing only the
+declared age selectors, then independently checks the197-command prefix, its
+three supplemental entries and the current209-case exact argv digest and twelve
+R05/objective entries. Missing selectors still fail the current digest.
+This selector runs no child-execution protocol; the existing default case keeps
+its ordering, fail-first, cancellation and Windows tree-closure checks.
+
+For the 2026-11-11 recovery/correction/SPIKE plan-validity decision, use the
+actual changed adapters rather than the generic SPIKE initializer alone:
+
+- `verify-drift-recovery-fixtures.mjs --aged-plan` covers canonical DUAL recovery
+  recording and change-request writes, numeric validation and real late faults.
+  `--cycle-port-mode=files|dual|db-only --aged-plan` adds current context,
+  no-effect Git checkpoint observation and original cycle initialization.
+  `--cr-write-mode=files|dual|db-only --aged-plan` selects actual CR writes.
+- `verify-standard-drift-rollback-fixtures.mjs --aged-plan` covers actual FILES
+  product replacement, malformed timestamps, current source/grant refusals and
+  uncertainty after a partial effect. It is not a three-backend proof.
+- `verify-standard-pr-correction-expiry-fixtures.mjs --mode=files|dual|db-only`
+  now checks valid original old reopen/checkpoint plans; the filename is legacy.
+  `verify-standard-pr-correction-cycle-ports-fixtures.mjs --mode=files|dual|db-only
+  --aged-plan` covers the separate corrective cycle initializer.
+- `verify-standard-spike-wrapper-preconditions.mjs --aged-plan` covers the actual
+  FILES wrapper, with `--dual-nominal` or `--db-only-nominal` for canonical SQLite
+  modes. Add `--metadata-tamper --metadata-stage=before-authorization|after-hook`
+  on a DUAL case to retain before-effect refusal and post-hook UNKNOWN checks.
+
+These selectors prepare original immutable plans with a private past business
+clock and restore current time before applying them. They do not simulate an
+expired upstream grant or measure literal day-long execution. Genuine Native,
+human/provider, configured PostgreSQL, exact installed archive and complete
+STANDARD workflow qualification remain separate. An executed selector becomes
+PASS only after its raw terminal outcome and cleanup envelope are authenticated.
+
+`node tools/perf/verify-standard-pr-correction-real-ports-fixtures.mjs
+--mode=files|dual|db-only --retain-always` selects the new deterministic preflight.
+The default required family runs each mode once. `--positive-only` is a narrow
+positive diagnostic. `--grant-only` checks revocation during the provider
+await and a changed authenticated prior receipt at the same instance prefix
+after the second remote read. Both must refuse before the first CAS. This
+subset cannot qualify the full matrix. Each case derives its own plan normally;
+the injected source/provider refusal is independent of plan age. Partial failures retain their
+owner and UNKNOWN, and cold preparation refuses to replay them. The owner
+injection checks that finalization preserves the confirmed prefix when it
+refuses to release the changed owner.
+
+Projection fault injection applies to FILES and DUAL only. DB-only reports both
+projection probes as N/A, separately from passing checks, and asserts the
+absence of detailed session projections before and after reopen/checkpoint,
+while retaining the exact bytes of any pre-existing minimal restart anchors.
+DUAL and DB-only also inject competing canonical content and metadata writes;
+all modes retain the foreign Git-file refusal. DB-only checkpoint verification
+requires zero Git commits and never creates a Git witness or visible export.
+The earlier DB-only ENOENT from a projection injection is a retained harness
+failure, not a product regression or a passing matrix. New cases use their own
+fresh plans and exact guarded source; these edits do not qualify a matrix until
+its real terminal outcome is captured.
+
+The suite composes actual correction authority, canonical CAS/metadata,
+projection, local/bare-remote Git and SQLite. Triage, accepted sources and event
+identity are authenticated synthetic fixtures using public key127. Provider
+transport remains a fixture; no model or native client is called. Three actual
+postimages lead to a checkpoint prepared in a new Node process. A tiny v2 IR
+consumes those actual outputs with fixture receipts through the common reducer
+and simulation; this does not exercise the production dispatcher or published
+standard graph. Separate composed producer/triage/checkpoint/ack-loss recovery,
+real native/human/provider, configured PostgreSQL and exact installed archive
+qualification remain required. `--retain-always` leaves projects and raw outcomes
+for terminal capture; it is not a resource-closure assertion.
+
+`node tools/perf/verify-standard-pr-correction-expiry-fixtures.mjs
+--mode=files|dual|db-only` retains its legacy filename and now tests current
+validity of original day-old reopen and checkpoint plans. Each case prepares
+its original using an injected past business-adapter clock and restores present
+time before application without rewriting a plan, grant or budget. Protected
+provider and authorization clocks remain real. Both effects must complete under
+current source, process, grant and exact postimages. The remote remains
+unchanged; FILES/DUAL make only the finite local checkpoint and DB-only makes no
+commit. Missing intent/callbacks and a wrong digest preserve their specific
+pre-owner refusal, with every physical project and remote file/directory
+compared, including DB bytes. Cold preparation of the same subject is read-only.
+
+These are direct application-port checks with a signed synthetic accepted
+source and fixture provider. They do not prove signed-host continuation, a
+genuine human grant or the full correction workflow. Partial effects remain
+UNKNOWN and retain their owner. Current reopen and disposition fault fixtures
+use actual post-effect grant loss rather than elapsed-only failure. Historical
+expiry receipts and their readers retain their original meaning and bytes.
+Qualification results remain pending until terminal capture.
+
+
+### Accepted correction-cycle creation and planning entry
+
+`verify-standard-pr-correction-cycle-ports-fixtures.mjs --mode=files|dual|db-only`
+checks the new cycle port on a newly source-installed disposable project, with
+retained terminal projects. It uses the actual accepted checkpoint reader and
+ordinary cycle admissions/initializer/CAS/Git/SQLite. Accepted journal, human
+and provider capabilities are explicitly doubled. It checks closed contracts,
+refusal/corruption, initial continuity and NOT_READY plan state, provider
+refusal, cancellation and revoked grants before a positive ordinary creation.
+The runtime family selects each mode once. Absence of a terminal PASS footer
+leaves the suite unqualified; old failures and owners remain retained.
+
+The companion correction-authority and GitHub push-port checks retain real
+remote-ref observation across an owned local branch transition; HTTPS/provider
+transport remains doubled. Published composition checks cover the correction
+route through R05, plan, frozen record, readiness and IMPLEMENTING. These are
+source/component checks. The full ordinary native planning/DoR/implementation
+journey, product correction/validation/reclosure/causal delivery, production
+dispatcher, authentic human/provider/native/OS, configured PostgreSQL and exact
+installed archive remain separate NOT_RUN evidence.
+
+
+The first guarded correction-cycle test source refused its embedded schema
+identities before any project creation; those failures are retained. A successor
+DB-only case reached the actual admission and correctly refused the synthetic
+fixture's unknown runtime repair/freshness fields. New test cases establish
+their runtime through the real projector before selecting the source/checkpoint;
+no clear marker is fabricated and the admission policy is unchanged. The
+ordinary parameter interface retains `session` and `cycle`, with correction
+values read only from `cycle.correction` when that branch is selected.
+
+The same suite accepts `--late-metadata=provider|authorization` in DUAL and
+DB-only. Each invocation creates a new retained case and changes only canonical
+classification during an asynchronous guard observation after every initializer
+CAS. It requires unchanged content, a changed metadata hash, the exact
+`STANDARD_CYCLE_METADATA_UNCONFIRMED` reason, UNKNOWN with no positive facts,
+and a retained owner. HEAD and commit count remain unchanged; admission stays
+blocked and the effect is never retried. The initializer compares metadata again
+after the awaited guard against the values returned by its original CAS writes.
+Runtime context refresh applies the same final metadata fence. The ordinary
+FILES positive case remains separate from these injected competing-writer cases.
+
+`verify-process-model-capacity-fixtures.mjs`, also selected by the operation
+suite, checks v1 at 128 nodes and v2 at 256, rejects one node above each limit,
+and compares initial execution/simulation identities through the same reducer.
+An additional v2 control-only model completes all 256 empty-sequence nodes and
+compares terminal cold replay/simulation without a model call. This establishes
+structural termination, not a business workflow. The context metadata suite
+`verify-standard-cycle-context-metadata-fixtures.mjs --mode=files|dual|db-only`
+checks a positive FILES wait and canonical classification-only changes after
+the actual runtime refresh CAS, requiring the same precise UNKNOWN reason and
+retained owner in DUAL/DB-only. The runtime gate selects these cases and the four
+late provider/authorization initializer cases once per mode/boundary.
+The composition suite checks the correction task and closure bindings against
+the new implementation/work/validation authorities. It leaves actual native
+work, cycle closure, session reclosure and causal redelivery unqualified.
+
+### Corrective PR redelivery component
+
+`node tools/perf/verify-standard-pr-redelivery-fixtures.mjs --mode=files|dual|db-only`
+uses real local branch integration, Git push and the production GitHub adapter
+with doubled REST. Accepted closure/cycle/human journal capabilities are injected.
+It checks distinct closed contracts, wrong cycle/uncertain integration/stale PR,
+preview and revoked authorization, fresh HEAD delivery and review source binding.
+It retains every disposable root, including on success; no cleanup or genuine
+human/provider/native/OS/PostgreSQL/installed qualification is implied. Published
+composition checks the separate correction content/event/triage occurrences.
+A component PASS does not qualify the complete new-C2 or dispatcher UNKNOWN chain.
+
+The shared initial/corrective push port rechecks its source and current instance
+after the final awaited authorization. A changed context after an actual
+push retains UNKNOWN, empty positive facts and the effect owner. This component
+refusal is separate from the production dispatcher acknowledgement-loss chain.
+
+The composed correction driver also accepts
+`--standard-composed-stop=session_pr_correction_decide`. This is a bounded prefix
+ending before the fresh human choice, with the owner-release acknowledgement-loss
+option still available. Preflight uses the same reducer and proves this stopping
+point without inventing a decline, approval or positive routing fact. A requested
+`component_complete` correction that lacks a decision fails preflight as an
+unplanned wait. The bounded prefix does not qualify admitted C2 or reclosure.
+
+### Reopening observation cost and retained Git capabilities
+
+`verify-workflow-branch-integration-port-fixtures.mjs` checks equal source/target
+refs after a real ref move, a foreign lock and a symbolic target. Each inspection
+must observe those changes. `verify-standard-session-push-fixtures.mjs` checks
+that a retained integration capability refuses effective filters changed after
+its first observation. Restoring the original configuration is a fixture action,
+not authority to retry an uncertain business effect. No observation or result is
+cached across guards. The existing real-port reopening suite remains required
+for the canonical/provider/authorization boundaries. Timings are separate
+diagnostics and do not replace the negative matrix or full composed recovery.
+
+Branch integration resolves ref OIDs and the three Git lock and reflog paths
+in one invocation per synchronous observation. Each path is still validated
+physically, and the operation's later observations run independently. Local
+push uses the validated source ref from that same integration observation.
+The GitHub adapter validates the explicit branch ref once per inspection.
+Owned inspection batches the
+three Git lock paths into one fresh Git command per local sample. Physical path
+validation and separate samples on both sides of transport remain required.
+The local push fixture injects each lock before observation and a config lock
+between the samples. The GitHub fixture covers the three initial lock refusals
+and expiry after its second sample with transport doubles. Both suites verify
+the private resource fence release. The local suite compares all other
+checkout bytes and, in SQLite modes, the other canonical artifact rows.
+These checks are separate from qualification of the composed workflow.
+
+A separate disposable Git counterexample exposed the first retained-port
+candidate's stale physical binding after gitfile redirection. A retained port
+now resolves the checkout, physical gitdir and index again at each inspection,
+compares the original binding, and refuses a change without rebasing it.
+`verify-retained-workflow-git-binding-fixtures.mjs` covers same-HEAD/content
+redirection to a different index for both checkpoint and branch ports, repeated
+refusal and a separately constructed fresh port. Earlier component/timing
+results on `2c3171de` do not qualify this correction. Its retained projects and
+any terminal PASS remain scoped to that earlier source.
+
+The physical-binding fixture is included in `perf:verify-agentic-process`.
+It removes its own checked temporary directory by default; `--retain-always`
+keeps the actual new repositories for local terminal capture. Three physical
+binding checks and 32 composition checks pass on the corrected source. The
+positive application-port run is a separate observation on its exact source.
+
+### Human-reviewed corrective cycle candidate, 2026-11-04
+
+Private correction review input/plan/question, human decision and decision output
+v2 bind the proposed cycle ID, title and objective to the current checkpoint
+subject. The signed decision inbox v8 retains the explicit v2 source. The
+initializer refuses substituted fields before ordinary admission or effects;
+the published IR derives them from the accepted human operation output.
+Historical v1/v7 readers remain explicit, without conversion. A proposal grants
+no product permission, DoR, IMPLEMENTING phase or success. Refusal, defer and
+cancellation retain empty positive facts. General mode/cycle/topology choices,
+repeated corrections and the complete C2 journey remain unqualified.
+
+The targeted decision/inbox and composition suites cover these boundaries. The
+real-port correction-cycle suite selects `--decision-v2` separately in each
+`--mode=files|dual|db-only` run. Its accepted-operation/provider/human capabilities
+remain doubles. Component evidence cannot establish the production dispatcher
+UNKNOWN chain, genuine human/native/provider/OS, configured PostgreSQL or exact
+installed archive. Exact-source results remain pending at this source change.
+
+### Human-selected new corrective cycle, 2026-11-04
+
+Correction review v3 carries the current checkpoint subject and a digest of the
+canonical cycle inventory, including metadata in database modes. It offers no
+caller-supplied candidate. The authenticated v3 human source selects the new cycle
+ID, title and objective; signed inbox v9 retains those values and their hash.
+The published IR obtains initializer fields only from that accepted output.
+An existing cycle number, field substitution, stale inventory or legacy answer
+cannot authorize the new occurrence. Refusal, deferral and cancellation carry
+no selected cycle or positive facts. V1/v2 and inbox v7/v8 remain readable without
+conversion. Ordinary admission, continuity, plan freeze, DoR and IMPLEMENTING
+remain mandatory. The PR correction authority requires a new corrective cycle;
+startup selection of an existing cycle is a separate outstanding route.
+
+The decision/inbox suite covers v3 subject/selection and cold FILES/DUAL/DB-only
+reads. The real initializer suite selects `--decision-v3` separately per mode,
+with accepted-operation/provider/human fixture capabilities. Source wiring and
+these components do not establish repeated correction, the full C2 journey,
+genuine human/native/provider/OS, configured PostgreSQL or exact installed
+archive behavior. The qualification record separates terminal component results
+from pending business journeys.
+
+Qualification with an injected fixture clock is offline expiry evidence only.
+Actual wall-clock expiry and genuine Native/Human/resource closure remain unproved.
+
+The [canonical projection component record](qualification/agentic-process/spike-canonical-projection-2026-11-05.json)
+retains ten PASS and one setup FAIL on their exact sources. Nominal DUAL and
+SQLite db-only preserve complete canonical rows; the before-authorization and
+after-hook metadata cases still refuse, with UNKNOWN/no positive facts after
+observed effects. The first db-only setup failed on an empty visible Git diff;
+a new fixture permits only that hidden-mode setup checkpoint to be empty.
+The original failure is retained. Runtime registration preserves all 185 prior
+invocations and appends two nominal cases (187); the full runtime family has
+started separately on d07e12d2 with its normal timeout. It is not yet qualified.
+Governance Admission and the entire L1-L8/A1-A10 plan remain unfinished.
+## Canonical cycle-choice recording component
+
+`verify-standard-cycle-choice-record-fixtures.mjs --mode=files|dual|db-only`
+uses the actual operation host, signed H receipt, existing artifact owner/CAS
+and a fresh Node acceptance process. Each explicit fixture contains current
+and reported cycles with all four carryover dispositions. It checks preservation
+of selected VERIFYING metadata and deferred content/metadata, closed foreign
+ownership, current branch tips across an await, separate mutation permission,
+focus suspension, replay and idempotent acceptance. A later host clock does
+not impose a preparation-age ceiling. The phase and closed predecessor are
+staged preconditions, not proof of imported work or session-close execution.
+Revoking the mutation grant during the last accepted-H source await must
+refuse before the first canonical write and release the unused effect owner.
+
+The required FILES variant `--fault-after-first-cas` loses the acknowledgement
+after one real atomic canonical replacement. The signed result stays UNKNOWN
+with no positive facts; a fresh Node reader observes the same receipt and held
+owner, redispatch has no new effect and a new session is refused. This fixture
+retains its owned scope for explicit review and does not recover or clear the
+owner. `--contracts-only` isolates five pure rendering/closed-contract checks.
+All four real-host cases are required before the unchanged final nominal.
+These cases use a controlled H source and no Native calls; branch activation,
+R1/R2/R3 continuity, imported progress adoption, the published choice route,
+real PostgreSQL and installed qualification remain separate gates.
+
+## Canonical cycle-choice Git checkpoint component
+
+`verify-standard-cycle-choice-checkpoint-fixtures.mjs --mode=files|dual|db-only`
+runs the actual host after an authenticated canonical choice record. FILES and
+DUAL commit only its approved Markdown postimages on the current branch;
+DB-only must retain the same HEAD without exporting canonical rows. The cases
+check exact parent, paths, blobs and operation trailer, preserved product and
+configuration, canonical content/metadata, other branch tips, separate grants,
+last-source-await revocation, a fresh Node ACK, replay and idempotent dispatch.
+
+The FILES `--select-current` variant selects the current cycle and checks that
+only its own checkpoint advances the selected tip. The FILES
+`--fault-after-index-ack` variant performs a real index replacement before
+losing its acknowledgement: the signed result stays UNKNOWN with empty facts
+and a held owner, and cold inspection or redispatch never repeats the commit.
+All five cases are required before the unchanged final nominal; their owned
+scopes remain for review. `--contracts-only` checks the closed private contracts.
+The 131-path profile bound is a scope check, not proof of a 131-file commit.
+
+These cases use controlled H sources and staged phase metadata. They establish
+no physical branch activation, R1/R2/R3 creation continuity, imported work
+acceptance, published choice routing, genuine Native actor, PostgreSQL adapter
+or installed full-workflow qualification.
+
+## Baseline promotion with a controlled objective-completion reader
+
+`verify-standard-baseline-promotion-ports-fixtures.mjs --mode=files|dual|db-only`
+with `--final-hook --promotion-checkpoint --keep-cycle-branch
+--objective-completion --retain-always` creates different session/cycle goals
+and uses the actual R05 evaluator, Git checkpoint and canonical promotion
+completion port. Without the private reader, the sole objective-delta signal
+still refuses promotion. Missing completion, a wrong subject, revoked source
+and mixed signals must preserve canonical content/metadata and the event
+prefix. Revoking the mutation grant during the final awaited completion read
+must refuse with no effect, zero checkpoint calls and a released unused owner.
+
+All three persistence cases are required before the unchanged final nominal.
+They retain their owned scopes and check the actual five completion writes,
+append-only history and no repeated completion. The source reader and upstream
+closure provenance are controlled application fixtures. A controlled alignment
+port prepares a physical R05 event through the production writer; it supplies
+no signed model or H history. The mixed-signal probe changes four precommitted
+auxiliary product paths, since the gating observer reads tracked changes. No common-host
+HMAC/R05 authentication, Native actor or PostgreSQL adapter qualification.
+A new full A5 on the fixed source remains necessary to test host integration.
+
+
+## Private physical cycle activation port
+
+Run `node tools/perf/verify-workflow-cycle-activation-port-fixtures.mjs` when changing the local selected-cycle checkout port. Actual Git fixtures switch to a different HEAD and product tree, including file creation and deletion, while retaining current canonical audit bytes, local runtime, project skills and Native configuration. Effective filters and hooks must not run. Protected configuration differences and special index flags refuse before effects; case variants of the protected namespaces remain protected.
+
+The fixture also checks read-only byte preservation, current grant revocation, foreign work and moved targets, same-branch no-change, a cold read-only confirmation, partial product effects and lost acknowledgement after HEAD/index installation. An uncertain effect stays UNKNOWN even when a later physical observation confirms its material. The old plan must not repeat the effect. Fixture roots are retained for review.
+
+This private port establishes physical Git/product behavior only. It does not authenticate a human choice, adopt canonical history on the selected branch, admit a phase or DoR, authorize implementation, or qualify the common operation host, installed archive, real Native actor or complete STANDARD workflow. The required manifest runs this case before the unchanged final nominal composed case.
+
+
+## Accepted-source physical cycle activation component
+
+Run `node tools/perf/verify-standard-cycle-choice-activation-fixtures.mjs --mode=files|dual|db-only` when changing the protected physical activation operation. The common host consumes actual accepted H/record/checkpoint journals from the controlled fixture and observes the selected product tree. Its H source and lifecycle/phase setup remain controlled; this is no proof of genuine human/Native actors, prior phase work or installed execution.
+
+Select `--mode=files --select-current` for already-selected no-change. The FILES variants `--fault=index_ack`, `--fault=grant_after_index` and `--fault=product_ack` exercise completed or partial physical effects while requiring a signed UNKNOWN, retained owner, cold read and no replay. Ordinary cases check current-grant refusal across the last source await, a day-old prepared plan with unchanged authority, canonical/configuration preservation, unchanged branch tips, cold acceptance and exact replay. All cases deny canonical adoption and implementation permission.
+
+The private port fixture also refuses a real reftable repository without changing its bytes or allocating effect resources. Its supported files-backend cases retain the different-HEAD/product-tree checks. These component checks do not close canonical focus/history adoption, imported OPEN/IMPLEMENTING/VERIFYING work admission, the published choice route or full STANDARD qualification.
+
+
+## Private selected-context Git checkpoint profile
+
+Run `node tools/perf/verify-selected-context-checkpoint-port-fixtures.mjs` when changing the physical `cycle-context` checkpoint profile. Thirteen checks use actual disposable Git repositories: canonical-only path restrictions, unchanged legacy cycle-choice limits, byte-preserving cold reads, a day-old plan with current permission, additions/modifications/explicit absence, exact commit topology and unchanged product/configuration, old-plan refusal, empty no-change, revoked permission, foreign product work, changed or reappearing postimages, moved HEAD and legacy-profile refusal of absent postimages.
+
+The post-ref revocation case must leave the original index unchanged and UNKNOWN. The index acknowledgement-loss case retains UNKNOWN even when a cold exact physical inspection confirms the commit. Both roots remain for review without rollback or effect replay. The fixture checkpoints several cycles’ canonical document paths; it never implements their product work. This is a private port proof without accepted activation consumption, common-host ownership, actual DB-only canonical storage, imported work/phase admission, Native actors or complete STANDARD execution.
+
+
+## Accepted selected-context checkpoint component
+
+Run `node tools/perf/verify-standard-selected-context-checkpoint-fixtures.mjs --mode=files|dual|db-only` for the protected common-host checkpoint of an accepted activation. `--mode=files --select-current` selects no-change, while `--mode=files --fault=grant_after_ref` and `--fault=index_ack` retain signed UNKNOWN and ownership after partial or complete Git effects. All roots remain for review. The activation prerequisite fixture retains its direct CLI behavior and can supply its completed prefix without authorizing the following checkpoint.
+
+The cases execute actual H/record/source-CP/activation/selected-CP journals using a controlled H source and grants. They verify exact overlay selection, current-grant refusal during the last awaited source read, an unused owner release before effect, old preparation with current authority, canonical content/metadata and product/configuration preservation, DB-only absence, cold acknowledgement and exact replay. The post-ref revocation case must preserve the old index; a cold complete postimage after index ACK loss must keep UNKNOWN. The retained owner blocks another preparation. Neither raw physical confirmation nor fixture setup may grant phase or implementation permission.
+
+Lifecycle and OPEN/VERIFYING metadata are staged preconditions. These cases do not prove prior work/session closure, imported progress adoption, current phase/DoR, published choice routing, genuine Native/H actors, a PostgreSQL adapter or exact installed execution. All six variants precede the unchanged final nominal case in the required manifest.
+
+
+## Accepted selected focus component
+
+Run node tools/perf/verify-standard-selected-focus-fixtures.mjs --mode=files|dual|db-only for actual common-host focus CAS after the accepted selected checkpoint. FILES --phase=OPEN and --phase=IMPLEMENTING preserve those canonical phases; the default phase is VERIFYING. FILES --select-current restores the already-current owned OPEN cycle, and --fault=cas_ack loses the first focus CAS acknowledgement. The seven variants precede the unchanged final nominal case.
+
+The fixture uses actual signed H/record/source-CP/activation/selected-CP/focus operations, controlled H/grants and staged legal canonical phase preconditions. It checks exactly three focus writes, unchanged selected status/plan/progress and deferred history, unchanged Git/index/refs/product/configuration, metadata-preserving CAS and DB-only absence. It rejects changed or UNKNOWN source, missing grants and last-source-await revocation. Success is accepted cold and replayed without effects; partial CAS retains signed UNKNOWN/owner and blocks another preparation. Ordinary entry still requests the unresolved choice; focus data is no fresh phase/DoR or work permission. These cases do not qualify imported work, published routing, genuine Native/H actors, PostgreSQL or an installed archive.
+
+
+Selected-focus fixtures introduce a foreign untracked product file before preparation and require refusal, then restore that owned fixture perturbation. DB-only and already-current no-change sources deliberately change the Git index storage version without staged or working-tree changes before the new focus preparation. They require success on the current clean context, an unchanged current-plan index through focus CAS and no detailed DB-only projection. The original DB-only historical-index-byte refusal stays a retained failed trial; the correction is not validated until a fresh run.
+
+## Accepted focus checkpoint component
+
+The standalone focus checkpoint fixture composes the actual protected observation, H choice, canonical record, choice checkpoint, physical activation, selected-context checkpoint, focus CAS and focus Git checkpoint. Lifecycle and phase inputs remain explicitly staged fixture data; controlled H/grants and a component result are not genuine Native or whole STANDARD qualification.
+
+```powershell
+node tools/perf/verify-standard-focus-checkpoint-fixtures.mjs --contracts-only
+node tools/perf/verify-standard-focus-checkpoint-fixtures.mjs --mode=files
+node tools/perf/verify-standard-focus-checkpoint-fixtures.mjs --mode=dual
+node tools/perf/verify-standard-focus-checkpoint-fixtures.mjs --mode=db-only
+node tools/perf/verify-standard-focus-checkpoint-fixtures.mjs --mode=files --select-current
+node tools/perf/verify-standard-focus-checkpoint-fixtures.mjs --mode=files --fault=grant_after_ref
+node tools/perf/verify-standard-focus-checkpoint-fixtures.mjs --mode=files --fault=index_ack
+```
+
+The fixtures check exact visible focus paths, metadata/canonical preservation, foreign-work refusal, current permission after the final source await, DB-only no-export/no-change, cold ACK and exact replay. The two effect faults retain signed UNKNOWN and the owner even when physical inspection observes the exact commit. A later phase route still needs current readiness/work admission. No preparation-age ceiling is used.
+
+For changes to shared fixture composition, keep the existing direct selected-focus FILES case and a cold-argv inert-import probe. Binding implementation changes require binding-input, startup-model, cycle-component and composition fixtures. New standalone registration also requires the full workflow-ports suite with its explicit unpublished inventory and documentation-reference validation. Read-only retained-source or preview checks alone do not qualify an effect.
+
+
+## Canonical progress continuation components, 2026-11-13
+
+`verify-standard-canonical-resume-fixtures.mjs --contracts-only` checks the four closed schema definitions, operation-ID-only inputs and the existing readiness output’s closed canonical_plan/canonical_progress origin links; foreign kinds, identities, hashes, permissions and effect origins refuse. `--mode=files|dual|db-only --checks; add --guards for FILES` executes the controlled H/canonical/Git prefix, real read-only complete VERIFYING admission, trusted product snapshot, two actual registered Node checks, owned four-document verification CAS and authenticated audit selection. Imported task/history data are staged fixture preconditions. The case retains full canonical/physical witnesses and all eleven classification fields; only normal write timestamps may advance. The FILES guard variant changes and restores the controlled H source and canonical context, observes an actual foreign pending effect owner and rejects a changed process revision; it checks unchanged canonical business/Git/product/instance state and no staged operation. It allocates no Native actor and does not qualify a Native auditor.
+
+`verify-agentic-process-execution-fixtures.mjs --canonical-resume-native-mode=files|dual|db-only --canonical-resume-native-phase=OPEN|IMPLEMENTING --canonical-resume-native-intent=import_now --retain-always` resumes a staged imported TASK-001 prefix. It proves the bare read-only source cannot initiate unfinished work, then runs current readiness and the existing two-document implementation-entry CAS before selecting TASK-002. A denied current implementation-effect grant must refuse staging without business writes or Native allocation. Actual controlled Native task work, two registered Node checks, one current task advance, verification and a separate controlled Native auditor retain source-bound evidence. Imported TASK-001 never receives a fabricated current work receipt. OPEN enters IMPLEMENTING; IMPLEMENTING keeps its phase.
+
+The `--canonical-resume-native-phase=VERIFYING --canonical-resume-native-intent=integrate_now` variant stages two imported completed tasks, observes the current product and runs current checks before one controlled Native auditor, with no Native work response. Its worker audit bridge exercises `acceptedWorkSnapshot` through the canonical-resume product branch and its trusted snapshot reader. A partial Native-work auditor alone does not cover that branch.
+
+Integration-only variants with phase OPEN or IMPLEMENTING and intent integrate_now execute the actual existing implementation-effect preview and require the original-intent refusal, unchanged business state, no pending effect owner, no checks and no Native allocation or model turn. Controlled human and Native actors are explicit fixture ports; these commands do not prove genuine actors, an installed archive, real PostgreSQL or the full STANDARD route.
+
+The focused `--drift-git-readonly-only --retain-always` selector runs the existing controlled Git scope fixture against cold index stat preimages. Clean, modified product/private, changed private bytes, staged and untracked cases preserve index bytes, HEAD/refs and product/private content after observation. Diff/status semantics, private nondisclosure and scope/environment refusals remain covered; no model is called. The same selector also exercises the actual verification document boundary with local diff.autoRefreshIndex enabled and a cold stat cache. It preserves physical index/configuration/HEAD/ref/product/document bytes, discounts only its exact unstaged owned outputs, still detects staged owned work, product changes and untracked foreign files, and refuses Git environment scope overrides.
+
+Interpret each result against its exact source, argv and retained receipts. Preserve original failed or uncertain attempts separately from later corrections, including Native bounds, consumption and pending ownership. Closed processes alone do not admit an uncertain effect or release its owner. The complete manifest retains all existing command order and its final nominal case when these maintained component cases are added.
+
+
+## Owned canonical progress source components
+
+Run `node tools/perf/verify-standard-owned-cycle-resume-fixtures.mjs --contracts-only` for the closed entry-only source and output schemas, preserved selected input, ordinary/integration-only intent, all three phase descriptors, working-progress context fencing and inconsistent/foreign source refusals. These pure checks perform no host, H or Native execution.
+
+The runtime fixture accepts `--mode=files|dual|db-only --phase=OPEN|IMPLEMENTING|VERIFYING --prefix=0|1|2`. It constructs explicit lifecycle/task/history DATA through real fixture ports/CAS, then executes only current protected D operations. Canonical and product progress stay uncommitted before the owned source admission; no choice, activation or checkpoint receipt is invented. `--enter` checks current DoR and the existing separate two-document implementation effect for unfinished OPEN/IMPLEMENTING work. `--checks` requires complete IMPLEMENTING/VERIFYING data and runs two registered Node checks, four-document verification/history retention and audit selection. Metadata classification, Git/product/index witnesses, signed journal/cold acceptance and exact replay are retained.
+
+Required representative cases are FILES/OPEN/prefix1, DUAL/IMPLEMENTING/prefix1 with entry, and DB-only/VERIFYING/prefix2 with checks. Actual execution verdicts and unexecuted gates must be reported separately; fixture DATA, controlled grants and a successful D component do not qualify genuine actors, the published root, PostgreSQL or a final installed archive.
+
+The fixture recomputes the active-cycle runtime digest through the existing protected context-refresh operation after arranging canonical DATA. Read-only reload cannot replace that preparation, and no freshness value is authored or waived. The model fixture also checks that changing each shared or owned resume runtime/schema file invalidates both the direct binding fingerprint and the complete process pins without writing source bytes.
+
+The selected-resume denied-entry-grant witness reads operation journal paths, content hashes and metadata from the selected canonical backend. It also observes the optional physical journal projection, retaining its absence in DB-only. A missing physical projection cannot substitute for checking canonical journals, and denial must preserve both observations before any entry effect or Native allocation.
+
+
+## Published cycle-source routing checks
+
+Run `node tools/perf/verify-standard-cycle-source-selection-fixtures.mjs` for closed plan-selection v2 and execution-source output contracts, the historical v1 reader, original task limits, ordered partitions, current-entry routing, identity confusion and invented permission/evidence refusals. These pure checks allocate no host or Native actor.
+
+The required owned-source cases also execute the actual plan and phase selectors: partial OPEN admission remains DATA; unfinished IMPLEMENTING work consumes a separately granted current entry and returns its real phase ID; complete VERIFYING data returns the accepted canonical identity and performs current checks/verification/audit. The published existing-OPEN fixture follows the actual owned-entry/preparation calls and root phase selector with one identified startup transport double. Catalog v6 tests preserve the v4/v5 scope readers, closed embedded calls, actor boundaries and the existing node cap. Source/model authoring, component execution, controlled actors, genuine actors, installed archive and the whole original plan retain separate verdicts.
+
+The delivered two-task `--standard-existing-open-work-mode=files|dual|db-only` cases also require the actual owned-resume origin, plan-selection v2 and current phase-selection identities. They refuse a legacy-adoption substitute and retain the original task writes, three real validation checks, progress chain, final-verification call, scope/classification preservation and exact replay assertions. The phase selector itself grants no work permission or validation evidence; the original one-startup/two-task controlled actor counts and finite fixture grants are unchanged.
+
+
+## Published complete canonical-cycle verification
+
+The focused `--standard-existing-complete-mode=files|dual|db-only` cases use the delivered root unchanged with an owned two-task plan whose completed prefix and VERIFYING phase are explicitly staged DATA. One identified startup diagnostic actor runs; no current planner, task writer or auditor runs. The actual source and phase selectors must bypass implementation entry and task advancement, then call the published canonical product observation, two real Node checks, linked evaluation and four-document verification before stopping at auditor selection. The fixture checks the exact call input/return, unchanged original plan, retained history prefix, appended current verification, current consistency, owner closure and exact simulation. These cases do not establish historical work, genuine actors, installation or the whole STANDARD journey.
+
+The three required cases are added without changing the previous 294 cases in relative order or the final full nominal. The exact expanded-command policy changes with the manifest; no dispatcher deadline or original finite actor grant changes.
+
+
+## Published selected-cycle call with a current controlled H source
+
+The focused `--standard-selected-root-mode=files|dual|db-only` cases reuse only explicitly generated canonical preconditions. The arrangement helper returns before initializing its old choice process; the delivered root must capture a new current-question selection through an identified H port. It then executes the eight selected-entry operations, actual branch activation and focus, current plan/phase selectors, current product checks, verification and auditor selection. The selected target contains a different product value from the source branch, so changing a pointer or accepting staged completion cannot substitute for observing the selected product. Deferred cycle data, original planning, exact selected-call input/return, owner closure and exact replay remain checked. One controlled startup actor runs and no task writer or auditor runs in this case. These fixtures do not establish genuine Human/Native behavior or installed/full STANDARD qualification.
+
+The three required selected-root cases preserve the previous 297 cases in relative order and keep the full nominal last. Their finite actor grant is unchanged, and the dispatcher adds no deadline.
+
+The actual cycle-choice port cases also reject receipt acceptance when a candidate branch moves during asynchronous H verification or the retained H source changes after capture. Neither refusal advances the instance or mutates canonical work. The final full subject reconstruction remains after H authentication, and the original five-second observation timeout is retained.
+
+
+The choice-checkpoint fixtures retain closed v1 readers and validate v2 plan/output definitions. They reject an invalid runtime postimage descriptor, unrelated approved paths and application of a refused preparation before any source read or owner acquisition. The selected published-root fixture additionally requires a v2 checkpoint linked to its actual accepted context refresh and checkpoints the exact RUNTIME-STATE postimage in FILES/DUAL, with no detailed export in DB-only. This composed scope differs from a choice-only fixture without normal startup. The original foreign-change/UNKNOWN failure is retained; current qualification, real actors and installed execution remain separate.
+
+
+Run `node tools/perf/verify-standard-cycle-prework-fixtures.mjs` for the pure initial-audit subject/report boundary. The required agentic manifest includes this command before the existing typed source-selection check and unchanged final nominal case. It verifies closed supported schemas, separate intent/architecture verdicts, historical v1 readability without conversion, immutable canonical plans, failed/information-needed distinctions, changed source/context/HEAD/product/metadata/rule refusals, foreign evidence and rejection of JSON approvals or authority fields. The protected-source shape regression first exposed an untyped null-reference error, then passed with typed refusal.
+
+This scope calls no Native/Human provider, authenticates no authority, executes no host effect and connects no published route. Current Native producer, readiness/fence, actual root, backend and installed qualifications remain separate required work. The original plan and all old FAIL/UNKNOWN attempts are unchanged.
+
+
+The same prework fixture command checks the registered Native answer schema
+and exact source bindings, including a whole-context hash distinct from the
+unchanged business planning context, immutable canonical proposals,
+non-successful judgements and malformed/foreign identity refusals. No Native
+backend is launched: schema construction and local answer validation are
+component evidence. Direct source-pin mutation checks cover the prework core
+and both schemas. The fixed host, readiness/effect fences and current genuine
+producer remain required before the published workflow can use this data.
+
+The actual composed driver recognizes the pinned creation/checkpoint, owned/
+selected entry, work preparation, canonical verification and mode-closure
+interfaces. It compares input identities with actual accepted journals and
+parameters, authenticates each executed D/H leaf, verifies declared return
+witnesses and keeps the exact planning origin through readiness. These calls
+consume no Native response. Unsupported calls fail as fixture assertions before
+any missing final-verification ID can be passed to the journal reader. Actual
+current-root execution remains a separate required case from pure preflight.
+
+Canonical plan selection reports whether a separate implementation entry is
+required for the accepted current phase and remaining tasks. This read-only
+route fact is not DoR satisfaction or an implementation permission. The
+canonical selection fixture checks that fact and keeps authorization false.

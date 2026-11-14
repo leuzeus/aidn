@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-session-close-hook-output.v1",
+  "x-aidn-contract-version": "standard-session-close-hook-output.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-session-close-hook-output.v1"
+    },
+    "operation_ref": {
+      "const": "session_close_finalize"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "blocked",
+        "reconciliation_required"
+      ]
+    },
+    "effect_status": {
+      "enum": [
+        "confirmed",
+        "no_effect",
+        "unknown"
+      ]
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "session_close_completed": {
+          "const": true
+        }
+      }
+    },
+    "observations": {
+      "type": "object"
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "outcome": {
+          "const": "completed"
+        },
+        "effect_status": {
+          "const": "confirmed"
+        },
+        "facts": {
+          "required": [
+            "session_close_completed"
+          ]
+        },
+        "evidence_refs": {
+          "minItems": 4,
+          "maxItems": 15
+        }
+      }
+    },
+    {
+      "properties": {
+        "outcome": {
+          "const": "reconciliation_required"
+        },
+        "effect_status": {
+          "const": "unknown"
+        },
+        "facts": {
+          "maxProperties": 0
+        },
+        "evidence_refs": {
+          "maxItems": 0
+        }
+      }
+    },
+    {
+      "properties": {
+        "outcome": {
+          "const": "blocked"
+        },
+        "effect_status": {
+          "const": "no_effect"
+        },
+        "facts": {
+          "maxProperties": 0
+        },
+        "evidence_refs": {
+          "maxItems": 0
+        }
+      }
+    }
+  ]
+}

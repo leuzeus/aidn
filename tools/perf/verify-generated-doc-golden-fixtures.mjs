@@ -36,6 +36,17 @@ const GENERATED_DOC_CASES = [
   },
 ];
 
+// This installed corpus is a retained rendering snapshot, not the current
+// package version. Only this known metadata scalar is version-dependent.
+const GOLDEN_WORKFLOW_VERSION = "0.12.0";
+const workflowVersions = text => [...text.matchAll(/^workflow_version: (.+)$/gm)].map(row => row[1]);
+function matchesGolden(expected, rendered, key, version) {
+  if (key !== "workflow") return rendered === expected;
+  if (JSON.stringify(workflowVersions(expected)) !== JSON.stringify([GOLDEN_WORKFLOW_VERSION])
+    || JSON.stringify(workflowVersions(rendered)) !== JSON.stringify([version])) return false;
+  return rendered === expected.replace(`workflow_version: ${GOLDEN_WORKFLOW_VERSION}`, `workflow_version: ${version}`);
+}
+
 function sha256(text) {
   return crypto.createHash("sha256").update(String(text ?? ""), "utf8").digest("hex");
 }
@@ -84,7 +95,16 @@ function main() {
       templateVars,
       preserveImportedWorkflowExtensions: item.preserveImportedWorkflowExtensions === true,
     });
-    checks[`${item.key}_matches_fixture`] = first === expected;
+    checks[`${item.key}_matches_fixture`] = matchesGolden(expected, first, item.key, version);
+    if (item.key === "workflow") {
+      checks.workflow_snapshot_version_is_pinned = JSON.stringify(workflowVersions(expected)) === JSON.stringify([GOLDEN_WORKFLOW_VERSION]);
+      checks.workflow_current_version_rendered = JSON.stringify(workflowVersions(first)) === JSON.stringify([version]);
+      checks.workflow_wrong_rendered_version_rejected = !matchesGolden(expected,
+        first.replace(`workflow_version: ${version}`, "workflow_version: 999.0.0"), item.key, version);
+      checks.workflow_nonversion_drift_rejected = !matchesGolden(expected, first + "\nUnexpected rendering drift\n", item.key, version);
+      checks.workflow_unpinned_snapshot_rejected = !matchesGolden(expected.replace(`workflow_version: ${GOLDEN_WORKFLOW_VERSION}`,
+        "workflow_version: 999.0.0"), first, item.key, version);
+    }
     checks[`${item.key}_repeatable`] = first === second;
     checks[`${item.key}_has_no_placeholders`] = !/\{\{[A-Z0-9_]+\}\}/.test(first);
     samples[item.key] = {
@@ -98,6 +118,8 @@ function main() {
   console.log(JSON.stringify({
     ts: new Date().toISOString(),
     target_root: targetRoot,
+    snapshot_workflow_version: GOLDEN_WORKFLOW_VERSION,
+    rendered_package_version: version,
     checks,
     samples,
     pass,

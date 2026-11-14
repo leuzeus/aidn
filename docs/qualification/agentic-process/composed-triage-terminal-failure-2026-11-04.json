@@ -1,0 +1,156 @@
+{
+  "format": "aidn-composed-terminal-failure-evidence.v1",
+  "date": "2026-11-04",
+  "scope": "source-installed-fixture-ports-public-key91",
+  "status": "FAIL_PRESERVED_ENTIRE_OBJECTIVE_INCOMPLETE",
+  "source_commit": "c27179b0ed0b7253694669781a5499bb9845f3cd",
+  "model_revision": 73,
+  "original_case": {
+    "label": "source21-checkpoint-owner-ack-files-20261104",
+    "exit": {
+      "started": "2026-11-04T10:47:26.622633+00:00",
+      "observed_at_utc": "2026-11-04T12:19:20.373103+00:00",
+      "process_pid": 61108,
+      "exit_code": 1,
+      "source_unchanged": true,
+      "proof_limit": "terminal parent alone does not prove general resource closure"
+    },
+    "source_initial_terminal_current_equal": true,
+    "archive_sha256": "21c77bc3a32d015024277dfab61d50dfaf0dd645f51122e044addf4b127d1bf7",
+    "archive_payloads": 2745,
+    "archive_verification_errors": [],
+    "capture": {
+      "original_collector": "Python 3.11 lacks Path.is_junction; original traceback unavailable, script and 22-byte ZIP preserved",
+      "replacement": "Separate read-only capture of the same terminal roots with pre-descent reparse pruning; no case restart, effect, authority renewal or state restoration",
+      "byte_observations": "Equal capture/verification bytes; not a transactional snapshot or general resource closure"
+    }
+  },
+  "stages": {
+    "case_status": "FAIL",
+    "pure_replay_status": "PASS",
+    "checkpoint_recovery_status": "NOT_PROVEN",
+    "whole_case_recovery_status": "FAIL",
+    "checkpoint_unknown_receipts": 0,
+    "checkpoint_observed_recovery_receipts": 0,
+    "checkpoint_accepted_result_events": 0
+  },
+  "pure_replay": {
+    "status": "PASS",
+    "proof_class": "archive-only-pure-reducer-and-fixture-HMAC",
+    "events": 144,
+    "simulation_rows": 145,
+    "journals": 63,
+    "receipts": 63,
+    "unknown_results": 0,
+    "distinct_checkpoint_recovery": 0,
+    "model_revision": 73,
+    "workflow_status": "RUNNING",
+    "instance_sha256": "100abd6569df193d7c117759d45394ce9e189a834b2ed238f667fb799861833a",
+    "cursor_sha256": "a4a789c4def3aabf856911b15cc1bf77dd88af78c8a5ea6a6536c7e704e1d8c5",
+    "instance_bytes_sha256": "ae60a3eefdb6cc15d1da6297f5978d4ee28eee99c119a44f85a8c81698683c84",
+    "exact_replay": true,
+    "exact_streamed_simulation": true,
+    "original_authorization_and_experiment_unchanged": true,
+    "old_project_or_control_or_store_accessed": false,
+    "business_port_calls": 0,
+    "native_calls": 0,
+    "key_scope": "public-fixture-key91-only",
+    "resource_extinction_proven": false,
+    "full_standard_workflow": false
+  },
+  "failed_prefix_authentication": {
+    "status": "PASS",
+    "proof_class": "immutable-archive-fixture-key91-native-control-authentication",
+    "allocations": 9,
+    "closed_allocations": 8,
+    "failed_allocations": 1,
+    "original_case_status": "FAIL",
+    "native_events": 17,
+    "unique_owner_ids": 9,
+    "unique_closed_native_session_identities": 9,
+    "signed_records": 71,
+    "signed_previews": 63,
+    "operation_journals": 63,
+    "control_inboxes": 1,
+    "decision_inboxes": 6,
+    "responses_observed": 9,
+    "max_responses": 9,
+    "storage_debit_bytes": 2147371,
+    "max_bytes": 33554432,
+    "original_authorization_sha256": "d55678848ed39bb5b973881f1cdd80c85153987f6c5e77a72d4d326e19ed5161",
+    "all_allocation_limits_exact_original_less_cumulative_debits": true,
+    "failed_allocation_consumption_retained": true,
+    "all_checkpoint_closure_and_result_bytes_bound": true,
+    "all_native_events_covered_by_authenticated_checkpoint": true,
+    "all_control_events_bound_to_exact_prefix": true,
+    "live_paths_read": false,
+    "effect_calls": 0,
+    "model_calls": 0,
+    "actual_native_provider_human": false,
+    "os_resource_extinction_proven": false,
+    "closure_authority": "fixture-controller-return-plus-native-parent-journal",
+    "entire_standard_workflow_complete": false
+  },
+  "success_only_audit": {
+    "status": "FAIL",
+    "observation": "The original source22 native/control verifier requires every allocation closed and stops at the final failed phase. This is neither a MAC failure nor a completed all-MAC proof. The distinct failure-prefix audit retains the failed outcome and verifies its contract/MAC/byte/counter/resource bindings."
+  },
+  "diagnosis": {
+    "status": "PASS",
+    "proof_class": "archived-context-deterministic-fixture-response-reconstruction",
+    "old_response_reconstructed": true,
+    "original_raw_answer_retained": false,
+    "old_failure_code": "PROCESS_SESSION_ANSWER_INVALID",
+    "actual_product_evidence": [
+      {
+        "ref": "product:app.mjs",
+        "sha256": "f4918c8ac9858f83b2c0307536179d6bd283bc7c20ba34b53074721f43611f4a"
+      }
+    ],
+    "fixed_native_answer_valid": true,
+    "fixed_triage_requires_correction": true,
+    "original_case_outcome": "FAIL",
+    "checkpoint_recovery_proven": false,
+    "case_resumed": false,
+    "model_calls": 0,
+    "effect_calls": 0,
+    "full_standard_workflow": false
+  },
+  "fixture_correction": {
+    "product_refs": "Resolve exact product:<snapshot path> and hash from authenticated context; never prepend a checkout directory or substitute a hash",
+    "regression": {
+      "case_label": "source23-native-triage-fixture-transfer-20261104",
+      "source_head": "aefc5bf6c57860566ee7af87300adaf57d2c63fa",
+      "source_files_compared": 2102,
+      "source_initial_equals_terminal": true,
+      "exit": 0,
+      "started_utc": "2026-11-04T12:27:21.466953+00:00",
+      "terminal_utc": "2026-11-04T12:27:23.143241+00:00",
+      "stdout_sha256": "7fd14df31226692a0bcc0da0f5d6b50b24923f76d2e45bc5473a0838bebb4a75"
+    },
+    "checks": 16,
+    "synthetic_preflight": {
+      "case_label": "source23-composed-preflight-20261104",
+      "source_head": "aefc5bf6c57860566ee7af87300adaf57d2c63fa",
+      "source_files_compared": 2102,
+      "source_initial_equals_terminal": true,
+      "exit": 0,
+      "started_utc": "2026-11-04T12:30:12.437913+00:00",
+      "terminal_utc": "2026-11-04T12:31:40.144786+00:00",
+      "stdout_sha256": "795314308b7d8b6c532eb9a59c400c329fa157fd07d66f157882f12847b62781"
+    },
+    "first_regression_attempt": "The initial new test changed snapshot hash without updating its fixture selection and correctly hit STANDARD_PR_TRIAGE_SELECTION_STALE. Corrected fixture selection; production guard unchanged.",
+    "raw_original_answer": "NOT_RETAINED; old null-containing answer is deterministically reconstructed from the exact archived context and original fixture source"
+  },
+  "limits": [
+    "Fixture native/provider/human authorities; zero genuine model calls.",
+    "Nine fixture responses observed, including the invalid final answer; no original limit, grant, deadline, result or failure is reset.",
+    "Eight closed allocations plus one failed allocation. Fixture controller closure is not general OS resource extinction.",
+    "No checkpoint correction intent, unknown result, cold recovery or single-CAS append reached.",
+    "Archive replay, authenticated prefix and corrected response checks are distinct from a successful composed execution.",
+    "All L1-L8/A1-A10, ordinary standard selection, retained-owner/fresh-authority recovery, native epochs, correction cycles and physical work, provider replies/consent/merge/sync, PostgreSQL, genuine native/human/provider and exact installed package qualification remain due."
+  ],
+  "runtime_model_or_default_changed": false,
+  "full_standard_workflow": false,
+  "adr_change_required": false
+}

@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-spike-finalize-plan.v1",
+  "x-aidn-contract-version": "standard-spike-finalize-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "input",
+    "prepared_at_ms",
+    "source_sha256",
+    "selection",
+    "branch",
+    "head",
+    "state_mode",
+    "postimages_sha256"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-spike-finalize-plan.v1"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "initialize_operation_id"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "standard-spike-finalize-input.v1"
+        },
+        "initialize_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        }
+      }
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cycle_id",
+        "title",
+        "learning_goal",
+        "timebox",
+        "decision_target",
+        "chosen_mode",
+        "branch_action"
+      ],
+      "properties": {
+        "cycle_id": {
+          "type": "string",
+          "pattern": "^C[0-9]{3,6}$"
+        },
+        "title": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+        },
+        "learning_goal": {
+          "type": "string",
+          "minLength": 15,
+          "maxLength": 512,
+          "pattern": "^[^\\r\\n\\u0000]+$"
+        },
+        "timebox": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\r\\n\\u0000]+$"
+        },
+        "decision_target": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\r\\n\\u0000]+$"
+        },
+        "chosen_mode": {
+          "enum": [
+            "EXPLORING",
+            "COMMITTING"
+          ]
+        },
+        "branch_action": {
+          "enum": [
+            "recommend",
+            "create"
+          ]
+        }
+      }
+    },
+    "branch": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[^\\r\\n\\u0000]+$"
+    },
+    "head": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40,64}$"
+    },
+    "state_mode": {
+      "enum": [
+        "files",
+        "dual",
+        "db-only"
+      ]
+    },
+    "postimages_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

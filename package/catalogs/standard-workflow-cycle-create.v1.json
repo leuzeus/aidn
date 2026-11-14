@@ -1,0 +1,202 @@
+{
+  "contract_version": "standard-cycle-create-catalog.v1",
+  "component_id": "aidn-standard-cycle-create",
+  "revision": 379,
+  "scope": {
+    "kind": "new_cycle_scaffold_component",
+    "complete_standard_workflow": false,
+    "entry_conditions": [
+      "owned_session_with_selected_mode",
+      "explicit_cycle_parameters_and_effect_grant"
+    ],
+    "remaining_activities": [
+      "cycle_create_readying_actions",
+      "r05_conditional_drift_wait",
+      "human_cycle_selection",
+      "r3_continuity_exception",
+      "dor_planning_and_admission",
+      "work",
+      "drift_and_incident",
+      "validation",
+      "cycle_closure",
+      "promotion",
+      "session_closure",
+      "pr_review",
+      "post_merge_sync",
+      "mixed_native_resume",
+      "ordinary_entry_points"
+    ]
+  },
+  "model": {
+    "path": "package/catalogs/process-models/aidn-standard-cycle-create.v1.json",
+    "sha256": "0b7d5123959f829462d0f766a481e052b8ba625788ff31987a56231fe9bee46c",
+    "model_id": "aidn-standard-cycle-create",
+    "revision": 379
+  },
+  "specification": {
+    "path": "docs/SPEC.md",
+    "sha256": "8ed1a7acd2f903ebb5324d9b59142fd9a3442c2f8a5fe3f22e6ea7f05ef342f5"
+  },
+  "bindings": [
+    {
+      "node_id": "refresh_before",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_context_refresh",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "projector",
+        "skill_id": "context-reload",
+        "input_contract": "standard-session-reference-input.v1",
+        "output_contract": "standard-cycle-output.v1",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R04",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "67bfead45f40144f3d173847c78f8cc44df563b46c21ae6ec71a2b9481d5d094"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-context-reload/SKILL.md",
+        "sha256": "9f9b57adb4a1682415b07b45b7c83cbefa91837395b3711adc1401b8f8f518ae"
+      }
+    },
+    {
+      "node_id": "admit",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_admit",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "cycle-create",
+        "input_contract": "standard-empty-input.v1",
+        "output_contract": "standard-cycle-output.v1",
+        "rule_refs": [
+          "SPEC-R03",
+          "SPEC-R06"
+        ],
+        "allowed_modes": [
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "67bfead45f40144f3d173847c78f8cc44df563b46c21ae6ec71a2b9481d5d094"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+        "sha256": "eb5c27dccfad7eba6b2cfc60327bdf79ab1dd68ba8ad30df71b412469b92edc0"
+      }
+    },
+    {
+      "node_id": "initialize",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_initialize",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "mutating",
+        "skill_id": "cycle-create",
+        "input_contract": "standard-cycle-initialize-input.v1",
+        "output_contract": "standard-cycle-output.v1",
+        "rule_refs": [
+          "SPEC-R03",
+          "SPEC-R06"
+        ],
+        "allowed_modes": [
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "67bfead45f40144f3d173847c78f8cc44df563b46c21ae6ec71a2b9481d5d094"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+        "sha256": "eb5c27dccfad7eba6b2cfc60327bdf79ab1dd68ba8ad30df71b412469b92edc0"
+      }
+    },
+    {
+      "node_id": "audit",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "branch_cycle_audit",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "branch-cycle-audit",
+        "input_contract": "standard-cycle-reference-input.v1",
+        "output_contract": "standard-cycle-output.v1",
+        "rule_refs": [
+          "SPEC-R03",
+          "SPEC-R04"
+        ],
+        "allowed_modes": [
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "67bfead45f40144f3d173847c78f8cc44df563b46c21ae6ec71a2b9481d5d094"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-branch-cycle-audit/SKILL.md",
+        "sha256": "1d9c87849c629c1148754a01d71e0e286f7af923933b88f1a59fa9f7e6e35fef"
+      }
+    },
+    {
+      "node_id": "refresh_after",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_context_refresh",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "projector",
+        "skill_id": "context-reload",
+        "input_contract": "standard-session-reference-input.v1",
+        "output_contract": "standard-cycle-output.v1",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R04",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "67bfead45f40144f3d173847c78f8cc44df563b46c21ae6ec71a2b9481d5d094"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-context-reload/SKILL.md",
+        "sha256": "9f9b57adb4a1682415b07b45b7c83cbefa91837395b3711adc1401b8f8f518ae"
+      }
+    },
+    {
+      "node_id": "checkpoint",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_checkpoint_finalize",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "executor",
+        "skill_id": "cycle-create",
+        "input_contract": "standard-cycle-checkpoint-input.v1",
+        "output_contract": "standard-cycle-checkpoint-output.v1",
+        "rule_refs": [
+          "SPEC-R03",
+          "SPEC-R04",
+          "SPEC-R05",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "67bfead45f40144f3d173847c78f8cc44df563b46c21ae6ec71a2b9481d5d094"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+        "sha256": "eb5c27dccfad7eba6b2cfc60327bdf79ab1dd68ba8ad30df71b412469b92edc0"
+      }
+    }
+  ]
+}

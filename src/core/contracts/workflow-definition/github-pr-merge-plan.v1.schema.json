@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_id",
+    "actor",
+    "method",
+    "request",
+    "host_context_sha256",
+    "prepared_at_ms",
+    "expires_at_ms",
+    "correlation_id",
+    "repository"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "github-pr-merge-plan.v1"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node_id",
+        "login"
+      ],
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+        },
+        "login": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,99}$"
+        }
+      }
+    },
+    "method": {
+      "const": "MERGE"
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "pull_request_number",
+        "expected_pull_request_id",
+        "expected_head_oid",
+        "expected_base_oid",
+        "expected_head_ref",
+        "expected_base_ref"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "github-pr-observation-request.v2"
+        },
+        "pull_request_number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "expected_pull_request_id": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "expected_head_oid": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "expected_base_oid": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "expected_head_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "expected_base_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        }
+      }
+    },
+    "host_context_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "expires_at_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "correlation_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{32}$"
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node_id",
+        "owner",
+        "name"
+      ],
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    }
+  },
+  "$id": "aidn://contracts/workflow-definition/github-pr-merge-plan.v1"
+}

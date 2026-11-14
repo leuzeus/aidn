@@ -1,7 +1,10 @@
 import { createProjectAgenticProcessExecution } from "../../application/runtime/agentic-process-execution-composition.mjs";
+import { createNativeAllocationWorkerAuthority } from "../../application/runtime/native-allocation-worker-authority.mjs";
 
 // Fixed worker entry, static bounded input from the owned process controller.
-// No module path, inline authority, shell command or secret travels in this pipe.
+// No authored module path, inline authority or shell command travels in this
+// pipe. The optional allocation capability belongs to this trusted worker only;
+// never forward it to native prompts, RPC, model environments or retained files.
 let input = Buffer.alloc(0);
 let specification = null;
 try {
@@ -11,13 +14,21 @@ try {
   }
   specification = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(input));
   const { configuration, authorization, persistenceBinding } = specification;
-  const execution = createProjectAgenticProcessExecution(configuration);
+  let execution;
+  // The worker authority observes the current protected product through this
+  // executor on every call, as in the parent mixed host. No retained hash or
+  // caller-supplied snapshot substitutes for a fresh product observation.
+  const allocationAuthority = specification.allocation === undefined ? undefined : createNativeAllocationWorkerAuthority({ configuration, authorization,
+    admission: specification.allocation, readProductSha256: () => execution.preview().product_sha256 });
+  if (specification.allocation) delete specification.allocation;
+  input.fill(0);
+  execution = createProjectAgenticProcessExecution(configuration, { allocationAuthority, processAuthority: allocationAuthority?.processAuthority });
   const result = await execution.run({ execute: true, authorization, persistenceBinding });
   process.stdout.write(JSON.stringify(result) + "\n");
 } catch (error) {
   // No raw error/body/configuration is written to stderr.
   const candidate = error?.code ?? error?.message;
-  const code = /^(PROCESS_|ARTIFACT_|WORKFLOW_INSTANCE_)[A-Z_]+$/.test(candidate ?? "") ? candidate : "PROCESS_WORKER_FAILED";
+  const code = /^(PROCESS_|STANDARD_PROCESS_|STANDARD_DRIFT_|NATIVE_ALLOCATION_|ARTIFACT_|WORKFLOW_INSTANCE_)[A-Z_]+$/.test(candidate ?? "") ? candidate : "PROCESS_WORKER_FAILED";
   process.stderr.write(code + "\n");
   process.stdout.write(JSON.stringify({ contract_version: "agentic-process-execution-result.v1", status: "FAILED", first_failure: code,
     global_deadline_ms: Number.isSafeInteger(specification?.authorization?.global_deadline_ms) ? specification.authorization.global_deadline_ms : null,

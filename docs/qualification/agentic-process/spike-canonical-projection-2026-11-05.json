@@ -1,0 +1,167 @@
+{
+  "record_version": 1,
+  "source_series": "SOURCE49",
+  "date": "2026-11-05",
+  "status": "COMPONENT_ONLY_ENTIRE_PLAN_ACTIVE_INCOMPLETE",
+  "behavior_source_commit": "4f2d6af7f9d58bd2a2fd0d559fe45fe936963a2b",
+  "db_only_fixture_correction_commit": "d07e12d2",
+  "model_revision": 122,
+  "model_sha256": "601b20a3938ff1a246875ce88488b7cc13fa3c5a6c2dbe2dbd25fb929013c8a9",
+  "model_nodes": 247,
+  "ordinary_entry": "UNCHANGED",
+  "complete_standard_workflow": false,
+  "diagnostic": {
+    "source_commit": "067090f09133ff7a6d9045af38b1d09115cf02ea",
+    "classification": "real-port sequence, synthetic accepted sources, no wrapper completion",
+    "hook_changes": 0,
+    "sync_metadata_changes": 11,
+    "content_changes": 0,
+    "changed_fields": [
+      "canonical",
+      "classification_reason",
+      "gate_relevance",
+      "mtime_ns",
+      "subtype",
+      "updated_at"
+    ],
+    "report_sha256": "852501acd64f76a8bec08b4916673a5db5e1ef6420de2a932f4befe3fdf89d93"
+  },
+  "cases": [
+    {
+      "case": "source49-db-nominal-20261104",
+      "head": "d07e12d20ecc368446ade4f0ca4e7220cc647da1",
+      "verdict": "PASS",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "stdout_sha256": "f98fed80e97f39ef5fef0ace77d8ef6afced849029126c57dc246151a4366dad",
+      "stderr_sha256": "f71446da0c0443e0e9a88c82f3444fdbc25ecbeceb90090bc3ec845fe6a15ad7"
+    },
+    {
+      "case": "source49-dual-port-diagnostic-20261104",
+      "head": "067090f09133ff7a6d9045af38b1d09115cf02ea",
+      "verdict": "PASS",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "stdout_sha256": "de1a4d3dea20ed164dd972701d0aa794e710a2ee682f6ce71198da0a67cbeeb1",
+      "stderr_sha256": "fc7ca5a589efb3698666d06bd5ca60e4726a91c97dd896ab76f472899e8934ba"
+    },
+    {
+      "case": "source49-projection-after-hook-20261104",
+      "head": "4f2d6af7f9d58bd2a2fd0d559fe45fe936963a2b",
+      "verdict": "PASS",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "stdout_sha256": "b3944a91e048a8f5cb4291848529e4e514ff1445297ea300c82c4d56a72a63c4",
+      "stderr_sha256": "ae71b2fede3b7d0e26e1b66898393eaba843721e18dc8a12f32d1c6431a72879"
+    },
+    {
+      "case": "source49-projection-before-authorization-20261104",
+      "head": "4f2d6af7f9d58bd2a2fd0d559fe45fe936963a2b",
+      "verdict": "PASS",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "stdout_sha256": "9a7b23e790449f321561e6797753fb0fbc3b8b5445a7b84d07e7858ffac33f06",
+      "stderr_sha256": "ba6ba17d95e7b9b77292034caa4e980c845e843aeda2e77a8c182db9ab74b06d"
+    },
+    {
+      "case": "source49-projection-composition-20261104",
+      "head": "4f2d6af7f9d58bd2a2fd0d559fe45fe936963a2b",
+      "verdict": "PASS",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "stdout_sha256": "863eaeae94d15d8a7f05e0130c5a4c942df8661cf8ce6ab171d140d344c51dea",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "source49-projection-db-only-nominal-20261104",
+      "head": "4f2d6af7f9d58bd2a2fd0d559fe45fe936963a2b",
+      "verdict": "FAIL",
+      "exit_code": 1,
+      "source_unchanged": true,
+      "stdout_sha256": "f6659a82938d71da8a88c3bf8538a3aa54326a0f1e0217f411c532f7a238cf46",
+      "stderr_sha256": "1c61a5641c0546592142203f19c76addd235d8ef131c096d7d6c67def52f9a53"
+    },
+    {
+      "case": "source49-projection-dual-nominal-20261104",
+      "head": "4f2d6af7f9d58bd2a2fd0d559fe45fe936963a2b",
+      "verdict": "PASS",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "stdout_sha256": "1f28be31f1e3d15e9880a98b9aef6b30657a2f308e2eb199a2d38aaa5a089227",
+      "stderr_sha256": "5c53774ab8f5ec825e5b2ab8ef26b912f29ee70bf7b69926111aa149be2c8275"
+    },
+    {
+      "case": "source49-projection-gate-catalog-20261104",
+      "head": "4f2d6af7f9d58bd2a2fd0d559fe45fe936963a2b",
+      "verdict": "PASS",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "stdout_sha256": "a1212ea51c35db13b15f9ac1df7f4211760efd253c134c82b3ce785e03af665c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "source49-projection-metadata-20261104",
+      "head": "4f2d6af7f9d58bd2a2fd0d559fe45fe936963a2b",
+      "verdict": "PASS",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "stdout_sha256": "8a0f62f755be2b3081e5cbfbb900478d5c510e1885bb43ec921b620f3a294d75",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "source49-projection-source-policy-20261104",
+      "head": "4f2d6af7f9d58bd2a2fd0d559fe45fe936963a2b",
+      "verdict": "PASS",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "stdout_sha256": "b3a5cb758d1ccf8a34e5cdb2cac3792471631cc19d47647cfac9b97ae9cb4432",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "source49-projection-workflow-policy-20261104",
+      "head": "4f2d6af7f9d58bd2a2fd0d559fe45fe936963a2b",
+      "verdict": "PASS",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "stdout_sha256": "4dd7ffa943168f2333153070a91c347d6a766449863ea0db0144ed0e6efc956c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "counts": {
+    "PASS": 10,
+    "FAIL": 1,
+    "PENDING": 0
+  },
+  "registration": {
+    "prior_count": 185,
+    "current_count": 187,
+    "unchanged_prior_prefix": true,
+    "package_equals_private_governed_command": true,
+    "new_commands": [
+      "node tools/perf/verify-standard-spike-wrapper-preconditions.mjs --dual-nominal",
+      "node tools/perf/verify-standard-spike-wrapper-preconditions.mjs --db-only-nominal"
+    ]
+  },
+  "full_runtime": {
+    "source_commit": "d07e12d2",
+    "status": "RUNNING_NOT_QUALIFIED",
+    "selector": "runtime --context dev --admission --json",
+    "default_gate_timeout_ms": 900000
+  },
+  "Governance Admission": "NOT_RUN",
+  "NOT_RUN": [
+    "mixed SPIKE nominal on this source",
+    "SPIKE session closure",
+    "EXPLORING effectful experiments",
+    "genuine Native/Human/Provider/OS",
+    "PostgreSQL live",
+    "exact installed archive",
+    "full L1-L8/A1-A10"
+  ],
+  "limitations": [
+    "All accepted-operation, Native transport and human identities in these cases are fixtures. Real SQLite and local application ports are separate from actual installed or provider execution.",
+    "The first db-only nominal failed before finalization because hidden canonical changes produced no visible Git diff. The corrected new case permits its setup checkpoint to be empty; the original FAIL remains preserved.",
+    "Projection synchronizes only accepted canonical CAS postimages. No metadata-change whitelist or repair of old failed arenas is introduced.",
+    "A completed wrapper is not a completed SPIKE experiment or STANDARD session. Full runtime registration is not full-family execution."
+  ]
+}

@@ -1,0 +1,181 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-canonical-cycle-resume-observe-output.v1",
+  "x-aidn-contract-version": "standard-canonical-cycle-resume-observe-output.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-canonical-cycle-resume-observe-output.v1"
+    },
+    "operation_ref": {
+      "const": "cycle_canonical_resume_observe"
+    },
+    "outcome": {
+      "const": "completed"
+    },
+    "effect_status": {
+      "const": "no_effect"
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cycle_resume_product_observed": {
+          "type": "boolean"
+        },
+        "cycle_validation_required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_kind",
+        "implementation_operation_id",
+        "resume_operation_id",
+        "resume_output_sha256",
+        "context_sha256",
+        "scope_sha256",
+        "product_sha256",
+        "product_snapshot",
+        "canonical_phase",
+        "imported_completed_task_ids",
+        "current_observed_task_ids",
+        "work_complete",
+        "authorship",
+        "implementation_authorized",
+        "current_native_work_evidence"
+      ],
+      "properties": {
+        "source_kind": {
+          "const": "canonical_resume_product"
+        },
+        "implementation_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "resume_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "resume_output_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "context_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "scope_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "product_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "product_snapshot": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "present"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 192
+              },
+              "present": {
+                "type": "boolean"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1048576
+              }
+            }
+          }
+        },
+        "canonical_phase": {
+          "enum": [
+            "IMPLEMENTING",
+            "VERIFYING"
+          ]
+        },
+        "imported_completed_task_ids": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "pattern": "^TASK-[0-9]{3,6}$"
+          }
+        },
+        "current_observed_task_ids": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "pattern": "^TASK-[0-9]{3,6}$"
+          }
+        },
+        "work_complete": {
+          "const": true
+        },
+        "authorship": {
+          "const": "canonical_data_and_current_snapshot_not_native_writer_attestation"
+        },
+        "implementation_authorized": {
+          "const": false
+        },
+        "current_native_work_evidence": {
+          "const": false
+        }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 320
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

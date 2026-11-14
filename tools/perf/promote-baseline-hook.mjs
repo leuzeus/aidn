@@ -1,39 +1,14 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { runCheckpointUseCase } from "../../src/application/runtime/checkpoint-use-case.mjs";
-import { runPromoteBaselineAdmitUseCase } from "../../src/application/runtime/promote-baseline-admit-use-case.mjs";
+import { runPromoteBaselineCheckpointUseCase, createPromoteBaselineCheckpointDefaults } from "../../src/application/runtime/promote-baseline-checkpoint-use-case.mjs";
+
 import { resolveDefaultIndexStore } from "../../src/core/state-mode/runtime-index-policy.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
-  const envStore = String(process.env.AIDN_INDEX_STORE_MODE ?? "").trim().toLowerCase();
-  const envStateMode = String(process.env.AIDN_STATE_MODE ?? "").trim().toLowerCase();
-  const args = {
-    target: ".",
-    cache: ".aidn/runtime/cache/reload-state.json",
-    eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
-    indexOutput: ".aidn/runtime/index/workflow-index.json",
-    indexStore: envStore || "",
-    indexStoreExplicit: false,
-    stateMode: envStateMode || "files",
-    indexSqlOutput: ".aidn/runtime/index/workflow-index.sql",
-    indexSqliteOutput: ".aidn/runtime/index/workflow-index.sqlite",
-    indexSchemaFile: path.join(PERF_DIR, "sql", "schema.sql"),
-    indexIncludeSchema: true,
-    indexKpiFile: "",
-    indexSyncCheck: false,
-    indexSyncCheckStrict: false,
-    indexSyncCheckOut: ".aidn/runtime/index/index-sync-check.json",
-    mode: "COMMITTING",
-    runId: "",
-    json: false,
-    emitSummaryEvent: true,
-    skipIndexOnIncremental: true,
-    skipGateEvaluate: false,
-    autoSkipGateOnNoSignal: true,
-  };
+  const args = createPromoteBaselineCheckpointDefaults({ runtimeDir: PERF_DIR });
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (token === "--target") {
@@ -157,17 +132,7 @@ async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const admission = runPromoteBaselineAdmitUseCase({
-      targetRoot,
-      mode: args.mode,
-    });
-    const checkpoint = admission.action === "promote_baseline_allowed"
-      ? await runCheckpointUseCase({
-        args,
-        runtimeDir: PERF_DIR,
-        targetRoot,
-      })
-      : null;
+    const { admission, checkpoint } = await runPromoteBaselineCheckpointUseCase({ targetRoot, args, runtimeDir: PERF_DIR });
     const result = {
       ts: new Date().toISOString(),
       ok: admission.ok === true && (checkpoint ? checkpoint.ok === true : true),

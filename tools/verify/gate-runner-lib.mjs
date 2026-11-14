@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { runOwnedVerificationCommandSync } from "./owned-verification-process-lib.mjs";
 import { findCodexLauncher } from "./codex-discovery-lib.mjs";
 import {
   captureGitHead,
@@ -165,11 +166,13 @@ function defaultCommandRunner({
   const npmCli = path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
   const npmCommand = fs.existsSync(npmCli) ? process.execPath : "npm";
   const npmPrefix = fs.existsSync(npmCli) ? [npmCli] : [];
+  if (process.platform === "win32") return runOwnedVerificationCommandSync({ command: npmCommand,
+    args: [...npmPrefix, "run", script], cwd: repoRoot, env, timeoutMs, maxBuffer });
   return spawnSync(npmCommand, [...npmPrefix, "run", script], {
     cwd: repoRoot,
     env,
     encoding: "utf8",
-    timeout: timeoutMs,
+    ...(timeoutMs === null ? {} : { timeout: timeoutMs }),
     maxBuffer,
     shell: false,
   });
@@ -216,7 +219,7 @@ export function runGateFamily({
   commandRunner = defaultCommandRunner,
   stdoutWriter = (value) => process.stdout.write(value),
   stderrWriter = (value) => process.stderr.write(value),
-  timeoutMs = 900000,
+  timeoutMs,
   maxBuffer = 30 * 1024 * 1024,
 }) {
   const selected = catalog.gates.filter(
@@ -303,7 +306,12 @@ export function runGateFamily({
           ...env,
           AIDN_GATE_CONTEXT: context,
         },
-        timeoutMs,
+        // This declared manifest coordinates individually supervised fixtures.
+        // Its length is not an execution deadline. Explicit caller budgets
+        // remain exact; ordinary single-command gates keep their default.
+        timeoutMs: timeoutMs === undefined
+          ? gate.id === "runtime-agentic-process" && gate.script === "perf:verify-agentic-process" ? null : 900000
+          : timeoutMs,
         maxBuffer,
       });
     } catch (error) {
@@ -361,6 +369,7 @@ export function runGateFamily({
       duration_ms: Date.now() - started,
       reason,
       exit_code: Number.isInteger(result?.status) ? result.status : null,
+      ...(result?.verification_process ? { verification_process: result.verification_process } : {}),
       condition_evaluation: {
         met: condition.met,
         failure_kind: condition.failure_kind,
@@ -437,6 +446,10 @@ function formatGateProcessDiagnostic(item) {
   }
   if (item.error) {
     pieces.push(`error=${JSON.stringify(item.error)}`);
+  }
+  if (item.verification_process) {
+    pieces.push(`owned_tree=${item.verification_process.cleanup.state}`,
+      `process_evidence=${JSON.stringify(item.verification_process.evidence_dir)}`);
   }
   return pieces.join(" ");
 }

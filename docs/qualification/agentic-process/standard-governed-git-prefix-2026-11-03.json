@@ -1,0 +1,137 @@
+{
+  "contract_version": "qualification-standard-governed-git-prefix.v1",
+  "date": "2026-11-03",
+  "status": "PASS_FILES_PREFIX_TO_PLAN_WITH_REMAINING_GAPS",
+  "base_commit": "12377bae1cb4415420bac0710497c090a2b7993a",
+  "snapshot": "b60f73795b73a6f0551a77e5928636917193c943",
+  "retained_ref": "refs/aidn/qualification/governed-git-checkpoint-nominal-20261103",
+  "model": {
+    "revision": 11,
+    "sha256": "0c3797a9bd2de602171d4b85b06044d3ce0abb6a2a88f09aac9e136da1d64e2e",
+    "catalog_sha256": "6b3160f6d26f5a0638c7b22a40aaa72e01cd961cb934c93ab02eb3f3d027322b",
+    "nodes": 69,
+    "operation_occurrences": 40,
+    "operation_bindings": 39,
+    "complete_standard_workflow": false
+  },
+  "native_implementation_sha256": "4b2d2c7ef6c1f40b1fb7c8db6abbcb1ec5b999e18f830547a667b071554eab47",
+  "proof_class": "offline-production-composition-with-fake-native-wire",
+  "command": "node tools/perf/verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=plan --retain-on-failure",
+  "execution": {
+    "state_mode": "files",
+    "source_install": "actual-source-installer-codex-discovery-stubbed",
+    "application_operations_completed": 17,
+    "native_activities_via_fake_wire": 2,
+    "real_model_calls": 0,
+    "native_allocation_journal": "closed",
+    "session_git_checkpoint": "confirmed",
+    "cycle_admission": "completed-unchanged-clean-tree-guard",
+    "cycle_initialization": "confirmed",
+    "branch_cycle_audit": "confirmed",
+    "r05_finalizations": 2,
+    "cycle_checkpoint": "confirmed",
+    "terminal_ready_node": "plan",
+    "terminal_workflow_status": "RUNNING",
+    "replay_simulation": "same-model-same-reducer-exact-instance-hash",
+    "owned_fixture_cleanup": "completed"
+  },
+  "attempts_before_nominal": [
+    {
+      "snapshot": "86202267f92a1824aa6d52cb3e9575e4c4f5d26d",
+      "retained_ref": "refs/aidn/qualification/governed-git-checkpoint-probe1-20261103",
+      "execution": "FAIL",
+      "classification": "fixture-recreated-deadline-between-native-activities",
+      "reason": "NATIVE_ALLOCATION_LIMIT_INCREASE_UNAUTHORIZED",
+      "checkpoint_and_cycle_creation": "already-confirmed",
+      "engine_guard_relaxed": false
+    },
+    {
+      "snapshot": "83fc73a4605a85693a154e4423355e2bc1fe813b",
+      "retained_ref": "refs/aidn/qualification/governed-git-checkpoint-resume-probe1-20261103",
+      "execution": "FAIL_NOMINAL_EXPECTATION_REFUSAL_PRESERVED",
+      "classification": "distinct-session-and-cycle-objectives",
+      "cold_resume": "new-node-process-same-instance-and-original-authorization",
+      "configuration_sha256_matches_signed_allocation": true,
+      "budget_increase": false,
+      "verified_operation_journals": 15,
+      "session_initializations": 1,
+      "session_git_checkpoint_operations": 1,
+      "governed_commits": 1,
+      "cycle_initializations": 1,
+      "native_allocations": 2,
+      "native_allocations_closed": 2,
+      "blocking_binding": "drift_check_finalize",
+      "blocking_reason": "STANDARD_DRIFT_GATE_BLOCKED",
+      "blocking_signal": "objective_delta",
+      "result_outcome": "blocked",
+      "result_effect_status": "no_effect",
+      "result_facts": {},
+      "terminal_workflow_status": "WAITING",
+      "replay_simulation": "same-model-same-reducer-exact-instance-hash",
+      "engine_guard_relaxed": false
+    }
+  ],
+  "targeted_checks": {
+    "real_git_port": {
+      "status": "PASS",
+      "checks": 10
+    },
+    "published_composition": {
+      "status": "PASS",
+      "checks": 14
+    },
+    "historical_components": {
+      "status": "PASS",
+      "checks": 22
+    },
+    "operation_contracts": {
+      "status": "PASS",
+      "checks": 27
+    },
+    "legacy_real_application_ports": {
+      "status": "PASS",
+      "checks": 14
+    },
+    "gate_catalog": {
+      "status": "PASS",
+      "checks": 63
+    },
+    "source_of_truth": {
+      "status": "PASS",
+      "checks": 35
+    },
+    "metadata": {
+      "status": "PASS",
+      "checks": 37
+    },
+    "governance_completeness": {
+      "status": "PASS",
+      "checks": 39
+    },
+    "package_topology": {
+      "status": "PASS",
+      "seeded_client_roots": 5,
+      "cleanup": "PASS"
+    },
+    "doc_references": "PASS",
+    "markdown_contract": "PASS"
+  },
+  "not_run": [
+    "dual-and-db-only-composed-git-prefix",
+    "full-standard-workflow-A1-A10",
+    "real-native-client-and-tree",
+    "exact-installed-archive",
+    "live-postgresql",
+    "aggregate-agentic-process-suite"
+  ],
+  "remaining": [
+    "explicit-uncertain-index-reconciliation",
+    "full-work-closure-promotion-and-session-tail",
+    "thinking-exploring-and-existing-session-cycle-routes",
+    "drift-incident-recovery-routing",
+    "PR-review-merge-and-post-merge-sync",
+    "ordinary-default-standard-workflow-entrypoints",
+    "native-and-installed-archive-acceptance"
+  ],
+  "delivery_readiness": "NOT_CLAIMED"
+}

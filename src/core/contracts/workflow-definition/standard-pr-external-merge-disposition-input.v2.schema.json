@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-pr-external-merge-disposition-input.v2"
+    },
+    "triage_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "update_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    }
+  },
+  "$id": "aidn://contracts/workflow-definition/standard-pr-external-merge-disposition-input.v2",
+  "x-aidn-contract-version": "standard-pr-external-merge-disposition-input.v2",
+  "oneOf": [
+    {
+      "required": [
+        "triage_operation_id"
+      ]
+    },
+    {
+      "required": [
+        "update_operation_id"
+      ]
+    }
+  ]
+}

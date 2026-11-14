@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { fingerprintAgentReuse, assertAgentReuseRequest } from "../../core/agents/agent-reuse-policy.mjs";
+import { fingerprintAgentReuse, assertAgentReuseRequest, evaluateAgentReuse } from "../../core/agents/agent-reuse-policy.mjs";
+import { assertAgenticProcessInstance } from "../../core/workflow/agentic-process.mjs";
+import { assertNativeHostState } from "../../core/workflow/native-host-state.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { processFail as fail } from "../../core/workflow/agentic-process-model.mjs";
 import { evaluateAgentTransition } from "../../core/agents/agent-transition-policy.mjs";
@@ -7,8 +9,14 @@ import { evaluateAgentTransition } from "../../core/agents/agent-transition-poli
 // A composition-owned authority, not an attestation supplied by a worker. Only
 // sessionFactory creates native resources; result receipts originate here after
 // the session adapter has correlated and verified its actual terminal event.
-export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evidence, now = Date.now, deadline }) {
-  const authorityId = `host-${randomUUID()}`, resources = new Map(), observations = new Map(), results = new Map(), prepared = new Map();
+export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evidence, now = Date.now, deadline, retainedState = null }) {
+  const history = retainedState === null ? null : structuredClone(assertNativeHostState(retainedState));
+  if (history && !history.parent_closed) fail("PROCESS_HOST_HISTORY_NOT_CLOSED");
+  const authorityId = history?.authority_id ?? `host-${randomUUID()}`, resources = new Map(), observations = new Map(), results = new Map(), prepared = new Map(), issuedAssignments = new Map();
+  const historicalEvents = new Map((history?.instance.events ?? []).map(event => [event.event_id, shadowHash(event)]));
+  for (const row of history?.results ?? []) results.set(row.result.result_id, { ...structuredClone(row), restored: true,
+    instanceId: history.instance.instance_id, scopeId: history.instance.scope_id, modelSha256: history.instance.model_sha256 });
+  let parentClosed = false;
   let current = null, stopped = false;
   const remaining = () => { if (stopped || now() >= deadline) fail("PROCESS_HOST_DEADLINE"); return deadline - now(); };
   const checked = value => { if (checkShadowJson(value)) fail("PROCESS_HOST_DATA_INVALID"); return structuredClone(value); };
@@ -42,6 +50,7 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
       || resource.role !== role.role && !evaluateAgentTransition({ mode: policy.mode, fromRole: resource.role,
         fromAction: resource.action, toRole: role.role, toAction: role.action }).allowed)) resource = null;
     if (!resource) {
+      await inputs.beforeNative?.(input);
       const session = await sessionFactory.open({ instance, frame, role, policy, input, deadline });
       const observed = checked(await session.observe());
       if (typeof observed.session_id !== "string" || !observed.session_id || !/^[a-f0-9]{64}$/.test(observed.binding_sha256)
@@ -60,9 +69,10 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
     const allowed = policy.independent_review || policy.context_isolation_required
       ? [...resource.context, instructionHash] : [...new Set([...resource.context, instructionHash])];
     const binding = { ...input.binding, allowed_context_sha256: allowed,
-      reviewed_contributors: [...resources.values()].flatMap(item => item.contributions.some(c => c.scope_id === instance.scope_id)
-        ? [{ agent_id: item.agentId, lineage_id: item.lineageId }] : []) };
-    prepared.set(frame.occurrence_id, { input, binding, resource, instructionHash, policy, role });
+      reviewed_contributors: [...(history?.resources ?? []).map(row => row.executor), ...[...resources.values()].map(describe)]
+        .flatMap(item => item.contributions.some(c => c.scope_id === instance.scope_id) ? [{ agent_id: item.agent_id, lineage_id: item.lineage_id }] : []) };
+    prepared.set(frame.occurrence_id, { input, binding, resource, instructionHash, policy, role,
+      instanceId: instance.instance_id, scopeId: instance.scope_id, modelSha256: instance.model_sha256 });
     // Candidate preference is not a verdict identity substitution. Each request
     // observes the selected resource; historical identities stay in its record.
     current = resource.id;
@@ -94,13 +104,17 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
       observations.set(shadowHash(row), { request: row.request_sha256, resource: selected.id, state: shadowHash(describe(selected)) });
       return row;
     },
-    async verify({ request, observation, requirements, signal }) {
+    async verify({ request, observation, requirements, phase, signal }) {
       remaining();
       const retained = observations.get(shadowHash(observation)), resource = retained && resources.get(retained.resource);
       if (!resource || signal?.aborted || retained.request !== shadowHash(request)
         || retained.state !== shadowHash(describe(resource))) fail("PROCESS_HOST_OBSERVATION_NOT_ISSUED");
       await snapshot(resource);
       if (requirements?.skills.some(skill => !resource.skills.includes(skill))) fail("PROCESS_HOST_SKILL_UNAVAILABLE");
+      if (phase === "assignment") {
+        const decision = evaluateAgentReuse({ request, observation, eligibleAdapterIds: ["codex-agentic-session"], now: now() });
+        if (decision.decision !== "wait") issuedAssignments.set(shadowHash({ request, decision }), request.activity_id);
+      }
       return { outcome: "verified", authority_id: authorityId, request_sha256: retained.request,
         observation_sha256: shadowHash(observation), ...(requirements ? { requirements_sha256: shadowHash(requirements) } : {}) };
     },
@@ -114,7 +128,10 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
     if (!task.policy.independent_review) resource.contributions.push({ scope_id: instance.scope_id,
       revision: frame.request.revision, activity_id: occurrenceId, artifact_sha256: frame.request.artifact_sha256, role: frame.request.role });
     const completion = checked(await resource.session.run({ instruction: task.input.instruction,
-      request_sha256: shadowHash(frame.request), signal, deadline }));
+      request_sha256: shadowHash(frame.request), signal, deadline,
+      ...(inputs.beforeNative ? { beforeTurn: () => inputs.beforeNative(task.input) } : {}),
+      ...(task.input.output_contract ? { output_contract: task.input.output_contract, output_context_sha256: task.input.output_context_sha256,
+        output_bindings: task.input.output_bindings ?? null } : {}) }));
     remaining();
     if (completion.session_id !== resource.sessionId || completion.binding_sha256 !== resource.binding
       || !["completed", "failed", "rejected"].includes(completion.outcome)
@@ -124,10 +141,11 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
     resource.role = frame.request.role; resource.action = frame.request.action;
     const result = { result_id: `result-${randomUUID()}`, request_sha256: shadowHash(frame.request), execution_id: resource.id,
       revision: frame.request.revision, artifact_sha256: frame.request.artifact_sha256, criteria_sha256: frame.request.criteria_sha256,
-      outcome: completion.outcome, evidence_refs: completion.evidence_refs };
+      outcome: completion.outcome, evidence_refs: [...completion.evidence_refs, ...(task.input.evidence_refs ?? [])] };
     const reference = await evidence.retain("protected-result", { result, session_id: resource.sessionId,
       native_receipt_sha256: shadowHash(completion) });
-    results.set(result.result_id, { result: structuredClone(result), resource: resource.id, reference });
+    results.set(result.result_id, { result: structuredClone(result), resource: resource.id, reference,
+      instanceId: instance.instance_id, scopeId: instance.scope_id, modelSha256: instance.model_sha256 });
     return { resultId: result.result_id, outcome: result.outcome };
   }
   const resultAuthority = Object.freeze({
@@ -139,17 +157,49 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
     async verify({ result, request }) {
       remaining(); const row = results.get(result.result_id);
       if (!row || shadowHash(row.result) !== shadowHash(result) || row.result.request_sha256 !== shadowHash(request)) fail("PROCESS_HOST_RESULT_NOT_ISSUED");
-      await evidence.verify(row.reference); await snapshot(resources.get(row.resource));
+      await evidence.verify(row.reference);
+      if (!row.restored) await snapshot(resources.get(row.resource));
+      else for (const ref of row.result.evidence_refs) await evidence.verify(ref);
       return { outcome: "verified", authority_id: authorityId, result_sha256: shadowHash(result),
         request_sha256: shadowHash(request), execution_id: row.resource };
     },
   });
   return Object.freeze({ prepare, readBinding, assignmentAuthority, resultAuthority, execute,
+    // A read-only snapshot of host-issued identities and results. This is not a
+    // resume credential: the owning composition must authenticate/persist it and
+    // attach the supervisor's process-tree closure and cumulative accounting.
+    async checkpoint(instance) {
+      assertAgenticProcessInstance(instance);
+      if (history && (instance.instance_id !== history.instance.instance_id || instance.scope_id !== history.instance.scope_id
+        || instance.model_sha256 !== history.instance.model_sha256 || shadowHash(instance.events.slice(0, history.instance.events.length)) !== shadowHash(history.instance.events))) fail("PROCESS_HOST_HISTORY_NOT_ISSUED");
+      for (const event of instance.events) {
+        if (historicalEvents.get(event.event_id) === shadowHash(event)) continue;
+        if (event.kind === "assign") {
+          const task = prepared.get(event.occurrence_id);
+          if (!task || task.instanceId !== instance.instance_id || task.scopeId !== instance.scope_id || task.modelSha256 !== instance.model_sha256
+            || issuedAssignments.get(shadowHash({ request: event.request, decision: event.decision })) !== event.occurrence_id) fail("PROCESS_HOST_HISTORY_NOT_ISSUED");
+        }
+        if (event.kind === "result") {
+          const retained = results.get(event.result.result_id);
+          if (!retained || retained.instanceId !== instance.instance_id || retained.scopeId !== instance.scope_id || retained.modelSha256 !== instance.model_sha256
+            || shadowHash(retained.result) !== shadowHash(event.result)) fail("PROCESS_HOST_HISTORY_NOT_ISSUED");
+        }
+      }
+      for (const row of results.values()) {
+        await evidence.verify(row.reference);
+        for (const reference of row.result.evidence_refs) await evidence.verify(reference);
+      }
+      return assertNativeHostState(checked({ contract_version: "native-host-state.v1", authority_id: authorityId, instance: structuredClone(instance), parent_closed: parentClosed,
+        resources: [...(history?.resources ?? []), ...[...resources.values()].map(resource => ({ executor: describe(resource), binding_sha256: resource.binding, skills: [...resource.skills] }))],
+        results: [...results.values()].map(row => ({ result: structuredClone(row.result), resource: row.resource, reference: structuredClone(row.reference) })),
+        native_usage: typeof sessionFactory.metrics === "function" ? checked(sessionFactory.metrics()) : null }));
+    },
     async close() {
       stopped = true; let failure = false;
       for (const resource of resources.values()) try { if ((await resource.session.close())?.closed !== true) failure = true; } catch { failure = true; }
       if (typeof sessionFactory.close === "function") try { if ((await sessionFactory.close())?.closed !== true) failure = true; } catch { failure = true; }
       if (failure) fail("PROCESS_HOST_CLOSE_UNCONFIRMED");
+      parentClosed = true;
       return { closed: true, resources: resources.size };
     },
   });

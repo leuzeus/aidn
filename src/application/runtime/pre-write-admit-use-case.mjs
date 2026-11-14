@@ -63,10 +63,12 @@ const SKILL_POLICIES = Object.freeze({
     requireRuntimeClearInDbModes: true,
   },
   "promote-baseline": {
+    // Select a completed cycle without reactivating it or re-entering DoR.
+    // The pre-write port also requires the specialized canonical admission.
     requireBranchKind: true,
-    requireActiveCycle: true,
-    requireCycleStatus: true,
-    requireDorReady: true,
+    requireActiveCycle: false,
+    requireCycleStatus: false,
+    requireDorReady: false,
     requireFreshCurrentState: true,
     requireRuntimeClearInDbModes: true,
   },
@@ -77,9 +79,11 @@ const SKILL_POLICIES = Object.freeze({
     requireRuntimeClearInDbModes: true,
   },
   "convert-to-spike": {
-    requireActiveCycle: true,
-    requireCycleStatus: true,
+    // Conversion creates a cycle. The specialized continuity admission still
+    // decides its topology; an existing cycle cannot be its own prerequisite.
+    requireActiveSession: true,
     requireFreshCurrentState: true,
+    allowInitialCycleFreshness: true,
     requireRuntimeClearInDbModes: true,
   },
 });
@@ -150,6 +154,7 @@ export function findCycleStatus(auditRoot, cycleId, targetRoot = "") {
 }
 
 export function deriveFirstPlanStep(planText) {
+  const progress = /^## Process task progress\r?\ncontract_version: standard-cycle-task-progress\.v1\r?$/m.test(String(planText));
   const lines = String(planText).split(/\r?\n/);
   let inTasks = false;
   for (const rawLine of lines) {
@@ -166,7 +171,8 @@ export function deriveFirstPlanStep(planText) {
     }
     const numbered = line.match(/^\d+\.\s+(.+)$/);
     if (numbered && normalizeScalar(numbered[1])) {
-      return normalizeScalar(numbered[1]);
+      if (progress && /^\[[xX]\]\s+/.test(numbered[1])) continue;
+      return normalizeScalar(progress ? numbered[1].replace(/^\[ \]\s+/, "") : numbered[1]);
     }
     const bullet = line.match(/^-\s+(.+)$/);
     if (bullet && normalizeScalar(bullet[1])) {
@@ -180,7 +186,7 @@ function summarizePorcelain(lines, limit = 3) {
   return lines.slice(0, limit).map((line) => normalizeScalar(line));
 }
 
-export function evaluateCycleCreateGitGate({ git, targetRoot }) {
+export function evaluateCycleCreateGitGate({ git, targetRoot, r09 = null }) {
   const currentBranch = normalizeScalar(git.getCurrentBranch(targetRoot) ?? "unknown") || "unknown";
   const repoRoot = normalizeScalar(typeof git.getRepoRoot === "function" ? git.getRepoRoot(targetRoot) : "") || "none";
   const repoScoped = repoRoot !== "none" && path.resolve(repoRoot) === path.resolve(targetRoot);
@@ -226,6 +232,15 @@ export function evaluateCycleCreateGitGate({ git, targetRoot }) {
 
   const upstreamBranch = normalizeScalar(git.getUpstreamBranch(targetRoot) ?? "") || "none";
   output.upstream_branch = upstreamBranch;
+  if (r09) {
+    if (r09.branch !== currentBranch || !r09.head || git.getHeadCommit(targetRoot) !== r09.head) {
+      output.upstream_proof = false;
+      output.blocking_reasons.push("Fresh STANDARD R09 source-branch reconciliation is required before creating a new cycle.");
+    } else if (git.getUpstreamBranch(targetRoot, "HEAD", { fullName: true }) === "refs/remotes/origin/" + currentBranch) {
+      output.upstream_proof = true;
+      return output;
+    }
+  }
   if (upstreamBranch === "none" || currentBranch === "unknown") {
     output.warnings.push("no upstream tracking branch is configured; push/merge reconciliation cannot be verified automatically");
     return output;
@@ -480,7 +495,7 @@ export function verifyInitialCycleContext({
   skill, effectiveStateMode, currentMap, currentStateResolution,
   runtimeStateResolution, sessionResolution, currentBranch,
 } = {}) {
-  if (skill !== "cycle-create" || !["dual", "db-only"].includes(effectiveStateMode)) return false;
+  if (!["cycle-create", "convert-to-spike"].includes(skill) || !["dual", "db-only"].includes(effectiveStateMode)) return false;
   const source = currentStateResolution?.source;
   if (!["sqlite", "postgres"].includes(source)
       || ![currentStateResolution, runtimeStateResolution, sessionResolution]
@@ -652,7 +667,9 @@ export function evaluatePreWriteCycleCreateGates({
     addCheck(checks, "git_cycle_create_clean", cycleCreateGitGate.dirty_entries.length === 0, cycleCreateGitGate.dirty_entries.length === 0
       ? "git working tree is clean for cycle creation"
       : `pending files detected before cycle creation: ${summarizePorcelain(cycleCreateGitGate.dirty_entries).join(", ")}`);
-    addCheck(checks, "git_cycle_create_upstream_sync", cycleCreateGitGate.upstream_ahead === 0 && cycleCreateGitGate.upstream_behind === 0, cycleCreateGitGate.upstream_branch === "none"
+    addCheck(checks, "git_cycle_create_upstream_sync", cycleCreateGitGate.upstream_proof !== false && cycleCreateGitGate.upstream_ahead === 0 && cycleCreateGitGate.upstream_behind === 0, cycleCreateGitGate.upstream_proof === true
+      ? "upstream sync verified against the protected R09 source remote"
+      : cycleCreateGitGate.upstream_branch === "none"
       ? "upstream sync not configured"
       : `upstream=${cycleCreateGitGate.upstream_branch}; ahead=${cycleCreateGitGate.upstream_ahead}; behind=${cycleCreateGitGate.upstream_behind}`);
     blockingReasons.push(...cycleCreateGitGate.blocking_reasons);
@@ -678,7 +695,7 @@ export function evaluatePreWriteCycleCreateGates({
     && String(backlogStatus).toLowerCase() !== "closed"
     && String(backlogStatus).toLowerCase() !== "consumed_by_cycle";
   addCheck(checks, "shared_planning_scope_selected", !promotedSharedPlanning || (!canonicalNone(backlogSelectedExecutionScope) && !canonicalUnknown(backlogSelectedExecutionScope)), `backlog_selected_execution_scope=${backlogSelectedExecutionScope}`);
-  if (skill === "cycle-create" && promotedSharedPlanning) {
+  if (["cycle-create", "convert-to-spike"].includes(skill) && promotedSharedPlanning) {
     if (!isResolvedPlanningArbitrationStatusLocal(planningArbitrationStatus)) {
       blockingReasons.push(`shared planning arbitration remains unresolved: ${planningArbitrationStatus}`);
     }

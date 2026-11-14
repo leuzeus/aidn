@@ -1,0 +1,229 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/process-disposition-authorization-request.v1",
+  "x-aidn-contract-version": "process-disposition-authorization-request.v1",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "nonce",
+        "requested_at_ms",
+        "action",
+        "plan_sha256",
+        "plan"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "process-disposition-authorization-request.v1"
+        },
+        "nonce": {
+          "type": "string",
+          "pattern": "^[a-f0-9-]{36}$"
+        },
+        "requested_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "action": {
+          "const": "operation_disposition"
+        },
+        "plan_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "plan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contract_version",
+            "operation_id",
+            "instance_id",
+            "instance_sha256",
+            "instance_revision",
+            "scope_id",
+            "model_sha256",
+            "authority_sha256",
+            "runtime_sha256",
+            "physical_root_sha256",
+            "journal_sha256",
+            "dispatch_sha256",
+            "inventory_sha256",
+            "fence_sha256",
+            "assessment",
+            "output_sha256",
+            "prepared_at_ms",
+            "nonce",
+            "key_id",
+            "authentication"
+          ],
+          "properties": {
+            "contract_version": {
+              "const": "process-operation-disposition-plan.v1"
+            },
+            "operation_id": {
+              "type": "string",
+              "pattern": "^op_[a-f0-9]{40}$"
+            },
+            "instance_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "instance_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "instance_revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "scope_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "model_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "authority_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "runtime_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physical_root_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "journal_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "dispatch_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "inventory_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "fence_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "assessment": {
+              "enum": [
+                "confirmed_original",
+                "confirmed_reopen",
+                "no_effect_original",
+                "unknown"
+              ]
+            },
+            "reopen": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["lock_sha256", "output"],
+              "properties": {
+                "lock_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+                "output": { "type": "object" }
+              }
+            },
+            "output_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "prepared_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "nonce": {
+              "type": "string",
+              "pattern": "^[a-f0-9-]{36}$"
+            },
+            "key_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "authentication": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "nonce",
+        "requested_at_ms",
+        "action",
+        "disposition_sha256",
+        "receipt_sha256",
+        "instance_sha256",
+        "scope_id"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "process-disposition-authorization-request.v1"
+        },
+        "nonce": {
+          "type": "string",
+          "pattern": "^[a-f0-9-]{36}$"
+        },
+        "requested_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "action": {
+          "const": "operation_disposition_accept"
+        },
+        "disposition_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "receipt_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "instance_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "scope_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    }
+  ]
+}

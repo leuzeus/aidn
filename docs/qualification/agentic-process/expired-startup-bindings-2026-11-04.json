@@ -1,0 +1,193 @@
+{
+  "date": "2026-11-04",
+  "status": "FOCUSED_FIXTURE_QUALIFICATION",
+  "lane": "ASSURED",
+  "scope": "source-installed shipped-model mixed startup prefix; fixture human/authorization and injected clock",
+  "model_revision": 73,
+  "model_sha256": "e26b3b79917a198967df7703c74e42773729303c6f9ed0cada2a954a6e3e9ad0",
+  "bindings": [
+    "session_initialize",
+    "session_mode_apply",
+    "session_start_finalize"
+  ],
+  "successful_runs": [
+    {
+      "evidence_label": "source21-mixed-three-expired-files-v2-20261104",
+      "terminal": {
+        "started": "2026-11-04T11:00:48.043069+00:00",
+        "observed_at_utc": "2026-11-04T11:09:45.559194+00:00",
+        "process_pid": 56880,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "report": {
+        "status": "PASS",
+        "checks": 23,
+        "state_mode": "files",
+        "model_revision": 73,
+        "model_sha256": "e26b3b79917a198967df7703c74e42773729303c6f9ed0cada2a954a6e3e9ad0",
+        "scope": "source-installed-published-mixed-startup-prefix",
+        "expired_bindings": [
+          "session_initialize",
+          "session_mode_apply",
+          "session_start_finalize"
+        ],
+        "clock": "test-process-wall-clock-injection",
+        "native_allocations": 0,
+        "native_model_calls": 0,
+        "authorization": "fixture-capability",
+        "human": "authenticated-fixture-source",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN",
+        "full_standard_workflow": "NOT_COMPLETE"
+      },
+      "suite_sha256": "392e009d9ba21e3f42fec852e5bda44014737274648aa86939a5489ee51072df",
+      "stdout_sha256": "510ee9c61d1da9310acc0d633839bca0bdcfc220e50a44bca20b5984ed0ed4f8",
+      "stderr_sha256": "2838e48b519476a783454577cf8bb71ee50186384ca77f8b042a2b4b7220375b"
+    },
+    {
+      "evidence_label": "source21-expired-finalize-runtime-files-20261104",
+      "terminal": {
+        "started": "2026-11-04T11:10:35.907820+00:00",
+        "observed_at_utc": "2026-11-04T11:19:18.717359+00:00",
+        "process_pid": 61888,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "report": {
+        "status": "PASS",
+        "checks": 13,
+        "state_mode": "files",
+        "model_revision": 73,
+        "model_sha256": "e26b3b79917a198967df7703c74e42773729303c6f9ed0cada2a954a6e3e9ad0",
+        "scope": "source-installed-published-mixed-startup-prefix",
+        "expired_bindings": [
+          "session_start_finalize"
+        ],
+        "expired_dispatch_hidden_runtime": "all-bytes-and-directories-unchanged",
+        "clock": "test-process-wall-clock-injection",
+        "native_allocations": 0,
+        "native_model_calls": 0,
+        "authorization": "fixture-capability",
+        "human": "authenticated-fixture-source",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN",
+        "full_standard_workflow": "NOT_COMPLETE"
+      },
+      "suite_sha256": "2615fc2cc7488d23349e84e477f09923a69bf43da713e13e9cfcdae07b5edebb",
+      "stdout_sha256": "39f918cefff12c85d312cd61c23b884efd7821967b1a959fcbdba5b126fe0ea8",
+      "stderr_sha256": "2476a15a5a7e59e68888e5174d5507571fee87e11570775e726b1e9097d9e5f4"
+    },
+    {
+      "evidence_label": "source21-mixed-three-expired-dual-20261104",
+      "terminal": {
+        "started": "2026-11-04T11:10:56.708809+00:00",
+        "observed_at_utc": "2026-11-04T11:22:20.505200+00:00",
+        "process_pid": 51372,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "report": {
+        "status": "PASS",
+        "checks": 23,
+        "state_mode": "dual",
+        "model_revision": 73,
+        "model_sha256": "e26b3b79917a198967df7703c74e42773729303c6f9ed0cada2a954a6e3e9ad0",
+        "scope": "source-installed-published-mixed-startup-prefix",
+        "expired_bindings": [
+          "session_initialize",
+          "session_mode_apply",
+          "session_start_finalize"
+        ],
+        "expired_dispatch_hidden_runtime": "NOT_QUALIFIED",
+        "clock": "test-process-wall-clock-injection",
+        "native_allocations": 0,
+        "native_model_calls": 0,
+        "authorization": "fixture-capability",
+        "human": "authenticated-fixture-source",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN",
+        "full_standard_workflow": "NOT_COMPLETE"
+      },
+      "suite_sha256": "2615fc2cc7488d23349e84e477f09923a69bf43da713e13e9cfcdae07b5edebb",
+      "stdout_sha256": "74d18756a18ffedb6189387dfb496997ce99568295a8b18a08b7c94740aedb01",
+      "stderr_sha256": "ef7bf8570759b9cb68e77a8bede6af11406467e87a24adb9a7dcb123159e3436"
+    },
+    {
+      "evidence_label": "source21-mixed-three-expired-db-only-20261104",
+      "terminal": {
+        "started": "2026-11-04T11:10:56.827902+00:00",
+        "observed_at_utc": "2026-11-04T11:22:01.099137+00:00",
+        "process_pid": 65264,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "report": {
+        "status": "PASS",
+        "checks": 23,
+        "state_mode": "db-only",
+        "model_revision": 73,
+        "model_sha256": "e26b3b79917a198967df7703c74e42773729303c6f9ed0cada2a954a6e3e9ad0",
+        "scope": "source-installed-published-mixed-startup-prefix",
+        "expired_bindings": [
+          "session_initialize",
+          "session_mode_apply",
+          "session_start_finalize"
+        ],
+        "expired_dispatch_hidden_runtime": "NOT_QUALIFIED",
+        "clock": "test-process-wall-clock-injection",
+        "native_allocations": 0,
+        "native_model_calls": 0,
+        "authorization": "fixture-capability",
+        "human": "authenticated-fixture-source",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN",
+        "full_standard_workflow": "NOT_COMPLETE"
+      },
+      "suite_sha256": "2615fc2cc7488d23349e84e477f09923a69bf43da713e13e9cfcdae07b5edebb",
+      "stdout_sha256": "1b9b5a3371a1f16d1958e074f95b3e6ada15ced3216d784d2aac3c3c11037c54",
+      "stderr_sha256": "1c53102d1a383334eb8403dca8fcea5c95f2a810a0d6ee73612155141c448bc0"
+    }
+  ],
+  "initial_failure": {
+    "terminal": {
+      "started": "2026-11-04T10:50:52.987545+00:00",
+      "observed_at_utc": "2026-11-04T10:58:25.476939+00:00",
+      "process_pid": 3620,
+      "exit_code": 1,
+      "source_unchanged": true,
+      "proof_limit": "terminal parent alone does not prove general resource closure"
+    },
+    "checks_before_failure": 16,
+    "cause": "Fixture transferred CAS-list observation to a start-finalization hook plan without changes. TypeError before the third expiry dispatch. Not a production-port failure.",
+    "exact_suite_sha256": "cfcddae89c2d42aec30a75020c8aa47a7647a099d88fddaa69d741ef45a07249",
+    "preserved": true
+  },
+  "observation_correction": "Observe canonical business inventory/content/metadata excluding host journals; FILES additionally compares all .aidn/runtime files and directories before/after the expired dispatch. DB physical runtime/SQLite bytes are explicitly NOT_QUALIFIED.",
+  "semantics": [
+    "Retain each authentic blocked/no_effect/STANDARD_PLAN_EXPIRED result and its accepted event.",
+    "Cold prepare uses the same resolved subject, current admissions and no writes, grants or native allocations.",
+    "Explicit staging obtains a new grant/intent; execution accepts it without replaying the old effect.",
+    "Every original journal survives and common-reducer replay/simulation is exact."
+  ],
+  "native_model_calls": 0,
+  "architecture_decision_change": false,
+  "runtime_behavior_changed": false,
+  "ordinary_selection_changed": false,
+  "complete_standard_workflow": false,
+  "separate_composed_checkpoint_unknown": {
+    "status": "RUNNING_NO_TERMINAL_VERDICT",
+    "source_commit": "c27179b0ed0b7253694669781a5499bb9845f3cd",
+    "proof_limit": "This expiry prefix does not qualify dispatcher-unknown checkpoint reconciliation or full standard workflow."
+  },
+  "NOT_RUN": [
+    "All other deterministic expiry bindings",
+    "Physical DB-mode runtime-byte absence",
+    "General retained-owner resource closure/fresh recovery authority",
+    "Current real native/provider/human/PostgreSQL/exact-installed-archive acceptance"
+  ]
+}

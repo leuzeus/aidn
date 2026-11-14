@@ -2,6 +2,15 @@
 
 Purpose: shortest safe workflow re-anchor before any durable write.
 
+When an operator explicitly selects a `standard-workflow-execution.v1`
+configuration, the top-level skills join its instance through `runtime
+workflow-run`. Save the returned preview and use an explicitly approved
+action-file/execute/expect-plan application. Observe waits and authenticated
+decision sources before advancing. Do not start a parallel manual macro.
+Host-assigned Native activities and leaf hooks never recursively invoke that
+entry. `codex workflow-step` retains admission, context and coordination duties.
+Native authorization, external publication and shared sync remain separate.
+
 ## Read Order
 
 If another agent already prepared a handoff:
@@ -22,6 +31,13 @@ Otherwise:
 Agent-to-agent handoff is advisory only. The receiving agent must still complete the mandatory restatement before any durable write.
 
 ## Logical Roles And Resource Reuse
+
+New workflows use AIDN's structured agentic engine by default, whether authored
+directly as JSON or compiled from BPMN. Use `aidn runtime workflow-run` to preview
+normal execution; native work requires explicit execution authorization, the
+exact preview and bounded budgets. Sequential compatibility requires explicit
+legacy selection. Historical instances retain their pinned engine and journal.
+Context/admission observations never start a native executor implicitly.
 
 Activities and gateways define work and control flow, not an agent count. Keep
 compatible roles in the current executor when capability, context and effective

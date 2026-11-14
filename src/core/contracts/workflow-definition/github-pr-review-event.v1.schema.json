@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/github-pr-review-event.v1",
+  "x-aidn-contract-version": "github-pr-review-event.v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "authority_id", "source_event_id", "repository_id", "pull_request_id", "pull_request_number", "head_oid", "base_oid", "head_ref", "base_ref", "event_key", "revision", "occurred_at", "actor"],
+  "properties": {
+    "contract_version": { "const": "github-pr-review-event.v1" },
+    "authority_id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$" },
+    "source_event_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$" },
+    "repository_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "pull_request_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "pull_request_number": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+    "head_oid": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "base_oid": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "head_ref": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "base_ref": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "event_key": { "enum": ["review_snapshot", "checks_snapshot"] },
+    "revision": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "actor": { "type": "object", "additionalProperties": false, "required": ["node_id", "login", "type"], "properties": {
+      "node_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+      "login": { "type": "string", "minLength": 1, "maxLength": 256 },
+      "type": { "enum": ["User", "Bot", "Organization"] }
+    } }
+  }
+}

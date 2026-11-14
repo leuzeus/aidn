@@ -1,0 +1,29 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "delivery_operation_id",
+    "closure_operation_id"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-session-branch-integration-review-input.v1"
+    },
+    "delivery_operation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 43,
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "closure_operation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 43,
+      "pattern": "^op_[a-f0-9]{40}$"
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-session-branch-integration-review-input.v1",
+  "x-aidn-contract-version": "standard-session-branch-integration-review-input.v1"
+}

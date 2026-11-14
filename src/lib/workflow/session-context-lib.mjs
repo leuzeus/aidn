@@ -157,6 +157,7 @@ function listSessionArtifactsFromSqlite(auditRoot, sqlitePayload) {
       return {
         session_id: sessionIdMatch ? String(sessionIdMatch[1]).toUpperCase() : path.basename(relativePath, ".md").toUpperCase(),
         file_path: path.resolve(auditRoot, relativePath),
+        text,
         metadata,
       };
     })
@@ -458,6 +459,7 @@ export function listSessionArtifacts(auditRoot) {
         return {
           session_id: sessionIdMatch ? String(sessionIdMatch[1]).toUpperCase() : path.basename(entry.name, ".md").toUpperCase(),
           file_path: filePath,
+          text,
           metadata,
         };
       })
@@ -526,6 +528,10 @@ export function readCycleChangeRequestImpacts(cycleDir) {
   }
   const filePath = path.join(cycleDir, "change-requests.md");
   const text = readTextIfExists(filePath);
+  return extractCycleChangeRequestImpacts(text);
+}
+
+export function extractCycleChangeRequestImpacts(text) {
   const impacts = [];
   for (const line of String(text).split(/\r?\n/)) {
     const match = line.match(/^\s*-\s*Impact:\s*(low|medium|high)\s*$/i);

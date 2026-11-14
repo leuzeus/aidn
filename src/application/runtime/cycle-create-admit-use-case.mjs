@@ -3,6 +3,7 @@ import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.
 import { resolvePromotedSharedPlanningContext } from "./shared-planning-resolution-service.mjs";
 import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
 import { resolveWorkflowContinuityContext } from "./workflow-continuity-context-service.mjs";
+import { hasInvisibleStandardPrOpening, readStandardPostMergeContinuity } from "./standard-post-merge-continuity.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { resolveBranchMapping } from "../../lib/workflow/branch-mapping-lib.mjs";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
@@ -367,6 +368,27 @@ export async function runCycleCreateAdmitUseCase({
       ],
       blocking_reasons: continuityContext.canonical_continuity_ambiguities,
       recommended_next_action: "Run `aidn runtime state-reanchor --target . --json`, review the low-confidence candidate, then apply an explicit repair before choosing cycle continuity.",
+    });
+  }
+
+  const priorSession = branchKind === AIDN_BRANCH_KIND.SOURCE ? sessions.at(-1) : targetSession;
+  const prior = priorSession?.metadata;
+  const reconciliation = priorSession && readStandardPostMergeContinuity({
+    targetRoot: absoluteTargetRoot, sessionId: priorSession.session_id, content: priorSession.text, sourceBranch,
+    sessionPath: path.relative(auditRoot, priorSession.file_path).replaceAll("\\", "/"),
+  });
+  const awaitingMerge = prior?.pr_status === "open" && prior.close_gate_satisfied === true && !reconciliation?.completion;
+  const awaitingSync = prior?.pr_status === "merged" && !reconciliation?.completion
+    && (reconciliation?.managed || prior.post_merge_sync_status !== "done");
+  if (awaitingMerge || awaitingSync || branchKind === AIDN_BRANCH_KIND.SOURCE
+    && hasInvisibleStandardPrOpening({ targetRoot: absoluteTargetRoot, sourceBranch })) {
+    return makeResult(base, {
+      action: "stop_pr_continuity",
+      reason_code: awaitingMerge ? "CYCLE_CREATE_SESSION_PR_OPEN" : "CYCLE_CREATE_POST_MERGE_SYNC_REQUIRED",
+      blocking_reasons: [awaitingMerge
+        ? "The closed session still has an open PR in canonical state."
+        : "The merged session still requires local source-branch reconciliation."],
+      recommended_next_action: "Continue the PR lifecycle and record local reconciliation before creating a new cycle.",
     });
   }
 

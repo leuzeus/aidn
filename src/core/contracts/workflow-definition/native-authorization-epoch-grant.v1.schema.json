@@ -1,0 +1,207 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/native-authorization-epoch-grant.v1",
+  "x-aidn-contract-version": "native-authorization-epoch-grant.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "authority_id",
+    "source_event_id",
+    "request_sha256",
+    "authorization",
+    "closure",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "native-authorization-epoch-grant.v1"
+    },
+    "authority_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "source_event_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "request_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approved",
+        "model_allowed",
+        "configuration_sha256",
+        "authorized_at_ms",
+        "global_deadline_ms",
+        "workflow_deadline_ms",
+        "max_turn_ms",
+        "max_responses",
+        "max_bytes"
+      ],
+      "properties": {
+        "approved": {
+          "const": true
+        },
+        "model_allowed": {
+          "const": true
+        },
+        "configuration_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "authorized_at_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "global_deadline_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "workflow_deadline_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "max_turn_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2700000
+        },
+        "max_responses": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 1048576,
+          "maximum": 471859200
+        }
+      }
+    },
+    "closure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "request_sha256",
+        "inventory_sha256",
+        "observed_at_ms",
+        "complete",
+        "active_resources",
+        "evidence_class",
+        "resources"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "native-resource-closure.v1"
+        },
+        "request_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "inventory_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "observed_at_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "complete": {
+          "const": true
+        },
+        "active_resources": {
+          "const": 0
+        },
+        "evidence_class": {
+          "enum": [
+            "fixture",
+            "native"
+          ]
+        },
+        "resources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 160,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "resource_sha256",
+              "state",
+              "evidence_refs"
+            ],
+            "properties": {
+              "resource_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "state": {
+                "const": "closed"
+              },
+              "evidence_refs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ref",
+                    "sha256"
+                  ],
+                  "properties": {
+                    "ref": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

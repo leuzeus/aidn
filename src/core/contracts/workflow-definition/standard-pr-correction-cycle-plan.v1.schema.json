@@ -1,0 +1,616 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-correction-cycle-plan.v1",
+  "x-aidn-contract-version": "standard-pr-correction-cycle-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "input",
+    "prepared_at_ms",
+    "decision_sha256",
+    "review",
+    "origin",
+    "inner"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-pr-correction-cycle-plan.v1"
+    },
+    "operation_ref": {
+      "const": "session_pr_correction_cycle_initialize"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "decision_operation_id",
+        "cycle_id",
+        "title",
+        "objective"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "standard-pr-correction-cycle-input.v1"
+        },
+        "decision_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "cycle_id": {
+          "type": "string",
+          "pattern": "^C[0-9]{3,6}$"
+        },
+        "title": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+        },
+        "objective": {
+          "type": "string",
+          "minLength": 15,
+          "maxLength": 512,
+          "pattern": "^[^\\r\\n\\u0000]+$"
+        }
+      }
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "decision_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_id",
+        "checkpoint_operation_id",
+        "checkpoint_plan_sha256",
+        "checkpoint_output_sha256",
+        "reopen_operation_id",
+        "triage_operation_id",
+        "product_sha256",
+        "provider_subject_sha256",
+        "head_oid",
+        "head_branch",
+        "remote_head_oid",
+        "base_oid",
+        "state_mode",
+        "postimages"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 7,
+          "pattern": "^S[0-9]{3,6}$"
+        },
+        "checkpoint_operation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 43,
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "checkpoint_plan_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "checkpoint_output_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "reopen_operation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 43,
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "triage_operation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 43,
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "product_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "provider_subject_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "head_oid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{40,64}$"
+        },
+        "head_branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9/_-]{0,127}$"
+        },
+        "remote_head_oid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{40,64}$"
+        },
+        "base_oid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{40,64}$"
+        },
+        "state_mode": {
+          "enum": [
+            "files",
+            "dual",
+            "db-only"
+          ]
+        },
+        "postimages": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "sha256",
+              "metadata_sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "sha256": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "metadata_sha256": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "triage_operation_id",
+        "triage_output_sha256",
+        "session_id",
+        "selection_operation_id",
+        "received_operation_id",
+        "update_operation_id",
+        "payload_sha256",
+        "product_sha256",
+        "source_material_sha256",
+        "pull_request",
+        "corrections"
+      ],
+      "properties": {
+        "triage_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "triage_output_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^S[0-9]{3,6}$"
+        },
+        "selection_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "received_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "update_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "product_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_material_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "pull_request": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contract_version",
+            "repository_id",
+            "node_id",
+            "number",
+            "head_branch",
+            "base_branch",
+            "head_oid",
+            "base_oid",
+            "state",
+            "draft",
+            "url",
+            "title_sha256",
+            "body_sha256"
+          ],
+          "properties": {
+            "contract_version": {
+              "const": "github-pr-link.v1"
+            },
+            "repository_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "node_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "number": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "head_branch": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 192
+            },
+            "base_branch": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 192
+            },
+            "head_oid": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "pattern": "^[a-f0-9]{40}$"
+            },
+            "base_oid": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "pattern": "^[a-f0-9]{40}$"
+            },
+            "state": {
+              "enum": [
+                "OPEN",
+                "CLOSED",
+                "MERGED"
+              ]
+            },
+            "draft": {
+              "type": "boolean"
+            },
+            "url": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048,
+              "pattern": "^https://github[.]com/"
+            },
+            "title_sha256": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "body_sha256": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        "corrections": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 512,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "node_id",
+              "thread_id",
+              "correction"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "review",
+                  "comment",
+                  "thread"
+                ]
+              },
+              "node_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "thread_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 256
+              },
+              "correction": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16384
+              }
+            }
+          }
+        }
+      }
+    },
+    "inner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "can_apply",
+        "plan",
+        "plan_sha256"
+      ],
+      "properties": {
+        "can_apply": {
+          "const": true
+        },
+        "plan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contract_version",
+            "operation_ref",
+            "input",
+            "prepared_at_ms",
+            "scope",
+            "mode",
+            "branch_name",
+            "cycle_path",
+            "session_path",
+            "latest_cycle_branch",
+            "templates",
+            "changes"
+          ],
+          "properties": {
+            "contract_version": {
+              "const": "standard-cycle-initialize-plan.v2"
+            },
+            "operation_ref": {
+              "const": "cycle_initialize"
+            },
+            "input": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "session_id",
+                "cycle_id",
+                "cycle_type",
+                "title",
+                "objective",
+                "continuity_rule",
+                "base_branch"
+              ],
+              "properties": {
+                "session_id": {
+                  "type": "string",
+                  "pattern": "^S[0-9]{3,6}$"
+                },
+                "cycle_id": {
+                  "type": "string",
+                  "pattern": "^C[0-9]{3,6}$"
+                },
+                "cycle_type": {
+                  "enum": [
+                    "feature",
+                    "spike",
+                    "refactor",
+                    "structural",
+                    "migration",
+                    "security",
+                    "perf",
+                    "integration",
+                    "compat",
+                    "corrective",
+                    "hotfix"
+                  ]
+                },
+                "title": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+                },
+                "objective": {
+                  "type": "string",
+                  "minLength": 15,
+                  "maxLength": 512,
+                  "pattern": "^[^\\r\\n\\u0000]+$"
+                },
+                "continuity_rule": {
+                  "enum": [
+                    "R1_STRICT_CHAIN",
+                    "R2_SESSION_BASE_WITH_IMPORT"
+                  ]
+                },
+                "base_branch": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9/_-]{0,127}$"
+                }
+              }
+            },
+            "prepared_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "scope": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "project",
+                "persistence",
+                "branch",
+                "head"
+              ],
+              "properties": {
+                "project": {
+                  "type": "object"
+                },
+                "persistence": {
+                  "type": "object"
+                },
+                "branch": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "head": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{40,64}$"
+                }
+              }
+            },
+            "mode": {
+              "enum": [
+                "COMMITTING",
+                "EXPLORING"
+              ]
+            },
+            "branch_name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "cycle_path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 192
+            },
+            "session_path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 192
+            },
+            "latest_cycle_branch": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "templates": {
+              "type": "array",
+              "minItems": 8,
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 192
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                }
+              }
+            },
+            "changes": {
+              "type": "array",
+              "minItems": 11,
+              "maxItems": 11,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path",
+                  "before_sha256",
+                  "after",
+                  "after_sha256",
+                  "before_metadata_sha256"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 192
+                  },
+                  "before_sha256": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "after": {
+                    "type": "string",
+                    "maxLength": 1048576
+                  },
+                  "after_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "before_metadata_sha256": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "plan_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "observed_at_utc": "2026-11-03T21:40:11.187527+00:00",
+  "source_commit": "2f60933952eaa4ba910dd429c4e0398d34839c9f",
+  "model_revision": 41,
+  "model_sha256": "158b82f5f4ffa51cd4f71f370c42951dd4d9de182a8729b2c248e2be5e8db024",
+  "implementation_pin": "e9927f169a124ae8a01d6454f638d4f0d897c87a47108e8ce27dded2dddd03ba",
+  "records": [
+    {
+      "mode": "files",
+      "verdict": "PASS",
+      "ended_at_utc": "2026-11-03T21:38:09.7209335Z",
+      "exit_code": 0,
+      "summary": {
+        "status": "PASS",
+        "checks": 9,
+        "state_mode": "files",
+        "transport": "ACTUAL_LOCAL_BARE_GIT",
+        "stores": "ACTUAL_FILES",
+        "admission_closure_sources": "INJECTED_FIXTURE",
+        "full_composition": "NOT_RUN",
+        "github": "NOT_RUN",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "log_sha256": "fda0482d5be20b5f64223d3cf17d48b45b89d7cdf219534be386452f74cb567a",
+      "cleanup_completed": true
+    },
+    {
+      "mode": "dual",
+      "verdict": "PASS",
+      "ended_at_utc": "2026-11-03T21:38:08.1813418Z",
+      "exit_code": 0,
+      "summary": {
+        "status": "PASS",
+        "checks": 9,
+        "state_mode": "dual",
+        "transport": "ACTUAL_LOCAL_BARE_GIT",
+        "stores": "ACTUAL_SQLITE",
+        "admission_closure_sources": "INJECTED_FIXTURE",
+        "full_composition": "NOT_RUN",
+        "github": "NOT_RUN",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "log_sha256": "c658a518e5c735cc1048b924ab071399ac41df31275d65a79450dabaf62c59f7",
+      "cleanup_completed": true
+    },
+    {
+      "mode": "db-only",
+      "verdict": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-03T21:38:09.7983389Z",
+      "summary": {
+        "status": "PASS",
+        "checks": 9,
+        "state_mode": "db-only",
+        "transport": "ACTUAL_LOCAL_BARE_GIT",
+        "stores": "ACTUAL_SQLITE",
+        "admission_closure_sources": "INJECTED_FIXTURE",
+        "full_composition": "NOT_RUN",
+        "github": "NOT_RUN",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "log_sha256": "0398319a6d45c32e64a2c5492e52971d20aa158aaf8405181939a026429da2ca",
+      "cleanup_completed": true
+    }
+  ],
+  "proof_boundary": "actual service/owner and local bare Git transport; admitted closure/human/current-instance sources injected; no authenticated full model run yet",
+  "initial_attempt": {
+    "verdict": "FAIL",
+    "exit_code": 1,
+    "checks_passed": 4,
+    "effect": "no remote push attempted",
+    "reason": "older fixture corpus lacked the installed local-owner ignore policy; replaced fixture construction with current source installation",
+    "log_sha256": "7075ddbd12948f2079f113a17a90e440f965287a936a8f895d7a8073b13beaae"
+  },
+  "intermediate_files_attempt": {
+    "verdict": "PASS",
+    "checks": 8,
+    "difference": "before explicit TTL case, control pre-push and full-project byte comparison were added",
+    "log_sha256": "d309e1258c7bace548b57dbb0f13f6b8e952bd194d36562a5487deb7b1d8c1c3"
+  },
+  "composed_model41": {
+    "first_attempt": {
+      "status": "FAIL",
+      "source_commit": "2f60933952eaa4ba910dd429c4e0398d34839c9f",
+      "exit_code": 1,
+      "reason": "fixture arrangement called execFileSync before its import; failed before standard host initialization, native allocation or push",
+      "log_sha256": "cf14549a0f66aa087cd910d6cf3c7dca3ae4b70a0ec88afdc398113fea3e27d3",
+      "fixture": "retained for diagnosis; no replay attempted"
+    },
+    "second_attempt": {
+      "status": "RUNNING",
+      "source_commit": "93958bff11dd2cfacbdb80e0d0c1d112f11fa0ff",
+      "change": "test import only; runtime model and implementation pin unchanged",
+      "verdict": "not yet available"
+    }
+  },
+  "aggregate_runtime_family": "NOT_RUN",
+  "native_real": "NOT_RUN",
+  "github_real": "NOT_RUN",
+  "installed_archive": "NOT_RUN",
+  "full_standard_workflow": false
+}

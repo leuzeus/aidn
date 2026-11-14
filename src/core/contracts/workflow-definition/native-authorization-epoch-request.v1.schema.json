@@ -1,0 +1,272 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/native-authorization-epoch-request.v1",
+  "x-aidn-contract-version": "native-authorization-epoch-request.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "request_id",
+    "instance_id",
+    "scope_id",
+    "model_sha256",
+    "configuration_sha256",
+    "instance_sha256",
+    "product_sha256",
+    "journal_sha256",
+    "allocations_sha256",
+    "previous_epoch_sha256",
+    "epoch",
+    "next_generation",
+    "initial_authorization",
+    "consumption",
+    "resources",
+    "issued_at_ms",
+    "expires_at_ms",
+    "key_id",
+    "authentication"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "native-authorization-epoch-request.v1"
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "instance_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "model_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "configuration_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "instance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "product_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "journal_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "allocations_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "previous_epoch_sha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "epoch": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 32
+    },
+    "next_generation": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 32
+    },
+    "initial_authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approved",
+        "model_allowed",
+        "configuration_sha256",
+        "authorized_at_ms",
+        "global_deadline_ms",
+        "workflow_deadline_ms",
+        "max_turn_ms",
+        "max_responses",
+        "max_bytes"
+      ],
+      "properties": {
+        "approved": {
+          "const": true
+        },
+        "model_allowed": {
+          "const": true
+        },
+        "configuration_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "authorized_at_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "global_deadline_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "workflow_deadline_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "max_turn_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2700000
+        },
+        "max_responses": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 1048576,
+          "maximum": 471859200
+        }
+      }
+    },
+    "consumption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "known",
+        "responses",
+        "bytes"
+      ],
+      "properties": {
+        "known": {
+          "const": true
+        },
+        "responses": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "resources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 160,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "generation",
+              "owner_id",
+              "closure_sha256",
+              "checkpoint_sha256"
+            ],
+            "properties": {
+              "kind": {
+                "const": "allocation"
+              },
+              "generation": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 32
+              },
+              "owner_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "closure_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "checkpoint_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "execution_id",
+              "agent_id",
+              "lineage_id",
+              "session_id",
+              "adapter_id"
+            ],
+            "properties": {
+              "kind": {
+                "const": "native_session"
+              },
+              "execution_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "agent_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "lineage_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "session_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "adapter_id": {
+                "const": "codex-agentic-session"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "issued_at_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "expires_at_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authentication": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}
