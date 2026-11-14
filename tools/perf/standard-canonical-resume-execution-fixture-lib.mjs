@@ -206,7 +206,11 @@ export async function verifyCanonicalResumeExecution(check, { mixedFixture, sele
             entryWitness = () => shadowHash({ instance: host.inspect().record.instance_sha256, canonical: data.canonical(), refs: data.heads(),
               head: data.git("rev-parse", "HEAD"), index: createHash("sha256").update(fs.readFileSync(entryIndex)).digest("hex"),
               product: fs.readFileSync(path.join(root, "product/app.mjs"), "utf8"),
-              journals: fs.readdirSync(path.join(root, "docs/audit/workflows/operation-records")).sort() }),
+              journals: artifacts.observeInventory().rows.filter(row => row.path.startsWith("workflows/operation-records/"))
+                .map(({ path, sha256, metadata_sha256 }) => ({ path, sha256, metadata_sha256 })),
+              journal_projection: fs.existsSync(path.join(root, "docs/audit/workflows/operation-records"))
+                ? fs.readdirSync(path.join(root, "docs/audit/workflows/operation-records")).sort().map(name => ({ name,
+                  sha256: createHash("sha256").update(fs.readFileSync(path.join(root, "docs/audit/workflows/operation-records", name))).digest("hex") })) : null }),
             entryBefore = entryWitness(),
             deniedPreview = await denied.preview({ instanceId: entryState.record.instance_id, expectedSha256: entryState.record.instance_sha256, occurrenceId: entryOccurrence });
           await assert.rejects(denied.stage(deniedPreview, { write: true, expectedPreviewSha256: shadowHash(deniedPreview) }), { code: "STANDARD_HOST_AUTHORIZATION_REQUIRED" });
