@@ -143,8 +143,8 @@ STANDARD acceptance remain separate outstanding qualifications.
 ## Accepted canonical plan selection, 2026-11-12
 
 The focused `--canonical-plan-selection-mode=files|dual|db-only` cases execute
-signed cold canonical adoption, the actual read-only selector, real DoR and
-phase entry. The selector reobserves the canonical source and authenticates the
+signed cold canonical adoption, the actual read-only selector, one current
+read-only intent/architecture assessment, real DoR and phase entry. The selector reobserves the canonical source and authenticates the
 accepted origin ID and record digest. Deliberately changed plan content must
 refuse in actual selector preview without changing process state; restoration
 is explicit fixture setup. No Native plan or completed task is fabricated.
@@ -157,7 +157,8 @@ published existing-cycle routing, imported progress, genuine actors or delivery.
 
 The focused `--canonical-plan-work-only` FILES case prepares a neutral existing
 two-task plan through actual canonical ports. Its process adopts that source,
-satisfies real DoR and enters implementation, then uses the existing task loop,
+assesses its current intent/architecture without replacing the plan, satisfies
+real DoR and enters implementation, then uses the existing task loop,
 specific Native write admission, actual validation commands and task advancement
 to reach verification. Planning preimages are fixture setup. The two work
 responses use an identified Native transport double; no planner response or
@@ -184,8 +185,8 @@ execution or full admission.
 
 The focused `--canonical-plan-readiness-mode=files|dual|db-only` execution
 cases use the same real canonical preimage and signed cold adoption as the
-observation component, then actual DoR evaluation and an explicitly authorized
-phase effect. The source remains canonical content/metadata. No Native
+observation component, then one current read-only assessment, actual DoR
+evaluation and an explicitly authorized phase effect. The source remains canonical content/metadata. No Native
 producer or completed work is fabricated. Source mutation before readiness
 must refuse, restoration is explicit fixture arrangement, and implementation
 entry preserves plan content while applying the normal phase CAS. This
@@ -5934,7 +5935,11 @@ For changes to shared fixture composition, keep the existing direct selected-foc
 
 The `--canonical-resume-native-phase=VERIFYING --canonical-resume-native-intent=integrate_now` variant stages two imported completed tasks, observes the current product and runs current checks before one controlled Native auditor, with no Native work response. Its worker audit bridge exercises `acceptedWorkSnapshot` through the canonical-resume product branch and its trusted snapshot reader. A partial Native-work auditor alone does not cover that branch.
 
-Integration-only variants with phase OPEN or IMPLEMENTING and intent integrate_now execute the actual existing implementation-effect preview and require the original-intent refusal, unchanged business state, no pending effect owner, no checks and no Native allocation or model turn. Controlled human and Native actors are explicit fixture ports; these commands do not prove genuine actors, an installed archive, real PostgreSQL or the full STANDARD route.
+The two private prework output contracts retain a closed blocked/no_effect branch with only a bounded reason_code and empty facts/evidence. The focused prework contract fixture rejects success claims, unknown observations, foreign operation IDs and malformed reasons in that branch while retaining the accepted-output checks.
+
+Canonical-resume fixture workers additionally observe preparation failures through a trusted fixture wrapper around the actual authority and shared pure binding reader. They retain only bounded machine codes, error classes and package-relative source locations, with original return values/errors forwarded. Diagnostic bytes remain in the existing control-root accounting. This observation supplies no Native authority or resource-closure proof.
+
+Integration-only variants with phase OPEN or IMPLEMENTING and intent integrate_now execute the actual current read-only prework selector through the common host. Preparation resolves input without business evaluation. Explicit staging, dispatch and acceptance retain the signed blocked result with the original-intent refusal; business state stays unchanged, with no pending effect owner, checks, Native allocation or model turn. Controlled human and Native actors are explicit fixture ports; these commands do not prove genuine actors, an installed archive, real PostgreSQL or the full STANDARD route.
 
 The focused `--drift-git-readonly-only --retain-always` selector runs the existing controlled Git scope fixture against cold index stat preimages. Clean, modified product/private, changed private bytes, staged and untracked cases preserve index bytes, HEAD/refs and product/private content after observation. Diff/status semantics, private nondisclosure and scope/environment refusals remain covered; no model is called. The same selector also exercises the actual verification document boundary with local diff.autoRefreshIndex enabled and a cold stat cache. It preserves physical index/configuration/HEAD/ref/product/document bytes, discounts only its exact unstaged owned outputs, still detects staged owned work, product changes and untracked foreign files, and refuses Git environment scope overrides.
 
@@ -5993,8 +5998,58 @@ unchanged business planning context, immutable canonical proposals,
 non-successful judgements and malformed/foreign identity refusals. No Native
 backend is launched: schema construction and local answer validation are
 component evidence. Direct source-pin mutation checks cover the prework core
-and both schemas. The fixed host, readiness/effect fences and current genuine
-producer remain required before the published workflow can use this data.
+and authority, all five prework schemas and the current catalog reader. Actual
+fixed-host, readiness/effect and genuine-producer execution remain required
+before reporting a qualified published workflow.
+
+
+The prework command additionally runs controlled authority-port fixtures for actual-origin dataflow, current selector linkage, fresh versus canonical assessment, complete canonical routing, integration-only refusal, post-await permission/process/owner/scope/backend/product/content/metadata changes, retained Native-context mismatch, failed/information-needed outcomes and immutable evaluation witnesses. All five prework schemas receive definition validation. These fixtures supply controlled ports and launch no actor; they are not live journal-authentication or effect qualification. The actual cycle-planning readiness fixture is prepared to execute cycle_admit and cycle_initialize through its same mixed process before its controlled Native response. Its earlier manually created cycle is no longer presented as an accepted operation origin. Those actual-host cases, current root routing, backend and genuine Native execution require their own current-source results.
+
+
+The current v7 source retains Native R05 in the root. Two explicit deterministic
+calls group the five creation/entry operations before that diagnosis and the
+two checkpoint/context operations after it, with six and two typed identity/
+context parameters respectively. They contain no Native activity and preserve
+the existing operation order. The common prework branch runs the current
+assessment and records a proposal only for fresh planning; complete canonical
+DATA skips that actor. Source construction remains bounded to 256 nodes and
+32 children per sequence. These invariants and offline composition checks do
+not establish actual call/return, human, Native or installed execution.
+
+
+The controlled prework owner case permits read-only reobservation only through
+the fixed effect's existing owner assertion. It rejects a missing/foreign owner
+after the observation await and a non-callable owner flag. Native preparation
+requires its current reserved allocation through the fixed active reader; caller
+flags cannot replace that reservation. Ordinary selector/evaluation still refuse
+the pending owner, and revocation across an await refuses preparation. Actual plan-record/implementation
+execution remains a separate required host case.
+
+The v7 synthetic preflight resolves fresh entry/checkpoint parameters and
+accepted lifecycle DATA through the declared call bindings. A pending owned
+plan selects startup diagnosis plus one initial canonical assessment, without
+plan creation or replacement; its old one-response trial refuses before any
+fixture is created. Two owned task occurrences select four responses under the
+unchanged six-response trial. Main and corrective task counters remain separate:
+two tasks in each cycle demand nineteen responses and refuse the original
+seventeen-response scenario. These are reducer/dataflow checks, not actual
+Native judgements, effects or installed qualification. The prepared mixed-host
+owned fixtures identify the initial audit separately from planning or work;
+complete canonical data continues directly to current verification.
+
+Native execution retains only bounded closed-family prework and effect-owner
+reason codes in the existing safe diagnostic envelope; raw exception messages
+and stacks remain excluded. The original source335 actual FILES context failure
+is retained separately from its diagnosed allocation-owner mismatch. Current
+controlled tests, source authoring and actual-host validation keep distinct
+results; changing the implementation does not reconcile that failed realm.
+
+The prework fixture also covers complete source text above the small DTO string
+default in fresh and canonical assessment. It preserves full content/hash,
+rejects aggregate overflow and accessors without invoking them, and checks
+that ordinary DTO callers keep their old bound. The existing whole Native
+context byte ceiling remains unchanged. Workflow compilation and shadow
+fixtures cover the shared checker's unchanged default behavior.
 
 The actual composed driver recognizes the pinned creation/checkpoint, owned/
 selected entry, work preparation, canonical verification and mode-closure
@@ -6005,10 +6060,69 @@ consume no Native response. Unsupported calls fail as fixture assertions before
 any missing final-verification ID can be passed to the journal reader. Actual
 current-root execution remains a separate required case from pure preflight.
 
+Canonical selection/readiness and two-task work fixtures authenticate their current
+initial assessment through an actual selector, closed controlled Native allocation
+and accepted evaluation. Readiness names that evaluation witness. The assessment
+returns no new proposal; the original canonical plan/content/metadata and source
+mutation refusals remain checked. Pure adoption remains actor-free; the selector itself allocates no actor. One current audit is counted separately from zero planning
+responses and from task work. A single finite fixture grant is fixed before the
+first allocation under the existing six-response/10 MiB ceiling. This component
+coverage does not establish genuine actors or a delivered installed workflow.
+
+The owned `--enter` fixture retains its original dirty canonical prefix, positive
+phase effect and next-task selection, with one closed current initial audit and
+no work receipt. Partial imported resume separates initial assessment, pending
+task work and final audit under the original fixture base grant. Complete
+canonical DATA skips initial assessment and task work, but still needs current
+validation and a final auditor. Integration-only pending work refuses at the
+current prework selector before any actor or implementation effect. Its blocked
+read-only operation remains in the authenticated control history. These are controlled Native
+fixtures, not genuine model or process-tree qualification.
+
 Canonical plan selection reports whether a separate implementation entry is
 required for the accepted current phase and remaining tasks. This read-only
 route fact is not DoR satisfaction or an implementation permission. The
 canonical selection fixture checks that fact and keeps authorization false.
 
+
+### Native dispatch provenance candidate
+
+`node tools/perf/verify-native-dispatch-provenance-fixtures.mjs --contracts-only`
+checks closed allocation/epoch provenance data and rejects scope, model, PID,
+plan, context, fence, physical-identity, unknown-field and closure-claim
+substitution. It performs no owner effect or Native call.
+
+The required agentic manifest adds the same script with `files`, `dual` and
+`db-only` before the existing final nominal case; all original cases retain
+their order. These components use the real common local-owner and canonical
+record ports with controlled no-Native action results. They check normal
+release, UNKNOWN retention and exceptions before the fence, after acquisition
+after physical declaration, after lock release before fence release, and after
+the returned record before acknowledgement. A released lock with a held fence
+stays unresolved; lost acknowledgement must preserve the returned evidence.
+Each case initializes a real no-Native process,
+reads the signed proof through the common reconciliation-inventory port, refuses
+a foreign configuration without changing the original record, and checks every
+fixture byte/directory for read-only behavior. DB-only must not export the new JSON record.
+Owned cases, including expected retained owners, remain available for explicit
+recovery and cleanup. They do not prove an abrupt process crash, actual Native
+closure, generic R10 disposition, installed behavior or complete STANDARD.
+The storage fixture also covers stale import/projection refusal for the new
+namespace on SQLite and the identified fake PostgreSQL transport.
+
+Current implementation authoring and actual component/composed execution must
+pass before this source can be treated as qualified.
+## Native dispatch installation namespace regression, 2026-11-14
+
+The Native dispatch provenance suite checks the actual installed Git ignore
+rules against its signed dispatch record in each storage mode. The exact
+`/docs/audit/workflows/native-dispatches/` runtime namespace is ignored; a
+business cycle plan and an adjacent directory with a similar name remain
+reviewable. This keeps local canonical control records out of product drift
+without changing context admission, owner/fence authentication or Git readers.
+The original composed preparation failures remain failures. New projects and
+the original Native case arguments and finite grants are required to qualify
+the corrected source; this regression alone grants no installed or full journey
+acceptance.
 
 The composed call fixture recognizes closure_drift_recovery_execution and its declared aidn-standard-drift-recovery target. Return assertions use the actual reducer-selected flow and its declared operation leaves; skipped branch journals are not accepted as execution. The existing composition fixture covers record, new-cycle, rollback and pending branches with the production reducer and explicitly synthetic receipts, including missing/foreign operation refusals. This driver-oracle scope runs no business port or Native actor and does not qualify general R10 or a full composed recovery.

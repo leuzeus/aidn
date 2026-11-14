@@ -1,10 +1,15 @@
 import subjectSchema from "../contracts/workflow-definition/standard-cycle-prework-subject.v1.schema.json" with { type: "json" };
 import reportSchema from "../contracts/workflow-definition/standard-cycle-prework-report.v1.schema.json" with { type: "json" };
+import selectionSchema from "../contracts/workflow-definition/standard-cycle-prework-selection-output.v1.schema.json" with { type: "json" };
+import evaluationSchema from "../contracts/workflow-definition/standard-cycle-prework-evaluation-output.v1.schema.json" with { type: "json" };
+import witnessSchema from "../contracts/workflow-definition/standard-cycle-prework-witness.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { checkShadowJson, shadowHash } from "./shadow-json.mjs";
 import { assertStandardCyclePlan } from "./standard-cycle-planning.mjs";
 
 export const CYCLE_PREWORK_CONTRACT = "standard-cycle-prework-report.v1";
+// Existing total byte bound for the source-owned Native prework context.
+export const CYCLE_PREWORK_CONTEXT_MAX_BYTES = 262144;
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const hash = value => /^[a-f0-9]{64}$/.test(value ?? "");
 const unique = values => new Set(values).size === values.length;
@@ -69,4 +74,41 @@ export function observeStandardCyclePrework({ subject, report, contextSha256, ev
     subject_sha256: shadowHash(subject), report_sha256: shadowHash(report), context_sha256: contextSha256,
     proposal_sha256: shadowHash(proposal), implementation_authorized: false, current_native_work_evidence: false,
     current_validation_evidence: false };
+}
+
+export function assertStandardCyclePreworkSelection(output) {
+  valid(output, selectionSchema, 131072, "STANDARD_PREWORK_SELECTION_INVALID");
+  if (output.outcome === "blocked") return output;
+  const source = output.observations, subject = assertStandardCyclePreworkSubject(source.subject);
+  const canonicalOrigin = ["cycle_plan_adopt", "cycle_owned_resume_admit", "cycle_canonical_resume_admit"].includes(source.origin_binding_ref);
+  if (canonicalOrigin !== (subject.kind === "canonical_plan")) fail("STANDARD_PREWORK_SELECTION_INVALID");
+  if (subject.kind === "fresh_cycle") {
+    if (source.canonical_proposal !== null || source.canonical_complete) fail("STANDARD_PREWORK_SELECTION_INVALID");
+  } else {
+    const proposal = assertStandardCyclePlan(source.canonical_proposal);
+    if (shadowHash(proposal) !== subject.proposal_sha256 || proposal.session_id !== subject.session_id || proposal.cycle_id !== subject.cycle_id)
+      fail("STANDARD_PREWORK_SELECTION_INVALID");
+  }
+  if (shadowHash(output.facts) !== shadowHash({ cycle_prework_required: !source.canonical_complete })) fail("STANDARD_PREWORK_SELECTION_INVALID");
+  return output;
+}
+export function assertStandardCyclePreworkEvaluation(output) {
+  valid(output, evaluationSchema, 262144, "STANDARD_PREWORK_EVALUATION_INVALID");
+  if (output.outcome === "blocked") return output;
+  const source = output.observations;
+  if (source.cycle_path !== source.subject.cycle_path || (source.selection_operation_id === null) !== (source.selection_sha256 === null))
+    fail("STANDARD_PREWORK_EVALUATION_INVALID");
+  const checked = observeStandardCyclePrework({ subject: source.subject, report: source.report, contextSha256: source.context_sha256,
+    proposalContextSha256: source.planning_context_sha256, evidenceRefs: source.context_evidence_refs,
+    canonicalProposal: source.subject.kind === "canonical_plan" ? source.proposal : null });
+  if (checked.proposal_sha256 !== shadowHash(source.proposal)) fail("STANDARD_PREWORK_EVALUATION_INVALID");
+  const expectedOutcome = checked.outcome === "passed" ? "completed" : checked.outcome === "needs_information" ? "deferred" : "failed";
+  const facts = expectedOutcome === "completed" ? { cycle_plan_available: true, cycle_plan_record_required: source.subject.kind === "fresh_cycle", cycle_prework_passed: true } : {};
+  if (output.outcome !== expectedOutcome || shadowHash(output.facts) !== shadowHash(facts)) fail("STANDARD_PREWORK_EVALUATION_INVALID");
+  return output;
+}
+
+export function assertStandardCyclePreworkWitness(witness) {
+  valid(witness, witnessSchema, 2048, "STANDARD_PREWORK_WITNESS_REQUIRED");
+  return witness;
 }

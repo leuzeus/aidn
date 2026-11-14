@@ -1467,6 +1467,18 @@
       "tools/perf/verify-standard-cycle-source-selection-fixtures.mjs"
     ],
     [
+      "tools/perf/verify-native-dispatch-provenance-fixtures.mjs",
+      "files"
+    ],
+    [
+      "tools/perf/verify-native-dispatch-provenance-fixtures.mjs",
+      "dual"
+    ],
+    [
+      "tools/perf/verify-native-dispatch-provenance-fixtures.mjs",
+      "db-only"
+    ],
+    [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--standard-composed-mode=files",
       "--standard-composed-stop=nominal_post_merge_complete"

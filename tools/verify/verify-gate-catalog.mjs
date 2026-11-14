@@ -912,6 +912,10 @@ const negativeProbes = {
     const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
     return candidateRejected({ candidateAgenticFixtureManifest: candidate });
   })(),
+  native_owner_provenance_invocation_omission_rejected: (() => {
+    const candidate = { ...agenticProcessCases, cases: agenticProcessCases.cases.filter(args => args[0] !== "tools/perf/verify-native-dispatch-provenance-fixtures.mjs") };
+    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
+  })(),
   workflow_record_storage_invocation_omission_rejected: (() => {
     const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
       .replace(" && node tools/perf/verify-workflow-record-storage-fixtures.mjs", "");

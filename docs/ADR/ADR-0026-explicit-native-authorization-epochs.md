@@ -1,5 +1,33 @@
 # ADR-0026 - Explicit native authorization epochs
 
+## Native owner provenance candidate, 2026-11-14
+
+The fixed mixed allocator and Native epoch activation compose their existing
+local effect owner through the private standard dispatch context. A separate
+closed `native-dispatch-record.v1` is retained by the existing canonical
+workflow record adapter under `workflows/native-dispatches/`. It belongs to
+`native_allocation_journal`; no new backend, table, shared surface or principal
+is introduced. Allocation journal v1-v3 and their CAS subjects remain unchanged.
+
+Before fence acquisition or lock creation, the signed record binds the exact
+Native authorization or epoch request, current authority, scope/model/configuration,
+original process creation identity and proposed owner/fence. The actual opened
+lock identity is declared before the Native callback. Ordinary release retains
+its lease declaration. Returned/threw records preserve the action result digest
+or a bounded error code and the observed allocation-journal digests.
+
+These observations grant no takeover, replay, admission, budget renewal or
+resource cleanup. A returned dispatch and a released lock do not prove Native
+session closure, absence of business effects or release of every resource.
+The record always carries `permits_effects: false` and
+`complete_resource_closure: false`. The read-only reconciliation inventory
+authenticates its source and original instance prefix without clearing UNKNOWN.
+Historical attempts lacking this original signed evidence remain unchanged.
+
+This prerequisite still needs actual owner/crash tests, coherent implementation
+authoring and the relevant composed qualification. General Native disposition,
+R10 severity/verified recovery, handoff and complete L1-L8/A1-A10 remain separate.
+
 ## Exact-current disposition consent without a host age ceiling, 2026-11-11
 
 A disposition plan binds the original operation, inventory, runtime, instance,

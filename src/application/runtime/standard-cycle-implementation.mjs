@@ -36,11 +36,12 @@ export function createStandardCycleImplementation({ targetRoot, readEvaluation, 
       fail("STANDARD_CANONICAL_BACKEND_CONFLICT");
     return rows;
   }
-  async function prepare(instance, input, preparedAt, acquired = false) {
+  async function prepare(instance, input, preparedAt, acquired = false, assertOwner = null) {
 
     assertStandardOperationInput("cycle_implementation_enter", input);
     if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
-    const verified = await readEvaluation(instance, input), context = verified.context, cyclePath = context.cycle_path;
+    if (assertOwner) assertOwner();
+    const verified = await readEvaluation(instance, input, { assertOwner }), context = verified.context, cyclePath = context.cycle_path;
     if (verified.output.facts.cycle_readiness_satisfied !== true) fail("STANDARD_CYCLE_READINESS_EVALUATION_REQUIRED");
     const names = paths(cyclePath), batch = postgresMaterial(names, true);
     const rows = batch ?? names.map(name => artifacts.read(name, { required: true }));
@@ -65,6 +66,7 @@ export function createStandardCycleImplementation({ targetRoot, readEvaluation, 
       evaluation_sha256: verified.evaluation_sha256, context_sha256: verified.context_sha256, scope_sha256: verified.output.observations.scope_sha256,
       boundary_sha256: boundary(context, cyclePath), cycle_path: cyclePath, changes });
     if ((await observeContext()).context_sha256 !== verified.context_sha256) fail("STANDARD_CYCLE_READINESS_SOURCE_STALE");
+    if (assertOwner) assertOwner();
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }
   return Object.freeze({
@@ -78,11 +80,12 @@ export function createStandardCycleImplementation({ targetRoot, readEvaluation, 
       } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
-          const fresh = await prepare(instance, plan.input, plan.prepared_at_ms, true);
+          const fresh = await prepare(instance, plan.input, plan.prepared_at_ms, true, () => artifacts.assertLocalEffectOwner(expectPlan));
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_PREVIEW_CHANGED");
           await assertAuthorized();
           if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256
             || (await observeContext()).context_sha256 !== plan.context_sha256) fail("STANDARD_CYCLE_READINESS_SOURCE_STALE");
+          artifacts.assertLocalEffectOwner(expectPlan);
           const preimages = postgresMaterial(plan.changes.map(row => row.path));
           for (const [index, row] of plan.changes.entries()) {
             const current = preimages?.[index] ?? artifacts.read(row.path);

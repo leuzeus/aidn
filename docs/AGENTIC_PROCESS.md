@@ -815,3 +815,17 @@ physical event and five confirmed canonical postimages establish completion.
 History confirmation is appended. Unknown effects retain ownership and cannot
 rerun the checkpoint. Source-client mode/fault component tests are separate from
 the still required full standard IR/common-cursor, native and archive proofs.
+
+
+### Native owner provenance candidate
+
+The common mixed allocator retains a signed Native dispatch before its existing
+local fence/lock, for execution and epoch activation. The private dispatch
+context supplies the actual owner and exact physical lease identity; authored
+JSON cannot select a writer. The canonical record adapter stores this evidence
+in `workflows/native-dispatches/`, with SQLite/PostgreSQL projection protection
+and no automatic DB-only export. Allocation journals and original grants retain
+their existing versions and limits. Returned action and released lease records
+remain evidence, with no closure or recovery permission. Read-only inventory
+retains them without retiring an uncertain owner. General Native reconciliation,
+R10/handoff and exact composed qualification are still required.

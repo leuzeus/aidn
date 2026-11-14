@@ -95,8 +95,8 @@ op("spike_experiment_admit", "spike_experiment_admit", operation(null, "initiali
 xor("spike_planning_route", [["committing", "spike_committing_planning", "spike_experiment_committing"], ["exploring", "spike_exploring_planning", null]]);
 for (const prefix of ["spike_committing", "spike_exploring"]) {
   seq(`${prefix}_planning`, ["plan", "evaluate", "record", "execution_admit"].map(id => `${prefix}_${id}`));
-  native(`${prefix}_plan`, "planner", prefix === "spike_committing" ? "planning" : "exploring_planning", "standard-cycle-plan-proposal.v1", ["cycle-create"], ["SPEC-R02", "SPEC-R04"]);
-  op(`${prefix}_evaluate`, "cycle_plan_evaluate", occurrence(`${prefix}_plan`));
+  native(`${prefix}_plan`, "planner", prefix === "spike_committing" ? "planning" : "exploring_planning", "standard-cycle-prework-report.v1", ["cycle-create"], ["SPEC-R02", "SPEC-R03", "SPEC-R04"]);
+  op(`${prefix}_evaluate`, "cycle_prework_evaluate", occurrence(`${prefix}_plan`));
   op(`${prefix}_record`, "cycle_plan_record", operation(null, "evaluation_operation_id", `${prefix}_evaluate`));
   op(`${prefix}_execution_admit`, "spike_experiment_execution_admit", { ...operation(null, "conversion_operation_id", "spike_finalize"),
     ...operation(null, "record_operation_id", `${prefix}_record`) });
@@ -107,11 +107,17 @@ for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING
   if (prefix === "exploring") op("exploring_context_refresh", "cycle_context_refresh", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] } });
   op(`${prefix}_admit`, "mode_work_preflight", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] }, mode: { source: "literal", value: mode } });
 }
-seq("committing", ["cycle_entry_observe", "cycle_entry_route"]);
+seq("committing", ["cycle_entry_observe", "cycle_entry_route", "prework_select", "prework_route"]);
+op("prework_select", "cycle_prework_select");
+xor("prework_route", [["assess", "prework_assess", "cycle_prework_required"], ["complete_data", "prework_skipped", null]]);
+seq("prework_assess", ["plan", "plan_evaluate", "plan_record_route"]);
+xor("plan_record_route", [["fresh", "plan_record", "cycle_plan_record_required"], ["canonical", "prework_record_inapplicable", null]]);
+seq("prework_skipped", []);
+seq("prework_record_inapplicable", []);
 op("cycle_entry_observe", "cycle_entry_observe", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] }, cycle_id: { source: "literal", value: null } });
 xor("cycle_entry_route", [["fresh", "fresh_cycle", "cycle_entry_fresh_context"], ["owned", "owned_cycle", "cycle_entry_owned_context"],
   ["choice", "selected_cycle", "cycle_entry_choice_required"]]);
-seq("fresh_cycle", ["cycle_create", "plan", "plan_evaluate", "plan_record"]);
+seq("fresh_cycle", ["cycle_create"]);
 op("cycle_entry", "cycle_entry_admit", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] }, cycle_id: { source: "literal", value: null } });
 // An ordinary owned cycle needs no carryover H/checkpoint chain. The root's
 // existing cycle_refresh_before already derives its active-cycle digest.
@@ -196,8 +202,8 @@ const correctionRef = { session_id: { source: "operation_input", node_id: "sessi
   cycle_id: { source: "operation_input", node_id: "correction_initialize", path: ["cycle_id"] } };
 op("correction_branch_audit", "branch_cycle_audit", correctionRef);
 op("correction_cycle_checkpoint", "cycle_checkpoint_finalize", correctionRef);
-native("correction_plan", "planner", "planning", "standard-cycle-plan-proposal.v1", ["cycle-create"], ["SPEC-R03", "SPEC-R04"]);
-op("correction_plan_evaluate", "cycle_plan_evaluate", occurrence("correction_plan"));
+native("correction_plan", "planner", "planning", "standard-cycle-prework-report.v1", ["cycle-create"], ["SPEC-R03", "SPEC-R04"]);
+op("correction_plan_evaluate", "cycle_prework_evaluate", occurrence("correction_plan"));
 op("correction_plan_record", "cycle_plan_record", operation("correction_plan_record", "evaluation_operation_id", "correction_plan_evaluate"));
 op("correction_readiness", "cycle_readiness_evaluate", operation("correction_readiness", "record_operation_id", "correction_plan_record"));
 op("correction_implementation_enter", "cycle_implementation_enter", operation("correction_implementation_enter", "evaluation_operation_id", "correction_readiness"));
@@ -340,8 +346,9 @@ for (const original of cycle.data_bindings.inputs) {
   }
   inputs.push(copy);
 }
-native("plan", "planner", "planning", "standard-cycle-plan-proposal.v1", ["cycle-create"], ["SPEC-R03", "SPEC-R04"]);
-op("plan_evaluate", "cycle_plan_evaluate", occurrence("plan"));
+native("plan", "planner", "planning", "standard-cycle-prework-report.v1", ["cycle-create"], ["SPEC-R03", "SPEC-R04"]);
+inputs.push({ node_id: "plan", fields: operation(null, "selection_operation_id", "prework_select") });
+op("plan_evaluate", "cycle_prework_evaluate", occurrence("plan"));
 op("plan_record", "cycle_plan_record", operation("plan_record", "evaluation_operation_id", "plan_evaluate"));
 const preparationNodeStart = nodes.length, preparationInputStart = inputs.length;
 seq("prepare", ["plan_select", "entry_route"]);
@@ -688,6 +695,50 @@ for (const id of ["startup", "cycle_create", "thinking_session_close"]) {
   nodes.splice(nodes.indexOf(wrapper), 1);
 }
 
+// The composed creation branch contains a real Native R05. Keep it in the
+// root and extract only the two contiguous D/H groups around it.
+const movedFreshNames = new Set();
+function freshCall(id, modelId, ids, parameterNames, rewrite, callerFields) {
+  const parent = nodes.find(row => row.id === "fresh_cycle"), start = parent.children.indexOf(ids[0]);
+  if (start < 0 || parent.children.slice(start, start + ids.length).join(",") !== ids.join(",")) throw Error("STANDARD_FRESH_CALL_ORDER_REQUIRED");
+  const leafNodes = ids.map(name => nodes.find(row => row.id === name));
+  if (leafNodes.some(row => row?.kind !== "operation")) throw Error("STANDARD_FRESH_CALL_DETERMINISTIC_REQUIRED");
+  const selected = new Set(ids), targetInputs = inputs.filter(row => selected.has(row.node_id));
+  for (const row of targetInputs) for (const field of Object.values(row.fields)) {
+    rewrite(field);
+    if (field.node_id && !selected.has(field.node_id) || field.source === "parameter" && !parameterNames.includes(field.key))
+      throw Error("STANDARD_FRESH_CALL_EXPLICIT_INPUT_REQUIRED");
+  }
+  for (let index = inputs.length - 1; index >= 0; index--) if (selected.has(inputs[index].node_id)) inputs.splice(index, 1);
+  for (let index = nodes.length - 1; index >= 0; index--) if (selected.has(nodes[index].id)) nodes.splice(index, 1);
+  const target = { contract_version: "agentic-process-model.v2", model_id: modelId, revision: 1,
+    participants: [{ id: "project" }], roles: [], policies: [], entry: id,
+    nodes: [{ id, kind: "sequence", participant_ref: "project", children: ids }, ...leafNodes], operation_pins: pinsFor(leafNodes),
+    call_interface: { parameters: Object.fromEntries(parameterNames.map(key => [key, "string"])), returns: {} },
+    data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: parameterNames, inputs: targetInputs } };
+  const reference = pinTarget(target); parent.children.splice(start, ids.length, id); node(id, "call", { target: reference });
+  inputs.push({ node_id: id, fields: callerFields }); for (const name of ids) movedFreshNames.add(name);
+  return { ...reference, model: target };
+}
+const parameterField = (field, key) => { for (const name of Object.keys(field)) delete field[name]; Object.assign(field, { source: "parameter", key, path: [] }); };
+const freshEntryRef = freshCall("fresh_entry", "aidn-standard-fresh-cycle-entry",
+  ["session_git_checkpoint", "cycle_entry", "cycle_admit", "cycle_initialize", "cycle_audit"],
+  ["session_id", "context_operation_id", "cycle_id", "cycle_type", "title", "objective"], field => {
+    if (field.source === "operation_input" && ["session_initialize", "cycle_refresh_before"].includes(field.node_id) && field.path.join(".") === "session_id"
+      || field.source === "parameter" && field.key === "session" && field.path.join(".") === "session_id") parameterField(field, "session_id");
+    else if (field.source === "operation_id" && field.node_id === "cycle_refresh_before") parameterField(field, "context_operation_id");
+    else if (field.source === "parameter" && field.key === "cycle" && field.path.length === 1) parameterField(field, field.path[0]);
+  }, { session_id: { source: "operation_input", node_id: "cycle_refresh_before", path: ["session_id"] },
+    context_operation_id: { source: "operation_id", node_id: "cycle_refresh_before" },
+    ...Object.fromEntries(["cycle_id", "cycle_type", "title", "objective"].map(key => [key, { source: "parameter", key: "cycle", path: [key] }])) });
+const freshCheckpointRef = freshCall("fresh_checkpoint", "aidn-standard-fresh-cycle-checkpoint",
+  ["cycle_checkpoint", "cycle_refresh_after"], ["session_id", "cycle_id"], field => {
+    if (field.source === "operation_input" && field.node_id === "cycle_initialize" && field.path.length === 1) parameterField(field, field.path[0]);
+  }, { session_id: { source: "operation_input", node_id: "cycle_refresh_before", path: ["session_id"] },
+    cycle_id: { source: "parameter", key: "cycle", path: ["cycle_id"] } });
+for (const row of inputs) for (const field of Object.values(row.fields)) if (movedFreshNames.has(field.node_id))
+  throw Error("STANDARD_FRESH_CALL_UNDECLARED_RETURN");
+
 const policy = (id, assurance_profile, allowed_permissions, independent_review = false) => ({ id, version: 1, assurance_profile, mode: "COMMITTING",
   independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });
 const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard", revision: 1,
@@ -717,6 +768,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...choiceRef, model: choiceTarget },
     { ...preparationRef, model: preparationTarget },
     { ...completeRef, model: completeTarget },
+    freshEntryRef, freshCheckpointRef,
   ],
   data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session", "cycle"], inputs } };
 // Session creation is conditional inside the pinned setup call. Later work
@@ -733,7 +785,7 @@ assertAgenticProcessModel(model);
 const components = processModels(model);
 const specification = read("docs/SPEC.md");
 const skillSource = path => ({ path, sha256: standardAssetHash(read(path)) });
-const catalog = { contract_version: "standard-workflow-catalog.v6",
+const catalog = { contract_version: "standard-workflow-catalog.v7",
   component_id: "aidn-standard", revision: model.revision,
   scope: { kind: "composed_committing_cycle_component", complete_standard_workflow: false,
     entry_conditions: ["fresh_or_existing_session_admission", "fresh_owned_or_explicitly_selected_active_cycle"], remaining_activities: ["thinking_session_closure", "exploring_experiments_and_spike_conversion",

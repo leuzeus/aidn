@@ -19,6 +19,7 @@ import { createNativeAllocationControls, readNativeControlContext } from "./nati
 import { createNativeAuthorizationEpochs } from "./native-authorization-epochs.mjs";
 import { effectiveNativeEpochAuthorization } from "../../core/workflow/native-authorization-epoch.mjs";
 import { startNativeHumanVerificationPort } from "./native-human-verification-port.mjs";
+import { createNativeDispatchProvenance } from "./native-dispatch-provenance.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const limitKeys = ["configuration_sha256", "authorized_at_ms", "global_deadline_ms", "workflow_deadline_ms", "max_turn_ms", "max_responses", "max_bytes"];
@@ -87,7 +88,10 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
     return { known: true, responses: entries.reduce((sum, entry) => sum + entry.consumption.responses_observed, 0),
       bytes: entries.reduce((sum, entry) => sum + entry.consumption.storage_debit_bytes, 0) };
   }
+  const nativeOwnership = processAuthority ? createNativeDispatchProvenance({ configuration: config, options, signer, journalId,
+    processAuthority, readJournal: read, readInstance: () => instances.read(config.instance_id).record, projectionRequired }) : null;
   const epochs = createNativeAuthorizationEpochs({ configuration: config, signer, read, write, checkpoint, authenticatedCurrent, initialCurrent, journalId,
+    withNativeOwner: nativeOwnership?.withOwner,
     preview: () => executor.preview(), source: nativeAuthorizationSource, processAuthority,
     materialize: () => { if (projectionRequired) store.materialize(journalId, { write: true }); } });
   return Object.freeze({
@@ -224,7 +228,7 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
         return { contract_version: "journaled-native-allocation-result.v1", owned_result: observed, journal_id: journalId, generation: claim.generation,
           journal_phase: "reconciliation_required", status: "WAITING_FOR_RECONCILIATION", first_failure: error.code ?? "NATIVE_ALLOCATION_UNCONFIRMED", retry: false };
       } };
-      return processAuthority ? processAuthority.withNativeOwner({ instance_id: config.instance_id, authorization_sha256: shadowHash(auth) }, executeAllocation) : executeAllocation();
+      return nativeOwnership ? nativeOwnership.withOwner({ instance_id: config.instance_id, authorization_sha256: shadowHash(auth) }, executeAllocation) : executeAllocation();
     },
   });
 }

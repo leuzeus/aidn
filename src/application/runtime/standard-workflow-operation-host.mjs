@@ -179,10 +179,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     observeModeWork: (instance, input) => processAuthority.observeModeWork(instance, input), verifyDecision: record => verifyHumanRecord(record),
     readCurrent: id => current(id).record, observeProduct: () => processAuthority.observeProduct() }) : null;
   const cyclePlanRecord = processAuthority ? createStandardCyclePlanRecord({ targetRoot, now,
-    readEvaluation: (instance, input) => processAuthority.readCyclePlanEvaluation(instance, input),
+    readEvaluation: (instance, input, options) => processAuthority.readCyclePlanEvaluation(instance, input, options),
     observeContext: () => processAuthority.observeCyclePlanContext(), readCurrent: id => current(id).record }) : null;
   const cycleImplementation = processAuthority ? createStandardCycleImplementation({ targetRoot, now,
-    readEvaluation: (instance, input) => processAuthority.readCycleReadinessEvaluation(instance, input),
+    readEvaluation: (instance, input, options) => processAuthority.readCycleReadinessEvaluation(instance, input, options),
     observeContext: () => processAuthority.observeCycleReadinessContext(), readCurrent: id => current(id).record }) : null;
   const cycleValidation = processAuthority ? createStandardCycleValidation({ targetRoot, now, profileRef: validationProfile,
     readWork: (instance, input, options) => processAuthority.readCycleWorkEvaluation(instance, input, options), readCurrent: id => current(id).record }, { boundaryFactory: validationBoundaryFactory }) : null;
@@ -335,7 +335,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     const plan = selected.record.preview.prepared.plan;
     if (selected.output.effect_status !== "confirmed" || selected.output.facts.cycle_plan_recorded !== true || plan.cycle_path !== context.cycle_path
       || plan.changes.some(row => artifacts.read(row.path, { required: true }).sha256 !== row.after_sha256)) fail("STANDARD_CYCLE_PLAN_RECORD_CHANGED");
-    const evaluated = acceptedForPromotion(instance, selected.record.preview.input.evaluation_operation_id, "cycle_plan_evaluate", "STANDARD_CYCLE_PLAN_RECORD_REQUIRED");
+    const evaluationId = selected.record.preview.input.evaluation_operation_id;
+    const evaluationBinding = instance.events.find(row => row.kind === "operation_intent" && row.intent.operation_id === evaluationId)?.intent.binding_ref;
+    if (!["cycle_plan_evaluate", "cycle_prework_evaluate"].includes(evaluationBinding)) fail("STANDARD_CYCLE_PLAN_RECORD_REQUIRED");
+    const evaluated = acceptedForPromotion(instance, evaluationId, evaluationBinding, "STANDARD_CYCLE_PLAN_RECORD_REQUIRED");
     return emit(context, evaluated.output.observations.proposal, "native_record", "OPEN", [], selected.output.evidence_refs);
   }
   const sessionClosureAuthority = processAuthority ? createStandardSessionClosureAuthority({ targetRoot,
@@ -1851,6 +1854,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "cycle_close_completed_select") output = selectCompletedClose(state.record);
         else if (record.intent.binding_ref === "drift_followup_select") output = await driftRoute?.select(state.record, record.preview.input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "drift_report_evaluate") output = await processAuthority?.evaluateDriftReport(state.record, record.preview.input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");
+        else if (record.intent.binding_ref === "cycle_prework_select") output = await processAuthority?.selectCyclePrework(state.record, record.preview.input) ?? fail("STANDARD_PREWORK_AUTHORITY_UNAVAILABLE");
+        else if (record.intent.binding_ref === "cycle_prework_evaluate") output = await processAuthority?.evaluateCyclePrework(state.record, record.preview.input) ?? fail("STANDARD_PREWORK_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "cycle_plan_evaluate") output = await processAuthority?.evaluateCyclePlan(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_PLAN_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "cycle_readiness_evaluate") output = await processAuthority?.evaluateCycleReadiness(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_READINESS_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "cycle_work_evaluate") output = await processAuthority?.evaluateCycleWork(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_WORK_AUTHORITY_UNAVAILABLE");

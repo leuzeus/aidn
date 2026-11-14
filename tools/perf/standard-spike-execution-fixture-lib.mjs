@@ -9,6 +9,7 @@ import { iterateAgenticProcessSimulation } from "../../src/core/workflow/agentic
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { closureHumanSource } from "./cycle-closure-fixture-lib.mjs";
 import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
+import { preworkPlanningContext, preworkPlanningReport } from "./standard-cycle-prework-native-fixture-lib.mjs";
 import { cycleAuditProposal } from "./cycle-audit-fixture-lib.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { modeAnalysisWitness } from "./standard-mode-analysis-execution-fixture-lib.mjs";
@@ -38,12 +39,14 @@ export async function verifyStandardSpikeExecution({ mixedFixture, storageMode, 
   const humanSource = { read: input => closureHumanSource(sourceFile).read(input), verify: input => closureHumanSource(sourceFile).verify(input) };
   const f = mixedFixture(storageMode, { standardModel: true, validation: !!experiment, humanSource, hostTrace: true, async answer({ params }) {
     const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
-    if (experiment && observed.context.contract_version === "standard-cycle-plan-context.v1") {
-      const report = cyclePlanProposal(observed);
+    if (experiment && ["standard-cycle-plan-context.v1", "standard-cycle-prework-context.v1"].includes(observed.context.contract_version)) {
+      const prework = observed.context.contract_version === "standard-cycle-prework-context.v1";
+      const planning = prework ? preworkPlanningContext(observed) : observed;
+      const report = cyclePlanProposal(planning);
       selectStandardValidationChecks(verifier.profile, { test_refs: report.tests.map(row => row.id) });
       for (const task of report.tasks) selectStandardValidationChecks(verifier.profile, task);
-      report.spike = { learning_goal: observed.context.original_objective, timebox: "30 minutes", decision_target: "Retain or discard after measured validation" };
-      return { outcome: "completed", summary: "Propose this human-selected SPIKE plan", report };
+      report.spike = { learning_goal: planning.context.original_objective, timebox: "30 minutes", decision_target: "Retain or discard after measured validation" };
+      return { outcome: "completed", summary: "Propose this human-selected SPIKE plan with controlled initial judgements", report: prework ? preworkPlanningReport(observed, report) : report };
     }
     if (experiment && observed.context.contract_version === "standard-cycle-audit-context.v1")
       return { outcome: "completed", summary: "Audit actual SPIKE validation evidence", report: cycleAuditProposal(observed) };

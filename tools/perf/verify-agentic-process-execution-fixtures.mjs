@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { verifyCanonicalResumeExecution } from "./standard-canonical-resume-execution-fixture-lib.mjs";
 import { verifyModeWorkContinuationExecution } from "./standard-mode-work-continuation-execution-fixture-lib.mjs";
+import { observeFixtureNativePreparation } from "./native-preparation-observation-fixture-lib.mjs";
 import { verifyStandardSpikeExecution } from "./standard-spike-execution-fixture-lib.mjs";
 import { createStandardReviewEventFixture } from "./standard-pr-review-event-fixture-lib.mjs";
 import { verifyModeAnalysisExecution } from "./standard-mode-analysis-execution-fixture-lib.mjs";
@@ -17,6 +18,7 @@ import { CYCLE_AUDIT_CONTRACT } from "../../src/core/workflow/standard-cycle-aud
 import { verifyCycleVerificationContracts } from "./cycle-verification-fixture-lib.mjs";
 import { verifyDriftPreparedPlanValidity } from "./drift-plan-validity-fixture-lib.mjs";
 import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
+import { preworkPlanningContext, preworkPlanningReport } from "./standard-cycle-prework-native-fixture-lib.mjs";
 import { verifyCanonicalPlanAdoption } from "./standard-canonical-plan-adoption-fixture-lib.mjs";
 import { verifyPublishedExistingOpen } from "./standard-existing-open-route-fixture-lib.mjs";
 import { verifyPublishedSelectedRoot } from "./standard-published-selected-root-fixture-lib.mjs";
@@ -439,7 +441,9 @@ function journalController(f, t, options = {}) {
       let native;
       const allocationAuthority = createNativeAllocationWorkerAuthority({ configuration: f.configuration, authorization: sent.authorization, admission: sent.allocation,
         readProductSha256: () => native.preview().product_sha256, ...(f.environment ? { environment: f.environment } : {}) });
-      native = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory, allocationAuthority, processAuthority: allocationAuthority.processAuthority, ...(f.environment ? { environment: f.environment } : {}) });
+      const observedAuthority = options.observePreparationFailure ? observeFixtureNativePreparation(allocationAuthority.processAuthority,
+        { controlRoot: request.cwd, generation: sent.allocation.generation }) : allocationAuthority.processAuthority;
+      native = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory, allocationAuthority, processAuthority: observedAuthority, ...(f.environment ? { environment: f.environment } : {}) });
       const result = await native.run({ execute: true, authorization: sent.authorization });
       await options.afterWorker?.(f, result);
       await onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify(result)) });
@@ -1097,6 +1101,11 @@ if (process.argv[2] === "--mixed-continue") {
     let nativeAnswerSource;
     const f = factory(mode, { standardModel: true, validation: runsCycle, r09: nominalPostMerge, humanSource, hostTrace: standardHostTrace, async answer({ params }) {
       const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
+      if (observed.context.contract_version === "standard-cycle-prework-context.v1") {
+        const planning = preworkPlanningContext(observed);
+        const proposal = fullCorrection ? composedCyclePlan(planning) : cyclePlanProposal(planning);
+        return { outcome: "completed", summary: "Controlled current intent and architecture judgement", report: preworkPlanningReport(observed, proposal) };
+      }
       if (observed.context.contract_version === "standard-cycle-plan-context.v1")
         return { outcome: "completed", summary: "Scoped read-only plan proposal", report: fullCorrection ? composedCyclePlan(observed) : cyclePlanProposal(observed) };
       if (observed.context.contract_version === "standard-cycle-audit-context.v1")

@@ -1,4 +1,5 @@
 import { verifyCycleClosureExecution } from "./cycle-closure-fixture-lib.mjs";
+import { configureCyclePreworkFixture, preworkPlanningContext, preworkPlanningReport } from "./standard-cycle-prework-native-fixture-lib.mjs";
 import { cycleAuditProposal } from "./cycle-audit-fixture-lib.mjs";
 import { taskProgressProposal, taskProgressValidationProfile, verifyTaskProgressExecution } from "./cycle-task-progress-fixture-lib.mjs";
 import { verifyCycleVerificationEntry } from "./cycle-verification-fixture-lib.mjs";
@@ -261,11 +262,14 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
         return { outcome: "completed", summary: "Observed bounded product task", report: { contract_version: CYCLE_WORK_CONTRACT, context_sha256: observed.context_sha256,
           task: observed.context.task.task, changes: [{ path: "product/app.mjs", operation: selected === "report" ? "delete" : "update" }], notes: ["Validation remains the host's separate responsibility"] } };
       }
-      const report = taskProgress ? taskProgressProposal(cyclePlanProposal(observed), selected === "unchanged") : cyclePlanProposal(observed);
-      if (!taskProgress) for (const key of ["session_id", "cycle_id", "cycle_type", "objective"])
-        assert.equal(params.outputSchema.properties.report.anyOf[1].properties[key].const, report[key]);
-      if (readiness && selected === "refusal") { report.surface = "shared"; report.usage_matrix.push({ ...report.usage_matrix[0], kind: "alternate" }); }
-      return { outcome: "completed", summary: "Read-only typed planning fixture", report }; } });
+      const planning = readiness ? preworkPlanningContext(observed) : observed;
+      const proposal = taskProgress ? taskProgressProposal(cyclePlanProposal(planning), selected === "unchanged") : cyclePlanProposal(planning);
+      if (!taskProgress) for (const key of ["session_id", "cycle_id", "cycle_type", "objective"]) {
+        const schema = params.outputSchema.properties.report.anyOf[1];
+        assert.equal((readiness ? schema.properties.proposal.properties : schema.properties)[key].const, proposal[key]);
+      }
+      if (readiness && selected === "refusal") { proposal.surface = "shared"; proposal.usage_matrix.push({ ...proposal.usage_matrix[0], kind: "alternate" }); }
+      return { outcome: "completed", summary: "Read-only typed planning fixture", report: readiness ? preworkPlanningReport(observed, proposal) : proposal }; } });
     root = f.configuration.target_root;
     if (selectPlan) {
       assert.equal(readiness, true); assert.equal(work, false);
@@ -275,6 +279,7 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
       f.model.data_bindings.inputs.push({ node_id: "plan_select", fields: {} });
       const bytes = JSON.stringify(f.model); fs.writeFileSync(f.configuration.model.path, bytes); f.configuration.model.sha256 = artifactContentHash(bytes);
     }
+    if (readiness) configureCyclePreworkFixture(f, objectiveCompletion ? "Determine whether a bounded prototype is useful" : "Execute real mixed bootstrap");
     const verifier = taskProgress ? taskProgressValidationProfile(f.base, selected === "unchanged") : validation ? createValidationProfileFixture(f.base, { testRef: "TEST-001" }) : null;
     if (verifier) f.validationProfile = verifier.profileRef;
     if (objectiveCompletion) f.sessionObjective = "Learn through an explicitly admitted bounded SPIKE";
@@ -292,12 +297,21 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
     assert.equal(prepared.can_apply, true, JSON.stringify(prepared));
     assert.equal((await operations.refreshCycleContext(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
     git("add", "."); git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-m", "fixture session precondition");
-    const admitted = await operations.admitCycle();
-    assert.equal(admitted.outcome, "completed", JSON.stringify(admitted));
-    prepared = await operations.prepareCycle({ session_id: "S001", cycle_id: "C001", cycle_type: "feature", title: "planning",
-      objective: objectiveCompletion ? "Determine whether a bounded prototype is useful" : "Execute real mixed bootstrap", continuity_rule: admitted.observations.lifecycle.continuity_rule, base_branch: admitted.observations.lifecycle.continuity_base_branch });
-    assert.equal(prepared.can_apply, true, JSON.stringify(prepared));
-    assert.equal((await operations.initializeCycle(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
+    if (readiness) {
+      for (const binding of ["cycle_admit", "cycle_initialize"]) {
+        const step = await f.open().step({ write: true });
+        const retained = f.open().readOperation(step.operation_id);
+        assert.equal(retained.intent.binding_ref, binding);
+        assert.equal(retained.results.at(-1).output.outcome, "completed");
+      }
+    } else {
+      const admitted = await operations.admitCycle();
+      assert.equal(admitted.outcome, "completed", JSON.stringify(admitted));
+      prepared = await operations.prepareCycle({ session_id: "S001", cycle_id: "C001", cycle_type: "feature", title: "planning",
+        objective: objectiveCompletion ? "Determine whether a bounded prototype is useful" : "Execute real mixed bootstrap", continuity_rule: admitted.observations.lifecycle.continuity_rule, base_branch: admitted.observations.lifecycle.continuity_base_branch });
+      assert.equal(prepared.can_apply, true, JSON.stringify(prepared));
+      assert.equal((await operations.initializeCycle(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
+    }
     prepared = await operations.prepareCycleContext({ session_id: "S001" });
     assert.equal((await operations.refreshCycleContext(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
     const cyclePath = "cycles/C001-feature-planning", names = ["brief", "plan", "audit-spec", "traceability", "status"].map(name => `${cyclePath}/${name}.md`).concat("CURRENT-STATE.md");

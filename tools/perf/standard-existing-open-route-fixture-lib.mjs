@@ -11,6 +11,7 @@ import { artifactContentHash } from "../../src/core/workflow/artifact-compare-sw
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
+import { preworkPlanningReport } from "./standard-cycle-prework-native-fixture-lib.mjs";
 import { taskProgressProposal, taskProgressValidationProfile } from "./cycle-task-progress-fixture-lib.mjs";
 import { evaluateCurrentStateConsistency } from "./verify-current-state-consistency.mjs";
 
@@ -18,10 +19,19 @@ import { evaluateCurrentStateConsistency } from "./verify-current-state-consiste
 // planning or completed work. The process executes the delivered root itself.
 export async function verifyPublishedExistingOpen(check, { mixedFixture, selectedMode, complete = false }) {
   for (const mode of selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) await check(`standard existing ${complete ? "complete" : "open"} ${mode}: published entry preserves canonical planning and reaches its actual current phase`, async () => {
+    let initialAudits = 0;
     const f = mixedFixture(mode, { standardModel: true, planning: true, hostTrace: true, ...(complete ? { validation: true } : {}), async answer({ params }) {
       try {
         const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
-        assert.equal(observed.context.contract_version, "standard-drift-context.v2", "existing OPEN entry must not launch a planner or task worker before phase entry");
+        if (observed.context.contract_version === "standard-cycle-prework-context.v1") {
+          assert.equal(complete, false, "complete canonical work bypasses initial assessment");
+          assert.equal(initialAudits++, 0);
+          assert.equal(observed.context.subject.kind, "canonical_plan");
+          assert.ok(observed.context.canonical_proposal);
+          return { outcome: "completed", summary: "Controlled initial audit of the retained canonical plan",
+            report: preworkPlanningReport(observed, null) };
+        }
+        assert.equal(observed.context.contract_version, "standard-drift-context.v2", "existing entry accepts startup diagnosis and current canonical assessment only");
         return { outcome: "completed", summary: "Exact startup diagnostic through an identified transport double", report: {
           contract_version: "standard-drift-report.v1", context_sha256: observed.context_sha256,
           original_objective: observed.context.original_objective, current_objective: observed.context.original_objective,
@@ -111,9 +121,19 @@ export async function verifyPublishedExistingOpen(check, { mixedFixture, selecte
       if (fs.existsSync(diagnostic)) throw Object.assign(new Error("Published existing OPEN fixture callback failed: " + JSON.parse(fs.readFileSync(diagnostic)).message, { cause: error }), { code: "PUBLISHED_EXISTING_OPEN_RPC_CALLBACK_FAILED" });
       throw error;
     }
-    assert.equal(reached, true); assert.equal(native, 1); assert.equal(f.t.sessions.length, 1); assert.ok(f.t.sessions.every(row => row.closed));
+    assert.equal(reached, true); assert.equal(initialAudits, complete ? 0 : 1);
+    assert.equal(native, complete ? 1 : 2); assert.equal(f.t.sessions.length, native); assert.ok(f.t.sessions.every(row => row.closed));
     const final = f.open().inspect(), accepted = binding => final.record.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === binding).map(row => f.open().readOperation(row.intent.operation_id));
     for (const binding of ["session_initialize", "mode_decision", "session_git_checkpoint", "cycle_initialize", "cycle_plan_evaluate", "cycle_plan_record"]) assert.equal(accepted(binding).length, 0, binding);
+    const preworkSelection = accepted("cycle_prework_select"); assert.equal(preworkSelection.length, 1);
+    assert.equal(preworkSelection[0].results.at(-1).output.facts.cycle_prework_required, !complete);
+    const initialEvaluation = accepted("cycle_prework_evaluate"); assert.equal(initialEvaluation.length, complete ? 0 : 1);
+    if (!complete) {
+      const output = initialEvaluation[0].results.at(-1).output;
+      assert.equal(output.facts.cycle_prework_passed, true); assert.equal(output.facts.cycle_plan_record_required, false);
+      assert.equal(output.observations.report.kind, "audit_canonical_plan"); assert.equal(output.observations.report.proposal, null);
+      assert.equal(accepted("cycle_readiness_evaluate")[0].results.at(-1).output.observations.initial_audit.evaluation_operation_id, initialEvaluation[0].operation_id);
+    }
     const observedEntry = accepted("cycle_entry_observe").at(-1).results.at(-1).output;
     assert.equal(observedEntry.observations.action, "owned_cycle");
     assert.equal(observedEntry.observations.creation_authorized, false); assert.equal(observedEntry.observations.implementation_authorized, false);
@@ -173,7 +193,7 @@ export async function verifyPublishedExistingOpen(check, { mixedFixture, selecte
       policyPins: final.record.policy_pins, scopeId: final.record.scope_id, events: final.record.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, final.record.instance_sha256);
     console.log(JSON.stringify({ published_existing_open_proof: !complete, published_existing_complete_proof: complete, mode, catalog_version: assets.catalog.contract_version, model_sha256: final.record.model_sha256,
-      native_startup_diagnostics: 1, native_planner_responses: 0, native_work_responses: 0, imported_completed_tasks: complete ? 2 : 0, original_plan_and_metadata_preserved: true, actual_Node_checks: verifier?.calls() ?? 0,
+      native_startup_diagnostics: 1, native_initial_audit_responses: initialAudits, native_planner_responses: 0, native_work_responses: 0, imported_completed_tasks: complete ? 2 : 0, original_plan_and_metadata_preserved: true, actual_Node_checks: verifier?.calls() ?? 0,
       actual_entry_and_selectors: true, actual_current_dor_and_phase_entry: !complete, actual_current_complete_verification: complete, actual_entry_observation: true, observation_authorizes_creation: false, actual_common_prefix: true, initial_cycle_checkpoint_not_used: true, same_cycle_and_branch: true, unused_constructor_not_applied: true,
       product_unchanged: true, workflow_checkpoint_head_changed: git("rev-parse", "HEAD") !== beforeHead, exact_sim: true,
       native_transport: "IDENTIFIED_DOUBLE", genuine_native: "NOT_RUN", task_execution: "NOT_RUN", human_choice_and_carryover: "NOT_RUN_IN_THIS_CASE", installed_archive: "NOT_RUN" }));

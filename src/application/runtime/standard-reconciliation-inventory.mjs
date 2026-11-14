@@ -19,6 +19,7 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { exactFileIdentity } from "../../lib/fs/exact-file-identity.mjs";
 import { assertProcessDispatchRecord, dispatchRecordPath } from "../../core/workflow/process-dispatch-record.mjs";
 import { observeLocalProcessOwner } from "../../adapters/runtime/local-process-identity.mjs";
+import { assertNativeDispatchRecord, nativeDispatchPath } from "../../core/workflow/native-dispatch-record.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
@@ -44,9 +45,27 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
       add("artifact:" + row.path, "artifact", row.sha256, { metadata_sha256: row.metadata_sha256, source: observed.source });
       // Unknown record namespaces are retained as artifacts, never treated as
       // an understood or closed resource. The external-discovery gaps stay open.
-      if (!/^workflows\/(operation-records|decision-inbox|control-inbox|native-allocations|dispatch-records)\//.test(row.path)) continue;
+      if (!/^workflows\/(operation-records|decision-inbox|control-inbox|native-allocations|dispatch-records|native-dispatches)\//.test(row.path)) continue;
       const record = JSON.parse(row.content);
-      if (row.path.startsWith("workflows/dispatch-records/")) {
+      if (row.path.startsWith("workflows/native-dispatches/")) {
+        assertNativeDispatchRecord(record);
+        if (row.path !== nativeDispatchPath(record.dispatch_id)) fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
+        if (record.instance_id !== instance.instance_id) continue;
+        signer.verify(record);
+        if (record.scope_id !== instance.scope_id || record.model_sha256 !== instance.model_sha256
+          || record.physical_root_sha256 !== shadowHash(artifacts.root)
+          || record.local_owner_scope_sha256 !== shadowHash({ physical_root: artifacts.root })
+          || configuration !== null && record.configuration_sha256 !== shadowHash(configuration)
+          || record.instance_revision !== null && (record.instance_revision > instance.revision
+            || record.instance_sha256 !== agenticProcessPrefixSha256(instance, record.instance_revision - 1)))
+          fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
+        add("native-dispatch:" + record.dispatch_id, "native_journal", shadowHash(record), {
+          record_kind: "native_dispatch", kind: record.kind, phase: record.phase, journal_id: record.journal_id,
+          process_identity: record.process_identity, owner_plan_sha256: record.owner_plan_sha256,
+          native_journal_before_sha256: record.native_journal_before_sha256, native_journal_after_sha256: record.native_journal_after_sha256,
+          local_owner_intentions: record.local_owner_intentions, leases: record.leases,
+          result_sha256: record.result_sha256, error_code: record.error_code, complete_resource_closure: false, permits_effects: false });
+      } else if (row.path.startsWith("workflows/dispatch-records/")) {
         assertProcessDispatchRecord(record);
         if (row.path !== dispatchRecordPath(record.operation_id)) fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
         if (record.instance_id === instance.instance_id) { signer.verify(record); dispatches.push(record); }

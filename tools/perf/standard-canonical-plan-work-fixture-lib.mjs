@@ -13,6 +13,7 @@ import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
 import { taskProgressProposal, taskProgressValidationProfile, verifyTaskProgressExecution } from "./cycle-task-progress-fixture-lib.mjs";
 import { evaluateCurrentStateConsistency } from "./verify-current-state-consistency.mjs";
+import { captureCyclePreworkActorFixture, configureCanonicalPreworkFixture, executeCanonicalPreworkFixture, preworkPlanningReport } from "./standard-cycle-prework-native-fixture-lib.mjs";
 
 // The original plan is fixture arrangement through actual canonical ports.
 // It is not a historical Native result or imported completed-work proof.
@@ -25,6 +26,10 @@ export async function verifyCanonicalPlanWork(check, { mixedFixture, script }) {
         let stage = "context";
         try {
         const observed = JSON.parse(params.input[0].text.split("\n").at(-1)), context = observed.context;
+        if (context.contract_version === "standard-cycle-prework-context.v1") {
+          assert.equal(context.subject.kind, "canonical_plan");
+          return { outcome: "completed", summary: "Current audit of the preserved canonical plan", report: preworkPlanningReport(observed, null) };
+        }
         assert.equal(context.contract_version, "standard-cycle-task-work-context.v1", "canonical source must not launch a planner");
         const before = context.task_ordinal === 1 ? 1 : 2, value = context.task_ordinal === 1 ? 2 : 3;
         const request = { tool_name: "apply_patch", cwd: root, tool_input: { command: `*** Begin Patch\n*** Update File: product/app.mjs\n@@\n-export const value = ${before};\n+export const value = ${value};\n*** End Patch` } };
@@ -64,7 +69,7 @@ export async function verifyCanonicalPlanWork(check, { mixedFixture, script }) {
     }
     await operations.reload(); checkpoint("fixture existing canonical two-task plan");
     const originalPlan = artifacts.read(cyclePath + "/plan.md", { required: true }).content, originalHead = git("rev-parse", "HEAD");
-    const removed = new Set(["reload", "admit", "initialize", "analyze", "plan_evaluate", "plan_record"]), model = f.model;
+    const actor = captureCyclePreworkActorFixture(f), removed = new Set(["reload", "admit", "initialize", "analyze", "plan_evaluate", "plan_record"]), model = f.model;
     model.model_id = "canonical-plan-current-instance-work-fixture";
     model.nodes[0].children = ["adopt", ...model.nodes[0].children.filter(id => !removed.has(id))];
     model.nodes = model.nodes.filter(node => !removed.has(node.id));
@@ -79,18 +84,23 @@ export async function verifyCanonicalPlanWork(check, { mixedFixture, script }) {
     model.operation_pins = Object.fromEntries(standardWorkflowOperationBindings().filter(binding => model.nodes.some(node => node.binding_ref === binding.id)).map(binding => [binding.id, shadowHash(binding)]));
     const bytes = JSON.stringify(model); fs.writeFileSync(f.configuration.model.path, bytes); f.configuration.model.sha256 = artifactContentHash(bytes);
     f.configuration.activity_outputs = { implement: CYCLE_TASK_WORK_CONTRACT }; f.configuration.instructions = { implement: f.configuration.instructions.implement };
+    configureCanonicalPreworkFixture(f, { actor, beforeNodeId: "readiness_evaluate" });
     const verifier = taskProgressValidationProfile(f.base, false); f.validationProfile = verifier.profileRef;
     const initial = f.open().initialize(); f.open().initialize({ write: true, expectedResultSha256: initial.record.instance_sha256 });
-    const adopted = await f.open().step({ write: true }), ready = await f.open().step({ write: true }), phase = await f.open().step({ write: true });
+    const adopted = await f.open().step({ write: true });
+    const auth = f.authorize(); auth.global_deadline_ms += 1800000; auth.workflow_deadline_ms += 1800000; auth.max_turn_ms = 60000;
+    const initialAudit = await executeCanonicalPreworkFixture(f, auth);
+    const ready = await f.open().step({ write: true }), phase = await f.open().step({ write: true });
+    assert.equal(f.open().readOperation(ready.operation_id).results.at(-1).output.observations.initial_audit.evaluation_operation_id, initialAudit.evaluation_operation_id);
     assert.equal(f.open().readOperation(adopted.operation_id).results.at(-1).output.facts.canonical_cycle_plan_available, true);
     assert.equal(f.open().readOperation(ready.operation_id).results.at(-1).output.observations.planning_source.operation_id, adopted.operation_id);
     assert.equal(f.open().readOperation(phase.operation_id).results.at(-1).output.facts.cycle_implementation_started, true);
     assert.match(artifacts.read("CURRENT-STATE.md").content, new RegExp("^first_plan_step: " + proposal.tasks[0].task + "$", "m"));
     assert.equal(evaluateCurrentStateConsistency({ targetRoot: root }).pass, true);
-    assert.equal(f.t.sessions.length, 0); assert.equal(artifacts.read(cyclePath + "/plan.md").content, originalPlan);
-    const auth = f.authorize(); auth.global_deadline_ms += 1800000; auth.workflow_deadline_ms += 1800000; auth.max_turn_ms = 60000;
+    assert.equal(f.t.sessions.length, 1); assert.equal(artifacts.read(cyclePath + "/plan.md").content, originalPlan);
     try {
-      await verifyTaskProgressExecution({ f, artifacts, cyclePath, selected: "files", auth, verifier, script, planningNativeResponses: 0, setAllowed: value => { allowed = value; } });
+      await verifyTaskProgressExecution({ f, artifacts, cyclePath, selected: "files", auth, verifier, script, planningNativeResponses: 1, // Prefix allocation is the current audit; no plan is generated.
+         setAllowed: value => { allowed = value; } });
     } catch (error) {
       const file = path.join(f.base, "canonical-work-rpc-failure.json");
       if (fs.existsSync(file)) { const diagnostic = JSON.parse(fs.readFileSync(file)); throw Object.assign(new Error(`Canonical work fixture callback failed at ${diagnostic.stage}: ${diagnostic.message}`, { cause: error }), { code: "CANONICAL_WORK_FIXTURE_RPC_CALLBACK_FAILED" }); }
@@ -98,10 +108,10 @@ export async function verifyCanonicalPlanWork(check, { mixedFixture, script }) {
     }
     const final = f.reopen().inspect(), intents = final.record.events.filter(row => row.kind === "operation_intent");
     assert.equal(intents.filter(row => ["cycle_plan_evaluate", "cycle_plan_record"].includes(row.intent.binding_ref)).length, 0);
-    assert.equal(final.record.events.filter(row => row.kind === "result").length, 2); assert.equal(git("rev-parse", "HEAD"), originalHead);
+    assert.equal(final.record.events.filter(row => row.kind === "result").length, 3); assert.equal(git("rev-parse", "HEAD"), originalHead);
     const simulation = simulateAgenticProcess({ instanceId: final.record.instance_id, model: final.record.model, policyPins: final.record.policy_pins, scopeId: final.record.scope_id, events: final.record.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, final.record.instance_sha256);
-    console.log(JSON.stringify({ canonical_plan_work_proof: true, mode: "files", native_planner_responses: 0, native_work_responses: 2, imported_completed_tasks: 0,
+    console.log(JSON.stringify({ canonical_plan_work_proof: true, mode: "files", native_planner_responses: 0, native_initial_audit_responses: 1, native_work_responses: 2, imported_completed_tasks: 0,
       actual_validation_checks: verifier.calls(), actual_task_advances: 2, real_verification_phase: true, actual_cold_task_advance: true, original_scope_preserved: true, exact_sim: true,
       native_transport: "IDENTIFIED_DOUBLE", genuine_native: "NOT_RUN", published_existing_cycle_route: "NOT_CONNECTED", installed_archive: "NOT_RUN" }));
   });

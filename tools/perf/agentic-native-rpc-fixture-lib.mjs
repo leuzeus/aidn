@@ -52,7 +52,7 @@ export function transport(f, options = {}) {
         if (method !== "turn/start") throw Error("unexpected method");
         const turn = `turn-${++session.turns}`;
         if (options.silence) return { turn: { id: turn } };
-        if (params.input[0].text.includes("Change value")) put(f.dirs.product, "app.mjs", "export const value = 2;\n");
+        if (!options.readOnlyAnswer && params.input[0].text.includes("Change value")) put(f.dirs.product, "app.mjs", "export const value = 2;\n");
         if (index === 2 && options.mutateReview) put(f.dirs.product, "app.mjs", "export const value = 99;\n");
         if (index === 2 && options.mutateSnapshot) put(configuration.cwd, "app.mjs", "export const value = 99;\n");
         if (options.revoke) applyAuthorization(planAuthorization({ targetRoot: f.configuration.target_root, action: "revoke" }));

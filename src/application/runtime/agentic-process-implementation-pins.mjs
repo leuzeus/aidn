@@ -5,7 +5,10 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 // Bounded direct implementation closure. Existing runtime dependencies retain
 // their separately retained build-lock/installed-version pins. npm distributions
 // exclude package-lock.json; direct code pins must use distributed assets only.
-const files = ["src/application/runtime/standard-reconciliation-inventory.mjs",
+const files = ["src/application/runtime/native-dispatch-provenance.mjs",
+  "src/core/workflow/native-dispatch-record.mjs",
+  "src/core/contracts/workflow-definition/native-dispatch-record.v1.schema.json",
+  "src/application/runtime/standard-reconciliation-inventory.mjs",
   "src/application/runtime/standard-cycle-entry-choice-activation.mjs",
   "src/core/workflow/standard-cycle-entry-choice-activation.mjs",
   "src/adapters/runtime/local-workflow-cycle-activation.mjs",
@@ -143,8 +146,10 @@ const files = ["src/application/runtime/standard-reconciliation-inventory.mjs",
   "src/application/runtime/standard-mode-work-context.mjs", "src/core/workflow/standard-mode-work.mjs",
   ...["report", "preflight-input", "evaluate-input", "output"].map(kind => `src/core/contracts/workflow-definition/standard-mode-work-${kind}.v1.schema.json`),
   "src/application/runtime/standard-drift-report.mjs", "src/application/runtime/standard-drift-git.mjs", "src/core/workflow/native-activity-output.mjs",
+  "src/application/runtime/standard-cycle-prework-authority.mjs",
   "src/core/workflow/standard-cycle-prework.mjs",
-  ...["subject", "report"].map(kind => `src/core/contracts/workflow-definition/standard-cycle-prework-${kind}.v1.schema.json`),
+  "src/core/contracts/workflow-definition/standard-workflow-catalog.v7.schema.json",
+  ...["subject", "report", "selection-output", "evaluation-output", "witness"].map(kind => `src/core/contracts/workflow-definition/standard-cycle-prework-${kind}.v1.schema.json`),
   "src/application/runtime/standard-drift-finalization.mjs", "src/application/runtime/skill-hook-use-case.mjs", "src/application/runtime/gating-evaluate-use-case.mjs",
   "src/application/runtime/cycle-close-admit-use-case.mjs", "src/lib/workflow/branch-kind-lib.mjs",
   "src/core/contracts/workflow-definition/standard-drift-followup-input.v1.schema.json", "src/core/contracts/workflow-definition/standard-drift-finalize-plan.v1.schema.json",

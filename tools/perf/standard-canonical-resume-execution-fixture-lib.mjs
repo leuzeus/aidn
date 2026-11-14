@@ -16,33 +16,48 @@ import { standardWorkflowOperationBindings } from "../../src/application/runtime
 import { createOperationJournalSigner } from "../../src/core/workflow/process-operation-journal.mjs";
 import { iterateAgenticProcessSimulation } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { captureCyclePreworkActorFixture, configureCanonicalPreworkFixture, preworkPlanningReport } from "./standard-cycle-prework-native-fixture-lib.mjs";
 
 const coldScript = fileURLToPath(new URL("./verify-standard-canonical-resume-fixtures.mjs", import.meta.url)), H = "a".repeat(64);
 
 async function verifyIntegrationOnlyRefusal({ phase, host, f, data, execute, verifier }) {
-  assert.ok(["OPEN", "IMPLEMENTING"].includes(phase));
-  const readiness = await execute("readiness_evaluate"); assert.equal(readiness.facts.cycle_readiness_satisfied, true);
-  const sha = bytes => createHash("sha256").update(bytes).digest("hex"), index = path.resolve(data.root, data.git("rev-parse", "--git-path", "index")),
-    witness = () => ({ canonical: data.canonical(), head: data.git("rev-parse", "HEAD"), refs: data.heads(),
-      branch: data.git("branch", "--show-current"), index: sha(fs.readFileSync(index)), product: sha(fs.readFileSync(path.join(data.root, "product/app.mjs"))) }),
+  assert.ok(['OPEN', 'IMPLEMENTING'].includes(phase));
+  const sha = bytes => createHash('sha256').update(bytes).digest('hex'), index = path.resolve(data.root, data.git('rev-parse', '--git-path', 'index')),
+    witness = () => ({ canonical: data.canonical(), head: data.git('rev-parse', 'HEAD'), refs: data.heads(),
+      branch: data.git('branch', '--show-current'), index: sha(fs.readFileSync(index)), product: sha(fs.readFileSync(path.join(data.root, 'product/app.mjs'))) }),
     before = witness(), state = host.inspect(), ready = state.cursor.ready[0];
-  assert.equal(state.cursor.occurrences.find(row => row.occurrence_id === ready).node_id, "implementation_enter");
-  let result = null, rejection = null;
-  try { result = await host.prepareOperation({ expectedSha256: state.record.instance_sha256, occurrenceId: ready }); }
-  catch (error) { rejection = { code: error.code ?? null, message: error.message }; }
-  const evidence = { result, rejection };
-  fs.writeFileSync(path.join(f.base, "canonical-resume-integration-refusal-detail.json"), JSON.stringify(evidence, null, 2) + String.fromCharCode(10), { flag: "wx" });
-  assert.equal(JSON.stringify(evidence).includes("STANDARD_CANONICAL_RESUME_INTEGRATION_ONLY"), true);
+  assert.equal(state.cursor.occurrences.find(row => row.occurrence_id === ready).node_id, 'prework_select');
+  // Preview resolves data only. Execute the actual read-only selector to obtain
+  // its authenticated blocked result, without entering a Native activity.
+  const preview = await host.prepareOperation({ expectedSha256: state.record.instance_sha256, occurrenceId: ready });
+  assert.equal(preview.binding.id, 'cycle_prework_select'); assert.equal(preview.binding.effect_class, 'read-only');
   assert.equal(host.inspect().record.instance_sha256, state.record.instance_sha256); assert.deepEqual(witness(), before);
+  const staged = await host.stageOperation(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
+  const result = await host.dispatchOperation(staged.operation_id, { write: true }), journal = host.readOperation(staged.operation_id);
+  const signer = createOperationJournalSigner(() => fs.readFileSync(data.keyFile)); signer.verify(journal); signer.verify(journal.preview);
+  const output = journal.results.at(-1)?.output, receipt = journal.results.at(-1)?.receipt;
+  const evidence = { result, output, operation_id: staged.operation_id, journal_sha256: shadowHash(journal) };
+  fs.writeFileSync(path.join(f.base, 'canonical-resume-integration-refusal-detail.json'), JSON.stringify(evidence, null, 2) + String.fromCharCode(10), { flag: 'wx' });
+  assert.equal(output?.outcome, 'blocked'); assert.equal(output.effect_status, 'no_effect');
+  assert.equal(output.observations.reason_code, 'STANDARD_CANONICAL_RESUME_INTEGRATION_ONLY');
+  assert.equal(receipt?.outcome, 'blocked'); assert.equal(receipt.effect_status, 'no_effect');
+  assert.deepEqual(output.facts, {});
+  await host.acceptOperation(staged.operation_id, { write: true });
+  const denied = host.inspect(), frame = denied.cursor.occurrences.find(row => row.occurrence_id === ready);
+  assert.equal(denied.cursor.status, 'WAITING'); assert.equal(frame.operation.receipt.outcome, 'blocked');
+  assert.deepEqual(witness(), before);
   assert.equal(data.artifacts.ownerPending(), false); assert.equal(verifier.calls(), 0);
-  assert.equal(fs.readFileSync(path.join(data.root, "product/app.mjs"), "utf8"), "export const value = 2;" + String.fromCharCode(10));
+  assert.equal(fs.readFileSync(path.join(data.root, 'product/app.mjs'), 'utf8'), 'export const value = 2;' + String.fromCharCode(10));
   assert.equal(host.inspectAllocations(), null); assert.equal(f.launches ?? 0, 0); assert.equal(f.t.sessions.length, 0);
-  assert.equal(f.t.calls.filter(row => row.method === "turn/start").length, 0);
-  const proof = { status: "PASS_INTEGRATION_ONLY_EXISTING_DOR_EFFECT_REFUSAL_NO_NATIVE", phase, intent: "integrate_now",
+  assert.equal(f.t.calls.filter(row => row.method === 'turn/start').length, 0);
+  const proof = { status: 'PASS_INTEGRATION_ONLY_CURRENT_PREWORK_REFUSAL_NO_NATIVE', phase, intent: 'integrate_now',
     root: data.root, private_root: data.privateRoot, native_base: f.base, business_unchanged: true, actual_Node_checks: 0,
     model_turns: 0, fixture_controllers: 0, fixture_sessions: 0, allocations: [], owner_pending: false,
-    reason_code: "STANDARD_CANONICAL_RESUME_INTEGRATION_ONLY", genuine_native: "NOT_RUN", full_standard: false };
-  fs.writeFileSync(path.join(f.base, "canonical-resume-result.json"), JSON.stringify(proof, null, 2) + String.fromCharCode(10), { flag: "wx" }); console.log(JSON.stringify(proof));
+    reason_code: 'STANDARD_CANONICAL_RESUME_INTEGRATION_ONLY', refused_operation_id: staged.operation_id,
+    refusal_receipt_sha256: shadowHash(receipt), instance_before_sha256: state.record.instance_sha256,
+    instance_after_sha256: denied.record.instance_sha256, workflow_status: denied.cursor.status,
+    model_bookkeeping: 'ACCEPTED_BLOCKED_READONLY_OPERATION_ONLY', genuine_native: 'NOT_RUN', full_standard: false };
+  fs.writeFileSync(path.join(f.base, 'canonical-resume-result.json'), JSON.stringify(proof, null, 2) + String.fromCharCode(10), { flag: 'wx' }); console.log(JSON.stringify(proof));
 }
 
 // Real parent/worker authorities and machine checks; controller and model are
@@ -55,7 +70,7 @@ export async function verifyCanonicalResumeExecution(check, { mixedFixture, sele
     let f, verifier, humanSourceAuthority, now = Date.now(), writes = 0, workContext = null, auditContext = null;
     const journals = [], objective = "Complete the exported value 3 requirement while preserving the value interface",
       completedResume = phase === "VERIFYING", importedTaskIds = completedResume ? ["TASK-001", "TASK-002"] : ["TASK-001"],
-      currentObservedTaskIds = completedResume ? [] : ["TASK-002"], expectedNativeResponses = completedResume ? 1 : 2;
+      currentObservedTaskIds = completedResume ? [] : ["TASK-002"], expectedNativeResponses = completedResume ? 1 : 3;
     await verifyCanonicalCycleChoiceRecord(selectedMode, { childScript: coldScript, pass: text => console.log("PASS " + text),
       checkpoint: true, activation: true, selectedCheckpoint: true, selectedFocus: true, focusCheckpoint: true,
       selectedPhase: phase, selectedCarryoverAction: intent, cycleObjective: objective,
@@ -67,12 +82,17 @@ export async function verifyCanonicalResumeExecution(check, { mixedFixture, sele
               ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" };
           } };
         humanSourceAuthority = humanSource;
-        f = mixedFixture(selectedMode, { projectRoot: data.root, signingKey: fs.readFileSync(data.keyFile), now: () => now,
+        f = mixedFixture(selectedMode, { observePreparationFailure: true, projectRoot: data.root, signingKey: fs.readFileSync(data.keyFile), now: () => now,
           planning: true, readiness: true, work: true, validation: true, taskProgress: true, taskFinalValue: 3, audit: true,
           humanSource, authorize: async () => ({ authorized: true, authority_id: "fixture_operator", principal_sha256: H, grant_sha256: H }),
           async answer({ params }) {
             try {
             const observed = JSON.parse(params.input[0].text.split("\n").at(-1)), context = observed.context;
+            if (context.contract_version === "standard-cycle-prework-context.v1") {
+              assert.equal(completedResume, false); assert.equal(intent, "import_now");
+              assert.equal(context.subject.kind, "canonical_plan");
+              return { outcome: "completed", summary: "Current initial assessment of imported canonical planning", report: preworkPlanningReport(observed, null) };
+            }
             if (context.contract_version === "standard-cycle-audit-context.v1") {
               assert.ok(completedResume || intent === "import_now");
               assert.deepEqual(context.imported_task_ids, importedTaskIds);
@@ -105,7 +125,7 @@ export async function verifyCanonicalResumeExecution(check, { mixedFixture, sele
         await arrangeCanonicalResumeData(data, { completedTaskIds: importedTaskIds });
         fs.writeFileSync(path.join(data.root, "product/app.mjs"), "export const value = " + (completedResume ? 3 : 2) + ";\n");
         data.checkpoint(completedResume ? "fixture imported completed task data and current final product" : "fixture imported first task as canonical data and intermediate product");
-        const model = JSON.parse(fs.readFileSync(path.join(data.privateRoot, "fixture-model.json"))), nativeModel = f.model;
+        const actor = captureCyclePreworkActorFixture(f), model = JSON.parse(fs.readFileSync(path.join(data.privateRoot, "fixture-model.json"))), nativeModel = f.model;
         model.model_id = "canonical-resume-native-port-fixture";
         model.participants = nativeModel.participants;
         for (const node of model.nodes) node.participant_ref = "delivery";
@@ -147,6 +167,8 @@ export async function verifyCanonicalResumeExecution(check, { mixedFixture, sele
         f.configuration.instance_id = "choice-record";
         f.configuration.activity_outputs = { ...(!completedResume ? { implement: f.configuration.activity_outputs.implement } : {}), audit_review: f.configuration.activity_outputs.audit_review };
         f.configuration.instructions = { ...(!completedResume ? { implement: f.configuration.instructions.implement } : {}), audit_review: f.configuration.instructions.audit_review };
+        if (!completedResume) configureCanonicalPreworkFixture({ ...f, model }, { actor, beforeNodeId: "readiness_evaluate" });
+        fs.writeFileSync(path.join(data.privateRoot, "fixture-model.json"), JSON.stringify(model));
         verifier = taskProgressValidationProfile(f.base, false); f.validationProfile = verifier.profileRef;
         fs.writeFileSync(path.join(data.privateRoot, "fixture-process.json"), JSON.stringify({ configuration: f.configuration, validation_profile: verifier.profileRef }));
         fs.writeFileSync(path.join(f.base, "canonical-resume-source.json"), JSON.stringify({ root: data.root, private_root: data.privateRoot,
@@ -197,9 +219,30 @@ export async function verifyCanonicalResumeExecution(check, { mixedFixture, sele
         if (!completedResume && intent !== "import_now") {
           await verifyIntegrationOnlyRefusal({ phase, host, f, data, execute, verifier }); return;
         }
+        // One finite fixture grant is fixed before the first allocation, including
+        // initial assessment, pending work and final audit. No budget renewal follows.
+        const authorization = f.authorize(); authorization.global_deadline_ms += 1800000; authorization.workflow_deadline_ms += 1800000;
+        authorization.max_turn_ms = 60000;
+        assert.equal(authorization.max_responses, 6); assert.ok(expectedNativeResponses <= authorization.max_responses);
+        const authorizationHash = shadowHash(authorization);
+        fs.writeFileSync(path.join(f.base, "canonical-resume-original-authorization.json"), JSON.stringify(authorization));
+        const native = async expectedNode => {
+          const state = host.inspect(); assert.equal(state.cursor.occurrences.find(row => row.occurrence_id === state.cursor.ready[0]).node_id, expectedNode);
+          const result = await host.step({ write: true, authorization });
+          assert.equal(result.kind, "native"); assert.equal(result.journal_phase, "closed", JSON.stringify(result));
+          assert.equal(shadowHash(authorization), authorizationHash); host = f.reopen();
+          console.log("STEP canonical resume native: " + expectedNode + " closed");
+        };
         if (!completedResume) {
+          const selection = await execute("prework_select");
+          assert.equal(selection.facts.cycle_prework_required, true);
+          await native("initial_audit");
+          const assessment = await execute("prework_evaluate");
+          assert.equal(assessment.facts.cycle_prework_passed, true); assert.equal(assessment.facts.cycle_plan_record_required, false);
+          assert.equal(assessment.observations.report.proposal, null);
           const planBeforeEntry = artifacts.read(cyclePath + "/plan.md").sha256;
-          await execute("readiness_evaluate");
+          const ready = await execute("readiness_evaluate");
+          assert.equal(ready.observations.initial_audit.evaluation_operation_id, journals.find(row => row.intent.binding_ref === "cycle_prework_evaluate").operation_id);
           const entryState = host.inspect(), entryOccurrence = entryState.cursor.ready[0],
             denied = openCycleChoiceFixtureHost(root, keyFile, sourcesFile, data.clock, { allowed: false }),
             entryIndex = path.resolve(root, data.git("rev-parse", "--git-path", "index")),
@@ -215,8 +258,8 @@ export async function verifyCanonicalResumeExecution(check, { mixedFixture, sele
             deniedPreview = await denied.preview({ instanceId: entryState.record.instance_id, expectedSha256: entryState.record.instance_sha256, occurrenceId: entryOccurrence });
           await assert.rejects(denied.stage(deniedPreview, { write: true, expectedPreviewSha256: shadowHash(deniedPreview) }), { code: "STANDARD_HOST_AUTHORIZATION_REQUIRED" });
           assert.equal(entryWitness(), entryBefore); assert.equal(artifacts.ownerPending(), false);
-          assert.equal(host.inspectAllocations(), null); assert.equal(f.t.sessions.length, 0);
-          console.log("PASS resumed implementation entry refuses a denied current effect grant before staging, writes or Native");
+          assert.equal(host.inspectAllocations().allocations.length, 1); assert.ok(host.inspectAllocations().allocations.every(row => row.phase === "closed")); assert.equal(f.t.sessions.length, 1);
+          console.log("PASS resumed implementation entry refuses a denied current effect grant before staging, writes or additional Native");
           const entered = await execute("implementation_enter");
           assert.equal(entered.effect_status, "confirmed"); assert.equal(entered.observations.committed.length, 2);
           assert.equal(artifacts.read(cyclePath + "/plan.md").sha256, planBeforeEntry);
@@ -237,19 +280,6 @@ export async function verifyCanonicalResumeExecution(check, { mixedFixture, sele
           assert.deepEqual(selected.observations.imported_completed_task_ids, ["TASK-001"]);
           assert.equal(selected.observations.previous_progress_operation_id, null);
         }
-        // One finite fixture grant is fixed before the first allocation, including
-        // both the pending work and the later auditor. No budget renewal follows.
-        const authorization = f.authorize(); authorization.global_deadline_ms += 1800000; authorization.workflow_deadline_ms += 1800000;
-        authorization.max_turn_ms = 60000; authorization.max_responses = expectedNativeResponses;
-        const authorizationHash = shadowHash(authorization);
-        fs.writeFileSync(path.join(f.base, "canonical-resume-original-authorization.json"), JSON.stringify(authorization));
-        const native = async expectedNode => {
-          const state = host.inspect(); assert.equal(state.cursor.occurrences.find(row => row.occurrence_id === state.cursor.ready[0]).node_id, expectedNode);
-          const result = await host.step({ write: true, authorization });
-          assert.equal(result.kind, "native"); assert.equal(result.journal_phase, "closed", JSON.stringify(result));
-          assert.equal(shadowHash(authorization), authorizationHash); host = f.reopen();
-          console.log("STEP canonical resume native: " + expectedNode + " closed");
-        };
         if (!completedResume) {
           await native("implement"); assert.equal(writes, 1); assert.ok(workContext); await execute("work_evaluate");
         }
@@ -279,7 +309,7 @@ export async function verifyCanonicalResumeExecution(check, { mixedFixture, sele
         assert.equal(last.instance_sha256, state.record.instance_sha256);
         const proof = { status: completedResume ? "PASS_COMPLETED_CANONICAL_RESUME_REAL_AUTHORITIES_FIXTURE_NATIVE_AUDITOR" : "PASS_PARTIAL_CANONICAL_RESUME_REAL_AUTHORITIES_FIXTURE_NATIVE_ACTORS", mode: selectedMode, phase, intent,
           root, private_root: data.privateRoot, native_base: f.base, imported_task_ids: importedTaskIds, current_observed_task_ids: currentObservedTaskIds,
-          product_writes: writes, actual_Node_checks: verifier.calls(), allocations: allocations.allocations.map(row => ({ generation: row.generation, owner_id: row.owner_id, phase: row.phase, consumption: row.consumption, tree_closed: row.tree_closed })),
+          product_writes: writes, native_initial_audit_responses: completedResume ? 0 : 1, native_planner_responses: 0, original_response_ceiling: authorization.max_responses, actual_Node_checks: verifier.calls(), allocations: allocations.allocations.map(row => ({ generation: row.generation, owner_id: row.owner_id, phase: row.phase, consumption: row.consumption, tree_closed: row.tree_closed })),
           original_authorization_sha256: authorizationHash, instance_sha256: state.record.instance_sha256,
           model_actor: "CONTROLLED_FIXTURE", controller: "CONTROLLED_FIXTURE_INLINE_WORKER", genuine_native: "NOT_RUN", isolated_worker_process: "NOT_RUN", full_standard: false };
         fs.writeFileSync(path.join(f.base, "canonical-resume-result.json"), JSON.stringify(proof, null, 2) + "\n"); console.log(JSON.stringify(proof));

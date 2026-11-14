@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import { assertStandardCyclePlan } from "../../src/core/workflow/standard-cycle-planning.mjs";
-import { assertStandardCyclePreworkSubject, assertStandardCyclePreworkReport, observeStandardCyclePrework } from "../../src/core/workflow/standard-cycle-prework.mjs";
-import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { CYCLE_PREWORK_CONTEXT_MAX_BYTES, assertStandardCyclePreworkSelection, assertStandardCyclePreworkEvaluation, assertStandardCyclePreworkSubject, assertStandardCyclePreworkReport, observeStandardCyclePrework } from "../../src/core/workflow/standard-cycle-prework.mjs";
+import { checkShadowJson, shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
 import { nativeActivityOutputSupported, nativeActivityOutputSkill, nativeActivityOutputInstructions, nativeActivityOutputBindings,
   nativeActivityAnswerSchema, assertNativeActivityAnswer } from "../../src/core/workflow/native-activity-output.mjs";
 import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
+import { verifyStandardCyclePreworkAuthorityFixtures } from "./standard-cycle-prework-authority-fixture-lib.mjs";
 
 if (process.argv.length !== 2) throw Error("STANDARD_PREWORK_FIXTURE_ARGUMENTS_INVALID");
 const H = "a".repeat(64), refs = [{ ref: "audit:SPEC.md", sha256: H }], names = [];
@@ -27,12 +29,33 @@ const invalid = fn => assert.throws(fn, error => /^STANDARD_(?:PREWORK|CYCLE_PLA
 const finding = severity => ({ id: "FIND-001", severity, summary: "Observed current source issue", rule_refs: ["SPEC-R04"], evidence_refs: structuredClone(refs) });
 
 test("initial subject and report schemas stay closed and use supported JSON", () => {
-  for (const name of ["subject", "report"]) {
+  for (const name of ["subject", "report", "selection-output", "evaluation-output", "witness"]) {
     const schema = JSON.parse(fs.readFileSync(new URL("../../src/core/contracts/workflow-definition/standard-cycle-prework-" + name + ".v1.schema.json", import.meta.url)));
     assert.deepEqual(validateJsonSchemaDefinition(schema, "#", { contractKind: "workflow-definition" }), []);
   }
   assertStandardCyclePreworkSubject(subject()); assertStandardCyclePreworkReport(report());
 });
+test("typed read-only refusals retain no success facts, evidence or unregistered observations", () => {
+  for (const [operation, validate] of [["selection", assertStandardCyclePreworkSelection], ["evaluation", assertStandardCyclePreworkEvaluation]]) {
+    const output = { contract_version: "standard-cycle-prework-" + operation + "-output.v1",
+      operation_ref: operation === "selection" ? "cycle_prework_select" : "cycle_prework_evaluate",
+      outcome: "blocked", effect_status: "no_effect", facts: {},
+      observations: { reason_code: "STANDARD_CANONICAL_RESUME_INTEGRATION_ONLY" }, evidence_refs: [] };
+    assert.equal(validate(output), output); assert.equal(assertStandardOperationOutput(output), output);
+    for (const mutate of [value => { value.facts.cycle_prework_passed = true; },
+      value => { value.evidence_refs = structuredClone(refs); }, value => { value.observations.approved = true; },
+      value => { value.observations.subject = subject(); }, value => { delete value.observations.reason_code; },
+      value => { value.observations.reason_code = ""; }, value => { value.observations.reason_code = "private message"; },
+      value => { value.observations.reason_code = "A".repeat(129); }, value => { value.effect_status = "unknown"; },
+      value => { value.outcome = "completed"; }, value => { value.operation_ref = "context_reload"; },
+      value => { value.approved = true; }]) {
+      const malformed = structuredClone(output); mutate(malformed);
+      assert.throws(() => validate(malformed), { code: "STANDARD_PREWORK_" + operation.toUpperCase() + "_INVALID" });
+      assert.throws(() => assertStandardOperationOutput(malformed), { code: "STANDARD_PREWORK_" + operation.toUpperCase() + "_INVALID" });
+    }
+  }
+});
+
 test("fresh planning carries two current typed judgements without granting work or validation", () => {
   const s = subject(), r = report(s), before = structuredClone({ s, r }), out = observe(r, s);
   assert.equal(out.outcome, "passed"); assert.deepEqual(out.verdicts, { intent: "passed", architecture: "passed" });
@@ -195,6 +218,31 @@ test("malformed Native bindings and mismatched planning subjects refuse before s
   assert.throws(() => nativeActivityOutputBindings(PREWORK, changed), /BINDINGS_INVALID/);
   assert.throws(() => nativeActivityAnswerSchema("standard-drift-report.v1", H, n.bindings), /BINDINGS_INVALID/);
 });
+test("complete Native source text uses its existing context bound while default DTO and aggregate limits stay enforced", () => {
+  const text = "Canonical audit source evidence.\n".repeat(600);
+  assert.ok(text.length > 16384); assert.equal(checkShadowJson({ text }), "JSON_LIMIT");
+  assert.equal(checkShadowJson({ maxStringLength: CYCLE_PREWORK_CONTEXT_MAX_BYTES, text }), "JSON_LIMIT");
+  for (const canonical of [false, true]) {
+    const context = nativeCase(canonical).context;
+    context.planning_context.documents = [{ ref: "audit:SPEC.md", content: text, sha256: shadowHash(text) }];
+    context.planning_context_sha256 = shadowHash(context.planning_context);
+    assert.equal(checkShadowJson(context), "JSON_LIMIT");
+    const bound = nativeActivityOutputBindings(PREWORK, context);
+    if (canonical) assert.equal(bound.proposal, null);
+    else assert.equal(bound.proposal.context_sha256, context.planning_context_sha256);
+    assert.equal(context.planning_context.documents[0].content, text);
+    const over = structuredClone(context);
+    over.planning_context.documents = [1, 2].map(id => ({ ref: "audit:source-" + id,
+      content: "x".repeat(CYCLE_PREWORK_CONTEXT_MAX_BYTES / 2) }));
+    over.planning_context_sha256 = shadowHash(over.planning_context);
+    assert.equal(checkShadowJson(over, { maxStringLength: CYCLE_PREWORK_CONTEXT_MAX_BYTES }), null);
+    assert.throws(() => nativeActivityOutputBindings(PREWORK, over), /BINDINGS_INVALID/);
+    let reads = 0;
+    Object.defineProperty(context.planning_context.documents[0], "content", { enumerable: true, get() { reads++; return text; } });
+    assert.throws(() => nativeActivityOutputBindings(PREWORK, context), /BINDINGS_INVALID/); assert.equal(reads, 0);
+  }
+});
+
 test("historical Native plan answers keep their original closed identity schema", () => {
   const context = { session_id: proposal.session_id, cycle_id: proposal.cycle_id, cycle_type: proposal.cycle_type, original_objective: proposal.objective };
   const bindings = nativeActivityOutputBindings("standard-cycle-plan-proposal.v1", context);
@@ -204,5 +252,6 @@ test("historical Native plan answers keep their original closed identity schema"
   assertNativeActivityAnswer(n.answer, PREWORK, n.contextSha256);
 });
 
-console.log(JSON.stringify({ status: "PASS", checks: names.length, scope: "TYPED_INITIAL_AUDIT_DATA_CURRENT_BINDINGS_AND_NATIVE_SCHEMA_ONLY",
-  Native_calls: 0, authority_authentication: "NOT_CONNECTED", host_effects: "NOT_CONNECTED", published_STANDARD: "NOT_CONNECTED", installed: "NOT_RUN", complete_standard: false }));
+names.push(...await verifyStandardCyclePreworkAuthorityFixtures(cyclePlanProposal));
+console.log(JSON.stringify({ status: "PASS", checks: names.length, scope: "TYPED_INITIAL_AUDIT_DATA_AND_CONTROLLED_AUTHORITY_PORT_FIXTURES",
+  Native_calls: 0, authority_authentication: "CONTROLLED_PORT_FIXTURES_ONLY", host_effects: "NOT_RUN", published_STANDARD: "NOT_RUN", installed: "NOT_RUN", complete_standard: false }));

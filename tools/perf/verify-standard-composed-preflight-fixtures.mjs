@@ -14,7 +14,7 @@ const finalVerificationOnly = process.argv.includes("--final-verification");
 const cycleEntryOnly = process.argv.includes("--cycle-entry-only");
 if (cycleEntryOnly && finalVerificationOnly) throw Error("STANDARD_PREFLIGHT_FOCUS_CONFLICT");
 const test = (name, run, finalVerification = false) => {
-  if (cycleEntryOnly && !["owned OPEN entry budget skips creation and planning in the delivered model", "setup uses pinned call data and deterministic/H operations without another native response"].includes(name)) return;
+  if (cycleEntryOnly && !["owned OPEN entry audits the current plan without creation or replacement", "setup uses pinned call data and deterministic/H operations without another native response"].includes(name)) return;
   if (finalVerificationOnly && !finalVerification) return;
   run(); checks++; console.log("PASS " + name);
 };
@@ -39,17 +39,23 @@ function verifyPlanningOrigin(result, expectedBinding) {
   assert.equal(phase.sources[0].source, "call_output");
 }
 
-test("owned OPEN entry budget skips creation and planning in the delivered model", () => {
-  const result = preflightStandardComposedFixture({ model, scenario: { ...scenario, max_responses: 1 }, stop: "task_select", cycleEntry: "owned_open" });
+test("owned OPEN entry audits the current plan without creation or replacement", () => {
+  assert.throws(() => preflightStandardComposedFixture({ model, scenario: { ...scenario, max_responses: 1 }, stop: "task_select", cycleEntry: "owned_open" }), error => {
+    assert.equal(error.code, "STANDARD_FIXTURE_RESPONSE_BUDGET_INSUFFICIENT");
+    assert.equal(error.preflight.original_max_responses, 1); assert.equal(error.preflight.responses_required, 2); return true;
+  });
+  const result = preflightStandardComposedFixture({ model, scenario: { ...scenario, max_responses: 6 }, stop: "task_select", cycleEntry: "owned_open" });
   assert.equal(result.proof_class, "synthetic-fixture-only"); assert.equal(result.product_qualification, "NOT_ESTABLISHED");
-  assert.equal(result.responses_required, 1); assert.deepEqual(result.native_occurrences.map(row => row.node_id), ["startup_drift_report"]);
-  for (const id of ["cycle_entry_observe", "owned_entry", "owned_resume", "plan_select", "readiness", "implementation_enter", "phase_select"]) assert.ok(result.operations.includes(id));
-  for (const id of ["cycle_admit", "cycle_initialize", "plan_evaluate", "plan_record"]) assert.equal(result.operations.includes(id), false);
+  assert.equal(result.responses_required, 2); assert.equal(result.original_max_responses, 6);
+  assert.deepEqual(result.native_occurrences.map(row => row.node_id), ["startup_drift_report", "plan"]);
+  for (const id of ["cycle_entry_observe", "owned_entry", "owned_resume", "prework_select", "plan_evaluate", "plan_select", "readiness", "implementation_enter", "phase_select"]) assert.ok(result.operations.includes(id));
+  for (const id of ["cycle_admit", "cycle_initialize", "plan_record"]) assert.equal(result.operations.includes(id), false);
   assert.ok(result.operations.indexOf("cycle_refresh_before") < result.operations.indexOf("cycle_entry_observe"));
   assert.equal(result.operations.includes("session_git_checkpoint"), false);
+  assert.ok(!result.call_transitions.some(row => ["fresh_entry", "fresh_checkpoint"].includes(row.node_id)));
   const work = preflightStandardComposedFixture({ model, scenario: { ...scenario, task_iterations: 2, cold_resume: false, max_responses: 6 }, stop: "audit_select", cycleEntry: "owned_open" });
-  assert.equal(work.responses_required, 3); assert.equal(work.original_max_responses, 6);
-  assert.deepEqual(work.native_occurrences.map(row => row.node_id), ["startup_drift_report", "implement", "implement"]);
+  assert.equal(work.responses_required, 4); assert.equal(work.original_max_responses, 6);
+  assert.deepEqual(work.native_occurrences.map(row => row.node_id), ["startup_drift_report", "plan", "implement", "implement"]);
   assert.equal(work.operations.filter(id => id === "task_advance").length, 2); assert.ok(work.operations.includes("verification_enter"));
   assert.equal(work.operations.includes("audit_select"), false); assert.equal(work.replay_exact, true); assert.equal(work.write_authorization, false);
   verifyPlanningOrigin(result, "cycle_owned_resume_admit");
@@ -57,6 +63,7 @@ test("owned OPEN entry budget skips creation and planning in the delivered model
   assert.equal(result.operations.includes("plan_adopt"), false);
   assert.equal(result.replay_exact, true); assert.equal(result.write_authorization, false);
 });
+
 test("setup uses pinned call data and deterministic/H operations without another native response", () => {
   const result = plan(), transitions = result.call_transitions.filter(row => row.node_id === "session_setup");
   assert.ok(result.operations.indexOf("cycle_entry_observe") < result.operations.indexOf("session_git_checkpoint"));
@@ -72,6 +79,31 @@ test("setup uses pinned call data and deterministic/H operations without another
   assert.equal(deferred.responses_required, 0); assert.equal(deferred.planned_status, "WAITING");
   assert.ok(!deferred.operations.includes("session_mode_apply"));
 });
+function verifyFreshCalls(result) {
+  const refresh = result.source_operations.find(row => row.node_id === "cycle_refresh_before");
+  const admit = result.source_operations.find(row => row.node_id === "cycle_admit");
+  const initialized = result.source_operations.find(row => row.node_id === "cycle_initialize");
+  assert.ok(refresh && admit && initialized);
+  const calls = result.call_transitions.filter(row => ["fresh_entry", "fresh_checkpoint"].includes(row.node_id));
+  assert.deepEqual(calls.map(row => [row.node_id, row.kind]), [["fresh_entry", "call_enter"], ["fresh_entry", "call_return"],
+    ["fresh_checkpoint", "call_enter"], ["fresh_checkpoint", "call_return"]]);
+  assert.deepEqual(calls[0].resolution.input, { session_id: "S001", context_operation_id: refresh.operation_id,
+    cycle_id: "C001", cycle_type: "feature", title: "standard-prefix", objective: "Synthetic fixture budget planning" });
+  assert.deepEqual(calls[2].resolution.input, { session_id: "S001", cycle_id: "C001" });
+  for (const row of [calls[0], calls[2]]) {
+    const source = row.resolution.sources.find(item => item.field === "session_id");
+    assert.equal(source.source, "operation_input"); assert.equal(source.operation_id, refresh.operation_id);
+  }
+  const contextSource = calls[0].resolution.sources.find(item => item.field === "context_operation_id");
+  assert.equal(contextSource.source, "operation_id"); assert.equal(contextSource.operation_id, refresh.operation_id);
+  assert.equal(initialized.input.continuity_rule, "R2_SESSION_BASE_WITH_IMPORT");
+  assert.equal(initialized.input.base_branch, "S001-standard");
+  for (const field of ["continuity_rule", "base_branch"]) {
+    const source = initialized.sources.find(row => row.field === field);
+    assert.equal(source.source, "operation_output"); assert.equal(source.operation_id, admit.operation_id);
+  }
+  for (const row of [calls[1], calls[3]]) { assert.deepEqual(row.resolution.input, {}); assert.deepEqual(row.witnesses, []); }
+}
 function verifyFinalVerificationCalls(result, sites) {
   const transitions = result.call_transitions.filter(row => sites.includes(row.node_id));
   assert.deepEqual(transitions.map(row => [row.node_id, row.kind]),
@@ -121,7 +153,8 @@ test("positive path selects nine native turns; its cold prefix keeps the same cu
   assert.equal(result.cold_resume_checkpoints.length, 1); assert.equal(result.cold_resume_checkpoints[0].responses, 5);
   assert.equal(result.responses_required - result.cold_resume_checkpoints[0].responses, 4);
   assert.equal(result.planned_status, "WAITING"); assert.equal(result.replay_exact, true);
-  assert.equal(result.operations.length, 74); assert.equal(result.event_count, 178);
+  assert.equal(result.operations.length, 75); assert.equal(result.event_count, 184);
+  verifyFreshCalls(result);
   verifyPlanningOrigin(result, "cycle_plan_record");
   assert.equal(result.operations.filter(id => id === "cycle_entry_observe").length, 1);
   assert.equal(result.operations.filter(id => id === "cycle_entry").length, 1);
@@ -160,7 +193,8 @@ test('v3 plans both cycles through the same published model, new closure, redeli
   const correction = JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/standard-workflow/composed-correction.v3.json', import.meta.url)));
   const result = preflightStandardComposedFixture({ model, scenario: correction, stop: "pr_effects_pending" });
   assert.equal(result.responses_required, 17); assert.equal(result.planned_status, 'WAITING');
-  assert.equal(result.operations.length, 137); assert.equal(result.event_count, 333);
+  assert.equal(result.operations.length, 138); assert.equal(result.event_count, 339);
+  verifyFreshCalls(result);
   verifyPlanningOrigin(result, "cycle_plan_record");
   assert.equal(result.operations.filter(id => id === "cycle_entry_observe").length, 1);
   assert.equal(result.operations.filter(id => id === "cycle_entry").length, 1);
@@ -198,6 +232,12 @@ test('v3 plans both cycles through the same published model, new closure, redeli
 test("correction retains its original budget refusal and interruption choices", () => {
   const correction = JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/standard-workflow/composed-correction.v3.json', import.meta.url)));
   assert.throws(() => preflightStandardComposedFixture({ model, scenario: { ...correction, max_responses: 16 }, stop: "pr_effects_pending" }), { code: 'STANDARD_FIXTURE_RESPONSE_BUDGET_INSUFFICIENT' });
+  assert.throws(() => preflightStandardComposedFixture({ model, scenario: { ...correction, task_iterations: 2 }, stop: "pr_effects_pending" }), error => {
+    assert.equal(error.code, "STANDARD_FIXTURE_RESPONSE_BUDGET_INSUFFICIENT");
+    assert.equal(error.preflight.original_max_responses, 17); assert.equal(error.preflight.responses_required, 19);
+    assert.equal(error.preflight.native_occurrences.filter(row => row.node_id === "implement").length, 2);
+    assert.equal(error.preflight.native_occurrences.filter(row => row.node_id === "correction_implement").length, 2); return true;
+  });
   for (const outcome of ['blocked', 'deferred', 'rejected', 'failed', 'cancelled']) {
     const stopped = preflightStandardComposedFixture({ model, scenario: { ...correction, interruption: { node_id: 'session_pr_correction_decide', outcome } } });
     assert.equal(stopped.responses_required, 9); assert.equal(stopped.interrupted, true);
@@ -216,7 +256,9 @@ test("an interrupted final evaluation retains its entry without returning or ent
   const result = plan({ interruption: { node_id: "final_validation", outcome: "blocked" } });
   assert.equal(result.interrupted, true);
   assert.deepEqual(result.call_transitions.map(row => [row.node_id, row.kind]),
-    [["session_setup", "call_enter"], ["session_setup", "call_return"], ["work_prepare", "call_enter"],
+    [["session_setup", "call_enter"], ["session_setup", "call_return"],
+      ["fresh_entry", "call_enter"], ["fresh_entry", "call_return"],
+      ["fresh_checkpoint", "call_enter"], ["fresh_checkpoint", "call_return"], ["work_prepare", "call_enter"],
       ["work_prepare", "call_return"], ["final_verification", "call_enter"]]);
   assert.deepEqual(result.verification_inputs.map(row => row.node_id), ["final_validation"]);
   assert.ok(!result.operations.includes("verification_enter"));

@@ -14,12 +14,17 @@ import { assertStandardOperationInput, assertStandardOperationOutput } from "../
 import { artifactContentHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
+import { captureCyclePreworkActorFixture, configureCanonicalPreworkFixture, executeCanonicalPreworkFixture, preworkPlanningReport } from "./standard-cycle-prework-native-fixture-lib.mjs";
 
 // Canonical planning here is an explicit fixture preimage written through real
 // ports/CAS. It is not evidence that a prior Native planner or task ran.
 export async function verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePlanProposal, selectedMode, readiness = false, selection = false }) {
   for (const mode of selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) await check(`cycle plan ${selection ? "selection" : readiness ? "readiness" : "adoption"} ${mode}: actual canonical source, guarded observation and signed cold acceptance`, async () => {
-    const f = mixedFixture(mode, { planning: true }), root = f.configuration.target_root;
+    const f = mixedFixture(mode, { planning: true, ...(readiness ? { answer({ params }) {
+      const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
+      assert.equal(observed.context.subject.kind, "canonical_plan");
+      return { outcome: "completed", summary: "Controlled current audit of unchanged canonical planning", report: preworkPlanningReport(observed, null) };
+    } } : {}) }), root = f.configuration.target_root, actor = readiness ? captureCyclePreworkActorFixture(f) : null;
     const operations = createStandardWorkflowOperations({ targetRoot: root }), artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
     const git = (...args) => execFileSync("git", ["--no-optional-locks", "-C", root, "-c", `core.hooksPath=${process.platform === "win32" ? "NUL" : "/dev/null"}`, ...args], { encoding: "utf8", windowsHide: true }).trim();
     const checkpoint = message => { git("add", "."); git("commit", "--allow-empty", "-m", message); };
@@ -56,6 +61,7 @@ export async function verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePl
           { node_id: "enter", fields: { evaluation_operation_id: { source: "operation_id", node_id: "ready" } } }] : [])] } });
     const bytes = JSON.stringify(f.model); fs.writeFileSync(f.configuration.model.path, bytes); f.configuration.model.sha256 = artifactContentHash(bytes);
     f.configuration.activity_outputs = {}; f.configuration.instructions = {};
+    if (readiness) configureCanonicalPreworkFixture(f, { actor, beforeNodeId: "ready" });
     const initial = f.open().initialize({ write: false }); f.open().initialize({ write: true, expectedResultSha256: initial.record.instance_sha256 });
     const instance = f.open().inspect().record;
     const observeContext = () => readStandardCyclePlanContext({ targetRoot: root, productRoot: f.configuration.product_root, productFiles: f.configuration.product_files,
@@ -154,7 +160,12 @@ export async function verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePl
         assert.equal(output.observations.cycle_id, "C001"); assert.equal(output.observations.session_id, "S001"); assert.equal(output.observations.cycle_path, cyclePath);
         assert.deepEqual(observeBusiness(), restored); assert.equal(f.t.sessions.length, 0);
       }
+      const authorization = f.authorize(); authorization.global_deadline_ms += 1800000; authorization.workflow_deadline_ms += 1800000;
+      authorization.max_turn_ms = 60000;
+      const initialAudit = await executeCanonicalPreworkFixture(f, authorization);
+      assert.deepEqual(observeBusiness(), restored);
       const ready = await f.open().step({ write: true }), readyOutput = f.open().readOperation(ready.operation_id).results.at(-1).output;
+      assert.equal(readyOutput.observations.initial_audit.evaluation_operation_id, initialAudit.evaluation_operation_id);
       assert.equal(readyOutput.facts.cycle_readiness_satisfied, true); assert.equal(readyOutput.effect_status, "no_effect");
       assert.deepEqual(readyOutput.observations.planning_source, { kind: "canonical_plan", operation_id: staged.operation_id, output_sha256: readyOutput.observations.record_sha256 });
       assert.throws(() => assertStandardOperationOutput({ ...readyOutput, observations: { ...readyOutput.observations, planning_source: { ...readyOutput.observations.planning_source, kind: "native" } } }), { code: "STANDARD_OPERATION_OUTPUT_INVALID" });
@@ -166,10 +177,10 @@ export async function verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePl
       assert.deepEqual(after.canonical.filter(row => !material.includes(row.path)), restored.canonical.filter(row => !material.includes(row.path)));
       assert.match(artifacts.read(cyclePath + "/status.md").content, /^state:\s*IMPLEMENTING\s*$/m); assert.match(artifacts.read(cyclePath + "/status.md").content, /^scope_frozen:\s*true\s*$/m);
       assert.equal(/^first_plan_step:\s*(.+)$/m.exec(artifacts.read("CURRENT-STATE.md").content)?.[1], proposal.tasks[0].task);
-      const complete = f.reopen().inspect(); assert.equal(complete.cursor.status, "COMPLETED"); assert.equal(f.t.sessions.length, 0);
+      const complete = f.reopen().inspect(); assert.equal(complete.cursor.status, "COMPLETED"); assert.equal(f.t.sessions.length, 1);
       const replay = simulateAgenticProcess({ instanceId: complete.record.instance_id, model: complete.record.model, policyPins: complete.record.policy_pins, scopeId: complete.record.scope_id, events: complete.record.events });
       assert.equal(replay.trace.at(-1).instance_sha256, complete.record.instance_sha256);
-      console.log(JSON.stringify({ canonical_plan_readiness_proof: true, mode, native_responses: 0, signed_canonical_adoption: true, actual_dor: true, actual_authorized_phase_cas: true,
+      console.log(JSON.stringify({ canonical_plan_readiness_proof: true, mode, native_responses: 1, native_initial_audit_responses: 1, native_planner_responses: 0, signed_canonical_adoption: true, actual_dor: true, actual_authorized_phase_cas: true,
         canonical_plan_preserved: true, changed_source_refused: true, ...(selection ? { canonical_plan_selection_proof: true, accepted_origin_id_and_hash: true } : {}), source_negative_boundary: selection ? "ACTUAL_SELECTOR_PREVIEW" : "ACTUAL_PROCESS_AUTHORITY_CONSUMER_DIRECT", source_restore: "EXPLICIT_FIXTURE_PREIMAGE_RESTORATION", task_execution: "NOT_RUN", published_route: "NOT_CONNECTED" }));
     }
     if (!readiness) console.log(JSON.stringify({ canonical_plan_adoption_proof: true, mode, native_responses: 0, actual_entry_and_context_ports: true, signed_dispatch_cold_acceptance: true,

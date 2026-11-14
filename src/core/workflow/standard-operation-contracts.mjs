@@ -7,6 +7,7 @@ import planSelectionOutput from "../contracts/workflow-definition/standard-cycle
 import { cycleExecutionSourceSelectOperation, assertCyclePlanSourceSelection, assertCycleExecutionSourceSelection } from "./standard-cycle-source-selection.mjs";
 import planAdoptionOutput from "../contracts/workflow-definition/standard-cycle-plan-adoption-output.v1.schema.json" with { type: "json" };
 import { assertStandardCyclePlan } from "./standard-cycle-planning.mjs";
+import { assertStandardCyclePreworkSelection, assertStandardCyclePreworkEvaluation, assertStandardCyclePreworkWitness } from "./standard-cycle-prework.mjs";
 import spikeInitializeInput from "../contracts/workflow-definition/standard-spike-initialize-input.v1.schema.json" with { type: "json" };
 import spikeFinalizeInput from "../contracts/workflow-definition/standard-spike-finalize-input.v1.schema.json" with { type: "json" };
 import spikeOutput from "../contracts/workflow-definition/standard-spike-output.v1.schema.json" with { type: "json" };
@@ -198,6 +199,7 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (operation === "cycle_prework_evaluate") return assertStandardOperationInput("cycle_plan_evaluate", value);
   if (operation === cycleExecutionSourceSelectOperation) return assertStandardOperationInput("cycle_readiness_evaluate", value);
   if (operation === cycleEntryChoiceActivationOperation) return assertCycleChoiceActivationInput(value);
   if (operation === cycleEntrySelectedCheckpointOperation) return assertCycleEntrySelectedInput(value);
@@ -236,7 +238,7 @@ export function assertStandardOperationInput(operation, value) {
       fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
   }
-  if (["cycle_plan_select", "cycle_plan_adopt"].includes(operation)) {
+  if (["cycle_plan_select", "cycle_plan_adopt", "cycle_prework_select"].includes(operation)) {
     if (checkShadowJson(value) || validateJsonSchema(value, empty, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
   }
@@ -338,6 +340,8 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-cycle-prework-selection-output.v1") return assertStandardCyclePreworkSelection(value);
+  if (value?.contract_version === "standard-cycle-prework-evaluation-output.v1") return assertStandardCyclePreworkEvaluation(value);
   if (value?.contract_version === "standard-cycle-plan-selection-output.v2") return assertCyclePlanSourceSelection(value);
   if (value?.contract_version === "standard-cycle-execution-source-output.v1") return assertCycleExecutionSourceSelection(value);
   if (["standard-cycle-entry-choice-checkpoint-output.v1", "standard-cycle-entry-choice-checkpoint-output.v2"].includes(value?.contract_version)) return assertCycleChoiceCheckpointOutput(value);
@@ -735,6 +739,7 @@ export function assertStandardOperationOutput(value) {
     return value;
   }
   if (value?.contract_version === "standard-cycle-readiness-output.v1") {
+    if (Object.hasOwn(value.observations ?? {}, "initial_audit")) assertStandardCyclePreworkWitness(value.observations.initial_audit);
     if (validateJsonSchema(value, readinessOutput, "$", { contractKind: "workflow-definition" }).length
       || value.outcome !== "completed" && Object.keys(value.facts).length
       || (value.outcome === "reconciliation_required") !== (value.effect_status === "unknown")

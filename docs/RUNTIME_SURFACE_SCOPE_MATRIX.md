@@ -470,3 +470,6 @@ See ADR-0025.
 
 
 Published owned/selected phase routing reuses the operation journal, artifact backend, local owner, CAS and existing Native/validation ports. Plan selection v2 and the read-only execution-source selector derive source identities and routing facts from accepted current history and canonical context; they create no new information authority, table, shared synchronization or DB-only projection. The typed preparation and verification calls use the existing IR. Historical catalog/output readers retain their original versions. Genuine actor, full-route and installed qualification remain separate from source wiring.
+
+
+Initial intent/architecture prework uses two read-only private operations and the existing operation/native allocation journals. Current readiness binds their accepted Native producer by a closed witness. Fresh plan recording retains canonical content/metadata postimages for its own causal transition; assessment of an existing canonical plan records no replacement plan. Controlled port fixtures do not establish genuine actors, backend execution, an installed archive or a complete published STANDARD route.

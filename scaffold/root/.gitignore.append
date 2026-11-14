@@ -37,4 +37,5 @@ docs/audit/workflows/decision-inbox/
 docs/audit/workflows/control-inbox/
 
 docs/audit/workflows/native-allocations/
+/docs/audit/workflows/native-dispatches/
 docs/audit/workflows/drift-reports/

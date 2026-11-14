@@ -21,6 +21,7 @@ import { artifactContentHash, artifactMetadataHash } from "../../src/core/workfl
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import { analyzeStructuredArtifact } from "../../src/lib/workflow/structured-artifact-parser-lib.mjs";
+import { createOwnedPreworkNativeFixture, configureCanonicalPreworkFixture, executeCanonicalPreworkFixture } from "./standard-cycle-prework-native-fixture-lib.mjs";
 
 const script = fileURLToPath(import.meta.url), checks = [], pass = name => { checks.push(name); console.log("PASS " + name); };
 const cyclePath = "cycles/C001-feature-choice", objective = "Resume current owned canonical progress without inventing prior work";
@@ -113,11 +114,16 @@ export async function verifyOwnedCycleResume({ mode, phase, prefix, enter = fals
       operation_pins: Object.fromEntries(nodes.map(([, binding]) => [binding, shadowHash(bindings.get(binding))])),
       data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: [], inputs: nodes.map(([node_id]) => ({ node_id, fields: fields[node_id] })) } };
   fs.writeFileSync(path.join(privateRoot, "fixture-model.json"), JSON.stringify(model), { flag: "wx" });
+  const nativeFixture = enter ? createOwnedPreworkNativeFixture({ targetRoot: root, base: privateRoot, model, signingKey: fs.readFileSync(keyFile) }) : null;
+  if (nativeFixture) {
+    configureCanonicalPreworkFixture(nativeFixture, { actor: nativeFixture.actor, beforeNodeId: "ready" });
+    fs.writeFileSync(path.join(privateRoot, "fixture-model.json"), JSON.stringify(model));
+  }
   const verifier = withChecks ? taskProgressValidationProfile(privateRoot, false) : null;
   fs.writeFileSync(path.join(privateRoot, "fixture-process.json"), JSON.stringify({ ...(verifier ? { validation_profile: verifier.profileRef } : {}),
-    target_root: root, instance_id: "choice-record", product_root: path.join(root, "product"), product_files: ["app.mjs"],
-    control_root: path.join(privateRoot, "control"), review_root: path.join(privateRoot, "review"), activity_outputs: {},
-    native: { home: path.join(privateRoot, "native"), protected_roots: [] } }), { flag: "wx" });
+    ...(nativeFixture ? { configuration: nativeFixture.configuration } : { target_root: root, instance_id: "choice-record", product_root: path.join(root, "product"), product_files: ["app.mjs"],
+      control_root: path.join(privateRoot, "control"), review_root: path.join(privateRoot, "review"), activity_outputs: {},
+      native: { home: path.join(privateRoot, "native"), protected_roots: [] } }) }), { flag: "wx" });
   let host = openCycleChoiceFixtureHost(root, keyFile, sourcesFile, clock);
   const initial = host.initialize({ instanceId: "choice-record" });
   host.initialize({ instanceId: "choice-record", write: true, expectedResultSha256: initial.record.instance_sha256 });
@@ -158,7 +164,15 @@ export async function verifyOwnedCycleResume({ mode, phase, prefix, enter = fals
   assert.deepEqual(witness(), before);
   pass(mode + ": current plan selector reattests the typed owned origin and routes remaining work without granting entry");
   if (enter) {
-    await execute("ready"); const entered = await execute("enter"), effect = entered.results.at(-1).output;
+    const authorization = nativeFixture.authorize(), initialAudit = await executeCanonicalPreworkFixture(nativeFixture, authorization);
+    host = openCycleChoiceFixtureHost(root, keyFile, sourcesFile, clock);
+    for (const id of [initialAudit.selection_operation_id, initialAudit.evaluation_operation_id]) {
+      const journal = host.readJournal(id); createOperationJournalSigner(() => fs.readFileSync(keyFile)).verify(journal); journals.push(journal);
+    }
+    assert.deepEqual(witness(), before);
+    const ready = await execute("ready");
+    assert.equal(ready.results.at(-1).output.observations.initial_audit.evaluation_operation_id, initialAudit.evaluation_operation_id);
+    const entered = await execute("enter"), effect = entered.results.at(-1).output;
     assert.equal(effect.effect_status, "confirmed"); assert.equal(effect.observations.committed.length, 2);
     assert.equal(analyzeStructuredArtifact(artifacts.read("CURRENT-STATE.md", { required: true }).content).key_values.first_plan_step,
       output.observations.proposal.tasks[prefix].task);
@@ -172,7 +186,7 @@ export async function verifyOwnedCycleResume({ mode, phase, prefix, enter = fals
     assert.equal(analyzeStructuredArtifact(artifacts.read(cyclePath + "/status.md", { required: true }).content).key_values.state, "IMPLEMENTING");
     for (const key of ["head", "branch", "refs", "index", "product"]) assert.equal(witness()[key], before[key], key);
     assert.equal(artifacts.read(cyclePath + "/traceability.md", { required: true }).content, traceBefore);
-    pass(mode + ": current readiness and separately granted implementation entry project the next task, without a Native response");
+    pass(mode + ": current readiness names one closed initial audit; separately granted entry projects the next task without a work receipt");
   }
   if (prefix === 2 && phase !== "OPEN") {
     const phaseSource = assertCycleExecutionSourceSelection((await execute("phase_select")).results.at(-1).output);
@@ -217,7 +231,7 @@ export async function verifyOwnedCycleResume({ mode, phase, prefix, enter = fals
   const report = { canonical_resume_scope: "OWNED_ENTRY_SOURCE_COMPONENT", root, private_root: privateRoot, mode, phase, prefix,
     entry_operation_id: entry.operation_id, resume_operation_id: resumed.operation_id, journals: journals.map(row => ({ operation_id: row.operation_id, binding: row.intent.binding_ref, sha256: shadowHash(row) })),
     before, after: witness(), current_checks: withChecks ? "TWO_ACTUAL_REGISTERED_NODE_CHECKS_FIXTURE" : "NOT_RUN", lifecycle_and_history: "STAGED_CANONICAL_DATA",
-    H: "NO_H_CAPTURE_RECEIPT", Native: 0, current_native_work_receipts: 0, installed_archive: "NOT_RUN", full_standard: false };
+    H: "NO_H_CAPTURE_RECEIPT", Native: enter ? 1 : 0, native_initial_audit_responses: enter ? 1 : 0, genuine_native: "NOT_RUN", model_actor: "CONTROLLED_FIXTURE", controller: "CONTROLLED_FIXTURE_INLINE_WORKER", native_process_tree: "NOT_RUN", current_native_work_receipts: 0, installed_archive: "NOT_RUN", full_standard: false };
   fs.writeFileSync(path.join(privateRoot, "owned-resume-proof.json"), JSON.stringify(report, null, 2) + "\n", { flag: "wx" });
   console.log(JSON.stringify(report)); return report;
 }
@@ -229,5 +243,5 @@ if (path.resolve(process.argv[1] ?? "") === script) {
     || contractsOnly && (mode || enter || withChecks || args.length !== 1) || !contractsOnly && !mode) throw Error("OWNED_RESUME_FIXTURE_ARGUMENTS_INVALID");
   await contracts();
   if (!contractsOnly) await verifyOwnedCycleResume({ mode, phase, prefix: Number(prefixText), enter, withChecks });
-  console.log(JSON.stringify({ status: "PASS", checks: checks.length, scope: contractsOnly ? "PURE_OWNED_SOURCE_CONTRACTS" : "OWNED_ENTRY_SOURCE_COMPONENT", Native: 0, full_standard: false }));
+  console.log(JSON.stringify({ status: "PASS", checks: checks.length, scope: contractsOnly ? "PURE_OWNED_SOURCE_CONTRACTS" : "OWNED_ENTRY_SOURCE_COMPONENT", Native: enter ? 1 : 0, full_standard: false }));
 }

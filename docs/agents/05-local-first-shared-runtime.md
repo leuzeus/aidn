@@ -420,3 +420,27 @@ The catalog remains a partial STANDARD component until actual route, actor, back
 
 
 Initial intent/architecture report data has no independent lifecycle or authority store: authenticated producer and evaluation results belong to the existing native_allocation_journal and process_operation_journal parents with their existing owner/scope/retention/migration policies. The new pure prework data readers create no artifact, projection, table, permission or metadata mutation. Fixed-host source authentication and current effect fencing remain required before this report can satisfy implementation readiness; that integration is not supplied by the pure component.
+
+
+Prework source/evaluation and its compact readiness witness remain members of the existing operation journal. Native context/result references remain in the allocation journal and its protected evidence tree. Source permission, process revision, canonical content and metadata, scope/backend and product are reobserved after asynchronous reads. Fresh planning retains the before-context audit and the signed plan-record canonical postimages across its own legitimate write transition. Canonical assessment changes no approved plan. There is no new table, shared synchronization, authority principal or preparation-age ceiling.
+
+
+When the existing plan-record or implementation effect re-enters preparation
+under its acquired owner, the fixed host passes its existing owner-assertion
+capability through the internal evaluation reader. It verifies that exact owner
+around awaits and before CAS. Authored JSON supplies no callback or permission.
+Ordinary prework selection and evaluation still refuse a pending owner;
+missing or foreign ownership remains a refusal.
+
+Read-only Native prework preparation requires the fixed reader to authenticate
+the actual current reserved allocation around its awaited observations. The
+existing allocator holds the common resource owner across this worker. This
+permits preparation under that allocator owner; it does not create an owner or
+add a grant. The existing owner wrapper retains uncertainty on an unconfirmed
+closure, and later audit evaluation still refuses any pending owner. No
+authored JSON flag chooses this internal preparation path.
+
+Complete canonical source text remains in the bounded prework context. The
+Native binding reader uses that context's existing total byte bound for this
+input, while ordinary small shadow data keeps its original string limit.
+This changes neither the source digest nor the separate Native byte ledger.

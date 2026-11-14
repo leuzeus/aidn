@@ -4468,3 +4468,47 @@ source-selected mode is emitted as a closed object, without changing legacy
 plan answers. This registry component creates no allocation or accepted
 judgement and supplies no readiness, phase or effect authority. Existing
 initial-audit host integration and genuine backend qualification remain open.
+
+
+The fixed prework authority observes an actual accepted initialization or canonical admission through existing signed readers. It checks current permission, instance/owner, scope/backend, product and canonical content/metadata after awaits. Separate closed selection/evaluation outputs retain the actual Native context/result provenance; the readiness witness pins the exact evaluation and judgement. Legacy proposals remain DATA. Fresh recording links the earlier judgement to its own signed canonical postimages; canonical audit-only evaluation never permits replacement. Compatible correction/SPIKE preparation can use its actual accepted initialization directly, while the common selector determines whether a canonical assessment is required. These host changes are work in progress until actual mixed-host, current published-root, backend and Native qualification; controlled port fixtures alone do not close ACT-10.
+
+
+The composed fresh-cycle subtree contains a Native R05 absent from the base
+creation asset. Current source therefore groups only its five preceding D/H
+operations and two following checkpoint/context operations into typed common
+calls. The real R05 and its evaluation/finalization stay in the root. This
+preserves every operation and Native activity while retaining the existing
+256-node and 32-child limits; delivery/correction sequences are not flattened.
+Current v7 source construction has 256 root nodes, 205 operation rows and
+14 declared call targets. Its execution still requires separate qualification.
+
+
+The existing effect ports re-enter preparation after acquiring their exact plan
+owner. Their protected evaluation reader therefore carries the existing owner
+assertion as an internal capability, checked around awaits and before CAS. It
+is absent from process/Native JSON and supplies no extra grant. Read-only Native
+preparation separately requires the actual current reserved allocation through
+the fixed active reader. Its existing allocator owns the common resource across
+the worker, and its ordinary closure keeps unconfirmed owners for reconciliation.
+Subsequent audit evaluation and business admission continue to refuse pending
+owners; no caller flag, extra permission or Native budget is introduced.
+
+The Native binding boundary validates complete source-owned context under its
+existing aggregate byte ceiling rather than the smaller DTO string default.
+The generic checker's default remains unchanged; context-specific selection
+preserves descriptor/count/depth safety and validates aggregate UTF-8 size.
+Canonical documents and hashes remain complete, and all allocation limits stay
+unchanged. Actual call fixtures authenticate their declared D/H inputs and
+returns instead of interpreting every call as final verification.
+
+## Native owner provenance prerequisite, 2026-11-14
+
+Mixed Native execution and epoch activation reuse the private standard dispatch
+context to retain their real owner/fence intentions before acquisition and
+their opened lock identity before callback. ADR-0026 specifies the closed signed
+Native dispatch subrecord within the existing allocation-journal concept.
+Its canonical record is discoverable in read-only reconciliation inventory;
+no original failed allocation is converted or owner retired. The allocation
+journal CAS, original budgets and business admissions keep their boundaries.
+Actual source/owner/crash and composed qualification remain required; this
+prerequisite alone does not close general R10, handoff or STANDARD acceptance.

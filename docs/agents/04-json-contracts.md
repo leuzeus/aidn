@@ -761,3 +761,32 @@ whole Native context. Canonical assessment has a null replacement proposal.
 The active kind becomes a closed object schema for transport; historical plan
 answers keep their original shape. This schema support authenticates no live
 producer and does not satisfy readiness or connect the published route.
+
+
+The private prework selection/evaluation outputs and witness use closed v1 data contracts. Selection binds an actual accepted initialization or canonical admission and current content/metadata, product, scope, backend and HEAD. Evaluation retains both judgements and the authenticated producer/context references. The compact witness pins the exact accepted evaluation, subject, report, origin and proposal. Existing planning/readiness v1 observation envelopes retain their readers; current implementation readiness requires this typed audit witness rather than converting a legacy proposal into an audit. Canonical audit-only output cannot authorize plan replacement.
+
+Both private prework output readers also accept the host's closed blocked/no_effect refusal variant. Its observations contain only a bounded reason_code, with empty facts and evidence_refs. Success observations and all accepted-source/report checks keep their existing requirements; a refusal supplies neither a report nor implementation permission.
+
+
+STANDARD catalog v7 declares the typed prework reports and preserves the closed
+v1-v6 readers. Fresh creation uses two deterministic call interfaces around
+the root Native R05; JSON supplies only their declared identity/context data.
+Their empty returns convey no effect, resume or implementation authority.
+
+The source-owned Native prework context keeps its existing 262144-byte total
+bound. Its complete canonical documents may exceed the ordinary shadow DTO
+16384-character string default. Only this context validation selects the
+existing context bound for strings and enforces its aggregate UTF-8 JSON size;
+accessor, shape, count and depth checks remain in force. Small identity/report
+bindings and ordinary DTO callers retain their original limits. No document
+is truncated and no Native allocation budget changes.
+
+Private `native-dispatch-record.v1` binds the original Native allocation or
+epoch intent to its authority, instance prefix, process creation identity,
+owner/fence intention and exact physical lock declaration. The closed reader
+rejects substituted scope, model, plan, PID, fence and unregistered fields.
+This retained variant belongs to `native_allocation_journal` and uses the
+existing canonical artifact CAS/projection adapter. Allocation journal v1-v3
+and historical evidence are unchanged. Returned/threw phases and released
+lease data confer neither effect permission nor complete resource closure.
+No public CLI output root or preparation-age ceiling is added.

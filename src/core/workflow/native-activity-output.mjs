@@ -8,7 +8,7 @@ import reportSchema from "../contracts/workflow-definition/standard-drift-report
 import { validateJsonSchema, validateJsonSchemaDefinition } from "../contracts/json-schema-validator.mjs";
 import { checkShadowJson, shadowHash } from "./shadow-json.mjs";
 import preworkSchema from "../contracts/workflow-definition/standard-cycle-prework-report.v1.schema.json" with { type: "json" };
-import { CYCLE_PREWORK_CONTRACT, assertStandardCyclePreworkSubject, assertStandardCyclePreworkReport } from "./standard-cycle-prework.mjs";
+import { CYCLE_PREWORK_CONTRACT, CYCLE_PREWORK_CONTEXT_MAX_BYTES, assertStandardCyclePreworkSubject, assertStandardCyclePreworkReport } from "./standard-cycle-prework.mjs";
 import planSchema from "../contracts/workflow-definition/standard-cycle-plan-proposal.v1.schema.json" with { type: "json" };
 import { CYCLE_PLAN_CONTRACT, assertStandardCyclePlan } from "./standard-cycle-planning.mjs";
 import workSchema from "../contracts/workflow-definition/standard-cycle-work-report.v1.schema.json" with { type: "json" };
@@ -76,7 +76,11 @@ function assertPreworkOutputBindings(bindings) {
 }
 export function nativeActivityOutputBindings(contractRef, context) {
   if (contractRef === CYCLE_PREWORK_CONTRACT) {
-    if (checkShadowJson(context)) fail("PROCESS_ACTIVITY_OUTPUT_BINDINGS_INVALID");
+    // Complete protected source documents may exceed the small shadow DTO
+    // string default. Keep the existing whole-context byte bound and all
+    // descriptor/count/depth checks; returned bindings retain their small limits.
+    if (checkShadowJson(context, { maxStringLength: CYCLE_PREWORK_CONTEXT_MAX_BYTES })
+      || Buffer.byteLength(JSON.stringify(context)) > CYCLE_PREWORK_CONTEXT_MAX_BYTES) fail("PROCESS_ACTIVITY_OUTPUT_BINDINGS_INVALID");
     const subject = assertStandardCyclePreworkSubject(context?.subject);
     if (!context?.planning_context || shadowHash(context.planning_context) !== context.planning_context_sha256
       || context.planning_context.session_id !== subject.session_id || context.planning_context.cycle_id !== subject.cycle_id

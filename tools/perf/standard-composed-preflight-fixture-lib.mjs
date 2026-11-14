@@ -15,6 +15,8 @@ const verificationTargetId = "aidn-standard-final-verification", reviewTargetId 
 const reviewCaptureTargetId = "aidn-standard-pr-review-capture";
 const callSites = new Map([
   ["session_setup", { model_id: "aidn-standard-session-setup", prefix: "" }],
+  ["fresh_entry", { model_id: "aidn-standard-fresh-cycle-entry", prefix: "" }],
+  ["fresh_checkpoint", { model_id: "aidn-standard-fresh-cycle-checkpoint", prefix: "" }],
   ["owned_cycle", { model_id: "aidn-standard-owned-entry", prefix: "owned_" }],
   ["selected_cycle", { model_id: "aidn-standard-selected-entry", prefix: "selected_" }],
   ["work_prepare", { model_id: "aidn-standard-cycle-preparation", prefix: "" }],
@@ -62,9 +64,9 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
   const initial = { instanceId: "budget-preflight", scopeId: "synthetic-fixture", model, policyPins: agenticPolicyPins(model), facts: {},
     parameters: { session: { session_id: "S001", session_branch: "S001-standard", objective: "Synthetic fixture budget planning" },
       cycle: { cycle_id: "C001", cycle_type: "feature", title: "standard-prefix", objective: "Synthetic fixture budget planning" } } };
-  let state = createAgenticProcess(initial), serial = 0, advanced = 0, deferred = false, interrupted = false;
+  let state = createAgenticProcess(initial), serial = 0, deferred = false, interrupted = false;
   const native = [], operations = [], checkpoints = [], callTransitions = [], verificationInputs = [];
-  const operationInputs = new Map(), syntheticWitnesses = new Map(), sourceOperations = [];
+  const operationInputs = new Map(), syntheticWitnesses = new Map(), sourceOperations = [], advancedByNode = new Map();
   const emit = value => { state = advanceAgenticProcess(state, { event_id: "preflight-" + ++serial, ...value }); };
   const opIntent = (frame, node, inputSha = H) => ({ contract_version: "process-operation-intent.v1", operation_id: "op-" + serial,
     binding_ref: node.binding_ref, binding_sha256: processFrameModel(model, frame).operation_pins[node.binding_ref], input_sha256: inputSha, preconditions_sha256: H,
@@ -81,6 +83,10 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
       if (!origin) fail("STANDARD_FIXTURE_PREFLIGHT_ACCEPTED_SOURCE_REQUIRED");
       output.observations[intent.binding_ref === "cycle_plan_select" ? "record_operation_id" : "implementation_operation_id"] = origin.intent.operation_id;
     }
+    // Source-authored synthetic lifecycle DATA for the declared call input;
+    // it supplies no actual creation admission, grant or canonical history.
+    if (input && intent.binding_ref === "cycle_admit") output.observations.lifecycle = {
+      continuity_rule: "R2_SESSION_BASE_WITH_IMPORT", continuity_base_branch: initial.parameters.session.session_branch };
     const receipt = {
       contract_version: "process-operation-receipt.v1", receipt_id: "receipt-" + serial, operation_id: intent.operation_id,
       intent_sha256: shadowHash(intent), authority_id: intent.authority_id, outcome, effect_status: "no_effect", output_sha256: output ? shadowHash(output) : H,
@@ -118,8 +124,9 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         ["final_validation", "verification_enter", "correction_final_validation", "correction_verification_enter"].includes(label);
       const correctiveFinalizer = node.binding_ref === "drift_check_finalize"
         && callSites.get(site?.node_id)?.model_id === "aidn-standard-corrective-drift";
-      const sourceLeaf = ["aidn-standard-owned-entry", "aidn-standard-selected-entry", "aidn-standard-cycle-preparation", "aidn-standard-canonical-verification"]
-        .includes(callSites.get(site?.node_id)?.model_id) || node.binding_ref === "cycle_execution_source_select";
+      const sourceLeaf = ["aidn-standard-owned-entry", "aidn-standard-selected-entry", "aidn-standard-cycle-preparation", "aidn-standard-canonical-verification",
+        "aidn-standard-fresh-cycle-entry", "aidn-standard-fresh-cycle-checkpoint"]
+        .includes(callSites.get(site?.node_id)?.model_id) || ["cycle_execution_source_select", "cycle_context_refresh"].includes(node.binding_ref);
       const resolution = verificationLeaf || correctiveFinalizer || sourceLeaf
         ? resolveProcessFrameInput({ instance: state, cursor, occurrenceId: frame.occurrence_id, readOperation: id => syntheticWitnesses.get(id) }) : null;
       const intent = opIntent(frame, node, resolution ? shadowHash(resolution.input) : H);
@@ -160,9 +167,17 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         if (node.binding_ref === "mode_work_observe") facts = { mode_work_report_complete: true, mode_analysis_completed: false };
         if (node.binding_ref === "mode_work_evaluate") facts = { mode_analysis_completed: true };
         if (node.binding_ref === "mode_decision") facts = { mode_committing: scenario.mode === "COMMITTING", mode_thinking: scenario.mode === "THINKING", mode_exploring: scenario.mode === "EXPLORING", cycle_work_requested: scenario.mode === "COMMITTING" };
+        if (node.binding_ref === "cycle_prework_select") facts = { cycle_prework_required: true };
+        if (node.binding_ref === "cycle_prework_evaluate") facts = { cycle_prework_passed: true, cycle_plan_available: true,
+          cycle_plan_record_required: cycleEntry === "fresh" || node.id === "correction_plan_evaluate" };
         if (node.binding_ref === "cycle_plan_select") facts = { cycle_implementation_entry_required: true };
         if (node.binding_ref === "cycle_execution_source_select") facts = { cycle_execution_source_selected: true, cycle_work_tasks_pending: true, cycle_work_product_ready: false };
-        if (node.binding_ref === "cycle_task_advance") facts = { cycle_tasks_finished: ++advanced >= scenario.task_iterations };
+        if (node.binding_ref === "cycle_task_advance") {
+          // Main and corrective cycles have distinct declared advance nodes.
+          // A completed first-cycle iteration never consumes the second cycle.
+          const advanced = (advancedByNode.get(label) ?? 0) + 1; advancedByNode.set(label, advanced);
+          facts = { cycle_tasks_finished: advanced >= scenario.task_iterations };
+        }
         if (fullCorrection && node.id === "session_pr_correction_decide") facts = { session_pr_correction_cycle_requested: true };
         if (node.binding_ref === "drift_completion_select") facts = { drift_diagnosis_requested: !operations.includes("closure_drift_finalize"), drift_completion_review_required: false, drift_completion_reviewed: operations.includes("closure_drift_finalize") };
         if (node.binding_ref === "drift_followup_select") {

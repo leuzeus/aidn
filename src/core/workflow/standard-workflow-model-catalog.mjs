@@ -8,6 +8,7 @@ import startupCatalogSchemaV2 from "../contracts/workflow-definition/standard-wo
 import standardCatalogSchemaV4 from "../contracts/workflow-definition/standard-workflow-catalog.v4.schema.json" with { type: "json" };
 import standardCatalogSchemaV5 from "../contracts/workflow-definition/standard-workflow-catalog.v5.schema.json" with { type: "json" };
 import standardCatalogSchemaV6 from "../contracts/workflow-definition/standard-workflow-catalog.v6.schema.json" with { type: "json" };
+import standardCatalogSchemaV7 from "../contracts/workflow-definition/standard-workflow-catalog.v7.schema.json" with { type: "json" };
 import sourceSchema from "../contracts/workflow-definition/standard-workflow-model-source.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { assertAgenticProcessModel } from "./agentic-process-model.mjs";
@@ -26,6 +27,7 @@ const catalogSchemas = new Map([
   ["standard-workflow-catalog.v4", standardCatalogSchemaV4],
   ["standard-workflow-catalog.v5", standardCatalogSchemaV5],
   ["standard-workflow-catalog.v6", standardCatalogSchemaV6],
+  ["standard-workflow-catalog.v7", standardCatalogSchemaV7],
 ]);
 const composedCatalog = catalog => Object.hasOwn(catalog, "activities");
 export const standardAssetHash = bytes => createHash("sha256").update(bytes).digest("hex");
@@ -42,7 +44,7 @@ export function assertStandardWorkflowComponentCatalog(catalog, model) {
     || catalog.model.model_id !== model.model_id || catalog.model.revision !== model.revision || catalog.revision !== model.revision) fail("STANDARD_STARTUP_MODEL_CHANGED");
   const [, ...targets] = processModels(model);
   if (targets.some(target => target.nodes.some(node => node.kind === "activity"))) fail("STANDARD_EMBEDDED_ACTIVITY_UNSUPPORTED");
-  const embeddedCatalog = [standardCatalogSchemaV3, standardCatalogSchemaV4, standardCatalogSchemaV5, standardCatalogSchemaV6].includes(schema);
+  const embeddedCatalog = [standardCatalogSchemaV3, standardCatalogSchemaV4, standardCatalogSchemaV5, standardCatalogSchemaV6, standardCatalogSchemaV7].includes(schema);
   if (embeddedCatalog) for (const target of targets) {
     const events = target.nodes.filter(node => node.kind === "event");
     if (!events.length) continue;

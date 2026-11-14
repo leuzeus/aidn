@@ -6,7 +6,7 @@ import { shadowHash, freezeShadow } from "../../core/workflow/shadow-json.mjs";
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 // The embedding supplies an authenticated approval/closure source out of band.
 // Neither authored JSON nor the host MAC establishes a human or OS observation.
-export function createNativeAuthorizationEpochs({ configuration, signer, read, write, checkpoint, authenticatedCurrent, initialCurrent, journalId, preview, source, processAuthority, materialize }) {
+export function createNativeAuthorizationEpochs({ configuration, signer, read, write, checkpoint, authenticatedCurrent, initialCurrent, journalId, preview, source, processAuthority, materialize, withNativeOwner }) {
   const configSha = shadowHash(configuration);
   function snapshot(original) {
     const before = read(), journal = before.record;
@@ -101,7 +101,8 @@ export function createNativeAuthorizationEpochs({ configuration, signer, read, w
         return { status: "authorized", epoch: epoch.epoch, retained: false, written: true, native_started: false, journal_phase: request.next_generation === 1 ? "absent" : "closed" };
       } catch (error) { if (!committing) error.effect_status = "no_effect"; throw error; }
     };
-    return processAuthority ? processAuthority.withNativeOwner({ instance_id: configuration.instance_id, epoch_request_sha256: shadowHash(request) }, commit) : commit();
+    const ownership = withNativeOwner ?? ((intent, effect) => processAuthority.withNativeOwner(intent, effect));
+    return processAuthority ? ownership({ instance_id: configuration.instance_id, epoch_request_sha256: shadowHash(request) }, commit) : commit();
   }
   return Object.freeze({ prepare, activate });
 }

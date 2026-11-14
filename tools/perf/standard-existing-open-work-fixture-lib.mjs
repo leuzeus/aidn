@@ -13,6 +13,7 @@ import { iterateAgenticProcessSimulation } from "../../src/core/workflow/agentic
 import { CYCLE_TASK_WORK_CONTRACT } from "../../src/core/workflow/standard-cycle-work.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
+import { preworkPlanningReport } from "./standard-cycle-prework-native-fixture-lib.mjs";
 import { taskProgressProposal, taskProgressValidationProfile } from "./cycle-task-progress-fixture-lib.mjs";
 import { evaluateCurrentStateConsistency } from "./verify-current-state-consistency.mjs";
 
@@ -20,7 +21,7 @@ import { evaluateCurrentStateConsistency } from "./verify-current-state-consiste
 // The host loads the delivered model; this case does not alter its graph.
 export async function verifyPublishedExistingOpenWork(check, { mixedFixture, selectedMode }) {
   for (const mode of selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) await check(`standard existing open work ${mode}: delivered root executes two owned current-instance tasks through verification`, async () => {
-    let root, diagnostics = 0, work = 0;
+    let root, diagnostics = 0, initialAudits = 0, work = 0;
     const f = mixedFixture(mode, { standardModel: true, planning: true, readiness: true, work: true, validation: true,
       taskProgress: true, taskFinalValue: 3, hostTrace: true, async answer({ params }) {
         let stage = "context";
@@ -35,7 +36,14 @@ export async function verifyPublishedExistingOpenWork(check, { mixedFixture, sel
               split_recommendation: { new_cycle: false, new_branch: false, change_request_required: false, impact: "none" },
               recommendation: "continue", rationale: "Fixture wire; completion remains an actual host operation", evidence_refs: observed.evidence_refs } };
           }
-          assert.equal(context.contract_version, "standard-cycle-task-work-context.v1", "owned work must not launch a planner or auditor");
+          if (context.contract_version === "standard-cycle-prework-context.v1") {
+            assert.equal(diagnostics, 1); assert.equal(work, 0); assert.equal(initialAudits++, 0);
+            assert.equal(context.subject.kind, "canonical_plan"); assert.ok(context.canonical_proposal);
+            return { outcome: "completed", summary: "Controlled initial audit of the retained canonical work",
+              report: preworkPlanningReport(observed, null) };
+          }
+          assert.equal(context.contract_version, "standard-cycle-task-work-context.v1", "owned work accepts current task work after its initial canonical assessment");
+          assert.equal(initialAudits, 1);
           assert.equal(context.task_ordinal, work + 1); assert.ok([1, 2].includes(context.task_ordinal));
           const before = context.task_ordinal, value = before + 1;
           assert.equal(fs.readFileSync(path.join(root, "product/app.mjs"), "utf8"), `export const value = ${before};\n`);
@@ -120,11 +128,16 @@ export async function verifyPublishedExistingOpenWork(check, { mixedFixture, sel
       if (fs.existsSync(diagnostic)) { const detail = JSON.parse(fs.readFileSync(diagnostic)); throw Object.assign(new Error(`Published existing work failed at ${detail.stage}: ${detail.message}`, { cause: error }), { code: "PUBLISHED_EXISTING_WORK_RPC_CALLBACK_FAILED" }); }
       throw error;
     }
-    assert.equal(reached, true); assert.equal(diagnostics, 1); assert.equal(work, 2); assert.equal(native, 3);
-    assert.equal(f.t.sessions.length, 3); assert.ok(f.t.sessions.every(row => row.closed));
+    assert.equal(reached, true); assert.equal(diagnostics, 1); assert.equal(initialAudits, 1); assert.equal(work, 2); assert.equal(native, 4);
+    assert.equal(f.t.sessions.length, 4); assert.ok(f.t.sessions.every(row => row.closed));
     const final = f.open().inspect(), accepted = binding => final.record.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === binding).map(row => f.open().readOperation(row.intent.operation_id));
     for (const binding of ["session_initialize", "mode_decision", "session_git_checkpoint", "cycle_initialize", "cycle_plan_evaluate", "cycle_plan_record", "cycle_audit_select"]) assert.equal(accepted(binding).length, 0, binding);
     assert.equal(accepted("cycle_plan_adopt").length, 0);
+    const initialEvaluation = accepted("cycle_prework_evaluate"); assert.equal(initialEvaluation.length, 1);
+    const initialOutput = initialEvaluation[0].results.at(-1).output;
+    assert.equal(initialOutput.facts.cycle_prework_passed, true); assert.equal(initialOutput.facts.cycle_plan_record_required, false);
+    assert.equal(initialOutput.observations.report.kind, "audit_canonical_plan"); assert.equal(initialOutput.observations.report.proposal, null);
+    assert.equal(accepted("cycle_readiness_evaluate")[0].results.at(-1).output.observations.initial_audit.evaluation_operation_id, initialEvaluation[0].operation_id);
     const owned = accepted("cycle_owned_resume_admit"); assert.equal(owned.length, 1);
     const ownedSource = owned[0].results.at(-1).output;
     assert.equal(ownedSource.observations.source_kind, "canonical_progress");
@@ -188,7 +201,7 @@ export async function verifyPublishedExistingOpenWork(check, { mixedFixture, sel
       policyPins: final.record.policy_pins, scopeId: final.record.scope_id, events: final.record.events })) { last = row; rows++; }
     assert.equal(last.instance_sha256, final.record.instance_sha256);
     console.log(JSON.stringify({ published_existing_open_work_proof: true, mode, catalog_version: assets.catalog.contract_version, model_sha256: final.record.model_sha256,
-      native_startup_diagnostics: diagnostics, native_planner_responses: 0, native_work_responses: work, imported_completed_tasks: 0,
+      native_startup_diagnostics: diagnostics, native_initial_audit_responses: initialAudits, native_planner_responses: 0, native_work_responses: work, imported_completed_tasks: 0,
       actual_validation_checks: verifier.calls(), actual_task_advances: advances.length, real_verification_phase: true, actual_final_verification: true,
       canonical_origin_selected: true, current_instance_progress_chain: true, original_scope_preserved: true,
       original_plan_intent_and_classification_preserved: true, trace_metadata_timestamp_refreshed: beforeTraceMetadata !== null,

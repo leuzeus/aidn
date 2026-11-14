@@ -30,10 +30,11 @@ export function createStandardCyclePlanRecord({ targetRoot, readEvaluation, obse
     if (artifacts.describe().database && artifacts.describe().state_mode === "db-only") return [];
     return changes.map(row => agentRunPhysicalPath(path.join(root, "docs/audit", row.path)));
   }
-  async function prepare(instance, input, preparedAt, acquired = false) {
+  async function prepare(instance, input, preparedAt, acquired = false, assertOwner = null) {
     assertStandardOperationInput("cycle_plan_record", input);
     if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
-    const verified = await readEvaluation(instance, input), context = verified.context, cyclePath = context.cycle_path;
+    if (assertOwner) assertOwner();
+    const verified = await readEvaluation(instance, input, { assertOwner }), context = verified.context, cyclePath = context.cycle_path;
     if (verified.output.facts.cycle_plan_available !== true) fail("STANDARD_CYCLE_PLAN_EVALUATION_REQUIRED");
     const rows = paths(cyclePath).map(name => artifacts.read(name, { required: true }));
     const proposal = verified.output.observations.proposal;
@@ -51,6 +52,7 @@ export function createStandardCyclePlanRecord({ targetRoot, readEvaluation, obse
     const plan = assertPlan({ contract_version: "standard-cycle-plan-record-plan.v1", operation_ref: "cycle_plan_record", input, prepared_at_ms: preparedAt,
       evaluation_sha256: verified.evaluation_sha256, context_sha256: verified.context_sha256, boundary_sha256: boundary(context, cyclePath), cycle_path: cyclePath, changes });
     if ((await observeContext()).context_sha256 !== verified.context_sha256) fail("STANDARD_CYCLE_PLAN_SOURCE_STALE");
+    if (assertOwner) assertOwner();
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }
   return Object.freeze({
@@ -64,11 +66,12 @@ export function createStandardCyclePlanRecord({ targetRoot, readEvaluation, obse
       } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
-          const fresh = await prepare(instance, plan.input, plan.prepared_at_ms, true);
+          const fresh = await prepare(instance, plan.input, plan.prepared_at_ms, true, () => artifacts.assertLocalEffectOwner(expectPlan));
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_PREVIEW_CHANGED");
           await assertAuthorized();
           if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256
             || (await observeContext()).context_sha256 !== plan.context_sha256) fail("STANDARD_CYCLE_PLAN_SOURCE_STALE");
+          artifacts.assertLocalEffectOwner(expectPlan);
           for (const row of plan.changes) if (artifacts.read(row.path).sha256 !== row.before_sha256 || artifacts.metadataHash(row.path) !== row.before_metadata_sha256) fail("STANDARD_PREVIEW_CHANGED");
           projections(plan.changes).forEach((file, index) => { if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== plan.changes[index].before_sha256) fail("STANDARD_CYCLE_PLAN_PROJECTION_STALE"); });
           if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_CYCLE_PLAN_SOURCE_STALE");
@@ -81,8 +84,14 @@ export function createStandardCyclePlanRecord({ targetRoot, readEvaluation, obse
           for (const [index, file] of projections(plan.changes).entries()) if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== plan.changes[index].after_sha256) fail("STANDARD_CYCLE_PLAN_PROJECTION_UNCONFIRMED");
           const after = await observeContext();
           if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || boundary(after.context, plan.cycle_path) !== plan.boundary_sha256) fail("STANDARD_CYCLE_PLAN_POSTCONDITION_FAILED");
+          const canonicalPaths = after.context.documents.map(doc => doc.ref.slice(6));
+          const canonicalRows = artifacts.readMany(canonicalPaths, { required: canonicalPaths, includeMetadata: true });
+          if (canonicalRows.some((row, index) => row.path !== canonicalPaths[index] || row.sha256 !== after.context.documents[index].sha256))
+            fail("STANDARD_CYCLE_PLAN_POSTCONDITION_FAILED");
+          const canonicalPostimages = canonicalRows.map(({ path, sha256, metadata_sha256 }) => ({ path, sha256, metadata_sha256 }));
           return { contract_version: "standard-cycle-planning-output.v1", operation_ref: "cycle_plan_record", outcome: "completed", effect_status: "confirmed",
             facts: { cycle_plan_recorded: true }, observations: { evaluation_operation_id: plan.input.evaluation_operation_id, projection, readiness: "pending", implementation: "not_authorized",
+              canonical_postimages: canonicalPostimages,
               causal_transition: { before_context_sha256: plan.context_sha256, after_context_sha256: after.context_sha256, evaluation_sha256: plan.evaluation_sha256 }, committed },
             evidence_refs: plan.changes.map(row => ({ ref: "docs/audit/" + row.path, sha256: row.after_sha256 })) };
         } catch (cause) {
