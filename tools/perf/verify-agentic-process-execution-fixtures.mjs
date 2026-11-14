@@ -21,6 +21,7 @@ import { verifyCanonicalPlanAdoption } from "./standard-canonical-plan-adoption-
 import { verifyPublishedExistingOpen } from "./standard-existing-open-route-fixture-lib.mjs";
 import { verifyPublishedExistingOpenWork } from "./standard-existing-open-work-fixture-lib.mjs";
 import { verifyCanonicalPlanWork } from "./standard-canonical-plan-work-fixture-lib.mjs";
+import { cycleVerificationBoundary } from "../../src/application/runtime/standard-drift-recovery.mjs";
 import assert from "node:assert/strict";
 import { attachComposedR09Provider } from "./standard-composed-r09-provider-fixture-lib.mjs";
 import { resolveStandardWorkflowConfiguration, runStandardWorkflowEntry } from "../../src/application/runtime/standard-workflow-entry.mjs";
@@ -2634,6 +2635,51 @@ if (process.argv[2] === "--mixed-continue") {
     assert.throws(() => readControlledDriftGit({ ...input, productFiles: ["../private.txt"] }), /SCOPE_INVALID/);
     assert.throws(() => readControlledDriftGit({ ...input, deniedRoots: [productRoot] }), /SCOPE_DENIED/);
     assert.throws(() => readControlledDriftGit({ ...input, environment: { ...process.env, GIT_CONFIG_COUNT: "0" } }), /ENV_SCOPE_CONFLICT/);
+  });
+  await check("drift controlled Git document boundary preserves cold index bytes and exact owned exclusions", async () => {
+    const repo = path.join(root, "diagnostic-document-boundary"), cycle = "cycles/C001-feature-neutral",
+      names = [cycle + "/status.md", cycle + "/traceability.md", "snapshots/context-snapshot.md", "CURRENT-STATE.md", cycle + "/plan.md"],
+      environment = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^GIT_/i.test(key))),
+      hash = bytes => createHash("sha256").update(bytes).digest("hex");
+    fs.mkdirSync(repo);
+    const git = args => {
+      const result = spawnSync("git", ["--no-optional-locks", "-c", "diff.autoRefreshIndex=false", "-c", "core.hooksPath=NUL", ...args],
+        { cwd: repo, env: environment, encoding: "utf8", shell: false, windowsHide: true });
+      assert.equal(result.status, 0, result.stderr); return result.stdout;
+    };
+    git(["init", "-b", "dev"]); git(["config", "diff.autoRefreshIndex", "true"]);
+    for (const name of names) put(repo, "docs/audit/" + name, "fixture " + name + "\n");
+    put(repo, "stable.txt", "unchanged tracked product bytes\n"); put(repo, "app.mjs", "export const value = 1;\n");
+    git(["add", "."]); git(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "-m", "fixture"]);
+    const files = [...names.map(name => "docs/audit/" + name), "stable.txt", "app.mjs"], index = path.join(repo, ".git/index"),
+      context = () => ({ mode: "COMMITTING", session_id: "S001", cycle_id: "C001", cycle_state: "VERIFYING",
+        metadata_pins: names.map(name => ({ ref: "audit:" + name, sha256: hash(fs.readFileSync(path.join(repo, "docs/audit", name))) })),
+        documents: names.map(name => { const content = fs.readFileSync(path.join(repo, "docs/audit", name), "utf8");
+          return { ref: "audit:" + name, content, sha256: hash(content) }; }) }),
+      observe = () => {
+        // Same bytes with a cold stat cache are fixture construction, not age admission.
+        fs.utimesSync(path.join(repo, "stable.txt"), new Date(946684800000), new Date(946684800000));
+        const before = fs.readFileSync(index), config = fs.readFileSync(path.join(repo, ".git/config")),
+          contents = files.map(name => fs.readFileSync(path.join(repo, name))), head = git(["rev-parse", "HEAD"]),
+          refs = git(["show-ref"]), entries = git(["ls-files", "--stage", "-z"]),
+          value = cycleVerificationBoundary({ root: repo, context: context(), environment }, cycle);
+        assert.deepEqual(fs.readFileSync(index), before, "Read-only document boundary must preserve cold index bytes");
+        assert.equal(fs.existsSync(index + ".lock"), false); assert.deepEqual(fs.readFileSync(path.join(repo, ".git/config")), config);
+        assert.equal(git(["rev-parse", "HEAD"]), head); assert.equal(git(["show-ref"]), refs); assert.equal(git(["ls-files", "--stage", "-z"]), entries);
+        assert.deepEqual(files.map(name => fs.readFileSync(path.join(repo, name))), contents); assert.match(value, /^[a-f0-9]{64}$/); return value;
+      };
+    const clean = observe();
+    put(repo, "docs/audit/" + names[0], "owned verification document changed\n");
+    assert.equal(observe(), clean, "Unstaged exact owned output is discounted");
+    put(repo, "app.mjs", "export const value = 2;\n");
+    const product = observe(); assert.notEqual(product, clean, "Foreign product work changes the boundary");
+    git(["add", "--", "docs/audit/" + names[0]]);
+    const stagedOwn = observe(); assert.notEqual(stagedOwn, product, "Staged owned work remains part of the boundary");
+    put(repo, "foreign.txt", "untracked fixture bytes\n"); files.push("foreign.txt");
+    assert.notEqual(observe(), stagedOwn, "Untracked foreign work changes the boundary");
+    const before = fs.readFileSync(index);
+    assert.throws(() => cycleVerificationBoundary({ root: repo, context: context(), environment: { ...environment, GIT_CONFIG_COUNT: "0" } }, cycle), /ENV_SCOPE_CONFLICT/);
+    assert.deepEqual(fs.readFileSync(index), before);
   });
   await check("drift contract binds bounded reports and refuses inconsistent or invented evidence", async () => {
     const context = { context_sha256: "a".repeat(64), context: { original_objective: "Original goal", session_id: "S001", cycle_id: null,

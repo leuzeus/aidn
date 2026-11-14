@@ -78,7 +78,7 @@ function documentBoundary({ root, context, environment = process.env }, controls
   if (Object.keys(environment).some(key => /^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|CONFIG(?:_.*)?)$/i.test(key))) fail("STANDARD_GIT_ENV_SCOPE_CONFLICT");
   const git = args => {
     try { return execFileSync("git", ["--literal-pathspecs", "-C", root, "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + (process.platform === "win32" ? "NUL" : "/dev/null"),
-      "-c", "submodule.recurse=false", ...args], { encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, maxBuffer: 262144,
+      "-c", "submodule.recurse=false", "-c", "diff.autoRefreshIndex=false", ...args], { encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, maxBuffer: 262144,
         env: { ...environment, GIT_OPTIONAL_LOCKS: "0" }, stdio: ["ignore", "pipe", "pipe"] }); } catch { fail("STANDARD_RECOVERY_GIT_UNAVAILABLE"); }
   };
   const normalize = name => process.platform === "win32" ? name.toLowerCase() : name;
