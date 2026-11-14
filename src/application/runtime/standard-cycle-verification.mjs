@@ -29,10 +29,12 @@ export function createStandardCycleVerification({ targetRoot, readEvaluation, ob
     if (artifacts.describe().database && artifacts.describe().state_mode === "db-only") return [];
     return changes.map(row => agentRunPhysicalPath(path.join(root, "docs/audit", row.path)));
   }
-  async function prepare(instance, input, preparedAt, acquired = false) {
+  async function prepare(instance, input, preparedAt, acquired = false, assertOwner = null) {
     assertStandardOperationInput("cycle_verification_enter", input);
     if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
-    const verified = await readEvaluation(instance, input), context = verified.context, cyclePath = context.cycle_path;
+    assertOwner?.();
+    const verified = await readEvaluation(instance, input, assertOwner === null ? {} : { assertOwner }), context = verified.context, cyclePath = context.cycle_path;
+    assertOwner?.();
     if (verified.output.facts.cycle_validation_evidence_fresh !== true || verified.output.facts.cycle_work_complete !== true)
       return { can_apply: false, reason_code: "STANDARD_CYCLE_WORK_INCOMPLETE" };
     const admitted = await preWriteAdmit({ targetRoot: root, skill: "cycle-close" });
@@ -51,7 +53,13 @@ export function createStandardCycleVerification({ targetRoot, readEvaluation, ob
       const start = text.indexOf(marker), end = text.indexOf("\n## ", start + marker.length);
       return text.slice(0, start) + block + (end < 0 ? "" : text.slice(end));
     };
-    const trace = section(rows[1].content, "Process verification evidence", "No lifecycle completion is inferred from these checks.\n\n```json\n" + JSON.stringify({ evaluation_operation_id: input.evaluation_operation_id, ...proof }, null, 2) + "\n```");
+    const verificationBody = "No lifecycle completion is inferred from these checks.\n\n" + String.fromCharCode(96).repeat(3) + "json\n"
+      + JSON.stringify({ evaluation_operation_id: input.evaluation_operation_id, ...proof }, null, 2) + "\n" + String.fromCharCode(96).repeat(3);
+    // A resumed cycle keeps its full prior verification document bytes. This is
+    // a new current effect backed by fresh checks, not an imported old receipt.
+    const trace = proof.canonical_resume_source && rows[1].content.includes("\n\n## Process verification evidence\n\n")
+      ? rows[1].content + "\n\n## Process verification evidence\n\n" + verificationBody + "\n"
+      : section(rows[1].content, "Process verification evidence", verificationBody);
     const snapshot = section(rows[2].content, "Process verification entry", "- Cycle: " + context.cycle_id + " (VERIFYING)\n- Checks: " + proof.status + " (" + proof.proof_class + ")\n- Evidence: " + input.evaluation_operation_id + "\n- Next action: " + next);
     let current = field(rows[3].content, "first_plan_step", next); current = field(current, "updated_at", at);
     const contents = { [rows[0].path]: status, [rows[1].path]: trace, [rows[2].path]: snapshot, [rows[3].path]: current };
@@ -73,23 +81,29 @@ export function createStandardCycleVerification({ targetRoot, readEvaluation, ob
           fail("STANDARD_CYCLE_VERIFICATION_EXPLICIT_EFFECT_REQUIRED");
       } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
+        // This assertion belongs to the artifacts instance that owns the live
+        // descriptor and lease. It is never authored or retained in JSON.
+        const assertOwner = () => artifacts.assertLocalEffectOwner(expectPlan);
         try {
-          const fresh = await prepare(instance, plan.input, plan.prepared_at_ms, true);
+          assertOwner();
+          const fresh = await prepare(instance, plan.input, plan.prepared_at_ms, true, assertOwner);
+          assertOwner();
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_PREVIEW_CHANGED");
-          await assertAuthorized();
+          await assertAuthorized(); assertOwner();
           if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256
             || (await observeContext()).context_sha256 !== plan.context_sha256) fail("STANDARD_CYCLE_VERIFICATION_SOURCE_STALE");
+          assertOwner();
           for (const row of plan.changes) if (artifacts.read(row.path).sha256 !== row.before_sha256 || artifacts.metadataHash(row.path) !== row.before_metadata_sha256) fail("STANDARD_PREVIEW_CHANGED");
           projections(plan.changes).forEach((file, index) => { if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== plan.changes[index].before_sha256) fail("STANDARD_CYCLE_VERIFICATION_PROJECTION_STALE"); });
           if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_CYCLE_VERIFICATION_SOURCE_STALE");
         } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         const committed = [], metadata = [];
         try {
-          for (const change of plan.changes) { metadata.push(artifacts.compareAndSwapPreservingMetadata(change).metadata_sha256); committed.push(change.path); }
-          const projection = artifacts.project(committed);
+          for (const change of plan.changes) { assertOwner(); metadata.push(artifacts.compareAndSwapPreservingMetadata(change).metadata_sha256); committed.push(change.path); }
+          const projection = artifacts.project(committed); assertOwner();
           for (const [index, change] of plan.changes.entries()) if (artifacts.read(change.path).sha256 !== change.after_sha256 || artifacts.metadataHash(change.path) !== metadata[index]) fail("STANDARD_CYCLE_VERIFICATION_POSTCONDITION_FAILED");
           for (const [index, file] of projections(plan.changes).entries()) if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== plan.changes[index].after_sha256) fail("STANDARD_CYCLE_VERIFICATION_PROJECTION_UNCONFIRMED");
-          const after = await observeContext();
+          const after = await observeContext(); assertOwner();
           if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || boundary(after.context, plan.cycle_path) !== plan.boundary_sha256) fail("STANDARD_CYCLE_VERIFICATION_POSTCONDITION_FAILED");
           return { contract_version: "standard-cycle-verification-output.v1", operation_ref: "cycle_verification_enter", outcome: "completed", effect_status: "confirmed",
             facts: { cycle_verification_started: true }, observations: { evaluation_operation_id: plan.input.evaluation_operation_id, projection,

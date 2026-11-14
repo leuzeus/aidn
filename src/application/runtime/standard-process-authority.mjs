@@ -11,7 +11,7 @@ import { readWorkflowProjectAuthority, readWorkflowProjectExecutionAuthority } f
 import { createStandardWorkflowOperations, standardWorkflowOperationBindings, assertStandardWorkflowImplementation } from "./standard-workflow-operations.mjs";
 import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.mjs";
 import { artifactContentHash } from "../../core/workflow/artifact-compare-swap.mjs";
-import { createOperationJournalSigner } from "../../core/workflow/process-operation-journal.mjs";
+import { operationJournalPath, createOperationJournalSigner } from "../../core/workflow/process-operation-journal.mjs";
 import { createProcessOperationJournalStore } from "../../adapters/runtime/process-operation-journal-store.mjs";
 import { createProcessControlInboxStore } from "../../adapters/runtime/process-control-inbox-store.mjs";
 import { createProcessDecisionInboxStore } from "../../adapters/runtime/process-decision-inbox-store.mjs";
@@ -40,7 +40,9 @@ import previewSchema from "../../core/contracts/workflow-definition/standard-ope
 import path from "node:path";
 import { resolveProcessOperationInput } from "../../core/workflow/process-input-resolution.mjs";
 import { CYCLE_WORK_CONTRACT, CYCLE_TASK_WORK_CONTRACT, assertWorkProductSnapshot, observeStandardCycleWork, observeStandardCycleTaskWork } from "../../core/workflow/standard-cycle-work.mjs";
-import { deriveStandardCycleTaskCursor, renderStandardTaskProgress } from "../../core/workflow/standard-cycle-task-progress.mjs";
+import { deriveStandardCycleTaskCursor, deriveStandardCanonicalResumeTaskCursor, renderStandardTaskProgress } from "../../core/workflow/standard-cycle-task-progress.mjs";
+import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation, assertCanonicalResumeOutput, evaluateCanonicalResumeReadiness, assertCanonicalResumeObserveInput, assertCanonicalResumeObserveOutput } from "../../core/workflow/standard-canonical-cycle-resume.mjs";
+import { projectStandardCanonicalCycleProgress } from "../../core/workflow/standard-canonical-plan-projection.mjs";
 import { renderStandardCyclePlan } from "../../core/workflow/standard-cycle-planning.mjs";
 import { cycleWorkBoundary } from "./standard-drift-recovery.mjs";
 import { assertStandardResolvedPreview } from "./standard-process-inputs.mjs";
@@ -66,7 +68,7 @@ function assertHistoricalPreviewInput(preview, model) {
 }
 // New mixed instances have one authority. Legacy operation/native scopes remain
 // unchanged; no caller-authored module, key, scope or history is accepted.
-export function createStandardProcessAuthority({ configuration: suppliedConfiguration, model: supplied, modelSource = null, readSigningKey, humanSource = null, readProductSha256, environment = process.env, nativeReservation = null }) {
+export function createStandardProcessAuthority({ configuration: suppliedConfiguration, model: supplied, modelSource = null, readSigningKey, humanSource = null, readProductSha256, readProductSnapshot, environment = process.env, nativeReservation = null }) {
   if (checkShadowJson(suppliedConfiguration)) fail("STANDARD_PROCESS_CONFIGURATION_INVALID");
   const configuration = freezeShadow(structuredClone(suppliedConfiguration));
   const model = freezeShadow(structuredClone(supplied)); assertAgenticProcessModel(model);
@@ -523,6 +525,34 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   async function evaluateCycleReadiness(instance, input) {
     assertStandardOperationInput("cycle_readiness_evaluate", input);
     const origin = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === input.record_operation_id)?.intent.binding_ref;
+    if (origin === canonicalCycleResumeAdmitOperation) {
+      const adopted = canonicalResumeOrigin(instance, input.record_operation_id), output = adopted.output, source = output.observations;
+      if (!["OPEN", "IMPLEMENTING"].includes(source.canonical_phase)
+        || source.phase_transition_required !== (source.canonical_phase === "OPEN")) fail("STANDARD_CANONICAL_RESUME_IMPLEMENTATION_CHECKPOINT_REQUIRED");
+      const assertSource = observed => {
+        const names = source.canonical.map(row => row.path), rows = artifacts.readMany(names, { required: names, includeMetadata: true }),
+          pins = rows.map(({ path, sha256, metadata_sha256 }) => ({ path, sha256, metadata_sha256 }));
+        if (source.context_sha256 !== observed.context_sha256 || source.operation_scope_sha256 !== shadowHash(operations.observeScope())
+          || source.canonical_binding_sha256 !== shadowHash(artifacts.describe()) || shadowHash(source.canonical) !== shadowHash(pins)
+          || observed.context.cycle_state !== source.canonical_phase || observed.context.cycle_path !== source.cycle_path
+          || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail("STANDARD_CYCLE_READINESS_SOURCE_STALE");
+      };
+      const before = await observeCycleReadinessContext(); assertSource(before);
+      const admitted = await operations.auditCycle({ session_id: source.session_id, cycle_id: source.cycle_id }),
+        start = await runStartSessionAdmitUseCase({ targetRoot: configuration.target_root, mode: "COMMITTING" }),
+        fresh = await observeCycleReadinessContext(); assertSource(fresh);
+      const projection = projectStandardCanonicalCycleProgress(fresh);
+      if (shadowHash(projection.proposal) !== shadowHash(source.proposal) || shadowHash(projection.completed_task_ids) !== shadowHash(source.imported_completed_task_ids)
+        || artifactContentHash(projection.original_plan) !== source.original_plan_sha256) fail("STANDARD_CYCLE_READINESS_SOURCE_STALE");
+      const checked = evaluateCanonicalResumeReadiness({ projection, context: fresh.context,
+        branchAdmitted: admitted.outcome === "completed" && start.ok === true && start.action === "resume_current_cycle" });
+      return assertStandardOperationOutput({ contract_version: "standard-cycle-readiness-output.v1", operation_ref: "cycle_readiness_evaluate",
+        outcome: checked.satisfied ? "completed" : "blocked", effect_status: "no_effect", facts: checked.satisfied ? { cycle_readiness_satisfied: true } : {},
+        observations: { checks: checked.checks, record_operation_id: input.record_operation_id, record_sha256: shadowHash(output), context_sha256: fresh.context_sha256,
+          cycle_path: source.cycle_path, scope_sha256: source.scope_sha256, implementation: "not_authorized",
+          planning_source: { kind: "canonical_progress", operation_id: input.record_operation_id, output_sha256: shadowHash(output) } },
+        evidence_refs: source.canonical.map(row => ({ ref: "audit:" + row.path, sha256: row.sha256 })) });
+    }
     if (origin === "cycle_plan_adopt") {
       const recorded = acceptedOperation(instance, input.record_operation_id, "cycle_plan_adopt"), output = assertStandardOperationOutput(recorded.output), source = output.observations;
       if (output.effect_status !== "no_effect" || output.facts.canonical_cycle_plan_available !== true || source.source_kind !== "canonical_plan"
@@ -566,18 +596,42 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   async function readCycleReadinessEvaluation(instance, input) {
     assertStandardOperationInput("cycle_implementation_enter", input);
     const verified = acceptedOperation(instance, input.evaluation_operation_id, "cycle_readiness_evaluate");
+    if (verified.output.observations.planning_source?.kind === "canonical_progress") {
+      const origin = canonicalResumeOrigin(instance, verified.record.preview.input.record_operation_id);
+      if (origin.output.observations.work_intent !== "continue_implementation") fail("STANDARD_CANONICAL_RESUME_INTEGRATION_ONLY");
+    }
     const output = await evaluateCycleReadiness(instance, verified.record.preview.input);
     if (output.facts.cycle_readiness_satisfied !== true || shadowHash(output) !== shadowHash(verified.output)) fail("STANDARD_CYCLE_READINESS_EVALUATION_STALE");
     const observed = await observeCycleReadinessContext();
     if (observed.context_sha256 !== output.observations.context_sha256) fail("STANDARD_CYCLE_READINESS_SOURCE_STALE");
     return { output, evaluation_sha256: shadowHash(output), context: observed.context, context_sha256: observed.context_sha256,
-      ...(output.observations.planning_source?.kind === "canonical_plan" ? { first_plan_step: cyclePlanningProposal(instance, verified).tasks[0].task } : {}) };
+      ...(["canonical_plan", "canonical_progress"].includes(output.observations.planning_source?.kind) ? { first_plan_step: (() => {
+        const proposal = cyclePlanningProposal(instance, verified);
+        if (output.observations.planning_source.kind === "canonical_plan") return proposal.tasks[0].task;
+        const origin = canonicalResumeOrigin(instance, verified.record.preview.input.record_operation_id);
+        return proposal.tasks[origin.output.observations.imported_completed_task_ids.length]?.task ?? "Run final verification and audit before explicit closure";
+      })() } : {}) };
   }
   const observeCycleReadinessContext = async (productSha256 = readProductSha256?.()) => readinessContext(await readStandardCyclePlanContext({ targetRoot: configuration.target_root, productSha256, productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment, readinessTransition: true }));
+  function canonicalResumeOrigin(instance, id, auth = {}, history = null) {
+    const adopted = acceptedOperation(instance, id, canonicalCycleResumeAdmitOperation, auth, history), output = assertCanonicalResumeOutput(adopted.output);
+    if (output.outcome !== "completed" || output.effect_status !== "no_effect" || output.facts.canonical_cycle_resume_available !== true
+      || output.observations.admission_operation_id !== id || output.observations.readiness_satisfied !== true)
+      fail("STANDARD_CANONICAL_RESUME_ADMISSION_REQUIRED");
+    return adopted;
+  }
   function cyclePlanningProposal(instance, ready, auth = {}, history = null) {
     const id = ready.record.preview.input.record_operation_id;
     const origin = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === id)?.intent.binding_ref;
+    if (origin === canonicalCycleResumeAdmitOperation) {
+      const adopted = canonicalResumeOrigin(instance, id, auth, history), source = adopted.output.observations;
+      if (ready.output.facts.cycle_readiness_satisfied !== true || ready.output.observations.cycle_path !== source.cycle_path
+        || ready.output.observations.scope_sha256 !== source.scope_sha256
+        || shadowHash(ready.output.observations.planning_source ?? null) !== shadowHash({ kind: "canonical_progress", operation_id: id, output_sha256: shadowHash(adopted.output) }))
+        fail("STANDARD_CYCLE_READINESS_RECORD_REQUIRED");
+      return source.proposal;
+    }
     if (origin === "cycle_plan_adopt") {
       const adopted = acceptedOperation(instance, id, "cycle_plan_adopt", auth, history), output = assertStandardOperationOutput(adopted.output);
       const source = output.observations, selected = ready.output.observations.planning_source;
@@ -595,11 +649,32 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const evaluated = acceptedOperation(instance, recorded.record.preview.input.evaluation_operation_id, "cycle_plan_evaluate", auth, history);
     return readActivityOutput(instance, evaluated.record.preview.input.report_occurrence_id, CYCLE_PLAN_CONTRACT, auth, history).report;
   }
-  function taskPhase(instance, id, auth = {}) {
-    const phase = acceptedOperation(instance, id, "cycle_implementation_enter", auth);
-    if (phase.output.effect_status !== "confirmed" || phase.output.facts.cycle_implementation_started !== true) fail("STANDARD_CYCLE_WORK_PHASE_REQUIRED");
-    const ready = acceptedOperation(instance, phase.record.preview.input.evaluation_operation_id, "cycle_readiness_evaluate", auth);
-    return { phase, proposal: cyclePlanningProposal(instance, ready, auth) };
+  function taskPhase(instance, id, auth = {}, history = null) {
+    const binding = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === id)?.intent.binding_ref;
+    let phase, proposal, resume = null, phaseContextSha256;
+    if (binding === canonicalCycleResumeAdmitOperation) {
+      phase = canonicalResumeOrigin(instance, id, auth, history);
+      if (phase.output.facts.cycle_resume_phase_admitted !== true || !["IMPLEMENTING", "VERIFYING"].includes(phase.output.observations.canonical_phase))
+        fail("STANDARD_CANONICAL_RESUME_OPEN_TRANSITION_REQUIRED");
+      resume = phase; proposal = phase.output.observations.proposal; phaseContextSha256 = phase.output.observations.context_sha256;
+      // Read-only canonical DATA cannot project the current pending task into
+      // CURRENT-STATE. Unfinished work needs the existing authorized DoR effect.
+      if (phase.output.observations.imported_completed_task_ids.length < proposal.tasks.length)
+        fail("STANDARD_CANONICAL_RESUME_IMPLEMENTATION_CHECKPOINT_REQUIRED");
+    } else {
+      phase = acceptedOperation(instance, id, "cycle_implementation_enter", auth, history);
+      if (phase.output.effect_status !== "confirmed" || phase.output.facts.cycle_implementation_started !== true) fail("STANDARD_CYCLE_WORK_PHASE_REQUIRED");
+      const ready = acceptedOperation(instance, phase.record.preview.input.evaluation_operation_id, "cycle_readiness_evaluate", auth, history);
+      proposal = cyclePlanningProposal(instance, ready, auth, history); phaseContextSha256 = phase.output.observations.causal_transition.after_context_sha256;
+      const recordId = ready.record.preview.input.record_operation_id,
+        recordBinding = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === recordId)?.intent.binding_ref;
+      if (recordBinding === canonicalCycleResumeAdmitOperation) resume = canonicalResumeOrigin(instance, recordId, auth, history);
+    }
+    return { phase, proposal, phaseContextSha256,
+      canonicalResume: resume ? { source_operation_id: resume.record.operation_id, source_sha256: shadowHash(resume.output), completed_task_ids: resume.output.observations.imported_completed_task_ids } : null,
+      resumeSource: resume ? { operation_id: resume.record.operation_id, output_sha256: shadowHash(resume.output), canonical_phase: resume.output.observations.canonical_phase,
+        focus_checkpoint_operation_id: resume.output.observations.focus_checkpoint_operation_id, source_sha256: resume.output.observations.source_sha256,
+        continuity_action: resume.output.observations.continuity_action, work_intent: resume.output.observations.work_intent } : null };
   }
   function taskAdvances(instance, phaseId, auth = {}) {
     const result = [];
@@ -620,19 +695,22 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     }
     return result;
   }
-  function taskCursor(instance, phaseId, phase, proposal, contextSha256, auth = {}) {
-    return deriveStandardCycleTaskCursor({ proposal, implementationOperationId: phaseId, phaseContextSha256: phase.output.observations.causal_transition.after_context_sha256,
-      advances: taskAdvances(instance, phaseId, auth), contextSha256 });
+  function taskCursor(instance, phaseId, subject, contextSha256, auth = {}) {
+    const options = { proposal: subject.proposal, implementationOperationId: phaseId, phaseContextSha256: subject.phaseContextSha256,
+      advances: taskAdvances(instance, phaseId, auth), contextSha256 };
+    return subject.canonicalResume ? deriveStandardCanonicalResumeTaskCursor({ ...options, canonicalResume: subject.canonicalResume }) : deriveStandardCycleTaskCursor(options);
   }
   async function evaluateCycleTaskSelection(instance, input, auth = {}, productSha256 = readProductSha256?.()) {
     assertStandardOperationInput("cycle_task_select", input);
-    const { phase, proposal } = taskPhase(instance, input.implementation_operation_id, auth), observed = await observeCycleReadinessContext(productSha256);
-    const cursor = taskCursor(instance, input.implementation_operation_id, phase, proposal, observed.context_sha256, auth);
+    const subject = taskPhase(instance, input.implementation_operation_id, auth), { proposal } = subject,
+      observed = await (subject.canonicalResume ? observeCycleVerificationContext(productSha256) : observeCycleReadinessContext(productSha256));
+    const cursor = taskCursor(instance, input.implementation_operation_id, subject, observed.context_sha256, auth);
     const brief = observed.context.documents.find(row => row.ref === "audit:" + observed.context.cycle_path + "/brief.md");
     const original = renderStandardCyclePlan(proposal, observed.context.cycle_path, { "brief.md": brief.content })[observed.context.cycle_path + "/plan.md"];
     if (artifacts.read(observed.context.cycle_path + "/plan.md", { required: true }).content !== renderStandardTaskProgress({ originalPlan: original, proposal, completedTaskIds: cursor.completed_task_ids })) fail("STANDARD_TASK_PROGRESS_PLAN_CHANGED");
     return { contract_version: "standard-cycle-task-output.v1", operation_ref: "cycle_task_select", outcome: "completed", effect_status: "no_effect",
-      facts: { cycle_task_selected: !cursor.complete, cycle_tasks_finished: cursor.complete }, observations: { ...cursor, task_count: proposal.tasks.length, cycle_path: observed.context.cycle_path },
+      facts: { cycle_task_selected: !cursor.complete, cycle_tasks_finished: cursor.complete }, observations: { ...cursor,
+        ...(subject.resumeSource ? { canonical_resume_origin: subject.resumeSource } : {}), task_count: proposal.tasks.length, cycle_path: observed.context.cycle_path },
       evidence_refs: observed.context.documents.filter(row => ["audit:CURRENT-STATE.md", "audit:" + observed.context.cycle_path + "/plan.md", "audit:" + observed.context.cycle_path + "/status.md"].includes(row.ref)).map(({ ref, sha256 }) => ({ ref, sha256 })) };
   }
   async function prepareTaskWorkActivity({ instance, occurrenceId, productSha256, productSnapshot }) {
@@ -643,6 +721,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const selected = acceptedOperation(instance, resolution.input.task_operation_id, "cycle_task_select", auth);
     const fresh = await evaluateCycleTaskSelection(instance, selected.record.preview.input, auth, productSha256), task = fresh.observations.task;
     if (shadowHash(fresh) !== shadowHash(selected.output) || !task || task.intent !== "implementation" || task.paths.some(row => row.operations.some(op => !["update", "add", "delete"].includes(op)))) fail("STANDARD_CYCLE_TASK_WORK_SOURCE_STALE");
+    if (fresh.observations.canonical_resume_origin?.work_intent === "integration_only") fail("STANDARD_CANONICAL_RESUME_INTEGRATION_ONLY");
     const admission = await preWriteAdmit({ targetRoot: configuration.target_root, skill: "start-session" });
     if (admission.ok !== true || !["admitted", "admitted_with_warnings"].includes(admission.admission_status)) fail("STANDARD_CYCLE_WORK_ADMISSION_BLOCKED");
     const observed = await observeCycleReadinessContext(productSha256);
@@ -660,7 +739,9 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     authenticate(instance, auth); assertWorkProductSnapshot(productSnapshot);
     const resolution = resolveProcessOperationInput({ instance, occurrenceId, readOperation: id => { const row = operationStore.read(id).record; signer.verify(row); return row; } });
     if (Object.keys(resolution.input).join(",") !== "implementation_operation_id" || shadowHash(productSnapshot) !== productSha256) fail("STANDARD_CYCLE_WORK_INPUT_INVALID");
-    const id = resolution.input.implementation_operation_id, phase = acceptedOperation(instance, id, "cycle_implementation_enter", auth);
+    const id = resolution.input.implementation_operation_id, subject = taskPhase(instance, id, auth);
+    if (subject.canonicalResume) fail("STANDARD_CANONICAL_RESUME_TASK_SELECTION_REQUIRED");
+    const phase = subject.phase;
     if (phase.output.effect_status !== "confirmed" || phase.output.facts.cycle_implementation_started !== true) fail("STANDARD_CYCLE_WORK_PHASE_REQUIRED");
     const ready = acceptedOperation(instance, phase.record.preview.input.evaluation_operation_id, "cycle_readiness_evaluate", auth);
     const proposal = cyclePlanningProposal(instance, ready, auth);
@@ -699,8 +780,65 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       boundarySha256: cycleWorkBoundary({ root: artifacts.root, context: observed.context, environment }, context.task.paths.map(row => row.path)),
       producer: authenticated.producer, evidenceRefs: [authenticated.reference, source.ref, output.ref] });
   }
+  function currentProductSnapshot() {
+    if (typeof readProductSnapshot !== "function") fail("STANDARD_CANONICAL_RESUME_PRODUCT_AUTHORITY_REQUIRED");
+    const before = readProductSha256?.(), files = readProductSnapshot();
+    assertWorkProductSnapshot(files);
+    if (shadowHash(files) !== before || before !== readProductSha256?.()) fail("STANDARD_CANONICAL_RESUME_PRODUCT_CHANGED");
+    return structuredClone(files);
+  }
+  async function observeCanonicalResumeProduct(instance, input, { assertOwner = null } = {}) {
+    assertCanonicalResumeObserveInput(input); authenticate(instance);
+    const current = () => {
+      if (instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail("STANDARD_CANONICAL_RESUME_PROCESS_CHANGED");
+      if (assertOwner !== null) {
+        if (typeof assertOwner !== "function") fail("STANDARD_CANONICAL_RESUME_OWNER_AUTHORITY_REQUIRED");
+        assertOwner();
+      } else if (artifacts.ownerPending()) fail("STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED");
+    };
+    current();
+    const subject = taskPhase(instance, input.implementation_operation_id);
+    if (!subject.canonicalResume) fail("STANDARD_CANONICAL_RESUME_ADMISSION_REQUIRED");
+    const before = await observeCycleVerificationContext(); current();
+    if (!["IMPLEMENTING", "VERIFYING"].includes(before.context.cycle_state)) fail("STANDARD_CANONICAL_RESUME_PHASE_REQUIRED");
+    const cursor = taskCursor(instance, input.implementation_operation_id, subject, before.context_sha256);
+    if (!cursor.complete) fail("STANDARD_CANONICAL_RESUME_WORK_INCOMPLETE");
+    const files = currentProductSnapshot(), admitted = await preWriteAdmit({ targetRoot: configuration.target_root,
+      skill: before.context.cycle_state === "VERIFYING" ? "cycle-close" : "start-session" });
+    if (admitted.ok !== true || !["admitted", "admitted_with_warnings"].includes(admitted.admission_status)) fail("STANDARD_CANONICAL_RESUME_PRODUCT_ADMISSION_BLOCKED");
+    current();
+    const after = await observeCycleVerificationContext(), currentFiles = currentProductSnapshot(); current();
+    if (before.context_sha256 !== after.context_sha256 || shadowHash(files) !== shadowHash(currentFiles)
+      || shadowHash(files) !== after.context.product_sha256) fail("STANDARD_CANONICAL_RESUME_PRODUCT_CHANGED");
+    const observedTasks = collectObservedTasks(instance, input.implementation_operation_id, subject.proposal, cursor.scope_sha256);
+    if (subject.canonicalResume.completed_task_ids.some(id => observedTasks.has(id))) fail("STANDARD_CANONICAL_RESUME_WORK_OVERLAP");
+    const origin = canonicalResumeOrigin(instance, subject.resumeSource.operation_id);
+    current();
+    return assertCanonicalResumeObserveOutput({ contract_version: "standard-canonical-cycle-resume-observe-output.v1", operation_ref: canonicalCycleResumeObserveOperation,
+      outcome: "completed", effect_status: "no_effect", facts: { cycle_resume_product_observed: true, cycle_validation_required: true },
+      observations: { source_kind: "canonical_resume_product", implementation_operation_id: input.implementation_operation_id,
+        resume_operation_id: subject.resumeSource.operation_id, resume_output_sha256: subject.resumeSource.output_sha256,
+        context_sha256: after.context_sha256, scope_sha256: cursor.scope_sha256, product_sha256: shadowHash(files), product_snapshot: files,
+        canonical_phase: after.context.cycle_state, imported_completed_task_ids: subject.canonicalResume.completed_task_ids,
+        current_observed_task_ids: subject.proposal.tasks.filter(row => observedTasks.has(row.id)).map(row => row.id), work_complete: true,
+        authorship: "canonical_data_and_current_snapshot_not_native_writer_attestation", implementation_authorized: false, current_native_work_evidence: false },
+      evidence_refs: [...after.context.documents.map(({ ref, sha256 }) => ({ ref, sha256 })),
+        { ref: "audit:" + operationJournalPath(origin.record.operation_id), sha256: shadowHash(origin.record) }, { ref: "product:snapshot", sha256: shadowHash(files) }] });
+  }
   function acceptedWorkSnapshot(instance, workId, { auth = {}, productSha256 } = {}) {
     const binding = operationStore.read(workId).record?.intent.binding_ref;
+    if (binding === canonicalCycleResumeObserveOperation) {
+      const evaluated = acceptedOperation(instance, workId, binding, auth), output = assertCanonicalResumeObserveOutput(evaluated.output),
+        subject = taskPhase(instance, output.observations.implementation_operation_id, auth), origin = subject.resumeSource,
+        files = currentProductSnapshot();
+      if (!origin || output.observations.resume_operation_id !== origin.operation_id || output.observations.resume_output_sha256 !== origin.output_sha256
+        || output.observations.scope_sha256 !== shadowHash(subject.proposal.tasks.map(({ task, intent, paths }) => ({ task, intent, paths })))
+        || shadowHash(output.observations.imported_completed_task_ids) !== shadowHash(subject.canonicalResume.completed_task_ids)
+        || shadowHash(output.observations.product_snapshot) !== shadowHash(files) || shadowHash(files) !== (productSha256 ?? readProductSha256?.()))
+        fail("STANDARD_CANONICAL_RESUME_PRODUCT_CHANGED");
+      return { evaluated, binding, output, evaluation_sha256: shadowHash(output), files, product_root: configuration.product_root,
+        validation_test_refs: subject.proposal.tests.map(row => row.id) };
+    }
     if (!["cycle_work_evaluate", "cycle_task_work_evaluate"].includes(binding)) fail("STANDARD_VALIDATION_WORK_REQUIRED");
     const evaluated = acceptedOperation(instance, workId, binding, auth), output = evaluated.output;
     if (output.facts.cycle_work_observed !== true) fail("STANDARD_VALIDATION_WORK_REQUIRED");
@@ -718,27 +856,22 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     }
     return { evaluated, binding, output, evaluation_sha256: shadowHash(output), files: observed.files, product_root: configuration.product_root, ...(validation_test_refs ? { validation_test_refs } : {}) };
   }
-  async function readCycleWorkEvaluation(instance, input) {
+  async function readCycleWorkEvaluation(instance, input, options = {}) {
     assertStandardOperationInput("cycle_validation_execute", input);
     const work = acceptedWorkSnapshot(instance, input.work_operation_id);
-    const output = await evaluateCycleWork(instance, work.evaluated.record.preview.input, work.binding === "cycle_task_work_evaluate" ? CYCLE_TASK_WORK_CONTRACT : CYCLE_WORK_CONTRACT);
+    const output = work.binding === canonicalCycleResumeObserveOperation
+      ? await observeCanonicalResumeProduct(instance, work.evaluated.record.preview.input, options)
+      : await evaluateCycleWork(instance, work.evaluated.record.preview.input, work.binding === "cycle_task_work_evaluate" ? CYCLE_TASK_WORK_CONTRACT : CYCLE_WORK_CONTRACT);
     if (shadowHash(output) !== work.evaluation_sha256) fail("STANDARD_VALIDATION_WORK_STALE");
     return work;
   }
-  function cycleValidationSubject(instance, work, auth = {}) {
-    const phaseId = work.output.observations.implementation_operation_id;
-    // Use the records verified by one PostgreSQL history observation for this
-    // synchronous subject. Context and effect callers take their own reads.
-    const history = operationStore.readMany ? authenticateHistory(instance, auth) : null;
-    const phase = acceptedOperation(instance, phaseId, "cycle_implementation_enter", auth, history);
-    const ready = acceptedOperation(instance, phase.record.preview.input.evaluation_operation_id, "cycle_readiness_evaluate", auth, history);
-    const proposal = cyclePlanningProposal(instance, ready, auth, history);
+  function collectObservedTasks(instance, phaseId, proposal, scopeSha256, auth = {}, history = null) {
     const observedTasks = new Set();
     for (const event of instance.events.filter(row => row.kind === "operation_intent" && ["cycle_work_evaluate", "cycle_task_work_evaluate"].includes(row.intent.binding_ref))) {
       const accepted = instance.events.some(row => row.kind === "operation_result" && row.receipt.operation_id === event.intent.operation_id && row.receipt.outcome === "completed");
       if (!accepted) continue;
       const prior = acceptedOperation(instance, event.intent.operation_id, event.intent.binding_ref, auth, history), facts = prior.output;
-      if (facts.facts.cycle_work_observed !== true || facts.observations.implementation_operation_id !== phaseId || facts.observations.scope_sha256 !== work.output.observations.scope_sha256) continue;
+      if (facts.facts.cycle_work_observed !== true || facts.observations.implementation_operation_id !== phaseId || facts.observations.scope_sha256 !== scopeSha256) continue;
       const task = proposal.tasks.find(row => row.id === facts.observations.task.id);
       if (!task || shadowHash(task) !== shadowHash(facts.observations.task)) fail("STANDARD_VERIFICATION_TASK_SOURCE_CHANGED");
       const report = readActivityOutput(instance, prior.record.preview.input.report_occurrence_id,
@@ -746,7 +879,17 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       if (report.report.task !== task.task || shadowHash(report.producer) !== shadowHash(facts.observations.producer)) fail("STANDARD_VERIFICATION_TASK_SOURCE_CHANGED");
       observedTasks.add(task.id);
     }
-    return { phaseId, phase, proposal, observedTasks };
+    return observedTasks;
+  }
+  function cycleValidationSubject(instance, work, auth = {}) {
+    const phaseId = work.output.observations.implementation_operation_id;
+    // One selected PostgreSQL history observation still authenticates this
+    // synchronous subject. Subsequent callers acquire their own observation.
+    const history = operationStore.readMany ? authenticateHistory(instance, auth) : null, subject = taskPhase(instance, phaseId, auth, history),
+      observedTasks = collectObservedTasks(instance, phaseId, subject.proposal, work.output.observations.scope_sha256, auth, history),
+      importedTasks = new Set(subject.canonicalResume?.completed_task_ids ?? []);
+    if ([...importedTasks].some(id => observedTasks.has(id))) fail("STANDARD_CANONICAL_RESUME_WORK_OVERLAP");
+    return { phaseId, ...subject, observedTasks, importedTasks };
   }
   async function readCycleVerificationExecution(instance, input, auth = {}, productSha256) {
     if (!input || Object.keys(input).join(",") !== "implementation_operation_id" || !/^op_[a-f0-9]{40}$/.test(input.implementation_operation_id ?? "")) fail("STANDARD_AUDIT_INPUT_INVALID");
@@ -777,10 +920,11 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
         if (progress.output.observations.validation_operation_id !== validation.record.operation_id
           || progress.output.observations.work_operation_id !== work.evaluated.record.operation_id
           || progress.output.observations.causal_transition.after_context_sha256 !== details.causal_transition.before_context_sha256) fail("STANDARD_AUDIT_VERIFICATION_BRIDGE_CHANGED");
-        const cursor = taskCursor(instance, subject.phaseId, subject.phase, subject.proposal, details.causal_transition.before_context_sha256, auth);
+        const cursor = taskCursor(instance, subject.phaseId, subject, details.causal_transition.before_context_sha256, auth);
         if (!cursor.complete || cursor.previous_progress_operation_id !== progress.record.operation_id) fail("STANDARD_AUDIT_TASKS_INCOMPLETE");
       }
-      candidates.push({ verification, evaluation, source: { ...validation, work, proposal: subject.proposal, observed_task_ids: [...subject.observedTasks] },
+      candidates.push({ verification, evaluation, source: { ...validation, work, proposal: subject.proposal, observed_task_ids: [...subject.observedTasks],
+        ...(subject.canonicalResume ? { imported_task_ids: [...subject.importedTasks], canonical_resume_source: subject.resumeSource } : {}) },
         context: context.context, context_sha256: context.context_sha256 });
     }
     if (candidates.length !== 1) fail("STANDARD_AUDIT_VERIFICATION_AMBIGUOUS");
@@ -828,23 +972,24 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       || machine.product_sha256 !== native.context.product_sha256) fail("STANDARD_CYCLE_CLOSE_VALIDATION_REQUIRED");
     return { ...validation, work, native, machine, evaluation };
   }
-  async function readCycleValidationExecution(instance, input) {
+  async function readCycleValidationExecution(instance, input, options = {}) {
     assertStandardOperationInput("cycle_validation_evaluate", input);
     const validation = acceptedOperation(instance, input.validation_operation_id, "cycle_validation_execute");
     const progress = input.progress_operation_id ? acceptedOperation(instance, input.progress_operation_id, "cycle_task_advance") : null;
-    const work = progress ? acceptedWorkSnapshot(instance, validation.record.preview.input.work_operation_id) : await readCycleWorkEvaluation(instance, validation.record.preview.input);
-    const { phaseId, phase, proposal, observedTasks } = cycleValidationSubject(instance, work);
-    const context = await observeCycleReadinessContext();
+    const work = progress ? acceptedWorkSnapshot(instance, validation.record.preview.input.work_operation_id) : await readCycleWorkEvaluation(instance, validation.record.preview.input, options);
+    const subject = cycleValidationSubject(instance, work), { phaseId, proposal, observedTasks, importedTasks } = subject;
+    const context = await (subject.canonicalResume ? observeCycleVerificationContext() : observeCycleReadinessContext());
     if (progress) {
       const details = progress.output.observations;
       if (progress.output.effect_status !== "confirmed" || details.validation_operation_id !== input.validation_operation_id || details.work_operation_id !== validation.record.preview.input.work_operation_id
         || details.implementation_operation_id !== phaseId || details.scope_sha256 !== work.output.observations.scope_sha256
         || details.causal_transition.after_context_sha256 !== context.context_sha256) fail("STANDARD_TASK_PROGRESS_SOURCE_STALE");
-      if (taskCursor(instance, phaseId, phase, proposal, context.context_sha256).previous_progress_operation_id !== input.progress_operation_id) fail("STANDARD_TASK_PROGRESS_SOURCE_STALE");
+      if (taskCursor(instance, phaseId, subject, context.context_sha256).previous_progress_operation_id !== input.progress_operation_id) fail("STANDARD_TASK_PROGRESS_SOURCE_STALE");
     }
     const selected = work.output.observations.task_operation_id ? acceptedOperation(instance, work.output.observations.task_operation_id, "cycle_task_select").output.observations : null;
     return { ...validation, work, proposal, task_selection: selected, progress_operation_id: input.progress_operation_id ?? null,
-      observed_task_ids: [...observedTasks], context: context.context, context_sha256: context.context_sha256 };
+      observed_task_ids: [...observedTasks], ...(subject.canonicalResume ? { imported_task_ids: [...importedTasks], canonical_resume_source: subject.resumeSource } : {}),
+      context: context.context, context_sha256: context.context_sha256 };
   }
   const observeDriftContext = () => readStandardDriftContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
@@ -862,5 +1007,5 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home],
   });
   return Object.freeze({ profile: "standard-mixed.v1", rollbackProductScope, observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, authenticateOperationHost, inspectDiagnostic, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
-    verifyNativeHumanSource, admitNativeActivity, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
+    verifyNativeHumanSource, admitNativeActivity, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCanonicalResumeProduct, observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

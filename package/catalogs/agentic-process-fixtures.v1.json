@@ -1338,6 +1338,75 @@
       "--fault=index_ack"
     ],
     [
+      "tools/perf/verify-standard-canonical-resume-fixtures.mjs",
+      "--contracts-only"
+    ],
+    [
+      "tools/perf/verify-standard-canonical-resume-fixtures.mjs",
+      "--mode=files",
+      "--checks",
+      "--guards"
+    ],
+    [
+      "tools/perf/verify-standard-canonical-resume-fixtures.mjs",
+      "--mode=dual",
+      "--checks"
+    ],
+    [
+      "tools/perf/verify-standard-canonical-resume-fixtures.mjs",
+      "--mode=db-only",
+      "--checks"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--canonical-resume-native-mode=files",
+      "--canonical-resume-native-phase=IMPLEMENTING",
+      "--canonical-resume-native-intent=import_now",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--canonical-resume-native-mode=dual",
+      "--canonical-resume-native-phase=IMPLEMENTING",
+      "--canonical-resume-native-intent=import_now",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--canonical-resume-native-mode=db-only",
+      "--canonical-resume-native-phase=IMPLEMENTING",
+      "--canonical-resume-native-intent=import_now",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--canonical-resume-native-mode=files",
+      "--canonical-resume-native-phase=OPEN",
+      "--canonical-resume-native-intent=import_now",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--canonical-resume-native-mode=files",
+      "--canonical-resume-native-phase=VERIFYING",
+      "--canonical-resume-native-intent=integrate_now",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--canonical-resume-native-mode=files",
+      "--canonical-resume-native-phase=OPEN",
+      "--canonical-resume-native-intent=integrate_now",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--canonical-resume-native-mode=files",
+      "--canonical-resume-native-phase=IMPLEMENTING",
+      "--canonical-resume-native-intent=integrate_now",
+      "--retain-always"
+    ],
+    [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--standard-composed-mode=files",
       "--standard-composed-stop=nominal_post_merge_complete"

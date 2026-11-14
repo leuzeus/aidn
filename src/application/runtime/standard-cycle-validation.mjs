@@ -53,11 +53,11 @@ export function createStandardCycleValidation({ targetRoot, profileRef, readWork
     if (operations.uncertain_read || operations.operations.some(row => row.recovery_required)) fail("STANDARD_VALIDATION_RECONCILIATION_REQUIRED");
     return { profile, configuration, boundary, descriptor_sha256: shadowHash(boundary.getDescriptor()) };
   }
-  async function prepare(instance, input, preparedAt, acquired = false, capture) {
+  async function prepare(instance, input, preparedAt, acquired = false, capture, assertOwner = null) {
     assertStandardOperationInput("cycle_validation_execute", input);
     if (!profileRef) return { can_apply: false, reason_code: "STANDARD_VALIDATION_PROFILE_REQUIRED" };
     if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
-    const work = await readWork(instance, input), materials = await material(work.product_root), profile = materials.profile;
+    const work = await readWork(instance, input, assertOwner === null ? {} : { assertOwner }), materials = await material(work.product_root), profile = materials.profile;
     assertWorkProductSnapshot(work.files);
     if (work.files.length > profile.limits.max_files || work.files.some(row => row.path.split("/")[0].toLowerCase() === "_aidn_checks")
       || work.files.reduce((sum, row) => sum + (row.bytes ?? 0), 0) > profile.limits.max_snapshot_bytes) fail("STANDARD_VALIDATION_SNAPSHOT_LIMIT");
@@ -79,10 +79,11 @@ export function createStandardCycleValidation({ targetRoot, profileRef, readWork
           || shadowHash(plan) !== expectPlan) fail("STANDARD_VALIDATION_EXPLICIT_EFFECT_REQUIRED");
       } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
+        const assertOwner = () => artifacts.assertLocalEffectOwner(expectPlan);
         let work, materials;
         try {
-          await assertAuthorized();
-          const fresh = await prepare(instance, plan.input, plan.prepared_at_ms, true, (observed, available) => { work = observed; materials = available; });
+          await assertAuthorized(); assertOwner();
+          const fresh = await prepare(instance, plan.input, plan.prepared_at_ms, true, (observed, available) => { work = observed; materials = available; }, assertOwner);
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_VALIDATION_PREVIEW_CHANGED");
           if (work.evaluation_sha256 !== plan.work_sha256 || shadowHash(work.files) !== plan.product_sha256 || shadowHash(materials.profile) !== plan.profile_sha256
             || materials.descriptor_sha256 !== plan.descriptor_sha256
@@ -111,7 +112,7 @@ export function createStandardCycleValidation({ targetRoot, profileRef, readWork
           let outputBytes = 0;
           for (const definition of plan.checks) {
             checkTime(); await assertAuthorized();
-            if (shadowHash((await readWork(instance, plan.input)).output) !== plan.work_sha256 || shadowHash(inventory(plan.snapshot_path, plan.limits)) !== shadowHash(before)) fail("STANDARD_VALIDATION_SOURCE_STALE");
+            if (shadowHash((await readWork(instance, plan.input, { assertOwner })).output) !== plan.work_sha256 || shadowHash(inventory(plan.snapshot_path, plan.limits)) !== shadowHash(before)) fail("STANDARD_VALIDATION_SOURCE_STALE");
             checkTime(); if (outputBytes >= plan.limits.max_output_bytes) fail("STANDARD_VALIDATION_OUTPUT_LIMIT");
             const invocation = { invocation_id: "validation:" + shadowHash({ plan: expectPlan, id: definition.test_ref }).slice(0, 40), boundary_id: materials.boundary.getDescriptor().boundary_id,
               validation_id: definition.test_ref, executable: materials.configuration.runner.executable, executable_sha256: materials.configuration.runner.sha256,
@@ -137,7 +138,7 @@ export function createStandardCycleValidation({ targetRoot, profileRef, readWork
               process: { outcome: result.outcome ?? "unavailable", exit_code: result.exit_code, signal: result.signal, termination_state: result.termination_state }, process_evidence: result.process_evidence ?? null });
           }
           const after = inventory(plan.snapshot_path, plan.limits);
-          if (shadowHash(after) !== shadowHash(before) || (await readWork(instance, plan.input)).evaluation_sha256 !== plan.work_sha256
+          if (shadowHash(after) !== shadowHash(before) || (await readWork(instance, plan.input, { assertOwner })).evaluation_sha256 !== plan.work_sha256
             || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_VALIDATION_POSTCONDITION_FAILED");
           await material(work.product_root); checkTime(); refs.push(retain("after.json", JSON.stringify(after)));
           const status = standardValidationStatus(checks);

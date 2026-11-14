@@ -8,6 +8,8 @@ import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { createStandardWorkflowOperations, standardWorkflowOperationBindings } from "../../src/application/runtime/standard-workflow-operations.mjs";
 import { createStandardWorkflowOperationHost } from "../../src/application/runtime/standard-workflow-operation-host.mjs";
+import { createStandardProcessAuthority } from "../../src/application/runtime/standard-process-authority.mjs";
+import { readAgenticProductSnapshot } from "../../src/application/runtime/agentic-process-execution-composition.mjs";
 import { createStandardCycleEntryChoiceRecord } from "../../src/application/runtime/standard-cycle-entry-choice-record.mjs";
 import { artifactContentHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
 import { createOperationJournalSigner } from "../../src/core/workflow/process-operation-journal.mjs";
@@ -15,6 +17,7 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { iterateAgenticProcessSimulation } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { analyzeStructuredArtifact } from "../../src/lib/workflow/structured-artifact-parser-lib.mjs";
 import { parseSessionMetadata } from "../../src/lib/workflow/session-context-lib.mjs";
+import { fixtureValidationBoundary } from "./standard-cycle-validation-fixture-lib.mjs";
 
 const H = "a".repeat(64), names = ["C001", "C003", "C004", "C005", "C006"], fields = text => analyzeStructuredArtifact(text).key_values;
 function field(text, key, value) {
@@ -48,17 +51,32 @@ function model({ checkpoint = false, activation = false, selectedCheckpoint = fa
     ] } };
 }
 export function openCycleChoiceFixtureHost(root, keyFile, sourcesFile, clock, { allowed = true } = {}) {
-  const fixtureModel = path.join(path.dirname(keyFile), "fixture-model.json");
-  return createStandardWorkflowOperationHost({ targetRoot: root, model: fs.existsSync(fixtureModel) ? JSON.parse(fs.readFileSync(fixtureModel, "utf8")) : model(), now: () => clock, readSigningKey: () => fs.readFileSync(keyFile),
-    authorize: async request => {
-      assert.equal(request.binding.effect_class, ["cycle_entry_choice_record", "cycle_entry_choice_checkpoint", "cycle_entry_choice_activate", "cycle_entry_selected_checkpoint", "cycle_entry_selected_focus", "cycle_entry_focus_checkpoint"].includes(request.binding.id) ? "mutating" : "read-only");
-      return { authorized: typeof allowed === "function" ? allowed(request) : allowed, authority_id: "fixture_operator", principal_sha256: H, grant_sha256: H };
-    }, humanSource: { read: ({ sourceRef }) => JSON.parse(fs.readFileSync(sourcesFile, "utf8"))[sourceRef] ?? null,
+  const fixtureModel = path.join(path.dirname(keyFile), "fixture-model.json"),
+    currentModel = fs.existsSync(fixtureModel) ? JSON.parse(fs.readFileSync(fixtureModel, "utf8")) : model(),
+    configurationFile = path.join(path.dirname(keyFile), "fixture-process.json"),
+    humanSource = { read: ({ sourceRef }) => JSON.parse(fs.readFileSync(sourcesFile, "utf8"))[sourceRef] ?? null,
       verify({ source, sourceRef, question }) {
         const retained = JSON.parse(fs.readFileSync(sourcesFile, "utf8"))[sourceRef];
         return retained && shadowHash(retained) === shadowHash(source) && source.question_sha256 === shadowHash(question)
           ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" };
-      } } });
+      } };
+  let processAuthority, validationProfile;
+  if (fs.existsSync(configurationFile)) {
+    // Private fixture configuration is arranged before instance initialization.
+    // Cold ACKs reconstruct the same real authority; no source/phase double is injected.
+    const descriptor = JSON.parse(fs.readFileSync(configurationFile, "utf8")), configuration = descriptor.configuration ?? descriptor;
+    assert.equal(path.resolve(configuration.target_root), path.resolve(root));
+    validationProfile = descriptor.validation_profile ?? null;
+    const snapshot = () => readAgenticProductSnapshot(configuration.product_root, configuration.product_files);
+    processAuthority = createStandardProcessAuthority({ configuration, model: currentModel,
+      readSigningKey: () => fs.readFileSync(keyFile), humanSource, readProductSnapshot: snapshot, readProductSha256: () => shadowHash(snapshot()) });
+  }
+  return createStandardWorkflowOperationHost({ targetRoot: root, model: currentModel, processAuthority, validationProfile, now: () => clock,
+    readSigningKey: () => fs.readFileSync(keyFile), humanSource,
+    authorize: async request => {
+      assert.equal(request.binding.effect_class, ["cycle_entry_choice_record", "cycle_entry_choice_checkpoint", "cycle_entry_choice_activate", "cycle_entry_selected_checkpoint", "cycle_entry_selected_focus", "cycle_entry_focus_checkpoint", "cycle_implementation_enter", "cycle_task_advance", "cycle_verification_enter"].includes(request.binding.id) ? "mutating" : request.binding.id === "cycle_validation_execute" ? "executor" : "read-only");
+      return { authorized: typeof allowed === "function" ? allowed(request) : allowed, authority_id: "fixture_operator", principal_sha256: H, grant_sha256: H };
+    } }, processAuthority ? { validationBoundaryFactory: fixtureValidationBoundary } : {});
 }
 const open = openCycleChoiceFixtureHost;
 export async function acceptRecordedChoice({ root, keyFile, sourcesFile, operationId, clock, inspectOnly = false }) {
@@ -77,7 +95,7 @@ export async function acceptRecordedChoice({ root, keyFile, sourcesFile, operati
 // Canonical lifecycle/phase setup below is explicit fixture construction. It is
 // not a claim that an earlier session close, imported validation or branch
 // activation was executed. Only the choice-record operation is under test.
-export async function verifyCanonicalCycleChoiceRecord(mode, { childScript, pass, faultAfterFirstCas = false, checkpoint: withCheckpoint = false, activation: withActivation = false, selectedCheckpoint: withSelectedCheckpoint = false, selectedFocus: withSelectedFocus = false, focusCheckpoint: withFocusCheckpoint = false, selectedPhase = null, afterRecordedChoice = null, selectedCycleId = "C001" }) {
+export async function verifyCanonicalCycleChoiceRecord(mode, { childScript, pass, faultAfterFirstCas = false, checkpoint: withCheckpoint = false, activation: withActivation = false, selectedCheckpoint: withSelectedCheckpoint = false, selectedFocus: withSelectedFocus = false, focusCheckpoint: withFocusCheckpoint = false, selectedPhase = null, afterRecordedChoice = null, arrangeBeforeBranches = null, selectedCycleId = "C001", selectedCarryoverAction = "import_now", cycleObjective = "Record explicit carryover without activating a branch or granting implementation" }) {
   if (faultAfterFirstCas && mode !== "files") throw Error("CHOICE_RECORD_PARTIAL_EFFECT_FILES_REQUIRED");
   if (withCheckpoint && (faultAfterFirstCas || typeof afterRecordedChoice !== "function")) throw Error("CHOICE_RECORD_CHECKPOINT_CALLBACK_REQUIRED");
   if (withActivation && !withCheckpoint) throw Error("CHOICE_RECORD_ACTIVATION_CHECKPOINT_REQUIRED");
@@ -85,6 +103,7 @@ export async function verifyCanonicalCycleChoiceRecord(mode, { childScript, pass
   if (withFocusCheckpoint && !withSelectedFocus) throw Error("FOCUS_CHECKPOINT_FOCUS_REQUIRED");
   if (withSelectedFocus && !withSelectedCheckpoint || selectedPhase !== null && (!withSelectedFocus || !["OPEN", "IMPLEMENTING", "VERIFYING"].includes(selectedPhase))) throw Error("SELECTED_FOCUS_FIXTURE_SCOPE_INVALID");
   if (!["C001", "C002"].includes(selectedCycleId)) throw Error("CHOICE_RECORD_FIXTURE_SELECTION_INVALID");
+  if (!["import_now", "integrate_now"].includes(selectedCarryoverAction)) throw Error("CHOICE_RECORD_FIXTURE_ACTION_INVALID");
   const owned = [], root = createFreshStandardWorkflowFixture(mode, owned), artifacts = createStandardWorkflowArtifacts({ targetRoot: root }),
     operations = createStandardWorkflowOperations({ targetRoot: root }), privateRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-choice-record-"));
   owned.push(privateRoot);
@@ -103,11 +122,11 @@ export async function verifyCanonicalCycleChoiceRecord(mode, { childScript, pass
   };
   try {
     await apply(await operations.prepareSession({ session_id: "S001", session_branch: "S001-choice",
-      objective: "Record explicit carryover without activating a branch or granting implementation" }), "initializeSession");
+      objective: cycleObjective }), "initializeSession");
     await apply(await operations.prepareMode({ session_id: "S001", mode: "COMMITTING" }), "applyMode"); checkpoint("fixture selected mode");
     await apply(await operations.prepareCycleContext({ session_id: "S001" }), "refreshCycleContext"); checkpoint("fixture context");
     await apply(await operations.prepareCycle({ session_id: "S001", cycle_id: "C001", cycle_type: "feature", title: "choice",
-      objective: "Record explicit carryover without activating a branch or granting implementation",
+      objective: cycleObjective,
       continuity_rule: "R2_SESSION_BASE_WITH_IMPORT", base_branch: "S001-choice" }), "initializeCycle"); checkpoint("fixture initial cycle");
     const initialSession = artifacts.read("sessions/S001.md").content, baseStatus = artifacts.read("cycles/C001-feature-choice/status.md").content;
     let oldSession = field(initialSession, "state", "CLOSED").replace(/(### Session close gate satisfied\?\s*\r?\n-\s*)\[ \](\s*Yes)/, "$1[x]$2");
@@ -134,6 +153,10 @@ export async function verifyCanonicalCycleChoiceRecord(mode, { childScript, pass
     snapshot = section(snapshot, "Active cycles", ["C001", "C002", "C003", "C004", "C005", "C006"].map(id => `- ${id}: staged canonical phase precondition`).join("\n"));
     changes.push(["snapshots/context-snapshot.md", snapshot]);
     await replace(changes);
+    if (arrangeBeforeBranches) {
+      assert.equal(typeof arrangeBeforeBranches, "function");
+      await arrangeBeforeBranches({ root, privateRoot, keyFile, sourcesFile, artifacts, operations, replace, checkpoint, selectedCycleId, selectedPhase, cycleObjective });
+    }
     for (const branch of ["S002-choice", "S009-choice", ...["C002", "C003", "C004", "C005", "C006"].map(id => `feature/${id}-choice`)]) git("branch", branch, "HEAD");
     git("switch", "feature/C002-choice");
     fs.writeFileSync(path.join(root, "fixture-product.txt"), "Preserve this current product; choice recording never switches to the selected branch.\n");
@@ -155,7 +178,7 @@ export async function verifyCanonicalCycleChoiceRecord(mode, { childScript, pass
     const waiting = await host.dispatch(staged.operation_id, { write: true }); assert.equal(waiting.status, "waiting_for_human");
     const question = waiting.question, decision = { contract_version: "human-cycle-entry-choice.v1", source_kind: "human", authority_id: "fixture_operator",
       source_event_id: "fixture-carryover-record-current", subject_sha256: shadowHash(question.subject), question_sha256: shadowHash(question), choice: "select_cycle",
-      selection: { cycle_id: selectedCycleId, carryover_decisions: names.map(id => ({ cycle_id: id, action: id === "C001" ? "import_now" : id === "C003" ? "defer" : id === "C006" ? "integrate_now" : "drop",
+      selection: { cycle_id: selectedCycleId, carryover_decisions: names.map(id => ({ cycle_id: id, action: id === "C001" ? selectedCarryoverAction : id === "C003" ? "defer" : id === "C006" ? "integrate_now" : "drop",
         outcome: id === "C004" ? "NO_GO" : id === "C005" ? "DROPPED" : null, rationale: "Explicit controlled per-cycle fixture disposition" })) },
       rationale: "Record current canonical dispositions before separate branch activation and phase admission", evidence_refs: [{ ref: "fixture:carryover-record", sha256: H }] };
     fs.writeFileSync(sourcesFile, JSON.stringify({ choice: decision }));

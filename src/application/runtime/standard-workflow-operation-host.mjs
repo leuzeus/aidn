@@ -92,6 +92,8 @@ import { createStandardDriftRollback } from "./standard-drift-rollback.mjs";
 import { createStandardDriftCycle } from "./standard-drift-cycle.mjs";
 import { createStandardCyclePlanRecord } from "./standard-cycle-plan-record.mjs";
 import { createStandardCanonicalPlanAdoption } from "./standard-canonical-plan-adoption.mjs";
+import { createStandardCanonicalCycleResume } from "./standard-canonical-cycle-resume.mjs";
+import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation } from "../../core/workflow/standard-canonical-cycle-resume.mjs";
 import { createStandardCycleImplementation } from "./standard-cycle-implementation.mjs";
 import { createStandardCycleValidation } from "./standard-cycle-validation.mjs";
 import { createStandardCycleTaskAdvance } from "./standard-cycle-task-advance.mjs";
@@ -181,9 +183,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readEvaluation: (instance, input) => processAuthority.readCycleReadinessEvaluation(instance, input),
     observeContext: () => processAuthority.observeCycleReadinessContext(), readCurrent: id => current(id).record }) : null;
   const cycleValidation = processAuthority ? createStandardCycleValidation({ targetRoot, now, profileRef: validationProfile,
-    readWork: (instance, input) => processAuthority.readCycleWorkEvaluation(instance, input), readCurrent: id => current(id).record }, { boundaryFactory: validationBoundaryFactory }) : null;
-  async function evaluateValidation(instance, input) {
-    const source = await processAuthority.readCycleValidationExecution(instance, input), evidence = await cycleValidation.readResult(source);
+    readWork: (instance, input, options) => processAuthority.readCycleWorkEvaluation(instance, input, options), readCurrent: id => current(id).record }, { boundaryFactory: validationBoundaryFactory }) : null;
+  async function evaluateValidation(instance, input, options = {}) {
+    const source = await processAuthority.readCycleValidationExecution(instance, input, options), evidence = await cycleValidation.readResult(source);
     return { output: evaluateStandardCycleValidation({ source, evidence, validationOperationId: input.validation_operation_id }), source, evidence };
   }
   async function auditSource(instance, input) {
@@ -755,18 +757,19 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readObjectiveCompletion: instance => objectiveCompletion.read(instance),
     readRecorded: readAcceptedBaselineRecord, promotion: baselinePromotion, readCurrent: id => current(id).record }) : null;
 
-  async function readValidationEvaluation(instance, input, operation = "cycle_verification_enter") {
+  async function readValidationEvaluation(instance, input, operation = "cycle_verification_enter", options = {}) {
       assertStandardOperationInput(operation, input);
       const record = retained(input.evaluation_operation_id).record, result = record.results.at(-1);
       if (record.intent.binding_ref !== "cycle_validation_evaluate" || record.intent.instance_id !== instance.instance_id || record.intent.scope_id !== instance.scope_id
         || record.phase !== "receipted" || result?.receipt.outcome !== "completed"
         || !instance.events.some(row => row.kind === "operation_result" && shadowHash(row.receipt) === shadowHash(result.receipt))) fail("STANDARD_VERIFICATION_EVALUATION_REQUIRED");
-      const verified = await evaluateValidation(instance, record.preview.input);
+      const verified = await evaluateValidation(instance, record.preview.input, options);
       if (shadowHash(verified.output) !== shadowHash(result.output)) fail("STANDARD_VERIFICATION_EVALUATION_STALE");
       return { output: verified.output, evaluation_sha256: shadowHash(verified.output), context: verified.source.context, context_sha256: verified.source.context_sha256, source: verified.source, evidence: verified.evidence };
   }
   const cycleVerification = processAuthority ? createStandardCycleVerification({ targetRoot, now,
-    readEvaluation: readValidationEvaluation, observeContext: () => processAuthority.observeCycleVerificationContext(), readCurrent: id => current(id).record }) : null;
+    readEvaluation: (instance, input, options) => readValidationEvaluation(instance, input, "cycle_verification_enter", options),
+    observeContext: () => processAuthority.observeCycleVerificationContext(), readCurrent: id => current(id).record }) : null;
   const cycleTaskAdvance = processAuthority ? createStandardCycleTaskAdvance({ targetRoot, now,
     readEvaluation: (instance, input) => readValidationEvaluation(instance, input, "cycle_task_advance"),
     observeContext: () => processAuthority.observeCycleReadinessContext(), readCurrent: id => current(id).record }) : null;
@@ -847,6 +850,14 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   const cycleEntryFocusCheckpoint = createStandardCycleEntryFocusCheckpoint({ targetRoot, now, scope: operations.observeScope,
     readCurrent: id => current(id).record, readFocus: readAcceptedSelectedFocus });
+  async function readAcceptedFocusCheckpoint(instance, input) {
+    const selected = acceptedForPromotion(instance, input.focus_checkpoint_operation_id, cycleEntryFocusCheckpointOperation, "STANDARD_CANONICAL_RESUME_CHECKPOINT_REQUIRED"),
+      plan = selected.record.preview.prepared.plan, focus = await readAcceptedSelectedFocus(instance, plan.input);
+    return { checkpoint_operation_id: input.focus_checkpoint_operation_id, checkpoint_sha256: shadowHash(selected.record), plan, output: selected.output, focus };
+  }
+  const canonicalResumeAdmission = processAuthority ? createStandardCanonicalCycleResume({ targetRoot, scope: operations.observeScope,
+    readCheckpoint: readAcceptedFocusCheckpoint, readContext: () => processAuthority.observeCycleVerificationContext(),
+    readCurrent: id => current(id).record }) : null;
   const bindings = new Map(standardWorkflowOperationBindings().map(value => [value.id, value]));
   function assertCurrentBindings() {
     for (const component of processModels(model)) for (const node of component.nodes.filter(node => node.kind === "operation"))
@@ -1507,6 +1518,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "spike_experiment_execution_admit" ? await spike.experimentExecutionAdmission(state.record, input)
         : binding.id === "cycle_plan_select" ? await selectCyclePlan(state.record)
         : binding.id === "cycle_plan_adopt" ? await canonicalPlanAdoption?.(state.record, input) ?? fail("STANDARD_CANONICAL_PLAN_AUTHORITY_UNAVAILABLE")
+        : binding.id === canonicalCycleResumeAdmitOperation ? await canonicalResumeAdmission?.(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CANONICAL_RESUME_AUTHORITY_REQUIRED")
+        : binding.id === canonicalCycleResumeObserveOperation ? await processAuthority?.observeCanonicalResumeProduct?.(state.record, input) ?? fail("STANDARD_CANONICAL_RESUME_PRODUCT_AUTHORITY_REQUIRED")
         : binding.id === "mode_work_preflight" ? await processAuthority?.preflightModeWork(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
         : binding.id === "mode_work_observe" ? await processAuthority?.observeModeWork(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
         : binding.id === "mode_work_continue_decision" ? await processAuthority?.prepareModeWorkContinuation(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
@@ -1802,6 +1815,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "spike_experiment_execution_admit") output = await spike.experimentExecutionAdmission(state.record, record.preview.input);
         else if (record.intent.binding_ref === "cycle_plan_select") output = await selectCyclePlan(state.record);
         else if (record.intent.binding_ref === "cycle_plan_adopt") output = await canonicalPlanAdoption?.(state.record, record.preview.input) ?? fail("STANDARD_CANONICAL_PLAN_AUTHORITY_UNAVAILABLE");
+        else if (record.intent.binding_ref === canonicalCycleResumeAdmitOperation) output = await canonicalResumeAdmission?.(state.record, record.preview.input, record.operation_id) ?? fail("STANDARD_CANONICAL_RESUME_AUTHORITY_REQUIRED");
+        else if (record.intent.binding_ref === canonicalCycleResumeObserveOperation) output = await processAuthority?.observeCanonicalResumeProduct?.(state.record, record.preview.input) ?? fail("STANDARD_CANONICAL_RESUME_PRODUCT_AUTHORITY_REQUIRED");
         else if (record.intent.binding_ref === "spike_cycle_initialize") output = await spike.initialize(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "spike_conversion_finalize") output = await spike.finalize(state.record, record.preview.prepared,

@@ -1,7 +1,7 @@
 import { assertStandardCyclePlan, renderStandardCyclePlan, CYCLE_PLAN_CONTRACT } from "./standard-cycle-planning.mjs";
 import { renderStandardTaskProgress } from "./standard-cycle-task-progress.mjs";
 import { artifactContentHash } from "./artifact-compare-swap.mjs";
-import { shadowHash } from "./shadow-json.mjs";
+import { shadowHash, checkShadowJson } from "./shadow-json.mjs";
 
 const requireValue = condition => { if (!condition) throw Object.assign(Error("STANDARD_CANONICAL_PLAN_UNREPRESENTABLE"), { code: "STANDARD_CANONICAL_PLAN_UNREPRESENTABLE" }); };
 const decode = value => value.replaceAll("&#58;", ":");
@@ -23,7 +23,7 @@ function blocks(value, pattern) {
 // A reversible data projection only. Neither supplied canonical bytes nor this
 // function authenticate approval, completed work, readiness or an effect grant.
 // The owning host must separately bind current source/metadata and provenance.
-export function projectStandardCanonicalCyclePlan(observed) {
+function projectCanonicalPlanData(observed, retainVerificationHistory = false) {
   const { context, context_sha256: contextSha } = observed;
   requireValue(context && shadowHash(context) === contextSha && Array.isArray(context.documents));
   const documents = new Map(context.documents.map(row => [row.ref, row]));
@@ -34,7 +34,8 @@ export function projectStandardCanonicalCyclePlan(observed) {
     requireValue(row && typeof row.content === "string" && artifactContentHash(row.content) === row.sha256);
     return [name, row.content];
   }));
-  const plan = material.plan, brief = material.brief, trace = material.traceability, audit = material["audit-spec"];
+  const plan = material.plan, brief = material.brief, fullTrace = material.traceability, audit = material["audit-spec"];
+  const retained = retainVerificationHistory ? retainedVerification(fullTrace) : null, trace = retained ? retained.body : fullTrace;
   requireValue(shadowHash(bullets(section(brief, "Objective"))) === shadowHash([context.original_objective]));
   const scopeBlock = section(plan, "Native write scope"), json = /^```json\n([\s\S]+)\n```$/.exec(scopeBlock);
   requireValue(json); let scope;
@@ -83,7 +84,40 @@ export function projectStandardCanonicalCyclePlan(observed) {
   const rendered = renderStandardCyclePlan(proposal, context.cycle_path, { "brief.md": brief });
   for (const name of names) {
     const file = `${context.cycle_path}/${name}.md`, expected = name === "plan" ? renderStandardTaskProgress({ originalPlan: rendered[file], proposal, completedTaskIds: completed }) : rendered[file];
-    requireValue(expected === material[name]);
+    const complete = name === "traceability" && retained ? expected.trimEnd() + retained.suffix : expected;
+    requireValue(complete === material[name]);
   }
-  return { proposal, original_plan: rendered[`${context.cycle_path}/plan.md`], completed_task_ids: completed, source_refs: sourceRefs };
+  return { proposal, original_plan: rendered[`${context.cycle_path}/plan.md`], completed_task_ids: completed, source_refs: sourceRefs,
+    ...(retainVerificationHistory ? { retained_verification_history: retained ? { source_ref: "audit:" + context.cycle_path + "/traceability.md",
+      document_sha256: documents.get("audit:" + context.cycle_path + "/traceability.md").sha256, section_sha256: artifactContentHash(retained.suffix),
+      raw_section: retained.suffix, evaluation_operation_id: retained.sections[0].evaluation_operation_id, sections: retained.sections, current_validation_evidence: false } : null } : {}) };
+}
+
+// The historical API retains its exact projection/rejection behavior.
+export function projectStandardCanonicalCyclePlan(observed) {
+  return projectCanonicalPlanData(observed, false);
+}
+function retainedVerification(text) {
+  const marker = "\n\n## Process verification evidence\n\n", parts = text.split(marker);
+  if (parts.length === 1) { requireValue(!/^## Process verification evidence\s*$/m.test(text)); return null; }
+  const suffix = text.slice(parts[0].length), ticks = String.fromCharCode(96).repeat(3);
+  requireValue(Buffer.byteLength(suffix) <= 1048576);
+  const opening = marker + "No lifecycle completion is inferred from these checks.\n\n" + ticks + "json\n", ending = "\n" + ticks + "\n";
+  const sections = parts.slice(1).map(part => {
+    const raw = marker + part;
+    requireValue(raw.startsWith(opening) && raw.endsWith(ending));
+    let data; try { data = JSON.parse(raw.slice(opening.length, -ending.length)); } catch { requireValue(false); }
+    requireValue(data && typeof data === "object" && !Array.isArray(data) && !checkShadowJson(data)
+      && /^op_[a-f0-9]{40}$/.test(data.evaluation_operation_id ?? ""));
+    return { raw_section: raw, section_sha256: artifactContentHash(raw), evaluation_operation_id: data.evaluation_operation_id, current_validation_evidence: false };
+  });
+  requireValue(sections.map(row => row.raw_section).join("") === suffix);
+  return { body: parts[0], suffix, sections };
+}
+// A derived data view. Retained verification bytes are historical data, never a
+// current validation receipt, imported work acceptance or phase/effect authority.
+export function projectStandardCanonicalCycleProgress(observed) {
+  requireValue(observed?.context && ["OPEN", "IMPLEMENTING", "VERIFYING"].includes(observed.context.cycle_state));
+  return { source_kind: "canonical_progress", ...projectCanonicalPlanData(observed, true), phase: observed.context.cycle_state,
+    current_phase_admission: false, current_validation_evidence: false, implementation_authorized: false };
 }

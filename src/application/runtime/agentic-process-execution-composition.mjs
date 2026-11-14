@@ -45,6 +45,29 @@ function pinned(reference, roots) {
   return data;
 }
 
+export function readAgenticProductSnapshot(root, productFiles) {
+  let visited = 0;
+  function inventory(directory) {
+    for (const entry of fs.readdirSync(directory)) {
+      if (++visited > 512) fail("PROCESS_EXECUTION_PRODUCT_SCOPE_LIMIT");
+      const file = path.join(directory, entry), stat = fs.lstatSync(file);
+      if (stat.isSymbolicLink()) fail("PROCESS_EXECUTION_PRODUCT_SYMLINK");
+      if (stat.isDirectory()) inventory(file);
+      else if (!productFiles.includes(path.relative(root, file).replaceAll(path.sep, "/"))) fail("PROCESS_EXECUTION_PRODUCT_SCOPE_CHANGED");
+    }
+  }
+  inventory(root);
+  return productFiles.map(name => {
+    const file = path.resolve(root, name);
+    if (!inside(root, file)) fail("PROCESS_EXECUTION_PRODUCT_SCOPE_INVALID");
+    const parent = path.dirname(file);
+    if (fs.existsSync(parent) && fs.realpathSync(parent) !== parent) fail("PROCESS_EXECUTION_PRODUCT_SYMLINK");
+    if (!fs.existsSync(file)) return { path: name, present: false };
+    const data = bytes(file, 1024 * 1024);
+    return { path: name, present: true, bytes: data.length, sha256: hash(data) };
+  });
+}
+
 // This is the real project composition. Tests may replace native/SQL wires, but
 // not assignmentAuthority, resultAuthority, bindings, CAS or admission policy.
 export function createProjectAgenticProcessExecution(configuration, { rpcFactory, artifactStoreFactory, environment = process.env, allocationAuthority, processAuthority } = {}) {
@@ -161,28 +184,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
     }
     return { scope_id: scopeId, model_sha256: shadowHash(model), policy_pins: agenticPolicyPins(model) };
   }
-  function productSnapshot(root = productRoot) {
-    let visited = 0;
-    function inventory(directory) {
-      for (const entry of fs.readdirSync(directory)) {
-        if (++visited > 512) fail("PROCESS_EXECUTION_PRODUCT_SCOPE_LIMIT");
-        const file = path.join(directory, entry), stat = fs.lstatSync(file);
-        if (stat.isSymbolicLink()) fail("PROCESS_EXECUTION_PRODUCT_SYMLINK");
-        if (stat.isDirectory()) inventory(file);
-        else if (!config.product_files.includes(path.relative(root, file).replaceAll(path.sep, "/"))) fail("PROCESS_EXECUTION_PRODUCT_SCOPE_CHANGED");
-      }
-    }
-    inventory(root);
-    return config.product_files.map(name => {
-      const file = path.resolve(root, name);
-      if (!inside(root, file)) fail("PROCESS_EXECUTION_PRODUCT_SCOPE_INVALID");
-      const parent = path.dirname(file);
-      if (fs.existsSync(parent) && fs.realpathSync(parent) !== parent) fail("PROCESS_EXECUTION_PRODUCT_SYMLINK");
-      if (!fs.existsSync(file)) return { path: name, present: false };
-      const data = bytes(file, 1024 * 1024);
-      return { path: name, present: true, bytes: data.length, sha256: hash(data) };
-    });
-  }
+  function productSnapshot(root = productRoot) { return readAgenticProductSnapshot(root, config.product_files); }
   return Object.freeze({
     preview() { readAuthority(); return { contract_version: "agentic-process-execution-preview.v1", scope_id: scopeId,
       model_sha256: shadowHash(model), criteria_sha256: config.criteria.sha256, product_sha256: shadowHash(productSnapshot()), persistence, native_started: false, written: false }; },

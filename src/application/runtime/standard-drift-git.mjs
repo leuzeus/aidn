@@ -29,7 +29,9 @@ export function readControlledDriftGit({ root, productRoot, productFiles, observ
     return path.relative(root, absolute).replaceAll("\\", "/");
   });
   const git = args => {
-    try { return execFileSync("git", ["--literal-pathspecs", "-C", root, "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + (process.platform === "win32" ? "NUL" : "/dev/null"),
+    // Porcelain diff can refresh cached index stats even with optional locks off.
+    // Observation must leave the current index preimage intact for later CAS.
+    try { return execFileSync("git", ["--literal-pathspecs", "-C", root, "-c", "diff.autoRefreshIndex=false", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + (process.platform === "win32" ? "NUL" : "/dev/null"),
       "-c", "submodule.recurse=false", ...args], { encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, maxBuffer: 262144,
         env: { ...environment, GIT_OPTIONAL_LOCKS: "0" }, stdio: ["ignore", "pipe", "pipe"] }); }
     catch { fail("STANDARD_DRIFT_GIT_OBSERVATION_FAILED"); }

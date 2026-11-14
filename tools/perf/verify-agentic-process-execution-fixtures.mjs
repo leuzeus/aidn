@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { verifyCanonicalResumeExecution } from "./standard-canonical-resume-execution-fixture-lib.mjs";
 import { verifyModeWorkContinuationExecution } from "./standard-mode-work-continuation-execution-fixture-lib.mjs";
 import { verifyStandardSpikeExecution } from "./standard-spike-execution-fixture-lib.mjs";
 import { createStandardReviewEventFixture } from "./standard-pr-review-event-fixture-lib.mjs";
@@ -92,6 +93,11 @@ import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model
 import { assertAgenticControlScenario } from "../../src/core/workflow/agentic-process-control-scenario.mjs";
 import { republishBrokerProductFile } from "../../src/adapters/runtime/broker-product-file.mjs";
 import { createProjectWorkflowInstanceService } from "../../src/application/runtime/workflow-instance-composition.mjs";
+
+const selectedCanonicalResumeNativeMode = process.argv.find(value => value.startsWith("--canonical-resume-native-mode="))?.slice("--canonical-resume-native-mode=".length);
+const selectedCanonicalResumeNativePhase = process.argv.find(value => value.startsWith("--canonical-resume-native-phase="))?.split("=")[1] ?? "IMPLEMENTING";
+const selectedCanonicalResumeNativeIntent = process.argv.find(value => value.startsWith("--canonical-resume-native-intent="))?.split("=")[1] ?? "import_now";
+if (selectedCanonicalResumeNativeMode && !["files", "dual", "db-only"].includes(selectedCanonicalResumeNativeMode)) throw Error("CANONICAL_RESUME_NATIVE_MODE_INVALID");
 
 const selectedRecoveryMode = process.argv.find(value => value.startsWith("--drift-recovery-mode="))?.slice("--drift-recovery-mode=".length);
 const publishedRollbackRediagnosis = process.argv.includes("--drift-published-rollback-rediagnosis");
@@ -234,7 +240,7 @@ function retainComposedChild(controlRoot, label, child) {
 }
 let serial = 0, completed = false;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
-async function check(name, callback) { if (selectedStandardExistingOpenWorkMode && !name.startsWith(`standard existing open work ${selectedStandardExistingOpenWorkMode}:`)) return; if (selectedStandardExistingOpenMode && !name.startsWith(`standard existing open ${selectedStandardExistingOpenMode}:`)) return; if (process.argv.includes("--cycle-plan-select-native-only") && !name.startsWith("cycle plan selection native files:")) return; if (selectedCanonicalPlanSelectionMode && !name.startsWith(`cycle plan selection ${selectedCanonicalPlanSelectionMode}:`)) return; if (process.argv.includes("--canonical-plan-work-only") && !name.startsWith("canonical plan work files:")) return; if (selectedCanonicalPlanReadinessMode && !name.startsWith(`cycle plan readiness ${selectedCanonicalPlanReadinessMode}:`)) return; if (selectedCanonicalPlanAdoptionMode && !name.startsWith(`cycle plan adoption ${selectedCanonicalPlanAdoptionMode}:`)) return; if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
+async function check(name, callback) { if (process.argv.includes("--drift-git-readonly-only") && !name.startsWith("drift controlled Git ")) return; if (selectedCanonicalResumeNativeMode && !name.startsWith(`canonical resume native ${selectedCanonicalResumeNativeMode}:`)) return; if (selectedStandardExistingOpenWorkMode && !name.startsWith(`standard existing open work ${selectedStandardExistingOpenWorkMode}:`)) return; if (selectedStandardExistingOpenMode && !name.startsWith(`standard existing open ${selectedStandardExistingOpenMode}:`)) return; if (process.argv.includes("--cycle-plan-select-native-only") && !name.startsWith("cycle plan selection native files:")) return; if (selectedCanonicalPlanSelectionMode && !name.startsWith(`cycle plan selection ${selectedCanonicalPlanSelectionMode}:`)) return; if (process.argv.includes("--canonical-plan-work-only") && !name.startsWith("canonical plan work files:")) return; if (selectedCanonicalPlanReadinessMode && !name.startsWith(`cycle plan readiness ${selectedCanonicalPlanReadinessMode}:`)) return; if (selectedCanonicalPlanAdoptionMode && !name.startsWith(`cycle plan adoption ${selectedCanonicalPlanAdoptionMode}:`)) return; if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
   if (process.argv.includes("--native-human-port-only") && !name.startsWith("native human port:")) return;
   if (process.argv.includes("--historical-diagnostic-only") && !name.startsWith("historical diagnostic:")) return;
   if (process.argv.includes("--native-human-turn-only") && !name.startsWith("worker private before-turn")) return;
@@ -451,7 +457,8 @@ async function readyResumeFixture(options = {}) {
   return f;
 }
 function mixedFixture(stateMode = "files", options = {}) {
-  const projectRoot = createFreshStandardWorkflowFixture(stateMode, businessRoots), f = fixture({ projectRoot }), original = JSON.parse(fs.readFileSync(f.configuration.model.path));
+  const projectRoot = options.projectRoot ?? createFreshStandardWorkflowFixture(stateMode, businessRoots), f = fixture({ projectRoot }), original = JSON.parse(fs.readFileSync(f.configuration.model.path));
+  if (options.projectRoot) businessRoots.push(projectRoot);
   const op = (id, binding_ref) => ({ id, kind: "operation", participant_ref: "delivery", binding_ref });
   const native = id => original.nodes.find(node => node.id === id);
   original.policies[0].allowed_permissions = ["read:product"];
@@ -722,7 +729,8 @@ function mixedFixture(stateMode = "files", options = {}) {
   }
   const committed = spawnSync("git", ["add", "product/app.mjs"], { cwd: projectRoot, encoding: "utf8", shell: false }); assert.equal(committed.status, 0, committed.stderr);
   const commit = spawnSync("git", ["-c", "core.hooksPath=NUL", "commit", "-m", "fixture product"], { cwd: projectRoot, encoding: "utf8", shell: false }); assert.equal(commit.status, 0, commit.stderr);
-  const key = Buffer.alloc(32, 91), t = transport(f, options), controllerFactory = journalController(f, t, options);
+  const key = options.signingKey ?? Buffer.alloc(32, 91), t = transport(f, options), controllerFactory = journalController(f, t, options);
+  assert.ok(Buffer.isBuffer(key) && key.length === 32, "FIXTURE_SIGNING_KEY_INVALID");
   const grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
   if (options.closure) {
     f.closureSourceFile = path.join(f.base, "human-closure-sources.json"); fs.writeFileSync(f.closureSourceFile, "{}");
@@ -1783,6 +1791,7 @@ if (process.argv[2] === "--mixed-continue") {
   });
   await verifyCycleVerificationContracts(check, cyclePlanProposal({ context_sha256: "a".repeat(64), context: { session_id: "S001", cycle_id: "C001", cycle_type: "feature", mode: "COMMITTING", original_objective: "Update the product", allowed_product_files: ["product/app.mjs"] }, evidence_refs: [{ ref: "audit:SPEC.md", sha256: "b".repeat(64) }] }));
   await verifyCyclePlanningContracts(check);
+  await verifyCanonicalResumeExecution(check, { mixedFixture, selectedMode: selectedCanonicalResumeNativeMode, phase: selectedCanonicalResumeNativePhase, intent: selectedCanonicalResumeNativeIntent });
   await verifyPublishedExistingOpen(check, { mixedFixture, selectedMode: selectedStandardExistingOpenMode });
   await verifyPublishedExistingOpenWork(check, { mixedFixture, selectedMode: selectedStandardExistingOpenWorkMode });
   await verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePlanProposal, selectedMode: selectedCanonicalPlanAdoptionMode });
@@ -2585,15 +2594,42 @@ if (process.argv[2] === "--mixed-continue") {
     const repo = path.join(root, "diagnostic-git"), productRoot = path.join(repo, "product"); fs.mkdirSync(productRoot, { recursive: true });
     const command = args => spawnSync("git", ["-c", "core.hooksPath=NUL", ...args], { cwd: repo, encoding: "utf8", shell: false });
     assert.equal(command(["init", "-b", "dev"]).status, 0);
-    put(productRoot, "app.mjs", "export const value = 1;\n"); const privateFile = put(repo, "private.txt", "initial\n");
+    put(productRoot, "app.mjs", "export const value = 1;\n"); put(productRoot, "stable.mjs", "export const stable = true;\n");
+    const privateFile = put(repo, "private.txt", "initial\n");
     assert.equal(command(["add", "."]).status, 0);
     assert.equal(command(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "fixture"]).status, 0);
+    const input = { root: repo, productRoot, productFiles: ["app.mjs", "stable.mjs"], deniedRoots: [privateFile] },
+      index = path.join(repo, ".git/index"), alternate = path.join(repo, ".git/fixture-cold-index");
+    const coldIndex = (tree = "HEAD") => {
+      assert.equal(fs.existsSync(alternate), false);
+      const result = spawnSync("git", ["-c", "core.hooksPath=NUL", "read-tree", tree], { cwd: repo, encoding: "utf8", shell: false,
+        env: { ...process.env, GIT_INDEX_FILE: alternate, GIT_OPTIONAL_LOCKS: "0" } });
+      assert.equal(result.status, 0, result.stderr); fs.copyFileSync(alternate, index); fs.unlinkSync(alternate);
+    };
+    const observeReadOnly = () => {
+      const before = fs.readFileSync(index), files = ["app.mjs", "stable.mjs"].map(name => fs.readFileSync(path.join(productRoot, name))),
+        privateBytes = fs.readFileSync(privateFile), head = command(["rev-parse", "HEAD"]).stdout,
+        refs = command(["show-ref"]).stdout, observed = readControlledDriftGit(input);
+      assert.deepEqual(fs.readFileSync(index), before, "Read-only Git context must preserve a cold index byte for byte");
+      assert.equal(fs.existsSync(index + ".lock"), false);
+      assert.equal(command(["rev-parse", "HEAD"]).stdout, head); assert.equal(command(["show-ref"]).stdout, refs);
+      assert.deepEqual(["app.mjs", "stable.mjs"].map(name => fs.readFileSync(path.join(productRoot, name))), files);
+      assert.deepEqual(fs.readFileSync(privateFile), privateBytes); return observed;
+    };
+    coldIndex(); const clean = observeReadOnly(); assert.equal(clean.diff, ""); assert.equal(clean.other_changes.count, 0);
     fs.writeFileSync(path.join(productRoot, "app.mjs"), "export const value = 2;\n"); fs.writeFileSync(privateFile, "PRIVATE_FIXTURE_CONTENT_A\n");
-    const input = { root: repo, productRoot, productFiles: ["app.mjs"], deniedRoots: [privateFile] }, first = readControlledDriftGit(input);
+    coldIndex(); const first = observeReadOnly();
     assert.match(first.diff, /value = 2/); assert.equal(JSON.stringify(first).includes("PRIVATE_FIXTURE_CONTENT"), false);
     assert.equal(JSON.stringify(first).includes("private.txt"), false); assert.equal(first.other_changes.count, 1);
-    fs.writeFileSync(privateFile, "PRIVATE_FIXTURE_CONTENT_B\n"); const next = readControlledDriftGit(input);
+    fs.writeFileSync(privateFile, "PRIVATE_FIXTURE_CONTENT_B\n"); coldIndex(); const next = observeReadOnly();
     assert.equal(first.diff_sha256, next.diff_sha256); assert.notEqual(first.global_diff_sha256, next.global_diff_sha256);
+    assert.equal(command(["add", "product/app.mjs"]).status, 0);
+    const stagedTree = command(["write-tree"]); assert.equal(stagedTree.status, 0); coldIndex(stagedTree.stdout.trim());
+    const staged = observeReadOnly(); assert.equal(staged.diff_sha256, first.diff_sha256); assert.notEqual(staged.status_sha256, next.status_sha256);
+    put(repo, "foreign.txt", "PRIVATE_UNTRACKED_FIXTURE_CONTENT\n"); coldIndex(stagedTree.stdout.trim());
+    const untracked = observeReadOnly(); assert.equal(untracked.other_changes.count, 2);
+    assert.equal(JSON.stringify(untracked).includes("PRIVATE_UNTRACKED_FIXTURE_CONTENT"), false);
+    assert.equal(JSON.stringify(untracked).includes("foreign.txt"), false);
     assert.throws(() => assertDiagnosticPathScope(privateFile, [repo]), /SCOPE_DENIED/);
     assert.throws(() => readControlledDriftGit({ ...input, productFiles: ["../private.txt"] }), /SCOPE_INVALID/);
     assert.throws(() => readControlledDriftGit({ ...input, deniedRoots: [productRoot] }), /SCOPE_DENIED/);

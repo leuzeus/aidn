@@ -177,6 +177,7 @@ import { cycleEntrySelectedCheckpointOperation, assertSelectedContextCheckpointO
 import { assertCycleEntrySelectedInput } from "./standard-cycle-entry-selected-source.mjs";
 import { cycleEntrySelectedFocusOperation, assertSelectedFocusInput, assertSelectedFocusOutput } from "./standard-cycle-entry-selected-focus.mjs";
 import { cycleEntryFocusCheckpointOperation, assertFocusCheckpointInput, assertFocusCheckpointOutput } from "./standard-cycle-entry-focus-checkpoint.mjs";
+import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation, assertCanonicalResumeInput, assertCanonicalResumeObserveInput, assertCanonicalResumeOutput, assertCanonicalResumeObserveOutput } from "./standard-canonical-cycle-resume.mjs";
 import driftCycleInput from "../contracts/workflow-definition/standard-drift-cycle-initialize-input.v1.schema.json" with { type: "json" };
 import driftCycleOutput from "../contracts/workflow-definition/standard-drift-cycle-output.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
@@ -199,6 +200,8 @@ export function assertStandardOperationInput(operation, value) {
   if (operation === cycleEntrySelectedCheckpointOperation) return assertCycleEntrySelectedInput(value);
   if (operation === cycleEntrySelectedFocusOperation) return assertSelectedFocusInput(value);
   if (operation === cycleEntryFocusCheckpointOperation) return assertFocusCheckpointInput(value);
+  if (operation === canonicalCycleResumeAdmitOperation) return assertCanonicalResumeInput(value);
+  if (operation === canonicalCycleResumeObserveOperation) return assertCanonicalResumeObserveInput(value);
   if (operation === cycleEntryChoiceCheckpointOperation) {
     if (checkShadowJson(value) || validateJsonSchema(value, cycleEntryChoiceCheckpointInput, "$", { contractKind: "workflow-definition" }).length)
       fail("STANDARD_OPERATION_INPUT_INVALID");
@@ -336,6 +339,8 @@ export function assertStandardOperationOutput(value) {
   if (value?.contract_version === "standard-cycle-entry-selected-checkpoint-output.v1") return assertSelectedContextCheckpointOutput(value);
   if (value?.contract_version === "standard-cycle-entry-selected-focus-output.v1") return assertSelectedFocusOutput(value);
   if (value?.contract_version === "standard-cycle-entry-focus-checkpoint-output.v1") return assertFocusCheckpointOutput(value);
+  if (value?.contract_version === "standard-canonical-cycle-resume-output.v1") return assertCanonicalResumeOutput(value);
+  if (value?.contract_version === "standard-canonical-cycle-resume-observe-output.v1") return assertCanonicalResumeObserveOutput(value);
   if (value?.contract_version === "standard-cycle-entry-choice-record-output.v1") return assertStandardCycleEntryChoiceRecordOutput(value);
   if (value?.contract_version === "standard-cycle-entry-choice-output.v1") return assertCycleEntryChoiceOutput(value);
   if (value?.contract_version === "standard-cycle-plan-adoption-output.v1") {
@@ -729,7 +734,7 @@ export function assertStandardOperationOutput(value) {
       || ["blocked", "deferred"].includes(value.outcome) && value.effect_status !== "no_effect") fail("STANDARD_OPERATION_OUTPUT_INVALID");
     if (Object.hasOwn(value.observations, "planning_source")) {
       const source = value.observations.planning_source;
-      if (!source || Object.keys(source).sort().join(",") !== "kind,operation_id,output_sha256" || source.kind !== "canonical_plan"
+      if (!source || Object.keys(source).sort().join(",") !== "kind,operation_id,output_sha256" || !["canonical_plan", "canonical_progress"].includes(source.kind)
         || value.operation_ref !== "cycle_readiness_evaluate" || source.operation_id !== value.observations.record_operation_id
         || !/^op_[a-f0-9]{40}$/.test(source.operation_id ?? "") || !/^[a-f0-9]{64}$/.test(source.output_sha256 ?? "")
         || source.output_sha256 !== value.observations.record_sha256) fail("STANDARD_OPERATION_OUTPUT_INVALID");

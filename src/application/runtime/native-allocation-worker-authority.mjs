@@ -9,6 +9,7 @@ import { createAgenticProcess } from "../../core/workflow/agentic-process.mjs";
 import { agenticProcessPersistence } from "./agentic-process-persistence.mjs";
 import { readNativeControlContext } from "./native-allocation-controls.mjs";
 import { createStandardProcessAuthority } from "./standard-process-authority.mjs";
+import { readAgenticProductSnapshot } from "./agentic-process-execution-composition.mjs";
 import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { createWorkerHumanVerificationSource } from "./native-human-verification-port.mjs";
 
@@ -28,6 +29,7 @@ export function createNativeAllocationWorkerAuthority({ configuration, authoriza
   const store = createNativeAllocationJournalStore(options), controls = createProcessControlInboxStore(options);
   const processAuthority = mixed ? createStandardProcessAuthority({ configuration, model: readAgentRunFile(configuration.model.path, { sha256: configuration.model.sha256 }).value,
     modelSource: admission.model_source, readSigningKey: () => key, environment, nativeReservation: admission, readProductSha256,
+    readProductSnapshot: () => readAgenticProductSnapshot(configuration.product_root, configuration.product_files),
     ...(currentHuman ? { humanSource: createWorkerHumanVerificationSource(admission.human_verification) } : {}) }) : undefined;
   return Object.freeze({
     processAuthority,

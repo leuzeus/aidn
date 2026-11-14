@@ -1,5 +1,6 @@
 import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { createStandardProcessAuthority } from "./standard-process-authority.mjs";
+import { readAgenticProductSnapshot } from "./agentic-process-execution-composition.mjs";
 import { createStandardWorkflowOperationHost } from "./standard-workflow-operation-host.mjs";
 import { createJournaledNativeAllocation } from "./journaled-native-allocation.mjs";
 import { standardWorkflowOperationBindings } from "./standard-workflow-operations.mjs";
@@ -40,7 +41,8 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
   if (!processModels(model).some(component => component.nodes.some(node => node.kind === "operation"))) fail("STANDARD_PROCESS_MIXED_MODEL_REQUIRED");
   let native;
   const processAuthority = createStandardProcessAuthority({ configuration, model, modelSource, readSigningKey, humanSource, environment,
-    readProductSha256: () => nativeHost().preview().product_sha256 });
+    readProductSha256: () => nativeHost().preview().product_sha256,
+    readProductSnapshot: () => readAgenticProductSnapshot(configuration.product_root, configuration.product_files) });
   function nativeHost() {
     return native ??= createJournaledNativeAllocation({ configuration, readSigningKey, environment, processAuthority, nativeAuthorizationSource }, { controllerFactory });
   }

@@ -52,6 +52,8 @@ export function buildStandardCycleAuditContext({ targetRoot, environment = proce
     cycle_id: source.cycle_id, cycle_path: cyclePath, cycle_state: source.cycle_state, product_sha256: source.product_sha256,
     scope_sha256: bridge.source.work.output.observations.scope_sha256, implementation_operation_id: bridge.source.work.output.observations.implementation_operation_id,
     verification_operation_id: bridge.verification.record.operation_id, proposal: bridge.source.proposal, validation,
+    ...(bridge.source.canonical_resume_source ? { canonical_resume_source: bridge.source.canonical_resume_source,
+      imported_task_ids: bridge.source.imported_task_ids, current_observed_task_ids: bridge.source.observed_task_ids } : {}),
     canonical_inventory_complete: true, canonical_inventory_sha256: material.inventory.sha256, canonical_inventory_source: material.inventory.source,
     canonical_inventory_scope: material.inventory.scope,
     canonical_state_mode: artifacts.describe().state_mode, audit_metadata_pins: material.metadata, audit_documents: material.documents, evidence_refs: references };
