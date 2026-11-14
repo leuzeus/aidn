@@ -6004,3 +6004,8 @@ witnesses and keeps the exact planning origin through readiness. These calls
 consume no Native response. Unsupported calls fail as fixture assertions before
 any missing final-verification ID can be passed to the journal reader. Actual
 current-root execution remains a separate required case from pure preflight.
+
+Canonical plan selection reports whether a separate implementation entry is
+required for the accepted current phase and remaining tasks. This read-only
+route fact is not DoR satisfaction or an implementation permission. The
+canonical selection fixture checks that fact and keeps authorization false.

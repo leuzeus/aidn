@@ -146,7 +146,9 @@ export async function verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePl
       if (selection) {
         const selected = await f.open().step({ write: true }), output = f.open().readOperation(selected.operation_id).results.at(-1).output;
         const origin = f.open().readOperation(staged.operation_id), originOutput = origin.results.at(-1).output;
-        assert.equal(output.operation_ref, "cycle_plan_select"); assert.equal(output.effect_status, "no_effect"); assert.deepEqual(output.facts, {});
+        assert.equal(output.operation_ref, "cycle_plan_select"); assert.equal(output.effect_status, "no_effect");
+        assert.deepEqual(output.facts, { cycle_implementation_entry_required: true });
+        assert.equal(output.observations.implementation_authorized, false);
         assert.equal(output.observations.record_operation_id, staged.operation_id);
         assert.equal(output.observations.record_sha256, shadowHash({ record: origin, output: originOutput }));
         assert.equal(output.observations.cycle_id, "C001"); assert.equal(output.observations.session_id, "S001"); assert.equal(output.observations.cycle_path, cyclePath);
