@@ -5001,7 +5001,9 @@ references include only canonically verified traces, including partial outcomes.
 The evidence/boundary callbacks are controlled;
 general resolution/resume source profiles, published R10 route, live PostgreSQL,
 genuine actors and installed archive remain separate unexecuted gates. This
-candidate is not yet registered in the complete agentic fixture manifest.
+candidate's three backend commands are registered in the required agentic
+fixture manifest. Registration preserves their controlled-source scope and
+does not qualify the published R10 route.
 
 `node tools/perf/verify-standard-pr-review-reply-fixtures.mjs
 --case=external-premerge --incident-evidence` and the same command with
@@ -5017,6 +5019,15 @@ The fixture seeds the tracker explicitly; it does not execute an R10 record or
 resolve writer, closure mutation, high-severity recovery, Native actor or published
 incident route. DUAL/DB-only source-reader and exact archive qualification remain
 separate gates.
+
+The required agentic manifest retains its original 304 commands byte-for-byte
+as argv arrays and appends nine private R10 commands: closure and tracking in
+each backend, the legacy evidence-reader regression, and both actual-host
+tracking variants. Its self-check preserves the earlier 194/197/209/210/211
+references, pins the full 304 prefix and checks the nine exact additions. The
+former stale 211 total refused before executing the child protocol; that
+historical refusal is separate from business or Native qualification. The 56
+original age-regression selectors and all original deadline behavior remain.
 
 The existing `verify-standard-post-merge-fetch-fixtures.mjs` consumes the source
 scaffold ignore asset. It proves that an unclassified TEMP tracker blocks actual

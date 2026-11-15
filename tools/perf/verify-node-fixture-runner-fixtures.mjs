@@ -9,7 +9,7 @@ import { runNodeFixtureCases } from "../verify/node-fixture-runner-lib.mjs";
 import { verifyWindowsVerificationTree } from "./verification-windows-tree-fixture-lib.mjs";
 
 // Preserve the accepted febbb020/81b1783e prefix and six supplemental cases,
-// modulo the explicit 2026-11-11 private age-validity selectors. The current
+// modulo the explicit 2026-11-11 age-regression selectors. The current
 // exact argv is pinned separately, so removing a new selector still fails.
 const originalCases = manifest.cases.slice(0, 194).map(args => args.filter(arg => !["--aged-plan", "--aged-hook"].includes(arg)));
 assert.equal(createHash("sha256").update(JSON.stringify(originalCases.slice(0, 188))).digest("hex"),
@@ -23,7 +23,7 @@ assert.deepEqual(manifest.cases.slice(194, 197), [
   ["tools/perf/verify-standard-pr-redelivery-fixtures.mjs", "--mode=files", "--aged-plan"],
 ]);
 console.log("PASS accepted194 cases retain their original argv and order modulo explicit age selectors with three exact additions");
-assert.equal(manifest.cases.length, 211);
+assert.equal(manifest.cases.length, 313);
 assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 197))).digest("hex"),
   "47b229353b3929aa0b52623f688b46296517e513a331a68060c4c5a0190c62f4");
 console.log("PASS accepted197 exact argv and order are preserved before twelve R05 objective components");
@@ -95,14 +95,28 @@ assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 
 assert.deepEqual(manifest.cases.slice(209, 210), [["tools/perf/verify-agentic-process-execution-fixtures.mjs","--drift-cycle-mode=files","--drift-cycle-published-selection"]]);
 assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 210))).digest("hex"),
   "51d10bbc1a450d058536baa9f9545385fe70c7fe2b7eec8fd586812bde04d52d");
-assert.deepEqual(manifest.cases.slice(210), [["tools/perf/verify-agentic-process-execution-fixtures.mjs","--standard-composed-mode=files","--standard-composed-stop=nominal_post_merge_complete"]]);
-assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases)).digest("hex"),
+const historicalNominal = ["tools/perf/verify-agentic-process-execution-fixtures.mjs","--standard-composed-mode=files","--standard-composed-stop=nominal_post_merge_complete"];
+assert.deepEqual(manifest.cases[303], historicalNominal);
+const historical211 = [...manifest.cases.slice(0, 210), manifest.cases[303]];
+assert.equal(createHash("sha256").update(JSON.stringify(historical211)).digest("hex"),
   "a69efae4383b1f0c86a1337a1fbd16585c1c1f07bf6b14362e40dfd73b222761");
+console.log("PASS original211 exact argv and relative order remain intact, including their published nominal journey");
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 304))).digest("hex"),
+  "97e80234f3ea25afbf61fd53ea07c3244440d431c169b831e8c02ef5a49a46f6");
+assert.deepEqual(manifest.cases.slice(304), [
+  ...["files", "dual", "db-only"].map(mode => ["tools/perf/verify-standard-incident-closure-fixtures.mjs", "--mode=" + mode]),
+  ...["files", "dual", "db-only"].map(mode => ["tools/perf/verify-standard-pr-incident-tracking-fixtures.mjs", "--mode=" + mode]),
+  ["tools/perf/verify-standard-pr-review-reply-fixtures.mjs", "--case=external-premerge", "--incident-evidence"],
+  ["tools/perf/verify-standard-pr-review-reply-fixtures.mjs", "--case=external-premerge", "--incident-tracking"],
+  ["tools/perf/verify-standard-pr-review-reply-fixtures.mjs", "--case=external-pretriage-session", "--incident-tracking"],
+]);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases)).digest("hex"),
+  "cb85d5694d860f94405db17f9e6621d34333c595beeef805cf76d2b852ff71e7");
 assert.equal(manifest.cases.filter(args => args.includes("--aged-plan") || args.includes("--aged-hook")).length, 56);
-console.log("PASS current211 exact argv preserves210 commands and appends the actual published full nominal FILES journey");
+console.log("PASS current313 preserves the complete304 prefix and appends nine exact private R10 fixture commands without deadline or selector changes");
 if (process.argv.includes("--manifest-only")) {
-  console.log(JSON.stringify({ status: "PASS", checks: 4, scope: "ordered manifest, original age selectors and appended R05 regressions only",
-    manifest_cases: 211, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
+  console.log(JSON.stringify({ status: "PASS", checks: 5, scope: "historical prefixes, unchanged304 cases and nine exact R10 additions only",
+    manifest_cases: 313, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
   process.exit(0);
 }
 

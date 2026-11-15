@@ -1482,6 +1482,45 @@
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--standard-composed-mode=files",
       "--standard-composed-stop=nominal_post_merge_complete"
+    ],
+    [
+      "tools/perf/verify-standard-incident-closure-fixtures.mjs",
+      "--mode=files"
+    ],
+    [
+      "tools/perf/verify-standard-incident-closure-fixtures.mjs",
+      "--mode=dual"
+    ],
+    [
+      "tools/perf/verify-standard-incident-closure-fixtures.mjs",
+      "--mode=db-only"
+    ],
+    [
+      "tools/perf/verify-standard-pr-incident-tracking-fixtures.mjs",
+      "--mode=files"
+    ],
+    [
+      "tools/perf/verify-standard-pr-incident-tracking-fixtures.mjs",
+      "--mode=dual"
+    ],
+    [
+      "tools/perf/verify-standard-pr-incident-tracking-fixtures.mjs",
+      "--mode=db-only"
+    ],
+    [
+      "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+      "--case=external-premerge",
+      "--incident-evidence"
+    ],
+    [
+      "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+      "--case=external-premerge",
+      "--incident-tracking"
+    ],
+    [
+      "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+      "--case=external-pretriage-session",
+      "--incident-tracking"
     ]
   ]
 }
