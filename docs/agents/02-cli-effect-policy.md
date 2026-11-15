@@ -111,3 +111,13 @@ remain mutating. Explicit `--db-sync` is a separate requested effect. A checkpoi
 must preserve an existing canonical SQLite database in dual/db-only and the
 configured PostgreSQL scope; writing new session artifacts is a separate
 DB-first operation, not a side effect of admitting the next action.
+
+
+The ordinary STANDARD entry can prepare closed Native owner-retirement,
+accounting-reconciliation and authorization-epoch actions. They use the same
+explicit action-file/execute/expect-plan boundary and allocate no worker. A
+read-only preview may return a signed preparation but creates no key, instance,
+intent, source envelope or budget. A source reference is data within the exact
+action, separately authenticated by the fixed protected source before writes.
+CLI and console retain the original prepared payload across cold application;
+Native recovery context comparison cannot authorize a business action.

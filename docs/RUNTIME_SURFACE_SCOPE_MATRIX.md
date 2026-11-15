@@ -503,3 +503,11 @@ cold recovery. Current-history admission requires that audit to be confirmed
 with its physical old-owner witness; a typed receipt alone is not admission.
 DB-only exports no new JSON automatically. There is no new backend, shared
 table, automatic conversion, Native budget renewal or global closure claim.
+
+
+Ordinary Native resource action/result v1 are transport contracts of the existing
+native_allocation_journal concept. Their CLI/console preparation and exact
+application reuse canonical owner/audit/epoch ports and existing projections.
+They add no persistence family or shared coordination capability. Recovery
+results describe their resource effect and never close the entire workflow,
+refund the original grant or start another Native allocation.

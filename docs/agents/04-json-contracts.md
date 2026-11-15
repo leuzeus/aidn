@@ -841,5 +841,17 @@ JSON supplies no observer, verifier, callback or writer. Confirmed historical
 admission also requires canonical audit and old physical-owner evidence.
 Reading never converts a record or grants a business effect. A new Native
 epoch preserves v4, original failed entries and cumulative debits, and reports
-that failed phase rather than presenting it as closed. Public CLI envelopes
-and Native entry-action availability remain unchanged in this candidate.
+that failed phase rather than presenting it as closed. The private producer alone does not change public CLI envelopes or Native
+entry actions. The resource-action extension below is separate.
+
+
+Public Native resource actions use standard-workflow-native-action.v1 and
+standard-workflow-native-result.v1. Three typed, closed payload variants embed
+the existing owner plan, reconciliation request/inventory, or finite epoch
+request. The host validates their MAC and instance/scope/configuration/generation
+links. Native source_ref is bounded data; null prevents application. Editing
+that reference requires a new exact outer preview digest. JSON supplies no
+callback, verifier, permission or Native grant. Historical ordinary/call and
+Native journal schemas retain their bytes and routes. Resource results retain
+original failure observations and explicitly report workflow_completed false
+and native_started false. They do not claim all-resource closure.

@@ -329,15 +329,30 @@ finalization; `--verify` retains its read-only verification behavior.
 - `aidn runtime workflow-inspect --target <root> --json`
 - `aidn runtime workflow-run --target <root> --configuration <file> --json`
   - Defaults to the structured agentic engine for every new workflow. Execution
-    requires `--execute --authorization <file> --expect-plan <sha256>`; JSON and
-    preview start no native client. `--engine legacy` explicitly selects the
+    requires `--execute --authorization <file> --expect-plan <sha256>` for
+    Native execution; STANDARD resource and deterministic actions use the exact
+    action boundary below. JSON and preview start no native client. `--engine legacy` explicitly selects the
     sequential compatibility lifecycle and retains its plan/shared-sync admission.
     An explicit `standard-workflow-execution.v1` configuration selects the
     published STANDARD catalog/model and the common mixed host. Its `execution`
     supplies project/native pins and roots; the host supplies the model, skills,
     typed activity outputs and implementation pins. Save the returned `preview`
     object and apply it with `--action-file <file> --execute --expect-plan <sha256>`.
-    Each invocation admits one exact action. A pinned call entry or return
+    Each invocation admits one exact action. Native resource actions use
+    `standard-workflow-native-action.v1`: `native_owner_retire`,
+    `native_allocation_reconcile`, and `native_authorization_epoch`. A failed
+    no-assignment allocation first offers physical-owner retirement, then
+    independently sourced accounting reconciliation. Before a later allocation,
+    a distinct finite epoch remains mandatory. These actions start no worker
+    and return `standard-workflow-native-result.v1`, with no completed-workflow
+    claim. A missing `source_ref` leaves application unavailable. Supply the
+    exact prepared request to the independent issuer, fill only its logical
+    source reference in the saved action, then preview with `--action-file`
+    again and use the resulting digest for explicit execution. The host still
+    authenticates the source and the original/current private subject; a JSON
+    reference grants no permission. CLI and console resubmit the same prepared
+    action, including after an owned Native postimage lost acknowledgement.
+    A pinned call entry or return
     previews as `standard-workflow-call-action.v1`. The saved action binds the
     instance, model, authority context, occurrence, event and predicted hash.
     Explicit application records one canonical call transition and reports

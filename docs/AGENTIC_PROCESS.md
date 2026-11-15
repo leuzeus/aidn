@@ -903,3 +903,23 @@ and global resource closure remain outside this confirmation. Another Native
 allocation needs its own later finite authorization epoch and normal workflow
 admission. Public Native entry actions and full mixed qualification remain
 unfinished; fixture closure/consent are synthetic, with no model calls.
+
+
+### Ordinary Native resource recovery candidate
+
+The standard CLI and console can return a separate Native resource action for a
+failed no-assignment allocation. Physical old-owner retirement comes first;
+accounting reconciliation needs independent scope closure/final debit evidence,
+and a later Native allocation needs its own signed finite epoch. Each action
+uses the same saved preview and explicit execute/expect-plan consent. Nothing
+is applied by a JSON/preview request.
+
+A source_ref initially set to null leaves the action unavailable. Give the
+exact prepared request to the independent source, fill the logical reference
+in the saved action, then obtain a new preview/digest. The source signature,
+principal, subject and issuer permission still decide application. The console
+returns the prepared request even while a source is missing and preserves it
+across cold application. A successful resource action reports neither Native
+start nor completed workflow. Original failures, deadlines and debit history
+remain visible. Post-assignment effects, general R10/handoff, full STANDARD and
+genuine/installed qualification remain separate.

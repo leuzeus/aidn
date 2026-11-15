@@ -40,7 +40,7 @@ export async function createNativeAllocationAssessmentFixture(mode, { protectedH
     control_root: path.join(privateRoot, 'control'), review_root: path.join(privateRoot, 'review'), native: { home: path.join(privateRoot, 'home'), tool_roots: [], protected_roots: protectedHome ? [protectedHome] : [] } };
   for (const directory of [configuration.product_root, configuration.control_root, configuration.review_root, configuration.native.home]) fs.mkdirSync(directory, { recursive: true });
   fs.writeFileSync(path.join(configuration.product_root, 'app.mjs'), 'export const value = 1;\n');
-  const key = () => Buffer.alloc(32, 73), signer = createOperationJournalSigner(key), binding = standardWorkflowOperationBindings().find(row => row.id === 'context_reload');
+  const key = () => Buffer.alloc(32, 73), binding = standardWorkflowOperationBindings().find(row => row.id === 'context_reload');
   const model = { contract_version: 'agentic-process-model.v2', model_id: 'native-assessment-component', revision: 1,
     participants: [{ id: 'project' }], roles: [], policies: [], entry: 'observe', operation_pins: { context_reload: H(binding) },
     nodes: [{ id: 'observe', kind: 'operation', participant_ref: 'project', binding_ref: 'context_reload' }] };
@@ -50,6 +50,13 @@ export async function createNativeAllocationAssessmentFixture(mode, { protectedH
   const host = createStandardWorkflowOperationHost(hostOptions), preview = host.initialize({ instanceId: configuration.instance_id });
   host.initialize({ instanceId: configuration.instance_id, write: true, expectedResultSha256: preview.record.instance_sha256 });
   const instance = host.inspect(configuration.instance_id).record, artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
+  return retainFailedNativeAllocationFixture({ mode, retained, root, privateRoot, configuration, key, model, productSnapshot, authority, hostOptions, host, instance, artifacts, retainAuthorization, parentClosed });
+}
+
+// The caller supplies an actual canonical instance. Only the failed Native
+// return/checkpoint/OS closure are synthetic; provenance owns the real process.
+export async function retainFailedNativeAllocationFixture({ mode, retained, root, privateRoot, configuration, key, model, productSnapshot, authority, hostOptions, host, instance, artifacts, retainAuthorization = false, parentClosed = true }) {
+  const signer = createOperationJournalSigner(key);
   const journalId = nativeJournalId(instance), options = { targetRoot: root, stateMode: mode }, store = createNativeAllocationJournalStore(options);
   const limits = { configuration_sha256: H(configuration), authorized_at_ms: 1, global_deadline_ms: 100, workflow_deadline_ms: 100,
     max_turn_ms: 10, max_responses: 1, max_bytes: 1048576 };

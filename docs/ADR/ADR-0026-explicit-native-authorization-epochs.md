@@ -515,8 +515,46 @@ age ceiling; original issuer expiry and the existing five-second authority
 call timeout remain. The namespace reuses the configured canonical artifact
 CAS, projection and import protections and adds no backend, table or principal.
 
-This source candidate covers no assignment only. Post-assignment uncertain
-effects, public Native entry actions, general R10/handoff, complete STANDARD,
-genuine Native and exact installed-archive qualification remain separate.
+The private producer covers no assignment only. The public resource-action
+extension below is separate. Post-assignment uncertain effects, general
+R10/handoff, complete STANDARD, genuine Native and exact installed-archive
+qualification remain separate.
 Fixture source signatures and physical/CAS ports are real, while Native
 closure and epoch consent are synthetic and no model is called.
+
+
+## Ordinary Native resource actions candidate, 2026-11-15
+
+The ordinary entry and console expose separate closed Native action/result v1
+contracts without changing historical ordinary or call schemas. An unresolved
+failed allocation can use diagnostic inspection solely to prepare resource
+recovery. All normal business actions retain active admission. The current
+signed inventory selects exactly one returned allocation dispatch; ambiguity,
+active original ownership or an unproved no-assignment subject refuses.
+
+The fixed composition connects protected local-operator HMAC capabilities for
+physical old-owner retirement and accounting reconciliation. Exact action-file
+execution/expect-plan consent supplies their scoped permit. Reconciliation and
+finite epoch activation separately require the existing independently signed
+Native source. Neither the MAC, an action-file nor source_ref establishes that
+external closure/approval. Missing source data waits or refuses without an
+allocation. Owner retirement leaves accounting unresolved. Reconciliation keeps
+the original failed phase, dispatch, deadline, debit and signed origin; a later
+Native generation still needs its separate finite epoch and normal admissions.
+
+A prepared Native action retains its original request and source reference.
+Acknowledgement may observe its own journal postimage: comparison excludes only
+the Native journal digest, phase and aggregate consumption, while prefix,
+generation, configuration/root, model/source, key and trust remain exact. The
+private producer then proves the original or its own retained proposal under
+its existing owner/fence/CAS protocol. This narrow comparison supplies no write
+permission or ordinary business admission. An epoch replay reads the retained
+activation without materializing or allocating. Resource results never mark
+the whole workflow complete.
+
+The fixed public source rechecks current signature/principal/issuer permission
+after observations immediately before the epoch CAS. Physical retirement also
+checks current permission after its subject observation. No new preparation
+age ceiling or Native budget change is introduced. Existing finite epoch
+request/grant expiry remains separate. Post-assignment resolution, general R10,
+full STANDARD, genuine actors and exact installed archive remain unfinished.

@@ -115,7 +115,7 @@ export function createWorkflowConsoleService({ targetIdentity, readRecords, read
           || apply && (!/^[a-f0-9]{64}$/.test(expectPlan ?? "") || legacyRun && !syncRelay)
           || !apply && (syncRelay || expectPlan) || request.operation === "propose" && apply) fail("WORKFLOW_CONSOLE_EXPLICIT_EFFECT_REQUIRED");
         const preview = await invoke(request);
-        if (run && ["standard-workflow-action.v1", "standard-workflow-call-action.v1"].includes(preview.preview?.contract_version)
+        if (run && ["standard-workflow-action.v1", "standard-workflow-call-action.v1", "standard-workflow-native-action.v1"].includes(preview.preview?.contract_version)
           && !request.input.actionFile && !Object.hasOwn(request.input, "preparedAction")) {
           // Return the original closed action as part of the consent subject.
           // Recreating its timed operation plan during apply changes that subject.
@@ -126,8 +126,10 @@ export function createWorkflowConsoleService({ targetIdentity, readRecords, read
         }
         const needsSharedSync = legacyRun || run && preview.engine === "legacy";
         if (apply && needsSharedSync && !syncRelay) fail("WORKFLOW_CONSOLE_EXPLICIT_EFFECT_REQUIRED");
+        const nativeEffect = { native_owner_retire: 'native_owner_retirement', native_allocation_reconcile: 'native_allocation_accounting_reconciliation',
+          native_authorization_epoch: 'native_authorization_epoch' }[preview.preview?.kind];
         const action = { request, target_sha256: targetIdentity, preview,
-          effects: request.operation === "propose" ? [] : run ? [cleanup ? "retained_run_cleanup" : "supervised_run_command", ...(needsSharedSync ? ["explicit_shared_sync"] : [])] : ["canonical_workflow_checkpoint"] };
+          effects: request.operation === "propose" ? [] : run ? [cleanup ? "retained_run_cleanup" : nativeEffect ?? "supervised_run_command", ...(needsSharedSync ? ["explicit_shared_sync"] : [])] : ["canonical_workflow_checkpoint"] };
         output.action = action; output.action_sha256 = shadowHash(action);
         output.can_apply = request.operation !== "propose" && !preview.errors?.length && (preview.can_apply ?? true);
         if (!apply) return output;

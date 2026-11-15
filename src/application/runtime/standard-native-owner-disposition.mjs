@@ -129,9 +129,9 @@ export function createStandardNativeOwnerDisposition({ targetRoot, stateMode, ar
       if (verification?.outcome !== 'verified' || verification.authority_id !== grant.authority_id
         || verification.request_sha256 !== H(request) || verification.grant_sha256 !== H(grant)) fail('NATIVE_OWNER_DISPOSITION_AUTHORIZATION_NOT_AUTHENTICATED');
       const permit = () => {
+        const fresh = observe(plan.instance_id, inputFor(plan), retained.record); assertSubject(plan, fresh);
         if (signal?.aborted) fail('NATIVE_OWNER_DISPOSITION_ABORTED'); freshGrant(grant, request);
         if (source.assertCurrent({ request, grant }) !== undefined) fail('NATIVE_OWNER_DISPOSITION_AUTHORIZATION_NOT_AUTHENTICATED');
-        const fresh = observe(plan.instance_id, inputFor(plan), retained.record); assertSubject(plan, fresh);
       };
       permit();
       const rechecked = read(plan.dispatch_id);

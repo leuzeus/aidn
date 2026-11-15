@@ -6263,3 +6263,26 @@ retain every owned arena and original failure. They prove neither arbitrary
 interruption inside an OS/DB primitive, post-assignment effect resolution,
 genuine Native/provider closure, public entry, installed archive nor complete
 L1-L8/A1-A10.
+
+
+## Ordinary Native resource action candidate
+
+The existing ordinary-entry command also invokes the public Native resource
+fixture for its selected FILES/DUAL/DB-only mode, without changing required argv
+or order. Actual CLI/console startup uses the published model and protected
+HMAC/Ed25519 principals. A separate creator then retains a synthetic failed
+Native checkpoint/return/OS closure at the actual ready Native activity and
+exits. Physical ownership, canonical storage, exact action consent and cold
+clients use real ports. Human mode/closure/epoch consent remain fixtures.
+
+The checks cover read-only Native preparation, forged plan MAC and missing exact
+action refusal, console retention of the original Native action, physical owner
+retirement followed by unresolved accounting, absent/forged source refusal,
+explicit reconciliation, a separately authenticated finite epoch, immutable
+failed dispatch/deadline/debits and no new allocation. Cross-client retained
+acknowledgement writes nothing. FILES injects one controlled interruption in
+the actual composition after the reconciliation journal CAS, then applies the
+same saved action through the ordinary CLI. The console must preserve that
+prepared action and distinguish Native resource effects. No model is called.
+These checks do not prove arbitrary primitive crashes, genuine Native/human/OS
+closure, post-assignment resolution, installed archive or full L1-L8/A1-A10.

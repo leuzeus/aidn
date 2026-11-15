@@ -9,6 +9,7 @@ import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-
 import { CODEX_STARTUP_ENVIRONMENT_PROFILES } from "../../src/core/agents/codex-startup-arguments.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { loadStandardWorkflowAssets } from "../../src/application/runtime/standard-workflow-composition.mjs";
+import { verifyPublicNativeEntryFixture } from "./standard-native-entry-fixture-lib.mjs";
 
 // Production CLI and composition, separate fixture principals and activated
 // project. No runner/controller/authorization doubles are passed to production.
@@ -135,3 +136,5 @@ assert.equal(fs.readdirSync(directories.control).length, 0, "D/H must never allo
 console.log(JSON.stringify({ status: "PASS", mode, calls, call_transitions: callTransitions, startup_bindings: startupBindings,
   model_sha256: loadStandardWorkflowAssets().source.model_sha256, same_reducer_replay_simulation: true,
   productive_cold_resume: "authenticated H followed by accepted process event", native: "NOT_RUN", genuine_human: "NOT_RUN", installed: "NOT_RUN", target, base }));
+
+console.log(JSON.stringify(await verifyPublicNativeEntryFixture(mode)));

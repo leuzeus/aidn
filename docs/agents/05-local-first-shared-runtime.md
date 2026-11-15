@@ -493,3 +493,12 @@ separate finite Native epoch is still required before a later allocation.
 All other effect, implementation, human, control and provider permissions
 remain separate. History that cannot fit existing artifact/inventory readers
 refuses before an intent or Native CAS, retaining every earlier proof.
+
+
+Ordinary Native resource-action transport adds no canonical backend, table or
+shared method. CLI and console call the same existing owner-retirement,
+reconciliation and epoch ports. Only their recovery preparation may inspect a
+failed allocation diagnostically; current business/worker history admission
+stays separate. An owned retained postimage can acknowledge the original exact
+preparation without repeating its Native CAS. Retained epoch acknowledgement
+requests no projection. DB-only exports no new detailed JSON.

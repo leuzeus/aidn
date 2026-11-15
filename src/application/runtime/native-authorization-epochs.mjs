@@ -97,6 +97,18 @@ export function createNativeAuthorizationEpochs({ configuration, signer, read, w
         const epoch = { epoch: request.epoch, start_generation: request.next_generation, request, grant };
         // CAS is the only activation point. All old allocations and grants are
         // retained verbatim; a competing reservation invalidates this prefix.
+        // The fixed public protected source supplies this synchronous final
+        // permission check after observations. Legacy injected fixtures retain
+        // their constructor-owned verifier without acquiring a JSON authority.
+        if (typeof source.assertCurrent === 'function' && source.assertCurrent({ request, grant, sourceRef }) !== undefined)
+          fail('NATIVE_EPOCH_SOURCE_NOT_AUTHENTICATED');
+        // Preserve the existing request/closure/grant windows at the actual
+        // write boundary even when the current-state observation was lengthy.
+        const commitNow = Date.now();
+        if (commitNow < request.issued_at_ms || commitNow >= request.expires_at_ms) fail('NATIVE_EPOCH_REQUEST_EXPIRED');
+        if (grant.closure.observed_at_ms > commitNow || commitNow - grant.closure.observed_at_ms > 60000
+          || grant.authorization.global_deadline_ms <= commitNow + 30000 || grant.authorization.workflow_deadline_ms <= commitNow + 30000)
+          fail('NATIVE_EPOCH_FRESH_CLOSURE_REQUIRED');
         committing = true;
         write({ ...body, contract_version: journal?.contract_version === 'native-allocation-journal.v4' ? 'native-allocation-journal.v4'
             : !journal || journal.contract_version === 'native-allocation-journal.v3' ? 'native-allocation-journal.v3' : 'native-allocation-journal.v2', revision: body.revision + 1,
