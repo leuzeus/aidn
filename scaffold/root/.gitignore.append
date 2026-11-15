@@ -41,3 +41,7 @@ docs/audit/workflows/native-allocations/
 /docs/audit/workflows/native-owner-dispositions/
 /docs/audit/workflows/native-allocation-reconciliations/
 docs/audit/workflows/drift-reports/
+
+# SPEC-R10 temporary tracking stays locally canonical until explicit cleanup.
+# Concise session/snapshot traces and permanent incident documents stay reviewable.
+/docs/audit/incidents/INC-TMP-*.md

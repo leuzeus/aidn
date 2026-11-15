@@ -80,6 +80,11 @@ record. Explicit PostgreSQL artifact persistence remains canonical even in files
 mode. A visible copy never replaces a missing canonical database record. After verified resolution and
 confirmed resume, explicit cleanup removes temporary tracking and retains only
 the concise session/snapshot trace. The archived lifecycle refers to that trace.
+The scaffold Git ignore classifies only `/docs/audit/incidents/INC-TMP-*.md`
+at the project root as transient. It preserves their local canonical authority and does not
+resolve them, authorize resume or delete them. Permanent incident documents,
+templates and session/snapshot traces remain reviewable. Previously tracked
+TEMP files stay tracked; the ignore rule performs no history cleanup.
 The private `compareAndDeleteArtifact` capability provides transactional deletion
 of one UTF-8 artifact, requiring explicit write intent and both content and metadata
 revision hashes. It refuses workflow evidence, session/cycle artifacts and runtime

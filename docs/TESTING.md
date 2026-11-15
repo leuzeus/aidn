@@ -5003,6 +5003,14 @@ the production resolution/resume reader, published R10 route, live PostgreSQL,
 genuine actors and installed archive remain separate unexecuted gates. This
 candidate is not yet registered in the complete agentic fixture manifest.
 
+The existing `verify-standard-post-merge-fetch-fixtures.mjs` consumes the source
+scaffold ignore asset. It proves that an unclassified TEMP tracker blocks actual
+R09 preparation, while the root-anchored TEMP rule leaves its canonical bytes
+intact and permits a read-only preparation. Permanent/template incidents,
+previously tracked TEMP files and session/snapshot changes remain visible and
+still block R09. This is scaffold/Git-port evidence; exact archive installation,
+incident source authentication and published R10 execution remain separate gates.
+
 Record offline/source-install, real native, live PostgreSQL and exact installed
 archive outcomes separately. Governance completeness does not establish complete
 standard-workflow execution. Session report/write/checkpoint/final hook and the

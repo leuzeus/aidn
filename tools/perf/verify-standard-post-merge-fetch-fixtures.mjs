@@ -61,6 +61,56 @@ function advance(message) {
   return git(writer, ['rev-parse', 'HEAD']);
 }
 try {
+  // Real R09 still requires a clean checkout. Only transient canonical TEMP
+  // tracking is excluded by the source scaffold; permanent history stays visible.
+  const tracking = path.join(root, 'incident-scope'); fs.mkdirSync(tracking);
+  const ignoreRule = '/docs/audit/incidents/INC-TMP-*.md';
+  const scaffoldIgnore = fs.readFileSync(new URL('../../scaffold/root/.gitignore.append', import.meta.url), 'utf8');
+  assert(scaffoldIgnore.split(/\r?\n/).includes(ignoreRule));
+  const incident = 'docs/audit/incidents/INC-TMP-20261115-000000-fixture.md';
+  const historical = 'docs/audit/incidents/INC-TMP-20261015-000000-tracked.md';
+  const permanent = ['docs/audit/incidents/TEMPLATE_INC_TMP.md', 'docs/audit/incidents/INC-0001-permanent.md',
+    'docs/audit/sessions/S001.md', 'docs/audit/snapshots/context-snapshot.md'];
+  git(tracking, ['init', '--initial-branch=main']); setup(tracking);
+  fs.writeFileSync(path.join(tracking, '.gitignore'), scaffoldIgnore.split(/\r?\n/).filter(line => line !== ignoreRule).join('\n'));
+  for (const name of [historical, ...permanent]) {
+    fs.mkdirSync(path.dirname(path.join(tracking, name)), { recursive: true });
+    fs.writeFileSync(path.join(tracking, name), 'retained fixture content\n');
+  }
+  git(tracking, ['add', '.']); git(tracking, ['commit', '-m', 'fixture tracked history']);
+  fs.writeFileSync(path.join(tracking, incident), 'status: OPEN\nseverity: L2_MEDIUM\n');
+  let trackingTransfers = 0;
+  const trackingRemote = { context_sha256: shadowHash({ fixture: 'incident-tracking' }),
+    observeTip: () => git(tracking, ['rev-parse', 'HEAD']), transfer() { trackingTransfers++; throw Error('Unexpected tracking transfer'); } };
+  const trackingPort = createLocalWorkflowPostMergeFetch({ targetRoot: tracking, remote: trackingRemote, environment });
+  const trackingInput = () => ({ sourceBranch: 'main', mergeOid: git(tracking, ['rev-parse', 'HEAD']), operationId: 'op_' + '7'.repeat(40) });
+  await assert.rejects(trackingPort.prepare(trackingInput()), { code: 'WORKFLOW_POST_MERGE_SOURCE_CHECKOUT_REQUIRED' });
+  console.log('PASS missing transient classification retains the R09 dirty-checkout refusal');
+  fs.writeFileSync(path.join(tracking, '.gitignore'), scaffoldIgnore);
+  git(tracking, ['add', '.gitignore']); git(tracking, ['commit', '-m', 'fixture explicit scaffold configuration']);
+  const ignoreStatus = name => spawnSync('git', ['-C', tracking, 'check-ignore', '--no-index', '--quiet', '--', name],
+    { env, encoding: 'utf8', windowsHide: true }).status;
+  assert.equal(ignoreStatus(incident), 0);
+  for (const name of [...permanent, 'nested/docs/audit/incidents/INC-TMP-20261115-000000-fixture.md']) assert.equal(ignoreStatus(name), 1);
+  assert.equal(git(tracking, ['ls-files', '--error-unmatch', historical]), historical);
+  const trackingView = () => ({ head: git(tracking, ['rev-parse', 'HEAD']), refs: git(tracking, ['show-ref']),
+    status: git(tracking, ['status', '--porcelain', '--untracked-files=all']),
+    index: createHash('sha256').update(fs.readFileSync(path.join(tracking, '.git/index'))).digest('hex'),
+    tracker: fs.readFileSync(path.join(tracking, incident), 'utf8') });
+  const beforeTracking = trackingView(); assert.equal(beforeTracking.status, '');
+  const trackingPlan = await trackingPort.prepare(trackingInput());
+  assert.equal(trackingPlan.can_apply, true); assert.deepEqual(trackingView(), beforeTracking);
+  assert.equal(trackingTransfers, 0); assert.equal(beforeTracking.tracker, 'status: OPEN\nseverity: L2_MEDIUM\n');
+  console.log('PASS scaffold TEMP classification preserves local tracking and read-only R09 preparation without Git effects');
+  for (const name of [historical, ...permanent]) {
+    const file = path.join(tracking, name), prior = fs.readFileSync(file);
+    fs.appendFileSync(file, 'visible change\n');
+    assert(git(tracking, ['status', '--porcelain', '--untracked-files=all']).includes(name));
+    await assert.rejects(trackingPort.prepare(trackingInput()), { code: 'WORKFLOW_POST_MERGE_SOURCE_CHECKOUT_REQUIRED' });
+    fs.writeFileSync(file, prior);
+  }
+  assert.deepEqual(trackingView(), beforeTracking);
+  console.log('PASS permanent incidents, existing tracked TEMP and session/snapshot changes remain visible and block R09');
   git(root, ['init', '--bare', '--initial-branch=main', bare]);
   git(root, ['init', '--initial-branch=main', writer]);
   setup(writer);
