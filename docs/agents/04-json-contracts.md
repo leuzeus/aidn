@@ -843,3 +843,16 @@ Reading never converts a record or grants a business effect. A new Native
 epoch preserves v4, original failed entries and cumulative debits, and reports
 that failed phase rather than presenting it as closed. Public CLI envelopes
 and Native entry-action availability remain unchanged in this candidate.
+
+
+The private native-post-assignment-assessment.v1 wraps the unchanged signed
+native-allocation-assessment.v1 and closed checkpoint-work data. Its fixed host
+authenticates canonical history and reads only the admitted protected checkpoint,
+result files and supervisor closure. It distinguishes an exact canonical prefix
+from a canonical extension, retains earlier results/resources, and compares the
+worker closure count with newly created resources in this generation. Incomplete
+closure, unresolved assignments or unknown consumption cannot claim the
+admitted_closed_checkpoint evidence profile. That profile remains read-only: all
+effect, retirement, resume, renewal and complete-resource-closure permissions are
+false, and business postconditions remain unknown. Historical no_assignment
+contracts and mutating producers retain their original scope.

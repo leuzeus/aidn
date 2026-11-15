@@ -503,3 +503,12 @@ cold recovery. Current-history admission requires that audit to be confirmed
 with its physical old-owner witness; a typed receipt alone is not admission.
 DB-only exports no new JSON automatically. There is no new backend, shared
 table, automatic conversion, Native budget renewal or global closure claim.
+
+
+Native post-assignment assessment uses the existing configured canonical
+Native journal/dispatch/inventory reads and protected checkpoint/result files.
+Its common-host method is read-only and binds the current authenticated prefix,
+original allocation, previous generation and retained worker closure. It adds no
+store, table, projection, import, resource mutation or shared synchronization.
+Complete checkpoint evidence is separate from business postconditions and from
+explicit resource disposition, reconciliation, new finite authorization or resume.

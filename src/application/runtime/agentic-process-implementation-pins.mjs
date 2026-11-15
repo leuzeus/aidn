@@ -7,6 +7,9 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 // exclude package-lock.json; direct code pins must use distributed assets only.
 const files = [
   "src/application/runtime/native-reconciliation-history.mjs",
+  "src/application/runtime/standard-native-post-assignment-assessment.mjs",
+  "src/core/workflow/native-post-assignment-assessment.mjs",
+  "src/core/contracts/workflow-definition/native-post-assignment-assessment.v1.schema.json",
   "src/application/runtime/standard-native-allocation-reconciliation.mjs",
   "src/core/workflow/native-allocation-reconciliation-record.mjs",
   "src/core/contracts/workflow-definition/native-allocation-reconciliation-record.v1.schema.json",

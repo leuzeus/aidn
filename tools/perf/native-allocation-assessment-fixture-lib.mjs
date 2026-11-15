@@ -14,6 +14,8 @@ import { createNativeAllocationJournalStore } from '../../src/adapters/runtime/n
 import { createOperationJournalSigner } from '../../src/core/workflow/process-operation-journal.mjs';
 import { nativeJournalId } from '../../src/core/workflow/native-allocation-journal.mjs';
 import { assertNativeAllocationAssessment } from '../../src/core/workflow/native-allocation-assessment.mjs';
+import { assertNativePostAssignmentAssessment } from '../../src/core/workflow/native-post-assignment-assessment.mjs';
+import { verifyNativePostAssignmentAssessmentContracts } from './native-post-assignment-assessment-fixture-lib.mjs';
 import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -89,6 +91,13 @@ export async function verifyNativeAllocationAssessmentFixture(mode) {
   const result = host.prepareNativeAllocationAssessment(instance.instance_id, input);
   signer.verify(result.inventory); signer.verify(result.assessment); assertNativeAllocationAssessment(result.assessment, result.inventory);
   assert.equal(result.assessment.assignment_status, 'no_assignment'); assert.equal(result.assessment.return_binding, 'matched');
+  const post = host.prepareNativePostAssignmentAssessment(instance.instance_id, input);
+  signer.verify(post.inventory); signer.verify(post.assessment); signer.verify(post.assessment.base_assessment);
+  assertNativePostAssignmentAssessment(post.assessment, post.inventory);
+  assert.equal(post.assessment.evidence_profile, 'unknown');
+  assert.equal(post.assessment.base_assessment.assignment_status, 'no_assignment');
+  assert.equal(post.assessment.permits_owner_retirement, false);
+  verifyNativePostAssignmentAssessmentContracts(result, name => console.log('PASS ' + name));
   assert.equal(result.assessment.native_accounting_known, false); assert.equal(result.inventory.accounting.storage_debit_bytes_minimum, 7);
   assert.deepEqual(result.assessment.lease_statuses, ['held']); assert.equal(artifacts.ownerPending(), true);
   assert.equal(store.read(journalId).record.allocations[0].phase, 'failed');

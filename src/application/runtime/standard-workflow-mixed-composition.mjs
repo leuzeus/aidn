@@ -69,6 +69,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     inspectDiagnostic: () => operations.inspectDiagnostic(configuration.instance_id),
     prepareReconciliationInventory: input => operations.prepareReconciliationInventory(configuration.instance_id, input),
     prepareProcessOwnerObservation: input => operations.prepareProcessOwnerObservation(configuration.instance_id, input),
+    prepareNativePostAssignmentAssessment: input => operations.prepareNativePostAssignmentAssessment(configuration.instance_id, input),
     prepareNativeAllocationAssessment: input => operations.prepareNativeAllocationAssessment(configuration.instance_id, input),
     prepareNativeAllocationReconciliation: input => operations.prepareNativeAllocationReconciliation(configuration.instance_id, input),
     applyNativeAllocationReconciliation: (preparation, input) => operations.applyNativeAllocationReconciliation(preparation, input),

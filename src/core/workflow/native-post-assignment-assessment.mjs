@@ -1,0 +1,37 @@
+import schema from '../contracts/workflow-definition/native-post-assignment-assessment.v1.schema.json' with { type: 'json' };
+import { validateJsonSchema } from '../contracts/json-schema-validator.mjs';
+import { assertNativeAllocationAssessment } from './native-allocation-assessment.mjs';
+import { checkShadowJson } from './shadow-json.mjs';
+
+const fail = code => { throw Object.assign(Error(code), { code }); };
+
+// This is a data classification, not authority to retire resources or to resume.
+export function nativePostAssignmentEvidenceProfile(base, work) {
+  return base.allocation_phase === 'failed' && base.return_binding === 'matched'
+    && base.checkpoint !== null && base.checkpoint.parent_closed && base.checkpoint.os_tree_confirmed
+    && base.checkpoint.responses_observed > 0 && work !== null && work.history_preserved
+    && work.generation_assignments > 0 && work.generation_results === work.generation_assignments
+    && work.generation_resources > 0 && work.unresolved_assignments === 0
+    && work.worker_checkpoint_matches && work.worker_parent_closed
+    && work.worker_generation_resources === work.generation_resources && work.consumption_matches
+    ? 'admitted_closed_checkpoint' : 'unknown';
+}
+
+export function assertNativePostAssignmentAssessment(value, inventory) {
+  if (checkShadowJson(value) || validateJsonSchema(value, schema, '$', { contractKind: 'workflow-definition' }).length)
+    fail('NATIVE_POST_ASSIGNMENT_ASSESSMENT_INVALID');
+  const base = assertNativeAllocationAssessment(value.base_assessment, inventory), work = value.checkpoint_work;
+  if (value.key_id !== base.key_id || value.evidence_profile !== nativePostAssignmentEvidenceProfile(base, work))
+    fail('NATIVE_POST_ASSIGNMENT_ASSESSMENT_INVALID');
+  if (work !== null && (base.checkpoint === null || work.total_resources !== base.checkpoint.resources
+    || work.total_results !== base.checkpoint.results || work.total_resources < work.prior_resources
+    || work.total_results < work.prior_results || work.generation_resources !== work.total_resources - work.prior_resources
+    || work.generation_results !== work.total_results - work.prior_results
+    || work.current_event_count < work.checkpoint_event_count
+    || (work.prefix_relation === 'match') !== (base.instance_sha256 === base.checkpoint.instance_sha256)
+    || (work.prefix_relation === 'match') !== (work.current_event_count === work.checkpoint_event_count)
+    || (work.prior_checkpoint_sha256 === null) !== (base.generation === 1)
+    || base.generation === 1 && (work.prior_resources !== 0 || work.prior_results !== 0)))
+    fail('NATIVE_POST_ASSIGNMENT_ASSESSMENT_SUBJECT_CHANGED');
+  return value;
+}

@@ -493,3 +493,12 @@ separate finite Native epoch is still required before a later allocation.
 All other effect, implementation, human, control and provider permissions
 remain separate. History that cannot fit existing artifact/inventory readers
 refuses before an intent or Native CAS, retaining every earlier proof.
+
+
+The fixed private Native post-assignment observation reuses the configured
+canonical artifact inventory and authenticated diagnostic history. It reads the
+existing protected checkpoint/result namespace and supervisor closure; it never
+imports an ahead or divergent checkpoint. Generation-local closure counts are
+separate from cumulative historical resources/results and non-refunded debits.
+This read adds no canonical writer, owner retirement, effect/resume/renewal
+permission, implicit export, backend fallback or shared coordination surface.

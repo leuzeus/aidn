@@ -1454,6 +1454,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     },
     prepareReconciliationInventory: (id, input) => reconciliationInventory.prepare(id, input),
     prepareProcessOwnerObservation: (id, input) => reconciliationInventory.prepareProcessOwnerObservation(id, input),
+    prepareNativePostAssignmentAssessment: (id, input) => reconciliationInventory.prepareNativePostAssignmentAssessment(id, input),
     prepareNativeAllocationAssessment: (id, input) => reconciliationInventory.prepareNativeAllocationAssessment(id, input),
     prepareNativeAllocationReconciliation: (id, input) => nativeReconciliation.prepare(id, input),
     applyNativeAllocationReconciliation: (preparation, input) => nativeReconciliation.apply(preparation, input),

@@ -520,3 +520,18 @@ effects, public Native entry actions, general R10/handoff, complete STANDARD,
 genuine Native and exact installed-archive qualification remain separate.
 Fixture source signatures and physical/CAS ports are real, while Native
 closure and epoch consent are synthetic and no model is called.
+
+
+### Post-assignment retained-work observation
+
+The common host exposes a separate closed read-only post-assignment assessment.
+It consumes the original signed journal/dispatch, admitted protected checkpoint
+and result files, current authenticated canonical history and original supervisor
+closure. It preserves cumulative prior resources, contributions, results and
+debits while checking the worker closure count against this generation alone.
+Ahead/divergent canonical history is refused; missing admission or incomplete
+closure/accounting remains unknown. An admitted_closed_checkpoint observation
+establishes no business postcondition, retirement, reconciliation, resume or Native
+renewal permission. The historical no_assignment disposition/reconciliation
+producers remain unchanged; a mutating post-assignment profile needs its own
+explicit version, independent source verification and current effect authority.

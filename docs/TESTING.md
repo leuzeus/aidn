@@ -6259,3 +6259,23 @@ retain every owned arena and original failure. They prove neither arbitrary
 interruption inside an OS/DB primitive, post-assignment effect resolution,
 genuine Native/provider closure, public entry, installed archive nor complete
 L1-L8/A1-A10.
+
+
+## Native post-assignment observation candidate
+
+The existing Native allocation assessment fixture additionally invokes the fixed
+common-host prepareNativePostAssignmentAssessment reader on its actual canonical
+no-assignment subject. It must retain unknown post-assignment evidence, preserve
+all original files and directories, and grant no mutation or resume. The same
+wrapper exercises 27 closed-data post-assignment cases: generation-local versus
+cumulative resource/result counts, substituted subjects, missing proof, unresolved
+assignments, unknown consumption, false complete-evidence claims and all forbidden
+permissions. Its data-only positive profile uses synthetic failed Native work; it
+is not a failed post-assignment allocator/host execution or source authentication.
+
+Separate retained-checkpoint probes may observe already closed controlled Native
+fixtures through the protected reader. Their original phases, limits, checkpoints,
+results and costs remain unchanged. They are read-only component evidence, not
+post-assignment retirement/reconciliation, productive workflow resume, current
+published-model qualification, genuine actors, installed archive or full plan
+acceptance. Original required manifest order, argv and Native grant limits remain.
