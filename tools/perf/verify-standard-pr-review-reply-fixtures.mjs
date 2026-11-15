@@ -10,6 +10,8 @@ import { createGithubReviewFixture } from './github-review-evidence-fixture-lib.
 import { createAgenticProcessStore } from '../../src/adapters/runtime/agentic-process-store.mjs';
 import { createProcessControlInboxStore } from '../../src/adapters/runtime/process-control-inbox-store.mjs';
 import { createProcessDecisionInboxStore } from '../../src/adapters/runtime/process-decision-inbox-store.mjs';
+import { createProcessDispatchRecordStore } from '../../src/adapters/runtime/process-dispatch-record-store.mjs';
+import { observeLocalProcessOwner } from '../../src/adapters/runtime/local-process-identity.mjs';
 import { createProcessOperationJournalStore } from '../../src/adapters/runtime/process-operation-journal-store.mjs';
 import { assertStandardOperationOutput } from '../../src/core/workflow/standard-operation-contracts.mjs';
 import { createStandardHostAuthority } from '../../src/adapters/runtime/standard-host-authority.mjs';
@@ -142,7 +144,7 @@ function fixtureModel(prefix, fetchOnly, external = false, pretriage = false) {
   return { model, update, observe, wait, receive, select, triage, call };
 }
 
-function open(base, { initializeKey = false, providerNow } = {}) {
+function open(base, { initializeKey = false, providerNow, closeReceiptLoss = false } = {}) {
   const configurationFile = path.join(base, 'configuration.json');
   const data = json(configurationFile);
   const { configuration, binding, pr, prefix, behavior, submittedAt, fetchFixture } = data;
@@ -365,14 +367,29 @@ function open(base, { initializeKey = false, providerNow } = {}) {
     { authority, compose: mixed });
   const host = createStandardWorkflowOperationHost({ targetRoot, model, processAuthority, now, readSigningKey: readKey,
     humanSource,
+    dispositionSource: {
+      async authorize({ request }) {
+        return { contract_version: 'process-disposition-authorization-grant.v2', authority_id: 'fixture_incident_operator',
+          authorized: !denied, request_sha256: shadowHash(request), principal_sha256: shadowHash({ fixture: 'incident-operator' }),
+          grant_sha256: shadowHash({ request, fixture: 'fresh-explicit-incident-consent' }), observed_at_ms: now(),
+          evidence_refs: [{ ref: 'fixture:fresh-incident-disposition-consent', sha256: shadowHash(request) }] };
+      },
+      async verify({ request, grant }) {
+        return { outcome: denied ? 'revoked' : 'verified', authority_id: grant.authority_id,
+          request_sha256: shadowHash(request), grant_sha256: shadowHash(grant) };
+      },
+    },
     sessionPushPort: provider.sessionPushPort, sessionPullRequestPort: provider.sessionPullRequestPort,
     sessionReviewPort: provider.sessionReviewPort, sessionReviewEventPort: fetchFixture && !external ? null : provider.sessionReviewEventPort,
     authorize(input) {
       grants++;
       return authority.authorizeOperation(input, denied || grants === revokeAt ? null : permitted);
-    } }, { dispatchCheckpoint(point) {
+    } }, { dispatchCheckpoint(point, operationId) {
       if (interruptCapture && ['post_merge_decision_reserved', 'external_merge_disposition_reserved', 'pr_review_control_reserved'].includes(point)) throw Object.assign(Error('Fixture interrupted capture'), { code: 'FIXTURE_CAPTURE_INTERRUPTED' });
       if (crash && point === 'effect_returned') throw Object.assign(Error('Fixture interrupted owner'), { code: 'FIXTURE_DISPATCH_INTERRUPTED' });
+      if (closeReceiptLoss && point === 'dispatch_returned'
+        && host.readJournal(operationId).intent.binding_ref === 'session_pr_incident_close')
+        throw Object.assign(Error('Fixture lost completed close receipt'), { code: 'FIXTURE_CLOSE_RECEIPT_LOST' });
     } });
   const instances = createAgenticProcessStore(options), journal = createProcessOperationJournalStore(options);
   const control = createProcessControlInboxStore(options);
@@ -1752,7 +1769,89 @@ async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
 
 }
 
+async function qualifyIncidentReceiptLoss(base, first, close, gitState) {
+  first.allow(shadowHash(close));
+  const { operation_id: id } = await first.stage(close);
+  const child = JSON.parse(execFileSync(process.execPath,
+    [fileURLToPath(import.meta.url), '--lose-incident-close-receipt', base, id],
+    { encoding: 'utf8', windowsHide: true }));
+  assert.equal(child.live_assessment, 'unknown');
+  const fresh = open(base), data = json(path.join(base, 'configuration.json'));
+  const targetRoot = data.configuration.target_root;
+  const capsules = createProcessDispatchRecordStore({ targetRoot, stateMode: 'files' });
+  const capsule = capsules.read(id).record;
+  fresh.signer.verify(capsule);
+  assert.equal(shadowHash(capsule), child.capsule_sha256);
+  assert.equal(observeLocalProcessOwner(capsule.process_identity), 'terminated');
+  assert.equal(capsule.phase, 'returned');
+  assert.equal(capsule.output.outcome, 'completed');
+  assert.equal(capsule.leases.length, 1);
+  assert.equal(capsule.leases[0].status, 'released');
+  const original = fresh.host.readJournal(id);
+  assert.equal(original.phase, 'dispatching');
+  assert.equal(original.results.length, 0);
+  assert.equal(shadowHash(original.preview), shadowHash(close));
+  const inner = decodePrIncidentClosurePlan(close.prepared.plan);
+  const canonical = createStandardWorkflowArtifacts({ targetRoot });
+  const paths = [inner.incident_path, ...inner.traces.map(row => row.path)];
+  const business = () => shadowHash({
+    artifacts: paths.map(name => ({ path: name, sha256: canonical.read(name).sha256,
+      metadata_sha256: canonical.metadataHash(name),
+      visible_sha256: fs.existsSync(path.resolve(targetRoot, 'docs/audit', name))
+        ? pin(path.resolve(targetRoot, 'docs/audit', name)).sha256 : null })),
+    git: gitState(), provider: json(fresh.providerFile),
+    capsule_sha256: shadowHash(capsules.read(id).record), owner_pending: canonical.ownerPending(),
+  });
+  assert.equal(canonical.read(inner.incident_path).sha256, null);
+  assert.equal(canonical.ownerPending(), false);
+  for (const change of inner.traces) assert.equal(canonical.read(change.path).sha256, artifactContentHash(change.after));
+  fresh.allow(shadowHash(close));
+  const prepared = await fresh.host.prepareOperationDisposition(id, { expectedSha256: fresh.inspect().record.instance_sha256 });
+  assert.equal(prepared.assessment, 'confirmed_original');
+  const unchanged = business();
+  const traceFile = path.resolve(targetRoot, 'docs/audit', inner.traces[0].path);
+  const traceBefore = fs.readFileSync(traceFile);
+  try {
+    fs.appendFileSync(traceFile, '\nfixture-postimage-conflict\n');
+    const conflict = await fresh.host.prepareOperationDisposition(id, { expectedSha256: fresh.inspect().record.instance_sha256 });
+    assert.equal(conflict.assessment, 'unknown', 'a completed output cannot override a changed postimage');
+    assert.equal(fresh.host.readJournal(id).results.length, 0);
+  } finally { fs.writeFileSync(traceFile, traceBefore); }
+  assert.equal(business(), unchanged);
+  const deniedWitness = () => shadowHash({ business: business(), instance: fresh.inspect().record,
+    journal: fresh.host.readJournal(id), fence: canonical.resourceFence().read(),
+    audit: canonical.read('workflows/operation-dispositions/' + id + '.json'),
+    controls: canonical.read('workflows/operation-control-intents/' + id + '.json') });
+  const deniedBefore = deniedWitness();
+  fresh.deny(true);
+  await assert.rejects(fresh.host.applyOperationDisposition(prepared,
+    { write: true, expectedPlanSha256: shadowHash(prepared) }), { code: 'PROCESS_DISPOSITION_AUTHORIZATION_REQUIRED' });
+  assert.equal(deniedWitness(), deniedBefore, 'denied current consent must not reserve, fence or mutate');
+  fresh.deny(false);
+  const recovered = await fresh.host.applyOperationDisposition(prepared,
+    { write: true, expectedPlanSha256: shadowHash(prepared) });
+  assert.equal(recovered.status, 'receipted');
+  const receipted = fresh.host.readJournal(id);
+  assert.equal(receipted.results.length, 1);
+  assert.deepEqual(receipted.results[0].output, capsule.output);
+  for (const key of ['preview', 'intent', 'grant', 'owner']) assert.deepEqual(receipted[key], original[key]);
+  assert.equal(business(), unchanged, 'receipt recovery must not replay business effects');
+  await fresh.host.accept(id, { write: true });
+  assert.equal(business(), unchanged, 'receipt acceptance must not replay business effects');
+  assert.equal((await fresh.host.applyOperationDisposition(prepared,
+    { write: true, expectedPlanSha256: shadowHash(prepared) })).status, 'retained_result');
+  assert.equal(business(), unchanged);
+  console.log(JSON.stringify({ published_incident_receipt_recovery: 'PASS', producer: 'terminated-real-node-child',
+    interruption: 'controlled-after-returned-capsule-before-final-receipt', live_producer_refused: true,
+    denied_current_consent_no_effect: true, recovered_original_output: true, business_effects_replayed: false,
+    genuine_native: 'NOT_RUN', full_standard_workflow: false }));
+  return fresh.host.readJournal(id);
+}
+
 async function qualifyExternalMerge(scenario) {
+  if (process.argv.includes('--incident-receipt-loss') && (!['premerge', 'pretriage-session'].includes(scenario)
+    || ['--incident-evidence', '--incident-tracking', '--incident-cleanup', '--incident-low-severity'].some(flag => process.argv.includes(flag))))
+    throw Error('FIXTURE_INCIDENT_RECEIPT_LOSS_SCENARIO_UNSUPPORTED');
   if (process.argv.includes('--incident-low-severity') && (scenario !== 'premerge'
     || ['--incident-evidence', '--incident-tracking', '--incident-cleanup'].some(flag => process.argv.includes(flag))))
     throw Error('FIXTURE_INCIDENT_LOW_SEVERITY_SCENARIO_UNSUPPORTED');
@@ -2111,7 +2210,9 @@ async function qualifyExternalMerge(scenario) {
           f.deny(true);
           await assert.rejects(f.stage(close), { code: 'STANDARD_HOST_EXACT_OPERATION_REQUIRED' });
           assert.equal(witness(), beforeDenied); f.deny(false);
-          const closedJournal = await f.run(close), closed = closedJournal.results[0].output;
+          const closedJournal = process.argv.includes('--incident-receipt-loss')
+            ? await qualifyIncidentReceiptLoss(base, f, close, gitState) : await f.run(close);
+          const closed = closedJournal.results[0].output;
           assert.ok(Buffer.byteLength(JSON.stringify(closedJournal), 'utf8') < 8 * 1024 * 1024, 'the original workflow-record read limit must not be raised');
           assert.equal(closed.facts.session_pr_incident_cleanup_completed, true);
           assert.equal(closed.effect_status, 'confirmed');
@@ -2220,7 +2321,25 @@ async function qualifyNominalConsent(prefix, choice, behavior = 'consent-session
   await qualifyConsent(base, privateKey, authority_id, { choice });
 }
 
-if (process.argv[2] === '--deliver-pretriage') {
+if (process.argv[2] === '--lose-incident-close-receipt') {
+  const [, , , base, id] = process.argv, f = open(base, { closeReceiptLoss: true });
+  const original = f.host.readJournal(id);
+  assert.equal(original.intent.binding_ref, 'session_pr_incident_close');
+  f.allow(shadowHash(original.preview));
+  await assert.rejects(f.host.dispatch(id, { write: true }), { code: 'FIXTURE_CLOSE_RECEIPT_LOST' });
+  const { configuration: { target_root: targetRoot } } = json(path.join(base, 'configuration.json'));
+  const capsule = createProcessDispatchRecordStore({ targetRoot, stateMode: 'files' }).read(id).record;
+  f.signer.verify(capsule);
+  assert.equal(capsule.phase, 'returned');
+  assert.equal(capsule.output.outcome, 'completed');
+  assert.equal(capsule.leases.length, 1);
+  assert.equal(capsule.leases[0].status, 'released');
+  assert.equal(f.host.readJournal(id).phase, 'dispatching');
+  assert.equal(f.host.readJournal(id).results.length, 0);
+  const live = await f.host.prepareOperationDisposition(id, { expectedSha256: f.inspect().record.instance_sha256 });
+  assert.equal(live.assessment, 'unknown', 'a live producer must never be disposed by this profile');
+  console.log(JSON.stringify({ capsule_sha256: shadowHash(capsule), live_assessment: live.assessment }));
+} else if (process.argv[2] === '--deliver-pretriage') {
   const [, , , base, actionFile, expectPlan] = process.argv;
   const result = await open(base).entry({ controlSource: externalRef, actionFile, expectPlan, execute: true });
   console.log(JSON.stringify({ written: result.written }));

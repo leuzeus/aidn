@@ -14,6 +14,12 @@ no shared store. Controlled evidence callbacks exercise persistence and cold
 partial completion only; general production source profiles remain unfinished.
 The published PR completion targets separately select the authenticated L2
 record/resolve/close bindings. Explicit cleanup never changes SPEC/WORKFLOW.
+Their returned-output disposition profile uses the existing signed dispatch and
+operation-disposition records. It requires a terminated producer, a released
+single owner/fence, the original completed output, freshly authenticated H/R09
+source and both exact canonical trace postimages. Its observer writes nothing;
+separate exact consent permits receipt recovery without replaying the cleanup.
+Known-partial new-intent and held-UNKNOWN ownership recovery remain unfinished.
 
 The fixed private PR incident evidence reader reuses the authenticated operation
 journal, Human inbox and canonical project artifacts. Its first profile joins an

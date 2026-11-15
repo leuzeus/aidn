@@ -1590,6 +1590,16 @@ solely for response planning; completion there establishes no business effect or
 Native qualification. Its original finite response bound remains unchanged.
 The L2 cases also retain v1 output-reader compatibility and reject missing,
 nonboolean, foreign or blocked success facts.
+The optional `--incident-receipt-loss` selector, paired only with
+`--case=external-premerge` or `--case=external-pretriage-session`, interrupts
+a real Node producer after its signed completed-output capsule and released
+owner have been retained, before its final operation receipt is written. The
+producer must be refused disposition while alive. After it exits, a fresh host
+must authenticate the original plan, accepted source and exact postimages,
+refuse denied current disposition consent without writes, and recover and accept
+the original output without repeating business effects. This is a controlled
+receipt-loss fixture, not an arbitrary-crash or held-unknown-owner qualification.
+Genuine Native and the complete published STANDARD root remain NOT_RUN.
 
 ## Mode session closure and data capacity
 
@@ -5023,8 +5033,12 @@ exact serialized preparation is loaded by fresh Node children for partial apply,
 revoked consent, tamper refusal, completion and no-effect replay. Receipts retain
 the OS child/parent PIDs, preparation hash and process status; the existing
 Windows Job confines every child. These children exit normally after confirmed
-partial effects. Abrupt crashes with an unknown owner remain a separate gate. Tests also
-cover unresolved/deferred tracking, L3 STOP/rule authorization, explicit intent,
+partial effects. Abrupt crashes with an unknown owner remain a separate gate.
+The read-only completed-artifact observer requires exact canonical postimages
+and removal of the visible tracker. In DUAL, an interruption after canonical
+deletion leaves projection cleanup pending, so the observer returns false until
+that cleanup is confirmed. Tests also cover unresolved/deferred tracking,
+L3 STOP/rule authorization, explicit intent,
 revocation and stale preimages. Forged evidence, metadata conflicts, revocation
 between trace writes and a foreign
 visible tracker are refused or retained without a false completed outcome. Result

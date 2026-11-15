@@ -47,6 +47,48 @@ export function createStandardPrIncidentClose({ targetRoot, readCurrent, readCla
         input, source: material, source_sha256: shadowHash(material), ...encoded });
       return freezeShadow({ can_apply: true, plan, plan_sha256: shadowHash(plan) });
     },
+    confirmsOriginal(instance, record, output) {
+      instance = freezeShadow(structuredClone(instance));
+      const claimed = readClaimed(record.operation_id), claimedSha = shadowHash(claimed);
+      if (!same(claimed, record)) fail('STANDARD_PR_INCIDENT_CLOSE_CLAIM_CHANGED');
+      const input = assertPrIncidentCloseInput(record.preview.input), prepared = record.preview.prepared;
+      const plan = assertPrIncidentClosePlan(prepared?.plan);
+      if (prepared.can_apply !== true || prepared.plan_sha256 !== shadowHash(plan) || !same(input, plan.input))
+        fail('STANDARD_PR_INCIDENT_CLOSE_PLAN_INVALID');
+      output = assertPrIncidentCloseOutput(output);
+      if (output.outcome !== 'completed' || output.observations.incident_id !== plan.source.incident_id
+        || output.observations.plan_sha256 !== plan.closure_plan_sha256) return false;
+      const completed = record.phase === 'receipted' && record.results.length === 1
+        && same(record.results[0].output, output)
+        && record.results[0].receipt.output_sha256 === shadowHash(output)
+        && record.results[0].receipt.intent_sha256 === shadowHash(record.intent)
+        && record.results[0].receipt.outcome === 'completed'
+        && record.results[0].receipt.effect_status === output.effect_status
+        && same(record.results[0].receipt.facts, output.facts);
+      if (!(record.phase === 'dispatching' && record.results.length === 0 || completed)) return false;
+      // The current journal MAC and full body remain the authenticated claim.
+      // This ephemeral pre-receipt view only feeds the original structural
+      // own-intent check before acceptance. No record or history is rewritten.
+      const originalClaim = completed ? { ...record, phase: 'dispatching', results: [] } : record;
+      const prefix = prIncidentCloseIntentPrefix(instance, originalClaim), inner = decodePrIncidentClosurePlan(plan);
+      if (inner.instance_sha256 !== prefix.instance_sha256) fail('STANDARD_PR_INCIDENT_CLOSE_PREFIX_CHANGED');
+      function current(id) {
+        const actual = readCurrent(id);
+        if (id !== instance.instance_id || !same(actual, instance) || shadowHash(readClaimed(record.operation_id)) !== claimedSha)
+          fail('STANDARD_PR_INCIDENT_CLOSE_CURRENT_CHANGED');
+        return prefix;
+      }
+      const reader = createEvidenceReader(current), material = source(reader, prefix, input);
+      if (!same(material, plan.source)) fail('STANDARD_PR_INCIDENT_CLOSE_SOURCE_CHANGED');
+      matchEvidence(inner, material, prefix);
+      const expectedRefs = inner.traces.map(change => ({ ref: 'docs/audit/' + change.path, sha256: change.after_sha256 }));
+      if (!same(output.evidence_refs, expectedRefs)) return false;
+      const matches = port(current, request => reader.read(request)).matchesCompletedArtifacts(prefix,
+        { can_apply: true, plan: inner, plan_sha256: plan.closure_plan_sha256 });
+      if (!same(source(reader, prefix, input), material)) fail('STANDARD_PR_INCIDENT_CLOSE_SOURCE_CHANGED');
+      current(instance.instance_id);
+      return matches;
+    },
     async apply(instance, input, prepared, { operationId, assertAuthorized } = {}) {
       input = freezeShadow(structuredClone(assertPrIncidentCloseInput(input)));
       instance = freezeShadow(structuredClone(instance));

@@ -135,6 +135,22 @@ export function createStandardIncidentClosure({ targetRoot, readEvidence, observ
     fs.unlinkSync(file); return true;
   }
   return Object.freeze({ prepare,
+    // Read-only artifact observation. The owning host separately authenticates
+    // the original source, captured completed output and terminated producer.
+    // This method grants no effect, owner retirement or receipt acceptance.
+    matchesCompletedArtifacts(instance, prepared) {
+      const plan = assertPlan(prepared, instance);
+      if (prepared.can_apply !== true) fail('STANDARD_INCIDENT_PLAN_INVALID');
+      const owned = [plan.incident_path, ...plan.traces.map(change => change.path)];
+      current(instance);
+      if (selection() !== plan.selection_sha256 || observeBoundary(owned) !== plan.boundary_sha256
+        || row(plan.incident_path).sha256 !== null || plan.traces.some(change => state(change) !== 'after')) return false;
+      if (fs.existsSync(location(plan.incident_path))) return false;
+      if (artifacts.describe().state_mode !== 'db-only') for (const change of plan.traces)
+        readAgentRunFile(location(change.path), { json: false, sha256: change.after_sha256, maxBytes: STANDARD_ARTIFACT_MAX_BYTES });
+      current(instance);
+      return selection() === plan.selection_sha256 && observeBoundary(owned) === plan.boundary_sha256;
+    },
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
       let plan;
       try {

@@ -1407,6 +1407,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readOperation: retained, readInstance: id => current(id).record, readAuthority, readContext: snapshot, observeBoundary,
     inventory: reconciliationInventory, dispositionSource, onBoundary: dispatchCheckpoint,
     confirmPrCheckpoint: (instance, record, output) => sessionPrCheckpoint?.confirmsOriginal(instance, record, output),
+    confirmPrIncidentClose: (instance, record, output) => prIncidentClose.confirmsOriginal(instance, record, output),
     async confirmInterruptedReopen(instance, record, original, options) {
       if (!prCorrectionReopen) fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED");
       const state = current(instance.instance_id);

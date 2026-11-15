@@ -19,6 +19,14 @@ and bounded chunks preserve the existing artifact and journal limits without
 JSON-escape amplification. Decoding must reproduce the original private-plan
 digest exactly. After deletion, the original authenticated preparation, freshly
 rederived H/R09 source and both exact canonical trace postimages remain required.
+A returned-output disposition profile requires the original producer to have
+terminated, its signed single owner/fence to be released and its captured close
+output to be completed. The fixed observer reauthenticates the original H/R09
+source, exact decoded plan and both canonical trace postimages without replaying
+effects. A separately granted disposition records and accepts the missing
+receipt through the existing contract; it supplies no rule-edit permission.
+This profile covers a lost final receipt with no journal result. Known-partial
+and held-UNKNOWN continuation require separate implementation and qualification.
 A missing tracker supplies no resolution proof. Known partial and UNKNOWN
 outputs carry no success fact. Published PR completion targets connect this L2
 profile; general/high-severity profiles and host continuation after partial

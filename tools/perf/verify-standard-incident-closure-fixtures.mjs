@@ -179,6 +179,9 @@ await scenario('admission', async f => {
 
 for (const stop of ['after_trace_0', 'after_canonical_delete', 'none']) await scenario(stop, async f => {
   const prepared = await f.factory().prepare(instance, { incident_id: incidentId });
+  const beforeObservation = f.bytes();
+  assert.equal(f.factory().matchesCompletedArtifacts(instance, prepared), false);
+  assert.deepEqual(f.bytes(), beforeObservation); assertions += 2;
   let fired = false;
   f.hook(point => { if (!fired && point === stop) { fired = true; throw Object.assign(new Error('controlled interruption'), { code: 'FIXTURE_ACK_LOST' }); } });
   const first = await f.apply(f.factory(), prepared);
@@ -189,6 +192,18 @@ for (const stop of ['after_trace_0', 'after_canonical_delete', 'none']) await sc
   if (stop === 'after_trace_0') assert.equal(f.artifacts.read(incidentPath).sha256, prepared.plan.incident_sha256);
   if (stop === 'after_canonical_delete') assert.equal(f.artifacts.read(incidentPath).content, null);
   assert.equal(f.artifacts.ownerPending(), false); assertions++;
+  const partialObservation = f.bytes();
+  const projectionPending = mode === 'dual' && stop === 'after_canonical_delete';
+  if (projectionPending) {
+    assert.equal(f.artifacts.read(incidentPath).sha256, null);
+    assert.equal(fs.existsSync(f.local(incidentPath)), true);
+    assert.equal(artifactContentHash(fs.readFileSync(f.local(incidentPath))), prepared.plan.incident_sha256);
+    assertions += 3;
+  }
+  assert.equal(f.factory().matchesCompletedArtifacts(instance, prepared), stop !== 'after_trace_0' && !projectionPending);
+  assert.deepEqual(f.bytes(), partialObservation); assertions += 2;
+  // DUAL canonical deletion still leaves the original visible tracker pending.
+  // Complete artifact postimages alone still require the host's captured completed output.
   const resumed = await f.apply(f.factory(), prepared);
   assert.equal(resumed.outcome, 'completed');
   assert.equal(f.artifacts.read(incidentPath).content, null); assert.equal(fs.existsSync(f.local(incidentPath)), false);
@@ -199,6 +214,9 @@ for (const stop of ['after_trace_0', 'after_canonical_delete', 'none']) await sc
     if (mode === 'db-only') assert.equal(fs.existsSync(f.local(trace.path)), false);
     else assert.equal(artifactContentHash(fs.readFileSync(f.local(trace.path))), trace.after_sha256);
   }
+  const completedObservation = f.bytes();
+  assert.equal(f.factory().matchesCompletedArtifacts(instance, prepared), true);
+  assert.deepEqual(f.bytes(), completedObservation); assertions += 2;
   const replayed = await f.apply(f.factory(), prepared);
   assert.equal(replayed.outcome, 'completed'); assert.equal(replayed.effect_status, 'no_effect'); assertions += 2;
   if (mode === 'dual' && stop === 'none') {

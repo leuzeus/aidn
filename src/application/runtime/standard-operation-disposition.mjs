@@ -7,6 +7,7 @@ import { createProcessDispatchRecordStore } from "../../adapters/runtime/process
 import { observeLocalProcess, observeLocalProcessOwner } from "../../adapters/runtime/local-process-identity.mjs";
 import { assertProcessDispatchRecord } from "../../core/workflow/process-dispatch-record.mjs";
 import { assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
+import { prIncidentCloseOperation } from "../../core/workflow/standard-pr-incident-close.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { withStandardDispatchContext } from "./standard-dispatch-context.mjs";
@@ -70,10 +71,12 @@ const readOnlyProfiles = new Set(["context_reload", "session_admit", "session_cl
 const artifactProfiles = new Set(["session_close_record"]);
 const prCheckpoint = "session_pr_checkpoint";
 const correctionReopen = "session_pr_correction_reopen";
-const planBoundOwner = id => artifactProfiles.has(id) || id === prCheckpoint || id === correctionReopen;
+const planBoundOwner = id => artifactProfiles.has(id) || id === prCheckpoint || id === correctionReopen || id === prIncidentCloseOperation;
+const ownerPlanSha = record => record.intent.binding_ref === prIncidentCloseOperation
+  ? record.preview.prepared?.plan?.closure_plan_sha256 : record.preview.prepared?.plan_sha256;
 
 export function createStandardOperationDisposition({ targetRoot, stateMode, signer, artifacts, readOperation,
-  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, confirmPrCheckpoint, confirmInterruptedReopen,
+  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, confirmPrCheckpoint, confirmPrIncidentClose, confirmInterruptedReopen,
   onBoundary = async () => {}, onLocalResource = () => {}, now = Date.now }) {
   const dispatches = createProcessDispatchRecordStore({ targetRoot, stateMode });
   const acceptance = new AsyncLocalStorage();
@@ -101,7 +104,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       fail("PROCESS_DISPOSITION_SUBJECT_CHANGED");
     if (row.contract_version === "process-dispatch-record.v2" && row.local_owner_intentions.some(intention =>
       intention.owner.scope_sha256 !== shadowHash({ physical_root: artifacts.root })
-      || planBoundOwner(record.intent.binding_ref) && intention.owner.plan_sha256 !== record.preview.prepared?.plan_sha256))
+      || planBoundOwner(record.intent.binding_ref) && intention.owner.plan_sha256 !== ownerPlanSha(record)))
       fail("PROCESS_DISPOSITION_SUBJECT_CHANGED");
     return observed;
   }
@@ -174,6 +177,27 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
         return confirmPrCheckpoint?.(instance, record, output) === true ? "confirmed_original" : "unknown";
       } catch {
         return "unknown";
+      }
+    }
+    if (id === prIncidentCloseOperation) {
+      const pendingReceipt = record.phase === 'dispatching' && record.results.length === 0;
+      const receipted = record.phase === 'receipted' && record.results.length === 1
+        && shadowHash(record.results[0].output) === capsule.output_sha256
+        && record.results[0].receipt.output_sha256 === capsule.output_sha256
+        && record.results[0].receipt.outcome === 'completed'
+        && record.results[0].receipt.effect_status === output.effect_status;
+      if (!(pendingReceipt || receipted)
+        || record.preview.binding.effect_class !== 'mutating' || record.preview.binding.executor_kind !== 'deterministic'
+        || capsule.contract_version !== 'process-dispatch-record.v2' || capsule.local_owner_intentions.length !== 1
+        || capsule.leases.length !== 1 || capsule.process_identity.pid !== record.owner?.pid
+        || capsule.leases[0].owner.pid !== record.owner.pid
+        || shadowHash(capsule.leases[0].resource_fence.process_identity) !== shadowHash(capsule.process_identity)
+        || observeLocalProcessOwner(capsule.process_identity) !== 'terminated'
+        || output.outcome !== 'completed' || !['confirmed', 'no_effect'].includes(output.effect_status)) return 'unknown';
+      try {
+        return confirmPrIncidentClose?.(instance, record, output) === true ? 'confirmed_original' : 'unknown';
+      } catch {
+        return 'unknown';
       }
     }
     if (!artifactProfiles.has(id)) return "unknown";
@@ -393,7 +417,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
           const observed = observeBoundary ? observeBoundary() : { authority: readAuthority(), context: readContext() };
           if (before.record.contract_version !== "process-dispatch-record.v2" || before.record.phase !== "running"
             || owner.pid !== processIdentity.pid || owner.scope_sha256 !== shadowHash({ physical_root: artifacts.root })
-            || planBoundOwner(record.intent.binding_ref) && owner.plan_sha256 !== record.preview.prepared?.plan_sha256
+            || planBoundOwner(record.intent.binding_ref) && owner.plan_sha256 !== ownerPlanSha(record)
             || shadowHash(readOperation(record.operation_id).record) !== shadowHash(record)
             || shadowHash(observed.authority) !== before.record.authority_sha256
             || before.record.local_owner_intentions.length >= 32
@@ -413,7 +437,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
         },
         declareLocalOwner(owner, physical_identity, resource_fence) {
           const before = readDispatch(record.operation_id, record);
-          if (before.record.phase !== "running" || owner.pid !== processIdentity.pid || planBoundOwner(record.intent.binding_ref) && owner.plan_sha256 !== record.preview.prepared?.plan_sha256
+          if (before.record.phase !== "running" || owner.pid !== processIdentity.pid || planBoundOwner(record.intent.binding_ref) && owner.plan_sha256 !== ownerPlanSha(record)
             || owner.scope_sha256 !== shadowHash({ physical_root: artifacts.root }) || before.record.leases.some(row => row.owner.token === owner.token))
             fail("PROCESS_DISPATCH_OWNER_CHANGED");
           saveDispatch(before, { leases: [...before.record.leases, { owner, physical_identity, resource_fence, status: "held" }] });
