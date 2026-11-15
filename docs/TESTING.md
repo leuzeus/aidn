@@ -1863,6 +1863,12 @@ separate acceptance consent, retry without a second append, and the next
 checkpoint in the reducer. The exact entry actions use the protected local
 operator issuer and the same canonical fixture. Its provider and consent are fixtures. The
 published corrective workflow and redelivery require separate evidence.
+The disposition fixture removes its owned temporary roots only after all
+assertions succeed. A failure retains those roots and their evidence directory,
+and reports the cleanup result so the original journals, locks and canonical
+postimages remain available for diagnosis. Successful cleanup keeps its existing
+physical-parent and generated-name checks. OS Job closure remains separate from
+business-resource closure.
 
 `verify-standard-pr-correction-checkpoint-fixtures.mjs --mode=files|dual|db-only`
 checks the internal checkpoint component now selected after reopening by the

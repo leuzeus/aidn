@@ -146,6 +146,7 @@ if (process.argv[2] === "--reopen-disposition-worker") {
 }
 export async function verifyReopenDisposition() {
   const roots = [], evidence = fs.mkdtempSync(path.join(temp, "aidn-reopen-disposition-evidence-"));
+  let succeeded = false;
   try {
     const f = await createPrCorrectionReopenFixture("files", roots);
     const scaffold = fs.readFileSync(new URL("../../scaffold/root/.gitignore.append", import.meta.url), "utf8");
@@ -276,12 +277,18 @@ export async function verifyReopenDisposition() {
       separate_protected_operator_actions: true,
       boundaries: [transferred.phase, retired.phase], original_receipt: sha(original.results[0].receipt), confirmed_receipt: sha(applied.receipt),
       next_node: "checkpoint", evidence, full_standard: "NOT_RUN", ordinary_provider: "FIXTURE" }));
+    succeeded = true;
   } finally {
-    // Fixture cleanup is limited to roots created by this invocation.
-    for (const root of roots) {
-      const real = fs.realpathSync(root);
-      assert.equal(path.dirname(real), temp); assert.ok(path.basename(real).startsWith("aidn-standard-fresh-"));
-      fs.rmSync(real, { recursive: true, force: true });
+    if (!succeeded) {
+      console.error(JSON.stringify({ fixture_cleanup: "retained", reason: "qualification_failed", roots, evidence }));
+    } else {
+      // Cleanup remains limited to roots created by this successful invocation.
+      for (const root of roots) {
+        const real = fs.realpathSync(root);
+        assert.equal(path.dirname(real), temp); assert.ok(path.basename(real).startsWith("aidn-standard-fresh-"));
+        fs.rmSync(real, { recursive: true, force: true });
+      }
+      console.log(JSON.stringify({ fixture_cleanup: "completed", roots: roots.length, evidence }));
     }
   }
 }
