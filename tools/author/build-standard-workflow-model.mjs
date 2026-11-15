@@ -218,8 +218,8 @@ op("session_pr_correction_reopen", "session_pr_correction_reopen", operation("se
 // pinned continuation. A deferred child operation keeps its call open.
 const firstPrNode = nodes.length, firstPrInput = inputs.length;
 const triageId = { triage_operation_id: { source: "parameter", key: "triage_operation_id", path: [] } };
-seq("pr_review_completion", ["pr_premerge_observe", "pr_review_route", "pr_merge_basis",
-  "pr_post_merge_fetch", "pr_post_merge_measure", "pr_post_merge_route"]);
+seq("pr_review_completion", ["pr_premerge_observe", "pr_review_route", "pr_merge_basis", "pr_incident_record_route",
+  "pr_post_merge_fetch", "pr_post_merge_measure", "pr_post_merge_route", "pr_incident_close_route"]);
 op("pr_premerge_observe", "session_pr_premerge_observe", triageId);
 xor("pr_review_route", [["incident", "pr_premerge_external_delivery", "session_pr_external_merge_observed"], ["review", "pr_remaining_review", null]]);
 seq("pr_remaining_review", ["pr_reply_loop", "pr_resolution_loop", "pr_checks_accept", "pr_merge_route"]);
@@ -251,6 +251,15 @@ op("pr_merge_consent", "session_pr_merge_consent", { ...triageId, ...operation(n
 op("pr_merge_execute", "session_pr_merge_execute", { ...triageId, ...operation(null, "checks_operation_id", "pr_checks_accept"),
   ...operation(null, "consent_operation_id", "pr_merge_consent") });
 op("pr_merge_basis", "session_pr_merge_basis", triageId);
+const incidentOrigin = { origin_operation_id: { source: "operation_output", node_id: "pr_merge_basis", path: ["observations", "merge_operation_id"] } };
+xor("pr_incident_record_route", [["required", "pr_incident_record", "session_pr_incident_tracking_required"], ["inapplicable", "pr_incident_record_inapplicable", null]]);
+op("pr_incident_record", "session_pr_incident_record", incidentOrigin);
+seq("pr_incident_record_inapplicable", []);
+xor("pr_incident_close_route", [["required", "pr_incident_complete", "session_pr_incident_tracking_required"], ["inapplicable", "pr_incident_close_inapplicable", null]]);
+seq("pr_incident_complete", ["pr_incident_resolve", "pr_incident_close"]);
+op("pr_incident_resolve", "session_pr_incident_resolve", incidentOrigin);
+op("pr_incident_close", "session_pr_incident_close", incidentOrigin);
+seq("pr_incident_close_inapplicable", []);
 op("pr_post_merge_fetch", "session_pr_post_merge_fetch", {
   merge_operation_id: { source: "operation_output", node_id: "pr_merge_basis", path: ["observations", "merge_operation_id"] },
 });

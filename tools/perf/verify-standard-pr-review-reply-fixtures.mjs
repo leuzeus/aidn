@@ -47,7 +47,6 @@ const bindings = new Map(standardWorkflowOperationBindings().map(binding => [bin
 const target = published.call_targets.find(row => row.model_id === 'aidn-standard-pr-review-completion');
 const captureTarget = published.call_targets.find(row => row.model_id === 'aidn-standard-pr-review-capture');
 const pretriageTarget = published.call_targets.find(row => row.model_id === 'aidn-standard-pr-pretriage-completion');
-const publishedFixtureTargets = { review: target, pretriage: pretriageTarget };
 const externalRef = 'aidn:external-merge';
 const eventRef = 'REVIEW_fixture';
 const response = 'Technical reply from the accepted fixture triage.';
@@ -57,28 +56,8 @@ const pin = path => ({ path, sha256: createHash('sha256').update(fs.readFileSync
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const save = (file, data) => fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
 
-// Fixture-only extension: dispatch the registered business bindings through the
-// actual host without claiming that the published R10 route is already wired.
-function incidentTrackingTarget(original, enabled, cleanup) {
-  if (!enabled) return original;
-  const model = structuredClone(original.model), root = model.nodes.find(row => row.id === model.entry);
-  const template = model.nodes.find(row => row.binding_ref === 'session_pr_post_merge_complete');
-  for (const [phase, position] of [['record', root.children.indexOf('pr_merge_basis') + 1], ['resolve', -1], ...(cleanup ? [['close', -1]] : [])]) {
-    const id = `fixture_pr_incident_${phase}`, binding = bindings.get(`session_pr_incident_${phase}`);
-    const node = { ...template, id, binding_ref: binding.id };
-    if (position < 0) root.children.push(id); else root.children.splice(position, 0, id);
-    model.nodes.push(node); model.operation_pins[binding.id] = shadowHash(binding);
-    model.data_bindings.inputs.push({ node_id: id, fields: {
-      contract_version: { source: 'literal', value: binding.input_contract },
-      origin_operation_id: { source: 'operation_output', node_id: 'pr_merge_basis', path: ['observations', 'merge_operation_id'] },
-    } });
-  }
-  return { ...processModelIdentity(model), model };
-}
-
-function fixtureModel(prefix, fetchOnly, external = false, pretriage = false, tracking = (process.argv.includes('--incident-tracking') || process.argv.includes('--incident-cleanup')), cleanup = process.argv.includes('--incident-cleanup')) {
-  const target = incidentTrackingTarget(publishedFixtureTargets.review, tracking, cleanup);
-  const pretriageTarget = incidentTrackingTarget(publishedFixtureTargets.pretriage, tracking, cleanup);
+// The reduced entry retains the published PR completion targets unchanged.
+function fixtureModel(prefix, fetchOnly, external = false, pretriage = false) {
   const corrective = prefix === 'correction';
   const update = corrective ? 'correction_pr_redelivery_push' : 'session_pr_update_push';
   const observe = prefix + '_pr_review_observe', wait = prefix + '_pr_review_wait', receive = prefix + '_pr_review_receive';
@@ -366,7 +345,7 @@ function open(base, { initializeKey = false, providerNow } = {}) {
   } finally { Date.now = wallClock; }
   const { githubProvider: provider, readKey } = authority;
   if (initializeKey) authority.ensureKey();
-  const signer = createOperationJournalSigner(readKey), graph = fixtureModel(prefix, Boolean(fetchFixture) && !external, external, pretriage, data.incident_tracking_fixture === true, data.incident_cleanup_fixture === true), { model } = graph;
+  const signer = createOperationJournalSigner(readKey), graph = fixtureModel(prefix, Boolean(fetchFixture) && !external, external, pretriage), { model } = graph;
   const now = () => json(configurationFile).clock_ms ?? wallClock();
   // The protected reader is synchronous. Use the same fixture time for
   // envelope authentication and the H host, while leaving process deadlines
@@ -573,8 +552,6 @@ function arrange(prefix, behavior) {
   save(path.join(dirs.host, key + '.github.json'), binding);
   if (behavior.startsWith('external-pretriage-')) configureActionFixture(base, configuration, fixtureModel(prefix, false, true, true));
   save(path.join(base, 'configuration.json'), { configuration, home: dirs.host, binding, pr, prefix, behavior, fetchFixture,
-    incident_tracking_fixture: (process.argv.includes('--incident-tracking') || process.argv.includes('--incident-cleanup')),
-    incident_cleanup_fixture: process.argv.includes('--incident-cleanup'),
     submittedAt: new Date(Date.now() - 1000).toISOString() });
   save(path.join(base, 'provider.json'), { sent: [], replies: [], resolved: false, reviewChanged: false, resolvedThreads: [], resolutionSends: [], mergeSends: [] });
   console.log(JSON.stringify({ evidence: base, project: targetRoot, prefix, behavior }));
@@ -1776,6 +1753,9 @@ async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
 }
 
 async function qualifyExternalMerge(scenario) {
+  if (process.argv.includes('--incident-low-severity') && (scenario !== 'premerge'
+    || ['--incident-evidence', '--incident-tracking', '--incident-cleanup'].some(flag => process.argv.includes(flag))))
+    throw Error('FIXTURE_INCIDENT_LOW_SEVERITY_SCENARIO_UNSUPPORTED');
   if ((process.argv.includes('--incident-tracking') || process.argv.includes('--incident-cleanup')) && !['premerge', 'pretriage-session'].includes(scenario))
     throw Error('FIXTURE_INCIDENT_TRACKING_SCENARIO_UNSUPPORTED');
   const checks = scenario === 'checks', pretriage = scenario.startsWith('pretriage-');
@@ -1978,7 +1958,7 @@ async function qualifyExternalMerge(scenario) {
   await assertLocked();
   const claim = { contract_version: 'human-pr-external-merge-disposition.v1', source_kind: 'human', authority_id,
     source_event_id: sourceRef, question_sha256: shadowHash(question), subject_sha256: shadowHash(question.subject), choice,
-    severity: 'L2_MEDIUM', rationale: 'I reviewed the incident and its exact external postimage.',
+    severity: process.argv.includes('--incident-low-severity') ? 'L1_LOW' : 'L2_MEDIUM', rationale: 'I reviewed the incident and its exact external postimage.',
     evidence_refs: externalEvidence };
   const body = { contract_version: 'standard-host-source.v1', kind: 'human', authority_id, source_ref: sourceRef,
     subject_sha256: shadowHash(question), payload: claim, issued_at_ms: Date.now(), expires_at_ms: question.expires_at_ms };
@@ -2018,11 +1998,24 @@ async function qualifyExternalMerge(scenario) {
   assert.deepEqual(receipt.facts, {});
   await assertLocked();
   if (choice === 'acknowledge_external_merge_for_r09') {
-    assert.equal((await f.run()).results[0].output.observations.merge_operation_id, id);
+    const basis = (await f.run()).results[0].output;
+    assert.equal(basis.contract_version, 'standard-pr-merge-basis-output.v2');
+    assert.equal(basis.observations.merge_operation_id, id);
+    assert.equal(basis.facts.session_pr_incident_tracking_required, claim.severity === 'L2_MEDIUM');
+    assert.deepEqual(assertStandardOperationOutput(basis), basis);
+    const historicalBasis = { ...basis, contract_version: 'standard-pr-merge-basis-output.v1', facts: {} };
+    assert.deepEqual(assertStandardOperationOutput(historicalBasis), historicalBasis);
+    for (const facts of [{}, { session_pr_incident_tracking_required: 'true' },
+      { session_pr_incident_tracking_required: 1 }, { ...basis.facts, foreign: true }])
+      assert.throws(() => assertStandardOperationOutput({ ...basis, facts }), { code: 'STANDARD_OPERATION_OUTPUT_INVALID' });
+    const blockedBasis = { ...basis, outcome: 'blocked', facts: {}, observations: { reason_code: 'SOURCE_REQUIRED' } };
+    assert.deepEqual(assertStandardOperationOutput(blockedBasis), blockedBasis);
+    assert.throws(() => assertStandardOperationOutput({ ...blockedBasis, facts: basis.facts }), { code: 'STANDARD_OPERATION_OUTPUT_INVALID' });
+    assert.throws(() => assertStandardOperationOutput({ ...basis, facts: {}, observations: blockedBasis.observations }), { code: 'STANDARD_OPERATION_OUTPUT_INVALID' });
     let tracked;
     const gitState = () => ({ head: git('rev-parse', 'HEAD'), branch: git('branch', '--show-current'),
       status: git('status', '--porcelain=v1', '--untracked-files=all'), refs: git('show-ref') });
-    if ((process.argv.includes('--incident-tracking') || process.argv.includes('--incident-cleanup'))) {
+    if (basis.facts.session_pr_incident_tracking_required) {
       const before = gitState(), recorded = (await f.run()).results[0];
       assert.equal(recorded.output.operation_ref, 'session_pr_incident_record');
       assert.equal(recorded.output.facts.session_pr_incident_tracking_recorded, true);
@@ -2078,19 +2071,21 @@ async function qualifyExternalMerge(scenario) {
         assert.equal(evidence.resume_ref.sha256, shadowHash(f.host.readJournal(completionId).results.at(-1).receipt));
         assert.deepEqual(open(base).host.readPrIncidentClosureEvidence(request), evidence);
         assert.deepEqual(gitState(), before, 'normal verified resolution must preserve Git identity and cleanliness');
-        if (process.argv.includes('--incident-cleanup')) {
+        {
           const sessionPath = path.join(targetRoot, 'docs/audit/sessions', completePlan.prepared.plan.session_id + '.md');
           const snapshotPath = path.join(targetRoot, 'docs/audit/snapshots/context-snapshot.md');
-          // A fresh read-only preview determines the exact trace overhead. No
-          // grant or persisted preparation is reused after the fixture notes change.
-          const sizing = await f.preview(), sizingPlan = decodePrIncidentClosurePlan(sizing.prepared.plan);
-          assert.equal(sizing.binding.id, 'session_pr_incident_close');
-          for (const change of sizingPlan.traces) {
-            const file = path.resolve(targetRoot, 'docs/audit', change.path);
-            assert.ok([sessionPath, snapshotPath].map(name => path.resolve(name)).includes(file));
-            const padding = STANDARD_ARTIFACT_MAX_BYTES - Buffer.byteLength(change.after, 'utf8');
-            assert.ok(padding > 0);
-            fs.appendFileSync(file, String.fromCharCode(0).repeat(padding));
+          if (process.argv.includes('--incident-cleanup')) {
+            // A fresh read-only preview determines the exact trace overhead. No
+            // grant or persisted preparation is reused after the fixture notes change.
+            const sizing = await f.preview(), sizingPlan = decodePrIncidentClosurePlan(sizing.prepared.plan);
+            assert.equal(sizing.binding.id, 'session_pr_incident_close');
+            for (const change of sizingPlan.traces) {
+              const file = path.resolve(targetRoot, 'docs/audit', change.path);
+              assert.ok([sessionPath, snapshotPath].map(name => path.resolve(name)).includes(file));
+              const padding = STANDARD_ARTIFACT_MAX_BYTES - Buffer.byteLength(change.after, 'utf8');
+              assert.ok(padding > 0);
+              fs.appendFileSync(file, String.fromCharCode(0).repeat(padding));
+            }
           }
           const beforeSession = fs.readFileSync(sessionPath, 'utf8'), beforeSnapshot = fs.readFileSync(snapshotPath, 'utf8');
           const witness = () => shadowHash({ instance: f.inspect().record,
@@ -2099,18 +2094,20 @@ async function qualifyExternalMerge(scenario) {
           const close = await f.preview(), beforeDenied = witness();
           assert.equal(close.binding.id, 'session_pr_incident_close');
           assert.equal(close.prepared.plan.closure_plan_encoding, 'base64-trace-utf8-v1');
-          assert.ok(close.prepared.plan.closure_plan_chunks.length > 1, 'canonical artifact capacity must survive the ordinary shadow string limit');
-          assert.ok(decodePrIncidentClosurePlan(close.prepared.plan).traces.every(change => Buffer.byteLength(change.after, 'utf8') === STANDARD_ARTIFACT_MAX_BYTES));
-          const encodedPlan = JSON.parse(close.prepared.plan.closure_plan_chunks.join(''));
-          const malformed = structuredClone(encodedPlan);
-          assert.ok(malformed.traces[0].after.endsWith('='));
-          malformed.traces[0].after = malformed.traces[0].after.slice(0, -1);
-          assert.ok(Buffer.from(malformed.traces[0].after, 'base64').equals(Buffer.from(encodedPlan.traces[0].after, 'base64')));
-          const malformedText = JSON.stringify(malformed), malformedWrapper = structuredClone(close.prepared.plan);
-          malformedWrapper.closure_plan_chunks = [];
-          for (let at = 0; at < malformedText.length; at += 8192) malformedWrapper.closure_plan_chunks.push(malformedText.slice(at, at + 8192));
-          assert.throws(() => decodePrIncidentClosurePlan(malformedWrapper), { code: 'STANDARD_PR_INCIDENT_CLOSE_PLAN_INVALID' });
-          assert.equal(witness(), beforeDenied, 'a noncanonical encoding must not touch actual source state');
+          if (process.argv.includes('--incident-cleanup')) {
+            assert.ok(close.prepared.plan.closure_plan_chunks.length > 1, 'canonical artifact capacity must survive the ordinary shadow string limit');
+            assert.ok(decodePrIncidentClosurePlan(close.prepared.plan).traces.every(change => Buffer.byteLength(change.after, 'utf8') === STANDARD_ARTIFACT_MAX_BYTES));
+            const encodedPlan = JSON.parse(close.prepared.plan.closure_plan_chunks.join(''));
+            const malformed = structuredClone(encodedPlan);
+            assert.ok(malformed.traces[0].after.endsWith('='));
+            malformed.traces[0].after = malformed.traces[0].after.slice(0, -1);
+            assert.ok(Buffer.from(malformed.traces[0].after, 'base64').equals(Buffer.from(encodedPlan.traces[0].after, 'base64')));
+            const malformedText = JSON.stringify(malformed), malformedWrapper = structuredClone(close.prepared.plan);
+            malformedWrapper.closure_plan_chunks = [];
+            for (let at = 0; at < malformedText.length; at += 8192) malformedWrapper.closure_plan_chunks.push(malformedText.slice(at, at + 8192));
+            assert.throws(() => decodePrIncidentClosurePlan(malformedWrapper), { code: 'STANDARD_PR_INCIDENT_CLOSE_PLAN_INVALID' });
+            assert.equal(witness(), beforeDenied, 'a noncanonical encoding must not touch actual source state');
+          }
           f.deny(true);
           await assert.rejects(f.stage(close), { code: 'STANDARD_HOST_EXACT_OPERATION_REQUIRED' });
           assert.equal(witness(), beforeDenied); f.deny(false);
@@ -2131,9 +2128,15 @@ async function qualifyExternalMerge(scenario) {
             assert.equal(closed.evidence_refs.find(row => path.resolve(targetRoot, row.ref) === path.resolve(file))?.sha256, artifactContentHash(after));
           }
           assert.equal(open(base).host.inspect(instanceId).record.instance_sha256, f.inspect().record.instance_sha256);
-          console.log('PASS: actual host recognizes its exact own intent, preserves control UTF8 in two exact 1MiB canonical trace documents through the original 8MiB journal reader, writes both traces, authenticates retained H/R09 evidence after deletion and releases the owner; current denied grant writes nothing (FILES, signed fixture Human, real Git, doubled HTTPS, no published cleanup route).');
+          console.log(JSON.stringify({ published_incident_cleanup: 'PASS', incident_id: tracked.incidentId, trace_bytes: [sessionPath, snapshotPath].map(file => fs.statSync(file).size), denied_grant_no_effect: true, canonical_tracker_removed: true, owner_released: true, targets: 'published-PR-completion', upstream: 'fixture-seeded', human: 'signed-fixture', git: 'real', https: 'double', genuine_native: 'NOT_RUN', full_standard_workflow: false }));
         }
-        if (!process.argv.includes('--incident-cleanup')) console.log('PASS: registered R10 record and resolve use actual host grants, owner/fence, canonical tracker writes and exact accepted H/R09 sources; current FILES tracker is resolved and cleanup remains pending (signed fixture Human, real Git, doubled HTTPS).');
+      }
+      if (!basis.facts.session_pr_incident_tracking_required) {
+        const canonical = createStandardWorkflowArtifacts({ targetRoot });
+        assert.equal(canonical.inventory().paths.filter(name => /^incidents\/INC-TMP-/.test(name)).length, 0);
+        assert.ok(!f.inspect().record.events.some(event => ['session_pr_incident_record', 'session_pr_incident_resolve', 'session_pr_incident_close'].includes(event.intent?.binding_ref)));
+        assert.equal(canonical.ownerPending(), false);
+        console.log('PASS: published L1 path skips every incident writer and leaves no temporary tracker or owner.');
       }
       assert.equal(continuity().completion?.plan.merge_receipt_sha256, shadowHash(receipt));
       assert.equal((await start()).action, 'create_session_allowed');
@@ -2156,6 +2159,7 @@ async function qualifyExternalMerge(scenario) {
 function prepareIncidentEvidenceFixture({ base, f, question, completionId, sessionId, owner, git }) {
   const { configuration: { target_root: targetRoot, instance_id: instanceId } } = json(path.join(base, 'configuration.json'));
   const incidentId = standardPrIncidentId(question), tracker = path.join(targetRoot, 'docs/audit/incidents', incidentId + '.md');
+  const originalTrackingContent = fs.readFileSync(tracker);
   fs.mkdirSync(path.dirname(tracker), { recursive: true });
   const content = `incident_id: ${incidentId}\nseverity: L2_MEDIUM\nowner: ${owner}\nstatus: RESOLVED\nlifecycle_status: closed\nsession: ${sessionId}\n<!-- aidn:pr-incident-origin:${question.operation_id} -->\n`;
   fs.writeFileSync(tracker, content);
@@ -2194,7 +2198,8 @@ function prepareIncidentEvidenceFixture({ base, f, question, completionId, sessi
       'an accepted historical question must not acquire a new preparation-age ceiling');
     fs.writeFileSync(configFile, configurationBytes);
     assert.deepEqual(snapshot(), before);
-    console.log('PASS: fixed private R10 reader authenticates accepted H and exact R09 chain; pending completion, forged lookup, severity/session/rule drift and JSON claims refuse; cold and historical reads are mutation-free (FILES, real local Git, signed fixture Human, doubled HTTPS).');
+    fs.writeFileSync(tracker, originalTrackingContent);
+    console.log('PASS: fixture-seeded private R10 reader vectors restore the original tracking preimage; accepted H and exact R09 chain; pending completion, forged lookup, severity/session/rule drift and JSON claims refuse; cold and historical reads are mutation-free (FILES, real local Git, signed fixture Human, doubled HTTPS).');
   };
 }
 

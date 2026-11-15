@@ -59,9 +59,13 @@ export function createStandardExternalMergeDisposition({ readAccepted, now, obse
       const { record, output } = readAccepted(instance, operation_id, binding_ref, required);
       const key = Object.hasOwn(input, 'update_operation_id') ? 'update_operation_id' : 'triage_operation_id';
       if (record.preview.input[key] !== input[key]) fail(required);
-      if (binding_ref === externalMergeDisposition) readExternalMergeForFetch(instance, operation_id, readAccepted, readPretriage);
-      else if (key !== 'triage_operation_id' || assertMergeExecuteOutput(output).observations.merge?.operation_id !== operation_id) fail(required);
-      return { can_apply: true, merge_operation_id: operation_id, receipt_sha256: shadowHash(record.results.at(-1).receipt) };
+      let incidentTrackingRequired = false;
+      if (binding_ref === externalMergeDisposition) {
+        readExternalMergeForFetch(instance, operation_id, readAccepted, readPretriage);
+        incidentTrackingRequired = assertExternalMergeDisposition(output).observations.severity === 'L2_MEDIUM';
+      } else if (key !== 'triage_operation_id' || assertMergeExecuteOutput(output).observations.merge?.operation_id !== operation_id) fail(required);
+      return { can_apply: true, merge_operation_id: operation_id, receipt_sha256: shadowHash(record.results.at(-1).receipt),
+        incident_tracking_required: incidentTrackingRequired };
     },
     prepare(instance, input, occurrenceId) {
       const subject = source(instance, input, occurrenceId), time = now();

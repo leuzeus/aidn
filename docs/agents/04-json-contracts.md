@@ -1,5 +1,15 @@
 # 04 JSON Contracts
 
+Private `standard-pr-merge-basis-output.v2` derives its explicit
+`session_pr_incident_tracking_required` fact from the exact accepted merge
+selected in the current call scope. It is true only for the authenticated L2
+external-merge disposition; ordinary merges and L1 dispositions produce false.
+Completed output requires that one boolean, while blocked output has no facts.
+This classification grants no write permission. The unchanged v2 disposition
+input and historical v1 basis schema/reader remain available. Published PR
+completion targets use the fact to select record before R09 and resolve/close
+after its accepted completion, through the existing exact-action grants.
+
 Private `standard-pr-incident-close-{input,plan,output}.v1` binds explicit R10
 cleanup to an accepted L2 external-merge source and its matching R09 resolution.
 The fixed host authenticates its retained journal, current claim and grant;
@@ -10,8 +20,9 @@ JSON-escape amplification. Decoding must reproduce the original private-plan
 digest exactly. After deletion, the original authenticated preparation, freshly
 rederived H/R09 source and both exact canonical trace postimages remain required.
 A missing tracker supplies no resolution proof. Known partial and UNKNOWN
-outputs carry no success fact. Published routing, general/high-severity profiles
-and host continuation after partial effects remain separate unfinished work.
+outputs carry no success fact. Published PR completion targets connect this L2
+profile; general/high-severity profiles and host continuation after partial
+effects remain separate unfinished work.
 
 Private `standard-pr-incident-tracking-{source,input,plan,output}.v1` closes the
 registered record/resolve business bindings. JSON supplies only an origin
@@ -21,8 +32,9 @@ canonical content/metadata preimages and proposed postimages; bounded text
 chunks preserve the existing artifact limit. Positive facts follow confirmed
 canonical postconditions. Unknown effects retain the owner and no positive
 fact. These contracts reuse the existing incident and operation journal
-authorities; historical contracts remain unchanged. Published R10 routing and general recovery are separate unfinished work;
-the distinct private close binding supplies trace/cleanup execution.
+authorities; historical contracts remain unchanged. Published PR completion
+targets select these L2 bindings. General recovery remains unfinished; the
+distinct private close binding supplies trace/cleanup execution.
 
 Private `standard-cycle-entry-choice-checkpoint-{input,plan,output}.v1` binds
 only an accepted canonical choice record. Its protected host authenticates the

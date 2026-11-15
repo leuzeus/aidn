@@ -71,7 +71,7 @@ const files = [
     "standard-pr-external-merge-disposition-question.v1", "standard-pr-external-merge-disposition-input.v2",
     "standard-pr-external-merge-disposition-question.v2", "standard-pr-review-event-route-output.v1",
     "process-control-inbox.v3", "process-control-reservation.v1", "standard-pr-external-merge-disposition-output.v1",
-    "standard-pr-merge-basis-output.v1", "human-pr-external-merge-disposition.v1", "process-decision-inbox.v16"]
+    "standard-pr-merge-basis-output.v1", "standard-pr-merge-basis-output.v2", "human-pr-external-merge-disposition.v1", "process-decision-inbox.v16"]
     .map(name => `src/core/contracts/workflow-definition/${name}.schema.json`),
   "src/application/runtime/standard-session-pr-post-merge-fetch.mjs",
   "src/core/workflow/standard-pr-post-merge-fetch.mjs",

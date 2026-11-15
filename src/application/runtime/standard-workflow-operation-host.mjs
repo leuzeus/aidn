@@ -1872,8 +1872,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_pr_merge_basis") {
           const selected = externalDisposition.prepareBasis(state, record.preview.input, record.intent.occurrence_id);
           if (shadowHash(selected) !== shadowHash(record.preview.prepared)) fail("STANDARD_PR_MERGE_BASIS_CHANGED");
-          output = { contract_version: "standard-pr-merge-basis-output.v1", operation_ref: "session_pr_merge_basis",
-            outcome: "completed", effect_status: "no_effect", facts: {}, evidence_refs: [],
+          output = { contract_version: "standard-pr-merge-basis-output.v2", operation_ref: "session_pr_merge_basis",
+            outcome: "completed", effect_status: "no_effect", facts: { session_pr_incident_tracking_required: selected.incident_tracking_required }, evidence_refs: [],
             observations: { merge_operation_id: selected.merge_operation_id } };
         }
         else if (record.intent.binding_ref === "session_pr_premerge_observe") output = await sessionPrPremerge.observe(state.record, record.preview.input,

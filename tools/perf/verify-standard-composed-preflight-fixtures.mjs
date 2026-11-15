@@ -19,6 +19,19 @@ const test = (name, run, finalVerification = false) => {
   run(); checks++; console.log("PASS " + name);
 };
 const plan = (changes = {}, stop = "pr_effects_pending") => preflightStandardComposedFixture({ model, scenario: { ...scenario, ...changes }, stop });
+test("nominal post-merge planning skips incident writers with the original finite response bound", () => {
+  const result = plan({}, "nominal_post_merge_complete");
+  assert.equal(result.proof_class, "synthetic-fixture-only");
+  assert.equal(result.product_qualification, "NOT_ESTABLISHED");
+  assert.equal(result.planned_status, "COMPLETED");
+  assert.equal(result.original_max_responses, scenario.max_responses);
+  assert.equal(result.responses_required, 9);
+  assert.ok(result.operations.includes("session_pr_merge_basis"));
+  assert.equal(result.operations.at(-1), "session_pr_post_merge_reconciled_complete");
+  assert.ok(!result.operations.some(name => /pr_incident_(record|resolve|close)$/.test(name)));
+  assert.equal(result.replay_exact, true); assert.equal(result.write_authorization, false);
+});
+
 function verifyPlanningOrigin(result, expectedBinding) {
   const expectedNode = expectedBinding === "cycle_owned_resume_admit" ? "owned_resume" : "plan_record";
   const origins = result.source_operations.filter(row => row.binding_ref === expectedBinding && row.node_id === expectedNode);

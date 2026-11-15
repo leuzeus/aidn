@@ -92,7 +92,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 206); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 212); assert.equal(assets.catalog.activities.length, 23);
 });
 test("all corrective R05 sites bind their own evaluation and consume the shared finalizer return", () => {
   const target = assets.model.call_targets.find(row => row.model_id === "aidn-standard-corrective-drift"),
@@ -195,6 +195,37 @@ test("published standard selects an external PR wait before the deterministic si
     { source: "operation_id", node_id: "session_pr_update_push" });
 });
 
+test("published PR completion selects exact L2 origin and separately granted record, resolution and cleanup", () => {
+  for (const id of ['aidn-standard-pr-review-completion', 'aidn-standard-pr-pretriage-completion']) {
+    const target = assets.model.call_targets.find(row => row.model_id === id), child = target.model;
+    const node = name => child.nodes.find(row => row.id === name), sequence = node(child.entry).children;
+    assert.ok(sequence.indexOf('pr_incident_record_route') < sequence.indexOf('pr_post_merge_fetch'));
+    assert.ok(sequence.indexOf('pr_incident_close_route') > sequence.indexOf('pr_post_merge_route'));
+    for (const [route, selected, skipped] of [
+      ['pr_incident_record_route', 'pr_incident_record', 'pr_incident_record_inapplicable'],
+      ['pr_incident_close_route', 'pr_incident_complete', 'pr_incident_close_inapplicable']]) {
+      assert.deepEqual(node(route).branches, [
+        { flow_id: 'required', node_id: selected, condition: 'session_pr_incident_tracking_required' },
+        { flow_id: 'inapplicable', node_id: skipped, condition: null }]);
+      assert.deepEqual(node(skipped).children, []);
+    }
+    assert.deepEqual(node('pr_incident_complete').children, ['pr_incident_resolve', 'pr_incident_close']);
+    for (const name of ['record', 'resolve', 'close']) {
+      const nodeId = 'pr_incident_' + name, binding = assets.catalog.bindings.find(row => row.node_id === nodeId && row.model_ref?.model_id === id).binding;
+      assert.equal(binding.id, 'session_pr_incident_' + name);
+      assert.equal(binding.executor_kind, 'deterministic'); assert.equal(binding.effect_class, 'mutating');
+      assert.deepEqual(binding.allowed_modes, ['COMMITTING']);
+      assert.equal(child.operation_pins[binding.id], shadowHash(binding));
+      assert.deepEqual(child.data_bindings.inputs.find(row => row.node_id === nodeId).fields, {
+        contract_version: { source: 'literal', value: binding.input_contract },
+        origin_operation_id: { source: 'operation_output', node_id: 'pr_merge_basis', path: ['observations', 'merge_operation_id'] } });
+    }
+    const basis = assets.catalog.bindings.find(row => row.node_id === 'pr_merge_basis' && row.model_ref?.model_id === id).binding;
+    assert.equal(basis.output_contract, 'standard-pr-merge-basis-output.v2');
+    assert.equal(basis.effect_class, 'read-only'); assert.deepEqual(basis.rule_refs, ['SPEC-R09', 'SPEC-R10']);
+  }
+});
+
 test("native PR triage consumes a selected accepted source before host evaluation", () => {
   const children = committingSteps(), ids = ["session_pr_review_receive", "session_pr_triage_select", "session_pr_triage", "session_pr_triage_evaluate"];
   for (let i = 1; i < ids.length; i++) assert.equal(children.indexOf(ids[i]), children.indexOf(ids[i - 1]) + 1);
@@ -274,7 +305,7 @@ test("both PR effects boundaries pass their own accepted triage to the same pinn
   const { model: child, ...identity } = target;
   assert.deepEqual(identity, processModelIdentity(child));
   assert.deepEqual(child.call_interface, { parameters: { triage_operation_id: "string" }, returns: {} });
-  assert.deepEqual(child.nodes.find(row => row.id === child.entry).children, ["pr_premerge_observe", "pr_review_route", "pr_merge_basis", "pr_post_merge_fetch", "pr_post_merge_measure", "pr_post_merge_route"]);
+  assert.deepEqual(child.nodes.find(row => row.id === child.entry).children, ["pr_premerge_observe", "pr_review_route", "pr_merge_basis", "pr_incident_record_route", "pr_post_merge_fetch", "pr_post_merge_measure", "pr_post_merge_route", "pr_incident_close_route"]);
   assert.deepEqual(child.nodes.find(row => row.id === "pr_post_merge_route").branches, [
     { flow_id: "diverged", node_id: "pr_post_merge_reconcile", condition: "session_pr_post_merge_diverged" },
     { flow_id: "aligned", node_id: "pr_post_merge_complete", condition: null },
@@ -744,7 +775,7 @@ test("the ordinary loader authenticates the two final-verification operations fo
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 256);
   assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 132);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 74);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 80);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
   assert.equal(loaded.model.call_targets.length, 14);
   assert.equal(child.model_id, "aidn-standard-final-verification");

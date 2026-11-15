@@ -4,22 +4,25 @@ Private project artifact compare-and-delete uses only the configured SQLite or
 PostgreSQL artifact backend. It requires explicit write intent and exact content
 and metadata revisions in one targeted transaction. Workflow records, session/
 cycle artifacts and runtime heads are protected. It adds no public CLI, incident
-executor, shared data, migration or visible-file cleanup. SPEC-R10 resolution,
-resume and trace evidence remain separate requirements for a future caller.
+executor, shared data, migration or visible-file cleanup by itself. Its PR
+incident caller separately authenticates SPEC-R10 resolution, matching R09
+completion and both canonical trace postimages before deleting a tracker.
 
 The private incident closure candidate uses those existing canonical artifact
 and local owner/fence ports. Its closed preparation/evidence/result contracts add
 no shared store. Controlled evidence callbacks exercise persistence and cold
-partial completion only; general production source profiles and published R10
-dispatch remain unimplemented. Explicit cleanup never changes SPEC/WORKFLOW.
+partial completion only; general production source profiles remain unfinished.
+The published PR completion targets separately select the authenticated L2
+record/resolve/close bindings. Explicit cleanup never changes SPEC/WORKFLOW.
 
 The fixed private PR incident evidence reader reuses the authenticated operation
 journal, Human inbox and canonical project artifacts. Its first profile joins an
 accepted L1/L2 external-merge disposition to the exact accepted R09 completion,
 including canonical session, fetch/alignment receipts and unchanged rule pins.
 The host exposes it as an internal read capability. It adds no store, writer,
-export, cleanup, shared method or authority. Other R10 source profiles and the
-published trace/closure route remain unfinished.
+export, cleanup, shared method or authority by itself. The distinct PR incident
+close binding retains both canonical traces before targeted deletion. Other R10
+source profiles remain unfinished.
 
 The registered private PR incident record/resolve bindings use the normal host
 grant and existing local effect owner/fence. Only the ignored canonical TEMP
@@ -28,8 +31,12 @@ canonical file; DUAL projects the configured record; DB-only writes no detailed
 projection. Explicit PostgreSQL persistence remains canonical in files mode.
 The owning Human comes from its authenticated capture. Resolution consumes the
 accepted matching R09 chain. Known partial writes preserve their exact plan;
-unknown states keep their owner. No rule edit, cleanup, shared table, source
-authority, automatic import or published R10 completion is added.
+unknown states keep their owner. No rule edit, shared table, source authority
+or automatic import is added. Published PR completion targets select record
+before R09 and resolve/close after accepted R09 only for the exact selected L2
+external merge. A read-only v2 basis fact classifies this source; ordinary and
+L1 merges skip all incident writes. Each effect still requires its separate
+current grant, local owner/fence and canonical CAS.
 
 The initial and corrective STANDARD review waits share an authenticated event
 component. The pre-triage external merge uses the existing control inbox store

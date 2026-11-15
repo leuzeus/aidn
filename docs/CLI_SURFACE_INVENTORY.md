@@ -369,7 +369,10 @@ finalization; `--verify` retains its read-only verification behavior.
     selects a protected, read-only merge observation. Exact action-file
     execution with the same selector reserves and delivers the external
     observation. The incident disposition and R09 effects have separate
-    authorization. An open PR waits, and a closure without merge is reported
+    authorization. The published L2 external-merge continuation also selects
+    incident record before R09 and resolve/trace/cleanup after its accepted
+    completion; each write uses its own exact action-file authorization.
+    Ordinary and L1 merges skip incident writes. An open PR waits, and a closure without merge is reported
     separately.
     With no source selector, a recoverable R09 question previews a
     `question_recovery` action. Apply the saved action with the same exact

@@ -14,9 +14,9 @@ dual/db-only. Explicit PostgreSQL artifact persistence remains canonical even in
 files mode. A missing
 database row must not be replaced from a visible incident projection. Local
 SQLite port experiments establish this storage behavior only; they do not execute
-R10 triage, repair, cleanup or checkpoint resumption. A common canonical delete
-capability and the connected incident flow require their own implementation and
-qualification. Policy/template checks do not qualify those effects.
+R10 triage, repair, cleanup or checkpoint resumption. Canonical compare-and-delete
+and the connected L2 incident flow have separate qualification selectors below.
+Policy/template checks do not qualify those effects.
 
 ## Canonical cycle-choice human port component
 
@@ -1566,14 +1566,14 @@ its review/input remain v1. The EXPLORING `retain_requested` analysis selectors
 must assert this v2 question and its complete choice set before stopping at the
 human decision; this stopping point does not prove conversion or continuation.
 
-The private actual-host R10 cleanup extension is selected with
+The actual-host L2 R10 route uses the unchanged published PR completion
+targets, with fixture-seeded upstream operations. The capacity selectors are
 `node tools/perf/verify-standard-pr-review-reply-fixtures.mjs
---case=external-premerge --incident-cleanup` or
-`--case=external-pretriage-session --incident-cleanup`. Both selectors are
-required cases in the agentic fixture catalogue. They add the registered
-record/resolve/close bindings only to fixture copies of the published targets.
-The source is signed fixture Human evidence, Git is real and HTTPS is doubled;
-Native and published R10 routing remain NOT_RUN. A successful case must prove
+--case=external-premerge --incident-cleanup` and
+`--case=external-pretriage-session --incident-cleanup`; both are required cases
+in the agentic fixture catalogue. The source is signed fixture Human evidence,
+Git is real and HTTPS is doubled. Genuine Native and the complete published
+STANDARD root remain NOT_RUN. A successful case must prove
 that a denied current grant leaves canonical state unchanged, both trace
 documents reach the existing 1 MiB artifact limit with control UTF8 preserved
 through the unchanged 8 MiB journal reader, both concise canonical traces
@@ -1581,6 +1581,15 @@ precede tracker removal,
 the retained source is reauthenticated after removal, and the local owner is
 released. Known-partial host continuation and unknown-owner recovery require
 separate evidence; private closure-port recovery does not establish them.
+The `--case=external-premerge --incident-low-severity` selector checks an
+accepted L1 disposition through the same published target: no incident writer,
+temporary tracker or retained owner may remain. The ordinary authorized-merge
+path is checked by the existing full nominal selector. Both require an explicit
+false v2 basis fact. The synthetic nominal preflight supplies the false guard
+solely for response planning; completion there establishes no business effect or
+Native qualification. Its original finite response bound remains unchanged.
+The L2 cases also retain v1 output-reader compatibility and reject missing,
+nonboolean, foreign or blocked success facts.
 
 ## Mode session closure and data capacity
 
@@ -5021,8 +5030,9 @@ between trace writes and a foreign
 visible tracker are refused or retained without a false completed outcome. Result
 references include only canonically verified traces, including partial outcomes.
 The evidence/boundary callbacks are controlled;
-general resolution/resume source profiles, published R10 route, live PostgreSQL,
-genuine actors and installed archive remain separate unexecuted gates. This
+general resolution/resume source profiles, live PostgreSQL, genuine actors and
+installed archive remain separate unexecuted gates. Published L2 PR routing
+has its own actual-host selectors above. This
 candidate's three backend commands are registered in the required agentic
 fixture manifest. Registration preserves their controlled-source scope and
 does not qualify the published R10 route.
@@ -5037,10 +5047,11 @@ origin, recorded checkpoint, canonical session, fetch/alignment and R09 completi
 receipts. Forged lookup data, JSON booleans, rule drift and severity/session
 changes refuse. Fresh host reconstruction and reading accepted history after
 the original question deadline leave Git, instance, tracker and journals unchanged.
-The fixture seeds the tracker explicitly; it does not execute an R10 record or
-resolve writer, closure mutation, high-severity recovery, Native actor or published
-incident route. DUAL/DB-only source-reader and exact archive qualification remain
-separate gates.
+The reader vectors temporarily seed a resolved tracker, then restore the actual
+OPEN tracking preimage before the published route resolves and closes it. These
+reader vectors alone do not prove a writer or closure mutation. High-severity
+recovery, genuine Native, DUAL/DB-only source-reader and exact archive
+qualification remain separate gates.
 
 The required agentic manifest retains its original 304 commands byte-for-byte
 as argv arrays and appends nine private R10 commands: closure and tracking in
@@ -5075,9 +5086,10 @@ record/resolve operations. The actual host checks its normal grants and writes
 the canonical FILES tracker from the authenticated signed fixture Human, then
 marks it resolved after real local Git and the matching accepted R09 completion.
 Provider HTTPS remains doubled. Reconstructed child hosts retain the exact
-fixture graph. The fixed closure-evidence reader consumes the produced tracker.
-This does not qualify the published R10 route, concise trace/deletion, general
-unknown-owner recovery, genuine actors, live PostgreSQL or exact installed archive.
+published PR completion target and the seeded upstream fixture graph. The fixed
+closure-evidence reader consumes the produced tracker before the published
+resolve/close route retains both traces and removes it. General unknown-owner
+recovery, genuine actors, live PostgreSQL and exact installed archive remain due.
 
 Record offline/source-install, real native, live PostgreSQL and exact installed
 archive outcomes separately. Governance completeness does not establish complete

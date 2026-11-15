@@ -1637,6 +1637,11 @@ if (process.argv[2] === "--mixed-continue") {
     if (standardComposedStop !== "cycle_admit") assert.equal(last("cycle_checkpoint_finalize").outcome, "completed");
     if (f.r09) {
       const completion = last("session_pr_post_merge_complete"), merge = last("session_pr_merge_execute");
+      const basis = last('session_pr_merge_basis');
+      assert.equal(basis.contract_version, 'standard-pr-merge-basis-output.v2');
+      assert.deepEqual(basis.facts, { session_pr_incident_tracking_required: false });
+      assert.ok(!acceptedOperations.some(row => ['session_pr_incident_record', 'session_pr_incident_resolve', 'session_pr_incident_close'].includes(row.intent.binding_ref)));
+      assert.equal(createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root }).inventory().paths.filter(name => /^incidents\/INC-TMP-/.test(name)).length, 0);
       const admission = await readAdmissions(), aligned = admission.continuity.completion?.plan.aligned_head;
       assert.equal(completion?.outcome, "completed");
       assert.equal(aligned, merge.observations.merge.provider.pull_request.merge_oid);

@@ -41,6 +41,19 @@ The latter enters the signed incident disposition before the shared R09
 operations. It consumes the accepted update or redelivery and its own inbox
 event. The nominal review receive and triage keep their original authorities.
 
+The shared merge-basis v2 receipt classifies the exact accepted merge in its
+current call. Only an authenticated L2 external merge sets
+`session_pr_incident_tracking_required` to true. Both published PR completion
+targets select `session_pr_incident_record` before R09, then
+`session_pr_incident_resolve` and `session_pr_incident_close` after its accepted
+completion. The three inputs consume the same selected origin operation ID.
+Ordinary and L1 merges select empty branches. Classification grants no write:
+each effect retains its exact-action grant and canonical owner/fence/CAS.
+Closure retains both canonical session/snapshot traces before targeted TEMP
+removal. General/high-severity sources and partial/UNKNOWN host recovery remain
+separate unfinished paths; these L2 fixture results establish neither genuine
+Native nor whole STANDARD or installed-archive qualification.
+
 Ordinary entry now has an explicit STANDARD configuration route through
 `workflow-run-service` and `standard-workflow-entry`, shared by the console run
 operation. The entry loads the published model/catalog and composes the existing
