@@ -1554,11 +1554,17 @@ Run `node tools/perf/verify-standard-spike-conversion-fixtures.mjs --mode=files`
 (also `dual` and `db-only`) on a new frozen source. This suite separates typed
 human claims, signed fixture inbox reads and actual canonical cycle creation
 with recommendation, EXPLORING branch creation and COMMITTING branch audit.
+Before cycle admission, each new fixture runs the existing canonical context
+refresh port so DB-backed runtime prerequisites come from its actual projector.
 It retains disposable projects and reports mixed conversion, strict conversion
 hook, experiments and genuine human qualification as NOT_RUN. A component PASS
 does not establish the full conversion wrapper or same-IR execution. Existing
 retain-request continuation fixtures need the new explicit conversion route;
-do not transfer historical results to this revised model.
+do not transfer historical results to this revised model. The published analysis
+profile uses `standard-spike-question.v2`, including `continue_analysis`, while
+its review/input remain v1. The EXPLORING `retain_requested` analysis selectors
+must assert this v2 question and its complete choice set before stopping at the
+human decision; this stopping point does not prove conversion or continuation.
 
 The private actual-host R10 cleanup extension is selected with
 `node tools/perf/verify-standard-pr-review-reply-fixtures.mjs
