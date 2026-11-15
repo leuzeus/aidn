@@ -1,5 +1,23 @@
 # Testing Guide
 
+## Workflow incident information and source template
+
+`npm run perf:verify-metadata-policy` checks the source incident template against
+the existing governed metadata requirements, including identity and update time.
+It also checks that incident metadata and source-of-truth lifecycle declarations
+agree. `npm run perf:verify-source-of-truth-policy` validates the mode matrix.
+
+Temporary workflow incident artifacts use the configured project artifact source;
+repair findings are a separate concept. With the local SQLite backend, artifact
+readers select visible Markdown in files mode and canonical artifact records in
+dual/db-only. Explicit PostgreSQL artifact persistence remains canonical even in
+files mode. A missing
+database row must not be replaced from a visible incident projection. Local
+SQLite port experiments establish this storage behavior only; they do not execute
+R10 triage, repair, cleanup or checkpoint resumption. A common canonical delete
+capability and the connected incident flow require their own implementation and
+qualification. Policy/template checks do not qualify those effects.
+
 ## Canonical cycle-choice human port component
 
 `node tools/perf/verify-standard-cycle-choice-fixtures.mjs --mode=files --retain-always`

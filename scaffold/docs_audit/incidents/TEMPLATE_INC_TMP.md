@@ -1,8 +1,12 @@
 # Incident TEMP Tracking — INC-TMP-<YYYYMMDD-HHMMSS>-<slug>
 
+incident_id: INC-TMP-<YYYYMMDD-HHMMSS>-<slug>
 status: OPEN # OPEN | AUTH_PENDING | RESOLVED | DEFERRED
 severity: L1_LOW # L1_LOW | L2_MEDIUM | L3_HIGH | L4_CRITICAL
 created_at: <YYYY-MM-DD HH:MM:SS>
+updated_at: <YYYY-MM-DD HH:MM:SS>
+source_of_truth: <canonical file in files; configured project artifact record in dual/db-only>
+lifecycle_status: opened # opened | triaged | mitigated | closed; archived trace belongs in session/snapshot
 session: <SXXX>
 branch: <branch-name>
 owner: <agent|user>

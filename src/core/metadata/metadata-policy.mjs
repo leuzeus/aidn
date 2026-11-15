@@ -322,10 +322,11 @@ const METADATA_POLICIES = freezeDeep([
     label: "Incident",
     required: ["incident_id", "severity", "owner", "status", "created_at", "updated_at", "source_of_truth", "lifecycle_status"],
     sourceOfTruthConcept: "incident",
-    evidenceTargets: ["scaffold/docs_audit/incidents/TEMPLATE_INC_TMP.md"],
+    evidenceTargets: ["docs/SPEC.md", "scaffold/docs_audit/incidents/TEMPLATE_INC_TMP.md"],
     recommended: ["steward", "resolution", "privacy_classification", "retention_policy"],
     legacyTolerated: ["source_of_truth", "lifecycle_status", "privacy_classification", "retention_policy"],
     lifecycle: "opened -> triaged -> mitigated -> closed -> archived",
+    notes: "Temporary tracking is removed only after verified resolution and confirmed resume. Archived history is the concise session/snapshot trace required by SPEC-R10; repair findings have their own lifecycle and retention.",
   }),
   policy({
     concept: "repair_finding",

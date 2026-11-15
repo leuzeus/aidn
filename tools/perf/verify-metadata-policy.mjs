@@ -1,10 +1,12 @@
 #!/usr/bin/env node
+import fs from "node:fs";
 import {
   evaluateMetadataPolicy,
   getMetadataPolicy,
   listMetadataPolicies,
   validateMetadataPolicies,
 } from "../../src/core/metadata/metadata-policy.mjs";
+import { getSourceOfTruthPolicy } from "../../src/core/source-of-truth/source-of-truth-policy.mjs";
 import { listCriticalMarkdownContracts } from "../../src/lib/workflow/markdown-contract-registry-lib.mjs";
 import runSchema from "../../src/core/contracts/agent-execution/run.v1.schema.json" with { type: "json" };
 import taskSchema from "../../src/core/contracts/agent-execution/task.v1.schema.json" with { type: "json" };
@@ -36,6 +38,11 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/perf/verify-metadata-policy.mjs --json");
+}
+
+function incidentTemplateMetadata(text) {
+  return Object.fromEntries([...text.matchAll(/^([a-z_]+):[ \t]*(.*)$/gm)]
+    .map(([, field, value]) => [field, value.replace(/(?:^|\s+)#.*$/, "").trim()]));
 }
 
 function main() {
@@ -70,6 +77,24 @@ function main() {
     if (!Array.isArray(contract.governed_metadata_fields) || contract.governed_metadata_fields.length === 0) {
       issues.push(`${contract.artifact_type}: contract does not expose governed metadata fields`);
     }
+  }
+
+  const incidentPolicy = getMetadataPolicy("incident");
+  const incidentTemplate = fs.readFileSync(new URL("../../scaffold/docs_audit/incidents/TEMPLATE_INC_TMP.md", import.meta.url), "utf8");
+  const commentProbe = incidentTemplateMetadata("incident_id:\tINC-TMP-probe # comment\nupdated_at: # missing\nsource_of_truth: docs/SPEC.md#incident\n");
+  if (commentProbe.incident_id !== "INC-TMP-probe" || commentProbe.updated_at !== ""
+    || commentProbe.source_of_truth !== "docs/SPEC.md#incident") {
+    issues.push("incident: template comments must not satisfy governed metadata; embedded reference anchors must remain intact");
+  }
+  const incidentMetadata = incidentTemplateMetadata(incidentTemplate);
+  for (const field of incidentPolicy.required_fields) {
+    if (!incidentMetadata[field]) issues.push(`incident: source template is missing required metadata ${field}`);
+  }
+  for (const finding of evaluateMetadataPolicy("incident", incidentMetadata).metadata_findings) {
+    if (finding.severity === "error") issues.push(`incident: source template violates governed metadata ${finding.field}`);
+  }
+  if (incidentPolicy.lifecycle !== getSourceOfTruthPolicy("incident").lifecycle) {
+    issues.push("incident: metadata and source-of-truth lifecycles must agree");
   }
 
   for (const concept of ["execution_run", "delegated_task", "execution_attempt"]) {

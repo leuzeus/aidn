@@ -73,6 +73,15 @@ If a concept already has a parent surface or an orthogonal telemetry layer, do n
 
 Keep the source-of-truth policy, metadata policy, and governance diagnostics in sync with the information model.
 
+Workflow incident tracking follows SPEC-R10. Its configured project artifact
+source is distinct from repair findings. With the default local backend, files
+mode reads the incident Markdown; dual/db-only read the configured artifact
+record. Explicit PostgreSQL artifact persistence remains canonical even in files
+mode. A visible copy never replaces a missing canonical database record. After verified resolution and
+confirmed resume, explicit cleanup removes temporary tracking and retains only
+the concise session/snapshot trace. The archived lifecycle refers to that trace.
+These policies do not provide an incident executor or a canonical delete port.
+
 GFD adoption is scoped project policy, not a new runtime concept. The package
 source declaration and client opt-in compatibility boundary are documented in
 [GFD_ADOPTION.md](../GFD_ADOPTION.md). Proposed detection cannot become an
