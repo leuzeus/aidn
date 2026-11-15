@@ -10,7 +10,7 @@ import { loadStandardWorkflowAssets } from "../../src/application/runtime/standa
 import { closureHumanSource } from "./cycle-closure-fixture-lib.mjs";
 import { createStandardProcessAuthority } from "../../src/application/runtime/standard-process-authority.mjs";
 import { MODE_WORK_CONTRACT } from "../../src/core/workflow/standard-mode-work.mjs";
-import { assertSpikeReview, spikeConversionChoices } from "../../src/core/workflow/standard-spike-decision.mjs";
+import { assertSpikeReview, spikeConversionChoicesV2 } from "../../src/core/workflow/standard-spike-decision.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 
 // The production mixed host, shipped model, ports and journals are used here.
@@ -115,7 +115,8 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
           assert.deepEqual(record.results, []);
           const { review, choices } = record.preview.prepared;
           assertSpikeReview(review);
-          assert.deepEqual(choices, spikeConversionChoices);
+          assert.equal(result.question.contract_version, "standard-spike-question.v2");
+          assert.deepEqual(choices, spikeConversionChoicesV2);
           const reviewId = record.preview.input.review_operation_id;
           const observed = f.open().readOperation(reviewId);
           assert.equal(observed.intent.binding_ref, "mode_work_observe");

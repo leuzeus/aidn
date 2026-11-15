@@ -106,8 +106,13 @@ try {
     assert.equal((await operations.initializeSession(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
     prepared = await operations.prepareMode({ session_id: "S001", mode: "EXPLORING" });
     assert.equal((await operations.applyMode(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
+    // Match the published handoff's canonical context producer before admission.
+    const cycleContextPlan = await operations.prepareCycleContext({ session_id: "S001" });
+    assert.equal(cycleContextPlan.can_apply, true);
+    const cycleContext = await operations.refreshCycleContext(cycleContextPlan, { write: true, expectPlan: cycleContextPlan.plan_sha256 });
+    assert.equal(cycleContext.outcome, "completed", cycleContext.observations.reason_code);
     git(root, "add", "."); git(root, "-c", "core.hooksPath=NUL", "commit", "--allow-empty", "-m", "fixture admitted session");
-    const head = git(root, "rev-parse", "HEAD"), admitted = await operations.admitCycle(); assert.equal(admitted.outcome, "completed");
+    const head = git(root, "rev-parse", "HEAD"), admitted = await operations.admitCycle(); assert.equal(admitted.outcome, "completed", JSON.stringify({ blockers: admitted.observations.prewrite.blocking_reasons, action: admitted.observations.lifecycle.action }));
     const choice = { ...selection, chosen_mode, branch_action }, lifecycle = admitted.observations.lifecycle;
     prepared = await operations.prepareSpikeCycle({ session_id: "S001", cycle_id: choice.cycle_id, cycle_type: "spike", title: choice.title, objective: choice.learning_goal,
       continuity_rule: lifecycle.continuity_rule, base_branch: lifecycle.continuity_base_branch }, choice);
