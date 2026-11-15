@@ -4541,3 +4541,23 @@ no original failed allocation is converted or owner retired. The allocation
 journal CAS, original budgets and business admissions keep their boundaries.
 Actual source/owner/crash and composed qualification remain required; this
 prerequisite alone does not close general R10, handoff or STANDARD acceptance.
+
+
+## Known-partial PR incident continuation contracts, 2026-11-15
+
+A known canonical prefix is not a no-effect original operation. Its original
+UNKNOWN receipt and dispatch capsule remain historical authorities. A closed
+v2 disposition plan separates that captured digest from a proposed, separately
+authorized confirmation. A v2 disposition record retains actual follow-on
+outputs and receipts before their journal append, with earlier result bytes
+unchanged and control attempts kept distinct. The existing32-result operation
+journal admits at most31 such follow-on results. V1 definitions stay readable.
+
+These records reuse the operation-journal concept and local canonical CAS; no
+store, shared table, Native grant, issuer-expiry change or age ceiling is added.
+The structural pre-intent view excludes only this operation’s exact final
+intent/result suffix; unrelated progress refuses. It is never persisted or
+accepted as a new current instance. Contract and reader qualification alone
+supplies no current source authentication, fence or effect permission. Runtime
+continuation must still implement and qualify the original intent/effect/result/
+acceptance boundaries through the common host and ordinary entry.

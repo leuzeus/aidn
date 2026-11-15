@@ -10,6 +10,18 @@ input and historical v1 basis schema/reader remain available. Published PR
 completion targets use the fact to select record before R09 and resolve/close
 after its accepted completion, through the existing exact-action grants.
 
+Private `process-operation-disposition-plan.v2` and
+`process-operation-disposition.v2` define the closed known-partial L2 PR incident
+continuation data. The original captured UNKNOWN digest and receipt are distinct
+from the expected new confirmation. V2 retains each actual follow-on output and
+receipt; its root aliases only the latest captured result, and control attempts
+remain separate. At most31 follow-on results fit the unchanged32-result operation
+journal. V1 definitions and histories are not converted. The structural source
+view removes only this operation’s final intent and ordered accepted-result
+subsequence, leaving any journaled but unaccepted UNKNOWN intact. It grants no
+permission and authenticates no source. Runtime application and ordinary-entry
+qualification remain pending; pure contract success is not continuation proof.
+
 Private `standard-pr-incident-close-{input,plan,output}.v1` binds explicit R10
 cleanup to an accepted L2 external-merge source and its matching R09 resolution.
 The fixed host authenticates its retained journal, current claim and grant;

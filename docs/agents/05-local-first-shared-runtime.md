@@ -555,3 +555,11 @@ It adds no source capability, storage authority or automatic grant. Cold
 application reuses the retained preparation and committed receipt. A subsequent
 deterministic business operation still needs its own current operation grant;
 another Native allocation still needs the separate finite epoch and admission.
+
+
+A private artifact continuation may run under a trusted controller’s exact held
+local resource fence. It checks the fixed plan and current control, declares no
+second physical effect lock and neither reacquires nor releases the controller’s
+lease. The controller remains responsible for durable authenticated intention,
+current operator permission, exact original ownership/source and ambiguous-effect
+retention. A controlled primitive fixture is not qualification of that controller.

@@ -149,6 +149,17 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
   let activeOwner = false;
   function withLocalEffectOwner(planSha, operation) {
     if (!/^[a-f0-9]{64}$/.test(planSha)) fail("STANDARD_EFFECT_OWNER_PLAN_INVALID");
+    const borrowed = currentStandardDispatchContext()?.artifactContinuation;
+    if (borrowed) {
+      if (activeOwner || borrowed.plan_sha256 !== planSha || typeof borrowed.assertCurrent !== "function"
+        || !/^op_[a-f0-9]{40}$/.test(borrowed.operation_id ?? "")) fail("STANDARD_EFFECT_OWNER_REQUIRED");
+      // The disposition controller has durably reserved and acquired this exact
+      // resource fence. Borrowing neither acquires another lease nor declares a
+      // physical lock that does not exist. Only that controller may release it.
+      fence().assert(borrowed.lease); borrowed.assertCurrent();
+      activeOwner = { owner: { plan_sha256: planSha }, lease: borrowed.lease, borrowed };
+      return Promise.resolve().then(operation).finally(() => { activeOwner = false; });
+    }
     const token = randomUUID(), owner = { contract_version: "process-local-effect-owner.v1", token, pid: process.pid,
       scope_sha256: shadowHash({ physical_root: root }), plan_sha256: planSha, created_at: new Date().toISOString() };
     if (validateJsonSchema(owner, ownerSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_EFFECT_OWNER_INVALID");
@@ -197,6 +208,7 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
   function assertLocalEffectOwner(planSha) {
     if (!activeOwner || activeOwner.owner.plan_sha256 !== planSha) fail("STANDARD_EFFECT_OWNER_REQUIRED");
     fence().assert(activeOwner.lease);
+    if (activeOwner.borrowed) { activeOwner.borrowed.assertCurrent(); return; }
     const file = lock(), retained = readAgentRunFile(file).value;
     const actual = fs.lstatSync(file, { bigint: true }), opened = fs.fstatSync(activeOwner.descriptor, { bigint: true });
     if (!actual.isFile() || actual.nlink !== 1n || actual.ino !== opened.ino || actual.dev !== opened.dev

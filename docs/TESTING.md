@@ -6672,3 +6672,26 @@ hook and repeated gate coverage. The manual wrapper retains the same four groups
 and ordering. Run the focused gate catalog, gate-runner and Node supervisor
 fixtures, then the actual npm coordination entry. Policy success alone does not
 qualify the 21 product commands or genuine actors.
+
+
+### Known-partial incident continuation contract foundation
+
+`node tools/perf/verify-standard-pr-incident-continuation-contract-fixtures.mjs`
+checks closed v2 plan/result data, capture versus new-confirmation digests,
+immutable UNKNOWN prefixes, actual result aliases,31 follow-on results within
+the unchanged32-result journal limit, foreign path/permission/version refusal
+and the available v1 definitions. Real reducer histories verify an ephemeral
+pre-intent view after accepted UNKNOWN, a later confirmation that leaves an
+intermediate UNKNOWN journaled, and refusal after unrelated parallel progress.
+These pure checks create no project, authenticate no H source, exercise no CAS
+or disposition application and call no Native model. Actual common-host cold
+continuation, grants/fences, original histories and backend qualification remain
+required. A contract/reader result cannot close L4 or the original full plan.
+
+`node tools/perf/verify-standard-artifact-disposition-owner-fixtures.mjs` checks
+the actual FILES/SQLite DUAL/db-only artifact port under a controlled trusted
+capability: one original fence, real metadata-preserving CAS, no second resource
+acquisition, no invented physical lock and no lease release by the borrowed port.
+Wrong plans/leases and a changed current control refuse before further changes.
+Only the controlling fixture releases its lease. This primitive check provides
+no operator-source, original-dispatch, continuation or genuine Native proof.

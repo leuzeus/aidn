@@ -94,3 +94,50 @@ export function prIncidentCloseIntentPrefix(instance, record) {
     || before.instance_sha256 !== record.preview.instance_sha256) fail('STANDARD_PR_INCIDENT_CLOSE_PREFIX_CHANGED');
   return freezeShadow(before);
 }
+
+// Accepted UNKNOWN results remain part of current history. Only this operation's
+// exact final intent/result suffix may be removed in an ephemeral source view;
+// neither this structural view nor a completed suffix grants effect permission.
+export function prIncidentCloseReconciliationPrefix(instance, record) {
+  assertAgenticProcessInstance(instance);
+  const intent = record?.intent, results = record?.results;
+  if (record?.phase !== 'receipted' || !Array.isArray(results) || !results.length
+    || intent?.binding_ref !== prIncidentCloseOperation || record.operation_id !== intent.operation_id
+    || intent.instance_id !== instance.instance_id || intent.scope_id !== instance.scope_id
+    || record.preview?.binding?.id !== prIncidentCloseOperation
+    || results[0]?.receipt?.outcome !== 'reconciliation_required' || results[0]?.receipt?.effect_status !== 'unknown')
+    fail('STANDARD_PR_INCIDENT_CLOSE_OWN_RESULT_REQUIRED');
+  const intents = instance.events.map((event, index) => ({ event, index })).filter(row => row.event.kind === 'operation_intent'
+    && row.event.intent.operation_id === intent.operation_id);
+  if (intents.length !== 1 || shadowHash(intents[0].event.intent) !== shadowHash(intent))
+    fail('STANDARD_PR_INCIDENT_CLOSE_OWN_RESULT_REQUIRED');
+  const index = intents[0].index, accepted = instance.events.slice(index + 1);
+  if (!accepted.length || accepted.length > results.length) fail('STANDARD_PR_INCIDENT_CLOSE_OWN_RESULT_REQUIRED');
+  let resultIndex = 0;
+  for (const [position, event] of accepted.entries()) {
+    if (event.kind !== 'operation_result' || event.occurrence_id !== intent.occurrence_id)
+      fail('STANDARD_PR_INCIDENT_CLOSE_OWN_RESULT_REQUIRED');
+    const matched = results.findIndex((result, index) => index >= resultIndex
+      && shadowHash(result.receipt) === shadowHash(event.receipt));
+    if (matched < 0 || position === 0 && matched !== 0) fail('STANDARD_PR_INCIDENT_CLOSE_OWN_RESULT_REQUIRED');
+    // A crash can leave intermediate UNKNOWN results journaled but unaccepted.
+    // Accepted results must be an ordered subsequence; no journal row is removed.
+    resultIndex = matched + 1;
+  }
+  for (const [position, result] of results.entries()) {
+    if (result.receipt.operation_id !== intent.operation_id || result.receipt.intent_sha256 !== shadowHash(intent)
+      || result.receipt.output_sha256 !== shadowHash(result.output)
+      || result.receipt.outcome !== result.output.outcome || result.receipt.effect_status !== result.output.effect_status
+      || shadowHash(result.receipt.facts) !== shadowHash(result.output.facts)
+      || position < results.length - 1 && (result.receipt.outcome !== 'reconciliation_required' || result.receipt.effect_status !== 'unknown'))
+      fail('STANDARD_PR_INCIDENT_CLOSE_OWN_RESULT_REQUIRED');
+  }
+  inspectAgenticProcess(instance);
+  const { instance_sha256, ...body } = instance;
+  body.events = body.events.slice(0, index); body.revision -= 1 + accepted.length;
+  const before = { ...body, instance_sha256: shadowHash(body) };
+  assertAgenticProcessInstance(before); inspectAgenticProcess(before);
+  if (before.instance_sha256 !== intent.instance_sha256 || before.instance_sha256 !== record.preview.instance_sha256)
+    fail('STANDARD_PR_INCIDENT_CLOSE_PREFIX_CHANGED');
+  return freezeShadow(before);
+}
