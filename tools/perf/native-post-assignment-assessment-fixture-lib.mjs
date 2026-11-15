@@ -101,10 +101,7 @@ export async function verifyNativePostAssignmentHostFixture({ mode, mixedFixture
     visit(root); return out;
   };
   for (const scenario of ['confirmed_return_failure', 'unknown_native_tree']) {
-    const f = mixedFixture(mode, { postAssignmentReturnFailure: scenario === 'confirmed_return_failure', treeUnknown: scenario === 'unknown_native_tree' });
-    const authorization = await bootstrapMixed(f);
-    const beforeNative = f.open().inspect().record;
-    const result = await f.open().step({ write: true, authorization });
+    const { f, authorization, beforeNative, result } = await createNativePostAssignmentHostFixture({ mode, scenario, mixedFixture, bootstrapMixed });
     assert.equal(result.kind, 'native');
     const journal = f.open().inspectAllocations(), entry = journal.allocations.at(-1);
     assert.equal(journal.allocations.length, 1); assert.equal(entry.generation, 1);
@@ -165,4 +162,18 @@ export async function verifyNativePostAssignmentHostFixture({ mode, mixedFixture
   return { mode, scenarios: rows, Native_RPC: 'controlled', supervisor_Native_tree_proof: 'controlled',
     common_host_and_canonical_ports: 'actual', model_calls: 0, genuine_native_client: 'NOT_RUN',
     post_assignment_retirement_reconciliation_resume: 'NOT_RUN', published_STANDARD: 'NOT_QUALIFIED', full_plan: false };
+}
+
+
+export async function createNativePostAssignmentHostFixture({ mode, scenario = 'confirmed_return_failure', protectedHome = null, mixedFixture, bootstrapMixed }) {
+  assert.ok(['files', 'dual', 'db-only'].includes(mode));
+  assert.ok(['confirmed_return_failure', 'unknown_native_tree'].includes(scenario));
+  const f = mixedFixture(mode, { postAssignmentReturnFailure: scenario === 'confirmed_return_failure', treeUnknown: scenario === 'unknown_native_tree' });
+  if (protectedHome) f.configuration.native.protected_roots = [...(f.configuration.native.protected_roots ?? []), protectedHome];
+  const authorization = await bootstrapMixed(f);
+  const beforeNative = f.open().inspect().record;
+  const result = await f.open().step({ write: true, authorization });
+  assert.equal(result.kind, 'native');
+  assert.equal(f.launches, 1);
+  return { f, authorization, beforeNative, result };
 }

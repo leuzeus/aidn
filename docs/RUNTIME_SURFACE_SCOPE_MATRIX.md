@@ -512,3 +512,13 @@ original allocation, previous generation and retained worker closure. It adds no
 store, table, projection, import, resource mutation or shared synchronization.
 Complete checkpoint evidence is separate from business postconditions and from
 explicit resource disposition, reconciliation, new finite authorization or resume.
+
+
+The explicit Native post-assignment owner profile uses closed v2 variants at
+the existing workflows/native-owner-dispositions/<dispatch>.json artifact. It
+retires only the authenticated terminated creator's physical owner under the
+existing exact operator permission and local resource fence. The original
+Native journal/dispatch, accepted work and debit stay intact. V1 no_assignment
+preparation retains its old scope; only the separate fixed method prepares v2.
+No resource-accounting reconciliation, new Native grant, business postcondition,
+workflow resume, new store or shared coordination write follows from retirement.

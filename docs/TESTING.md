@@ -6298,3 +6298,47 @@ and start no second allocation. These are component-model fixtures, not genuine
 Native processes, an installed archive, the published STANDARD journey or a
 post-assignment resource disposition/reconciliation/resume qualification. Existing
 required argv/order, default fixture cases and finite Native grants are unchanged.
+
+
+## Native post-assignment physical-owner contracts
+
+The Native owner v2 closed-data fixture uses a retained v1 owner record only as
+a shape seed. All constructed v2 work/approval signatures are synthetic; it
+executes no physical effect or source authorization. Its 23 cases cover initial/
+current/checkpoint separation, exact post-assignment digest crosslinks, mixed
+versions, denied resume/renewal/accounting/complete-closure claims and unchanged
+v1 record acceptance. Actual v2 physical retirement, current operator authority,
+cold interruption/replay, competing recoverers and backend behavior require
+separate qualification. Data-contract success is not permission or full workflow
+acceptance. Existing required argv/order, Native budgets and historical failed
+attempts remain unchanged.
+
+
+The private native-post-assignment-owner-fixture-lib.mjs verify files|dual|db-only
+command creates its original Native allocation through the controlled common-host
+fixture creator, then terminates that actual creator before preparing v2. Its
+fixture signing key is fixed in code. Operator keys and saved configuration live
+outside project/control/native roots in the declared protected fixture home.
+Current exact operator HMAC, native journal/dispatch/checkpoint authentication,
+physical owner/fence/CAS and cold actor processes use actual ports. Native RPC
+and the supervisor Native-tree proof remain controlled, with no genuine client.
+
+The cases refuse an active creator, missing/revoked operator, a host-signed
+foreign post-assignment subject, and unknown Native closure. FILES additionally
+exits at the declared boundary after the physical lock retirement; a cold actor
+must acknowledge it without a repeated retirement or accepted result. Exact
+receipt replay, immutable Native journal/dispatch/instance/product/control data,
+original debit/failure, no second allocation and no DB-only JSON export remain
+checked. The receipt authorizes neither accounting reconciliation nor ordinary
+workflow resume. Existing v1 owner regression and the earlier six read-only host
+scenarios keep their separate scope. These component cases do not qualify the
+published STANDARD journey, genuine Native/Human actors, installed archive,
+independent resource reconciliation, new Native epoch or full plan.
+
+
+The FILES v2 owner case chains the eight declared interruption boundaries on
+one original allocation/plan, preserving every failed attempt and the first
+immutable physical receipt. The final confirmed boundary must cold-acknowledge
+without another write. Two real recoverers compete while the first holds its
+durable intent; the second must refuse before any mutation. This is controlled
+boundary interruption, not an arbitrary crash inside an OS/DB primitive.

@@ -1,3 +1,4 @@
+import { assertNativePostAssignmentAssessment } from '../../core/workflow/native-post-assignment-assessment.mjs';
 import { randomUUID } from 'node:crypto';
 import { createWorkflowRecordStore } from '../../adapters/runtime/workflow-record-store.mjs';
 import { observeLocalProcess, observeLocalProcessOwner } from '../../adapters/runtime/local-process-identity.mjs';
@@ -14,6 +15,10 @@ import { inspectNativeOwnerLock, retireNativeOwnerLock, nativeRetiredOwnerRelati
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const body = ({ authentication, key_id, ...value }) => value;
 const stableAssessment = ({ authentication, key_id, observed_at_ms, inventory_sha256, ...value }) => value;
+const isPostPlan = value => value?.contract_version === 'native-owner-disposition-plan.v2';
+const stablePostAssessment = ({ authentication, key_id, base_assessment, ...value }) => ({ ...value, base_assessment: stableAssessment(base_assessment) });
+const postFields = plan => isPostPlan(plan) ? { profile: plan.profile, post_assignment_sha256: plan.post_assignment_sha256 } : {};
+const planProfile = plan => isPostPlan(plan) ? 'admitted_post_assignment' : 'no_assignment';
 function material(inventory, id) {
   const { authentication, key_id, observed_at_ms, ...value } = inventory;
   const excluded = new Set(['artifact:' + nativeOwnerDispositionPath(id), 'native-owner-disposition:' + id,
@@ -22,7 +27,7 @@ function material(inventory, id) {
 }
 const leaseData = value => ({ record: value.record, content_sha256: value.content_sha256, previous_sha256: value.previous_sha256 });
 
-export function createStandardNativeOwnerDisposition({ targetRoot, stateMode, artifacts, signer, assess,
+export function createStandardNativeOwnerDisposition({ targetRoot, stateMode, artifacts, signer, assess, assessPostAssignment,
   source, now = Date.now, onBoundary = async () => {} }) {
   const store = createWorkflowRecordStore({ targetRoot, stateMode, descriptor: { pathForId: nativeOwnerDispositionPath,
     validate: assertNativeOwnerDispositionRecord, idOf: value => value.dispatch_id, hashOf: H, kind: 'native_allocation_journal' } });
@@ -45,10 +50,15 @@ export function createStandardNativeOwnerDisposition({ targetRoot, stateMode, ar
     if (H(after.record) !== H(record)) fail('NATIVE_OWNER_DISPOSITION_RECORD_CHANGED');
     return after;
   };
-  function observe(instanceId, input, retained) {
-    const observed = assess(instanceId, input), a = observed.assessment;
+  function observe(instanceId, input, retained, profile = 'no_assignment') {
+    if (profile === 'admitted_post_assignment' && typeof assessPostAssignment !== 'function') fail('NATIVE_OWNER_DISPOSITION_AUTHORITY_REQUIRED');
+    const post = profile === 'admitted_post_assignment' ? assessPostAssignment(instanceId, input) : null;
+    if (post) { signer.verify(post.inventory); signer.verify(post.assessment); assertNativePostAssignmentAssessment(post.assessment, post.inventory); }
+    const observed = post ? { inventory: post.inventory, assessment: post.assessment.base_assessment } : assess(instanceId, input), a = observed.assessment;
     signer.verify(observed.inventory); signer.verify(a);
-    if (a.assignment_status !== 'no_assignment' || a.allocation_phase !== 'failed' || a.return_binding !== 'matched')
+    if (a.allocation_phase !== 'failed' || a.return_binding !== 'matched'
+      || profile === 'no_assignment' && a.assignment_status !== 'no_assignment'
+      || profile === 'admitted_post_assignment' && post.assessment.evidence_profile !== 'admitted_closed_checkpoint')
       fail('NATIVE_OWNER_DISPOSITION_UNPROVEN_EFFECTS');
     const dispatch = assertNativeDispatchRecord(JSON.parse(artifacts.read(nativeDispatchPath(input.dispatchId), { required: true }).content));
     signer.verify(dispatch);
@@ -57,8 +67,9 @@ export function createStandardNativeOwnerDisposition({ targetRoot, stateMode, ar
     const lease = dispatch.leases[0], intention = dispatch.local_owner_intentions.find(row => H(row.owner) === H(lease.owner));
     const lock = inspectNativeOwnerLock({ targetRoot: artifacts.root, dispatchId: dispatch.dispatch_id, intention, lease,
       allowRetired: Boolean(retained?.attempts.some(row => row.lease !== null)) });
-    return { ...observed, dispatch, lease, intention, lock,
-      subject_sha256: H({ assessment: stableAssessment(a), inventory: material(observed.inventory, dispatch.dispatch_id) }) };
+    return { ...observed, dispatch, lease, intention, lock, post_assignment_assessment: post?.assessment ?? null,
+      subject_sha256: H({ assessment: stableAssessment(a), inventory: material(observed.inventory, dispatch.dispatch_id),
+        ...(post ? { post_assignment: stablePostAssessment(post.assessment) } : {}) }) };
   }
   function assertSubject(plan, observed) {
     const { assessment: a, inventory, lease, lock } = observed;
@@ -66,6 +77,11 @@ export function createStandardNativeOwnerDisposition({ targetRoot, stateMode, ar
       || plan.configuration_sha256 !== a.configuration_sha256 || plan.physical_root_sha256 !== inventory.physical_root_sha256
       || plan.dispatch_sha256 !== a.dispatch_sha256 || plan.journal_sha256 !== a.journal_sha256 || plan.allocation_sha256 !== a.allocation_sha256
       || plan.lock_sha256 !== lock.sha256 || plan.original_lease_sha256 !== H(lease)) fail('NATIVE_OWNER_DISPOSITION_SUBJECT_CHANGED');
+    if (isPostPlan(plan) && (!observed.post_assignment_assessment
+      || plan.post_assignment_sha256 !== H(stablePostAssessment(observed.post_assignment_assessment))
+      || plan.initial_instance_sha256 !== a.initial_instance_sha256
+      || plan.checkpoint_sha256 !== a.checkpoint.sha256 || plan.checkpoint_state_sha256 !== a.checkpoint.state_sha256
+      || plan.checkpoint_instance_sha256 !== a.checkpoint.instance_sha256)) fail('NATIVE_OWNER_DISPOSITION_SUBJECT_CHANGED');
     if (observeLocalProcessOwner(observed.dispatch.process_identity) !== 'terminated') fail('NATIVE_OWNER_DISPOSITION_ORIGINAL_ACTIVE');
   }
   function expectedFence(plan, observed, retained) {
@@ -96,42 +112,51 @@ export function createStandardNativeOwnerDisposition({ targetRoot, stateMode, ar
   }
   const boundary = async (name, id) => { if (await onBoundary(name, id) !== undefined) fail('NATIVE_OWNER_DISPOSITION_BOUNDARY_INVALID'); };
   const inputFor = plan => ({ expectedSha256: plan.instance_sha256, dispatchId: plan.dispatch_id, generation: plan.generation });
+  function prepare(instanceId, input, profile) {
+    const retained = read(input?.dispatchId), observed = observe(instanceId, input, retained.record, profile), a = observed.assessment;
+    if (retained.record) {
+      if (planProfile(retained.record.plan) !== profile) fail('NATIVE_OWNER_DISPOSITION_PLAN_CHANGED');
+      assertSubject(retained.record.plan, observed); return structuredClone(retained.record.plan);
+    }
+    if (observeLocalProcessOwner(observed.dispatch.process_identity) !== 'terminated') fail('NATIVE_OWNER_DISPOSITION_ORIGINAL_ACTIVE');
+    const current = fence.read();
+    if (H(current.record) !== H(observed.lease.resource_fence)) fail('NATIVE_OWNER_DISPOSITION_FENCE_CHANGED');
+    const post = profile === 'admitted_post_assignment';
+    return assertNativeOwnerDispositionPlan(signer.seal({ contract_version: post ? 'native-owner-disposition-plan.v2' : 'native-owner-disposition-plan.v1',
+      ...(post ? { profile, post_assignment_sha256: H(stablePostAssessment(observed.post_assignment_assessment)),
+        initial_instance_sha256: a.initial_instance_sha256, checkpoint_sha256: a.checkpoint.sha256,
+        checkpoint_state_sha256: a.checkpoint.state_sha256, checkpoint_instance_sha256: a.checkpoint.instance_sha256 } : {}),
+      dispatch_id: a.dispatch_id, journal_id: a.journal_id, generation: a.generation, instance_id: a.instance_id,
+      instance_sha256: a.instance_sha256, scope_id: observed.inventory.scope_id, model_sha256: observed.inventory.model_sha256,
+      configuration_sha256: a.configuration_sha256, physical_root_sha256: observed.inventory.physical_root_sha256,
+      dispatch_sha256: a.dispatch_sha256, journal_sha256: a.journal_sha256, allocation_sha256: a.allocation_sha256,
+      subject_sha256: observed.subject_sha256, lock_sha256: observed.lock.sha256, original_lease_sha256: H(observed.lease),
+      original_fence_sha256: current.content_sha256, prepared_at_ms: now(), nonce: randomUUID() }));
+  }
   return Object.freeze({
-    prepare(instanceId, input) {
-      const retained = read(input?.dispatchId), observed = observe(instanceId, input, retained.record), a = observed.assessment;
-      if (retained.record) { assertSubject(retained.record.plan, observed); return structuredClone(retained.record.plan); }
-      if (observeLocalProcessOwner(observed.dispatch.process_identity) !== 'terminated') fail('NATIVE_OWNER_DISPOSITION_ORIGINAL_ACTIVE');
-      const current = fence.read();
-      if (H(current.record) !== H(observed.lease.resource_fence)) fail('NATIVE_OWNER_DISPOSITION_FENCE_CHANGED');
-      return assertNativeOwnerDispositionPlan(signer.seal({ contract_version: 'native-owner-disposition-plan.v1',
-        dispatch_id: a.dispatch_id, journal_id: a.journal_id, generation: a.generation, instance_id: a.instance_id,
-        instance_sha256: a.instance_sha256, scope_id: observed.inventory.scope_id, model_sha256: observed.inventory.model_sha256,
-        configuration_sha256: a.configuration_sha256, physical_root_sha256: observed.inventory.physical_root_sha256,
-        dispatch_sha256: a.dispatch_sha256, journal_sha256: a.journal_sha256, allocation_sha256: a.allocation_sha256,
-        subject_sha256: observed.subject_sha256, lock_sha256: observed.lock.sha256, original_lease_sha256: H(observed.lease),
-        original_fence_sha256: current.content_sha256, prepared_at_ms: now(), nonce: randomUUID() }));
-    },
+    prepare: (instanceId, input) => prepare(instanceId, input, 'no_assignment'),
+    preparePostAssignment: (instanceId, input) => prepare(instanceId, input, 'admitted_post_assignment'),
     async apply(supplied, { write = false, expectedPlanSha256, signal } = {}) {
       if (checkShadowJson(supplied)) fail('NATIVE_OWNER_DISPOSITION_CONTRACT_INVALID');
       const plan = structuredClone(supplied); assertNativeOwnerDispositionPlan(plan); signer.verify(plan);
       if (write !== true || expectedPlanSha256 !== H(plan)) fail('NATIVE_OWNER_DISPOSITION_EXACT_WRITE_REQUIRED');
-      let retained = read(plan.dispatch_id), observed = observe(plan.instance_id, inputFor(plan), retained.record);
+      let retained = read(plan.dispatch_id), observed = observe(plan.instance_id, inputFor(plan), retained.record, planProfile(plan));
       assertSubject(plan, observed);
       if (retained.record && H(retained.record.plan) !== H(plan)) fail('NATIVE_OWNER_DISPOSITION_PLAN_CHANGED');
       if (retained.record?.phase === 'confirmed') return { status: 'retained_confirmation', receipt: retained.record.receipt, written: false, native_started: false };
       const last = retained.record?.attempts.at(-1);
       if (last && observeLocalProcessOwner(last.process_identity) !== 'terminated') fail('NATIVE_OWNER_DISPOSITION_ACTIVE');
       let currentFence = expectedFence(plan, observed, retained.record);
-      const request = assertNativeOwnerDispositionRequest({ contract_version: 'native-owner-disposition-authorization-request.v1', action: 'native_owner_retire',
+      const request = assertNativeOwnerDispositionRequest({ contract_version: isPostPlan(plan) ? 'native-owner-disposition-authorization-request.v2' : 'native-owner-disposition-authorization-request.v1', ...postFields(plan), action: 'native_owner_retire',
         nonce: randomUUID(), requested_at_ms: now(), plan_sha256: H(plan), ...Object.fromEntries(['dispatch_id', 'journal_id', 'generation', 'instance_id', 'instance_sha256', 'scope_id', 'model_sha256', 'configuration_sha256'].map(key => [key, plan[key]])) });
       const grant = await invoke('authorize', { request }, signal); freshGrant(grant, request);
       const verification = await invoke('verify', { request, grant }, signal); freshGrant(grant, request);
       if (verification?.outcome !== 'verified' || verification.authority_id !== grant.authority_id
         || verification.request_sha256 !== H(request) || verification.grant_sha256 !== H(grant)) fail('NATIVE_OWNER_DISPOSITION_AUTHORIZATION_NOT_AUTHENTICATED');
       const permit = () => {
+        const fresh = observe(plan.instance_id, inputFor(plan), retained.record, planProfile(plan)); assertSubject(plan, fresh);
         if (signal?.aborted) fail('NATIVE_OWNER_DISPOSITION_ABORTED'); freshGrant(grant, request);
         if (source.assertCurrent({ request, grant }) !== undefined) fail('NATIVE_OWNER_DISPOSITION_AUTHORIZATION_NOT_AUTHENTICATED');
-        const fresh = observe(plan.instance_id, inputFor(plan), retained.record); assertSubject(plan, fresh);
       };
       permit();
       const rechecked = read(plan.dispatch_id);
@@ -142,7 +167,8 @@ export function createStandardNativeOwnerDisposition({ targetRoot, stateMode, ar
       const attempt = { attempt_id: randomUUID(), process_identity: self, request, grant, verification,
         fence_intention: intention, lease: null, retirement: null, released_fence: null };
       await boundary('native_disposition_before_intent', plan.dispatch_id); permit();
-      retained = save(retained, { contract_version: 'native-owner-disposition-record.v1', dispatch_id: plan.dispatch_id,
+      retained = save(retained, { contract_version: isPostPlan(plan) ? 'native-owner-disposition-record.v2' : 'native-owner-disposition-record.v1',
+        ...(isPostPlan(plan) ? { profile: plan.profile } : {}), dispatch_id: plan.dispatch_id,
         journal_id: plan.journal_id, instance_id: plan.instance_id, scope_id: plan.scope_id, model_sha256: plan.model_sha256, plan,
         phase: 'intent', attempts: [...(retained.record?.attempts ?? []), attempt], receipt: retained.record?.receipt ?? null });
       await boundary('native_disposition_intent', plan.dispatch_id); permit();
@@ -153,7 +179,8 @@ export function createStandardNativeOwnerDisposition({ targetRoot, stateMode, ar
         const attempts = structuredClone(retained.record.attempts); Object.assign(attempts.at(-1), fields);
         retained = save(retained, { attempts, phase: fields.retirement ? 'retired' : 'acquired',
           ...(fields.retirement ? { receipt: retained.record.receipt ?? assertNativeOwnerDispositionReceipt(signer.seal({
-            contract_version: 'native-owner-disposition-receipt.v1', dispatch_id: plan.dispatch_id, plan_sha256: H(plan),
+            contract_version: isPostPlan(plan) ? 'native-owner-disposition-receipt.v2' : 'native-owner-disposition-receipt.v1',
+            ...postFields(plan), dispatch_id: plan.dispatch_id, plan_sha256: H(plan),
             attempt_id: attempt.attempt_id, retirement_sha256: H(fields.retirement), original_lease_sha256: plan.original_lease_sha256,
             lock_sha256: plan.lock_sha256, effect: 'owner_lock_retired', confirmed_at_ms: now(), original_failure_preserved: true,
             complete_resource_closure: false, permits_resume: false, permits_native_renewal: false, accounting_reconciled: false, native_started: false })) } : {}) });

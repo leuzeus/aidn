@@ -856,3 +856,13 @@ admitted_closed_checkpoint evidence profile. That profile remains read-only: all
 effect, retirement, resume, renewal and complete-resource-closure permissions are
 false, and business postconditions remain unknown. Historical no_assignment
 contracts and mutating producers retain their original scope.
+
+
+Private Native owner disposition plan, authorization request, record and receipt
+v2 identify the admitted_post_assignment profile explicitly. The plan binds
+initial Native prefix, admitted checkpoint/state, current canonical prefix and
+the stable post-assignment assessment digest separately. Requests and physical
+receipts bind that same profile/digest and exact plan; record readers reject
+cross-version or cross-profile attempts. Historical v1/no_assignment bytes and
+behavior remain unchanged. The receipt still grants no accounting confirmation,
+complete resource closure, Native renewal or workflow resume.
