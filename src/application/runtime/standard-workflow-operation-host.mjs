@@ -7,6 +7,7 @@ import { createStandardPrCorrectionCheckpoint } from "./standard-pr-correction-c
 import { createStandardPrMergeExecute } from "./standard-session-pr-merge-execute.mjs";
 import { createStandardSessionPrPostMergeFetch } from "./standard-session-pr-post-merge-fetch.mjs";
 import { createStandardPostMergeCompletion, postMergeProjectScope } from "./standard-session-pr-post-merge-completion.mjs";
+import { createStandardPrIncidentEvidence } from "./standard-pr-incident-evidence.mjs";
 import { postMergeFastForwardOperation } from "../../core/workflow/standard-pr-post-merge-fast-forward.mjs";
 import { createStandardPostMergeFastForward } from "./standard-session-pr-post-merge-fast-forward.mjs";
 import { postMergeCompleteOperation } from "../../core/workflow/standard-pr-post-merge-complete.mjs";
@@ -676,6 +677,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const assertPostMergeDecisionFresh = (instance, record, signal) => postMergeDecision.assertFresh(
     instance, record.preview.input, record.preview.prepared, signal);
   const postMergeCompletion = createStandardPostMergeCompletion({ ...acceptedReviewPorts, artifacts,
+    readAlignmentSource: postMerge.alignmentSource, scopeSha: postMergeScope });
+  const prIncidentEvidence = createStandardPrIncidentEvidence({ ...acceptedReviewPorts, artifacts,
     readAlignmentSource: postMerge.alignmentSource, scopeSha: postMergeScope });
   const postMergeFastForward = createStandardPostMergeFastForward({ ...acceptedReviewPorts, postMerge, decision: postMergeDecision,
     verifyDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
@@ -2152,6 +2155,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return disposition.withReceiptAcceptance(id, () => service.acceptOperation({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256, occurrenceId: record.intent.occurrence_id,
         eventId: "result_" + id.slice(3) + (index ? "_" + index : ""), receiptId: receipt.receipt_id, write: true }), { signal });
     },
+    readPrIncidentClosureEvidence: request => prIncidentEvidence.read(request),
     readJournal: id => structuredClone(retained(id).record),
     readDecisionSource: ref => human.readSource(ref),
     readOutput(ref) {

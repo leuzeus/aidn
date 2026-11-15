@@ -37,6 +37,8 @@ import { renderStandardSessionPrRecord } from '../../src/core/workflow/standard-
 import { runStartSessionAdmitUseCase } from '../../src/application/runtime/start-session-admit-use-case.mjs';
 import { runCycleCreateAdmitUseCase } from '../../src/application/runtime/cycle-create-admit-use-case.mjs';
 import { readStandardPostMergeContinuity } from '../../src/application/runtime/standard-post-merge-continuity.mjs';
+import { standardPrIncidentId } from '../../src/application/runtime/standard-pr-incident-evidence.mjs';
+import { createStandardWorkflowArtifacts } from '../../src/application/runtime/standard-workflow-artifacts.mjs';
 import { preWriteAdmit } from '../runtime/pre-write-admit.mjs';
 
 const { model: published } = loadStandardWorkflowAssets();
@@ -2012,7 +2014,10 @@ async function qualifyExternalMerge(scenario) {
       const { operation_id: completionId } = await f.stage(completePlan);
       assert.equal((await f.host.dispatch(completionId, { write: true })).receipt.outcome, 'completed');
       await assertLocked();
+      const verifyIncident = process.argv.includes('--incident-evidence') ? prepareIncidentEvidenceFixture({
+        base, f, question, completionId, sessionId: completePlan.prepared.plan.session_id, git }) : null;
       await f.host.accept(completionId, { write: true });
+      verifyIncident?.();
       assert.equal(continuity().completion?.plan.merge_receipt_sha256, shadowHash(receipt));
       assert.equal((await start()).action, 'create_session_allowed');
       assert.notEqual((await cycle()).reason_code, 'CYCLE_CREATE_SESSION_PR_OPEN');
@@ -2029,6 +2034,51 @@ async function qualifyExternalMerge(scenario) {
   assert.deepEqual(f.state.resolutionSends, []);
   replay(f);
   console.log(JSON.stringify({ verdict: 'PASS', scenario, instance_sha256: record.instance_sha256, revision: record.revision, audit }));
+}
+
+function prepareIncidentEvidenceFixture({ base, f, question, completionId, sessionId, git }) {
+  const { configuration: { target_root: targetRoot, instance_id: instanceId } } = json(path.join(base, 'configuration.json'));
+  const incidentId = standardPrIncidentId(question), tracker = path.join(targetRoot, 'docs/audit/incidents', incidentId + '.md');
+  fs.mkdirSync(path.dirname(tracker), { recursive: true });
+  const content = `incident_id: ${incidentId}\nseverity: L2_MEDIUM\nowner: fixture-human-external\nstatus: RESOLVED\nlifecycle_status: closed\nsession: ${sessionId}\n<!-- aidn:pr-incident-origin:${question.operation_id} -->\n`;
+  fs.writeFileSync(tracker, content);
+  const request = () => ({ instance_id: instanceId, incident_id: incidentId, incident_sha256: artifactContentHash(fs.readFileSync(tracker, 'utf8')) });
+  const read = extra => f.host.readPrIncidentClosureEvidence({ ...request(), ...extra });
+  assert.throws(() => read(), { code: 'STANDARD_PR_INCIDENT_COMPLETION_REQUIRED' });
+  assert.equal(git('status', '--porcelain=v1', '--untracked-files=all'), '', 'temporary tracker must not weaken or block R09 clean-source checks');
+  return () => {
+    const snapshot = () => ({ head: git('rev-parse', 'HEAD'), status: git('status', '--porcelain=v1', '--untracked-files=all'),
+      instance: shadowHash(f.inspect().record), tracker: artifactContentHash(fs.readFileSync(tracker, 'utf8')),
+      origin: shadowHash(f.host.readJournal(question.operation_id)), completion: shadowHash(f.host.readJournal(completionId)) });
+    const before = snapshot(), evidence = read();
+    assert.equal(evidence.incident_id, incidentId);
+    assert.equal(evidence.checkpoint_sha256, f.host.readJournal(question.operation_id).intent.instance_sha256);
+    assert.equal(evidence.resume_ref.sha256, shadowHash(f.host.readJournal(completionId).results.at(-1).receipt));
+    assert.equal(evidence.resolution_verified, true); assert.equal(evidence.resume_confirmed, true);
+    assert.equal(evidence.workflow_rules_changed, false); assert.equal(evidence.stop_observed, false);
+    assert.deepEqual(snapshot(), before, 'fixed evidence reader must not write');
+    assert.deepEqual(open(base).host.readPrIncidentClosureEvidence(request()), evidence, 'a fresh host must authenticate the same retained chain');
+    assert.throws(() => read({ resolution_verified: true }), { code: 'STANDARD_PR_INCIDENT_SOURCE_REQUIRED' });
+    assert.throws(() => read({ incident_sha256: 'f'.repeat(64) }), { code: 'STANDARD_PR_INCIDENT_SOURCE_REQUIRED' });
+    for (const changed of [content.replace('L2_MEDIUM', 'L3_HIGH'), content.replace(sessionId, 'S999999'),
+      content.replace(question.operation_id, completionId), content + `<!-- aidn:pr-incident-origin:${question.operation_id} -->\n`,
+      content.replace('status: RESOLVED', 'status: DEFERRED')]) {
+      fs.writeFileSync(tracker, changed);
+      assert.throws(() => read(), error => /^STANDARD_PR_INCIDENT_/.test(error.code));
+      fs.writeFileSync(tracker, content);
+    }
+    const rules = path.join(targetRoot, 'docs/audit/SPEC.md'), originalRules = fs.readFileSync(rules);
+    fs.appendFileSync(rules, '\nFixture rule drift.\n');
+    assert.throws(() => read(), { code: 'STANDARD_PR_INCIDENT_RULES_CHANGED' });
+    fs.writeFileSync(rules, originalRules);
+    const configFile = path.join(base, 'configuration.json'), configurationBytes = fs.readFileSync(configFile);
+    const clock = json(configFile); clock.clock_ms = question.expires_at_ms + 1; save(configFile, clock);
+    assert.deepEqual(open(base).host.readPrIncidentClosureEvidence(request()), evidence,
+      'an accepted historical question must not acquire a new preparation-age ceiling');
+    fs.writeFileSync(configFile, configurationBytes);
+    assert.deepEqual(snapshot(), before);
+    console.log('PASS: fixed private R10 reader authenticates accepted H and exact R09 chain; pending completion, forged lookup, severity/session/rule drift and JSON claims refuse; cold and historical reads are mutation-free (FILES, real local Git, signed fixture Human, doubled HTTPS).');
+  };
 }
 
 async function qualifyNominalConsent(prefix, choice, behavior = 'consent-session') {

@@ -76,6 +76,8 @@ const files = [
   "src/application/runtime/standard-session-pr-post-merge-fetch.mjs",
   "src/core/workflow/standard-pr-post-merge-fetch.mjs",
   "src/application/runtime/standard-session-pr-post-merge-completion.mjs",
+  "src/application/runtime/standard-pr-incident-evidence.mjs",
+  "src/core/contracts/workflow-definition/standard-incident-close-evidence.v1.schema.json",
   "src/application/runtime/standard-session-pr-post-merge-decision.mjs",
   "src/core/workflow/standard-pr-post-merge-decision.mjs",
   "src/core/contracts/workflow-definition/standard-pr-post-merge-question-recovery-plan.v1.schema.json",

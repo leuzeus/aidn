@@ -4999,9 +4999,24 @@ between trace writes and a foreign
 visible tracker are refused or retained without a false completed outcome. Result
 references include only canonically verified traces, including partial outcomes.
 The evidence/boundary callbacks are controlled;
-the production resolution/resume reader, published R10 route, live PostgreSQL,
+general resolution/resume source profiles, published R10 route, live PostgreSQL,
 genuine actors and installed archive remain separate unexecuted gates. This
 candidate is not yet registered in the complete agentic fixture manifest.
+
+`node tools/perf/verify-standard-pr-review-reply-fixtures.mjs
+--case=external-premerge --incident-evidence` and the same command with
+`--case=external-pretriage-session` exercise the fixed private R10 evidence reader
+through the actual operation host. These FILES scenarios use real local Git,
+signed fixture Human sources and doubled HTTPS. A tracker claiming RESOLVED
+cannot substitute for an accepted completion. The reader binds the exact Human
+origin, recorded checkpoint, canonical session, fetch/alignment and R09 completion
+receipts. Forged lookup data, JSON booleans, rule drift and severity/session
+changes refuse. Fresh host reconstruction and reading accepted history after
+the original question deadline leave Git, instance, tracker and journals unchanged.
+The fixture seeds the tracker explicitly; it does not execute an R10 record or
+resolve writer, closure mutation, high-severity recovery, Native actor or published
+incident route. DUAL/DB-only source-reader and exact archive qualification remain
+separate gates.
 
 The existing `verify-standard-post-merge-fetch-fixtures.mjs` consumes the source
 scaffold ignore asset. It proves that an unclassified TEMP tracker blocks actual

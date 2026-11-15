@@ -101,6 +101,18 @@ reported as incomplete, and unknown states retain the effect owner. This candida
 does not provide the production resolution/resume evidence reader, triage or
 published incident route, and its controlled fixtures do not qualify those gates.
 
+The fixed private `standard-pr-incident-evidence.mjs` reader supplies a first
+source profile for accepted L1/L2 external-merge dispositions followed by the
+matching accepted R09 completion. The operation host authenticates the retained
+Human source; the reader reconstructs the canonical session, fetch and alignment
+chain and compares the original SPEC/WORKFLOW pins with current canonical rules.
+The TEMP marker is a lookup key, bound to an incident identity derived from the
+original question and operation. It cannot establish resolution by itself.
+This read creates no tracker, resolution write, cleanup or published R10 route.
+Other incidents, high-severity recovery and rule changes still need their own
+authenticated source profiles. Existing historical question expiry is preserved;
+reading an accepted history adds no preparation-age ceiling.
+
 GFD adoption is scoped project policy, not a new runtime concept. The package
 source declaration and client opt-in compatibility boundary are documented in
 [GFD_ADOPTION.md](../GFD_ADOPTION.md). Proposed detection cannot become an

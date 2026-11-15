@@ -67,6 +67,8 @@ const files = [
   new URL("standard-session-pr-merge-execute.mjs", import.meta.url),
   new URL("standard-session-pr-post-merge-fetch.mjs", import.meta.url),
   new URL("standard-session-pr-post-merge-completion.mjs", import.meta.url),
+  new URL("standard-pr-incident-evidence.mjs", import.meta.url),
+  new URL("../../core/contracts/workflow-definition/standard-incident-close-evidence.v1.schema.json", import.meta.url),
   new URL("standard-post-merge-continuity.mjs", import.meta.url),
   new URL("../../adapters/runtime/standard-host-authority.mjs", import.meta.url),
   new URL("../../adapters/runtime/local-workflow-post-merge-fetch.mjs", import.meta.url),

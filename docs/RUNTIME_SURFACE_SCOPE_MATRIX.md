@@ -10,8 +10,16 @@ resume and trace evidence remain separate requirements for a future caller.
 The private incident closure candidate uses those existing canonical artifact
 and local owner/fence ports. Its closed preparation/evidence/result contracts add
 no shared store. Controlled evidence callbacks exercise persistence and cold
-partial completion only; production evidence authentication and published R10
+partial completion only; general production source profiles and published R10
 dispatch remain unimplemented. Explicit cleanup never changes SPEC/WORKFLOW.
+
+The fixed private PR incident evidence reader reuses the authenticated operation
+journal, Human inbox and canonical project artifacts. Its first profile joins an
+accepted L1/L2 external-merge disposition to the exact accepted R09 completion,
+including canonical session, fetch/alignment receipts and unchanged rule pins.
+The host exposes it as an internal read capability. It adds no store, writer,
+export, cleanup, shared method or authority. Other R10 source profiles, actual
+record/resolve dispatch and the published closure route remain unfinished.
 
 The initial and corrective STANDARD review waits share an authenticated event
 component. The pre-triage external merge uses the existing control inbox store
