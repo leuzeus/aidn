@@ -6620,6 +6620,16 @@ Genuine Native/Human, installed archive, unknown/unadmitted histories, general
 R10/handoff, complete productive STANDARD and full-plan acceptance remain due.
 
 
+## Cycle-close fixture cleanup path normalization
+
+`node tools/perf/verify-cycle-close-completion-fixtures.mjs` resolves its owned
+temporary clients and the selected temporary parent physically before cleanup.
+Windows TEMP values with forward slashes and normalized backslash client paths
+therefore name the same parent. Symlink clients, foreign parents and clients
+without the generated `aidn-close-completion-` prefix remain refused. The
+fixture’s original business assertions and child deadlines remain unchanged.
+
+
 ### Supervised Codex integration and context completion
 
 `perf:verify-codex-integration` and `perf:verify-context-completion` use declared

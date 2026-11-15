@@ -283,8 +283,10 @@ try {
   }
 } finally {
   for (const root of roots) {
-    assert(path.dirname(root) === os.tmpdir(), 'cleanup must remain within owned temporary roots');
-    const cleaned = removePathWithRetry(root); assert(cleaned.ok, cleaned.error?.message);
+    const physical = fs.realpathSync(root), temporary = fs.realpathSync(os.tmpdir());
+    assert(!fs.lstatSync(root).isSymbolicLink() && path.dirname(physical) === temporary
+      && path.basename(physical).startsWith('aidn-close-completion-'), 'cleanup must remain within owned temporary roots');
+    const cleaned = removePathWithRetry(physical); assert(cleaned.ok, cleaned.error?.message);
   }
   console.log('PASS cleanup: only owned temporary clients removed');
 }
