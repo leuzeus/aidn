@@ -6653,3 +6653,22 @@ Use `node tools/verify/verify-gate-catalog.mjs`,
 supervision checks, then run both original npm entry points for their full
 coverage. Policy checks alone do not prove the 34 product fixtures or genuine
 Native behavior.
+
+
+### Supervised context coordination
+
+`perf:verify-context-coordination` declares the same ordered 21 Node argv in
+`package/catalogs/context-coordination-fixtures.v1.json`. The existing supervisor
+records each command and its observed process closure without inventing an
+aggregate or per-case execution deadline. Explicit caller deadlines and all
+individual fixture/Native limits remain unchanged; ordinary single-command gates
+retain their existing default. The original 15-minute aggregate timeout remains
+a failed interrupted attempt, with business cleanup separately unproven.
+
+The independent context-resilience authority retains all 43 historical commands
+and its two explicit additions. Policy probes reject every omitted or duplicated
+coordination command, modified argv, substituted/nested dispatcher, lifecycle
+hook and repeated gate coverage. The manual wrapper retains the same four groups
+and ordering. Run the focused gate catalog, gate-runner and Node supervisor
+fixtures, then the actual npm coordination entry. Policy success alone does not
+qualify the 21 product commands or genuine actors.

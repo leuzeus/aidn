@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import codexIntegrationCases from "../../package/catalogs/codex-integration-fixtures.v1.json" with { type: "json" };
 import contextCompletionCases from "../../package/catalogs/context-completion-fixtures.v1.json" with { type: "json" };
+import contextCoordinationCases from "../../package/catalogs/context-coordination-fixtures.v1.json" with { type: "json" };
 import agenticProcessCases from "../../package/catalogs/agentic-process-fixtures.v1.json" with { type: "json" };
 import path from "node:path";
 import { parseDocument } from "yaml";
@@ -92,6 +93,7 @@ function candidateRejected({
   candidateAgenticFixtureManifest = agenticProcessCases,
   candidateCodexIntegrationFixtureManifest = codexIntegrationCases,
   candidateContextCompletionFixtureManifest = contextCompletionCases,
+  candidateContextCoordinationFixtureManifest = contextCoordinationCases,
 }) {
   const syntaxIssues = candidateWorkflowSources.flatMap((source) => (
     validateWorkflowYamlSyntax(source.text, source.path)
@@ -106,6 +108,7 @@ function candidateRejected({
     agenticFixtureManifest: candidateAgenticFixtureManifest,
     codexIntegrationFixtureManifest: candidateCodexIntegrationFixtureManifest,
     contextCompletionFixtureManifest: candidateContextCompletionFixtureManifest,
+    contextCoordinationFixtureManifest: candidateContextCoordinationFixtureManifest,
   }).length > 0 || syntaxIssues.length > 0;
 }
 
@@ -213,11 +216,12 @@ for (const requiredToken of [
   }
 }
 
-// The two supervised coordinators retain independent frozen command authorities.
+// The three supervised Codex coordinators retain independent frozen command authorities.
 const compoundManifestProbes = {};
 for (const [name, baseline, property, script] of [
   ["codex_integration", codexIntegrationCases, "codexIntegrationFixtureManifest", "perf:verify-codex-integration"],
   ["context_completion", contextCompletionCases, "contextCompletionFixtureManifest", "perf:verify-context-completion"],
+  ["context_coordination", contextCoordinationCases, "contextCoordinationFixtureManifest", "perf:verify-context-coordination"],
 ]) {
   const probe = mutate => {
     const candidate = { catalog: clone(catalog), packageJson: clone(packageJson), workflowModels, [property]: clone(baseline) };
@@ -272,7 +276,8 @@ substitutedScriptCatalog.gates.find((gate) => gate.id === "runtime-db-runtime-cl
 // Positive nested npm coverage must pass, while omissions and duplicates must
 // fail on their own policy reason rather than on an unrelated workflow error.
 function contextPolicyProbe(mutate) {
-  const candidate = { catalog: clone(catalog), packageJson: clone(packageJson), contextCompletionFixtureManifest: clone(contextCompletionCases) };
+  const candidate = { catalog: clone(catalog), packageJson: clone(packageJson), contextCompletionFixtureManifest: clone(contextCompletionCases),
+    contextCoordinationFixtureManifest: clone(contextCoordinationCases) };
   mutate(candidate);
   return validateContextResiliencePolicy(candidate);
 }
@@ -287,9 +292,6 @@ function nestFirstContextInvocation(candidate, duplicate = false, group = admiss
 }
 const contextPositiveProbes = {
   historical_invocations_and_explicit_additions_preserved: contextPolicyProbe(() => {}).length === 0,
-  agent_reuse_addition_equivalent_transitive_accepted: contextPolicyProbe((candidate) => {
-    nestFirstContextInvocation(candidate, false, coordinationGroup);
-  }).length === 0,
   equivalent_transitive_invocation_accepted: contextPolicyProbe((candidate) => {
     nestFirstContextInvocation(candidate);
   }).length === 0,
@@ -298,34 +300,41 @@ for (const [probe, passed] of Object.entries(contextPositiveProbes)) {
   if (!passed) issues.push(`context resilience positive probe failed: ${probe}`);
 }
 const contextNegativeProbes = {
-  context_agent_reuse_omission_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
-    candidate.scripts[coordinationGroup] = candidate.scripts[coordinationGroup].split(" && ")
-      .filter((command) => command !== reuseInvocation).join(" && ");
+  context_coordination_nested_dispatcher_rejected: contextPolicyProbe((candidate) => {
+    nestFirstContextInvocation(candidate, false, coordinationGroup);
+  }).some((issue) => issue.includes("declared fixture manifest or dispatcher changed")),
+  context_agent_reuse_omission_rejected: contextPolicyProbe((candidate) => {
+    candidate.contextCoordinationFixtureManifest.cases = candidate.contextCoordinationFixtureManifest.cases
+      .filter((args) => "node " + args.join(" ") !== reuseInvocation);
   }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
-  context_agent_reuse_duplicate_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
-    candidate.scripts[coordinationGroup] += ` && ${reuseInvocation}`;
+  context_agent_reuse_duplicate_rejected: contextPolicyProbe((candidate) => {
+    candidate.contextCoordinationFixtureManifest.cases.push(reuseInvocation.split(" ").slice(1));
   }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
-  context_agent_reuse_argument_change_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
-    candidate.scripts[coordinationGroup] = candidate.scripts[coordinationGroup].replace(reuseInvocation, `${reuseInvocation} --json`);
+  context_agent_reuse_argument_change_rejected: contextPolicyProbe((candidate) => {
+    candidate.contextCoordinationFixtureManifest.cases[0].push("--json");
   }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
-  context_agent_reuse_position_change_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
-    const commands = candidate.scripts[coordinationGroup].split(" && ");
-    commands.push(commands.shift()); candidate.scripts[coordinationGroup] = commands.join(" && ");
+  context_agent_reuse_position_change_rejected: contextPolicyProbe((candidate) => {
+    const commands = candidate.contextCoordinationFixtureManifest.cases;
+    commands.push(commands.shift());
   }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
   context_every_invocation_omission_rejected: ["admission", "completion", "coordination", "projection"].every((name) => {
     const script = `perf:verify-context-${name}`;
-    const commands = name === "completion" ? contextCompletionCases.cases : packageJson.scripts[script].split(" && ");
+    const commands = name === "completion" ? contextCompletionCases.cases
+      : name === "coordination" ? contextCoordinationCases.cases : packageJson.scripts[script].split(" && ");
     return commands.every((_, index) => contextPolicyProbe((candidate) => {
       const retained = commands.filter((_, position) => position !== index);
       if (name === "completion") candidate.contextCompletionFixtureManifest.cases = retained;
+      else if (name === "coordination") candidate.contextCoordinationFixtureManifest.cases = retained;
       else candidate.packageJson.scripts[script] = retained.join(" && ");
     }).some((issue) => issue.includes("ordered invocation coverage or argv changed")));
   }),
   context_every_invocation_duplicate_rejected: ["admission", "completion", "coordination", "projection"].every((name) => {
     const script = `perf:verify-context-${name}`;
-    const commands = name === "completion" ? contextCompletionCases.cases : packageJson.scripts[script].split(" && ");
+    const commands = name === "completion" ? contextCompletionCases.cases
+      : name === "coordination" ? contextCoordinationCases.cases : packageJson.scripts[script].split(" && ");
     return commands.every((command) => contextPolicyProbe((candidate) => {
       if (name === "completion") candidate.contextCompletionFixtureManifest.cases = [...commands, command];
+      else if (name === "coordination") candidate.contextCoordinationFixtureManifest.cases = [...commands, command];
       else candidate.packageJson.scripts[script] = [...commands, command].join(" && ");
     }).some((issue) => issue.includes("ordered invocation coverage or argv changed")));
   }),

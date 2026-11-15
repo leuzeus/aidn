@@ -312,7 +312,8 @@ export function runGateFamily({
         timeoutMs: timeoutMs === undefined
           ? ((gate.id === "runtime-agentic-process" && gate.script === "perf:verify-agentic-process")
             || (gate.id === "codex-integration-lifecycle" && gate.script === "perf:verify-codex-integration")
-            || (gate.id === "codex-context-completion" && gate.script === "perf:verify-context-completion")) ? null : 900000
+            || (gate.id === "codex-context-completion" && gate.script === "perf:verify-context-completion")
+             || (gate.id === "codex-context-coordination" && gate.script === "perf:verify-context-coordination")) ? null : 900000
           : timeoutMs,
         maxBuffer,
       });

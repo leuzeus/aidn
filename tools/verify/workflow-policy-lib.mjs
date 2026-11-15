@@ -395,8 +395,9 @@ export function validateGateAndWorkflowPolicy({
   agenticFixtureManifest = agenticProcessCases,
   codexIntegrationFixtureManifest = codexIntegrationCases,
   contextCompletionFixtureManifest,
+  contextCoordinationFixtureManifest,
 }) {
-  const issues = validateContextResiliencePolicy({ catalog, packageJson, contextCompletionFixtureManifest });
+  const issues = validateContextResiliencePolicy({ catalog, packageJson, contextCompletionFixtureManifest, contextCoordinationFixtureManifest });
   const gates = Array.isArray(catalog?.gates) ? catalog.gates : [];
   const gateById = new Map();
   const gateByScript = new Map();
