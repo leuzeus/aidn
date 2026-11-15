@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
 import { readPackageTarball } from "../lib/release-package-tar.mjs";
+
+const execFileAsync = promisify(execFile);
 
 function snapshot(root) {
   const hash = crypto.createHash("sha256");
@@ -47,19 +50,25 @@ export async function qualifyWorkflowPackage({ tarball, root, descriptors }) {
     assert.deepEqual(compileShadowWorkflow(definition, context), result);
   }
   passed.push("packaged registry compiles both macro descriptors deterministically");
-  const cli = (command, args = []) => {
-    const result = spawnSync(process.execPath, [path.join(packageRoot, "bin/aidn.mjs"), "runtime", command, "--target", target, "--json", ...args],
-      { cwd: root, encoding: "utf8", windowsHide: true, timeout: 30000, maxBuffer: 5 * 1024 * 1024 });
-    assert.equal(result.error, undefined, result.error?.message);
-    // Refused actions use a nonzero CLI exit; the contracted envelope is checked below.
-    assert([0, 1].includes(result.status), result.stderr);
+  const cli = async (command, args = []) => {
+    let result;
+    try {
+      result = { status: 0, ...await execFileAsync(process.execPath,
+        [path.join(packageRoot, "bin/aidn.mjs"), "runtime", command, "--target", target, "--json", ...args],
+        { cwd: root, encoding: "utf8", windowsHide: true, timeout: 30000, maxBuffer: 5 * 1024 * 1024 }) };
+    } catch (error) {
+      // Refused actions use exit 1; launch errors, timeout and signals still fail.
+      assert.equal(error.code, 1, error.message);
+      assert.equal(Boolean(error.signal || error.killed), false, error.message);
+      result = { status: 1, stdout: error.stdout, stderr: error.stderr };
+    }
     const output = JSON.parse(result.stdout);
     assert.equal(result.status, output.errors.length ? 1 : 0, result.stderr);
     return output;
   };
   fs.mkdirSync(target); const empty = snapshot(target);
-  assert(cli("workflow-inspect").view.admission.blockers.includes("WORKFLOW_INSTANCE_ACTIVATION_REQUIRED"));
-  assert.equal(cli("workflow-dashboard").listening, false);
+  assert((await cli("workflow-inspect")).view.admission.blockers.includes("WORKFLOW_INSTANCE_ACTIVATION_REQUIRED"));
+  assert.equal((await cli("workflow-dashboard")).listening, false);
   assert.equal(snapshot(target), empty);
   passed.push("packaged CLI inspection and dashboard preview preserve an uninstalled target");
 
@@ -73,14 +82,18 @@ export async function qualifyWorkflowPackage({ tarball, root, descriptors }) {
   let server = await startWorkflowDashboard({ targetRoot: target });
   const api = async (route, body, extraHeaders = {}) => {
     const response = await fetch(server.url + "/api/" + route, { method: "POST", headers: { Origin: server.url,
-      "Content-Type": "application/json", Authorization: "Bearer " + server.token, ...extraHeaders }, body: JSON.stringify(body) });
+      "Content-Type": "application/json", Authorization: "Bearer " + server.token, ...extraHeaders }, body: JSON.stringify(body) }).catch(cause => {
+        throw new Error(`packaged workflow HTTP request failed ${JSON.stringify({
+          route, operation: body?.request?.operation ?? null, cause_code: cause.cause?.code ?? null,
+        })}`, { cause });
+      });
     return response;
   };
   const action = async (request, flags = {}) => (await api("action", { request, ...flags })).json();
   const requestFile = path.join(root, "request.json");
   const preview = async request => {
     put(requestFile, request); const before = snapshot(target);
-    const result = cli("workflow-action", ["--request", requestFile]);
+    const result = await cli("workflow-action", ["--request", requestFile]);
     assert.deepEqual(await action(request), result); assert.equal(snapshot(target), before);
     assert.deepEqual(result.errors, []); return result;
   };
@@ -103,7 +116,7 @@ export async function qualifyWorkflowPackage({ tarball, root, descriptors }) {
     const decision = { operation: "decide", input: { instanceId: "initial", expectedSha256: initial.instance_sha256, outcome: "rejected", evidence } };
     const terminal = await apply(decision); assert.equal(terminal.cursor.terminal_result, "stopped");
     const retained = snapshot(target);
-    const replay = cli("workflow-action", ["--request", requestFile]);
+    const replay = await cli("workflow-action", ["--request", requestFile]);
     assert(replay.errors.includes("WORKFLOW_INSTANCE_REVISION_CONFLICT")); assert.equal(snapshot(target), retained);
     passed.push("CLI and HTTP agree on pure previews; stale approval and checkpoint replay refuse");
 
@@ -118,10 +131,10 @@ export async function qualifyWorkflowPackage({ tarball, root, descriptors }) {
     const future = { operation: "initialize-selected", input: { engine: "legacy", workflowId: definition.workflow_id, instanceId: "future", expectedSelectionSha256: selected.selection.selection_sha256 } };
     const initialized = await apply(future);
     assert.equal(initialized.instance.definition.revision, candidate.revision);
-    assert.equal(cli("workflow-inspect").view.instances.find(row => row.instance_id === "initial").definition.revision, definition.revision);
+    assert.equal((await cli("workflow-inspect")).view.instances.find(row => row.instance_id === "initial").definition.revision, definition.revision);
     server.close(); server = await startWorkflowDashboard({ targetRoot: target });
     const restarted = snapshot(target);
-    const inspection = cli("workflow-inspect"); assert.deepEqual(await (await api("inspect", {})).json(), inspection);
+    const inspection = (await cli("workflow-inspect")); assert.deepEqual(await (await api("inspect", {})).json(), inspection);
     assert.equal(inspection.view.selections[0].definitions.length, 2); assert.equal(snapshot(target), restarted);
     passed.push("reviewed selection initializes only future instances and survives CLI/HTTP reopen");
 
@@ -133,10 +146,10 @@ export async function qualifyWorkflowPackage({ tarball, root, descriptors }) {
       context: { ...context, product_version: historical.compatibility.product_version }, scope: readWorkflowProjectAuthority({ targetRoot: target }).scope });
     put(path.join(target, "docs/audit/workflows/instances/historical.json"), old);
     const historicalBefore = snapshot(target);
-    const view = cli("workflow-inspect").view.instances.find(row => row.instance_id === "historical");
+    const view = (await cli("workflow-inspect")).view.instances.find(row => row.instance_id === "historical");
     assert(view.blockers.includes("WORKFLOW_INSTANCE_AUTHORITY_CHANGED"));
     put(requestFile, { operation: "decide", input: { instanceId: "historical", expectedSha256: old.instance_sha256, outcome: "rejected", evidence } });
-    const refused = cli("workflow-action", ["--request", requestFile, "--write", "--expect-plan", "0".repeat(64)]);
+    const refused = await cli("workflow-action", ["--request", requestFile, "--write", "--expect-plan", "0".repeat(64)]);
     assert(refused.errors.includes("WORKFLOW_INSTANCE_CONTEXT_CHANGED")); assert.equal(snapshot(target), historicalBefore);
     passed.push("historical product-version instance remains readable and refuses productive writes without migration");
 

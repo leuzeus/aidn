@@ -3876,6 +3876,10 @@ actual build CLI against a disposable Git commit with empty and binary files,
 duplicate blob identities, spaces, tabs, newlines and Unicode in names; foreign
 working-tree and untracked content must stay unchanged and outside the package.
 Nested build failures preserve exit status, signal and system error code.
+Packaged workflow qualification awaits its CLI children so the local HTTP
+server remains responsive during each command. All eight CLI call sites retain their
+arguments, order, refusal envelopes and 30000 ms limit. HTTP failures retain the
+route, operation and transport error code; each request keeps one attempt.
 The two clean-commit builds, archive/topology comparisons and installed workflow
 qualification remain mandatory. A faster blob read alone is not a complete
 build, installed-client or Native qualification result.
