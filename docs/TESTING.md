@@ -1563,7 +1563,8 @@ do not transfer historical results to this revised model.
 The private actual-host R10 cleanup extension is selected with
 `node tools/perf/verify-standard-pr-review-reply-fixtures.mjs
 --case=external-premerge --incident-cleanup` or
-`--case=external-pretriage-session --incident-cleanup`. It adds the registered
+`--case=external-pretriage-session --incident-cleanup`. Both selectors are
+required cases in the agentic fixture catalogue. They add the registered
 record/resolve/close bindings only to fixture copies of the published targets.
 The source is signed fixture Human evidence, Git is real and HTTPS is doubled;
 Native and published R10 routing remain NOT_RUN. A successful case must prove
