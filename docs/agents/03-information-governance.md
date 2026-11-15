@@ -87,6 +87,15 @@ heads, and does not remove visible projections. It supplies no incident executor
 resolution, authorization where required, confirmed resume and a retained concise
 trace must be established separately before any caller invokes cleanup.
 
+The private `standard-incident-closure.mjs` candidate consumes fixed trusted
+evidence and boundary capabilities. It requires a resolved canonical tracker,
+observed STOP for L3/L4 and an authorization witness for actual rule changes.
+It writes concise session and snapshot traces before deleting the exact tracker;
+cold application retains verified partial progress. Known partial completion is
+reported as incomplete, and unknown states retain the effect owner. This candidate
+does not provide the production resolution/resume evidence reader, triage or
+published incident route, and its controlled fixtures do not qualify those gates.
+
 GFD adoption is scoped project policy, not a new runtime concept. The package
 source declaration and client opt-in compatibility boundary are documented in
 [GFD_ADOPTION.md](../GFD_ADOPTION.md). Proposed detection cannot become an

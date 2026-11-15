@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-incident-close-result.v1",
+  "title": "standard-incident-close-result.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "outcome",
+    "effect_status",
+    "incident_id",
+    "plan_sha256",
+    "facts",
+    "committed",
+    "reason_code",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-incident-close-result.v1"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "incomplete",
+        "reconciliation_required"
+      ]
+    },
+    "effect_status": {
+      "enum": [
+        "confirmed",
+        "no_effect",
+        "unknown"
+      ]
+    },
+    "incident_id": {
+      "type": "string",
+      "pattern": "^INC-TMP-[0-9]{8}-[0-9]{6}-[A-Za-z0-9][A-Za-z0-9_-]{0,95}$"
+    },
+    "plan_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "incident_tracking_removed": {
+          "const": true
+        },
+        "incident_resume_confirmed": {
+          "const": true
+        }
+      }
+    },
+    "committed": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2048
+      }
+    },
+    "reason_code": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

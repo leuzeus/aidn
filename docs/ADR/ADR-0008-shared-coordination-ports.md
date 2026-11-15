@@ -144,6 +144,16 @@ a second deletion. Visible projections, lifecycle authorization, resolution,
 resume and trace retention remain the caller's responsibility. This primitive
 adds no public command, incident executor, shared coordination data or migration.
 
+A private incident closure candidate composes the artifact port with the existing
+local owner/fence. Its fixed-host evidence and boundary capabilities must bind
+the verified resolution, original checkpoint, accepted resume and any required
+rule authorization; authored input supplies none of those capabilities. Prepared
+session/snapshot traces precede canonical deletion. Exact before/after states
+permit confirmed incomplete progress and cold completion; unknown states retain
+the owner. Production evidence authentication and published R10 dispatch are
+separate unfinished integration work. Controlled persistence fixtures establish
+neither those authorities nor real incident resolution.
+
 In 0.10.12, targeted commands use the same ordered identity resolution as
 canonical snapshot reads: existing `runtime_scope_id` metadata takes precedence
 over the legacy absolute-path alias. Their coexistence after adoption is not

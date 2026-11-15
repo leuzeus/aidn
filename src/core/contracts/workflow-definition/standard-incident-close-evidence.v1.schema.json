@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-incident-close-evidence.v1",
+  "title": "standard-incident-close-evidence.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "incident_id",
+    "scope_id",
+    "instance_id",
+    "instance_sha256",
+    "checkpoint_sha256",
+    "resolution_verified",
+    "resolution_ref",
+    "resume_confirmed",
+    "resume_ref",
+    "stop_observed",
+    "workflow_rules_changed",
+    "rule_authorization",
+    "incident_sha256"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-incident-close-evidence.v1"
+    },
+    "incident_id": {
+      "type": "string",
+      "pattern": "^INC-TMP-[0-9]{8}-[0-9]{6}-[A-Za-z0-9][A-Za-z0-9_-]{0,95}$"
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "instance_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "instance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "checkpoint_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "resolution_verified": {
+      "const": true
+    },
+    "resolution_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ref",
+        "sha256"
+      ],
+      "properties": {
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "resume_confirmed": {
+      "const": true
+    },
+    "resume_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ref",
+        "sha256"
+      ],
+      "properties": {
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "stop_observed": {
+      "type": "boolean"
+    },
+    "workflow_rules_changed": {
+      "type": "boolean"
+    },
+    "rule_authorization": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ref",
+            "sha256"
+          ],
+          "properties": {
+            "ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "incident_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

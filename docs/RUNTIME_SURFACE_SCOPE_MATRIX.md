@@ -7,6 +7,12 @@ cycle artifacts and runtime heads are protected. It adds no public CLI, incident
 executor, shared data, migration or visible-file cleanup. SPEC-R10 resolution,
 resume and trace evidence remain separate requirements for a future caller.
 
+The private incident closure candidate uses those existing canonical artifact
+and local owner/fence ports. Its closed preparation/evidence/result contracts add
+no shared store. Controlled evidence callbacks exercise persistence and cold
+partial completion only; production evidence authentication and published R10
+dispatch remain unimplemented. Explicit cleanup never changes SPEC/WORKFLOW.
+
 The initial and corrective STANDARD review waits share an authenticated event
 component. The pre-triage external merge uses the existing control inbox store
 with a signed occurrence reservation and a provider capture v3. The existing

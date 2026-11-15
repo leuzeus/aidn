@@ -4983,6 +4983,21 @@ canonical scope selection, table-before-scope reservations, parameterized target
 deletion and rollback requests. These checks do not qualify live PostgreSQL or
 the R10 resolution, confirmed-resume and retained-trace executor.
 
+`node tools/perf/verify-standard-incident-closure-fixtures.mjs --mode=files|dual|db-only`
+exercises the private closure candidate with actual local ownership/fences,
+filesystem or SQLite authority, exact metadata revisions, two retained traces,
+canonical deletion and visible projection cleanup. Controlled losses after one
+trace and after canonical deletion resume without a duplicate trace. Tests also
+cover unresolved/deferred tracking, L3 STOP/rule authorization, explicit intent,
+revocation and stale preimages. Forged evidence, metadata conflicts, revocation
+between trace writes and a foreign
+visible tracker are refused or retained without a false completed outcome. Result
+references include only canonically verified traces, including partial outcomes.
+The evidence/boundary callbacks are controlled;
+the production resolution/resume reader, published R10 route, live PostgreSQL,
+genuine actors and installed archive remain separate unexecuted gates. This
+candidate is not yet registered in the complete agentic fixture manifest.
+
 Record offline/source-install, real native, live PostgreSQL and exact installed
 archive outcomes separately. Governance completeness does not establish complete
 standard-workflow execution. Session report/write/checkpoint/final hook and the
