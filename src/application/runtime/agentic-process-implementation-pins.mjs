@@ -6,6 +6,10 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 // their separately retained build-lock/installed-version pins. npm distributions
 // exclude package-lock.json; direct code pins must use distributed assets only.
 const files = [
+  "src/application/runtime/native-reconciliation-history.mjs",
+  "src/application/runtime/standard-native-allocation-reconciliation.mjs",
+  "src/core/workflow/native-allocation-reconciliation-record.mjs",
+  "src/core/contracts/workflow-definition/native-allocation-reconciliation-record.v1.schema.json",
   "src/core/workflow/native-allocation-reconciliation.mjs",
   "src/core/contracts/workflow-definition/native-allocation-reconciliation-request.v1.schema.json",
   "src/core/contracts/workflow-definition/native-allocation-reconciliation-grant.v1.schema.json",

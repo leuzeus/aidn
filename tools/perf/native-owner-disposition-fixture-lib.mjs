@@ -64,7 +64,7 @@ async function main() {
   if (action === 'verify') { console.log(JSON.stringify(await verifyNativeOwnerDispositionFixture(first, { boundaries: process.argv.includes('--boundaries') }))); return; }
   if (action === 'produce') {
     const operatorHome = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aidn-native-disposition-authority-'));
-    const f = await createNativeAllocationAssessmentFixture(first, { protectedHome: operatorHome, parentClosed: option('profile') !== 'open-parent' });
+    const f = await createNativeAllocationAssessmentFixture(first, { protectedHome: operatorHome, parentClosed: option('profile') !== 'open-parent', retainAuthorization: option('profile') === 'reconciliation' });
     const data = { mode: first, root: f.root, private_root: f.privateRoot, operator_home: operatorHome, configuration: f.configuration, model: f.model, input: f.input,
       original_dispatch_sha256: f.artifacts.read('workflows/native-dispatches/' + f.dispatch.dispatch_id + '.json').sha256,
       original_journal_sha256: f.artifacts.read('workflows/native-allocations/' + f.journalId + '.json').sha256 };
@@ -181,4 +181,15 @@ export async function verifyNativeOwnerDispositionFixture(mode, { boundaries = f
 if (process.argv[1] && path.resolve(process.argv[1]) === script) {
   try { await main(); } catch (error) { console.error(JSON.stringify({ code: error.code ?? error.name, message: error.message, frames: String(error.stack).split('\n').slice(1, 5) })); process.exitCode = 1; }
   finally { if (process.connected) process.disconnect(); }
+}
+
+// Shared arranger for the separate reconciliation fixture. It uses the same
+// actual exited producer and protected owner-retirement path, with a committed
+// original finite-authorization preimage instead of the older hash-only double.
+export function createRetiredNativeOwnerReconciliationFixture(mode, proofRoot, name) {
+  const file = path.join(proofRoot, name + '-owner-fixture.json'), plan = path.join(proofRoot, name + '-owner-plan.json');
+  worker(['produce', mode, file, 'profile=reconciliation']); worker(['prepare', file, plan]);
+  const result = worker(['apply', file, plan]); assert.equal(result.status, 'owner_retirement_confirmed');
+  const data = JSON.parse(fs.readFileSync(file, 'utf8')); snapshotOriginal(data);
+  return { file, plan, data, owner_receipt: result.receipt };
 }

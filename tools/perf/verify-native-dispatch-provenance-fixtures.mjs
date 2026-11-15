@@ -184,8 +184,11 @@ if (contractsOnly) {
   const { verifyNativeOwnerDispositionFixture } = await import("./native-owner-disposition-fixture-lib.mjs");
   const ownerDisposition = await verifyNativeOwnerDispositionFixture(mode, { boundaries: mode === "files" });
   console.log("PASS " + mode + " exact Native owner retirement, cold replay and preserved original failure"); checks++;
+  const { verifyNativeReconciliationProducerFixture } = await import('./native-reconciliation-producer-fixture-lib.mjs');
+  const allocationReconciliation = await verifyNativeReconciliationProducerFixture(mode, { boundaries: mode === 'files' });
+  console.log('PASS ' + mode + ' Native reconciliation preimage, exact sources, confirmed history and separate epoch'); checks++;
   // Retain owned fixtures, including every expected UNKNOWN owner. Cleanup is a
   // separate recovery operation; a successful assertion cannot retire a lock.
-  console.log(JSON.stringify({ ok: true, checks, mode, results, allocation_assessment: allocationAssessment, owner_disposition: ownerDisposition, retained_roots: owned, authority: 'REAL_COMMON_OWNER_PORT',
+  console.log(JSON.stringify({ ok: true, checks, mode, results, allocation_assessment: allocationAssessment, owner_disposition: ownerDisposition, allocation_reconciliation: allocationReconciliation, retained_roots: owned, authority: 'REAL_COMMON_OWNER_PORT',
     action_results: 'CONTROLLED_NO_NATIVE_EXECUTION', Native_calls: 0, actual_crash_process: 'NOT_RUN', genuine_native: 'NOT_RUN', full_standard: false }));
 }

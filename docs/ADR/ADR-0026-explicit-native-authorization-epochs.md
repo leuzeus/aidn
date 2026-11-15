@@ -461,12 +461,62 @@ The v4 revision bound is 128: one origin transition plus at most 32 reservations
 and execution ceilings remain unchanged. V1-v3 schemas and readers retain
 their historical behavior; reading never converts or writes a journal.
 
-This prerequisite adds data readers, not a reconciliation producer. No trusted
-source capture, durable CAS writer, Native execution admission, public action,
-post-assignment effect reconciliation or resource termination is supplied here.
-A host MAC alone authenticates none of those observations. Current execution
-exclusion remains in force. Independent source verification, current-state
-fencing and explicit writes must precede any real v4 creation; a new finite
-Native grant and the common workflow/business admissions remain separate.
+The reader prerequisite alone supplies no producer or execution permission.
+The runtime candidate below connects independent source verification, current
+state fencing and explicit writes to those readers. A host MAC alone supplies
+none of the external observations; a new finite Native grant and the common
+workflow/business admissions remain separate. Public entry, post-assignment
+resolution and genuine resource termination are not supplied by these readers.
 Pure fixture grants and closure claims are synthetic. General R10/handoff,
 full STANDARD, genuine Native and installed qualification remain unfinished.
+
+## Native no-assignment reconciliation producer candidate, 2026-11-14
+
+The fixed operation and mixed hosts expose private prepare/apply/read ports.
+Preparation is read-only and binds the current signed inventory, failed
+allocation and original dispatch/checkpoint, current prefix/configuration/root
+and confirmed old-owner retirement witness. Application requires exact write
+intent, the request digest, a separate protected local-operator permission and
+independently authenticated Native scope closure and final accounting through
+the existing native-renewal principal. Neither JSON, the host MAC, a closed
+checkpoint, PID absence nor an old Native grant supplies that source.
+
+A Native allocation-journal subrecord at
+`workflows/native-allocation-reconciliations/<journal>_g<generation>.json`
+retains the exact signed preimage and content digest, bounded ordered attempts,
+proposed v4 journals, operator grants, source verification, process-creation
+identities and fence intentions/leases. Intent precedes acquisition. The
+canonical v4 CAS retains the old allocation and failed phase, original
+authorization/deadlines, and all earlier response/storage debits. A separately
+retained commit witness precedes fence-release acknowledgement. Cold recovery
+requires the exact former creator to be terminated and the fence to match a
+retained intention or lease. An already committed proposal keeps its exact
+receipt and is acknowledged without repeating the Native journal CAS.
+
+Active history requires the confirmed canonical audit, exact preimage/proposal
+and receipt links, and the old signed owner/dispatch plus physical archive
+witness. A typed v4 receipt alone remains insufficient. A later legitimate
+writer may own effects.lock; the historical check observes the retained old
+archive separately. The common authority, allocator, worker history, epoch
+ports and reconciliation inventory use that confirmed history. Inventory keeps
+original failed consumption and reports the separately reconciled final debit.
+All seven independent-discovery gaps and false global-closure/effect flags stay
+explicit. Later Native execution needs a distinct finite epoch after
+reconciliation and every normal business/worker admission remains required.
+The epoch preserves v4 and reports the original failed phase; authorizing a
+new budget does not itself allocate a Native worker.
+
+Before recording intent, the writer projects the complete final audit, Native
+journal and released fence against the existing 1 MiB artifact and 16 MiB
+inventory read bounds. Unreadable history refuses before intent/CAS; no proof
+is dropped, budget reset or automatic purge performed. Authority is rechecked
+after observations immediately before audit writes. Preparation has no new
+age ceiling; original issuer expiry and the existing five-second authority
+call timeout remain. The namespace reuses the configured canonical artifact
+CAS, projection and import protections and adds no backend, table or principal.
+
+This source candidate covers no assignment only. Post-assignment uncertain
+effects, public Native entry actions, general R10/handoff, complete STANDARD,
+genuine Native and exact installed-archive qualification remain separate.
+Fixture source signatures and physical/CAS ports are real, while Native
+closure and epoch consent are synthetic and no model is called.

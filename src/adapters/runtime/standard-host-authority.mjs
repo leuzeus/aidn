@@ -1,3 +1,4 @@
+import { assertNativeReconciliationRequest } from "../../core/workflow/native-allocation-reconciliation.mjs";
 import { assertNativeOwnerDispositionRequest } from "../../core/workflow/native-owner-disposition.mjs";
 import { externalMergeQuestionVersion } from "../../core/workflow/standard-pr-external-merge.mjs";
 import { mergeConsentQuestionVersion } from "../../core/workflow/standard-pr-merge-consent.mjs";
@@ -117,7 +118,7 @@ export function createStandardHostAuthority({ configuration, environment = proce
         ...(mergeConsent ? { grant_sha256: shadowHash(envelope) } : {}),
         ...(mergeConsent || resolutionException ? { grant_expires_at_ms: envelope.expires_at_ms } : {}) };
     };
-    return Object.freeze({ read, verify: check });
+    return Object.freeze({ read, verify: check, ...(kind === 'native-renewal' ? { assertCurrent(input) { check(input); } } : {}) });
   }
   function dispositionGrant(request, permit, issuedAt, legacy = false) {
     if (!permit || !["operation_disposition", "operation_disposition_accept"].includes(request.action) || request.action !== permit.action
@@ -152,7 +153,33 @@ export function createStandardHostAuthority({ configuration, environment = proce
       evidence_refs: [{ ref: "standard:explicit-native-owner-disposition", sha256: permit.action_sha256 }] };
     return { ...body, grant_sha256: createHmac("sha256", readKey()).update(shadowHash(body)).digest("hex") };
   }
+  function nativeReconciliationGrant(request, permit, issuedAt, legacy = false) {
+    assertNativeReconciliationRequest(request);
+    if (!exact(permit, ['action', 'key_id', 'trust_sha256', 'action_sha256', 'subject_sha256', 'scope_id', 'instance_sha256'])
+      || permit.action !== 'native_allocation_reconcile' || !/^[a-f0-9]{64}$/.test(permit.key_id ?? '')
+      || !/^[a-f0-9]{64}$/.test(permit.trust_sha256 ?? '') || keyId() !== permit.key_id || trustSha() !== permit.trust_sha256
+      || !/^[a-f0-9]{64}$/.test(permit.action_sha256 ?? '') || shadowHash(request) !== permit.subject_sha256
+      || request.scope_id !== permit.scope_id || request.instance_sha256 !== permit.instance_sha256
+      || request.instance_id !== configuration.instance_id || request.configuration_sha256 !== shadowHash(configuration))
+      fail('STANDARD_HOST_EXACT_NATIVE_RECONCILIATION_REQUIRED');
+    const body = { contract_version: legacy ? 'process-disposition-authorization-grant.v1' : 'process-disposition-authorization-grant.v2',
+      authority_id: 'standard_local_operator', authorized: true, request_sha256: shadowHash(request),
+      principal_sha256: shadowHash({ host: keyId(), transport: 'explicit-native-allocation-reconciliation' }), observed_at_ms: issuedAt,
+      ...(legacy ? { expires_at_ms: issuedAt + 60000 } : {}),
+      evidence_refs: [{ ref: 'standard:explicit-native-allocation-reconciliation', sha256: permit.action_sha256 }] };
+    return { ...body, grant_sha256: createHmac('sha256', readKey()).update(shadowHash(body)).digest('hex') };
+  }
   return Object.freeze({ home, keyId, readKey, ensureKey, trustSha, githubProvider,
+    authorizeNativeReconciliation: (request, permit) => nativeReconciliationGrant(request, permit, Date.now()),
+    verifyNativeReconciliation(request, grant, permit) {
+      const legacy = grant?.contract_version === 'process-disposition-authorization-grant.v1';
+      if (!['process-disposition-authorization-grant.v1', 'process-disposition-authorization-grant.v2'].includes(grant?.contract_version)
+        || !Number.isSafeInteger(grant.observed_at_ms) || grant.observed_at_ms < 0 || grant.observed_at_ms > Date.now()
+        || legacy && grant.expires_at_ms <= Date.now()
+        || shadowHash(nativeReconciliationGrant(request, permit, grant.observed_at_ms, legacy)) !== shadowHash(grant))
+        fail('STANDARD_HOST_NATIVE_RECONCILIATION_GRANT_CHANGED');
+      return { outcome: 'verified', authority_id: grant.authority_id, request_sha256: shadowHash(request), grant_sha256: shadowHash(grant) };
+    },
     authorizeNativeOwnerDisposition: (request, permit) => nativeOwnerDispositionGrant(request, permit, Date.now()),
     verifyNativeOwnerDisposition(request, grant, permit) {
       const legacy = grant?.contract_version === "process-disposition-authorization-grant.v1";

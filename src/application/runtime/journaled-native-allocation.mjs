@@ -1,3 +1,4 @@
+import { createNativeReconciliationHistoryReader } from "./native-reconciliation-history.mjs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { createProjectAgenticProcessExecution } from "./agentic-process-execution-composition.mjs";
@@ -17,7 +18,7 @@ import { createProcessControlInboxStore } from "../../adapters/runtime/process-c
 import { readNativeAllocationCheckpoint, readNativeAllocationHistory, readNativeCheckpointFile, verifyNativeResultEvidence, nativeAllocationOutputId, assertNativeAllocationProjection } from "./native-allocation-evidence.mjs";
 import { createNativeAllocationControls, readNativeControlContext } from "./native-allocation-controls.mjs";
 import { createNativeAuthorizationEpochs } from "./native-authorization-epochs.mjs";
-import { effectiveNativeEpochAuthorization } from "../../core/workflow/native-authorization-epoch.mjs";
+import { effectiveNativeEpochAuthorization, nativeAllocationTotals } from "../../core/workflow/native-authorization-epoch.mjs";
 import { startNativeHumanVerificationPort } from "./native-human-verification-port.mjs";
 import { createNativeDispatchProvenance } from "./native-dispatch-provenance.mjs";
 
@@ -37,6 +38,7 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
   const initial = readWorkflowProjectAuthority({ targetRoot: config.target_root }), signer = createOperationJournalSigner(readSigningKey);
   const options = { targetRoot: config.target_root, stateMode: initial.stateMode, env: environment };
   const store = createNativeAllocationJournalStore(options), instances = createAgenticProcessStore(options);
+  const reconciliationHistory = createNativeReconciliationHistoryReader({ ...options, configuration: config, signer, environment });
   const controlRecords = createProcessControlInboxStore(options);
   const journalId = nativeJournalId({ instance_id: config.instance_id, scope_id: preview.scope_id });
   const projectionRequired = initial.stateMode === "dual" || initial.stateMode === "files" && preview.persistence.backend === "postgres";
@@ -67,7 +69,7 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
       return current;
     }
     if (!entry || !current) fail("NATIVE_ALLOCATION_CHECKPOINT_UNAVAILABLE");
-    readNativeAllocationHistory({ journal, entry, current, configuration: config, signer, controls: controlRecords,
+    readNativeAllocationHistory({ journal, entry, current, configuration: config, signer, controls: controlRecords, reconciliationHistory,
       ...(checkContext ? { controlContext: () => readNativeControlContext(config, executor.preview().product_sha256) } : {}) });
     return current;
   }
@@ -84,14 +86,14 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
     preview: () => executor.preview() });
   function totals(record) {
     const entries = record?.allocations ?? [];
-    if (entries.some(entry => entry.phase !== "closed" || !entry.consumption)) return { known: false, responses: null, bytes: null };
-    return { known: true, responses: entries.reduce((sum, entry) => sum + entry.consumption.responses_observed, 0),
-      bytes: entries.reduce((sum, entry) => sum + entry.consumption.storage_debit_bytes, 0) };
+    if (entries.some(entry => entry.phase !== 'closed' && !reconciliationHistory.resolution(record, entry)))
+      return { known: false, responses: null, bytes: null };
+    return nativeAllocationTotals(entries, record?.reconciliations);
   }
   const nativeOwnership = processAuthority ? createNativeDispatchProvenance({ configuration: config, options, signer, journalId,
     processAuthority, readJournal: read, readInstance: () => instances.read(config.instance_id).record, projectionRequired }) : null;
   const epochs = createNativeAuthorizationEpochs({ configuration: config, signer, read, write, checkpoint, authenticatedCurrent, initialCurrent, journalId,
-    withNativeOwner: nativeOwnership?.withOwner,
+    withNativeOwner: nativeOwnership?.withOwner, reconciliationHistory,
     preview: () => executor.preview(), source: nativeAuthorizationSource, processAuthority,
     materialize: () => { if (projectionRequired) store.materialize(journalId, { write: true }); } });
   return Object.freeze({
@@ -111,7 +113,8 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
       if (typeof resume !== "boolean") fail("NATIVE_ALLOCATION_RESUME_INTENT_REQUIRED");
       if (!execute) return this.preview();
       const before = read(), previous = before.record?.allocations.at(-1), consumed = totals(before.record);
-      if (previous && previous.phase !== "closed") fail(previous.phase === "failed" ? "NATIVE_ALLOCATION_TERMINAL_FAILURE" : "NATIVE_ALLOCATION_RECONCILIATION_REQUIRED");
+      if (previous && previous.phase !== 'closed' && !reconciliationHistory.resolution(before.record, previous))
+        fail(previous.phase === 'failed' ? 'NATIVE_ALLOCATION_TERMINAL_FAILURE' : 'NATIVE_ALLOCATION_RECONCILIATION_REQUIRED');
       let resumeSha = null;
       if (processAuthority) {
         const record = instances.read(config.instance_id).record;
@@ -131,6 +134,9 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
       }
       if (!consumed.known) fail("NATIVE_ALLOCATION_CONSUMPTION_UNKNOWN");
       if (before.record?.allocations.length >= 32) fail("NATIVE_ALLOCATION_GENERATION_LIMIT");
+      const latestReconciliation = before.record?.reconciliations?.at(-1);
+      if (latestReconciliation && !(before.record.epochs.at(-1)?.start_generation > latestReconciliation.request.generation))
+        fail('NATIVE_RECONCILIATION_NEW_AUTHORIZATION_REQUIRED');
       let auth = structuredClone(authorization);
       if (checkShadowJson(auth) || auth?.approved !== true || auth.model_allowed !== true || auth.configuration_sha256 !== configurationSha) fail("PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED");
       if (before.record?.epochs) auth = effectiveNativeEpochAuthorization(before.record, auth);
@@ -162,6 +168,7 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
             first_failure: null, checkpoint: null, closure_ref: null, consumption: null };
           const body = { contract_version: now.record?.contract_version ?? "native-allocation-journal.v1", journal_id: journalId, instance_id: config.instance_id, scope_id: actual.scope_id,
             ...(now.record?.epochs ? { initial_authorization: now.record.initial_authorization, origin_journal: now.record.origin_journal, epochs: now.record.epochs } : {}),
+            ...(now.record?.reconciliations ? { reconciliations: now.record.reconciliations } : {}),
             model_sha256: actual.model_sha256, revision: (now.record?.revision ?? 0) + 1, allocations: [...(now.record?.allocations ?? []), entry] };
           write(body, now.content_sha256); claim = entry;
           return { generation: entry.generation, owner_id: entry.owner_id, output_id: nativeAllocationOutputId(config.instance_id, entry.generation) };

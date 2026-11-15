@@ -15,6 +15,8 @@ import { exactFileIdentity } from "../../lib/fs/exact-file-identity.mjs";
 import { currentStandardDispatchContext } from "./standard-dispatch-context.mjs";
 import { createLocalArtifactResourceFence } from "./local-artifact-resource-fence.mjs";
 
+export const STANDARD_ARTIFACT_MAX_BYTES = 1048576;
+export const STANDARD_ARTIFACT_INVENTORY_MAX_BYTES = 16777216;
 export const standardFail = code => { throw Object.assign(new Error(code), { code }); };
 const fail = standardFail;
 
@@ -55,7 +57,7 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
       try { row = store.getArtifact(name); } finally { store.close(); }
     } else {
       const file = location(name);
-      if (fs.existsSync(file)) { const observed = readAgentRunFile(file, { json: false, maxBytes: 1048576 }); row = { content: observed.value.toString("utf8"), sha256: observed.sha256 }; }
+      if (fs.existsSync(file)) { const observed = readAgentRunFile(file, { json: false, maxBytes: STANDARD_ARTIFACT_MAX_BYTES }); row = { content: observed.value.toString("utf8"), sha256: observed.sha256 }; }
     }
     return readRow(name, row, selected, required);
   }
@@ -249,7 +251,7 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     for (const row of rows) {
       relative(row.path);
       bytes += Buffer.byteLength(row.content);
-      if (bytes > 16777216) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED");
+      if (bytes > STANDARD_ARTIFACT_INVENTORY_MAX_BYTES) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED");
     }
     rows.sort((a, b) => a.path.localeCompare(b.path, "en"));
     if (new Set(rows.map(row => process.platform === "win32" ? row.path.toLowerCase() : row.path)).size !== rows.length)

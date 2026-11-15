@@ -489,8 +489,17 @@ operator grant, attempt/fence intention and physical-retirement receipt under
 method, native grant or automatic DB-only export. The physical archive stays
 local; original failed journals, unknown accounting and contributions remain.
 
-Native reconciliation journal v4 currently has closed private readers only
-within the existing native-allocation artifact. Exact legacy origin and failed
-entries remain retained; reconciliation data cannot grant a new execution
-budget or global resource closure. There is no producer, automatic conversion,
-new table, shared coordination surface or visible export in this tranche.
+Native reconciliation journal v4 has closed private readers within the
+existing native-allocation artifact. Exact legacy origin and failed entries
+remain retained; reader data alone grants no execution budget or global
+closure. The separately authorized private producer is described below; it
+adds no table, shared coordination surface or automatic conversion.
+
+The private Native reconciliation producer adds a child artifact at
+`workflows/native-allocation-reconciliations/<journal>_g<generation>.json`
+within the existing native_allocation_journal authority. Exact signed
+preimages/proposals, intent/fence steps and commit acknowledgements support
+cold recovery. Current-history admission requires that audit to be confirmed
+with its physical old-owner witness; a typed receipt alone is not admission.
+DB-only exports no new JSON automatically. There is no new backend, shared
+table, automatic conversion, Native budget renewal or global closure claim.

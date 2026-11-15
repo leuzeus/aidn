@@ -1,3 +1,4 @@
+import { createNativeReconciliationHistoryReader } from "./native-reconciliation-history.mjs";
 import { createOperationJournalSigner } from "../../core/workflow/process-operation-journal.mjs";
 import { createNativeAllocationJournalStore } from "../../adapters/runtime/native-allocation-journal-store.mjs";
 import { createProcessControlInboxStore } from "../../adapters/runtime/process-control-inbox-store.mjs";
@@ -27,6 +28,7 @@ export function createNativeAllocationWorkerAuthority({ configuration, authoriza
   const project = readWorkflowProjectAuthority({ targetRoot: configuration.target_root });
   const options = { targetRoot: configuration.target_root, stateMode: project.stateMode, env: environment };
   const store = createNativeAllocationJournalStore(options), controls = createProcessControlInboxStore(options);
+  const reconciliationHistory = createNativeReconciliationHistoryReader({ ...options, configuration, signer, environment });
   const processAuthority = mixed ? createStandardProcessAuthority({ configuration, model: readAgentRunFile(configuration.model.path, { sha256: configuration.model.sha256 }).value,
     modelSource: admission.model_source, readSigningKey: () => key, environment, nativeReservation: admission, readProductSha256,
     readProductSnapshot: () => readAgenticProductSnapshot(configuration.product_root, configuration.product_files),
@@ -49,7 +51,7 @@ export function createNativeAllocationWorkerAuthority({ configuration, authoriza
       else if (entry.generation === 1) assertAgenticProcessStart(retained, creation);
       else {
         if (!retained) fail("PROCESS_WORKER_ALLOCATION_CHANGED");
-        history = readNativeAllocationHistory({ journal, entry: journal.allocations.at(-2), current: retained, configuration, signer, controls,
+        history = readNativeAllocationHistory({ journal, entry: journal.allocations.at(-2), current: retained, configuration, signer, controls, reconciliationHistory,
           controlContext: () => readNativeControlContext(configuration, productSha256) });
         assertNativeAllocationProjection(retained, configuration, project.stateMode === "dual"
           || project.stateMode === "files" && agenticProcessPersistence({ targetRoot: configuration.target_root, env: environment }).backend === "postgres");

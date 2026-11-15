@@ -52,8 +52,8 @@ export function assertNativeAllocationProjection(current, configuration, require
 }
 // The caller has authenticated the allocation journal. Every additional control
 // event is separately authenticated; valid reducer hashes alone are insufficient.
-export function readNativeAllocationHistory({ journal, entry, current, configuration, signer, controls, controlContext }) {
-  if (entry.phase !== "closed" || !entry.tree_closed) fail("NATIVE_ALLOCATION_RECONCILIATION_REQUIRED");
+export function readNativeAllocationHistory({ journal, entry, current, configuration, signer, controls, controlContext, reconciliationHistory }) {
+  if ((entry.phase !== "closed" && !reconciliationHistory?.resolution(journal, entry)) || !entry.tree_closed) fail("NATIVE_ALLOCATION_RECONCILIATION_REQUIRED");
   const checkpoint = readNativeAllocationCheckpoint(entry, configuration, { scopeId: journal.scope_id, modelSha256: journal.model_sha256 });
   if (!checkpoint.state.parent_closed) fail("NATIVE_ALLOCATION_PARENT_UNCONFIRMED");
   assertAgenticProcessInstance(current);

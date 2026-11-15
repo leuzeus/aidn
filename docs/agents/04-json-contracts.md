@@ -831,3 +831,15 @@ with ordered proofs. A separate later authorization epoch is mandatory before
 a subsequent generation. These readers supply no source authentication,
 writer, conversion, public CLI action or execution permission. All historical
 versions keep their closed schemas and behavior.
+
+Private `native-allocation-reconciliation-record.v1` retains the signed request
+and inventory, original journal/content digest and authorization, ordered
+operator/source-verified proposals, actual process identities, fence steps and
+commit acknowledgement. Its closed data reader enforces exact crosslinks and
+phase consistency. The private preparation is exactly `{request, inventory}`;
+JSON supplies no observer, verifier, callback or writer. Confirmed historical
+admission also requires canonical audit and old physical-owner evidence.
+Reading never converts a record or grants a business effect. A new Native
+epoch preserves v4, original failed entries and cumulative debits, and reports
+that failed phase rather than presenting it as closed. Public CLI envelopes
+and Native entry-action availability remain unchanged in this candidate.

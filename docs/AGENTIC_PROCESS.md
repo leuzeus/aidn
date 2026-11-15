@@ -882,6 +882,24 @@ and signed legacy journal while retaining a separately verified closure and
 non-refunded debit proof. It accepts only the no-assignment data profile and
 requires a distinct later Native authorization epoch before another generation
 can validate. Its pure fixtures use synthetic resource/source observations.
-No producer, real reconciliation effect, public action, post-assignment
-resolution or Native execution permission is implemented by these readers.
+The readers alone implement no producer, public action, post-assignment
+resolution or Native execution permission; runtime production is separate
+and described below.
 General R10/handoff and complete workflow qualification remain open.
+
+### Native no-assignment reconciliation producer candidate
+
+The private common-host ports can prepare an exact read-only reconciliation
+and apply it with separate local permission and independently verified Native
+resource/accounting observations. A signed canonical audit keeps the original
+journal and failed allocation, proposed update, owned fence and confirmed CAS.
+Cold recovery acknowledges an already committed update without changing its
+receipt. The original failure and debit remain visible.
+
+Current history requires that audit to be confirmed and its old-owner archive
+witness to match. The inventory reports the final Native debit separately
+from the original consumption. Business effects, unknown post-assignment work
+and global resource closure remain outside this confirmation. Another Native
+allocation needs its own later finite authorization epoch and normal workflow
+admission. Public Native entry actions and full mixed qualification remain
+unfinished; fixture closure/consent are synthetic, with no model calls.

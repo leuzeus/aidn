@@ -471,8 +471,25 @@ The private Native reconciliation journal v4 is a reader candidate within the
 existing native_allocation_journal concept and canonical artifact namespace.
 It retains an exact legacy origin and failed entries plus bounded, closed
 reconciliation proofs. It adds no backend, table, shared coordination method,
-projection or migration. No runtime producer emits or converts this version
-yet; current Native exclusion remains in force. A future explicit writer must
-authenticate independent resource/accounting observations and current owner,
-physical subject and CAS before sealing it. Data validity alone establishes
-none of those authorities or complete workflow-resource closure.
+projection or migration. The reader-only prerequisite does not emit or convert this version. The
+private producer below separately authenticates independent observations and
+current owner/physical/CAS evidence before sealing it. Data validity alone
+establishes neither active admission nor complete workflow-resource closure.
+
+The private Native no-assignment reconciliation producer uses the existing
+canonical artifact CAS and native_allocation_journal parent at
+`workflows/native-allocation-reconciliations/<journal>_g<generation>.json`.
+The exact preimage and proposed v4 journal precede the journal CAS in a signed
+durable attempt. A cold repreneur must authenticate the terminated exact
+creator, scope, permission, fence and current preimage/proposal; a confirmed
+receipt is retained across lost acknowledgement. FILES, DUAL and DB-only keep
+their existing authorities and projection rules. The new namespace has the
+same import/CAS and installer-ignore protection as the older Native records.
+It adds no shared table, backend, source authority or implicit conversion.
+
+Current Native history consumes only a confirmed canonical audit and retained
+physical old-owner witness, keeping failed entries and original debits. A
+separate finite Native epoch is still required before a later allocation.
+All other effect, implementation, human, control and provider permissions
+remain separate. History that cannot fit existing artifact/inventory readers
+refuses before an intent or Native CAS, retaining every earlier proof.

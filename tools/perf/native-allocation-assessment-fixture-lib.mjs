@@ -33,7 +33,7 @@ const tree = root => {
 // Real canonical stores, signing and owner/fence ports; the retained checkpoint,
 // failed allocator return and OS tree evidence below are explicitly synthetic.
 // This fixture starts no Native client, process tree, model or human actor.
-export async function createNativeAllocationAssessmentFixture(mode, { protectedHome = null, parentClosed = true } = {}) {
+export async function createNativeAllocationAssessmentFixture(mode, { protectedHome = null, parentClosed = true, retainAuthorization = false } = {}) {
   const retained = [], root = createFreshStandardWorkflowFixture(mode, retained);
   const privateRoot = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aidn-native-assessment-')); retained.push(privateRoot);
   const configuration = { target_root: root, instance_id: 'assessment-case', product_root: path.join(root, 'product'), product_files: ['app.mjs'],
@@ -53,7 +53,8 @@ export async function createNativeAllocationAssessmentFixture(mode, { protectedH
   const journalId = nativeJournalId(instance), options = { targetRoot: root, stateMode: mode }, store = createNativeAllocationJournalStore(options);
   const limits = { configuration_sha256: H(configuration), authorized_at_ms: 1, global_deadline_ms: 100, workflow_deadline_ms: 100,
     max_turn_ms: 10, max_responses: 1, max_bytes: 1048576 };
-  const allocation = { generation: 1, owner_id: 'synthetic_retained', configuration_sha256: H(configuration), authorization_sha256: H('synthetic-original-grant'),
+  const originalAuthorization = { approved: true, model_allowed: true, ...limits };
+  const allocation = { generation: 1, owner_id: 'synthetic_retained', configuration_sha256: H(configuration), authorization_sha256: retainAuthorization ? H(originalAuthorization) : H('synthetic-original-grant'),
     initial_instance_sha256: instance.instance_sha256, limits, phase: 'reserved', owned_result_sha256: null, tree_proof_sha256: null,
     tree_closed: false, owned_status: null, first_failure: null, checkpoint: null, consumption: null, closure_ref: null };
   const reserved = signer.seal({ contract_version: 'native-allocation-journal.v1', journal_id: journalId, instance_id: instance.instance_id,
@@ -80,7 +81,7 @@ export async function createNativeAllocationAssessmentFixture(mode, { protectedH
   await provenance.withOwner({ instance_id: instance.instance_id, authorization_sha256: allocation.authorization_sha256 }, async () => returned);
   const dispatch = JSON.parse(artifacts.observeInventory().rows.find(row => row.path.startsWith('workflows/native-dispatches/')).content);
   const input = { expectedSha256: instance.instance_sha256, dispatchId: dispatch.dispatch_id, generation: 1 };
-  return { retained, root, privateRoot, configuration, key, signer, model, productSnapshot, authority, hostOptions, host, instance, artifacts, journalId, options, store, limits, allocation, failed, dispatch, input, checkpoint };
+  return { retained, root, privateRoot, configuration, key, signer, model, productSnapshot, authority, hostOptions, host, instance, artifacts, journalId, options, store, limits, allocation, failed, dispatch, input, checkpoint, ...(retainAuthorization ? { originalAuthorization } : {}) };
 }
 export async function verifyNativeAllocationAssessmentFixture(mode) {
   const { retained, root, privateRoot, configuration, signer, hostOptions, host, instance, artifacts, journalId, store, input, checkpoint } = await createNativeAllocationAssessmentFixture(mode);

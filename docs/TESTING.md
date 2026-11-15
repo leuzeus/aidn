@@ -6205,3 +6205,39 @@ verification, resource closure and consent are synthetic, with zero Native
 calls. They do not exercise a producer, canonical reconciliation write, public
 entry, post-assignment effect, real resource termination or workflow resume.
 Original required command argv/order and finite Native grants remain unchanged.
+
+## Native no-assignment reconciliation producer candidate
+
+The original three Native dispatch provenance commands also run the private
+producer fixture. The same argv and required-case order remain unchanged.
+It uses an actual terminated creator and physical retirement, protected
+operator HMAC, independently verified Ed25519 source envelopes and canonical
+CAS. Failed checkpoints, Native/OS closure and epoch consent are synthetic.
+Refusals cover missing authority/source, actual signature/trust/revocation and
+issuer expiry, incomplete/foreign observations, debit refund and the existing
+authority-call timeout. Normal and cold replay retain the exact signed
+preimage, failed phase, immutable receipt and original debit.
+
+The current authority/inventory must consume only confirmed history. A
+separate epoch fixture activates a new signed finite grant under the actual
+Native provenance/owner port, preserving v4 and the old failure, releasing its
+new lease and allocating no worker. Retained checkpoint/history admission
+remains subject to the original prefix and current authority.
+
+FILES adds controlled exits before intent, after intent/acquisition/lease,
+after Native CAS/commit acknowledgement and after fence release/confirmation.
+Before confirmation, even a valid committed v4 receipt must leave current
+admission and accounting unresolved. Two real repreneurs compete while one
+holds the intent; one attempt and one Native journal CAS win. The original
+receipt survives cold acknowledgement. An unchanged preparation is also
+applied after an injected eight-day clock advance with a new current source;
+this is not an eight-day real observation or reuse of an expired issuer.
+
+A FILES inventory within 4 KiB of the existing 16 MiB bound must refuse before
+a new audit intent or Native CAS, keeping the original journal/fence exact.
+Runtime namespace ignores are checked with real Git, including an adjacent
+business-path refusal. DB-only must export no audit JSON. These fixtures
+retain every owned arena and original failure. They prove neither arbitrary
+interruption inside an OS/DB primitive, post-assignment effect resolution,
+genuine Native/provider closure, public entry, installed archive nor complete
+L1-L8/A1-A10.

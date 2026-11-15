@@ -1,3 +1,4 @@
+import { createNativeReconciliationHistoryReader } from "./native-reconciliation-history.mjs";
 import { MODE_WORK_CONTRACT, evaluateStandardModeWork } from "../../core/workflow/standard-mode-work.mjs";
 import { assertObjectiveReview } from "../../core/workflow/standard-drift-objective-review.mjs";
 import { observeModeWorkReport, modeWorkContinuationChoices, assertModeWorkObservationOutput } from "../../core/workflow/standard-mode-work-continuation.mjs";
@@ -88,6 +89,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       || component.operation_pins[node.binding_ref] !== shadowHash(bindings.get(node.binding_ref))) fail("STANDARD_PROCESS_BINDING_CHANGED");
   }
   const operationStore = createProcessOperationJournalStore(options), controls = createProcessControlInboxStore(options), allocations = createNativeAllocationJournalStore(options), instances = createAgenticProcessStore(options);
+  const nativeReconciliationHistory = createNativeReconciliationHistoryReader({ ...options, configuration, signer, artifacts, environment });
   const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, source: humanSource, projectionRequired: false });
   function read() {
     return readExecutionAuthority().authority;
@@ -141,12 +143,14 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       if (journal.instance_id !== instance.instance_id || journal.scope_id !== instance.scope_id || journal.model_sha256 !== instance.model_sha256)
         fail("STANDARD_PROCESS_NATIVE_HISTORY_CHANGED");
       if (diagnostic && journal.allocations.some(entry => entry.configuration_sha256 !== shadowHash(configuration))) fail("STANDARD_PROCESS_NATIVE_HISTORY_CHANGED");
-      if (!diagnostic && latest && latest.phase !== "closed") {
+      const latestResolution = !diagnostic && latest?.phase !== 'closed' && latest ? nativeReconciliationHistory.resolution(journal, latest) : null;
+      if (!diagnostic && latest && latest.phase !== "closed" && !latestResolution) {
         if (!reservation || latest.phase !== "reserved" || latest.owner_id !== reservation.owner_id || latest.generation !== reservation.generation) fail("STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE");
       } else if (reservation) fail("STANDARD_PROCESS_NATIVE_ALLOCATION_CHANGED");
       const entry = reservation || diagnostic && latest?.phase === "reserved" ? journal.allocations.at(-2) : latest;
       if (entry) {
-        if (!diagnostic && entry.phase !== "closed") fail("STANDARD_PROCESS_NATIVE_RECONCILIATION_REQUIRED");
+        if (!diagnostic && entry.phase !== "closed" && !(entry === latest ? latestResolution : nativeReconciliationHistory.resolution(journal, entry)))
+          fail("STANDARD_PROCESS_NATIVE_RECONCILIATION_REQUIRED");
         native = readNativeAllocationCheckpoint(entry, configuration, { scopeId: authority.scope_id, modelSha256: authority.model_sha256 }).state;
         if (!diagnostic && !native.parent_closed) fail("STANDARD_PROCESS_NATIVE_RECONCILIATION_REQUIRED");
         covered = native.instance.events.length;
@@ -224,7 +228,8 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   async function withNativeOwner(intent, action) {
     const result = await artifacts.withLocalEffectOwner(shadowHash({ authority: read(), ...intent }), async () => {
       const value = await action();
-      return { value, effect_status: value.journal_phase === "closed" ? "confirmed" : value.native_started === false ? "no_effect" : "unknown" };
+      const activatedEpoch = value.status === 'authorized' && value.written === true && value.native_started === false;
+      return { value, effect_status: value.journal_phase === 'closed' || activatedEpoch ? 'confirmed' : value.native_started === false ? 'no_effect' : 'unknown' };
     });
     return result.value;
   }

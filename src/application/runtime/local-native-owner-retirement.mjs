@@ -59,3 +59,14 @@ export function retireNativeOwnerLock({ targetRoot, dispatchId, intention, origi
   permit();
   return { lock_sha256: after.sha256, retired_identity_sha256: H(after.identity), retired: true };
 }
+
+// Historical admission may run while a later legitimate writer owns effects.lock.
+// Observe only the retained old archive, against its exact signed witness.
+export function inspectRetiredNativeOwnerWitness({ targetRoot, dispatchId, originalLease, expectedLockSha256, expectedIdentitySha256 }) {
+  const found = read(path.join(targetRoot, nativeRetiredOwnerRelativePath(dispatchId)));
+  if (!found || !/^[a-f0-9]{64}$/.test(expectedLockSha256 ?? '') || !/^[a-f0-9]{64}$/.test(expectedIdentitySha256 ?? '')
+    || found.sha256 !== expectedLockSha256 || H(found.value) !== H(originalLease?.owner)
+    || H(stableIdentity(found.identity)) !== H(stableIdentity(originalLease?.physical_identity ?? {}))
+    || H(found.identity) !== expectedIdentitySha256) fail('NATIVE_OWNER_RETIRED_WITNESS_CHANGED');
+  return { sha256: found.sha256, identity_sha256: H(found.identity) };
+}

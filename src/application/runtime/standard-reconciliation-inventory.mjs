@@ -1,3 +1,5 @@
+import { createNativeReconciliationHistoryReader } from "./native-reconciliation-history.mjs";
+import { assertNativeReconciliationRecord, nativeReconciliationPath } from "../../core/workflow/native-allocation-reconciliation-record.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
@@ -43,13 +45,49 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
       if (resources.length >= 10000) fail("PROCESS_RECONCILIATION_INVENTORY_TRUNCATED");
       resources.push({ ref, kind, sha256, disposition: "unresolved", details });
     };
+    const nativeHistory = new Map(), nativeReconciliations = new Map();
+    function rememberJournal(journal) {
+      assertNativeAllocationJournal(journal); signer.verify(journal);
+      if (journal.instance_id !== instance.instance_id || journal.scope_id !== instance.scope_id || journal.model_sha256 !== instance.model_sha256)
+        fail('PROCESS_RECONCILIATION_RESOURCE_CHANGED');
+      for (const receipt of journal.reconciliations ?? []) { signer.verify(receipt); signer.verify(receipt.request); }
+      nativeHistory.set(shadowHash(journal), journal);
+      if (journal.origin_journal) rememberJournal(journal.origin_journal);
+    }
+    // These exact signed preimages are historical DATA, never an effect grant.
+    // Read them from the same captured canonical inventory before crosslinking
+    // old dispatches/owners to a newer Native journal container.
+    for (const row of observed.rows.filter(value => value.path.startsWith('workflows/native-allocation-reconciliations/'))) {
+      const record = assertNativeReconciliationRecord(JSON.parse(row.content));
+      if (row.path !== nativeReconciliationPath(record.reconciliation_id)) fail('PROCESS_RECONCILIATION_RESOURCE_CHANGED');
+      if (record.instance_id !== instance.instance_id) continue;
+      signer.verify(record); signer.verify(record.request); signer.verify(record.inventory);
+      if (record.scope_id !== instance.scope_id || record.model_sha256 !== instance.model_sha256
+        || record.request.physical_root_sha256 !== shadowHash(artifacts.root)
+        || configuration !== null && record.request.configuration_sha256 !== shadowHash(configuration)) fail('PROCESS_RECONCILIATION_RESOURCE_CHANGED');
+      rememberJournal(record.original_journal);
+      for (const attempt of record.attempts) { signer.verify(attempt.proposal); for (const receipt of attempt.proposal.reconciliations) { signer.verify(receipt); signer.verify(receipt.request); } }
+      if (record.commit) rememberJournal(record.attempts.find(value => value.attempt_id === record.commit.proposal_attempt_id).proposal);
+      nativeReconciliations.set(row.path, record);
+    }
+    const reconciliationHistory = createNativeReconciliationHistoryReader({ targetRoot: artifacts.root, configuration, signer, artifacts,
+      readRecord: id => nativeReconciliations.get(nativeReconciliationPath(id)) ?? null,
+      readOwner: id => { const row = observed.rows.find(value => value.path === nativeOwnerDispositionPath(id)); return row ? JSON.parse(row.content) : null; } });
     for (const row of observed.rows) {
       add("artifact:" + row.path, "artifact", row.sha256, { metadata_sha256: row.metadata_sha256, source: observed.source });
       // Unknown record namespaces are retained as artifacts, never treated as
       // an understood or closed resource. The external-discovery gaps stay open.
-      if (!/^workflows\/(operation-records|decision-inbox|control-inbox|native-allocations|dispatch-records|native-dispatches|native-owner-dispositions)\//.test(row.path)) continue;
+      if (!/^workflows\/(operation-records|decision-inbox|control-inbox|native-allocations|dispatch-records|native-dispatches|native-owner-dispositions|native-allocation-reconciliations)\//.test(row.path)) continue;
       const record = JSON.parse(row.content);
-      if (row.path.startsWith("workflows/native-owner-dispositions/")) {
+      if (row.path.startsWith('workflows/native-allocation-reconciliations/')) {
+        const retained = nativeReconciliations.get(row.path);
+        if (!retained) continue;
+        add('native-reconciliation:' + retained.reconciliation_id, 'native_journal', shadowHash(retained), {
+          record_kind: 'native_allocation_reconciliation', journal_id: retained.journal_id, generation: retained.generation, phase: retained.phase,
+          request_sha256: shadowHash(retained.request), original_journal_sha256: shadowHash(retained.original_journal),
+          committed_journal_sha256: retained.commit?.proposal_sha256 ?? null, receipt_sha256: retained.commit?.receipt_sha256 ?? null,
+          complete_resource_closure: false, permits_resume: false, permits_native_renewal: false });
+      } else if (row.path.startsWith("workflows/native-owner-dispositions/")) {
         assertNativeOwnerDispositionRecord(record);
         if (row.path !== nativeOwnerDispositionPath(record.dispatch_id)) fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
         if (record.plan.instance_id !== instance.instance_id) continue;
@@ -134,16 +172,20 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
           initial_authorization_sha256: record.initial_authorization ? shadowHash(record.initial_authorization) : null,
           epochs: (record.epochs ?? []).map(row => ({ request_sha256: shadowHash(row.request), grant_sha256: shadowHash(row.grant) })) });
         for (const entry of record.allocations) {
-          const known = entry.phase === "closed" && entry.consumption !== null;
+          const resolution = record.reconciliations ? reconciliationHistory.resolution(record, entry) : null;
+          const known = entry.phase === 'closed' && entry.consumption !== null || resolution !== null;
+          const consumed = resolution?.consumption ?? entry.consumption;
           if (!known) { accounting.native_known = false; accounting.unresolved_native_allocations++; }
-          accounting.responses_observed_minimum += entry.consumption?.responses_observed ?? 0;
-          accounting.storage_debit_bytes_minimum += entry.consumption?.storage_debit_bytes ?? 0;
+          accounting.responses_observed_minimum += consumed?.responses_observed ?? 0;
+          accounting.storage_debit_bytes_minimum += consumed?.storage_debit_bytes ?? 0;
           add(`native:${record.journal_id}/${entry.generation}`, "native_allocation", shadowHash(entry), {
             generation: entry.generation, phase: entry.phase, owner_id: entry.owner_id, limits: entry.limits,
             initial_instance_sha256: entry.initial_instance_sha256,
             authorization_sha256: entry.authorization_sha256, configuration_sha256: entry.configuration_sha256,
             consumption: entry.consumption, checkpoint: entry.checkpoint, closure_ref: entry.closure_ref,
-            tree_closed: entry.tree_closed, accounting_known: known });
+            tree_closed: entry.tree_closed, accounting_known: known,
+            ...(resolution?.kind === 'reconciled_no_assignment' ? { reconciled_consumption: resolution.consumption,
+              reconciliation_receipt_sha256: resolution.receipt_sha256, reconciliation_record_sha256: resolution.record_sha256 } : {}) });
         }
       } else {
         const decision = row.path.startsWith("workflows/decision-inbox/");
@@ -159,7 +201,10 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
       const plan = disposition.plan, native = resources.find(row => row.ref === "native:" + plan.journal_id),
         allocation = resources.find(row => row.ref === `native:${plan.journal_id}/${plan.generation}`),
         dispatch = resources.find(row => row.ref === "native-dispatch:" + plan.dispatch_id);
-      if (native?.sha256 !== plan.journal_sha256 || allocation?.sha256 !== plan.allocation_sha256
+      const historical = nativeHistory.get(plan.journal_sha256);
+      const bound = native?.sha256 === plan.journal_sha256 || historical?.journal_id === plan.journal_id
+        && shadowHash(historical.allocations[plan.generation - 1]) === plan.allocation_sha256;
+      if (!bound || allocation?.sha256 !== plan.allocation_sha256
         || dispatch?.sha256 !== plan.dispatch_sha256 || dispatch.details.journal_id !== plan.journal_id
         || !dispatch.details.leases.some(row => shadowHash(row) === plan.original_lease_sha256)) fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
     }
@@ -292,7 +337,7 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
     return { operation_id: operationId, operation_record_sha256: operation.record_sha256,
       dispatch_sha256: dispatch?.sha256 ?? null, process_identity_sha256: identity ? shadowHash(identity) : null, owner_status: status };
   }
-  function capture(readSubject, instanceId, expectedSha256, requireExpected, operationId = null) {
+  function capture(readSubject, instanceId, expectedSha256, requireExpected, operationId = null, includeContext = false) {
       const { instance: before, authority, context, diagnosticJournalSha256 } = readSubject(instanceId); assertAgenticProcessInstance(before);
       if (requireExpected && expectedSha256 !== before.instance_sha256) fail("PROCESS_REVISION_CONFLICT");
       const first = observe(before);
@@ -318,7 +363,7 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
         authority_sha256: shadowHash(authority), context_sha256: shadowHash(context), observed_at_ms: now(),
         ...first, discovery: RECONCILIATION_DISCOVERY_DOMAINS.map(domain => ({ domain, status: "independent_observation_required" })),
         complete_resource_closure: false, permits_effects: false, written: false }));
-      if (!owner) return { instance: before, inventory };
+      if (!owner) return { instance: before, inventory, ...(includeContext ? { context } : {}) };
       const observation = assertProcessOwnerObservation(signer.seal({ contract_version: "process-owner-observation.v1",
         instance_id: before.instance_id, instance_sha256: before.instance_sha256, inventory_sha256: shadowHash(inventory),
         ...owner, first_sample_started_at_ms: started, last_sample_completed_at_ms: sampled, observed_at_ms: inventory.observed_at_ms,
@@ -330,6 +375,10 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
     capture: typeof readNativeSubject === "function" ? (id, expected) => capture(readNativeSubject, id, expected, true) : null });
   return Object.freeze({
     prepareNativeAllocationAssessment: (id, input) => nativeAssessment.prepare(id, input),
+    captureNativeSubject(id, expectedSha256) {
+      if (typeof readNativeSubject !== 'function') fail('NATIVE_RECONCILIATION_AUTHORITY_REQUIRED');
+      return capture(readNativeSubject, id, expectedSha256, true, null, true);
+    },
     prepare(instanceId, { expectedSha256 } = {}) { return capture(readObservationSubject, instanceId, expectedSha256, true).inventory; },
     prepareProcessOwnerObservation(instanceId, { expectedSha256, operationId } = {}) {
       if (typeof operationId !== "string" || !/^op_[a-f0-9]{40}$/.test(operationId)) fail("PROCESS_OWNER_OBSERVATION_OPERATION_INVALID");
