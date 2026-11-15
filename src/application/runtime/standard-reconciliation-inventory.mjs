@@ -185,7 +185,7 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
             authorization_sha256: entry.authorization_sha256, configuration_sha256: entry.configuration_sha256,
             consumption: entry.consumption, checkpoint: entry.checkpoint, closure_ref: entry.closure_ref,
             tree_closed: entry.tree_closed, accounting_known: known,
-            ...(resolution?.kind === 'reconciled_no_assignment' ? { reconciled_consumption: resolution.consumption,
+            ...(['reconciled_no_assignment', 'reconciled_post_assignment'].includes(resolution?.kind) ? { reconciled_consumption: resolution.consumption,
               reconciliation_receipt_sha256: resolution.receipt_sha256, reconciliation_record_sha256: resolution.record_sha256 } : {}) });
         }
       } else {

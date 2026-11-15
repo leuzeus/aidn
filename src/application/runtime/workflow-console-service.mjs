@@ -115,7 +115,7 @@ export function createWorkflowConsoleService({ targetIdentity, readRecords, read
           || apply && (!/^[a-f0-9]{64}$/.test(expectPlan ?? "") || legacyRun && !syncRelay)
           || !apply && (syncRelay || expectPlan) || request.operation === "propose" && apply) fail("WORKFLOW_CONSOLE_EXPLICIT_EFFECT_REQUIRED");
         const preview = await invoke(request);
-        if (run && ["standard-workflow-action.v1", "standard-workflow-call-action.v1", "standard-workflow-native-action.v1"].includes(preview.preview?.contract_version)
+        if (run && ["standard-workflow-action.v1", "standard-workflow-call-action.v1", "standard-workflow-native-action.v1", "standard-workflow-native-action.v2"].includes(preview.preview?.contract_version)
           && !request.input.actionFile && !Object.hasOwn(request.input, "preparedAction")) {
           // Return the original closed action as part of the consent subject.
           // Recreating its timed operation plan during apply changes that subject.

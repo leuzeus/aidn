@@ -523,3 +523,35 @@ uses the same configured canonical artifact path and projection policy. No new
 table, backend fallback, implicit export, shared sync or preparation-age ceiling
 is introduced. Unknown Native closure requires additional independent recovery
 evidence outside this first profile and remains part of the full workflow goal.
+
+
+The fixed private prepareNativePostAssignmentAllocationReconciliation method
+prepares only admitted closed work with a matched failed return and confirmed
+owner-v2 retirement. It retains the signed original observation and reobserves
+protected checkpoint/results, current canonical prefix, all known sessions,
+configuration/root and the exact retired owner. It never imports a checkpoint.
+
+Apply uses the existing canonical audit path and durable-intent/fence/journal
+CAS/cold acknowledgement protocol. V2 records and v5 journals remain within the
+existing native_allocation_journal concept, backend and projection rules. A
+cold actor finishes an exact retained proposal without recapturing its already
+committed source grant or changing the original receipt. The current operator
+permission remains required for its writes. Independent resource-source
+permission is rechecked after heavy observations immediately around the first
+Native journal CAS. Existing source-call and finite issuer limits remain.
+
+Only confirmed canonical history enables fixed hosts to consume the final
+non-refunded Native ledger. A separate independently approved finite epoch is
+still needed; v5 preparation includes its current Native scope in the existing
+epoch request v2. Epoch activation preserves v5 and all failed entries, consumes
+no new Native allocation and does not reset previous responses or bytes. No new
+store, table, shared method, migration, authority or preparation-age ceiling is
+introduced. Unknown/unadmitted work still needs additional independent closure,
+admission or R10 recovery and remains part of the full workflow objective.
+
+Public action/result v2 transports the fixed admitted_post_assignment owner and
+accounting preparations through the existing CLI/console exact-action boundary.
+It adds no source capability, storage authority or automatic grant. Cold
+application reuses the retained preparation and committed receipt. A subsequent
+deterministic business operation still needs its own current operation grant;
+another Native allocation still needs the separate finite epoch and admission.

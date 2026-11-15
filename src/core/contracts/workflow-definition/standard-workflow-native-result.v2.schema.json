@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-workflow-native-result.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "action_kind",
+    "process_status",
+    "workflow_completed",
+    "operation_outcome",
+    "effect_status",
+    "written",
+    "native_started",
+    "details",
+    "profile"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-workflow-native-result.v2"
+    },
+    "action_kind": {
+      "enum": [
+        "native_owner_retire",
+        "native_allocation_reconcile"
+      ]
+    },
+    "process_status": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "workflow_completed": {
+      "const": false
+    },
+    "operation_outcome": {
+      "const": null
+    },
+    "effect_status": {
+      "enum": [
+        "confirmed",
+        "no_effect"
+      ]
+    },
+    "written": {
+      "type": "boolean"
+    },
+    "native_started": {
+      "const": false
+    },
+    "details": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "profile": {
+      "const": "admitted_post_assignment"
+    }
+  },
+  "x-aidn-contract-version": "standard-workflow-native-result.v2"
+}

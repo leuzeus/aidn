@@ -22,6 +22,7 @@ import { createOperationJournalSigner } from '../../src/core/workflow/process-op
 import { assertNativeReconciliationRecord, nativeReconciliationId, nativeReconciliationPath, retainedNativeReconciliationReceipt } from '../../src/core/workflow/native-allocation-reconciliation-record.mjs';
 import { assertNativeAllocationJournal } from '../../src/core/workflow/native-allocation-journal.mjs';
 import { nativeAllocationTotals } from '../../src/core/workflow/native-authorization-epoch.mjs';
+import { isNativePostAssignmentReconciliation } from '../../src/core/workflow/native-allocation-reconciliation.mjs';
 import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
 
 const script = fileURLToPath(import.meta.url), key = () => Buffer.alloc(32, 73);
@@ -47,18 +48,22 @@ function fixtureOperator(data, q, profile) {
   }, verify(input) { current(input); return { outcome: 'verified', authority_id: input.grant.authority_id, request_sha256: H(input.request), grant_sha256: H(input.grant) }; }, assertCurrent: current };
 }
 function issueFixtureSource(data, preparation, sourceRef, profile) {
-  const q = preparation.request, artifacts = createStandardWorkflowArtifacts({ targetRoot: data.root });
+  const q = preparation.request, post = isNativePostAssignmentReconciliation(q), artifacts = createStandardWorkflowArtifacts({ targetRoot: data.root });
   const original = JSON.parse(artifacts.read('workflows/native-allocations/' + q.journal_id + '.json', { required: true }).content);
   // This is an independent Ed25519 transport fixture with measured local file
   // bytes. Native/session/OS closure remains explicitly synthetic.
   const entry = original.allocations[q.generation - 1], bytes = fs.statSync(entry.checkpoint.path).size + fs.statSync(entry.closure_ref.path).size;
-  const grant = { contract_version: 'native-allocation-reconciliation-grant.v1', authority_id: 'fixture_native_resource_owner', source_event_id: randomUUID(),
-    request_sha256: H(q), consumption: { responses_observed: 0, response_sha256: [], storage_debit_bytes: Math.max(bytes, q.minimum_consumption.storage_debit_bytes), native_usage_sha256: null },
+  const grant = { contract_version: post ? 'native-allocation-reconciliation-grant.v2' : 'native-allocation-reconciliation-grant.v1',
+    ...(post ? { profile: q.profile, post_assignment_sha256: q.post_assignment_sha256 } : {}),
+    authority_id: 'fixture_native_resource_owner', source_event_id: randomUUID(), request_sha256: H(q),
+    consumption: { ...structuredClone(q.minimum_consumption), storage_debit_bytes: Math.max(bytes, q.minimum_consumption.storage_debit_bytes) },
     closure: { contract_version: 'native-resource-closure.v1', request_sha256: H(q), inventory_sha256: H(q.resources), observed_at_ms: Date.now(),
       complete: true, active_resources: 0, evidence_class: 'fixture', resources: q.resources.map(resource => ({ resource_sha256: H(resource), state: 'closed',
         evidence_refs: [{ ref: 'fixture:synthetic-independent-native-discovery', sha256: H(resource) }] })) },
     evidence_refs: [{ ref: 'fixture:measured-checkpoint-and-closure-bytes', sha256: H({ bytes, checkpoint: entry.checkpoint.sha256, closure: entry.closure_ref.sha256 }) }] };
   if (profile === 'source-storage-refund') grant.consumption.storage_debit_bytes = q.minimum_consumption.storage_debit_bytes - 1;
+  if (profile === 'source-response-refund') { grant.consumption.responses_observed = 0; grant.consumption.response_sha256 = []; }
+  if (profile === 'source-missing-scope') grant.closure.resources = grant.closure.resources.filter(row => row.resource_sha256 !== H(q.resources.find(value => value.kind === 'native_scope')));
   if (profile === 'source-open-resource') grant.closure.resources[0].state = 'active';
   if (profile === 'source-foreign-principal') grant.authority_id = 'unregistered_resource_owner';
   const now = Date.now(), envelope = { contract_version: 'standard-host-source.v1', kind: 'native-renewal', authority_id: grant.authority_id,
@@ -71,21 +76,26 @@ function issueFixtureSource(data, preparation, sourceRef, profile) {
   fs.writeFileSync(path.join(inbox, sourceRef + '.json'), JSON.stringify(signed));
   return grant;
 }
-function processAuthority(data) {
+function processAuthority(data, readSigningKey = key) {
   const product = () => readAgenticProductSnapshot(data.configuration.product_root, data.configuration.product_files);
-  return createStandardProcessAuthority({ configuration: data.configuration, model: data.model, readSigningKey: key,
+  return createStandardProcessAuthority({ configuration: data.configuration, model: data.model, readSigningKey,
     readProductSnapshot: product, readProductSha256: () => H(product()) });
 }
-function open(data, preparation, { profile = '', fault = '', hold = '' } = {}) {
-  const authority = processAuthority(data);
+function open(data, preparation, { profile = '', fault = '', hold = '', readSigningKey = key } = {}) {
+  const authority = processAuthority(data, readSigningKey);
   const nativeSource = operator(data).nativeAuthorizationSource;
-  return createStandardWorkflowOperationHost({ targetRoot: data.root, model: data.model, readSigningKey: key,
+  return createStandardWorkflowOperationHost({ targetRoot: data.root, model: data.model, readSigningKey,
     authorize: async () => { throw Error('UNEXPECTED_OPERATION_AUTHORIZATION'); }, processAuthority: authority,
     reconciliationConfiguration: data.configuration, nativeReconciliationSource: profile === 'missing-operator' ? null : fixtureOperator(data, preparation?.request, profile),
     nativeAuthorizationSource: profile === 'missing-resource' ? null : {
       read: input => profile === 'source-timeout' ? new Promise(() => {}) : nativeSource.read(input),
       verify: input => {
         if (profile === 'source-unverified') return { outcome: 'denied' };
+        if (profile === 'source-revoked-after-verification') {
+          const verified = nativeSource.verify(input), file = path.join(data.operator_home, 'inbox', input.sourceRef + '.json');
+          const envelope = JSON.parse(fs.readFileSync(file, 'utf8')); envelope.signature = Buffer.alloc(64).toString('base64');
+          fs.writeFileSync(file, JSON.stringify(envelope)); return verified;
+        }
         if (profile !== 'source-revoked') return nativeSource.verify(input);
         const registry = path.join(data.operator_home, 'principals.json'), before = fs.readFileSync(registry);
         try { fs.writeFileSync(registry, JSON.stringify({ contract_version: 'standard-host-principals.v1', principals: [] })); return nativeSource.verify(input); }
@@ -96,6 +106,9 @@ function open(data, preparation, { profile = '', fault = '', hold = '' } = {}) {
       if (name === fault) throw Object.assign(Error('FIXTURE_RECONCILIATION_INTERRUPT'), { code: 'FIXTURE_RECONCILIATION_INTERRUPT' });
     } });
 }
+export const createNativeReconciliationProducerFixtureHost = (data, preparation, options) => open(data, preparation, options);
+export const issueNativeReconciliationFixtureSource = (data, preparation, sourceRef, profile = '') => issueFixtureSource(data, preparation, sourceRef, profile);
+
 function make(mode, root, name) {
   const owner = createRetiredNativeOwnerReconciliationFixture(mode, root, name), pair = generateKeyPairSync('ed25519');
   const issuer = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aidn-reconciliation-issuer-'));

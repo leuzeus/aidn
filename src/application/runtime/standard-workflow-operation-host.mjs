@@ -1373,6 +1373,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const nativeReconciliation = createStandardNativeAllocationReconciliation({ targetRoot: artifacts.root, stateMode: initial.stateMode,
     configuration: reconciliationConfiguration, artifacts, signer, now, operatorSource: nativeReconciliationSource, resourceSource: nativeAuthorizationSource,
     onBoundary: nativeReconciliationBoundary, readOwnerDisposition: id => nativeOwnerDisposition.read(id),
+    assessPostAssignment: (id, input) => { if (!processAuthority) fail("NATIVE_RECONCILIATION_AUTHORITY_REQUIRED"); return reconciliationInventory.prepareNativePostAssignmentAssessment(id, input); },
     capture: (id, expected) => reconciliationInventory.captureNativeSubject(id, expected),
     assess: (id, input) => { if (!processAuthority) fail('NATIVE_RECONCILIATION_AUTHORITY_REQUIRED'); return reconciliationInventory.prepareNativeAllocationAssessment(id, input); } });
   disposition = createStandardOperationDisposition({ targetRoot, stateMode: initial.stateMode, signer, artifacts, now,
@@ -1458,6 +1459,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     prepareNativePostAssignmentAssessment: (id, input) => reconciliationInventory.prepareNativePostAssignmentAssessment(id, input),
     prepareNativeAllocationAssessment: (id, input) => reconciliationInventory.prepareNativeAllocationAssessment(id, input),
     prepareNativeAllocationReconciliation: (id, input) => nativeReconciliation.prepare(id, input),
+    prepareNativePostAssignmentAllocationReconciliation: (id, input) => nativeReconciliation.preparePostAssignment(id, input),
     applyNativeAllocationReconciliation: (preparation, input) => nativeReconciliation.apply(preparation, input),
     readNativeAllocationReconciliation: id => nativeReconciliation.read(id),
     prepareNativePostAssignmentOwnerDisposition: (id, input) => nativeOwnerDisposition.preparePostAssignment(id, input),

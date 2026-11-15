@@ -121,3 +121,9 @@ intent, source envelope or budget. A source reference is data within the exact
 action, separately authenticated by the fixed protected source before writes.
 CLI and console retain the original prepared payload across cold application;
 Native recovery context comparison cannot authorize a business action.
+
+The admitted_post_assignment action/result v2 uses that same boundary with closed
+owner/accounting v2 preparations. It changes neither the command's effect class
+nor its flags. Downgrading a v2 payload to the v1 action refuses. Accounting
+confirmation does not supply the separate operation grant for a later business
+step or the finite Native grant for a new allocation.

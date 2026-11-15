@@ -1,7 +1,7 @@
 import { createWorkflowRecordStore } from '../../adapters/runtime/workflow-record-store.mjs';
 import { createStandardWorkflowArtifacts } from './standard-workflow-artifacts.mjs';
 import { assertNativeAllocationJournal } from '../../core/workflow/native-allocation-journal.mjs';
-import { nativeAllocationResolution } from '../../core/workflow/native-allocation-reconciliation.mjs';
+import { nativeAllocationResolution, isNativePostAssignmentReconciliation } from '../../core/workflow/native-allocation-reconciliation.mjs';
 import { assertNativeReconciliationRecord, nativeReconciliationId, nativeReconciliationPath, retainedNativeReconciliationReceipt } from '../../core/workflow/native-allocation-reconciliation-record.mjs';
 import { assertNativeOwnerDispositionRecord, nativeOwnerDispositionPath } from '../../core/workflow/native-owner-disposition.mjs';
 import { assertNativeDispatchRecord, nativeDispatchPath } from '../../core/workflow/native-dispatch-record.mjs';
@@ -21,14 +21,20 @@ export function createNativeReconciliationHistoryReader({ targetRoot, stateMode,
   function verifyJournal(journal) {
     assertNativeAllocationJournal(journal); signer.verify(journal);
     if (journal.origin_journal) verifyJournal(journal.origin_journal);
-    for (const receipt of journal.reconciliations ?? []) { signer.verify(receipt); signer.verify(receipt.request); }
+    for (const receipt of journal.reconciliations ?? []) { signer.verify(receipt); verifyRequest(receipt.request); }
+  }
+  function verifyRequest(q) {
+    signer.verify(q);
+    if (isNativePostAssignmentReconciliation(q)) {
+      signer.verify(q.post_assignment_assessment); signer.verify(q.post_assignment_assessment.base_assessment);
+    }
   }
   function read(id) {
     nativeReconciliationPath(id);
     const value = readRecord ? readRecord(id) : store.read(id).record;
     if (value === null || value === undefined) return null;
     const record = assertNativeReconciliationRecord(value);
-    signer.verify(record); signer.verify(record.request); signer.verify(record.inventory); verifyJournal(record.original_journal);
+    signer.verify(record); verifyRequest(record.request); signer.verify(record.inventory); verifyJournal(record.original_journal);
     for (const row of record.attempts) verifyJournal(row.proposal);
     return record;
   }
@@ -56,6 +62,11 @@ export function createNativeReconciliationHistoryReader({ targetRoot, stateMode,
     const dispatch = assertNativeDispatchRecord(JSON.parse(artifacts.read(nativeDispatchPath(q.dispatch_id), { required: true }).content)); signer.verify(dispatch);
     if (owner.phase !== 'confirmed' || H(owner.receipt) !== q.owner_retirement_receipt_sha256
       || owner.plan.journal_sha256 !== q.journal_sha256 || owner.plan.allocation_sha256 !== q.allocation_sha256
+      || owner.plan.instance_sha256 !== q.instance_sha256
+      || isNativePostAssignmentReconciliation(q) && (owner.plan.contract_version !== 'native-owner-disposition-plan.v2'
+        || owner.plan.post_assignment_sha256 !== q.post_assignment_sha256 || owner.plan.initial_instance_sha256 !== q.initial_instance_sha256
+        || owner.plan.checkpoint_sha256 !== q.checkpoint_sha256 || owner.plan.checkpoint_state_sha256 !== q.checkpoint_state_sha256
+        || owner.plan.checkpoint_instance_sha256 !== q.checkpoint_instance_sha256)
       || H(dispatch) !== q.dispatch_sha256 || !witness || dispatch.leases.length !== 1
       || H(dispatch.leases[0]) !== owner.plan.original_lease_sha256) fail('NATIVE_RECONCILIATION_RETIRED_OWNER_CHANGED');
     inspectRetiredNativeOwnerWitness({ targetRoot: artifacts.root, dispatchId: q.dispatch_id, originalLease: dispatch.leases[0],

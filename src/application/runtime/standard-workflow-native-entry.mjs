@@ -6,11 +6,16 @@ import { assertNativeEpochRequest } from '../../core/workflow/native-authorizati
 import { validateJsonSchema } from '../../core/contracts/json-schema-validator.mjs';
 import actionSchema from '../../core/contracts/workflow-definition/standard-workflow-native-action.v1.schema.json' with { type: 'json' };
 import resultSchema from '../../core/contracts/workflow-definition/standard-workflow-native-result.v1.schema.json' with { type: 'json' };
+import actionSchemaV2 from '../../core/contracts/workflow-definition/standard-workflow-native-action.v2.schema.json' with { type: 'json' };
+import resultSchemaV2 from '../../core/contracts/workflow-definition/standard-workflow-native-result.v2.schema.json' with { type: 'json' };
 
 const fail = code => { throw Object.assign(Error(code), { code }); };
-export const isStandardNativeEntryAction = action => action?.contract_version === actionSchema['x-aidn-contract-version'];
+export const isStandardNativeEntryAction = action => [actionSchema, actionSchemaV2].some(schema => action?.contract_version === schema['x-aidn-contract-version']);
 export const isStandardNativeEntryKind = kind => actionSchema.properties.kind.enum.includes(kind);
 export const standardNativeEntryActionVersion = actionSchema['x-aidn-contract-version'];
+export const standardNativeEntryActionSchema = action => action?.contract_version === actionSchemaV2['x-aidn-contract-version'] ? actionSchemaV2 : actionSchema;
+export const standardNativeEntryActionVersionFor = next => next?.profile === 'admitted_post_assignment'
+  ? actionSchemaV2['x-aidn-contract-version'] : standardNativeEntryActionVersion;
 
 // Fixed composition capabilities only. Authored actions supply exact data,
 // never an operator, source verifier, process observer or writer.
@@ -46,8 +51,15 @@ export function prepareStandardNativeRecovery(host, state) {
   if (dispatches.length !== 1) fail('STANDARD_ENTRY_NATIVE_DISPATCH_AMBIGUOUS');
   const dispatchId = dispatches[0].ref.slice('native-dispatch:'.length), owner = host.readNativeOwnerDisposition(dispatchId);
   const input = { expectedSha256: state.record.instance_sha256, generation: latest.generation, dispatchId };
-  if (owner?.phase !== 'confirmed') return { kind: 'native_owner_retire', payload: { plan: host.prepareNativeOwnerDisposition(input) } };
-  return { kind: 'native_allocation_reconcile', payload: { preparation: host.prepareNativeAllocationReconciliation(input), source_ref: null } };
+  // A nonzero retained minimum selects the fixed post-assignment capability.
+  // That capability still authenticates the full accepted checkpoint/result
+  // history and current physical subject; this counter grants no admission.
+  const post = (latest.consumption?.responses_observed ?? 0) > 0;
+  const profile = post ? { profile: 'admitted_post_assignment' } : {};
+  if (owner?.phase !== 'confirmed') return { kind: 'native_owner_retire', ...profile,
+    payload: { plan: post ? host.prepareNativePostAssignmentOwnerDisposition(input) : host.prepareNativeOwnerDisposition(input) } };
+  return { kind: 'native_allocation_reconcile', ...profile, payload: {
+    preparation: post ? host.prepareNativePostAssignmentAllocationReconciliation(input) : host.prepareNativeAllocationReconciliation(input), source_ref: null } };
 }
 
 export function prepareStandardNativeEpoch(host, authorization) {
@@ -64,7 +76,7 @@ export function prepareStandardNativeEpoch(host, authorization) {
 }
 
 export function assertStandardNativeEntryAction(action, state, authority) {
-  if (validateJsonSchema(action, actionSchema, '$', { contractKind: 'workflow-definition' }).length || !state)
+  if (validateJsonSchema(action, standardNativeEntryActionSchema(action), '$', { contractKind: 'workflow-definition' }).length || !state)
     fail('STANDARD_ENTRY_NATIVE_ACTION_INVALID');
   const payload = action.payload, kind = action.kind;
   const keys = kind === 'native_owner_retire' ? ['plan'] : kind === 'native_allocation_reconcile' ? ['preparation', 'source_ref'] : ['request', 'source_ref'];
@@ -108,9 +120,10 @@ export async function applyStandardNativeEntryAction(host, action, signal) {
 
 export function standardNativeEntryResult(host, action, details) {
   const state = host.inspectDiagnostic();
-  const result = { contract_version: resultSchema['x-aidn-contract-version'], action_kind: action.kind,
+  const post = action.contract_version === actionSchemaV2['x-aidn-contract-version'], schema = post ? resultSchemaV2 : resultSchema;
+  const result = { contract_version: schema['x-aidn-contract-version'], ...(post ? { profile: 'admitted_post_assignment' } : {}), action_kind: action.kind,
     process_status: state.cursor.status, workflow_completed: false, operation_outcome: null,
     effect_status: details.written === true ? 'confirmed' : 'no_effect', written: details.written === true, native_started: false, details };
-  if (validateJsonSchema(result, resultSchema, '$', { contractKind: 'workflow-definition' }).length) fail('STANDARD_ENTRY_NATIVE_RESULT_INVALID');
+  if (validateJsonSchema(result, schema, '$', { contractKind: 'workflow-definition' }).length) fail('STANDARD_ENTRY_NATIVE_RESULT_INVALID');
   return result;
 }

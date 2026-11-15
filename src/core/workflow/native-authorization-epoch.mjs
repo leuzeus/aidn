@@ -48,7 +48,13 @@ export function assertNativeEpochGrant(value, request) {
 }
 export function assertNativeEpochHistory(record) {
   assertNativeAuthorization(record.initial_authorization);
-  const first = record.allocations[0], origin = record.contract_version === "native-allocation-journal.v4" ? record.origin_journal : record;
+  const first = record.allocations[0];
+  let origin = record;
+  const origins = new Set();
+  while (["native-allocation-journal.v4", "native-allocation-journal.v5"].includes(origin?.contract_version)) {
+    if (origins.has(origin) || !origin.origin_journal) fail("NATIVE_EPOCH_ORIGINAL_AUTHORIZATION_CHANGED");
+    origins.add(origin); origin = origin.origin_journal;
+  }
   const initialEntry = origin.contract_version === "native-allocation-journal.v3";
   if (!initialEntry && (shadowHash(record.initial_authorization) !== first.authorization_sha256
     || shadowHash(nativeLimitsOf(record.initial_authorization)) !== shadowHash(first.limits))) fail("NATIVE_EPOCH_ORIGINAL_AUTHORIZATION_CHANGED");

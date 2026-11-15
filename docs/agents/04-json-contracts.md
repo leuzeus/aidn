@@ -879,9 +879,31 @@ cross-version or cross-profile attempts. Historical v1/no_assignment bytes and
 behavior remain unchanged. The receipt still grants no accounting confirmation,
 complete resource closure, Native renewal or workflow resume.
 
-The combined candidate keeps these versioned boundaries explicit: public Native
-action v1 embeds only the historical no_assignment owner plan and reconciliation
-preparation. The fixed private post-assignment owner method prepares v2. Its
-physical receipt supplies no post-assignment accounting reconciliation or public
-recovery action. Those require separate closed contracts and current independent
-resource-source admission before a later finite Native epoch.
+Public Native action v1 retains its historical no_assignment owner plan and
+reconciliation preparation. Action/result v2 has an explicit
+admitted_post_assignment profile and embeds the separate closed owner plan v2 or
+accounting preparation v2. The fixed producer still authenticates the accepted
+checkpoint and current physical subject; the profile or a nonzero counter grants
+no permission. The physical owner receipt and independently sourced accounting
+receipt remain distinct. The existing finite epoch action stays v1 and must
+admit a new grant before another Native allocation.
+
+
+Private Native allocation reconciliation request/grant/receipt/record v2 binds
+the explicit admitted_post_assignment profile. Its request retains the signed
+post-assignment assessment and inventory, separate initial/current/checkpoint
+identities, protected checkpoint-resource digest, original response/usage/debit
+minimum and every known Native session plus the whole configured Native scope.
+A final grant preserves the observed response prefix and storage lower bound.
+Its source must be independently authenticated; the host MAC supplies no closure.
+The v2 physical-owner receipt remains distinct from accounting confirmation.
+
+Native journal v5 preserves an exact v1-v4 origin, inherited v4 receipts, every
+original allocation/failure/epoch and the ordered new v2 accounting receipts.
+V1-v4 schemas and stored records remain unchanged. Mixed versions, replaced
+inherited proofs, duplicate source events and refunds refuse. A later finite
+epoch uses the existing closed epoch request v2, whose Native-scope variant
+also supports subsequent generations. Old epoch requests are never converted.
+Neither reconciliation nor its receipt supplies workflow resume, business
+postconditions, a new Native allocation or all-resource closure. Ordinary
+post-assignment action transport requires separate integration/qualification.

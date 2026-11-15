@@ -35,7 +35,7 @@ export function createNativeAuthorizationEpochs({ configuration, signer, read, w
     }
     const current = allocations.length ? authenticatedCurrent(true) : initialCurrent(), cursor = inspectAgenticProcess(current), actual = preview();
     if (["COMPLETED", "FAILED", "CANCELLED"].includes(cursor.status)) fail("NATIVE_EPOCH_TERMINAL_INSTANCE");
-    if (!allocations.length) { const resource = nativeInitialScope({ instance_id: configuration.instance_id, scope_id: actual.scope_id, configuration_sha256: configSha }); resources.set(shadowHash(resource), resource); }
+    if (!allocations.length || journal?.contract_version === 'native-allocation-journal.v5') { const resource = nativeInitialScope({ instance_id: configuration.instance_id, scope_id: actual.scope_id, configuration_sha256: configSha }); resources.set(shadowHash(resource), resource); }
     return { before, body: { instance_id: configuration.instance_id, scope_id: actual.scope_id, model_sha256: actual.model_sha256,
       configuration_sha256: configSha, instance_sha256: current.instance_sha256, product_sha256: actual.product_sha256,
       journal_sha256: shadowHash(journal), allocations_sha256: shadowHash(allocations),
@@ -44,8 +44,9 @@ export function createNativeAuthorizationEpochs({ configuration, signer, read, w
       initial_authorization: initial, consumption: consumed, resources: [...resources.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, resource]) => resource) } };
   }
   function prepare({ originalAuthorization } = {}) {
-    const { body } = snapshot(originalAuthorization), now = Date.now();
-    return freezeShadow(signer.seal({ contract_version: body.next_generation === 1 ? "native-authorization-epoch-request.v2" : "native-authorization-epoch-request.v1", request_id: randomUUID(),
+    const { body, before } = snapshot(originalAuthorization), now = Date.now();
+    const scopeRequest = body.next_generation === 1 || before.record?.contract_version === 'native-allocation-journal.v5';
+    return freezeShadow(signer.seal({ contract_version: scopeRequest ? "native-authorization-epoch-request.v2" : "native-authorization-epoch-request.v1", request_id: randomUUID(),
       ...body, issued_at_ms: now, expires_at_ms: now + 300000 }));
   }
   function current(request) {
@@ -110,7 +111,7 @@ export function createNativeAuthorizationEpochs({ configuration, signer, read, w
           || grant.authorization.global_deadline_ms <= commitNow + 30000 || grant.authorization.workflow_deadline_ms <= commitNow + 30000)
           fail('NATIVE_EPOCH_FRESH_CLOSURE_REQUIRED');
         committing = true;
-        write({ ...body, contract_version: journal?.contract_version === 'native-allocation-journal.v4' ? 'native-allocation-journal.v4'
+        write({ ...body, contract_version: ['native-allocation-journal.v4', 'native-allocation-journal.v5'].includes(journal?.contract_version) ? journal.contract_version
             : !journal || journal.contract_version === 'native-allocation-journal.v3' ? 'native-allocation-journal.v3' : 'native-allocation-journal.v2', revision: body.revision + 1,
           initial_authorization: request.initial_authorization, origin_journal: Object.hasOwn(body, "origin_journal") ? body.origin_journal : journal,
           epochs: [...(body.epochs ?? []), epoch] }, before.content_sha256);

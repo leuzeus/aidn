@@ -342,9 +342,12 @@ finalization; `--verify` retains its read-only verification behavior.
     `standard-workflow-native-action.v1`: `native_owner_retire`,
     `native_allocation_reconcile`, and `native_authorization_epoch`. A failed
     no-assignment allocation first offers physical-owner retirement, then
-    independently sourced accounting reconciliation. Before a later allocation,
+    independently sourced accounting reconciliation. For admitted accepted work,
+    action/result v2 adds the explicit `admitted_post_assignment` profile and
+    closed owner/accounting v2 preparations through the same flags and source
+    boundary. Unknown or unadmitted work remains refused. Before a later allocation,
     a distinct finite epoch remains mandatory. These actions start no worker
-    and return `standard-workflow-native-result.v1`, with no completed-workflow
+    and return their versioned Native result, with no completed-workflow
     claim. A missing `source_ref` leaves application unavailable. Supply the
     exact prepared request to the independent issuer, fill only its logical
     source reference in the saved action, then preview with `--action-file`

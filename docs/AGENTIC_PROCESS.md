@@ -908,7 +908,9 @@ unfinished; fixture closure/consent are synthetic, with no model calls.
 ### Ordinary Native resource recovery candidate
 
 The standard CLI and console can return a separate Native resource action for a
-failed no-assignment allocation. Physical old-owner retirement comes first;
+failed no-assignment allocation, or a typed v2 action for admitted accepted work.
+V2 authenticates the complete protected checkpoint/result history and binds
+initial, checkpoint and current prefixes separately. Physical old-owner retirement comes first;
 accounting reconciliation needs independent scope closure/final debit evidence,
 and a later Native allocation needs its own signed finite epoch. Each action
 uses the same saved preview and explicit execute/expect-plan consent. Nothing
@@ -921,5 +923,7 @@ principal, subject and issuer permission still decide application. The console
 returns the prepared request even while a source is missing and preserves it
 across cold application. A successful resource action reports neither Native
 start nor completed workflow. Original failures, deadlines and debit history
-remain visible. Post-assignment effects, general R10/handoff, full STANDARD and
-genuine/installed qualification remain separate.
+remain visible. A separately granted deterministic business operation may then
+continue through the ordinary entry; the accounting receipt supplies no such
+grant. Unknown/unadmitted post-assignment effects, general R10/handoff, full
+STANDARD and genuine/installed qualification remain separate.

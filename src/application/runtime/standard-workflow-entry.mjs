@@ -16,8 +16,7 @@ import actionSchema from "../../core/contracts/workflow-definition/standard-work
 import resultSchema from "../../core/contracts/workflow-definition/standard-workflow-entry-result.v1.schema.json" with { type: "json" };
 import callActionSchema from "../../core/contracts/workflow-definition/standard-workflow-call-action.v1.schema.json" with { type: "json" };
 import callResultSchema from "../../core/contracts/workflow-definition/standard-workflow-call-result.v1.schema.json" with { type: "json" };
-import nativeActionSchema from "../../core/contracts/workflow-definition/standard-workflow-native-action.v1.schema.json" with { type: "json" };
-import { isStandardNativeEntryAction, isStandardNativeEntryKind, standardNativeEntryActionVersion, standardNativeEntryOperatorSources,
+import { isStandardNativeEntryAction, isStandardNativeEntryKind, standardNativeEntryActionSchema, standardNativeEntryActionVersionFor, standardNativeEntryOperatorSources,
   standardNativeEntryContext, prepareStandardNativeRecovery, prepareStandardNativeEpoch, assertStandardNativeEntryAction,
   standardNativeEntryRequirements, applyStandardNativeEntryAction, standardNativeEntryResult } from "./standard-workflow-native-entry.mjs";
 
@@ -72,7 +71,7 @@ export async function runStandardWorkflowAction({ request, configuration, parame
   if (actionFile && preparedAction !== null) fail("STANDARD_ENTRY_ACTION_CONFLICT");
   const candidate = actionFile ? readAgentRunFile(path.resolve(actionFile), { maxBytes: 4194304 }).value : preparedAction;
   if (candidate === null && actionFile || candidate !== null && (checkShadowJson(candidate) || validateJsonSchema(candidate,
-    isStandardNativeEntryAction(candidate) ? nativeActionSchema : candidate?.contract_version === callActionSchema["x-aidn-contract-version"] ? callActionSchema : actionSchema,
+    isStandardNativeEntryAction(candidate) ? standardNativeEntryActionSchema(candidate) : candidate?.contract_version === callActionSchema["x-aidn-contract-version"] ? callActionSchema : actionSchema,
     "$", { contractKind: "workflow-definition" }).length)) fail("STANDARD_ENTRY_ACTION_INVALID");
   const supplied = candidate === null ? null : structuredClone(candidate);
   if (execute && (!supplied || expectPlan !== shadowHash(supplied))) fail("STANDARD_ENTRY_EXACT_ACTION_REQUIRED");
@@ -170,7 +169,7 @@ export async function runStandardWorkflowAction({ request, configuration, parame
   } else {
     const next = await currentKind();
     action = { contract_version: next.kind === "call" ? callActionSchema["x-aidn-contract-version"]
-      : isStandardNativeEntryKind(next.kind) ? standardNativeEntryActionVersion : "standard-workflow-action.v1", context, ...next };
+      : isStandardNativeEntryKind(next.kind) ? standardNativeEntryActionVersionFor(next) : "standard-workflow-action.v1", context, ...next };
     if (next.kind === "call" && validateJsonSchema(action, callActionSchema, "$", { contractKind: "workflow-definition" }).length)
       fail("STANDARD_ENTRY_ACTION_INVALID");
   }

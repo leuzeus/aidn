@@ -53,7 +53,7 @@ function applyConsole(data, prepared, expectedPreview = null) {
 
 const canonical = data => H(createStandardWorkflowArtifacts({ targetRoot: data.root }).observeInventory());
 function transport(body, privateKey) { return { ...body, signature: sign(null, Buffer.from(H(body)), privateKey).toString('base64') }; }
-async function produce(mode, file) {
+async function produce(mode, file, { nativeModel = 'fixture-no-native', controllerPins = {}, retainFailure = null } = {}) {
   const retained = [], root = createFreshStandardWorkflowFixture(mode, retained);
   const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aidn-public-native-entry-'));
   const directories = Object.fromEntries(['control', 'review', 'home', 'authority', 'issuer'].map(name => { const p = path.join(base, name); fs.mkdirSync(p); return [name, p]; }));
@@ -67,9 +67,9 @@ async function produce(mode, file) {
     { authority_id: 'fixture_native_owner', kinds: ['native-renewal'], public_key: resource.publicKey.export({ type: 'spki', format: 'pem' }) }] }));
   const request = { contract_version: 'standard-workflow-execution.v1', execution: { instance_id: 'public-native-entry', target_root: root,
     product_root: product, product_files: ['app.mjs'], control_root: directories.control, review_root: directories.review, criteria: pin(criteria),
-    authorities: { project: pin(path.join(root, 'AGENTS.md')) }, instructions: {}, controller: {},
+    authorities: { project: pin(path.join(root, 'AGENTS.md')) }, instructions: {}, controller: controllerPins,
     native: { executable: process.execPath, sha256: pin(process.execPath).sha256, home: directories.home, tool_roots: [], protected_roots: [directories.authority],
-      hook_hashes: { work: ['sha256:' + 'a'.repeat(64), 'sha256:' + 'b'.repeat(64)], review: [] }, model: 'fixture-no-native', effort: 'medium',
+      hook_hashes: { work: ['sha256:' + 'a'.repeat(64), 'sha256:' + 'b'.repeat(64)], review: [] }, model: nativeModel, effort: 'medium',
       startup: { mcp_server_ids: [], plugin_ids: [], app_ids: [], environment_override_names: [], environment_names: [...CODEX_STARTUP_ENVIRONMENT_PROFILES.worker],
         log_dir: directories.control, sqlite_home: directories.control } } },
     parameters: { session: { session_id: 'S001', session_branch: 'S001-public-native-entry', objective: 'Public Native recovery fixture' },
@@ -101,13 +101,14 @@ async function produce(mode, file) {
     processAuthority: authority, reconciliationConfiguration: configuration, humanSource: local.humanSource };
   const host = createStandardWorkflowOperationHost(hostOptions), instance = host.inspect(configuration.instance_id).record;
   const artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
-  const fixture = await retainFailedNativeAllocationFixture({ mode, retained, root, privateRoot: base, configuration, key, model: assets.model,
-    productSnapshot, authority, hostOptions, host, instance, artifacts, retainAuthorization: true });
+  const fixture = await (retainFailure ?? retainFailedNativeAllocationFixture)({ mode, retained, root, privateRoot: base, configuration, key, model: assets.model,
+    productSnapshot, authority, hostOptions, host, instance, artifacts, retainAuthorization: true, data, modelSource });
   const saved = { ...data, configuration, model_source: modelSource, input: fixture.input,
     original_journal_sha256: artifacts.read('workflows/native-allocations/' + fixture.journalId + '.json').sha256,
     original_dispatch_sha256: artifacts.read('workflows/native-dispatches/' + fixture.dispatch.dispatch_id + '.json').sha256 };
   fs.writeFileSync(file, JSON.stringify(saved), { flag: 'wx' });
-  console.log(JSON.stringify({ status: 'PUBLISHED_PREFIX_AND_SYNTHETIC_NO_ASSIGNMENT_FAILURE_RETAINED', file, root, base, Native_calls: 0 }));
+  console.log(JSON.stringify({ status: retainFailure ? 'PUBLISHED_PREFIX_AND_CONTROLLED_POST_ASSIGNMENT_FAILURE_RETAINED'
+    : 'PUBLISHED_PREFIX_AND_SYNTHETIC_NO_ASSIGNMENT_FAILURE_RETAINED', file, root, base, Native_calls: 0 }));
 }
 function worker(args, expected = 0) {
   const result = spawnSync(process.execPath, [script, ...args], { encoding: 'utf8', windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
@@ -119,8 +120,11 @@ function issue(data, action, ref, forged = false) {
   if (reconciliation) {
     const artifacts = createStandardWorkflowArtifacts({ targetRoot: data.root }), journal = JSON.parse(artifacts.read('workflows/native-allocations/' + request.journal_id + '.json').content);
     const entry = journal.allocations[request.generation - 1], bytes = fs.statSync(entry.checkpoint.path).size + fs.statSync(entry.closure_ref.path).size;
-    grant = { contract_version: 'native-allocation-reconciliation-grant.v1', authority_id: 'fixture_native_owner', source_event_id: randomUUID(), request_sha256: H(request),
-      consumption: { responses_observed: 0, response_sha256: [], storage_debit_bytes: Math.max(bytes, request.minimum_consumption.storage_debit_bytes), native_usage_sha256: null },
+    const post = request.contract_version === 'native-allocation-reconciliation-request.v2';
+    grant = { contract_version: post ? 'native-allocation-reconciliation-grant.v2' : 'native-allocation-reconciliation-grant.v1',
+      ...(post ? { profile: request.profile, post_assignment_sha256: request.post_assignment_sha256 } : {}),
+      authority_id: 'fixture_native_owner', source_event_id: randomUUID(), request_sha256: H(request),
+      consumption: { ...structuredClone(request.minimum_consumption), storage_debit_bytes: Math.max(bytes, request.minimum_consumption.storage_debit_bytes) },
       evidence_refs: [{ ref: 'fixture:measured-checkpoint-and-closure', sha256: H({ bytes }) }] };
   } else grant = { contract_version: 'native-authorization-epoch-grant.v1', authority_id: 'fixture_native_owner', source_event_id: randomUUID(), request_sha256: H(request),
     authorization: { approved: true, model_allowed: true, configuration_sha256: request.configuration_sha256, authorized_at_ms: now, global_deadline_ms: now + 600000,
@@ -227,6 +231,10 @@ export async function verifyPublicNativeEntryFixture(mode) {
     original_failure_deadline_dispatch_debits_preserved: true, native_allocations_after_authorization: 0, Native_calls: 0,
     Native_return_checkpoint_OS_closure_and_human_epoch_consent: 'SYNTHETIC_FIXTURE', genuine_human_or_Native: false, installed_archive: false, full_standard: false };
 }
+export { produce as producePublicNativeEntryFixture, run as runPublicNativeEntryFixtureCLI, apply as applyPublicNativeEntryFixtureCLI,
+  runConsole as runPublicNativeEntryFixtureConsole, applyConsole as applyPublicNativeEntryFixtureConsole,
+  selectSource as selectPublicNativeEntryFixtureSource, issue as issuePublicNativeEntryFixtureSource,
+  interruptAfterNativeCAS as interruptPublicNativeEntryFixtureCAS };
 if (process.argv[1] && path.resolve(process.argv[1]) === script) {
   try { const [action, first, second] = process.argv.slice(2);
     if (action === 'produce') await produce(first, second);
