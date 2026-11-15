@@ -34,7 +34,9 @@ import { createStandardControlInbox } from '../../src/application/runtime/standa
 import { decisionInboxId } from '../../src/core/workflow/process-decision-inbox.mjs';
 import { createOperationJournalSigner, operationJournalId, operationOutputRef } from '../../src/core/workflow/process-operation-journal.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
-import { artifactContentHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
+import { artifactContentHash, artifactMetadataHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
+import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
+import { buildCanonicalFromMarkdown } from '../../src/lib/workflow/markdown-render-lib.mjs';
 import { renderStandardSessionPrRecord } from '../../src/core/workflow/standard-session-pr-record.mjs';
 import { runStartSessionAdmitUseCase } from '../../src/application/runtime/start-session-admit-use-case.mjs';
 import { runCycleCreateAdmitUseCase } from '../../src/application/runtime/cycle-create-admit-use-case.mjs';
@@ -57,6 +59,12 @@ const dummy = 'op_' + 'a'.repeat(40);
 const pin = path => ({ path, sha256: createHash('sha256').update(fs.readFileSync(path)).digest('hex') });
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const save = (file, data) => fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
+const incidentModeArguments = process.argv.filter(value => value.startsWith('--incident-state-mode='));
+const incidentStateMode = incidentModeArguments[0]?.slice('--incident-state-mode='.length) ?? 'files';
+if (incidentModeArguments.length > 1 || !['files', 'dual', 'db-only'].includes(incidentStateMode)
+  || incidentModeArguments.length && (!['--case=external-premerge', '--case=external-pretriage-session'].includes(process.argv[2])
+    || !process.argv.includes('--incident-receipt-loss')))
+  throw Error('FIXTURE_INCIDENT_STATE_MODE_UNSUPPORTED');
 
 // The reduced entry retains the published PR completion targets unchanged.
 function fixtureModel(prefix, fetchOnly, external = false, pretriage = false) {
@@ -151,7 +159,8 @@ function open(base, { initializeKey = false, providerNow, closeReceiptLoss = fal
   const pretriage = behavior.startsWith('external-pretriage-');
   const exception = behavior.startsWith('exception-'), external = behavior.startsWith('external-');
   const instanceId = configuration.instance_id, targetRoot = configuration.target_root;
-  const options = { targetRoot, stateMode: 'files' };
+  const options = { targetRoot, stateMode: data.state_mode ?? 'files' };
+  assert.equal(createStandardWorkflowArtifacts({ targetRoot }).describe().state_mode, options.stateMode);
   const providerFile = path.join(base, 'provider.json'), state = json(providerFile);
   const fixture = createGithubReviewFixture({ workingDirectory: base, pullRequest: pr });
   const review = fixture.state.reviews[0];
@@ -525,9 +534,9 @@ function configureActionFixture(base, configuration, graph) {
       environment_names: [...CODEX_STARTUP_ENVIRONMENT_PROFILES.worker], log_dir: configuration.control_root, sqlite_home: configuration.control_root } });
 }
 
-function arrange(prefix, behavior) {
+function arrange(prefix, behavior, stateMode = 'files') {
   const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), behavior.startsWith('resolve-') ? 'aidn-source121-r08-' : 'aidn-source120-r08-'));
-  const targetRoot = createFreshStandardWorkflowFixture('files');
+  const targetRoot = createFreshStandardWorkflowFixture(stateMode);
   const dirs = Object.fromEntries(['host', 'control', 'review', 'native'].map(name => {
     const dir = path.join(base, name);
     fs.mkdirSync(dir);
@@ -568,10 +577,10 @@ function arrange(prefix, behavior) {
   fs.mkdirSync(path.join(dirs.host, key + '.github'));
   save(path.join(dirs.host, key + '.github.json'), binding);
   if (behavior.startsWith('external-pretriage-')) configureActionFixture(base, configuration, fixtureModel(prefix, false, true, true));
-  save(path.join(base, 'configuration.json'), { configuration, home: dirs.host, binding, pr, prefix, behavior, fetchFixture,
+  save(path.join(base, 'configuration.json'), { configuration, home: dirs.host, binding, pr, prefix, behavior, fetchFixture, state_mode: stateMode,
     submittedAt: new Date(Date.now() - 1000).toISOString() });
   save(path.join(base, 'provider.json'), { sent: [], replies: [], resolved: false, reviewChanged: false, resolvedThreads: [], resolutionSends: [], mergeSends: [] });
-  console.log(JSON.stringify({ evidence: base, project: targetRoot, prefix, behavior }));
+  console.log(JSON.stringify({ evidence: base, project: targetRoot, prefix, behavior, state_mode: stateMode }));
   return base;
 }
 
@@ -1374,7 +1383,63 @@ async function qualifyQuestionRecovery({ base, scenario, git, bare, tip, merged,
   return advanced;
 }
 
-function seedPrOpening(f, pr, targetRoot) {
+// Explicit upstream fixture DATA uses the configured canonical port from the
+// start. No visible-file import or state-mode conversion repairs an accepted prefix.
+async function writeFixtureArtifacts(targetRoot, documents) {
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot });
+  const changes = documents.map(document => ({ path: document.path, after: document.content,
+    before_sha256: artifacts.read(document.path).sha256,
+    before_metadata_sha256: artifacts.metadataHash(document.path) }));
+  await artifacts.withLocalEffectOwner(shadowHash({ fixture: 'pr-review-upstream-data', changes }), () => {
+    for (const change of changes) artifacts.compareAndSwapPreservingMetadata(change);
+    artifacts.project(changes.map(change => change.path));
+    return { effect_status: 'confirmed' };
+  });
+}
+
+// Controlled negative DATA, outside the business dispatcher. Preserve all eleven
+// metadata pins (including updated_at) when restoring the completed postimage.
+async function withFixtureArtifactConflict(targetRoot, name, inspectConflict) {
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot });
+  const original = artifacts.read(name, { required: true }), changed = original.content + '\nfixture-postimage-conflict\n';
+  if (!artifacts.describe().database) {
+    const file = path.resolve(targetRoot, 'docs/audit', name);
+    fs.writeFileSync(file, changed);
+    try { await inspectConflict(); } finally { fs.writeFileSync(file, original.content); }
+    return;
+  }
+  const reader = createProjectArtifactStore({ targetRoot, readOnly: true, existingOnly: true });
+  let retained;
+  try { retained = reader.getArtifact(name); } finally { reader.close(); }
+  const metadata = artifactMetadataHash(retained);
+  assert.equal(metadata, artifacts.metadataHash(name));
+  async function write(content, expectedSha256) {
+    await artifacts.withLocalEffectOwner(shadowHash({ fixture: 'controlled-postimage-conflict', name, content }), () => {
+      const store = createProjectArtifactStore({ targetRoot, existingOnly: true });
+      try {
+        store.compareAndSwapArtifact({ expectedSha256, expectedMetadataSha256: metadata, artifact: { ...retained,
+          content, sha256: undefined, size_bytes: undefined, mtime_ns: undefined, canonical_json: undefined,
+          canonical: buildCanonicalFromMarkdown(content, { relativePath: name,
+            classification: { kind: retained.kind, family: retained.family, ...(retained.subtype ? { subtype: retained.subtype } : {}) } }) } });
+      } finally { store.close(); }
+      artifacts.project([name]);
+      assert.equal(artifacts.metadataHash(name), metadata);
+      return { effect_status: 'confirmed' };
+    });
+  }
+  await write(changed, original.sha256);
+  try { await inspectConflict(); } finally { await write(original.content, artifactContentHash(changed)); }
+  assert.equal(artifacts.read(name).sha256, original.sha256);
+  assert.equal(artifacts.metadataHash(name), metadata);
+}
+
+function readFixtureArtifactRows(targetRoot, names) {
+  if (!createStandardWorkflowArtifacts({ targetRoot }).describe().database) return names.map(() => null);
+  const store = createProjectArtifactStore({ targetRoot, readOnly: true, existingOnly: true });
+  try { return names.map(name => store.getArtifact(name)); } finally { store.close(); }
+}
+
+async function seedPrOpening(f, pr, targetRoot) {
   const link = { ...pr, contract_version: 'github-pr-link.v1', title_sha256: shadowHash('fixture title'), body_sha256: shadowHash('fixture body') };
   const openId = f.seed('session_pr_open', { facts: { session_pr_open_confirmed: true },
     observations: { session_id: 'S001', pull_request: link }, evidence_refs: [{ ref: 'github:pr/fixture', sha256: shadowHash(link) }] });
@@ -1385,15 +1450,16 @@ function seedPrOpening(f, pr, targetRoot) {
     post_merge_sync_status: 'not_needed', post_merge_sync_basis: 'none' };
   const session = '# Session S001\n\n' + Object.entries(fields).map(([key, value]) => key + ': ' + value).join('\n')
     + '\n\n### Session close gate satisfied?\n- [x] Yes\n';
-  const current = fs.readFileSync(path.join(audit, 'CURRENT-STATE.md'), 'utf8')
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot });
+  const current = artifacts.read('CURRENT-STATE.md', { required: true }).content
     .replace(/^active_session:.*$/m, 'active_session: S001').replace(/^mode:.*$/m, 'mode: COMMITTING')
     .replace(/^branch_kind:.*$/m, 'branch_kind: source');
   const documents = [[sessionPath, session], ['CURRENT-STATE.md', current],
-    ['snapshots/context-snapshot.md', fs.readFileSync(path.join(audit, 'snapshots/context-snapshot.md'), 'utf8')]]
+    ['snapshots/context-snapshot.md', artifacts.read('snapshots/context-snapshot.md', { required: true }).content]]
     .map(([path, content]) => ({ path, content, sha256: artifactContentHash(content) }));
-  for (const document of renderStandardSessionPrRecord({ source: { session_id: 'S001', session_path: sessionPath,
-    open_operation_id: openId, pull_request: link }, documents, preparedAt: Date.now() }))
-    fs.writeFileSync(path.join(audit, document.path), document.text_chunks.join(''));
+  await writeFixtureArtifacts(targetRoot, renderStandardSessionPrRecord({ source: { session_id: 'S001', session_path: sessionPath,
+    open_operation_id: openId, pull_request: link }, documents, preparedAt: Date.now() })
+    .map(document => ({ path: document.path, content: document.text_chunks.join('') })));
   return { openId, audit, sessionFile };
 }
 
@@ -1413,7 +1479,7 @@ async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
   f.host.initialize({ instanceId, write: true, expectedResultSha256: initial.record.instance_sha256 });
   const deliveredSession = scenario === 'delivered-session';
   if (deliveredSession) git('switch', pr.head_branch);
-  const { openId, audit, sessionFile } = seedPrOpening(f, pr, targetRoot);
+  const { openId, audit, sessionFile } = await seedPrOpening(f, pr, targetRoot);
   const fastForward = scenario === 'fast-forward' || deliveredSession;
   if (scenario === 'fast-forward') {
     fs.writeFileSync(path.join(targetRoot, 'fixture-update.txt'), 'before\n');
@@ -1778,7 +1844,7 @@ async function qualifyIncidentReceiptLoss(base, first, close, gitState) {
   assert.equal(child.live_assessment, 'unknown');
   const fresh = open(base), data = json(path.join(base, 'configuration.json'));
   const targetRoot = data.configuration.target_root;
-  const capsules = createProcessDispatchRecordStore({ targetRoot, stateMode: 'files' });
+  const capsules = createProcessDispatchRecordStore({ targetRoot, stateMode: data.state_mode ?? 'files' });
   const capsule = capsules.read(id).record;
   fresh.signer.verify(capsule);
   assert.equal(shadowHash(capsule), child.capsule_sha256);
@@ -1806,18 +1872,19 @@ async function qualifyIncidentReceiptLoss(base, first, close, gitState) {
   assert.equal(canonical.ownerPending(), false);
   for (const change of inner.traces) assert.equal(canonical.read(change.path).sha256, artifactContentHash(change.after));
   fresh.allow(shadowHash(close));
-  const prepared = await fresh.host.prepareOperationDisposition(id, { expectedSha256: fresh.inspect().record.instance_sha256 });
+  let prepared = await fresh.host.prepareOperationDisposition(id, { expectedSha256: fresh.inspect().record.instance_sha256 });
   assert.equal(prepared.assessment, 'confirmed_original');
   const unchanged = business();
-  const traceFile = path.resolve(targetRoot, 'docs/audit', inner.traces[0].path);
-  const traceBefore = fs.readFileSync(traceFile);
-  try {
-    fs.appendFileSync(traceFile, '\nfixture-postimage-conflict\n');
+  await withFixtureArtifactConflict(targetRoot, inner.traces[0].path, async () => {
     const conflict = await fresh.host.prepareOperationDisposition(id, { expectedSha256: fresh.inspect().record.instance_sha256 });
     assert.equal(conflict.assessment, 'unknown', 'a completed output cannot override a changed postimage');
     assert.equal(fresh.host.readJournal(id).results.length, 0);
-  } finally { fs.writeFileSync(traceFile, traceBefore); }
+  });
   assert.equal(business(), unchanged);
+  // The controlled DB mutation advances its fence. Reobserve a current plan;
+  // the original preview, intent, grant, capsule and producer stay immutable.
+  prepared = await fresh.host.prepareOperationDisposition(id, { expectedSha256: fresh.inspect().record.instance_sha256 });
+  assert.equal(prepared.assessment, 'confirmed_original');
   const deniedWitness = () => shadowHash({ business: business(), instance: fresh.inspect().record,
     journal: fresh.host.readJournal(id), fence: canonical.resourceFence().read(),
     audit: canonical.read('workflows/operation-dispositions/' + id + '.json'),
@@ -1860,7 +1927,7 @@ async function qualifyExternalMerge(scenario) {
   const checks = scenario === 'checks', pretriage = scenario.startsWith('pretriage-');
   const nominal = scenario === 'pretriage-nominal';
   const prefix = checks || scenario === 'pretriage-session' || nominal ? 'session' : 'correction';
-  const base = arrange(prefix, pretriage ? 'external-' + scenario : checks ? 'external-checks' : 'external-premerge');
+  const base = arrange(prefix, pretriage ? 'external-' + scenario : checks ? 'external-checks' : 'external-premerge', incidentStateMode);
   const configFile = path.join(base, 'configuration.json'), data = json(configFile);
   const { home, configuration: { target_root: targetRoot, instance_id: instanceId }, binding, pr, fetchFixture } = data;
   const git = (...args) => execFileSync(binding.git.path, ['-C', targetRoot, ...args],
@@ -1872,9 +1939,9 @@ async function qualifyExternalMerge(scenario) {
   let f = open(base, { initializeKey: true });
   const initial = f.host.initialize({ instanceId });
   f.host.initialize({ instanceId, write: true, expectedResultSha256: initial.record.instance_sha256 });
-  const { audit, sessionFile } = seedPrOpening(f, pr, targetRoot);
+  const { audit, sessionFile } = await seedPrOpening(f, pr, targetRoot);
   git('add', '--', 'docs/audit');
-  git('commit', '-m', 'fixture PR opening marker');
+  git('commit', '--allow-empty', '-m', 'fixture PR opening marker');
   pr.base_oid = git('rev-parse', 'HEAD');
   const merged = git('commit-tree', 'HEAD^{tree}', '-p', pr.base_oid, '-p', pr.head_oid, '-m', 'fixture external merge');
   const bare = '--git-dir=' + fetchFixture.remote;
@@ -1886,7 +1953,12 @@ async function qualifyExternalMerge(scenario) {
   fetchFixture.merged = merged;
   save(configFile, data);
   process.env.AIDN_STANDARD_HOST_HOME = home;
-  const continuity = () => readStandardPostMergeContinuity({ targetRoot, sessionId: 'S001', content: fs.readFileSync(sessionFile, 'utf8') });
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot });
+  const readArtifact = name => artifacts.read(name, { required: true }).content;
+  const visibleHash = name => fs.existsSync(path.resolve(audit, name)) ? pin(path.resolve(audit, name)).sha256 : null;
+  assert.deepEqual({ state_mode: artifacts.describe().state_mode, backend: artifacts.describe().backend },
+    { state_mode: incidentStateMode, backend: 'sqlite' });
+  const continuity = () => readStandardPostMergeContinuity({ targetRoot, sessionId: 'S001', content: readArtifact('sessions/S001.md') });
   const start = () => runStartSessionAdmitUseCase({ targetRoot });
   const cycle = () => runCycleCreateAdmitUseCase({ targetRoot, mode: 'COMMITTING' });
   const assertLocked = async () => {
@@ -1997,7 +2069,7 @@ async function qualifyExternalMerge(scenario) {
     await applyCall();
     git('switch', 'dev');
     console.log(JSON.stringify({ scenario, captured: id, occurrence: request.occurrence_id, action_sha256: planned.action_sha256,
-      transport: 'github_double', persisted: 'FILES', denied_substitution: true }));
+      transport: 'github_double', persisted: artifacts.describe().state_mode, denied_substitution: true }));
   } else {
     git('switch', 'dev');
     if (checks) {
@@ -2119,7 +2191,7 @@ async function qualifyExternalMerge(scenario) {
       assert.equal(recorded.output.operation_ref, 'session_pr_incident_record');
       assert.equal(recorded.output.facts.session_pr_incident_tracking_recorded, true);
       const incidentId = standardPrIncidentId(question), tracker = path.join(targetRoot, 'docs/audit/incidents', incidentId + '.md');
-      const content = fs.readFileSync(tracker, 'utf8');
+      const content = readArtifact('incidents/' + incidentId + '.md');
       assert.match(content, /^status: OPEN$/m); assert.match(content, /^lifecycle_status: triaged$/m);
       assert.ok(content.includes('owner: human:' + authority_id));
       assert.ok(content.includes('checkpoint_sha256: ' + disposition.intent.instance_sha256));
@@ -2161,7 +2233,7 @@ async function qualifyExternalMerge(scenario) {
         const before = gitState(), resolved = (await f.run()).results[0];
         assert.equal(resolved.output.operation_ref, 'session_pr_incident_resolve');
         assert.equal(resolved.output.facts.session_pr_incident_resolution_verified, true);
-        const content = fs.readFileSync(tracked.tracker, 'utf8');
+        const content = readArtifact('incidents/' + tracked.incidentId + '.md');
         assert.match(content, /^status: RESOLVED$/m); assert.match(content, /^lifecycle_status: closed$/m);
         assert.ok(content.includes('aidn:pr-incident-resolution:' + completionId));
         const request = { instance_id: instanceId, incident_id: tracked.incidentId, incident_sha256: artifactContentHash(content) };
@@ -2186,10 +2258,15 @@ async function qualifyExternalMerge(scenario) {
               fs.appendFileSync(file, String.fromCharCode(0).repeat(padding));
             }
           }
-          const beforeSession = fs.readFileSync(sessionPath, 'utf8'), beforeSnapshot = fs.readFileSync(snapshotPath, 'utf8');
+          const traceNames = ['sessions/' + completePlan.prepared.plan.session_id + '.md', 'snapshots/context-snapshot.md'];
+          const beforeSession = readArtifact(traceNames[0]), beforeSnapshot = readArtifact(traceNames[1]);
+          const metadataBefore = readFixtureArtifactRows(targetRoot, traceNames);
+          const projectionsBefore = traceNames.map(visibleHash);
           const witness = () => shadowHash({ instance: f.inspect().record,
-            session: fs.readFileSync(sessionPath, 'utf8'), snapshot: fs.readFileSync(snapshotPath, 'utf8'),
-            tracker: fs.readFileSync(tracked.tracker, 'utf8') });
+            traces: traceNames.map(name => artifacts.read(name)),
+            metadata: traceNames.map(name => artifacts.metadataHash(name)),
+            projections: traceNames.map(visibleHash),
+            tracker: artifacts.read('incidents/' + tracked.incidentId + '.md') });
           const close = await f.preview(), beforeDenied = witness();
           assert.equal(close.binding.id, 'session_pr_incident_close');
           assert.equal(close.prepared.plan.closure_plan_encoding, 'base64-trace-utf8-v1');
@@ -2221,15 +2298,24 @@ async function qualifyExternalMerge(scenario) {
           assert.equal(canonical.read('incidents/' + tracked.incidentId + '.md').sha256, null);
           assert.equal(canonical.ownerPending(), false);
           assert.equal(closed.evidence_refs.length, 2);
-          for (const [file, before] of [[sessionPath, beforeSession], [snapshotPath, beforeSnapshot]]) {
-            const after = fs.readFileSync(file, 'utf8');
+          const metadataAfter = readFixtureArtifactRows(targetRoot, traceNames);
+          const originalClosure = decodePrIncidentClosurePlan(close.prepared.plan);
+          for (const [index, before] of [beforeSession, beforeSnapshot].entries()) {
+            const name = traceNames[index], file = path.resolve(audit, name), after = readArtifact(name);
+            const expected = originalClosure.traces.find(trace => trace.path === name);
+            assert.equal(artifacts.metadataHash(name), expected.after_metadata_sha256, 'closure must confirm its original metadata postimage');
+            if (metadataBefore[index])
+              assert.equal(artifactMetadataHash({ ...metadataAfter[index], updated_at: metadataBefore[index].updated_at }),
+                artifactMetadataHash(metadataBefore[index]), 'closure must preserve every classification field; its planned write timestamp may advance');
+            assert.equal(visibleHash(name), incidentStateMode === 'db-only' ? projectionsBefore[index] : artifactContentHash(after),
+              'db-only must not materialize traces; DUAL must reflect the canonical postimage');
             assert.ok(after.startsWith(before));
             assert.ok(after.includes('aidn:incident-closure:' + tracked.incidentId + ':'));
             assert.ok(after.includes('checkpoint ' + disposition.intent.instance_sha256));
             assert.equal(closed.evidence_refs.find(row => path.resolve(targetRoot, row.ref) === path.resolve(file))?.sha256, artifactContentHash(after));
           }
           assert.equal(open(base).host.inspect(instanceId).record.instance_sha256, f.inspect().record.instance_sha256);
-          console.log(JSON.stringify({ published_incident_cleanup: 'PASS', incident_id: tracked.incidentId, trace_bytes: [sessionPath, snapshotPath].map(file => fs.statSync(file).size), denied_grant_no_effect: true, canonical_tracker_removed: true, owner_released: true, targets: 'published-PR-completion', upstream: 'fixture-seeded', human: 'signed-fixture', git: 'real', https: 'double', genuine_native: 'NOT_RUN', full_standard_workflow: false }));
+          console.log(JSON.stringify({ published_incident_cleanup: 'PASS', incident_id: tracked.incidentId, state_mode: incidentStateMode, backend: artifacts.describe().backend, trace_bytes: traceNames.map(name => Buffer.byteLength(readArtifact(name), 'utf8')), metadata_postimages_confirmed: true, classification_preserved: true, db_only_no_projection: incidentStateMode === 'db-only', denied_grant_no_effect: true, canonical_tracker_removed: true, owner_released: true, targets: 'published-PR-completion', upstream: 'fixture-seeded', human: 'signed-fixture', git: 'real', https: 'double', genuine_native: 'NOT_RUN', full_standard_workflow: false }));
         }
       }
       if (!basis.facts.session_pr_incident_tracking_required) {
@@ -2327,8 +2413,8 @@ if (process.argv[2] === '--lose-incident-close-receipt') {
   assert.equal(original.intent.binding_ref, 'session_pr_incident_close');
   f.allow(shadowHash(original.preview));
   await assert.rejects(f.host.dispatch(id, { write: true }), { code: 'FIXTURE_CLOSE_RECEIPT_LOST' });
-  const { configuration: { target_root: targetRoot } } = json(path.join(base, 'configuration.json'));
-  const capsule = createProcessDispatchRecordStore({ targetRoot, stateMode: 'files' }).read(id).record;
+  const { configuration: { target_root: targetRoot }, state_mode: stateMode = 'files' } = json(path.join(base, 'configuration.json'));
+  const capsule = createProcessDispatchRecordStore({ targetRoot, stateMode }).read(id).record;
   f.signer.verify(capsule);
   assert.equal(capsule.phase, 'returned');
   assert.equal(capsule.output.outcome, 'completed');

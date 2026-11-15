@@ -345,6 +345,7 @@ The overlay above describes where each concept lives. These are the operational 
   - when `runtime.persistence.backend=postgres`, the normal runtime path is PostgreSQL-only and SQLite is inspected separately only for migration, compatibility or diagnostics
   - workflow continuity admission reads sessions and cycles from the configured canonical runtime backend; missing detailed visible session/cycle projections do not force a file or SQLite fallback
   - if the canonical runtime backend is unavailable or contains multiple unresolved active-session/cycle candidates, continuity-changing operations stop explicitly instead of guessing from stale visible anchors or latest-row timestamps
+  - a CLOSED session retained by the managed PR record may remain the explicit delivery anchor only when its canonical marker, branch and lifecycle agree, it is the latest session, and no open session/cycle competes; it is never inferred as open work, and source admission still requires authenticated R09 reconciliation
 
 Rules:
 

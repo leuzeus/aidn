@@ -3,6 +3,20 @@ import { checkShadowJson, shadowHash } from './shadow-json.mjs';
 import { validateJsonSchema } from '../contracts/json-schema-validator.mjs';
 import linkSchema from '../contracts/workflow-definition/github-pr-link.v1.schema.json' with { type: 'json' };
 const fail = code => { throw Object.assign(Error(code), { code }); };
+export function readPrOpeningLocator(content) {
+  const required = 'STANDARD_PR_POST_MERGE_COMPLETION_SOURCE_REQUIRED';
+  const fail = code => { throw Object.assign(Error(code), { code, effect_status: 'no_effect' }); };
+  const headings = [...(content ?? '').matchAll(/^## Process PR opening[ \t]*\r?$/gm)];
+  if (!headings.length) return null;
+  if (headings.length !== 1) fail(required);
+  const match = /^\r?\n\r?\n\x60{3}json\r?\n([\s\S]{1,4096}?)\r?\n\x60{3}[ \t]*(?:\r?\n|$)/.exec(content.slice(headings[0].index + headings[0][0].length));
+  if (!match) fail(required);
+  let locator;
+  try { locator = JSON.parse(match[1]); } catch { fail(required); }
+  if (!/^op_[a-f0-9]{40}$/.test(locator?.open_operation_id ?? '')) fail(required);
+  return locator;
+}
+
 function field(text, key, value, optional = false) {
   const regex = new RegExp('^([ \\t]*-?[ \\t]*)' + key + ':[^\\r\\n]*$', 'gm'), matches = [...text.matchAll(regex)];
   if (!matches.length && optional) {

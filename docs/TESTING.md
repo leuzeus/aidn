@@ -1601,6 +1601,28 @@ the original output without repeating business effects. This is a controlled
 receipt-loss fixture, not an arbitrary-crash or held-unknown-owner qualification.
 Genuine Native and the complete published STANDARD root remain NOT_RUN.
 
+For each of those two receipt-loss cases, `--incident-state-mode=dual` and
+`--incident-state-mode=db-only` select a fresh SQLite project from installation.
+The fixture stages only explicit upstream DATA through metadata-preserving CAS;
+current published R10/R09 effects and all cold stores use the configured mode.
+Require canonical tracker removal, unchanged trace classification, no business
+replay, current-consent refusal without writes and exact replay. DUAL traces must
+match the canonical postimages; db-only must preserve its original visible trace
+projections without exporting new ones. Controlled conflicting canonical DATA
+restores all eleven original metadata fields, including `updated_at`, and then
+prepares a new disposition plan for the current fence. Successful closure must
+match its original prepared metadata postimages: classification remains unchanged
+while the planned write timestamp may advance. These selectors qualify neither
+live PostgreSQL nor a genuine Native producer.
+
+The canonical continuity reader retains a structurally consistent CLOSED managed
+PR delivery anchor without reopening its session. The existing cycle-admission
+fixture checks that this context reaches the PR-open gate; missing/malformed
+markers, branch/status conflicts, a later closed session and competing open
+sessions/cycles must remain ambiguous. These transport-double cases provide no
+completion authority. The actual SQLite receipt-loss cases must still remain
+locked before accepted R09 evidence and admit a new session only afterwards.
+
 ## Mode session closure and data capacity
 
 Use `node tools/perf/verify-standard-process-binding-input-fixtures.mjs` for

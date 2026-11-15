@@ -5,23 +5,14 @@ import { assertStandardOperationOutput } from '../../core/workflow/standard-oper
 import { alignedReason, assertPostMergeAlignmentOutput, assertPostMergeMeasureOutput, postMergeAlignmentOperation, postMergeMeasureOperation } from '../../core/workflow/standard-pr-post-merge-fetch.mjs';
 import { assertPostMergeCompleteOutput, assertPostMergeCompletePlan, postMergeCompleteOperation } from '../../core/workflow/standard-pr-post-merge-complete.mjs';
 import { readSourceBranch, parseSessionMetadata } from '../../lib/workflow/session-context-lib.mjs';
+import { readPrOpeningLocator } from '../../core/workflow/standard-session-pr-record.mjs';
 import { readWorkflowProjectExecutionAuthority } from './workflow-instance-composition.mjs';
 
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: 'no_effect' }); };
 const required = 'STANDARD_PR_POST_MERGE_COMPLETION_SOURCE_REQUIRED';
 const exact = (left, right) => shadowHash(left) === shadowHash(right);
 
-export function readPrOpeningLocator(content) {
-  const headings = [...(content ?? '').matchAll(/^## Process PR opening[ \t]*\r?$/gm)];
-  if (!headings.length) return null;
-  if (headings.length !== 1) fail(required);
-  const match = /^\r?\n\r?\n\x60{3}json\r?\n([\s\S]{1,4096}?)\r?\n\x60{3}[ \t]*(?:\r?\n|$)/.exec(content.slice(headings[0].index + headings[0][0].length));
-  if (!match) fail(required);
-  let locator;
-  try { locator = JSON.parse(match[1]); } catch { fail(required); }
-  if (!/^op_[a-f0-9]{40}$/.test(locator?.open_operation_id ?? '')) fail(required);
-  return locator;
-}
+export { readPrOpeningLocator };
 
 export function latestIntent(instance, binding) {
   return instance.events.findLast(event => event.kind === 'operation_intent' && event.intent.binding_ref === binding)?.intent;
