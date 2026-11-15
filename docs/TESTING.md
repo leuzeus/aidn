@@ -4987,7 +4987,12 @@ the R10 resolution, confirmed-resume and retained-trace executor.
 exercises the private closure candidate with actual local ownership/fences,
 filesystem or SQLite authority, exact metadata revisions, two retained traces,
 canonical deletion and visible projection cleanup. Controlled losses after one
-trace and after canonical deletion resume without a duplicate trace. Tests also
+trace and after canonical deletion resume without a duplicate trace. The same
+exact serialized preparation is loaded by fresh Node children for partial apply,
+revoked consent, tamper refusal, completion and no-effect replay. Receipts retain
+the OS child/parent PIDs, preparation hash and process status; the existing
+Windows Job confines every child. These children exit normally after confirmed
+partial effects. Abrupt crashes with an unknown owner remain a separate gate. Tests also
 cover unresolved/deferred tracking, L3 STOP/rule authorization, explicit intent,
 revocation and stale preimages. Forged evidence, metadata conflicts, revocation
 between trace writes and a foreign
