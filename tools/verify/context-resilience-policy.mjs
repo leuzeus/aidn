@@ -1,3 +1,5 @@
+import contextCompletionCases from "../../package/catalogs/context-completion-fixtures.v1.json" with { type: "json" };
+
 // Coverage authority for splitting the 43-command context-resilience chain
 // recorded at 5f768d3. Keep argv and order explicit: package script names alone
 // cannot prove that a renamed, nested or shortened group retains its coverage.
@@ -75,7 +77,7 @@ function expectedGroupInvocations(group) {
 // The governed scripts use a deliberately small grammar: blocking && chains
 // of literal node argv or npm run references. Shell fallbacks, conditions and
 // extra npm arguments cannot be interpreted as equivalent coverage.
-function expandScript(scripts, name, active = new Set()) {
+function expandScript(scripts, name, active = new Set(), completionManifest = contextCompletionCases) {
   if (active.has(name)) throw new Error(`${name}: recursive npm script`);
   if (typeof scripts[name] !== "string" || !scripts[name].trim()) {
     throw new Error(`${name}: package script missing or empty`);
@@ -83,11 +85,22 @@ function expandScript(scripts, name, active = new Set()) {
   if (scripts[`pre${name}`] != null || scripts[`post${name}`] != null) {
     throw new Error(`${name}: implicit npm lifecycle hooks alter governed coverage`);
   }
+  if (name === "perf:verify-context-completion") {
+    if (scripts[name] !== "node tools/perf/run-context-completion-fixtures.mjs"
+        || completionManifest?.contract_version !== "context-completion-fixtures.v1"
+        || Object.keys(completionManifest).sort().join(",") !== "cases,contract_version"
+        || !Array.isArray(completionManifest.cases)
+        || completionManifest.cases.some(args => !Array.isArray(args) || !args.length
+          || args.some(arg => typeof arg !== "string" || !arg || arg.includes("\0")))) {
+      throw new Error(`${name}: declared fixture manifest or dispatcher changed`);
+    }
+    return completionManifest.cases.map(args => "node " + args.join(" "));
+  }
   active.add(name);
   const invocations = scripts[name].split("&&").flatMap((part) => {
     const command = part.trim().replace(/\s+/gu, " ");
     const nested = /^npm run ([\w:.-]+)$/u.exec(command);
-    if (nested) return expandScript(scripts, nested[1], active);
+    if (nested) return expandScript(scripts, nested[1], active, completionManifest);
     if (!/^node tools\/perf\/[\w.-]+\.mjs(?: [\w./-]+)*$/u.test(command)) {
       throw new Error(`${name}: unsupported command form`);
     }
@@ -106,7 +119,8 @@ function referencesContextScript(scripts, name, protectedScripts, seen = new Set
   if (seen.has(name)) return false;
   seen.add(name);
   const body = String(scripts[name] ?? "");
-  if ((body.match(/[\w:.-]+/gu) ?? []).some((token) => protectedScripts.has(token))) return true;
+  if (body.includes("tools/perf/run-context-completion-fixtures.mjs")
+      || (body.match(/[\w:.-]+/gu) ?? []).some((token) => protectedScripts.has(token))) return true;
   const lifecycle = [`pre${name}`, `post${name}`].filter((hook) => Object.hasOwn(scripts, hook));
   const references = [...body.matchAll(
     /\bnpm(?:\.cmd)?(?:\s+--?[\w-]+(?:=[\w.-]+)?)*\s+run(?:-script)?(?:\s+--?[\w-]+(?:=[\w.-]+)?)*\s+([\w][\w:.-]*)/gu,
@@ -115,7 +129,7 @@ function referencesContextScript(scripts, name, protectedScripts, seen = new Set
     .some((reference) => referencesContextScript(scripts, reference, protectedScripts, seen));
 }
 
-export function validateContextResiliencePolicy({ catalog, packageJson }) {
+export function validateContextResiliencePolicy({ catalog, packageJson, contextCompletionFixtureManifest = contextCompletionCases }) {
   const issues = [];
   const scripts = packageJson?.scripts ?? {};
   const gates = Array.isArray(catalog?.gates) ? catalog.gates : [];
@@ -131,7 +145,7 @@ export function validateContextResiliencePolicy({ catalog, packageJson }) {
   coverageChecks.push({ script: WRAPPER, expected: GROUPS.flatMap(expectedGroupInvocations) });
   for (const { script, expected } of coverageChecks) {
     try {
-      const actual = expandScript(scripts, script);
+      const actual = expandScript(scripts, script, new Set(), contextCompletionFixtureManifest);
       if (JSON.stringify(actual) !== JSON.stringify(expected)) {
         issues.push(`${script}: ordered invocation coverage or argv changed`);
       }

@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import codexIntegrationCases from "../../package/catalogs/codex-integration-fixtures.v1.json" with { type: "json" };
 import agenticProcessCases from "../../package/catalogs/agentic-process-fixtures.v1.json" with { type: "json" };
 import path from "node:path";
 import { parseDocument } from "yaml";
@@ -11,6 +12,7 @@ const DEPENDENCY_BEARING_GATE_COMMANDS = new Set([
 ]);
 
 const REQUIRED_OBLIGATIONS = Object.freeze({
+  "codex-integration-lifecycle": ["dev", "main", "release"],
   "contracts-json": ["dev", "main", "release"],
   "contracts-surface-catalog": ["dev", "main", "release"],
   "effects-policy": ["dev", "main", "release"],
@@ -42,6 +44,7 @@ const REQUIRED_OBLIGATIONS = Object.freeze({
 });
 
 const REQUIRED_GATE_SCRIPTS = Object.freeze({
+  "codex-integration-lifecycle": "perf:verify-codex-integration",
   "contracts-json": "perf:verify-cli-output-contracts",
   "effects-policy": "perf:verify-cli-effect-policy",
   "runtime-db-runtime-cli": "perf:verify-db-runtime-cli",
@@ -66,6 +69,7 @@ const REQUIRED_GATE_SCRIPTS = Object.freeze({
 });
 
 const REQUIRED_GATE_CONDITIONS = Object.freeze({
+  "codex-integration-lifecycle": "always",
   "runtime-agent-execution-contracts": "always",
   "runtime-agentic-process": "always",
   "runtime-agent-execution-postgres": "always",
@@ -79,6 +83,9 @@ const REQUIRED_GATE_CONDITIONS = Object.freeze({
   "cleanliness-gate-runner-fixtures": "git-repository",
   "cleanliness-worktree": "git-repository",
 });
+
+// Independent historical lifecycle command authority; do not derive it from the manifest.
+const CODEX_INTEGRATION_COMMAND = "node tools/perf/verify-global-management-fixtures.mjs && node tools/perf/verify-global-recovery-fixtures.mjs && node tools/perf/verify-global-runtime-store-fixtures.mjs && node tools/perf/verify-global-package-fixtures.mjs && node tools/perf/verify-global-hook-connector-fixtures.mjs && node tools/perf/verify-global-migration-inventory-fixtures.mjs && node tools/perf/verify-global-project-compatibility-fixtures.mjs && node tools/perf/verify-multi-project-setup-fixtures.mjs && node tools/perf/verify-release-package-download-fixtures.mjs && node tools/perf/verify-windows-project-setup-fixtures.mjs && node tools/perf/verify-native-write-admission-fixtures.mjs && node tools/perf/verify-codex-assets-fixtures.mjs && node tools/perf/verify-project-activation-fixtures.mjs && node tools/perf/verify-codex-native-integration-fixtures.mjs && node tools/perf/verify-codex-context-store-fixtures.mjs && node tools/perf/verify-bootstrap-lifecycle-fixtures.mjs && node tools/perf/verify-bootstrap-plan-fixtures.mjs && node tools/perf/verify-codex-legacy-skill-repair-fixtures.mjs && node tools/perf/verify-installation-recovery-fixtures.mjs && node tools/perf/verify-installation-fault-boundaries-fixtures.mjs && node tools/perf/verify-codex-skill-namespace-fixtures.mjs && node tools/perf/verify-global-skills-migration-fixtures.mjs && node tools/perf/verify-cli-activation-fixtures.mjs && node tools/perf/verify-installation-persistence-policy-fixtures.mjs && node tools/perf/verify-global-skills-transaction-fixtures.mjs && node tools/perf/verify-activation-lifecycle-fixtures.mjs && node tools/perf/verify-client-adoption-install-fixtures.mjs && node tools/perf/verify-agent-views-fixtures.mjs && node tools/perf/verify-grouped-workflow-fixtures.mjs && node tools/perf/verify-task-context-profile-fixtures.mjs && node tools/perf/verify-ordered-closure-fixtures.mjs";
 
 const GOVERNED_RUNTIME_COMMANDS = Object.freeze({
   "runtime-agent-execution-contracts": "node tools/perf/verify-agent-execution-contracts-fixtures.mjs",
@@ -386,8 +393,10 @@ export function validateGateAndWorkflowPolicy({
   packageJson,
   workflowModels,
   agenticFixtureManifest = agenticProcessCases,
+  codexIntegrationFixtureManifest = codexIntegrationCases,
+  contextCompletionFixtureManifest,
 }) {
-  const issues = validateContextResiliencePolicy({ catalog, packageJson });
+  const issues = validateContextResiliencePolicy({ catalog, packageJson, contextCompletionFixtureManifest });
   const gates = Array.isArray(catalog?.gates) ? catalog.gates : [];
   const gateById = new Map();
   const gateByScript = new Map();
@@ -453,6 +462,36 @@ export function validateGateAndWorkflowPolicy({
     for (const candidate of gates) {
       if (candidate.id === gateId && candidate.script === script) continue;
       if (referencesRuntimeCoverage(scripts, candidate.script, script, [...command.split(" && "), ...(agentic ? ["node tools/perf/run-agentic-process-fixtures.mjs"] : [])])) {
+        issues.push(`${gateId}: coverage must not repeat through another gate`);
+      }
+    }
+  }
+
+  {
+    const gateId = "codex-integration-lifecycle", script = "perf:verify-codex-integration";
+    const gate = gateById.get(gateId), scripts = packageJson?.scripts ?? {};
+    const manifest = codexIntegrationFixtureManifest;
+    const valid = manifest?.contract_version === "codex-integration-fixtures.v1"
+      && Object.keys(manifest).sort().join(",") === "cases,contract_version"
+      && Array.isArray(manifest.cases)
+      && manifest.cases.every(args => Array.isArray(args) && args.length
+        && args.every(arg => typeof arg === "string" && arg && !arg.includes("\0")))
+      && JSON.stringify(manifest.cases) === JSON.stringify(CODEX_INTEGRATION_COMMAND.split(" && ").map(row => row.split(" ").slice(1)));
+    if (!valid || scripts[script] !== "node tools/perf/run-codex-integration-fixtures.mjs"
+        || scripts[`pre${script}`] != null || scripts[`post${script}`] != null) {
+      issues.push(`${gateId}: immutable fixture command`);
+    }
+    if (gate && (gate.family !== "codex" || gate.job !== "governance-admission/gates"
+        || ![undefined, "admission"].includes(gate.execution_scope))) {
+      issues.push(`${gateId}: immutable Codex admission placement`);
+    }
+    if (gates.filter(candidate => candidate.script === script).length !== 1) {
+      issues.push(`${gateId}: script must be selected exactly once`);
+    }
+    for (const candidate of gates) {
+      if (candidate.id === gateId && candidate.script === script) continue;
+      if (referencesRuntimeCoverage(scripts, candidate.script, script,
+          [...CODEX_INTEGRATION_COMMAND.split(" && "), "node tools/perf/run-codex-integration-fixtures.mjs"])) {
         issues.push(`${gateId}: coverage must not repeat through another gate`);
       }
     }

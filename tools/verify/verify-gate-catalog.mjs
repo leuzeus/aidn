@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import codexIntegrationCases from "../../package/catalogs/codex-integration-fixtures.v1.json" with { type: "json" };
+import contextCompletionCases from "../../package/catalogs/context-completion-fixtures.v1.json" with { type: "json" };
 import agenticProcessCases from "../../package/catalogs/agentic-process-fixtures.v1.json" with { type: "json" };
 import path from "node:path";
 import { parseDocument } from "yaml";
@@ -88,6 +90,8 @@ function candidateRejected({
   candidatePackageJson = packageJson,
   candidateWorkflowSources = workflowSources,
   candidateAgenticFixtureManifest = agenticProcessCases,
+  candidateCodexIntegrationFixtureManifest = codexIntegrationCases,
+  candidateContextCompletionFixtureManifest = contextCompletionCases,
 }) {
   const syntaxIssues = candidateWorkflowSources.flatMap((source) => (
     validateWorkflowYamlSyntax(source.text, source.path)
@@ -100,6 +104,8 @@ function candidateRejected({
     packageJson: candidatePackageJson,
     workflowModels: candidateWorkflowModels,
     agenticFixtureManifest: candidateAgenticFixtureManifest,
+    codexIntegrationFixtureManifest: candidateCodexIntegrationFixtureManifest,
+    contextCompletionFixtureManifest: candidateContextCompletionFixtureManifest,
   }).length > 0 || syntaxIssues.length > 0;
 }
 
@@ -207,6 +213,48 @@ for (const requiredToken of [
   }
 }
 
+// The two supervised coordinators retain independent frozen command authorities.
+const compoundManifestProbes = {};
+for (const [name, baseline, property, script] of [
+  ["codex_integration", codexIntegrationCases, "codexIntegrationFixtureManifest", "perf:verify-codex-integration"],
+  ["context_completion", contextCompletionCases, "contextCompletionFixtureManifest", "perf:verify-context-completion"],
+]) {
+  const probe = mutate => {
+    const candidate = { catalog: clone(catalog), packageJson: clone(packageJson), workflowModels, [property]: clone(baseline) };
+    mutate(candidate, candidate[property]);
+    return validateGateAndWorkflowPolicy(candidate);
+  };
+  compoundManifestProbes[name + "_baseline_accepted"] = probe(() => {}).length === 0;
+  compoundManifestProbes[name + "_every_omission_rejected"] = baseline.cases.every((_, index) => probe((candidate, manifest) => {
+    manifest.cases.splice(index, 1);
+  }).length > 0);
+  compoundManifestProbes[name + "_every_duplicate_rejected"] = baseline.cases.every((args) => probe((candidate, manifest) => {
+    manifest.cases.push(args);
+  }).length > 0);
+  for (const [variant, mutate] of Object.entries({
+    reorder: (candidate, manifest) => { manifest.cases.reverse(); },
+    argv: (candidate, manifest) => { manifest.cases[0].push("--unexpected"); },
+    extra_key: (candidate, manifest) => { manifest.optional = true; },
+    version: (candidate, manifest) => { manifest.contract_version = "wrong.v1"; },
+    malformed: (candidate, manifest) => { manifest.cases[0] = null; },
+    substituted_dispatcher: candidate => { candidate.packageJson.scripts[script] = "node tools/perf/verify-bpmn-process-fixtures.mjs"; },
+    pre_hook: candidate => { candidate.packageJson.scripts["pre" + script] = "node tools/perf/verify-bpmn-process-fixtures.mjs"; },
+    post_hook: candidate => { candidate.packageJson.scripts["post" + script] = "node tools/perf/verify-bpmn-process-fixtures.mjs"; },
+    duplicate_gate: candidate => {
+      const gate = candidate.catalog.gates.find(row => row.script === script);
+      candidate.catalog.gates.push({ ...gate, id: "fixture-compound-copy", allow_script_reuse: true });
+    },
+    direct_dispatcher_repeat: candidate => {
+      const gate = candidate.catalog.gates.find(row => row.script === script);
+      candidate.packageJson.scripts["fixture:compound-copy"] = candidate.packageJson.scripts[script];
+      candidate.catalog.gates.push({ ...gate, id: "fixture-compound-copy", script: "fixture:compound-copy" });
+    },
+  })) compoundManifestProbes[name + "_" + variant + "_rejected"] = probe(mutate).length > 0;
+}
+for (const [name, passed] of Object.entries(compoundManifestProbes)) {
+  if (!passed) issues.push("compound manifest policy probe failed: " + name);
+}
+
 const weakenedCatalog = clone(catalog);
 weakenedCatalog.gates.find((gate) => gate.id === "cleanliness-worktree").obligation.dev = "skip";
 weakenedCatalog.gates.find((gate) => gate.id === "cleanliness-worktree").obligation.main = "skip";
@@ -224,7 +272,7 @@ substitutedScriptCatalog.gates.find((gate) => gate.id === "runtime-db-runtime-cl
 // Positive nested npm coverage must pass, while omissions and duplicates must
 // fail on their own policy reason rather than on an unrelated workflow error.
 function contextPolicyProbe(mutate) {
-  const candidate = { catalog: clone(catalog), packageJson: clone(packageJson) };
+  const candidate = { catalog: clone(catalog), packageJson: clone(packageJson), contextCompletionFixtureManifest: clone(contextCompletionCases) };
   mutate(candidate);
   return validateContextResiliencePolicy(candidate);
 }
@@ -265,15 +313,20 @@ const contextNegativeProbes = {
     commands.push(commands.shift()); candidate.scripts[coordinationGroup] = commands.join(" && ");
   }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
   context_every_invocation_omission_rejected: ["admission", "completion", "coordination", "projection"].every((name) => {
-    const script = `perf:verify-context-${name}`, commands = packageJson.scripts[script].split(" && ");
-    return commands.every((_, index) => contextPolicyProbe(({ packageJson: candidate }) => {
-      candidate.scripts[script] = commands.filter((_, position) => position !== index).join(" && ");
+    const script = `perf:verify-context-${name}`;
+    const commands = name === "completion" ? contextCompletionCases.cases : packageJson.scripts[script].split(" && ");
+    return commands.every((_, index) => contextPolicyProbe((candidate) => {
+      const retained = commands.filter((_, position) => position !== index);
+      if (name === "completion") candidate.contextCompletionFixtureManifest.cases = retained;
+      else candidate.packageJson.scripts[script] = retained.join(" && ");
     }).some((issue) => issue.includes("ordered invocation coverage or argv changed")));
   }),
   context_every_invocation_duplicate_rejected: ["admission", "completion", "coordination", "projection"].every((name) => {
-    const script = `perf:verify-context-${name}`, commands = packageJson.scripts[script].split(" && ");
-    return commands.every((command) => contextPolicyProbe(({ packageJson: candidate }) => {
-      candidate.scripts[script] = [...commands, command].join(" && ");
+    const script = `perf:verify-context-${name}`;
+    const commands = name === "completion" ? contextCompletionCases.cases : packageJson.scripts[script].split(" && ");
+    return commands.every((command) => contextPolicyProbe((candidate) => {
+      if (name === "completion") candidate.contextCompletionFixtureManifest.cases = [...commands, command];
+      else candidate.packageJson.scripts[script] = [...commands, command].join(" && ");
     }).some((issue) => issue.includes("ordered invocation coverage or argv changed")));
   }),
   context_invocation_omission_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
@@ -1013,6 +1066,7 @@ const negativeProbes = {
     candidate.scripts["perf:verify-agent-execution-contracts"] = "node --version";
   }).some((issue) => issue.includes("runtime-agent-execution-contracts: immutable fixture command")),
   ...contextNegativeProbes,
+  ...compoundManifestProbes,
   governance_route_resolver_required:
     evaluateGovernanceAdmissionExecutable(missingAdmissionResolverMutation).length > 0,
   governance_route_integrity_required:

@@ -34,8 +34,9 @@ A task is done only when:
   preserves any explicit original execution deadline, and retains observed Job closure;
   dispatcher case evidence preserves exact argv/order and interrupted results
   separately from OS closure and business resource cleanup
-- the complete agentic fixture manifest and its dispatcher invent no aggregate
-  or per-case wall-clock deadline; cancellation, caller/supervisor death and
+- the declared agentic, Codex integration and context-completion fixture
+  manifests and their dispatchers invent no aggregate or per-case wall-clock
+  deadline; each exact ordered command remains mandatory, cancellation, caller/supervisor death and
   observed Job closure remain required, while an explicit caller deadline is
   preserved without renewal and Native execution retains its own finite grant
 - required gate preconditions fail diagnostically when unavailable; they are not reported as `SKIP`

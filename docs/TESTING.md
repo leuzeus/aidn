@@ -6586,3 +6586,28 @@ does not activate a later epoch or perform another Native allocation; the
 separate private accounting fixture covers v5-preserving finite epoch activation.
 Genuine Native/Human, installed archive, unknown/unadmitted histories, general
 R10/handoff, complete productive STANDARD and full-plan acceptance remain due.
+
+
+### Supervised Codex integration and context completion
+
+`perf:verify-codex-integration` and `perf:verify-context-completion` use declared
+ordered manifests through the existing Node fixture supervisor. Their original
+31 and 3 Node argv remain unchanged and mandatory. The context-resilience manual
+wrapper retains the same four groups, order and additions. Independent policy
+authorities reject omitted, repeated, reordered or altered commands, substituted
+dispatchers, implicit npm hooks and repeated admission coverage.
+
+These exact coordinators do not invent an aggregate or per-case wall-clock
+deadline. An explicit caller deadline is preserved across the family and all
+children without renewal; ordinary single-command gates retain their 900000 ms
+default. Cancellation, supervisor death, Windows Job closure and each command
+result remain observed. Individual fixture limits and Native grants are unchanged.
+A prior aggregate timeout remains a failed interrupted attempt, independently of
+a later corrected run; observing OS closure does not prove business cleanup.
+
+Use `node tools/verify/verify-gate-catalog.mjs`,
+`node tools/verify/verify-gate-runner-fixtures.mjs` and
+`node tools/perf/verify-node-fixture-runner-fixtures.mjs` for the focused policy and
+supervision checks, then run both original npm entry points for their full
+coverage. Policy checks alone do not prove the 34 product fixtures or genuine
+Native behavior.

@@ -34,6 +34,8 @@ function initializeRepository(repoRoot) {
       "fixture:pass": "node fixture-pass.mjs",
       "fixture:dirty": "node fixture-dirty.mjs",
       "perf:verify-agentic-process": "node fixture-pass.mjs",
+      "perf:verify-codex-integration": "node fixture-pass.mjs",
+      "perf:verify-context-completion": "node fixture-pass.mjs",
     },
   }, null, 2), "utf8");
   fs.writeFileSync(path.join(repoRoot, "tracked.txt"), "tracked baseline\n", "utf8");
@@ -160,13 +162,17 @@ function main() {
       assert(aggregate.results[0].verification_process.cleanup.proof.active_processes === 0, "aggregate still proves owned Job closure");
     }
     const budgets = [];
-    for (const [gate, options] of [[aggregateGate, {}], [aggregateGate, { timeoutMs: 4321 }], [{ id: "single-command" }, {}]]) {
+    const compoundGates = [aggregateGate,
+      { id: "codex-integration-lifecycle", script: "perf:verify-codex-integration" },
+      { id: "codex-context-completion", script: "perf:verify-context-completion" }];
+    for (const [gate, options] of [...compoundGates.flatMap(gate => [[gate, {}], [gate, { timeoutMs: 4321 }]]),
+      [{ id: "single-command" }, {}], [{ id: "codex-integration-lifecycle" }, {}]]) {
       const inspected = runGateFamily({ repoRoot: tempRoot, catalog: makeCatalog(gate), packageJson,
         requested: "synthetic", context: "dev", env: cleanEnvironment(), json: true, ...options,
         commandRunner(input) { budgets.push(input.timeoutMs); return successfulCommand(); } });
       assert(inspected.ok, "budget selection must not change ordinary gate accounting");
     }
-    assert(JSON.stringify(budgets) === JSON.stringify([null, 4321, 900000]), "only the declared aggregate loses its default cap; explicit caller budgets remain exact");
+    assert(JSON.stringify(budgets) === JSON.stringify([null, 4321, null, 4321, null, 4321, 900000, 900000]), "only exact declared coordinator id/script pairs have no invented aggregate cap; explicit caller budgets remain exact");
 
     const cleanGate = runFixtureGate(tempRoot, { id: "clean-pass" });
     assert(cleanGate.ok, "clean synthetic gate should pass");
