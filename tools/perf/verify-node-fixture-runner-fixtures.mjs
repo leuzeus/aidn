@@ -23,7 +23,7 @@ assert.deepEqual(manifest.cases.slice(194, 197), [
   ["tools/perf/verify-standard-pr-redelivery-fixtures.mjs", "--mode=files", "--aged-plan"],
 ]);
 console.log("PASS accepted194 cases retain their original argv and order modulo explicit age selectors with three exact additions");
-assert.equal(manifest.cases.length, 315);
+assert.equal(manifest.cases.length, 318);
 assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 197))).digest("hex"),
   "47b229353b3929aa0b52623f688b46296517e513a331a68060c4c5a0190c62f4");
 console.log("PASS accepted197 exact argv and order are preserved before twelve R05 objective components");
@@ -114,16 +114,27 @@ assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 
   "cb85d5694d860f94405db17f9e6621d34333c595beeef805cf76d2b852ff71e7");
 assert.equal(manifest.cases.filter(args => args.includes("--aged-plan") || args.includes("--aged-hook")).length, 56);
 console.log("PASS accepted313 preserves the complete304 prefix and nine exact private R10 fixture additions without deadline or selector changes");
-assert.deepEqual(manifest.cases.slice(313), [
+assert.deepEqual(manifest.cases.slice(313, 315), [
   ["tools/perf/verify-standard-pr-review-reply-fixtures.mjs", "--case=external-premerge", "--incident-cleanup"],
   ["tools/perf/verify-standard-pr-review-reply-fixtures.mjs", "--case=external-pretriage-session", "--incident-cleanup"],
 ]);
-assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases)).digest("hex"),
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 315))).digest("hex"),
   "a7da9de5d1555040ad7e1f6f7524061d721a49a5b91bd3a945560d506f8311c4");
-console.log("PASS current315 preserves the complete313 prefix and appends two exact private actual-host R10 cleanup cases");
+console.log("PASS accepted315 preserves the complete313 prefix and two exact actual-host R10 cleanup cases");
+assert.deepEqual(manifest.cases.slice(315, 316), [["tools/perf/verify-standard-pr-review-reply-fixtures.mjs","--case=external-premerge","--incident-low-severity"]]);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 316))).digest("hex"),
+  "14b2088e4e726544139edabf82a3fb7bfc89c024e580579e5939dbe5b016cd0b");
+console.log("PASS frozen316 preserves all315 commands and the published L1 no-incident regression");
+assert.deepEqual(manifest.cases.slice(316), [
+  ["tools/perf/verify-standard-pr-review-reply-fixtures.mjs", "--case=external-premerge", "--incident-receipt-loss"],
+  ["tools/perf/verify-standard-pr-review-reply-fixtures.mjs", "--case=external-pretriage-session", "--incident-receipt-loss"],
+]);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases)).digest("hex"),
+  "0a973f71172b6cf10d9f7844c5c60304e2c85f3efa65e84a40ebd74e44d54c80");
+console.log("PASS current318 preserves the complete316 prefix and appends both published cold receipt-loss recoveries");
 if (process.argv.includes("--manifest-only")) {
-  console.log(JSON.stringify({ status: "PASS", checks: 6, scope: "historical prefixes, unchanged313 cases and two exact actual-host R10 cleanup additions only",
-    manifest_cases: 315, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
+  console.log(JSON.stringify({ status: "PASS", checks: 8, scope: "historical prefixes, unchanged316 cases and both published cold receipt-loss recoveries only",
+    manifest_cases: 318, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
   process.exit(0);
 }
 

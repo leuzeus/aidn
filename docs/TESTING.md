@@ -1581,7 +1581,7 @@ precede tracker removal,
 the retained source is reauthenticated after removal, and the local owner is
 released. Known-partial host continuation and unknown-owner recovery require
 separate evidence; private closure-port recovery does not establish them.
-The `--case=external-premerge --incident-low-severity` selector checks an
+The required `--case=external-premerge --incident-low-severity` selector checks an
 accepted L1 disposition through the same published target: no incident writer,
 temporary tracker or retained owner may remain. The ordinary authorized-merge
 path is checked by the existing full nominal selector. Both require an explicit
@@ -1590,8 +1590,8 @@ solely for response planning; completion there establishes no business effect or
 Native qualification. Its original finite response bound remains unchanged.
 The L2 cases also retain v1 output-reader compatibility and reject missing,
 nonboolean, foreign or blocked success facts.
-The optional `--incident-receipt-loss` selector, paired only with
-`--case=external-premerge` or `--case=external-pretriage-session`, interrupts
+The two required `--incident-receipt-loss` selectors, paired with
+`--case=external-premerge` and `--case=external-pretriage-session`, interrupt
 a real Node producer after its signed completed-output capsule and released
 owner have been retained, before its final operation receipt is written. The
 producer must be refused disposition while alive. After it exits, a fresh host

@@ -1531,6 +1531,21 @@
       "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
       "--case=external-pretriage-session",
       "--incident-cleanup"
+    ],
+    [
+      "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+      "--case=external-premerge",
+      "--incident-low-severity"
+    ],
+    [
+      "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+      "--case=external-premerge",
+      "--incident-receipt-loss"
+    ],
+    [
+      "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+      "--case=external-pretriage-session",
+      "--incident-receipt-loss"
     ]
   ]
 }
