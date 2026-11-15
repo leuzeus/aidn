@@ -276,10 +276,14 @@ remain separate required work; this component claims no Native or archive proof.
 
 ## Catalog version capacity fixtures, 2026-11-12
 
-The process binding input fixture tests the four closed catalog versions with
-each version's own entry vocabulary. V1 keeps its 128-row bound; V2, V3 and V4
-keep 256 rows. Old readers reject the newer entry vocabulary, V4 rejects the
-older entry vocabulary, and V1/V2 still refuse embedded model references.
+The process binding input fixture tests the seven closed catalog versions with
+each version's own entry and activity-output vocabulary. Its historical test
+data uses the original plan-proposal contract through V6; only V7 accepts the
+prework-report contract. This fixture construction never converts a retained
+catalog. V1 keeps its 128-row bound; V2-V7 keep 256 rows. V1-V3 reject the newer
+session-entry vocabulary, V4-V7 reject the older session-entry vocabulary, and
+each fixture retains its version's cycle-entry vocabulary. V1/V2 still refuse
+embedded model references.
 The current published catalog is validated separately against its actual model.
 These are schema and pure input resolver checks, without product or Native effects.
 

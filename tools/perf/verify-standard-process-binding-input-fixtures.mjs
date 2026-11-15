@@ -15,21 +15,32 @@ const test = (name, fn) => { fn(); checks++; console.log('PASS ' + name); };
 test('catalog versions retain their entry vocabulary, closed rows and original capacity bounds', () => {
   assertStandardWorkflowComponentCatalog(assets.catalog, assets.model);
   const flatRow = assets.catalog.bindings.find(row => !Object.hasOwn(row, 'model_ref'));
-  for (const [v, counts] of [[1, [128, 129]], [2, [135, 256, 257]], [3, [135, 256, 257]], [4, [135, 256, 257]]]) {
+  // Capacity fixtures use the vocabulary that their historical reader accepts.
+  // This is test data construction; the published catalog remains unchanged.
+  const historicalActivities = assets.catalog.activities.map(row => ({ ...row,
+    output_contract: row.output_contract === 'standard-cycle-prework-report.v1' ? 'standard-cycle-plan-proposal.v1' : row.output_contract }));
+  for (const [v, counts] of [[1, [128, 129]], ...[2, 3, 4, 5, 6, 7].map(v => [v, [135, 256, 257]])]) {
     const schema = JSON.parse(fs.readFileSync(new URL(`../../src/core/contracts/workflow-definition/standard-workflow-catalog.v${v}.schema.json`, import.meta.url)));
-    const entry = v === 4 ? 'fresh_or_existing_session_admission' : 'fresh_session_admission';
+    const entry = v >= 4 ? 'fresh_or_existing_session_admission' : 'fresh_session_admission';
+    const cycleEntry = v <= 4 ? 'single_new_cycle' : v === 5 ? 'fresh_or_owned_open_cycle' : 'fresh_owned_or_explicitly_selected_active_cycle';
+    const catalog = { ...assets.catalog, activities: v < 7 ? historicalActivities : assets.catalog.activities };
     for (const count of counts) {
-      const value = { ...assets.catalog, contract_version: `standard-workflow-catalog.v${v}`,
-        scope: { ...assets.catalog.scope, entry_conditions: [entry, 'single_new_cycle'] },
+      const value = { ...catalog, contract_version: `standard-workflow-catalog.v${v}`,
+        scope: { ...assets.catalog.scope, entry_conditions: [entry, cycleEntry] },
         bindings: Array.from({ length: count }, (_, i) => ({ ...flatRow, node_id: 'op_' + i })) };
       const errors = validateJsonSchema(value, schema, '$', { contractKind: 'workflow-definition' });
       assert.equal(errors.length === 0, count <= (v === 1 ? 128 : 256), `catalog v${v} count ${count}: ${errors}`);
     }
-    const wrongEntry = { ...assets.catalog, contract_version: `standard-workflow-catalog.v${v}`, bindings: [flatRow],
-      scope: { ...assets.catalog.scope, entry_conditions: [v === 4 ? 'fresh_session_admission' : 'fresh_or_existing_session_admission', 'single_new_cycle'] } };
+    const wrongEntry = { ...catalog, contract_version: `standard-workflow-catalog.v${v}`, bindings: [flatRow],
+      scope: { ...assets.catalog.scope, entry_conditions: [v >= 4 ? 'fresh_session_admission' : 'fresh_or_existing_session_admission', cycleEntry] } };
     assert.ok(validateJsonSchema(wrongEntry, schema, '$', { contractKind: 'workflow-definition' }).length);
+    const preworkRow = { ...catalog, contract_version: `standard-workflow-catalog.v${v}`, bindings: [flatRow],
+      scope: { ...catalog.scope, entry_conditions: [entry, cycleEntry] },
+      activities: [{ ...catalog.activities[0], output_contract: 'standard-cycle-prework-report.v1' }] };
+    const preworkErrors = validateJsonSchema(preworkRow, schema, '$', { contractKind: 'workflow-definition' });
+    assert.equal(preworkErrors.length === 0, v === 7, `catalog v${v} prework vocabulary: ${preworkErrors}`);
     if (v <= 2) {
-      const embeddedRow = { ...wrongEntry, scope: { ...wrongEntry.scope, entry_conditions: [entry, 'single_new_cycle'] },
+      const embeddedRow = { ...wrongEntry, scope: { ...wrongEntry.scope, entry_conditions: [entry, cycleEntry] },
         bindings: [{ ...flatRow, model_ref: { model_id: assets.model.model_id, revision: assets.model.revision, model_sha256: shadowHash(assets.model) } }] };
       assert.ok(validateJsonSchema(embeddedRow, schema, '$', { contractKind: 'workflow-definition' }).length);
     }
