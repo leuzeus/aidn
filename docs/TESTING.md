@@ -287,6 +287,11 @@ embedded model references.
 The current published catalog is validated separately against its actual model.
 These are schema and pure input resolver checks, without product or Native effects.
 
+The published existing-OPEN/complete route fixture checks the current V7 catalog
+after the actual entry, canonical-plan admission, phase/verification ports and
+exact process simulation. Its Native transport remains an identified double;
+this route check supplies no genuine Native or installed-archive acceptance.
+
 ## Scoped model lookup, 2026-11-12
 
 The reusable-call contract fixture verifies fresh selected model bytes after a
