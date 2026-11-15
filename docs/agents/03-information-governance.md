@@ -80,7 +80,12 @@ record. Explicit PostgreSQL artifact persistence remains canonical even in files
 mode. A visible copy never replaces a missing canonical database record. After verified resolution and
 confirmed resume, explicit cleanup removes temporary tracking and retains only
 the concise session/snapshot trace. The archived lifecycle refers to that trace.
-These policies do not provide an incident executor or a canonical delete port.
+The private `compareAndDeleteArtifact` capability provides transactional deletion
+of one UTF-8 artifact, requiring explicit write intent and both content and metadata
+revision hashes. It refuses workflow evidence, session/cycle artifacts and runtime
+heads, and does not remove visible projections. It supplies no incident executor:
+resolution, authorization where required, confirmed resume and a retained concise
+trace must be established separately before any caller invokes cleanup.
 
 GFD adoption is scoped project policy, not a new runtime concept. The package
 source declaration and client opt-in compatibility boundary are documented in

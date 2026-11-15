@@ -4974,6 +4974,15 @@ canonical rows must refuse without importing visible Markdown or silently repair
 state. Keep the first simulation-fixture call with an undefined optional input
 classified as a fixture API failure, separately from product/runtime failures.
 
+The project artifact fixture also invokes
+`node tools/perf/verify-artifact-compare-delete-fixtures.mjs`. This tests actual
+SQLite explicit intent, mandatory content/metadata pins, a competing connection,
+missing/read-only/protected-record refusals, late rollback after blob deletion
+and preservation of unrelated rows and visible files. PostgreSQL doubles check
+canonical scope selection, table-before-scope reservations, parameterized targeted
+deletion and rollback requests. These checks do not qualify live PostgreSQL or
+the R10 resolution, confirmed-resume and retained-trace executor.
+
 Record offline/source-install, real native, live PostgreSQL and exact installed
 archive outcomes separately. Governance completeness does not establish complete
 standard-workflow execution. Session report/write/checkpoint/final hook and the

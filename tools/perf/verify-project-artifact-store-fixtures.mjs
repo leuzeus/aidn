@@ -203,3 +203,4 @@ export async function verifyProjectArtifactCommands() {
 }
 
 await verifyProjectArtifactCommands();
+await import('./verify-artifact-compare-delete-fixtures.mjs');

@@ -3,7 +3,7 @@ import { buildRuntimeHeadRows } from '../../application/runtime/runtime-relation
 import { analyzeStructuredArtifact, extractStructuredField } from '../../lib/workflow/structured-artifact-parser-lib.mjs';
 import { POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION } from '../../application/runtime/postgres-runtime-persistence-contract-service.mjs';
 import { guardCanonicalMutation } from './agent-execution-fence.mjs';
-import { assertArtifactCompareSwap } from '../../core/workflow/artifact-compare-swap.mjs';
+import { assertArtifactCompareDelete, assertArtifactCompareDeleteRequest, assertArtifactCompareSwap } from '../../core/workflow/artifact-compare-swap.mjs';
 import { prepareLockedArtifactReplacement } from '../../lib/workflow/artifact-replacement-lib.mjs';
 
 // All identifiers below are internal constants; values always use parameters.
@@ -44,11 +44,12 @@ function artifactPaths(values, auditRoot) {
 
 // Uses an existing schema and scope only. No adoption, DDL or projection rebuild.
 export async function executePostgresArtifactCommand(client, scopes, action, options = {}) {
-  const writing = ['upsert', 'compare-and-swap', 'replace'].includes(action);
-  if (!['upsert', 'compare-and-swap', 'replace', 'get', 'get-many', 'list'].includes(action)) throw new Error('ARTIFACT_COMMAND_UNSUPPORTED');
+  if (action === 'compare-and-delete') assertArtifactCompareDeleteRequest(options);
+  const writing = ['upsert', 'compare-and-swap', 'compare-and-delete', 'replace'].includes(action);
+  if (!['upsert', 'compare-and-swap', 'compare-and-delete', 'replace', 'get', 'get-many', 'list'].includes(action)) throw new Error('ARTIFACT_COMMAND_UNSUPPORTED');
   const paths = action === 'get-many' ? artifactPaths(options.paths, options.auditRoot) : null;
   const artifactPath = action === 'list' || paths ? null
-    : validateArtifactPath(writing && action !== 'replace' ? options.artifact?.path : options.path, options.auditRoot);
+    : validateArtifactPath(['upsert', 'compare-and-swap'].includes(action) ? options.artifact?.path : options.path, options.auditRoot);
   await client.query(writing ? 'BEGIN' : 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
   try {
     await client.query("SET LOCAL statement_timeout = '15000ms'");
@@ -81,6 +82,16 @@ export async function executePostgresArtifactCommand(client, scopes, action, opt
       const { rows } = await client.query('SELECT * FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 AND path=ANY($2::text[])', [scope, paths]);
       const found = new Map(rows.map(row => [row.path, mapped(row)]));
       result = paths.map(name => found.get(name) ?? null);
+    } else if (action === 'compare-and-delete') {
+      const current = mapped((await client.query('SELECT * FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 AND path=$2', [scope, artifactPath])).rows[0]);
+      assertArtifactCompareDelete({ ...options, path: artifactPath }, current);
+      if ((await client.query('SELECT artifact_path FROM aidn_runtime.runtime_heads WHERE scope_key=$1 AND (artifact_path=$2 OR artifact_id IN (SELECT artifact_id FROM aidn_runtime.artifacts WHERE scope_key=$1 AND path=$2)) LIMIT 1', [scope, artifactPath])).rows.length)
+        throw new Error('ARTIFACT_DELETE_PROTECTED');
+      await client.query('DELETE FROM aidn_runtime.artifact_blobs WHERE scope_key=$1 AND artifact_id IN (SELECT artifact_id FROM aidn_runtime.artifacts WHERE scope_key=$1 AND path=$2)', [scope, artifactPath]);
+      const removed = await client.query('DELETE FROM aidn_runtime.artifacts WHERE scope_key=$1 AND path=$2', [scope, artifactPath]);
+      if (removed.rowCount !== 1) throw new Error('ARTIFACT_REVISION_CONFLICT');
+      result = { path: artifactPath, deleted: true, sha256: options.expectedSha256,
+        metadata_sha256: options.expectedMetadataSha256 };
     } else {
       let replacement;
       if (action === 'replace') {

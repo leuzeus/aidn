@@ -2,7 +2,7 @@ import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifac
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { assertArtifactCompareSwap } from "../../core/workflow/artifact-compare-swap.mjs";
+import { assertArtifactCompareDelete, assertArtifactCompareDeleteRequest, assertArtifactCompareSwap } from "../../core/workflow/artifact-compare-swap.mjs";
 import { prepareLockedArtifactReplacement } from '../../lib/workflow/artifact-replacement-lib.mjs';
 import {
   cleanupOrphanArtifactBlobs,
@@ -219,6 +219,9 @@ function createMissingReadOnlyArtifactStore(sqliteFile) {
     upsertArtifact() {
       throw new Error("Artifact store is read-only");
     },
+    compareAndDeleteArtifact() {
+      throw new Error("Artifact store is read-only");
+    },
     getArtifact() {
       return null;
     },
@@ -341,6 +344,22 @@ export function createArtifactStore(options = {}) {
     sqlite_file: sqliteFile,
     read_only: readOnly,
     exists: true,
+    compareAndDeleteArtifact(request) {
+      if (readOnly) throw new Error('Artifact store is read-only');
+      assertArtifactCompareDeleteRequest(request);
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        assertArtifactCompareDelete(request, store.getArtifact(request?.path));
+        if (db.prepare('SELECT 1 FROM runtime_heads WHERE artifact_path=? OR artifact_id IN (SELECT artifact_id FROM artifacts WHERE path=?) LIMIT 1').get(request.path, request.path))
+          throw new Error('ARTIFACT_DELETE_PROTECTED');
+        db.prepare('DELETE FROM artifact_blobs WHERE artifact_id IN (SELECT artifact_id FROM artifacts WHERE path=?)').run(request.path);
+        const removed = db.prepare('DELETE FROM artifacts WHERE path=?').run(request.path);
+        if (Number(removed.changes) !== 1) throw new Error('ARTIFACT_REVISION_CONFLICT');
+        db.exec('COMMIT');
+        return { path: request.path, deleted: true, sha256: request.expectedSha256,
+          metadata_sha256: request.expectedMetadataSha256 };
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    },
     replaceArtifact(request) {
       if (readOnly) throw new Error('Artifact store is read-only');
       db.exec('BEGIN IMMEDIATE');

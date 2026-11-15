@@ -1,5 +1,12 @@
 # Runtime Surface Scope Matrix
 
+Private project artifact compare-and-delete uses only the configured SQLite or
+PostgreSQL artifact backend. It requires explicit write intent and exact content
+and metadata revisions in one targeted transaction. Workflow records, session/
+cycle artifacts and runtime heads are protected. It adds no public CLI, incident
+executor, shared data, migration or visible-file cleanup. SPEC-R10 resolution,
+resume and trace evidence remain separate requirements for a future caller.
+
 The initial and corrective STANDARD review waits share an authenticated event
 component. The pre-triage external merge uses the existing control inbox store
 with a signed occurrence reservation and a provider capture v3. The existing

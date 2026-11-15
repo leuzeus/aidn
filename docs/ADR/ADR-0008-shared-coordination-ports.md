@@ -134,6 +134,16 @@ reimport checkout documents. Bulk import/adoption remains a separate explicit
 operation. This extends runtime persistence commands, not the shared coordination
 data boundary. Existing local-first and native admission rules still apply.
 
+The optional private `compareAndDeleteArtifact` capability adds targeted deletion
+under the same transaction and scope locks. Explicit `write: true`, content and
+metadata revision hashes are mandatory. It removes only the named artifact and
+its blob; workflow records, session/cycle artifacts and existing runtime heads
+are refused. SQLite uses `BEGIN IMMEDIATE`; configured PostgreSQL retains the
+table-before-scope reservation fence. Missing or stale state refuses, including
+a second deletion. Visible projections, lifecycle authorization, resolution,
+resume and trace retention remain the caller's responsibility. This primitive
+adds no public command, incident executor, shared coordination data or migration.
+
 In 0.10.12, targeted commands use the same ordered identity resolution as
 canonical snapshot reads: existing `runtime_scope_id` metadata takes precedence
 over the legacy absolute-path alias. Their coexistence after adoption is not

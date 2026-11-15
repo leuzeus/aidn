@@ -16,7 +16,7 @@ export function createProjectArtifactStore(options = {}) {
     sqliteFile: resolveRuntimeSqliteFile({ ...options, targetRoot }) }) });
   if (resolution.backend !== 'postgres') throw new Error('ARTIFACT_BACKEND_UNSUPPORTED');
   const call = (action, input) => {
-    if (options.readOnly && ['upsert', 'compare-and-swap', 'replace'].includes(action)) throw new Error('Artifact store is read-only');
+    if (options.readOnly && ['upsert', 'compare-and-swap', 'compare-and-delete', 'replace'].includes(action)) throw new Error('Artifact store is read-only');
     const remaining = options.deadlineMs === undefined ? 60000 : Math.min(60000, options.deadlineMs - Date.now());
     if (!Number.isSafeInteger(remaining) || remaining <= 0) throw new Error('ARTIFACT_DEADLINE_EXCEEDED');
     const child = (options.workerRunner ?? spawnSync)(process.execPath, [fileURLToPath(new URL('./project-artifact-store-worker.mjs', import.meta.url))], {
@@ -49,6 +49,7 @@ export function createProjectArtifactStore(options = {}) {
     backend: 'postgres', sqlite_file: '', read_only: options.readOnly === true,
     upsertArtifact: artifact => call('upsert', { artifact, auditRoot: options.auditRoot }),
     compareAndSwapArtifact: request => call('compare-and-swap', { ...request, auditRoot: options.auditRoot }),
+    compareAndDeleteArtifact: request => call('compare-and-delete', { ...request, auditRoot: options.auditRoot }),
     replaceArtifact: request => call('replace', { ...request, auditRoot: options.auditRoot }),
     getArtifact: artifactPath => call('get', { path: artifactPath, auditRoot: options.auditRoot }),
     getArtifacts(paths) {
