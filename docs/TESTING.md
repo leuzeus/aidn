@@ -6351,3 +6351,35 @@ immutable physical receipt. The final confirmed boundary must cold-acknowledge
 without another write. Two real recoverers compete while the first holds its
 durable intent; the second must refuse before any mutation. This is controlled
 boundary interruption, not an arbitrary crash inside an OS/DB primitive.
+
+
+## Post-assignment Native accounting candidate
+
+The private native-post-assignment-reconciliation-contract-fixture-lib.mjs
+command covers the closed v2 request/grant/receipt and v5 journal data, retained
+v1-v4 origins, inherited receipts, non-refunded response/storage/usage, known
+Native sessions/scope, separate finite epochs and denied global permissions.
+Its work, source signatures and closure/consent are synthetic DATA. Optional
+files|dual|db-only arguments also exercise actual canonical journal storage.
+These checks provide no live writer, source discovery or resume qualification.
+
+The native-post-assignment-reconciliation-fixture-lib.mjs verify
+files|dual|db-only command creates a new controlled failed allocation, its
+accepted result/checkpoint and actual owner-v2 retirement. Operator HMAC,
+resource-source Ed25519, canonical stores, physical witnesses and cold Node
+actors use actual ports; Native RPC, Native-tree closure and consent remain
+controlled. Refunded/missing/incomplete/revoked sources and a host-signed
+foreign checkpoint-resource digest must refuse before mutation. FILES retains
+a controlled interruption after the actual Native journal CAS; cold completion
+with no resource source must preserve the first receipt and all original work,
+then exact replay writes nothing. The signed source envelope stays preserved
+outside its intentionally unavailable inbox location.
+
+The fixture then activates a separately signed finite epoch on the common mixed
+host, covering current Native scope, known sessions and allocation through the
+existing epoch request v2. It retains v5, the failed phase, accepted work and
+non-refunded totals and starts no second Native allocation. DB-only exports no
+reconciliation JSON. These cases do not qualify ordinary post-assignment action
+transport, unknown/unadmitted histories, productive business resume, genuine
+Native/Human actors, an installed archive, provider/PG or the full plan. Existing
+required manifest order/argv and original Native grant bounds remain unchanged.

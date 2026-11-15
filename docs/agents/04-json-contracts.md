@@ -866,3 +866,23 @@ receipts bind that same profile/digest and exact plan; record readers reject
 cross-version or cross-profile attempts. Historical v1/no_assignment bytes and
 behavior remain unchanged. The receipt still grants no accounting confirmation,
 complete resource closure, Native renewal or workflow resume.
+
+
+Private Native allocation reconciliation request/grant/receipt/record v2 binds
+the explicit admitted_post_assignment profile. Its request retains the signed
+post-assignment assessment and inventory, separate initial/current/checkpoint
+identities, protected checkpoint-resource digest, original response/usage/debit
+minimum and every known Native session plus the whole configured Native scope.
+A final grant preserves the observed response prefix and storage lower bound.
+Its source must be independently authenticated; the host MAC supplies no closure.
+The v2 physical-owner receipt remains distinct from accounting confirmation.
+
+Native journal v5 preserves an exact v1-v4 origin, inherited v4 receipts, every
+original allocation/failure/epoch and the ordered new v2 accounting receipts.
+V1-v4 schemas and stored records remain unchanged. Mixed versions, replaced
+inherited proofs, duplicate source events and refunds refuse. A later finite
+epoch uses the existing closed epoch request v2, whose Native-scope variant
+also supports subsequent generations. Old epoch requests are never converted.
+Neither reconciliation nor its receipt supplies workflow resume, business
+postconditions, a new Native allocation or all-resource closure. Ordinary
+post-assignment action transport requires separate integration/qualification.

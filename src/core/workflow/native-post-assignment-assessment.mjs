@@ -17,10 +17,8 @@ export function nativePostAssignmentEvidenceProfile(base, work) {
     ? 'admitted_closed_checkpoint' : 'unknown';
 }
 
-export function assertNativePostAssignmentAssessment(value, inventory) {
-  if (checkShadowJson(value) || validateJsonSchema(value, schema, '$', { contractKind: 'workflow-definition' }).length)
-    fail('NATIVE_POST_ASSIGNMENT_ASSESSMENT_INVALID');
-  const base = assertNativeAllocationAssessment(value.base_assessment, inventory), work = value.checkpoint_work;
+function assertWork(value) {
+  const base = value.base_assessment, work = value.checkpoint_work;
   if (value.key_id !== base.key_id || value.evidence_profile !== nativePostAssignmentEvidenceProfile(base, work))
     fail('NATIVE_POST_ASSIGNMENT_ASSESSMENT_INVALID');
   if (work !== null && (base.checkpoint === null || work.total_resources !== base.checkpoint.resources
@@ -34,4 +32,19 @@ export function assertNativePostAssignmentAssessment(value, inventory) {
     || base.generation === 1 && (work.prior_resources !== 0 || work.prior_results !== 0)))
     fail('NATIVE_POST_ASSIGNMENT_ASSESSMENT_SUBJECT_CHANGED');
   return value;
+}
+
+// Closed retained DATA can check its own work counters without supplying an
+// inventory capability. Preparation separately authenticates that inventory.
+export function assertNativePostAssignmentEvidence(value) {
+  if (checkShadowJson(value) || validateJsonSchema(value, schema, '$', { contractKind: 'workflow-definition' }).length)
+    fail('NATIVE_POST_ASSIGNMENT_ASSESSMENT_INVALID');
+  return assertWork(value);
+}
+
+export function assertNativePostAssignmentAssessment(value, inventory) {
+  if (checkShadowJson(value) || validateJsonSchema(value, schema, '$', { contractKind: 'workflow-definition' }).length)
+    fail('NATIVE_POST_ASSIGNMENT_ASSESSMENT_INVALID');
+  assertNativeAllocationAssessment(value.base_assessment, inventory);
+  return assertWork(value);
 }

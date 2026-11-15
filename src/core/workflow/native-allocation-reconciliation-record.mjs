@@ -1,9 +1,11 @@
 import schema from '../contracts/workflow-definition/native-allocation-reconciliation-record.v1.schema.json' with { type: 'json' };
+import schemaV2 from '../contracts/workflow-definition/native-allocation-reconciliation-record.v2.schema.json' with { type: 'json' };
 import { validateJsonSchema } from '../contracts/json-schema-validator.mjs';
 import { checkShadowJson, shadowHash as H } from './shadow-json.mjs';
 import { assertNativeAllocationJournal, nativeJournalPath } from './native-allocation-journal.mjs';
 import { assertNativeAuthorization, nativeLimitsOf } from './native-authorization-epoch.mjs';
-import { assertNativeReconciliationRequest } from './native-allocation-reconciliation.mjs';
+import { assertNativeReconciliationRequest, isNativePostAssignmentReconciliation } from './native-allocation-reconciliation.mjs';
+import { assertNativePostAssignmentAssessment } from './native-post-assignment-assessment.mjs';
 import { assertProcessReconciliationInventory } from './process-reconciliation-inventory.mjs';
 
 const fail = code => { throw Object.assign(Error(code), { code }); };
@@ -21,14 +23,18 @@ export function assertNativeReconciliationPreparation(value) {
   const q = assertNativeReconciliationRequest(value.request), inventory = assertProcessReconciliationInventory(value.inventory);
   if (H(inventory) !== q.inventory_sha256 || ['instance_id', 'instance_sha256', 'scope_id', 'model_sha256', 'configuration_sha256', 'physical_root_sha256', 'key_id']
     .some(key => inventory[key] !== q[key])) fail('NATIVE_RECONCILIATION_PREPARATION_CHANGED');
+  if (isNativePostAssignmentReconciliation(q)) assertNativePostAssignmentAssessment(q.post_assignment_assessment, inventory);
   return value;
 }
 export function assertNativeReconciliationRecord(value) {
-  if (checkShadowJson(value) || validateJsonSchema(value, schema, '$', { contractKind: 'workflow-definition' }).length)
+  if (checkShadowJson(value)) fail('NATIVE_RECONCILIATION_RECORD_INVALID');
+  const post = value?.contract_version === 'native-allocation-reconciliation-record.v2';
+  if (validateJsonSchema(value, post ? schemaV2 : schema, '$', { contractKind: 'workflow-definition' }).length)
     fail('NATIVE_RECONCILIATION_RECORD_INVALID');
   const q = value.request, original = assertNativeAllocationJournal(value.original_journal), attempts = value.attempts, last = attempts.at(-1);
   assertNativeReconciliationPreparation({ request: q, inventory: value.inventory }); assertNativeAuthorization(value.initial_authorization);
-  if (value.reconciliation_id !== nativeReconciliationId(q.journal_id, q.generation)
+  if (post !== isNativePostAssignmentReconciliation(q) || post && value.profile !== q.profile
+    || value.reconciliation_id !== nativeReconciliationId(q.journal_id, q.generation)
     || ['journal_id', 'generation', 'instance_id', 'scope_id', 'model_sha256', 'key_id'].some(key => value[key] !== q[key])
     || H(original) !== q.journal_sha256 || original.allocations.length !== q.generation || original.allocations.at(-1).phase !== 'failed'
     || H(original.allocations) !== q.allocations_sha256 || H(original.allocations.at(-1)) !== q.allocation_sha256
@@ -38,11 +44,13 @@ export function assertNativeReconciliationRecord(value) {
     || new Set(attempts.map(row => row.attempt_id)).size !== attempts.length) fail('NATIVE_RECONCILIATION_RECORD_SUBJECT_CHANGED');
   for (const row of attempts) {
     const proposal = assertNativeAllocationJournal(row.proposal), receipt = proposal.reconciliations?.at(-1);
-    if (proposal.contract_version !== 'native-allocation-journal.v4' || H(receipt?.request) !== H(q)
+    const origin = post ? original.contract_version === 'native-allocation-journal.v5' ? original.origin_journal : original
+      : original.contract_version === 'native-allocation-journal.v4' ? original.origin_journal : original;
+    if (proposal.contract_version !== (post ? 'native-allocation-journal.v5' : 'native-allocation-journal.v4') || H(receipt?.request) !== H(q)
       || ['journal_id', 'instance_id', 'scope_id', 'model_sha256', 'key_id'].some(key => proposal[key] !== value[key])
       || proposal.revision !== original.revision + 1 || H(proposal.allocations) !== H(original.allocations)
       || H(proposal.epochs) !== H(original.epochs ?? []) || H(proposal.initial_authorization) !== H(value.initial_authorization)
-      || H(proposal.origin_journal) !== H(original.contract_version === 'native-allocation-journal.v4' ? original.origin_journal : original)
+      || H(proposal.origin_journal) !== H(origin)
       || proposal.reconciliations.length !== (original.reconciliations?.length ?? 0) + 1
       || H(proposal.reconciliations.slice(0, -1)) !== H(original.reconciliations ?? [])
       || row.operator_grant.request_sha256 !== H(q) || row.operator_verification.request_sha256 !== H(q)

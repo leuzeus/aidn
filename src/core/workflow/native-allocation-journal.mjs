@@ -1,4 +1,5 @@
 import schemaV4 from "../contracts/workflow-definition/native-allocation-journal.v4.schema.json" with { type: "json" };
+import schemaV5 from "../contracts/workflow-definition/native-allocation-journal.v5.schema.json" with { type: "json" };
 import { assertNativeReconciliationReceipt, nativeAllocationResolution } from "./native-allocation-reconciliation.mjs";
 import schema from "../contracts/workflow-definition/native-allocation-journal.v1.schema.json" with { type: "json" };
 import schemaV2 from "../contracts/workflow-definition/native-allocation-journal.v2.schema.json" with { type: "json" };
@@ -16,10 +17,11 @@ export function nativeJournalPath(id) {
   return `workflows/native-allocations/${id}.json`;
 }
 export function assertNativeAllocationJournal(value) {
-  const reconciled = value?.contract_version === "native-allocation-journal.v4";
+  const postAssignment = value?.contract_version === "native-allocation-journal.v5";
+  const reconciled = value?.contract_version === "native-allocation-journal.v4" || postAssignment;
   const epochs = value?.contract_version === "native-allocation-journal.v2";
   const initialEpoch = value?.contract_version === "native-allocation-journal.v3";
-  if (checkShadowJson(value) || validateJsonSchema(value, reconciled ? schemaV4 : initialEpoch ? schemaV3 : epochs ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length) fail("NATIVE_ALLOCATION_JOURNAL_INVALID");
+  if (checkShadowJson(value) || validateJsonSchema(value, postAssignment ? schemaV5 : reconciled ? schemaV4 : initialEpoch ? schemaV3 : epochs ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length) fail("NATIVE_ALLOCATION_JOURNAL_INVALID");
   if (initialEpoch || reconciled) assertNativeEpochHistory(value);
   if (reconciled) {
     const origin = assertNativeAllocationJournal(value.origin_journal), count = origin.allocations.length;
@@ -30,12 +32,17 @@ export function assertNativeAllocationJournal(value) {
       || shadowHash(origin.epochs ?? []) !== shadowHash(value.epochs.slice(0, origin.epochs?.length ?? 0))
       || origin.initial_authorization && shadowHash(origin.initial_authorization) !== shadowHash(value.initial_authorization))
       fail("NATIVE_RECONCILIATION_ORIGINAL_JOURNAL_CHANGED");
-    let previous = count - 1;
+    const inherited = postAssignment ? origin.reconciliations ?? [] : [];
+    if (postAssignment && (value.reconciliations.length <= inherited.length
+      || shadowHash(value.reconciliations.slice(0, inherited.length)) !== shadowHash(inherited)))
+      fail("NATIVE_RECONCILIATION_ORIGINAL_JOURNAL_CHANGED");
+    let previous = 0;
     const reconciliationSources = new Set();
     for (const [index, receipt] of value.reconciliations.entries()) {
       const generation = receipt.request.generation;
       if (generation <= previous || generation > value.allocations.length
-        || index === 0 && (generation !== count || receipt.request.journal_sha256 !== shadowHash(origin)))
+        || index === inherited.length && (generation !== count || receipt.request.journal_sha256 !== shadowHash(origin))
+        || postAssignment && index >= inherited.length && receipt.contract_version !== "native-allocation-reconciliation-receipt.v2")
         fail("NATIVE_RECONCILIATION_HISTORY_INVALID");
       assertNativeReconciliationReceipt(receipt, { journal: value, entry: value.allocations[generation - 1] });
       const source = shadowHash([receipt.grant.authority_id, receipt.grant.source_event_id]);

@@ -556,3 +556,41 @@ resource reconciliation and independently authorized finite Native epoch remain
 necessary. No preparation-age ceiling or implicit checkpoint/flag conversion is
 introduced. Existing initial Native grants and current issuer/source permissions
 retain their original boundaries.
+
+
+### Explicit admitted-work accounting profile
+
+The private post-assignment reconciliation producer uses distinct closed v2
+request, grant, receipt and record formats. A request retains its signed
+post-assignment assessment/inventory and separately binds initial, checkpoint
+and current prefixes, original non-refunded consumption, protected resource
+identities, all known Native sessions and the complete configured Native scope.
+The fixed host requires matched failed return, admitted complete checkpoint
+work, known original consumption and confirmed v2 physical-owner retirement.
+Business postconditions remain unknown. Unknown or unadmitted classes are not
+resolved by this first profile and remain explicit full-workflow work.
+
+The same independent Native resource principal supplies current scope closure
+and final accounting, while the protected local operator separately authorizes
+the exact write. Response hashes remain an ordered observed prefix and final
+storage never drops below the original debit. Current source permission is
+checked after subject observation immediately before effects. No original
+Native execution grant or JSON field supplies this authority.
+
+Journal v5 retains its exact signed v1-v4 origin and inherited v4 proof prefix,
+all original allocations/epochs/failures and ordered new v2 receipts. The
+existing record path holds the exact original/proposed journal before CAS.
+Terminated-actor cold recovery preserves the first committed receipt and
+finishes only its own owner/fence/audit steps under fresh operator permission;
+it does not recapture closure after the journal CAS. Canonical confirmed
+history and the physical original-owner witness remain required for active
+consumers. Existing artifact capacity checks refuse before further intent.
+
+A later Native epoch is separately approved, includes its Native scope using
+the existing epoch request v2 format and retains journal v5 with its consumed
+responses/storage. V1-v4 schema bytes, old requests, initial authorization and
+finite issuer/source boundaries stay unchanged. There is no elapsed
+preparation-age ceiling, implicit conversion, refund, new allocation, business
+resume or complete workflow-resource closure. Public transport, independent
+genuine discovery, unknown-state recovery, R10 and installed/full-plan
+qualification remain separate required work.

@@ -152,7 +152,8 @@ export function verifyNativeReconciliationKernel(check) {
     const forged = structuredClone(base); forged.authentication = H('not-a-MAC'); assert.throws(() => signer.verify(forged));
     assert.deepEqual(nativeAllocationTotals([]), { known: true, responses: 0, bytes: 0 });
   });
-  return { origin: structuredClone(v1), journal: structuredClone(base) };
+  return { origin: structuredClone(v1), journal: structuredClone(base),
+    origins: structuredClone(origins), journals: origins.map(origin => structuredClone(reconcile(origin))) };
 }
 
 export async function verifyNativeReconciliationKernelStorage(mode, fixture, check, owned = []) {

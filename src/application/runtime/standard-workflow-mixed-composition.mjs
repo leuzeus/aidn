@@ -72,6 +72,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     prepareNativePostAssignmentAssessment: input => operations.prepareNativePostAssignmentAssessment(configuration.instance_id, input),
     prepareNativeAllocationAssessment: input => operations.prepareNativeAllocationAssessment(configuration.instance_id, input),
     prepareNativeAllocationReconciliation: input => operations.prepareNativeAllocationReconciliation(configuration.instance_id, input),
+    prepareNativePostAssignmentAllocationReconciliation: input => operations.prepareNativePostAssignmentAllocationReconciliation(configuration.instance_id, input),
     applyNativeAllocationReconciliation: (preparation, input) => operations.applyNativeAllocationReconciliation(preparation, input),
     readNativeAllocationReconciliation: id => operations.readNativeAllocationReconciliation(id),
     prepareNativePostAssignmentOwnerDisposition: input => operations.prepareNativePostAssignmentOwnerDisposition(configuration.instance_id, input),

@@ -522,3 +522,15 @@ Native journal/dispatch, accepted work and debit stay intact. V1 no_assignment
 preparation retains its old scope; only the separate fixed method prepares v2.
 No resource-accounting reconciliation, new Native grant, business postcondition,
 workflow resume, new store or shared coordination write follows from retirement.
+
+
+Private post-assignment Native accounting uses v2 requests/grants/receipts/audit
+records and v5 Native journals under the existing canonical paths and
+native_allocation_journal parent. The exact original v1-v4 origin, allocations,
+responses, usage/debits, failures, epochs and earlier reconciliation receipts
+remain retained. Current scope/owner/physical/checkpoint/source checks surround
+the existing durable intent, fence and Native CAS. Cold completion may consume
+only its own retained proposal. There is no new backend, projection, table,
+shared synchronization, automatic import or public post-assignment action.
+A newly approved finite epoch separately covers the Native scope and preserves
+the failed history; it does not start another Native allocation.
