@@ -18,8 +18,18 @@ journal, Human inbox and canonical project artifacts. Its first profile joins an
 accepted L1/L2 external-merge disposition to the exact accepted R09 completion,
 including canonical session, fetch/alignment receipts and unchanged rule pins.
 The host exposes it as an internal read capability. It adds no store, writer,
-export, cleanup, shared method or authority. Other R10 source profiles, actual
-record/resolve dispatch and the published closure route remain unfinished.
+export, cleanup, shared method or authority. Other R10 source profiles and the
+published trace/closure route remain unfinished.
+
+The registered private PR incident record/resolve bindings use the normal host
+grant and existing local effect owner/fence. Only the ignored canonical TEMP
+tracker changes, through explicit content and metadata CAS. FILES writes the
+canonical file; DUAL projects the configured record; DB-only writes no detailed
+projection. Explicit PostgreSQL persistence remains canonical in files mode.
+The owning Human comes from its authenticated capture. Resolution consumes the
+accepted matching R09 chain. Known partial writes preserve their exact plan;
+unknown states keep their owner. No rule edit, cleanup, shared table, source
+authority, automatic import or published R10 completion is added.
 
 The initial and corrective STANDARD review waits share an authenticated event
 component. The pre-triage external merge uses the existing control inbox store

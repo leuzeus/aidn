@@ -113,6 +113,18 @@ Other incidents, high-severity recovery and rule changes still need their own
 authenticated source profiles. Existing historical question expiry is preserved;
 reading an accepted history adds no preparation-age ceiling.
 
+The registered private `session_pr_incident_record` and
+`session_pr_incident_resolve` business bindings use ordinary host effect grants
+in COMMITTING mode. The first records the accepted L2 source and checkpoint in
+an ignored canonical TEMP tracker; L1 has no mandatory tracker. The second
+changes that same tracker only after the matching accepted R09 source verifies
+resolution and resume. The Human principal supplies its owner. Existing notes
+and canonical artifact metadata remain preserved. A known partial write can be
+completed from the exact retained preparation; an unknown postimage retains
+the actual owner. The bindings add no source authority, backend or implicit
+projection import. They do not delete tracking or write the required concise
+trace. Their published R10 routing and owned unknown-state recovery remain due.
+
 GFD adoption is scoped project policy, not a new runtime concept. The package
 source declaration and client opt-in compatibility boundary are documented in
 [GFD_ADOPTION.md](../GFD_ADOPTION.md). Proposed detection cannot become an

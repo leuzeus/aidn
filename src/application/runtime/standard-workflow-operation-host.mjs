@@ -8,6 +8,8 @@ import { createStandardPrMergeExecute } from "./standard-session-pr-merge-execut
 import { createStandardSessionPrPostMergeFetch } from "./standard-session-pr-post-merge-fetch.mjs";
 import { createStandardPostMergeCompletion, postMergeProjectScope } from "./standard-session-pr-post-merge-completion.mjs";
 import { createStandardPrIncidentEvidence } from "./standard-pr-incident-evidence.mjs";
+import { createStandardPrIncidentTracking } from "./standard-pr-incident-tracking.mjs";
+import { prIncidentRecordOperation, prIncidentResolveOperation } from "../../core/workflow/standard-pr-incident-tracking.mjs";
 import { postMergeFastForwardOperation } from "../../core/workflow/standard-pr-post-merge-fast-forward.mjs";
 import { createStandardPostMergeFastForward } from "./standard-session-pr-post-merge-fast-forward.mjs";
 import { postMergeCompleteOperation } from "../../core/workflow/standard-pr-post-merge-complete.mjs";
@@ -679,7 +681,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const postMergeCompletion = createStandardPostMergeCompletion({ ...acceptedReviewPorts, artifacts,
     readAlignmentSource: postMerge.alignmentSource, scopeSha: postMergeScope });
   const prIncidentEvidence = createStandardPrIncidentEvidence({ ...acceptedReviewPorts, artifacts,
-    readAlignmentSource: postMerge.alignmentSource, scopeSha: postMergeScope });
+    readAlignmentSource: postMerge.alignmentSource, scopeSha: postMergeScope, readHumanSource: record => human.captured(record).source });
   const postMergeFastForward = createStandardPostMergeFastForward({ ...acceptedReviewPorts, postMerge, decision: postMergeDecision,
     verifyDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
   const reviewEffects = new Map([
@@ -690,6 +692,15 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     ["session_pr_review_reply_publish", sessionPrReply],
     ["session_pr_review_thread_resolve", sessionPrResolution],
   ]);
+  for (const operation of [prIncidentRecordOperation, prIncidentResolveOperation]) {
+    const port = createStandardPrIncidentTracking({ targetRoot, operation, now,
+      readCurrent: acceptedReviewPorts.readCurrent, observeBoundary: () => shadowHash(observeBoundary()),
+      readSource: (instance, input) => (operation === prIncidentRecordOperation ? prIncidentEvidence.origin : prIncidentEvidence.resolution)(instance, input.origin_operation_id) });
+    reviewEffects.set(operation, Object.freeze({ prepare: port.prepare,
+      apply: (instance, input, prepared, options) => port.apply(instance, input, prepared,
+        { ...options, write: true, expectPlan: prepared.plan_sha256 }),
+      recover: () => ({ reason_code: 'STANDARD_PR_INCIDENT_OWNED_RECOVERY_REQUIRED' }) }));
+  }
   const prTriage = processAuthority && sessionPrReviewReceiver ? createStandardPrTriageSource({
     readReceived: (instance, id) => acceptedForPromotion(instance, id, "session_pr_review_receive", "STANDARD_PR_TRIAGE_RECEIVED_REQUIRED"),
     observeReceived: (instance, input, options) => sessionPrReviewReceiver.observe(instance, input, options),

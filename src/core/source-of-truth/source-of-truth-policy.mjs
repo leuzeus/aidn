@@ -222,7 +222,7 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     retention: "retain unresolved, authorization-pending and deferred tracking; after verified resolution and confirmed resume, remove temporary tracking through explicit canonical cleanup and keep only a concise session/snapshot trace",
     migration: "preserve legacy incident content until explicit canonical admission; never import a visible projection or convert repair findings implicitly",
     replacement: "a follow-up incident links to the prior incident identity and concise session/snapshot trace, not to a temporary tracker that has been removed",
-    evidence_targets: ["docs/SPEC.md", "scaffold/docs_audit/incidents/TEMPLATE_INC_TMP.md", "src/application/runtime/standard-workflow-artifacts.mjs", "src/application/runtime/project-artifact-store-service.mjs"],
+    evidence_targets: ["docs/SPEC.md", "scaffold/docs_audit/incidents/TEMPLATE_INC_TMP.md", "src/application/runtime/standard-workflow-artifacts.mjs", "src/application/runtime/project-artifact-store-service.mjs", "src/application/runtime/standard-pr-incident-evidence.mjs", "src/application/runtime/standard-pr-incident-tracking.mjs"],
   },
   coordination_summary: {
     owner: "coordination summary maintainer",

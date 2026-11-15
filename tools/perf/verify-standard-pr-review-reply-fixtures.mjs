@@ -46,6 +46,7 @@ const bindings = new Map(standardWorkflowOperationBindings().map(binding => [bin
 const target = published.call_targets.find(row => row.model_id === 'aidn-standard-pr-review-completion');
 const captureTarget = published.call_targets.find(row => row.model_id === 'aidn-standard-pr-review-capture');
 const pretriageTarget = published.call_targets.find(row => row.model_id === 'aidn-standard-pr-pretriage-completion');
+const publishedFixtureTargets = { review: target, pretriage: pretriageTarget };
 const externalRef = 'aidn:external-merge';
 const eventRef = 'REVIEW_fixture';
 const response = 'Technical reply from the accepted fixture triage.';
@@ -55,7 +56,28 @@ const pin = path => ({ path, sha256: createHash('sha256').update(fs.readFileSync
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const save = (file, data) => fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
 
-function fixtureModel(prefix, fetchOnly, external = false, pretriage = false) {
+// Fixture-only extension: dispatch the registered business bindings through the
+// actual host without claiming that the published R10 route is already wired.
+function incidentTrackingTarget(original, enabled) {
+  if (!enabled) return original;
+  const model = structuredClone(original.model), root = model.nodes.find(row => row.id === model.entry);
+  const template = model.nodes.find(row => row.binding_ref === 'session_pr_post_merge_complete');
+  for (const [phase, position] of [['record', root.children.indexOf('pr_merge_basis') + 1], ['resolve', -1]]) {
+    const id = `fixture_pr_incident_${phase}`, binding = bindings.get(`session_pr_incident_${phase}`);
+    const node = { ...template, id, binding_ref: binding.id };
+    if (position < 0) root.children.push(id); else root.children.splice(position, 0, id);
+    model.nodes.push(node); model.operation_pins[binding.id] = shadowHash(binding);
+    model.data_bindings.inputs.push({ node_id: id, fields: {
+      contract_version: { source: 'literal', value: binding.input_contract },
+      origin_operation_id: { source: 'operation_output', node_id: 'pr_merge_basis', path: ['observations', 'merge_operation_id'] },
+    } });
+  }
+  return { ...processModelIdentity(model), model };
+}
+
+function fixtureModel(prefix, fetchOnly, external = false, pretriage = false, tracking = process.argv.includes('--incident-tracking')) {
+  const target = incidentTrackingTarget(publishedFixtureTargets.review, tracking);
+  const pretriageTarget = incidentTrackingTarget(publishedFixtureTargets.pretriage, tracking);
   const corrective = prefix === 'correction';
   const update = corrective ? 'correction_pr_redelivery_push' : 'session_pr_update_push';
   const observe = prefix + '_pr_review_observe', wait = prefix + '_pr_review_wait', receive = prefix + '_pr_review_receive';
@@ -66,7 +88,11 @@ function fixtureModel(prefix, fetchOnly, external = false, pretriage = false) {
     return { ...row, id: rename(row.id), ...(row.branches ? { branches: row.branches.slice(0, 2)
       .map(branch => ({ ...branch, node_id: rename(branch.node_id) })) } : {}) };
   });
-  const node = id => published.nodes.find(row => row.id === id) ?? reviewNodes.find(row => row.id === id);
+  const node = id => {
+    const value = published.nodes.find(row => row.id === id) ?? reviewNodes.find(row => row.id === id);
+    const changedTarget = [target, pretriageTarget].find(row => row.model_id === value?.target?.model_id);
+    return changedTarget ? { ...value, target: { ...value.target, model_sha256: changedTarget.model_sha256 } } : value;
+  };
   const literal = value => ({ source: 'literal', value });
   const input = (id, fields) => ({ node_id: id, fields: Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, literal(value)])) });
   const fields = id => published.data_bindings.inputs.find(row => row.node_id === id);
@@ -339,7 +365,7 @@ function open(base, { initializeKey = false, providerNow } = {}) {
   } finally { Date.now = wallClock; }
   const { githubProvider: provider, readKey } = authority;
   if (initializeKey) authority.ensureKey();
-  const signer = createOperationJournalSigner(readKey), graph = fixtureModel(prefix, Boolean(fetchFixture) && !external, external, pretriage), { model } = graph;
+  const signer = createOperationJournalSigner(readKey), graph = fixtureModel(prefix, Boolean(fetchFixture) && !external, external, pretriage, data.incident_tracking_fixture === true), { model } = graph;
   const now = () => json(configurationFile).clock_ms ?? wallClock();
   // The protected reader is synchronous. Use the same fixture time for
   // envelope authentication and the H host, while leaving process deadlines
@@ -546,6 +572,7 @@ function arrange(prefix, behavior) {
   save(path.join(dirs.host, key + '.github.json'), binding);
   if (behavior.startsWith('external-pretriage-')) configureActionFixture(base, configuration, fixtureModel(prefix, false, true, true));
   save(path.join(base, 'configuration.json'), { configuration, home: dirs.host, binding, pr, prefix, behavior, fetchFixture,
+    incident_tracking_fixture: process.argv.includes('--incident-tracking'),
     submittedAt: new Date(Date.now() - 1000).toISOString() });
   save(path.join(base, 'provider.json'), { sent: [], replies: [], resolved: false, reviewChanged: false, resolvedThreads: [], resolutionSends: [], mergeSends: [] });
   console.log(JSON.stringify({ evidence: base, project: targetRoot, prefix, behavior }));
@@ -1747,6 +1774,8 @@ async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
 }
 
 async function qualifyExternalMerge(scenario) {
+  if (process.argv.includes('--incident-tracking') && !['premerge', 'pretriage-session'].includes(scenario))
+    throw Error('FIXTURE_INCIDENT_TRACKING_SCENARIO_UNSUPPORTED');
   const checks = scenario === 'checks', pretriage = scenario.startsWith('pretriage-');
   const nominal = scenario === 'pretriage-nominal';
   const prefix = checks || scenario === 'pretriage-session' || nominal ? 'session' : 'correction';
@@ -1988,6 +2017,22 @@ async function qualifyExternalMerge(scenario) {
   await assertLocked();
   if (choice === 'acknowledge_external_merge_for_r09') {
     assert.equal((await f.run()).results[0].output.observations.merge_operation_id, id);
+    let tracked;
+    const gitState = () => ({ head: git('rev-parse', 'HEAD'), branch: git('branch', '--show-current'),
+      status: git('status', '--porcelain=v1', '--untracked-files=all'), refs: git('show-ref') });
+    if (process.argv.includes('--incident-tracking')) {
+      const before = gitState(), recorded = (await f.run()).results[0];
+      assert.equal(recorded.output.operation_ref, 'session_pr_incident_record');
+      assert.equal(recorded.output.facts.session_pr_incident_tracking_recorded, true);
+      const incidentId = standardPrIncidentId(question), tracker = path.join(targetRoot, 'docs/audit/incidents', incidentId + '.md');
+      const content = fs.readFileSync(tracker, 'utf8');
+      assert.match(content, /^status: OPEN$/m); assert.match(content, /^lifecycle_status: triaged$/m);
+      assert.ok(content.includes('owner: human:' + authority_id));
+      assert.ok(content.includes('checkpoint_sha256: ' + disposition.intent.instance_sha256));
+      assert.equal(artifactContentHash(content), recorded.output.observations.tracker_sha256);
+      assert.deepEqual(gitState(), before, 'normal R10 tracking must preserve actual Git identity and cleanliness');
+      tracked = { incidentId, tracker, record_operation_id: recorded.operation_id };
+    }
     if (scenario === 'premerge-boundary' || scenario === 'pretriage-correction') {
       const next = await f.preview();
       assert.equal(next.binding.id, 'session_pr_post_merge_fetch');
@@ -2015,9 +2060,24 @@ async function qualifyExternalMerge(scenario) {
       assert.equal((await f.host.dispatch(completionId, { write: true })).receipt.outcome, 'completed');
       await assertLocked();
       const verifyIncident = process.argv.includes('--incident-evidence') ? prepareIncidentEvidenceFixture({
-        base, f, question, completionId, sessionId: completePlan.prepared.plan.session_id, git }) : null;
+        base, f, question, completionId, sessionId: completePlan.prepared.plan.session_id, owner: 'human:' + authority_id, git }) : null;
       await f.host.accept(completionId, { write: true });
       verifyIncident?.();
+      if (tracked) {
+        const before = gitState(), resolved = (await f.run()).results[0];
+        assert.equal(resolved.output.operation_ref, 'session_pr_incident_resolve');
+        assert.equal(resolved.output.facts.session_pr_incident_resolution_verified, true);
+        const content = fs.readFileSync(tracked.tracker, 'utf8');
+        assert.match(content, /^status: RESOLVED$/m); assert.match(content, /^lifecycle_status: closed$/m);
+        assert.ok(content.includes('aidn:pr-incident-resolution:' + completionId));
+        const request = { instance_id: instanceId, incident_id: tracked.incidentId, incident_sha256: artifactContentHash(content) };
+        const evidence = f.host.readPrIncidentClosureEvidence(request);
+        assert.equal(evidence.checkpoint_sha256, disposition.intent.instance_sha256);
+        assert.equal(evidence.resume_ref.sha256, shadowHash(f.host.readJournal(completionId).results.at(-1).receipt));
+        assert.deepEqual(open(base).host.readPrIncidentClosureEvidence(request), evidence);
+        assert.deepEqual(gitState(), before, 'normal verified resolution must preserve Git identity and cleanliness');
+        console.log('PASS: registered R10 record and resolve use actual host grants, owner/fence, canonical tracker writes and exact accepted H/R09 sources; current FILES tracker is resolved and cleanup remains pending (signed fixture Human, real Git, doubled HTTPS).');
+      }
       assert.equal(continuity().completion?.plan.merge_receipt_sha256, shadowHash(receipt));
       assert.equal((await start()).action, 'create_session_allowed');
       assert.notEqual((await cycle()).reason_code, 'CYCLE_CREATE_SESSION_PR_OPEN');
@@ -2036,11 +2096,11 @@ async function qualifyExternalMerge(scenario) {
   console.log(JSON.stringify({ verdict: 'PASS', scenario, instance_sha256: record.instance_sha256, revision: record.revision, audit }));
 }
 
-function prepareIncidentEvidenceFixture({ base, f, question, completionId, sessionId, git }) {
+function prepareIncidentEvidenceFixture({ base, f, question, completionId, sessionId, owner, git }) {
   const { configuration: { target_root: targetRoot, instance_id: instanceId } } = json(path.join(base, 'configuration.json'));
   const incidentId = standardPrIncidentId(question), tracker = path.join(targetRoot, 'docs/audit/incidents', incidentId + '.md');
   fs.mkdirSync(path.dirname(tracker), { recursive: true });
-  const content = `incident_id: ${incidentId}\nseverity: L2_MEDIUM\nowner: fixture-human-external\nstatus: RESOLVED\nlifecycle_status: closed\nsession: ${sessionId}\n<!-- aidn:pr-incident-origin:${question.operation_id} -->\n`;
+  const content = `incident_id: ${incidentId}\nseverity: L2_MEDIUM\nowner: ${owner}\nstatus: RESOLVED\nlifecycle_status: closed\nsession: ${sessionId}\n<!-- aidn:pr-incident-origin:${question.operation_id} -->\n`;
   fs.writeFileSync(tracker, content);
   const request = () => ({ instance_id: instanceId, incident_id: incidentId, incident_sha256: artifactContentHash(fs.readFileSync(tracker, 'utf8')) });
   const read = extra => f.host.readPrIncidentClosureEvidence({ ...request(), ...extra });
@@ -2060,7 +2120,7 @@ function prepareIncidentEvidenceFixture({ base, f, question, completionId, sessi
     assert.deepEqual(open(base).host.readPrIncidentClosureEvidence(request()), evidence, 'a fresh host must authenticate the same retained chain');
     assert.throws(() => read({ resolution_verified: true }), { code: 'STANDARD_PR_INCIDENT_SOURCE_REQUIRED' });
     assert.throws(() => read({ incident_sha256: 'f'.repeat(64) }), { code: 'STANDARD_PR_INCIDENT_SOURCE_REQUIRED' });
-    for (const changed of [content.replace('L2_MEDIUM', 'L3_HIGH'), content.replace(sessionId, 'S999999'),
+    for (const changed of [content.replace('L2_MEDIUM', 'L3_HIGH'), content.replace(sessionId, 'S999999'), content.replace(owner, 'human:foreign'),
       content.replace(question.operation_id, completionId), content + `<!-- aidn:pr-incident-origin:${question.operation_id} -->\n`,
       content.replace('status: RESOLVED', 'status: DEFERRED')]) {
       fs.writeFileSync(tracker, changed);

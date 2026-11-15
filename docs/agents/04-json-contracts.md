@@ -1,5 +1,16 @@
 # 04 JSON Contracts
 
+Private `standard-pr-incident-tracking-{source,input,plan,output}.v1` closes the
+registered record/resolve business bindings. JSON supplies only an origin
+operation ID. The fixed host authenticates the accepted Human disposition,
+principal, checkpoint, rule pins and matching R09 chain. A plan retains exact
+canonical content/metadata preimages and proposed postimages; bounded text
+chunks preserve the existing artifact limit. Positive facts follow confirmed
+canonical postconditions. Unknown effects retain the owner and no positive
+fact. These contracts reuse the existing incident and operation journal
+authorities; historical contracts remain unchanged. Published R10 routing,
+trace/cleanup and general recovery are separate unfinished work.
+
 Private `standard-cycle-entry-choice-checkpoint-{input,plan,output}.v1` binds
 only an accepted canonical choice record. Its protected host authenticates the
 original H source and exact D postimages, metadata, inventory and branch tips.

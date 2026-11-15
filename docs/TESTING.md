@@ -5026,6 +5026,26 @@ previously tracked TEMP files and session/snapshot changes remain visible and
 still block R09. This is scaffold/Git-port evidence; exact archive installation,
 incident source authentication and published R10 execution remain separate gates.
 
+`node tools/perf/verify-standard-pr-incident-tracking-fixtures.mjs
+--mode=files|dual|db-only` exercises actual canonical creation and verified-state
+updates through the private tracking port. Sources and effect grants are
+controlled. Filesystem/SQLite CAS, exact metadata, required DUAL projection,
+DB-only non-export, no-age application, no-effect replay, source/grant refusal,
+known partial completion and retained unknown owners are checked separately.
+Successful owned fixture corpora are removed after owner release; failed or
+unknown-owner corpora remain retained. No earlier blocked cleanup path is used.
+
+`node tools/perf/verify-standard-pr-review-reply-fixtures.mjs
+--case=external-premerge --incident-tracking` and the same command with
+`--case=external-pretriage-session` extend only the fixture IR with the registered
+record/resolve operations. The actual host checks its normal grants and writes
+the canonical FILES tracker from the authenticated signed fixture Human, then
+marks it resolved after real local Git and the matching accepted R09 completion.
+Provider HTTPS remains doubled. Reconstructed child hosts retain the exact
+fixture graph. The fixed closure-evidence reader consumes the produced tracker.
+This does not qualify the published R10 route, concise trace/deletion, general
+unknown-owner recovery, genuine actors, live PostgreSQL or exact installed archive.
+
 Record offline/source-install, real native, live PostgreSQL and exact installed
 archive outcomes separately. Governance completeness does not establish complete
 standard-workflow execution. Session report/write/checkpoint/final hook and the

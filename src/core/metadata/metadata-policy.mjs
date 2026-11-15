@@ -322,7 +322,7 @@ const METADATA_POLICIES = freezeDeep([
     label: "Incident",
     required: ["incident_id", "severity", "owner", "status", "created_at", "updated_at", "source_of_truth", "lifecycle_status"],
     sourceOfTruthConcept: "incident",
-    evidenceTargets: ["docs/SPEC.md", "scaffold/docs_audit/incidents/TEMPLATE_INC_TMP.md"],
+    evidenceTargets: ["docs/SPEC.md", "scaffold/docs_audit/incidents/TEMPLATE_INC_TMP.md", "src/application/runtime/standard-pr-incident-tracking.mjs"],
     recommended: ["steward", "resolution", "privacy_classification", "retention_policy"],
     legacyTolerated: ["source_of_truth", "lifecycle_status", "privacy_classification", "retention_policy"],
     lifecycle: "opened -> triaged -> mitigated -> closed -> archived",
