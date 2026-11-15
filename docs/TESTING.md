@@ -1615,6 +1615,16 @@ match its original prepared metadata postimages: classification remains unchange
 while the planned write timestamp may advance. These selectors qualify neither
 live PostgreSQL nor a genuine Native producer.
 
+The separate `--incident-partial-write` selector on either external-premerge or
+external-pretriage-session, with optional `--incident-state-mode=files|dual|db-only`,
+refuses exactly one current admission after the first real trace write. Require
+a valid persisted and accepted generic reconciliation-required/unknown receipt,
+empty success facts, the exact after/before canonical prefix, retained tracker
+and released owner. Duplicate dispatch, fresh inspection, disposition preparation
+and replay must preserve that state. This proves partial-state persistence only;
+authorized continuation and held-UNKNOWN recovery need separate qualification.
+The human/provider sources remain controlled fixtures and no Native actor runs.
+
 The canonical continuity reader retains a structurally consistent CLOSED managed
 PR delivery anchor without reopening its session. The existing cycle-admission
 fixture checks that this context reaches the PR-open gate; missing/malformed

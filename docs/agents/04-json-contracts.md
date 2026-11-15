@@ -27,7 +27,12 @@ effects. A separately granted disposition records and accepts the missing
 receipt through the existing contract; it supplies no rule-edit permission.
 This profile covers a lost final receipt with no journal result. Known-partial
 and held-UNKNOWN continuation require separate implementation and qualification.
-A missing tracker supplies no resolution proof. Known partial and UNKNOWN
+A missing tracker supplies no resolution proof. A private incomplete closure
+whose prefix is confirmed maps to a generic `reconciliation_required` / `unknown`
+receipt with no success facts or unconfirmed evidence refs. Its original plan
+and exact canonical prefix remain available; this is not an implicit retry.
+Blocked/deferred generic receipts keep their existing `no_effect` requirement,
+and historical v1 business outputs remain readable. Known partial and UNKNOWN
 outputs carry no success fact. Published PR completion targets connect this L2
 profile; general/high-severity profiles and host continuation after partial
 effects remain separate unfinished work.

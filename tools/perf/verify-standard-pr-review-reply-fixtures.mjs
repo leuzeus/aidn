@@ -63,7 +63,7 @@ const incidentModeArguments = process.argv.filter(value => value.startsWith('--i
 const incidentStateMode = incidentModeArguments[0]?.slice('--incident-state-mode='.length) ?? 'files';
 if (incidentModeArguments.length > 1 || !['files', 'dual', 'db-only'].includes(incidentStateMode)
   || incidentModeArguments.length && (!['--case=external-premerge', '--case=external-pretriage-session'].includes(process.argv[2])
-    || !process.argv.includes('--incident-receipt-loss')))
+    || !['--incident-receipt-loss', '--incident-partial-write'].some(flag => process.argv.includes(flag))))
   throw Error('FIXTURE_INCIDENT_STATE_MODE_UNSUPPORTED');
 
 // The reduced entry retains the published PR completion targets unchanged.
@@ -175,6 +175,7 @@ function open(base, { initializeKey = false, providerNow, closeReceiptLoss = fal
   const connection = nodes => ({ nodes, totalCount: nodes.length, pageInfo: { hasNextPage: false, endCursor: null } });
   const ok = value => ({ status: 0, stdout: typeof value === 'string' ? value : JSON.stringify(value) });
   let permitted, denied = false, revokeAt = null, grants = 0, calls = 0, crash = false, interruptCapture = false;
+  let onceDeniedPredicate = null;
   const providerTransport = {
     runGithub() { assert.fail('Unexpected GitHub effect'); },
     runRemoteGit(executable, args) {
@@ -392,7 +393,9 @@ function open(base, { initializeKey = false, providerNow, closeReceiptLoss = fal
     sessionReviewPort: provider.sessionReviewPort, sessionReviewEventPort: fetchFixture && !external ? null : provider.sessionReviewEventPort,
     authorize(input) {
       grants++;
-      return authority.authorizeOperation(input, denied || grants === revokeAt ? null : permitted);
+      const controlledDenial = onceDeniedPredicate?.() === true;
+      if (controlledDenial) onceDeniedPredicate = null;
+      return authority.authorizeOperation(input, denied || grants === revokeAt || controlledDenial ? null : permitted);
     } }, { dispatchCheckpoint(point, operationId) {
       if (interruptCapture && ['post_merge_decision_reserved', 'external_merge_disposition_reserved', 'pr_review_control_reserved'].includes(point)) throw Object.assign(Error('Fixture interrupted capture'), { code: 'FIXTURE_CAPTURE_INTERRUPTED' });
       if (crash && point === 'effect_returned') throw Object.assign(Error('Fixture interrupted owner'), { code: 'FIXTURE_DISPATCH_INTERRUPTED' });
@@ -515,7 +518,7 @@ function open(base, { initializeKey = false, providerNow, closeReceiptLoss = fal
   return { host, preview, stage, run, inspect, seedPrefix, seed, graph, observePublishedReply, state, providerFile, calls: () => calls, allow: sha => { permitted = sha; },
     signer, journal, control, instances, inbox: createProcessDecisionInboxStore(options), providerTransport, entry, mixed,
     now, interruptCapture: () => { interruptCapture = true; },
-    deny: value => { denied = value; }, revokeAt: value => { revokeAt = grants + value; }, interrupt: () => { crash = true; } };
+    deny: value => { denied = value; }, denyOnceWhen: predicate => { onceDeniedPredicate = predicate; }, revokeAt: value => { revokeAt = grants + value; }, interrupt: () => { crash = true; } };
 }
 
 
@@ -1915,7 +1918,73 @@ async function qualifyIncidentReceiptLoss(base, first, close, gitState) {
   return fresh.host.readJournal(id);
 }
 
+async function qualifyKnownPartialIncidentClose(base, first, close, gitState) {
+  const { configuration: { target_root: targetRoot } } = json(path.join(base, 'configuration.json'));
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot }), inner = decodePrIncidentClosurePlan(close.prepared.plan);
+  const names = [inner.incident_path, ...inner.traces.map(trace => trace.path)];
+  const visible = () => names.map(name => { const file = path.resolve(targetRoot, 'docs/audit', name);
+    return fs.existsSync(file) ? pin(file).sha256 : null; });
+  const projectionsBefore = visible();
+  const prior = first.inspect().record.events.filter(event => event.kind === 'operation_result').map(event => event.receipt);
+  let deniedAtKnownPrefix = false;
+  first.denyOnceWhen(() => {
+    const [written, pending] = inner.traces;
+    const stop = artifacts.read(written.path).sha256 === written.after_sha256
+      && artifacts.read(pending.path).sha256 === pending.before_sha256;
+    if (stop) deniedAtKnownPrefix = true;
+    return stop;
+  });
+  const journal = await first.run(close), output = journal.results.at(-1).output;
+  assert.equal(deniedAtKnownPrefix, true, 'one current admission must be refused after the first actual trace');
+  assert.equal(journal.phase, 'receipted'); assert.equal(journal.results.length, 1);
+  assert.equal(output.outcome, 'reconciliation_required'); assert.equal(output.effect_status, 'unknown');
+  assert.deepEqual(output.facts, {}); assert.deepEqual(output.evidence_refs, []);
+  const legacyOutput = { ...output, outcome: 'blocked', effect_status: 'confirmed',
+    evidence_refs: [{ ref: 'docs/audit/' + inner.traces[0].path, sha256: inner.traces[0].after_sha256 }] };
+  assert.deepEqual(assertStandardOperationOutput(legacyOutput), legacyOutput, 'historical v1 business output remains readable');
+  const capsules = createProcessDispatchRecordStore({ targetRoot, stateMode: artifacts.describe().state_mode });
+  const capsule = capsules.read(journal.operation_id).record;
+  first.signer.verify(journal); first.signer.verify(journal.preview); first.signer.verify(capsule);
+  assert.equal(capsule.phase, 'returned'); assert.deepEqual(capsule.output, output);
+  assert.equal(capsule.leases.length, 1); assert.equal(capsule.leases[0].status, 'released');
+  assert.equal(artifacts.ownerPending(), false);
+  assert.equal(artifacts.read(inner.incident_path).sha256, inner.incident_sha256);
+  assert.equal(artifacts.metadataHash(inner.incident_path), inner.incident_metadata_sha256);
+  for (const [index, trace] of inner.traces.entries()) {
+    assert.equal(artifacts.read(trace.path).sha256, index === 0 ? trace.after_sha256 : trace.before_sha256);
+    assert.equal(artifacts.metadataHash(trace.path), index === 0 ? trace.after_metadata_sha256 : trace.before_metadata_sha256);
+  }
+  if (artifacts.describe().state_mode === 'db-only') assert.deepEqual(visible(), projectionsBefore);
+  const frame = first.inspect().cursor.occurrences.find(row => row.operation?.intent?.operation_id === journal.operation_id);
+  assert.equal(frame.status, 'WAITING'); assert.equal(frame.operation.receipt.effect_status, 'unknown');
+  assert.deepEqual(first.inspect().record.events.filter(event => event.kind === 'operation_result').slice(0, prior.length)
+    .map(event => event.receipt), prior);
+  const witness = () => shadowHash({ instance: first.inspect().record, journal: first.host.readJournal(journal.operation_id),
+    capsule: capsules.read(journal.operation_id).record, fence: artifacts.resourceFence().read(), owner: artifacts.ownerPending(),
+    artifacts: names.map(name => ({ path: name, sha256: artifacts.read(name).sha256, metadata: artifacts.metadataHash(name) })),
+    projections: visible(), git: gitState(), provider: json(first.providerFile) });
+  const before = witness();
+  assert.equal((await first.host.dispatch(journal.operation_id, { write: true })).status, 'retained_result');
+  assert.equal(witness(), before, 'a duplicate dispatch must retain the unresolved receipt and known business prefix');
+  const fresh = open(base);
+  assert.equal(shadowHash(fresh.host.readJournal(journal.operation_id)), shadowHash(journal));
+  assert.equal(fresh.inspect().record.instance_sha256, first.inspect().record.instance_sha256);
+  const disposition = await fresh.host.prepareOperationDisposition(journal.operation_id,
+    { expectedSha256: fresh.inspect().record.instance_sha256 });
+  assert.equal(witness(), before, 'fresh inspection and disposition preparation must remain read-only');
+  replay(fresh); assert.equal(witness(), before);
+  console.log(JSON.stringify({ published_known_partial_receipt: 'PASS', scope: 'partial persistence only',
+    state_mode: artifacts.describe().state_mode, operation_id: journal.operation_id, outcome: output.outcome, effect_status: output.effect_status,
+    source: 'one controlled admission denial after actual trace0', prior_receipts_preserved: true, canonical_prefix: ['after', 'before'],
+    owner_released: true, tracker_retained: true, duplicate_dispatch_no_effect: true, exact_replay: true,
+    disposition_assessment_observed: disposition.assessment, authorized_continuation: 'NOT_EXECUTED',
+    upstream: 'fixture-seeded', human: 'signed-fixture', git: 'real', https: 'double', genuine_native: 'NOT_RUN', full_standard_workflow: false }));
+}
+
 async function qualifyExternalMerge(scenario) {
+  if (process.argv.includes('--incident-partial-write') && (!['premerge', 'pretriage-session'].includes(scenario)
+    || ['--incident-receipt-loss', '--incident-evidence', '--incident-tracking', '--incident-cleanup', '--incident-low-severity'].some(flag => process.argv.includes(flag))))
+    throw Error('FIXTURE_INCIDENT_PARTIAL_WRITE_SCENARIO_UNSUPPORTED');
   if (process.argv.includes('--incident-receipt-loss') && (!['premerge', 'pretriage-session'].includes(scenario)
     || ['--incident-evidence', '--incident-tracking', '--incident-cleanup', '--incident-low-severity'].some(flag => process.argv.includes(flag))))
     throw Error('FIXTURE_INCIDENT_RECEIPT_LOSS_SCENARIO_UNSUPPORTED');
@@ -2287,6 +2356,10 @@ async function qualifyExternalMerge(scenario) {
           f.deny(true);
           await assert.rejects(f.stage(close), { code: 'STANDARD_HOST_EXACT_OPERATION_REQUIRED' });
           assert.equal(witness(), beforeDenied); f.deny(false);
+          if (process.argv.includes('--incident-partial-write')) {
+            await qualifyKnownPartialIncidentClose(base, f, close, gitState);
+            return;
+          }
           const closedJournal = process.argv.includes('--incident-receipt-loss')
             ? await qualifyIncidentReceiptLoss(base, f, close, gitState) : await f.run(close);
           const closed = closedJournal.results[0].output;

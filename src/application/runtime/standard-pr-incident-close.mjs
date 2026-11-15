@@ -141,11 +141,15 @@ export function createStandardPrIncidentClose({ targetRoot, readCurrent, readCla
           write: true, expectPlan: plan.closure_plan_sha256,
           assertAuthorized: async () => { await assertAuthorized(); authenticateSource(); },
         });
+      // A known committed prefix is not a no-effect block or a completed operation.
+      // Keep the generic receipt unresolved until a separately authorized continuation.
+      const partial = result.outcome === 'incomplete' && result.effect_status === 'confirmed';
       return assertPrIncidentCloseOutput({ contract_version: 'standard-pr-incident-close-output.v1', operation_ref: prIncidentCloseOperation,
-        outcome: result.outcome === 'incomplete' ? 'blocked' : result.outcome, effect_status: result.effect_status,
+        outcome: partial ? 'reconciliation_required' : result.outcome === 'incomplete' ? 'blocked' : result.outcome,
+        effect_status: partial ? 'unknown' : result.effect_status,
         facts: result.outcome === 'completed' ? { session_pr_incident_cleanup_completed: true } : {},
         observations: { incident_id: result.incident_id, plan_sha256: result.plan_sha256, reason_code: result.reason_code },
-        evidence_refs: result.evidence_refs });
+        evidence_refs: partial ? [] : result.evidence_refs });
     },
   });
 }
