@@ -1560,6 +1560,21 @@ does not establish the full conversion wrapper or same-IR execution. Existing
 retain-request continuation fixtures need the new explicit conversion route;
 do not transfer historical results to this revised model.
 
+The private actual-host R10 cleanup extension is selected with
+`node tools/perf/verify-standard-pr-review-reply-fixtures.mjs
+--case=external-premerge --incident-cleanup` or
+`--case=external-pretriage-session --incident-cleanup`. It adds the registered
+record/resolve/close bindings only to fixture copies of the published targets.
+The source is signed fixture Human evidence, Git is real and HTTPS is doubled;
+Native and published R10 routing remain NOT_RUN. A successful case must prove
+that a denied current grant leaves canonical state unchanged, both trace
+documents reach the existing 1 MiB artifact limit with control UTF8 preserved
+through the unchanged 8 MiB journal reader, both concise canonical traces
+precede tracker removal,
+the retained source is reauthenticated after removal, and the local owner is
+released. Known-partial host continuation and unknown-owner recovery require
+separate evidence; private closure-port recovery does not establish them.
+
 ## Mode session closure and data capacity
 
 Use `node tools/perf/verify-standard-process-binding-input-fixtures.mjs` for

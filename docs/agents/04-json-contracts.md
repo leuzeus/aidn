@@ -1,5 +1,18 @@
 # 04 JSON Contracts
 
+Private `standard-pr-incident-close-{input,plan,output}.v1` binds explicit R10
+cleanup to an accepted L2 external-merge source and its matching R09 resolution.
+The fixed host authenticates its retained journal, current claim and grant;
+removing only that exact final own-intent event reconstructs the original plan
+context without persisting a rebase. Canonical base64 UTF8 for trace contents
+and bounded chunks preserve the existing artifact and journal limits without
+JSON-escape amplification. Decoding must reproduce the original private-plan
+digest exactly. After deletion, the original authenticated preparation, freshly
+rederived H/R09 source and both exact canonical trace postimages remain required.
+A missing tracker supplies no resolution proof. Known partial and UNKNOWN
+outputs carry no success fact. Published routing, general/high-severity profiles
+and host continuation after partial effects remain separate unfinished work.
+
 Private `standard-pr-incident-tracking-{source,input,plan,output}.v1` closes the
 registered record/resolve business bindings. JSON supplies only an origin
 operation ID. The fixed host authenticates the accepted Human disposition,
@@ -8,8 +21,8 @@ canonical content/metadata preimages and proposed postimages; bounded text
 chunks preserve the existing artifact limit. Positive facts follow confirmed
 canonical postconditions. Unknown effects retain the owner and no positive
 fact. These contracts reuse the existing incident and operation journal
-authorities; historical contracts remain unchanged. Published R10 routing,
-trace/cleanup and general recovery are separate unfinished work.
+authorities; historical contracts remain unchanged. Published R10 routing and general recovery are separate unfinished work;
+the distinct private close binding supplies trace/cleanup execution.
 
 Private `standard-cycle-entry-choice-checkpoint-{input,plan,output}.v1` binds
 only an accepted canonical choice record. Its protected host authenticates the

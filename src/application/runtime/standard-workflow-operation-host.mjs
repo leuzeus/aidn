@@ -10,6 +10,8 @@ import { createStandardPostMergeCompletion, postMergeProjectScope } from "./stan
 import { createStandardPrIncidentEvidence } from "./standard-pr-incident-evidence.mjs";
 import { createStandardPrIncidentTracking } from "./standard-pr-incident-tracking.mjs";
 import { prIncidentRecordOperation, prIncidentResolveOperation } from "../../core/workflow/standard-pr-incident-tracking.mjs";
+import { prIncidentCloseOperation } from "../../core/workflow/standard-pr-incident-close.mjs";
+import { createStandardPrIncidentClose } from "./standard-pr-incident-close.mjs";
 import { postMergeFastForwardOperation } from "../../core/workflow/standard-pr-post-merge-fast-forward.mjs";
 import { createStandardPostMergeFastForward } from "./standard-session-pr-post-merge-fast-forward.mjs";
 import { postMergeCompleteOperation } from "../../core/workflow/standard-pr-post-merge-complete.mjs";
@@ -682,6 +684,17 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readAlignmentSource: postMerge.alignmentSource, scopeSha: postMergeScope });
   const prIncidentEvidence = createStandardPrIncidentEvidence({ ...acceptedReviewPorts, artifacts,
     readAlignmentSource: postMerge.alignmentSource, scopeSha: postMergeScope, readHumanSource: record => human.captured(record).source });
+  const prIncidentClose = createStandardPrIncidentClose({ targetRoot, now,
+    readCurrent: acceptedReviewPorts.readCurrent, readClaimed: id => retained(id).record,
+    createEvidenceReader: readCurrent => createStandardPrIncidentEvidence({ ...acceptedReviewPorts, artifacts, readCurrent,
+      readAlignmentSource: postMerge.alignmentSource, scopeSha: postMergeScope, readHumanSource: record => human.captured(record).source }),
+    observeBoundary: owned => {
+      const observed = observeBoundary(), selected = new Set(owned);
+      observed.context.documents = observed.context.documents.filter(row => !selected.has(row.path));
+      const inventory = artifacts.inventory().paths.filter(name => !name.startsWith("workflows/") && !selected.has(name))
+        .map(name => { const row = artifacts.read(name, { required: true }); return { path: name, sha256: row.sha256, metadata_sha256: artifacts.metadataHash(name) }; });
+      return shadowHash({ observed, inventory });
+    } });
   const postMergeFastForward = createStandardPostMergeFastForward({ ...acceptedReviewPorts, postMerge, decision: postMergeDecision,
     verifyDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
   const reviewEffects = new Map([
@@ -1632,6 +1645,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_pr_review_reply_select" ? sessionPrReply.prepareSelection(state.record, input)
         : binding.id === "session_pr_review_resolution_select" ? sessionPrResolution.prepareSelection(state.record, input)
         : binding.id === resolutionExceptionOperation ? await sessionPrResolution.prepareException(state.record, input)
+        : binding.id === prIncidentCloseOperation ? await prIncidentClose.prepare(state.record, input)
         : reviewEffects.has(binding.id) ? await reviewEffects.get(binding.id).prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === "session_pr_review_effects_verify" ? sessionPrEffects.prepare(state.record, input)
         : binding.id === "session_pr_premerge_observe" ? sessionPrPremerge.prepare(state.record, input)
@@ -1831,6 +1845,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           record.preview.prepared, { signal });
         else if (record.intent.binding_ref === "session_pr_review_resolution_select") output = await sessionPrResolution.select(state.record, record.preview.input,
           record.preview.prepared, { signal });
+        else if (record.intent.binding_ref === prIncidentCloseOperation) output = await prIncidentClose.apply(state.record, record.preview.input,
+          record.preview.prepared, { operationId: id, assertAuthorized: async () => {
+            await verifyGrant(record, signal);
+            if (current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256
+              || shadowHash(retained(id).record) !== shadowHash(claimed))
+              throw Object.assign(Error("STANDARD_PR_INCIDENT_CLOSE_OWNER_CHANGED"), { code: "STANDARD_PR_INCIDENT_CLOSE_OWNER_CHANGED", effect_status: "no_effect" });
+          } });
         else if (reviewEffects.has(record.intent.binding_ref)) output = await reviewEffects.get(record.intent.binding_ref).apply(state.record, record.preview.input,
           record.preview.prepared, { signal, operationId: id, assertAuthorized: async () => {
             await verifyGrant(record, signal);

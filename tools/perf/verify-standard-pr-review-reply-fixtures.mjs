@@ -38,7 +38,8 @@ import { runStartSessionAdmitUseCase } from '../../src/application/runtime/start
 import { runCycleCreateAdmitUseCase } from '../../src/application/runtime/cycle-create-admit-use-case.mjs';
 import { readStandardPostMergeContinuity } from '../../src/application/runtime/standard-post-merge-continuity.mjs';
 import { standardPrIncidentId } from '../../src/application/runtime/standard-pr-incident-evidence.mjs';
-import { createStandardWorkflowArtifacts } from '../../src/application/runtime/standard-workflow-artifacts.mjs';
+import { createStandardWorkflowArtifacts, STANDARD_ARTIFACT_MAX_BYTES } from '../../src/application/runtime/standard-workflow-artifacts.mjs';
+import { decodePrIncidentClosurePlan } from '../../src/core/workflow/standard-pr-incident-close.mjs';
 import { preWriteAdmit } from '../runtime/pre-write-admit.mjs';
 
 const { model: published } = loadStandardWorkflowAssets();
@@ -58,11 +59,11 @@ const save = (file, data) => fs.writeFileSync(file, JSON.stringify(data, null, 2
 
 // Fixture-only extension: dispatch the registered business bindings through the
 // actual host without claiming that the published R10 route is already wired.
-function incidentTrackingTarget(original, enabled) {
+function incidentTrackingTarget(original, enabled, cleanup) {
   if (!enabled) return original;
   const model = structuredClone(original.model), root = model.nodes.find(row => row.id === model.entry);
   const template = model.nodes.find(row => row.binding_ref === 'session_pr_post_merge_complete');
-  for (const [phase, position] of [['record', root.children.indexOf('pr_merge_basis') + 1], ['resolve', -1]]) {
+  for (const [phase, position] of [['record', root.children.indexOf('pr_merge_basis') + 1], ['resolve', -1], ...(cleanup ? [['close', -1]] : [])]) {
     const id = `fixture_pr_incident_${phase}`, binding = bindings.get(`session_pr_incident_${phase}`);
     const node = { ...template, id, binding_ref: binding.id };
     if (position < 0) root.children.push(id); else root.children.splice(position, 0, id);
@@ -75,9 +76,9 @@ function incidentTrackingTarget(original, enabled) {
   return { ...processModelIdentity(model), model };
 }
 
-function fixtureModel(prefix, fetchOnly, external = false, pretriage = false, tracking = process.argv.includes('--incident-tracking')) {
-  const target = incidentTrackingTarget(publishedFixtureTargets.review, tracking);
-  const pretriageTarget = incidentTrackingTarget(publishedFixtureTargets.pretriage, tracking);
+function fixtureModel(prefix, fetchOnly, external = false, pretriage = false, tracking = (process.argv.includes('--incident-tracking') || process.argv.includes('--incident-cleanup')), cleanup = process.argv.includes('--incident-cleanup')) {
+  const target = incidentTrackingTarget(publishedFixtureTargets.review, tracking, cleanup);
+  const pretriageTarget = incidentTrackingTarget(publishedFixtureTargets.pretriage, tracking, cleanup);
   const corrective = prefix === 'correction';
   const update = corrective ? 'correction_pr_redelivery_push' : 'session_pr_update_push';
   const observe = prefix + '_pr_review_observe', wait = prefix + '_pr_review_wait', receive = prefix + '_pr_review_receive';
@@ -365,7 +366,7 @@ function open(base, { initializeKey = false, providerNow } = {}) {
   } finally { Date.now = wallClock; }
   const { githubProvider: provider, readKey } = authority;
   if (initializeKey) authority.ensureKey();
-  const signer = createOperationJournalSigner(readKey), graph = fixtureModel(prefix, Boolean(fetchFixture) && !external, external, pretriage, data.incident_tracking_fixture === true), { model } = graph;
+  const signer = createOperationJournalSigner(readKey), graph = fixtureModel(prefix, Boolean(fetchFixture) && !external, external, pretriage, data.incident_tracking_fixture === true, data.incident_cleanup_fixture === true), { model } = graph;
   const now = () => json(configurationFile).clock_ms ?? wallClock();
   // The protected reader is synchronous. Use the same fixture time for
   // envelope authentication and the H host, while leaving process deadlines
@@ -572,7 +573,8 @@ function arrange(prefix, behavior) {
   save(path.join(dirs.host, key + '.github.json'), binding);
   if (behavior.startsWith('external-pretriage-')) configureActionFixture(base, configuration, fixtureModel(prefix, false, true, true));
   save(path.join(base, 'configuration.json'), { configuration, home: dirs.host, binding, pr, prefix, behavior, fetchFixture,
-    incident_tracking_fixture: process.argv.includes('--incident-tracking'),
+    incident_tracking_fixture: (process.argv.includes('--incident-tracking') || process.argv.includes('--incident-cleanup')),
+    incident_cleanup_fixture: process.argv.includes('--incident-cleanup'),
     submittedAt: new Date(Date.now() - 1000).toISOString() });
   save(path.join(base, 'provider.json'), { sent: [], replies: [], resolved: false, reviewChanged: false, resolvedThreads: [], resolutionSends: [], mergeSends: [] });
   console.log(JSON.stringify({ evidence: base, project: targetRoot, prefix, behavior }));
@@ -1774,7 +1776,7 @@ async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
 }
 
 async function qualifyExternalMerge(scenario) {
-  if (process.argv.includes('--incident-tracking') && !['premerge', 'pretriage-session'].includes(scenario))
+  if ((process.argv.includes('--incident-tracking') || process.argv.includes('--incident-cleanup')) && !['premerge', 'pretriage-session'].includes(scenario))
     throw Error('FIXTURE_INCIDENT_TRACKING_SCENARIO_UNSUPPORTED');
   const checks = scenario === 'checks', pretriage = scenario.startsWith('pretriage-');
   const nominal = scenario === 'pretriage-nominal';
@@ -2020,7 +2022,7 @@ async function qualifyExternalMerge(scenario) {
     let tracked;
     const gitState = () => ({ head: git('rev-parse', 'HEAD'), branch: git('branch', '--show-current'),
       status: git('status', '--porcelain=v1', '--untracked-files=all'), refs: git('show-ref') });
-    if (process.argv.includes('--incident-tracking')) {
+    if ((process.argv.includes('--incident-tracking') || process.argv.includes('--incident-cleanup'))) {
       const before = gitState(), recorded = (await f.run()).results[0];
       assert.equal(recorded.output.operation_ref, 'session_pr_incident_record');
       assert.equal(recorded.output.facts.session_pr_incident_tracking_recorded, true);
@@ -2076,7 +2078,62 @@ async function qualifyExternalMerge(scenario) {
         assert.equal(evidence.resume_ref.sha256, shadowHash(f.host.readJournal(completionId).results.at(-1).receipt));
         assert.deepEqual(open(base).host.readPrIncidentClosureEvidence(request), evidence);
         assert.deepEqual(gitState(), before, 'normal verified resolution must preserve Git identity and cleanliness');
-        console.log('PASS: registered R10 record and resolve use actual host grants, owner/fence, canonical tracker writes and exact accepted H/R09 sources; current FILES tracker is resolved and cleanup remains pending (signed fixture Human, real Git, doubled HTTPS).');
+        if (process.argv.includes('--incident-cleanup')) {
+          const sessionPath = path.join(targetRoot, 'docs/audit/sessions', completePlan.prepared.plan.session_id + '.md');
+          const snapshotPath = path.join(targetRoot, 'docs/audit/snapshots/context-snapshot.md');
+          // A fresh read-only preview determines the exact trace overhead. No
+          // grant or persisted preparation is reused after the fixture notes change.
+          const sizing = await f.preview(), sizingPlan = decodePrIncidentClosurePlan(sizing.prepared.plan);
+          assert.equal(sizing.binding.id, 'session_pr_incident_close');
+          for (const change of sizingPlan.traces) {
+            const file = path.resolve(targetRoot, 'docs/audit', change.path);
+            assert.ok([sessionPath, snapshotPath].map(name => path.resolve(name)).includes(file));
+            const padding = STANDARD_ARTIFACT_MAX_BYTES - Buffer.byteLength(change.after, 'utf8');
+            assert.ok(padding > 0);
+            fs.appendFileSync(file, String.fromCharCode(0).repeat(padding));
+          }
+          const beforeSession = fs.readFileSync(sessionPath, 'utf8'), beforeSnapshot = fs.readFileSync(snapshotPath, 'utf8');
+          const witness = () => shadowHash({ instance: f.inspect().record,
+            session: fs.readFileSync(sessionPath, 'utf8'), snapshot: fs.readFileSync(snapshotPath, 'utf8'),
+            tracker: fs.readFileSync(tracked.tracker, 'utf8') });
+          const close = await f.preview(), beforeDenied = witness();
+          assert.equal(close.binding.id, 'session_pr_incident_close');
+          assert.equal(close.prepared.plan.closure_plan_encoding, 'base64-trace-utf8-v1');
+          assert.ok(close.prepared.plan.closure_plan_chunks.length > 1, 'canonical artifact capacity must survive the ordinary shadow string limit');
+          assert.ok(decodePrIncidentClosurePlan(close.prepared.plan).traces.every(change => Buffer.byteLength(change.after, 'utf8') === STANDARD_ARTIFACT_MAX_BYTES));
+          const encodedPlan = JSON.parse(close.prepared.plan.closure_plan_chunks.join(''));
+          const malformed = structuredClone(encodedPlan);
+          assert.ok(malformed.traces[0].after.endsWith('='));
+          malformed.traces[0].after = malformed.traces[0].after.slice(0, -1);
+          assert.ok(Buffer.from(malformed.traces[0].after, 'base64').equals(Buffer.from(encodedPlan.traces[0].after, 'base64')));
+          const malformedText = JSON.stringify(malformed), malformedWrapper = structuredClone(close.prepared.plan);
+          malformedWrapper.closure_plan_chunks = [];
+          for (let at = 0; at < malformedText.length; at += 8192) malformedWrapper.closure_plan_chunks.push(malformedText.slice(at, at + 8192));
+          assert.throws(() => decodePrIncidentClosurePlan(malformedWrapper), { code: 'STANDARD_PR_INCIDENT_CLOSE_PLAN_INVALID' });
+          assert.equal(witness(), beforeDenied, 'a noncanonical encoding must not touch actual source state');
+          f.deny(true);
+          await assert.rejects(f.stage(close), { code: 'STANDARD_HOST_EXACT_OPERATION_REQUIRED' });
+          assert.equal(witness(), beforeDenied); f.deny(false);
+          const closedJournal = await f.run(close), closed = closedJournal.results[0].output;
+          assert.ok(Buffer.byteLength(JSON.stringify(closedJournal), 'utf8') < 8 * 1024 * 1024, 'the original workflow-record read limit must not be raised');
+          assert.equal(closed.facts.session_pr_incident_cleanup_completed, true);
+          assert.equal(closed.effect_status, 'confirmed');
+          assert.equal(fs.existsSync(tracked.tracker), false);
+          const canonical = createStandardWorkflowArtifacts({ targetRoot });
+          assert.equal(canonical.read('incidents/' + tracked.incidentId + '.md').sha256, null);
+          assert.equal(canonical.ownerPending(), false);
+          assert.equal(closed.evidence_refs.length, 2);
+          for (const [file, before] of [[sessionPath, beforeSession], [snapshotPath, beforeSnapshot]]) {
+            const after = fs.readFileSync(file, 'utf8');
+            assert.ok(after.startsWith(before));
+            assert.ok(after.includes('aidn:incident-closure:' + tracked.incidentId + ':'));
+            assert.ok(after.includes('checkpoint ' + disposition.intent.instance_sha256));
+            assert.equal(closed.evidence_refs.find(row => path.resolve(targetRoot, row.ref) === path.resolve(file))?.sha256, artifactContentHash(after));
+          }
+          assert.equal(open(base).host.inspect(instanceId).record.instance_sha256, f.inspect().record.instance_sha256);
+          console.log('PASS: actual host recognizes its exact own intent, preserves control UTF8 in two exact 1MiB canonical trace documents through the original 8MiB journal reader, writes both traces, authenticates retained H/R09 evidence after deletion and releases the owner; current denied grant writes nothing (FILES, signed fixture Human, real Git, doubled HTTPS, no published cleanup route).');
+        }
+        if (!process.argv.includes('--incident-cleanup')) console.log('PASS: registered R10 record and resolve use actual host grants, owner/fence, canonical tracker writes and exact accepted H/R09 sources; current FILES tracker is resolved and cleanup remains pending (signed fixture Human, real Git, doubled HTTPS).');
       }
       assert.equal(continuity().completion?.plan.merge_receipt_sha256, shadowHash(receipt));
       assert.equal((await start()).action, 'create_session_allowed');
