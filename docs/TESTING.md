@@ -6279,3 +6279,22 @@ results and costs remain unchanged. They are read-only component evidence, not
 post-assignment retirement/reconciliation, productive workflow resume, current
 published-model qualification, genuine actors, installed archive or full plan
 acceptance. Original required manifest order, argv and Native grant limits remain.
+
+
+The focused private selector --native-post-assignment-mode=files|dual|db-only
+in verify-agentic-process-execution-fixtures.mjs exercises the actual common
+host, bootstrap operations, allocator, signed assignment/result admission,
+checkpoint, diagnostic assessment and cold reopen. Native RPC answers and the
+supervisor Native-tree proof are controlled fixture capabilities. In one case
+the controller reports failure only after the Native worker has returned its
+accepted result and checkpoint; the allocator records that original failure.
+The other case retains unknown Native-tree closure and must remain unknown.
+Neither case rewrites a journal, checkpoint, grant or historical result.
+
+Both retain the actual failed/unresolved generation, original prefix, held owner,
+accepted Native results and measured debit. Read-only assessment, denied ordinary
+resume and denied legacy no_assignment writers must preserve all fixture bytes
+and start no second allocation. These are component-model fixtures, not genuine
+Native processes, an installed archive, the published STANDARD journey or a
+post-assignment resource disposition/reconciliation/resume qualification. Existing
+required argv/order, default fixture cases and finite Native grants are unchanged.

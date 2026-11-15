@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { createStandardWorkflowArtifacts } from '../../src/application/runtime/standard-workflow-artifacts.mjs';
 import { createOperationJournalSigner } from '../../src/core/workflow/process-operation-journal.mjs';
 import { assertNativeAllocationAssessment } from '../../src/core/workflow/native-allocation-assessment.mjs';
 import { assertNativePostAssignmentAssessment, nativePostAssignmentEvidenceProfile } from '../../src/core/workflow/native-post-assignment-assessment.mjs';
@@ -75,4 +79,90 @@ export function verifyNativePostAssignmentAssessmentContracts(original, check) {
   assert.throws(() => assertNativeAllocationAssessment(valid, inventory), { code: 'NATIVE_ALLOCATION_ASSESSMENT_INVALID' });
   check('legacy no-assignment assessment does not reinterpret the new profile');
   return { checks: 27, native_calls: 0, authority: 'synthetic_closed_data_only' };
+}
+
+
+// Real common-host and allocator ports with controlled Native RPC and controlled
+// supervisor closure. No historical fixture bytes or authorization are edited.
+export async function verifyNativePostAssignmentHostFixture({ mode, mixedFixture, bootstrapMixed }) {
+  assert.ok(['files', 'dual', 'db-only'].includes(mode));
+  const rows = [];
+  const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+  const tree = root => {
+    const out = { files: {}, directories: [] };
+    const visit = dir => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+        const file = path.join(dir, e.name), rel = path.relative(root, file);
+        if (e.isSymbolicLink()) out.files[rel] = 'LINK:' + fs.readlinkSync(file);
+        else if (e.isDirectory()) { out.directories.push(rel); visit(file); }
+        else out.files[rel] = hash(fs.readFileSync(file));
+      }
+    };
+    visit(root); return out;
+  };
+  for (const scenario of ['confirmed_return_failure', 'unknown_native_tree']) {
+    const f = mixedFixture(mode, { postAssignmentReturnFailure: scenario === 'confirmed_return_failure', treeUnknown: scenario === 'unknown_native_tree' });
+    const authorization = await bootstrapMixed(f);
+    const beforeNative = f.open().inspect().record;
+    const result = await f.open().step({ write: true, authorization });
+    assert.equal(result.kind, 'native');
+    const journal = f.open().inspectAllocations(), entry = journal.allocations.at(-1);
+    assert.equal(journal.allocations.length, 1); assert.equal(entry.generation, 1);
+    assert.equal(entry.phase, scenario === 'confirmed_return_failure' ? 'failed' : 'unresolved');
+    assert.equal(result.first_failure, scenario === 'confirmed_return_failure' ? 'FIXTURE_POST_NATIVE_RETURN_FAILURE' : 'PROCESS_EXECUTION_TREE_CLOSE_UNCONFIRMED');
+    assert.ok(entry.checkpoint); assert.ok(entry.closure_ref); assert.ok(entry.consumption);
+    assert.equal(entry.initial_instance_sha256, beforeNative.instance_sha256);
+    assert.notEqual(entry.checkpoint.instance_sha256, entry.initial_instance_sha256);
+    assert.ok(entry.consumption.responses_observed > 0); assert.ok(entry.consumption.storage_debit_bytes > 0);
+    assert.equal(f.launches, 1); assert.equal(f.t.sessions.every(s => s.closed), true);
+    const artifacts = createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root });
+    const dispatchRows = artifacts.observeInventory().rows.filter(r => r.path.startsWith('workflows/native-dispatches/'));
+    assert.equal(dispatchRows.length, 1);
+    const dispatch = JSON.parse(dispatchRows[0].content);
+    assert.equal(dispatch.phase, 'returned');
+    const signer = createOperationJournalSigner(() => f.key); signer.verify(journal); signer.verify(dispatch);
+    const diagnostic = f.open().inspectDiagnostic();
+    assert.equal(diagnostic.record.instance_sha256, entry.checkpoint.instance_sha256);
+    assert.deepEqual(diagnostic.record.events.slice(0, beforeNative.events.length), beforeNative.events);
+    assert.ok(diagnostic.record.events.some(e => e.kind === 'assign'));
+    assert.ok(diagnostic.record.events.some(e => e.kind === 'result'));
+    const input = { expectedSha256: diagnostic.record.instance_sha256, dispatchId: dispatch.dispatch_id, generation: entry.generation };
+    const beforeRead = { project: tree(f.configuration.target_root), native: tree(f.base) };
+    const post = f.open().prepareNativePostAssignmentAssessment(input);
+    signer.verify(post.inventory); signer.verify(post.assessment); signer.verify(post.assessment.base_assessment);
+    assertNativePostAssignmentAssessment(post.assessment, post.inventory);
+    assert.equal(post.assessment.base_assessment.assignment_status, 'unknown');
+    assert.equal(post.assessment.evidence_profile, scenario === 'confirmed_return_failure' ? 'admitted_closed_checkpoint' : 'unknown');
+    assert.ok(post.assessment.checkpoint_work.generation_assignments > 0);
+    assert.equal(post.assessment.checkpoint_work.generation_results, post.assessment.checkpoint_work.generation_assignments);
+    assert.equal(post.assessment.checkpoint_work.unresolved_assignments, 0);
+    assert.equal(post.assessment.checkpoint_work.worker_parent_closed, true);
+    assert.equal(post.assessment.checkpoint_work.worker_checkpoint_matches, true);
+    assert.equal(post.assessment.checkpoint_work.consumption_matches, true);
+    for (const key of ['permits_effects', 'permits_resume', 'permits_native_renewal', 'permits_owner_retirement', 'complete_resource_closure', 'written']) assert.equal(post.assessment[key], false);
+    assert.equal(post.assessment.business_effect, 'unknown');
+    const cold = f.reopen().prepareNativePostAssignmentAssessment(input);
+    signer.verify(cold.assessment); assertNativePostAssignmentAssessment(cold.assessment, cold.inventory);
+    assert.equal(cold.assessment.evidence_profile, post.assessment.evidence_profile);
+    assert.deepEqual(cold.assessment.checkpoint_work, post.assessment.checkpoint_work);
+    assert.throws(() => f.open().inspect(), { code: 'STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE' });
+    await assert.rejects(f.open().step({ write: true, authorization }), { code: 'STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE' });
+    assert.throws(() => f.open().prepareNativeOwnerDisposition(input), { code: 'NATIVE_OWNER_DISPOSITION_UNPROVEN_EFFECTS' });
+    assert.throws(() => f.open().prepareNativeAllocationReconciliation(input), { code: 'NATIVE_RECONCILIATION_NO_ASSIGNMENT_REQUIRED' });
+    assert.equal(f.launches, 1);
+    assert.deepEqual(f.open().inspectAllocations(), journal);
+    assert.deepEqual({ project: tree(f.configuration.target_root), native: tree(f.base) }, beforeRead);
+    rows.push({ scenario, mode, project_root: f.configuration.target_root, native_root: f.base,
+      journal_id: journal.journal_id, journal_sha256: H(journal), dispatch_id: dispatch.dispatch_id,
+      initial_instance_sha256: entry.initial_instance_sha256, checkpoint_instance_sha256: entry.checkpoint.instance_sha256,
+      phase: entry.phase, first_failure: entry.first_failure, consumption: entry.consumption,
+      work: post.assessment.checkpoint_work, evidence_profile: post.assessment.evidence_profile,
+      original_events_retained: beforeNative.events.length, current_events: diagnostic.record.events.length,
+      allocations: 1, launches: f.launches, all_original_bytes_and_directories_unchanged_after_read: true,
+      ordinary_resume_and_legacy_no_assignment_writers_refused: true });
+    console.log('PASS native post-assignment ' + mode + ': ' + scenario + ' through actual common-host/allocator/assignment/result/checkpoint ports, cold read and no replay');
+  }
+  return { mode, scenarios: rows, Native_RPC: 'controlled', supervisor_Native_tree_proof: 'controlled',
+    common_host_and_canonical_ports: 'actual', model_calls: 0, genuine_native_client: 'NOT_RUN',
+    post_assignment_retirement_reconciliation_resume: 'NOT_RUN', published_STANDARD: 'NOT_QUALIFIED', full_plan: false };
 }
