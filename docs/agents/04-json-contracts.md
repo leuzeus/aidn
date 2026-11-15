@@ -855,3 +855,33 @@ callback, verifier, permission or Native grant. Historical ordinary/call and
 Native journal schemas retain their bytes and routes. Resource results retain
 original failure observations and explicitly report workflow_completed false
 and native_started false. They do not claim all-resource closure.
+
+
+The private native-post-assignment-assessment.v1 wraps the unchanged signed
+native-allocation-assessment.v1 and closed checkpoint-work data. Its fixed host
+authenticates canonical history and reads only the admitted protected checkpoint,
+result files and supervisor closure. It distinguishes an exact canonical prefix
+from a canonical extension, retains earlier results/resources, and compares the
+worker closure count with newly created resources in this generation. Incomplete
+closure, unresolved assignments or unknown consumption cannot claim the
+admitted_closed_checkpoint evidence profile. That profile remains read-only: all
+effect, retirement, resume, renewal and complete-resource-closure permissions are
+false, and business postconditions remain unknown. Historical no_assignment
+contracts and mutating producers retain their original scope.
+
+
+Private Native owner disposition plan, authorization request, record and receipt
+v2 identify the admitted_post_assignment profile explicitly. The plan binds
+initial Native prefix, admitted checkpoint/state, current canonical prefix and
+the stable post-assignment assessment digest separately. Requests and physical
+receipts bind that same profile/digest and exact plan; record readers reject
+cross-version or cross-profile attempts. Historical v1/no_assignment bytes and
+behavior remain unchanged. The receipt still grants no accounting confirmation,
+complete resource closure, Native renewal or workflow resume.
+
+The combined candidate keeps these versioned boundaries explicit: public Native
+action v1 embeds only the historical no_assignment owner plan and reconciliation
+preparation. The fixed private post-assignment owner method prepares v2. Its
+physical receipt supplies no post-assignment accounting reconciliation or public
+recovery action. Those require separate closed contracts and current independent
+resource-source admission before a later finite Native epoch.

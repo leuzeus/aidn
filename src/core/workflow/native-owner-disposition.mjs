@@ -1,3 +1,7 @@
+import planSchemaV2 from '../contracts/workflow-definition/native-owner-disposition-plan.v2.schema.json' with { type: 'json' };
+import recordSchemaV2 from '../contracts/workflow-definition/native-owner-disposition-record.v2.schema.json' with { type: 'json' };
+import requestSchemaV2 from '../contracts/workflow-definition/native-owner-disposition-authorization-request.v2.schema.json' with { type: 'json' };
+import receiptSchemaV2 from '../contracts/workflow-definition/native-owner-disposition-receipt.v2.schema.json' with { type: 'json' };
 import planSchema from '../contracts/workflow-definition/native-owner-disposition-plan.v1.schema.json' with { type: 'json' };
 import recordSchema from '../contracts/workflow-definition/native-owner-disposition-record.v1.schema.json' with { type: 'json' };
 import requestSchema from '../contracts/workflow-definition/native-owner-disposition-authorization-request.v1.schema.json' with { type: 'json' };
@@ -11,20 +15,32 @@ function checked(value, schema) {
     fail('NATIVE_OWNER_DISPOSITION_CONTRACT_INVALID');
   return value;
 }
-export const assertNativeOwnerDispositionPlan = value => checked(value, planSchema);
-export const assertNativeOwnerDispositionRequest = value => checked(value, requestSchema);
-export const assertNativeOwnerDispositionReceipt = value => checked(value, receiptSchema);
+const postVersion = (value, kind) => value?.contract_version === 'native-owner-disposition-' + kind + '.v2';
+export function assertNativeOwnerDispositionPlan(value) {
+  checked(value, postVersion(value, 'plan') ? planSchemaV2 : planSchema);
+  if (postVersion(value, 'plan') && (value.initial_instance_sha256 === value.checkpoint_instance_sha256
+    || value.initial_instance_sha256 === value.instance_sha256)) fail('NATIVE_OWNER_DISPOSITION_CONTRACT_INVALID');
+  return value;
+}
+export const assertNativeOwnerDispositionRequest = value => checked(value, postVersion(value, 'authorization-request') ? requestSchemaV2 : requestSchema);
+export const assertNativeOwnerDispositionReceipt = value => checked(value, postVersion(value, 'receipt') ? receiptSchemaV2 : receiptSchema);
 export function nativeOwnerDispositionPath(id) {
   nativeDispatchPath(id);
   return 'workflows/native-owner-dispositions/' + id + '.json';
 }
 export function assertNativeOwnerDispositionRecord(value) {
-  checked(value, recordSchema); const { plan, attempts, receipt, phase } = value, last = attempts.at(-1);
+  const post = postVersion(value, 'record');
+  checked(value, post ? recordSchemaV2 : recordSchema); const { plan, attempts, receipt, phase } = value, last = attempts.at(-1);
+  assertNativeOwnerDispositionPlan(plan);
+  if (post !== postVersion(plan, 'plan') || post && value.profile !== plan.profile) fail('NATIVE_OWNER_DISPOSITION_CONTRACT_INVALID');
   if (['dispatch_id', 'journal_id', 'instance_id', 'scope_id', 'model_sha256'].some(key => value[key] !== plan[key])
     || new Set(attempts.map(row => row.attempt_id)).size !== attempts.length)
     fail('NATIVE_OWNER_DISPOSITION_CONTRACT_INVALID');
   for (const row of attempts) {
-    const request = row.request;
+    const request = assertNativeOwnerDispositionRequest(row.request);
+    if (post !== postVersion(request, 'authorization-request')
+      || post && (request.profile !== plan.profile || request.post_assignment_sha256 !== plan.post_assignment_sha256))
+      fail('NATIVE_OWNER_DISPOSITION_CONTRACT_INVALID');
     if (request.plan_sha256 !== H(plan) || ['dispatch_id', 'journal_id', 'generation', 'instance_id', 'instance_sha256', 'scope_id', 'model_sha256', 'configuration_sha256']
       .some(key => request[key] !== plan[key]) || row.grant.request_sha256 !== H(request)
       || row.verification.request_sha256 !== H(request) || row.verification.grant_sha256 !== H(row.grant)
@@ -38,6 +54,11 @@ export function assertNativeOwnerDispositionRecord(value) {
       || row.released_fence !== null && (row.retirement === null
         || H(row.released_fence.record) !== H({ ...row.lease.record, state: 'released', revision: row.lease.record.revision + 1 })))
       fail('NATIVE_OWNER_DISPOSITION_CONTRACT_INVALID');
+  }
+  if (receipt !== null) {
+    assertNativeOwnerDispositionReceipt(receipt);
+    if (post !== postVersion(receipt, 'receipt') || post && (receipt.profile !== plan.profile
+      || receipt.post_assignment_sha256 !== plan.post_assignment_sha256)) fail('NATIVE_OWNER_DISPOSITION_CONTRACT_INVALID');
   }
   const producer = receipt === null ? null : attempts.find(row => row.attempt_id === receipt.attempt_id);
   if ((phase === 'intent') !== (last.lease === null) || ['retired', 'confirmed'].includes(phase) !== (last.retirement !== null)

@@ -558,3 +558,39 @@ checks current permission after its subject observation. No new preparation
 age ceiling or Native budget change is introduced. Existing finite epoch
 request/grant expiry remains separate. Post-assignment resolution, general R10,
 full STANDARD, genuine actors and exact installed archive remain unfinished.
+
+
+### Post-assignment retained-work observation
+
+The common host exposes a separate closed read-only post-assignment assessment.
+It consumes the original signed journal/dispatch, admitted protected checkpoint
+and result files, current authenticated canonical history and original supervisor
+closure. It preserves cumulative prior resources, contributions, results and
+debits while checking the worker closure count against this generation alone.
+Ahead/divergent canonical history is refused; missing admission or incomplete
+closure/accounting remains unknown. An admitted_closed_checkpoint observation
+establishes no business postcondition, retirement, reconciliation, resume or Native
+renewal permission. The historical no_assignment disposition/reconciliation
+producers remain unchanged; a mutating post-assignment profile needs its own
+explicit version, independent source verification and current effect authority.
+
+
+### Explicit physical-owner profile after admitted Native work
+
+A distinct v2 owner plan/request/record/receipt handles the admitted_post_assignment
+profile. Its preparation separates initial, checkpoint and current canonical
+prefixes and binds the stable signed post-assignment observation. Only a matching
+failed allocator return with admitted complete work, known original consumption,
+closed Native parent/tree and terminated original creator enters this first
+physical-owner profile. Unknown or unadmitted work stays unresolved and requires
+additional independent closure/admission or R10 recovery; it is not excluded from
+the full workflow. Historical v1 no_assignment preparation remains unchanged.
+
+The same canonical path, current exact operator permission, physical owner/fence,
+preimage, durable intent, conditional writes and cold recovery protocol apply.
+V2 receipts preserve the original failed allocation and accepted work and retain
+false accounting/complete-closure/resume/renewal permissions. A separate explicit
+resource reconciliation and independently authorized finite Native epoch remain
+necessary. No preparation-age ceiling or implicit checkpoint/flag conversion is
+introduced. Existing initial Native grants and current issuer/source permissions
+retain their original boundaries.

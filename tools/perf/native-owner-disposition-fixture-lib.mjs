@@ -45,11 +45,11 @@ function fixtureSource(data, plan, profile) {
   }, verify(input) { check(input); return { outcome: 'verified', authority_id: input.grant.authority_id,
     request_sha256: H(input.request), grant_sha256: H(input.grant) }; }, assertCurrent: check };
 }
-function open(data, plan, { fault = '', hold = '', profile = '' } = {}) {
+function open(data, plan, { fault = '', hold = '', profile = '', readSigningKey = key } = {}) {
   const product = () => readAgenticProductSnapshot(data.configuration.product_root, data.configuration.product_files);
-  const authority = createStandardProcessAuthority({ configuration: data.configuration, model: data.model, readSigningKey: key,
+  const authority = createStandardProcessAuthority({ configuration: data.configuration, model: data.model, readSigningKey,
     readProductSnapshot: product, readProductSha256: () => H(product()) });
-  return createStandardWorkflowOperationHost({ targetRoot: data.root, model: data.model, readSigningKey: key,
+  return createStandardWorkflowOperationHost({ targetRoot: data.root, model: data.model, readSigningKey,
     authorize: async () => { throw Error('UNEXPECTED_OPERATION_AUTHORIZATION'); }, processAuthority: authority,
     reconciliationConfiguration: data.configuration, nativeOwnerDispositionSource: profile === 'missing' ? null : fixtureSource(data, plan, profile) }, {
     async nativeOwnerDispositionBoundary(name) {
@@ -58,6 +58,8 @@ function open(data, plan, { fault = '', hold = '', profile = '' } = {}) {
     },
   });
 }
+export const createNativeOwnerDispositionFixtureHost = (data, plan, options) => open(data, plan, options);
+export const createNativeOwnerDispositionFixtureAuthority = data => operatorAuthority(data);
 async function main() {
   const [action, first, second, ...options] = process.argv.slice(2);
   const option = name => options.find(value => value.startsWith(name + '='))?.slice(name.length + 1) ?? '';

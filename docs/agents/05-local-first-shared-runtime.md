@@ -502,3 +502,24 @@ failed allocation diagnostically; current business/worker history admission
 stays separate. An owned retained postimage can acknowledge the original exact
 preparation without repeating its Native CAS. Retained epoch acknowledgement
 requests no projection. DB-only exports no new detailed JSON.
+
+
+The fixed private Native post-assignment observation reuses the configured
+canonical artifact inventory and authenticated diagnostic history. It reads the
+existing protected checkpoint/result namespace and supervisor closure; it never
+imports an ahead or divergent checkpoint. Generation-local closure counts are
+separate from cumulative historical resources/results and non-refunded debits.
+This read adds no canonical writer, owner retirement, effect/resume/renewal
+permission, implicit export, backend fallback or shared coordination surface.
+
+
+The fixed prepareNativePostAssignmentOwnerDisposition method prepares only the
+explicit v2 admitted-work physical-owner profile. It requires an authenticated
+matching failed return, admitted closed checkpoint, known original consumption,
+closed Native parent/tree and the exact terminated creator/held physical owner.
+Apply uses the existing current exact operator permission, local fence, durable
+intent, physical rename/CAS and cold acknowledgement protocol. Its v2 record
+uses the same configured canonical artifact path and projection policy. No new
+table, backend fallback, implicit export, shared sync or preparation-age ceiling
+is introduced. Unknown Native closure requires additional independent recovery
+evidence outside this first profile and remains part of the full workflow goal.

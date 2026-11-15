@@ -1368,7 +1368,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readNativeSubject: processAuthority ? observeNativeReconciliationSubject : undefined });
   const nativeOwnerDisposition = createStandardNativeOwnerDisposition({ targetRoot: artifacts.root, stateMode: initial.stateMode, artifacts, signer, now,
     source: nativeOwnerDispositionSource, onBoundary: nativeOwnerDispositionBoundary,
-    assess: (id, input) => { if (!processAuthority) fail("NATIVE_OWNER_DISPOSITION_AUTHORITY_REQUIRED"); return reconciliationInventory.prepareNativeAllocationAssessment(id, input); } });
+    assess: (id, input) => { if (!processAuthority) fail("NATIVE_OWNER_DISPOSITION_AUTHORITY_REQUIRED"); return reconciliationInventory.prepareNativeAllocationAssessment(id, input); },
+    assessPostAssignment: (id, input) => { if (!processAuthority) fail("NATIVE_OWNER_DISPOSITION_AUTHORITY_REQUIRED"); return reconciliationInventory.prepareNativePostAssignmentAssessment(id, input); } });
   const nativeReconciliation = createStandardNativeAllocationReconciliation({ targetRoot: artifacts.root, stateMode: initial.stateMode,
     configuration: reconciliationConfiguration, artifacts, signer, now, operatorSource: nativeReconciliationSource, resourceSource: nativeAuthorizationSource,
     onBoundary: nativeReconciliationBoundary, readOwnerDisposition: id => nativeOwnerDisposition.read(id),
@@ -1454,10 +1455,12 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     },
     prepareReconciliationInventory: (id, input) => reconciliationInventory.prepare(id, input),
     prepareProcessOwnerObservation: (id, input) => reconciliationInventory.prepareProcessOwnerObservation(id, input),
+    prepareNativePostAssignmentAssessment: (id, input) => reconciliationInventory.prepareNativePostAssignmentAssessment(id, input),
     prepareNativeAllocationAssessment: (id, input) => reconciliationInventory.prepareNativeAllocationAssessment(id, input),
     prepareNativeAllocationReconciliation: (id, input) => nativeReconciliation.prepare(id, input),
     applyNativeAllocationReconciliation: (preparation, input) => nativeReconciliation.apply(preparation, input),
     readNativeAllocationReconciliation: id => nativeReconciliation.read(id),
+    prepareNativePostAssignmentOwnerDisposition: (id, input) => nativeOwnerDisposition.preparePostAssignment(id, input),
     prepareNativeOwnerDisposition: (id, input) => nativeOwnerDisposition.prepare(id, input),
     applyNativeOwnerDisposition: (plan, input) => nativeOwnerDisposition.apply(plan, input),
     readNativeOwnerDisposition: id => nativeOwnerDisposition.read(id),

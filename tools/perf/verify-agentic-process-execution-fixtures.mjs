@@ -66,6 +66,7 @@ import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-
 import { completeDriftCheckFixture } from "./test-activation-fixture-lib.mjs";
 import { createNativeAllocationWorkerAuthority } from "../../src/application/runtime/native-allocation-worker-authority.mjs";
 import { transport } from "./agentic-native-rpc-fixture-lib.mjs";
+import { verifyNativePostAssignmentHostFixture, createNativePostAssignmentHostFixture } from "./native-post-assignment-assessment-fixture-lib.mjs";
 import { runIndependentDriftWorker } from "./independent-drift-worker-fixture-lib.mjs";
 import { diagnosticFixtureWitness, verifyTerminalDiagnosticRefusals } from "./standard-terminal-diagnostic-fixture-lib.mjs";
 import { verifyStandardHistoricalDiagnosticFixtures } from "./verify-standard-historical-diagnostic-fixtures.mjs";
@@ -447,7 +448,9 @@ function journalController(f, t, options = {}) {
       const result = await native.run({ execute: true, authorization: sent.authorization });
       await options.afterWorker?.(f, result);
       await onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify(result)) });
-      return { outcome: "completed", termination_state: options.treeUnknown ? "unknown" : "confirmed", termination_proof: options.treeUnknown ? null : { active_processes: 0 } };
+      return { outcome: options.postAssignmentReturnFailure ? "failed" : "completed",
+        ...(options.postAssignmentReturnFailure ? { reason_code: "FIXTURE_POST_NATIVE_RETURN_FAILURE" } : {}),
+        termination_state: options.treeUnknown ? "unknown" : "confirmed", termination_proof: options.treeUnknown ? null : { active_processes: 0 } };
     } });
 }
 async function readyResumeFixture(options = {}) {
@@ -923,6 +926,60 @@ if (process.argv[2] === "--mixed-continue") {
     process.stdout.write(JSON.stringify({ result, launches: f.launches, sessions: t.sessions.length,
       closed: t.sessions.every(row => row.closed), leaked_key: JSON.stringify(t.sessions.map(row => row.configuration)).includes(key.toString("base64")) }) + "\n");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+} else if (process.argv[2]?.startsWith('--native-post-assignment-create=')) {
+  let passed = false;
+  try {
+    const mode = process.argv[2].slice('--native-post-assignment-create='.length), output = process.argv[3];
+    const scenario = process.argv.find(a => a.startsWith('--profile='))?.slice('--profile='.length) ?? 'confirmed_return_failure';
+    if (!output || !path.isAbsolute(output) || fs.existsSync(output)) throw Error('POST_ASSIGNMENT_CREATOR_OUTPUT_INVALID');
+    if (process.argv.includes('--hold') && typeof process.send !== 'function') throw Error('POST_ASSIGNMENT_CREATOR_HOLD_REQUIRES_IPC');
+    const protectedHome = fs.realpathSync(path.dirname(output));
+    const { f, beforeNative } = await createNativePostAssignmentHostFixture({ mode, scenario, protectedHome, mixedFixture, bootstrapMixed });
+    const journal = f.open().inspectAllocations(), entry = journal.allocations.at(-1);
+    assert.equal(entry.phase, scenario === 'confirmed_return_failure' ? 'failed' : 'unresolved');
+    assert.ok(entry.checkpoint); assert.ok(entry.consumption);
+    assert.equal(entry.consumption.responses_observed, 1);
+    const artifacts = createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root });
+    const dispatchRows = artifacts.observeInventory().rows.filter(r => r.path.startsWith('workflows/native-dispatches/'));
+    assert.equal(dispatchRows.length, 1);
+    const dispatch = JSON.parse(dispatchRows[0].content), diagnostic = f.open().inspectDiagnostic();
+    const input = { expectedSha256: diagnostic.record.instance_sha256, dispatchId: dispatch.dispatch_id, generation: entry.generation };
+    const data = { proof_class: 'controlled-Native-RPC-and-supervisor-common-host-only', mode, scenario,
+      root: f.configuration.target_root, private_root: f.base, operator_home: protectedHome,
+      configuration: f.configuration, model: f.model, input,
+      initial_instance_sha256: beforeNative.instance_sha256, checkpoint_instance_sha256: entry.checkpoint.instance_sha256,
+      original_journal_sha256: artifacts.read('workflows/native-allocations/' + journal.journal_id + '.json').sha256,
+      original_dispatch_sha256: artifacts.read('workflows/native-dispatches/' + dispatch.dispatch_id + '.json').sha256,
+      journal_id: journal.journal_id, first_failure: entry.first_failure, phase: entry.phase,
+      consumption: entry.consumption, creator_pid: process.pid, allocations: 1, responses: 1 };
+    fs.writeFileSync(output, JSON.stringify(data, null, 2) + String.fromCharCode(10), { flag: 'wx' });
+    console.log(JSON.stringify({ status: 'ACTUAL_POST_ASSIGNMENT_NATIVE_OWNER_PRODUCED_CONTROLLED_WIRE', root: data.root, creator_pid: process.pid, phase: entry.phase, model_calls: 0 }));
+    passed = true;
+    if (process.argv.includes('--hold')) { process.send?.({ ready: 'original_post_assignment_creator_active' }); await new Promise(resolve => process.once('message', resolve)); }
+  } catch (error) {
+    console.error(error); process.exitCode = 1;
+  } finally {
+    const report = path.join(root, 'retained-fixture.json');
+    fs.writeFileSync(report, JSON.stringify({ proof_class: 'controlled-post-assignment-owner-creator-only', completed: passed,
+      pid: process.pid, observed_at_utc: new Date().toISOString(), root, business_roots: businessRoots }, null, 2));
+    console.error('Fixture retained for diagnosis/restart: ' + report);
+  }
+} else if (process.argv[2]?.startsWith('--native-post-assignment-mode=')) {
+  let passed = false;
+  try {
+    const mode = process.argv[2].slice('--native-post-assignment-mode='.length);
+    const witness = await verifyNativePostAssignmentHostFixture({ mode, mixedFixture, bootstrapMixed });
+    fs.writeFileSync(path.join(root, 'post-assignment-host-fixture.json'), JSON.stringify(witness, null, 2) + String.fromCharCode(10));
+    passed = true;
+    console.log(JSON.stringify({ ok: true, mode, scenarios: witness.scenarios.length, common_host_ports: 'actual', Native_RPC: 'controlled', model_calls: 0, evidence: path.join(root, 'post-assignment-host-fixture.json'), full_standard_workflow: false }));
+  } catch (error) {
+    console.error(error); process.exitCode = 1;
+  } finally {
+    const report = path.join(root, 'retained-fixture.json');
+    fs.writeFileSync(report, JSON.stringify({ proof_class: 'controlled-post-assignment-common-host-only', completed: passed, pid: process.pid,
+      observed_at_utc: new Date().toISOString(), root, business_roots: businessRoots }, null, 2));
+    console.error('Fixture retained for diagnosis/restart: ' + report);
+  }
 } else try {
   await check("native human port: current source, subject, reservation and cancellation remain authenticated", async () => {
     console.log(JSON.stringify(await verifyNativeHumanVerificationPort()));

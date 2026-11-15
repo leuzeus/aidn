@@ -511,3 +511,22 @@ application reuse canonical owner/audit/epoch ports and existing projections.
 They add no persistence family or shared coordination capability. Recovery
 results describe their resource effect and never close the entire workflow,
 refund the original grant or start another Native allocation.
+
+
+Native post-assignment assessment uses the existing configured canonical
+Native journal/dispatch/inventory reads and protected checkpoint/result files.
+Its common-host method is read-only and binds the current authenticated prefix,
+original allocation, previous generation and retained worker closure. It adds no
+store, table, projection, import, resource mutation or shared synchronization.
+Complete checkpoint evidence is separate from business postconditions and from
+explicit resource disposition, reconciliation, new finite authorization or resume.
+
+
+The explicit Native post-assignment owner profile uses closed v2 variants at
+the existing workflows/native-owner-dispositions/<dispatch>.json artifact. It
+retires only the authenticated terminated creator's physical owner under the
+existing exact operator permission and local resource fence. The original
+Native journal/dispatch, accepted work and debit stay intact. V1 no_assignment
+preparation retains its old scope; only the separate fixed method prepares v2.
+No resource-accounting reconciliation, new Native grant, business postcondition,
+workflow resume, new store or shared coordination write follows from retirement.

@@ -6286,3 +6286,93 @@ same saved action through the ordinary CLI. The console must preserve that
 prepared action and distinguish Native resource effects. No model is called.
 These checks do not prove arbitrary primitive crashes, genuine Native/human/OS
 closure, post-assignment resolution, installed archive or full L1-L8/A1-A10.
+
+
+## Native post-assignment observation candidate
+
+The existing Native allocation assessment fixture additionally invokes the fixed
+common-host prepareNativePostAssignmentAssessment reader on its actual canonical
+no-assignment subject. It must retain unknown post-assignment evidence, preserve
+all original files and directories, and grant no mutation or resume. The same
+wrapper exercises 27 closed-data post-assignment cases: generation-local versus
+cumulative resource/result counts, substituted subjects, missing proof, unresolved
+assignments, unknown consumption, false complete-evidence claims and all forbidden
+permissions. Its data-only positive profile uses synthetic failed Native work; it
+is not a failed post-assignment allocator/host execution or source authentication.
+
+Separate retained-checkpoint probes may observe already closed controlled Native
+fixtures through the protected reader. Their original phases, limits, checkpoints,
+results and costs remain unchanged. They are read-only component evidence, not
+post-assignment retirement/reconciliation, productive workflow resume, current
+published-model qualification, genuine actors, installed archive or full plan
+acceptance. Original required manifest order, argv and Native grant limits remain.
+
+
+The focused private selector --native-post-assignment-mode=files|dual|db-only
+in verify-agentic-process-execution-fixtures.mjs exercises the actual common
+host, bootstrap operations, allocator, signed assignment/result admission,
+checkpoint, diagnostic assessment and cold reopen. Native RPC answers and the
+supervisor Native-tree proof are controlled fixture capabilities. In one case
+the controller reports failure only after the Native worker has returned its
+accepted result and checkpoint; the allocator records that original failure.
+The other case retains unknown Native-tree closure and must remain unknown.
+Neither case rewrites a journal, checkpoint, grant or historical result.
+
+Both retain the actual failed/unresolved generation, original prefix, held owner,
+accepted Native results and measured debit. Read-only assessment, denied ordinary
+resume and denied legacy no_assignment writers must preserve all fixture bytes
+and start no second allocation. These are component-model fixtures, not genuine
+Native processes, an installed archive, the published STANDARD journey or a
+post-assignment resource disposition/reconciliation/resume qualification. Existing
+required argv/order, default fixture cases and finite Native grants are unchanged.
+
+
+## Native post-assignment physical-owner contracts
+
+The Native owner v2 closed-data fixture uses a retained v1 owner record only as
+a shape seed. All constructed v2 work/approval signatures are synthetic; it
+executes no physical effect or source authorization. Its 23 cases cover initial/
+current/checkpoint separation, exact post-assignment digest crosslinks, mixed
+versions, denied resume/renewal/accounting/complete-closure claims and unchanged
+v1 record acceptance. Actual v2 physical retirement, current operator authority,
+cold interruption/replay, competing recoverers and backend behavior require
+separate qualification. Data-contract success is not permission or full workflow
+acceptance. Existing required argv/order, Native budgets and historical failed
+attempts remain unchanged.
+
+
+The private native-post-assignment-owner-fixture-lib.mjs verify files|dual|db-only
+command creates its original Native allocation through the controlled common-host
+fixture creator, then terminates that actual creator before preparing v2. Its
+fixture signing key is fixed in code. Operator keys and saved configuration live
+outside project/control/native roots in the declared protected fixture home.
+Current exact operator HMAC, native journal/dispatch/checkpoint authentication,
+physical owner/fence/CAS and cold actor processes use actual ports. Native RPC
+and the supervisor Native-tree proof remain controlled, with no genuine client.
+
+The cases refuse an active creator, missing/revoked operator, a host-signed
+foreign post-assignment subject, and unknown Native closure. FILES additionally
+exits at the declared boundary after the physical lock retirement; a cold actor
+must acknowledge it without a repeated retirement or accepted result. Exact
+receipt replay, immutable Native journal/dispatch/instance/product/control data,
+original debit/failure, no second allocation and no DB-only JSON export remain
+checked. The receipt authorizes neither accounting reconciliation nor ordinary
+workflow resume. Existing v1 owner regression and the earlier six read-only host
+scenarios keep their separate scope. These component cases do not qualify the
+published STANDARD journey, genuine Native/Human actors, installed archive,
+independent resource reconciliation, new Native epoch or full plan.
+
+
+The FILES v2 owner case chains the eight declared interruption boundaries on
+one original allocation/plan, preserving every failed attempt and the first
+immutable physical receipt. The final confirmed boundary must cold-acknowledge
+without another write. Two real recoverers compete while the first holds its
+durable intent; the second must refuse before any mutation. This is controlled
+boundary interruption, not an arbitrary crash inside an OS/DB primitive.
+
+Combining the public Native action v1 and private post-assignment reader/owner
+ports requires fresh checks on the integrated source. Run the public resource
+entry fixture, the private owner v2 fixture and the existing closed-reader/model
+checks against the same explicitly authored assets. The original component
+results retain their source identities and do not qualify the combined candidate,
+post-assignment accounting, genuine actors or an installed archive.

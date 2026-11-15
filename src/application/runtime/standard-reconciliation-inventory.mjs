@@ -24,6 +24,7 @@ import { observeLocalProcessOwner } from "../../adapters/runtime/local-process-i
 import { assertNativeDispatchRecord, nativeDispatchPath } from "../../core/workflow/native-dispatch-record.mjs";
 import { assertNativeOwnerDispositionRecord, nativeOwnerDispositionPath } from "../../core/workflow/native-owner-disposition.mjs";
 import { createStandardNativeAllocationAssessment } from "./standard-native-allocation-assessment.mjs";
+import { createStandardNativePostAssignmentAssessment } from "./standard-native-post-assignment-assessment.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
@@ -373,7 +374,10 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
   }
   const nativeAssessment = createStandardNativeAllocationAssessment({ artifacts, configuration, signer,
     capture: typeof readNativeSubject === "function" ? (id, expected) => capture(readNativeSubject, id, expected, true) : null });
+  const postAssignment = createStandardNativePostAssignmentAssessment({ artifacts, configuration, signer, baseAssessment: nativeAssessment,
+    capture: typeof readNativeSubject === "function" ? (id, expected) => capture(readNativeSubject, id, expected, true) : null });
   return Object.freeze({
+    prepareNativePostAssignmentAssessment: (id, input) => postAssignment.prepare(id, input),
     prepareNativeAllocationAssessment: (id, input) => nativeAssessment.prepare(id, input),
     captureNativeSubject(id, expectedSha256) {
       if (typeof readNativeSubject !== 'function') fail('NATIVE_RECONCILIATION_AUTHORITY_REQUIRED');
