@@ -101,7 +101,8 @@ host.ensureKey();
   const plan = { operation_id: id, assessment: "confirmed_reopen", instance_sha256: before, scope_id: scope, output_sha256: confirmed.output_sha256 };
   const state = { record: { scope_id: scope, instance_sha256: before, initial_parameters: {} }, cursor: { status: "WAITING",
     occurrences: [{ status: "WAITING", operation: { intent: { operation_id: id, binding_ref: "session_pr_correction_reopen" }, receipt: unknown } }] } };
-  const journal = { results: [{ output: { observations: { reason_code: "STANDARD_PLAN_EXPIRED" } }, receipt: unknown }] };
+  const journal = { intent: structuredClone(state.cursor.occurrences[0].operation.intent),
+    results: [{ output: { observations: { reason_code: "STANDARD_PLAN_EXPIRED" } }, receipt: unknown }] };
   let grants = 0;
   const compose = (_operation, disposition) => {
     async function checkGrant(request) {
