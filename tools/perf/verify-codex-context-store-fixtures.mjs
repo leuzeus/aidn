@@ -12,9 +12,15 @@ import { createCodexAgentAdapter } from "../../src/adapters/codex/codex-agent-ad
 import { runJsonHookUseCase } from "../../src/application/codex/run-json-hook-use-case.mjs";
 import { deriveRuntimeStateRepairSummary } from "../../src/application/runtime/runtime-state-projector-use-case.mjs";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
+import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
+import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { createLocalProcessAdapter } from "../../src/adapters/runtime/local-process-adapter.mjs";
 
 const assertions = [];
 const children = [];
+const handoffOwned = [];
+const handoffObservations = [];
 const started = performance.now();
 function check(name, condition) {
   assertions.push({ name, pass: Boolean(condition) });
@@ -72,6 +78,43 @@ async function concurrentWrites(root) {
     && new Set(store.history.map((entry) => fs.readFileSync(entry.raw_file, "utf8"))).size === 64);
   const latest = store.latest.concurrent;
   check("latest points to retained history", store.history.some((entry) => entry.id === latest.id));
+}
+async function verifyIncompleteHandoffSync() {
+  for (const [mode, skill, explicitSync] of [["dual", "handoff-close", false], ["db-only", "handoff-close", false],
+    ["dual", "aidn-handoff-close", true], ["db-only", "aidn-handoff-close", true]]) {
+    const target = createFreshStandardWorkflowFixture(mode, handoffOwned), artifacts = createStandardWorkflowArtifacts({ targetRoot: target });
+    const initial = artifacts.read("CURRENT-STATE.md", { required: true });
+    check(mode + "/" + skill + ": one canonical session pointer", (initial.content.match(/active_session:/g) ?? []).length === 1);
+    const blocked = initial.content.replace(/active_session:[^\r\n]*/, "active_session: S999").replace(/mode:[^\r\n]*/, "mode: THINKING");
+    await artifacts.withLocalEffectOwner(shadowHash({ fixture: "refused-handoff-sync", mode, skill }), async () => {
+      artifacts.compareAndSwapPreservingMetadata({ path: initial.path, before_sha256: initial.sha256,
+        before_metadata_sha256: artifacts.metadataHash(initial.path), after: blocked });
+      return { effect_status: "confirmed" };
+    });
+    // An independently stale Git-visible projection must never replace the
+    // canonical subject that caused this real checkpoint refusal.
+    fs.writeFileSync(path.join(target, "docs/audit/CURRENT-STATE.md"), initial.content + "\n<!-- stale fixture projection -->\n");
+    const before = artifacts.read(initial.path).sha256, metadata = artifacts.metadataHash(initial.path);
+    const commandArgs = ["--skill", skill, "--target", target, "--mode", "THINKING", "--state-mode", mode,
+      "--strict", "--no-auto-skip-gate", "--json", ...(explicitSync ? ["--db-sync"] : [])];
+    let stdout = "", status = 0;
+    try { stdout = createLocalProcessAdapter().runNodeScript(path.resolve("tools/codex/run-json-hook.mjs"), commandArgs); }
+    catch (error) { stdout = String(error.stdout ?? ""); status = error.status ?? null; }
+    const output = JSON.parse(stdout), normalized = output.normalized ?? output;
+    const label = mode + "/" + skill + (explicitSync ? "/explicit-sync" : "/automatic-sync");
+    handoffObservations.push({ mode, skill, explicit_sync: explicitSync, status, command_status: output.provenance?.command_status,
+      result: normalized.result, ok: normalized.ok, action: normalized.action, db_sync: output.db_sync });
+    // DUAL diagnoses the stale visible projection as warn; DB-only reads the
+    // canonical missing session and stops. Neither result completes the handoff.
+    check(label + ": real command reports its unchanged incomplete outcome", status === (mode === "dual" ? 0 : 1)
+      && output.provenance?.command_status === 0 && output.provenance.command_signal === null
+      && output.provenance.command_error === false && normalized.ok === (mode === "dual")
+      && normalized.result === (mode === "dual" ? "warn" : "stop"));
+    check(label + ": refused handoff skips DB synchronization", output.db_sync?.enabled === true && output.db_sync.skipped === true
+      && output.db_sync.reason === "handoff_not_completed" && output.db_sync.payload === null && output.db_sync.error === null);
+    check(label + ": canonical content survives stale projection", artifacts.read(initial.path).sha256 === before);
+    check(label + ": canonical metadata is unchanged", artifacts.metadataHash(initial.path) === metadata);
+  }
 }
 async function verify(tempRoot) {
   const concurrentRoot = path.join(tempRoot, "concurrent");
@@ -174,17 +217,20 @@ let failure = null;
 let cleanup = null;
 try {
   tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-codex-context-store-"));
-  await verify(tempRoot);
+  if (!process.argv.includes("--handoff-sync-only")) await verify(tempRoot);
+  await verifyIncompleteHandoffSync();
 } catch (error) {
   failure = { message: error.message, code: error.code ?? null };
 } finally {
-  if (tempRoot) {
-    const resolved = path.resolve(tempRoot);
-    if (path.dirname(resolved) !== path.resolve(os.tmpdir()) || !path.basename(resolved).startsWith("aidn-codex-context-store-")) throw new Error("Unowned fixture cleanup target");
+  const results = [];
+  for (const candidate of [tempRoot, ...handoffOwned].filter(Boolean)) {
+    const resolved = fs.realpathSync(candidate), temporary = fs.realpathSync(os.tmpdir());
+    if (path.dirname(resolved) !== temporary || !/^(aidn-codex-context-store-|aidn-standard-fresh-)/.test(path.basename(resolved))) throw new Error("Unowned fixture cleanup target");
     const removed = removePathWithRetry(resolved);
-    cleanup = { ok: removed.ok && !fs.existsSync(resolved), attempts: removed.attempts };
+    results.push({ ok: removed.ok && !fs.existsSync(resolved), attempts: removed.attempts });
   }
+  cleanup = { ok: results.every(row => row.ok), attempts: results.reduce((sum, row) => sum + row.attempts, 0) };
 }
 const pass = !failure && cleanup?.ok === true;
-console.log(JSON.stringify({ pass, status: pass ? "PASS" : "FAIL", duration_ms: Math.round(performance.now() - started), assertions, children, failure, cleanup }, null, 2));
+console.log(JSON.stringify({ pass, status: pass ? "PASS" : "FAIL", duration_ms: Math.round(performance.now() - started), assertions, children, handoff_observations: handoffObservations, failure, cleanup }, null, 2));
 if (!pass) process.exitCode = 1;

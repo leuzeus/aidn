@@ -6994,3 +6994,16 @@ The mode-context cases also mutate only the canonical packet while retaining an
 old visible copy in DUAL/DB-only. Context and typed-report freshness must change
 without a Git diff; a missing optional packet is explicit and supplies no null
 hash as evidence. These remain local fixture proofs with no real Native actor.
+
+### Incomplete handoff preserves canonical state
+
+`node tools/perf/verify-codex-context-store-fixtures.mjs --handoff-sync-only`
+checks real `handoff-close` and `aidn-handoff-close` incomplete checkpoints in
+DUAL and DB-only. Canonical CURRENT deliberately selects a missing session while
+its Git-visible projection is stale. Existing outcomes remain `warn` with exit 0
+in DUAL and `stop` with exit 1 in DB-only. Both skip automatic DB synchronization
+with `handoff_not_completed`, and canonical
+content and metadata remain unchanged, including with explicit `--db-sync` in
+the incomplete invocation. The default suite retains these cases alongside its
+existing provenance and concurrent-context tests. Git, SQLite and the hook CLI
+are real disposable ports; no Native client or installed archive is exercised.

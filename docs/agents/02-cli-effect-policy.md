@@ -127,3 +127,9 @@ owner/accounting v2 preparations. It changes neither the command's effect class
 nor its flags. Downgrading a v2 payload to the v1 action refuses. Accounting
 confirmation does not supply the separate operation grant for a later business
 step or the finite Native grant for a new allocation.
+
+A refused or incomplete `handoff-close` checkpoint skips the wrapper's automatic
+DB synchronization, including `--db-sync` requested in that same invocation.
+The `handoff_not_completed` reason retains the checkpoint outcome. Synchronizing a visible
+projection remains a separate explicit operation; the refused hook must preserve
+the canonical evidence it just read.

@@ -349,11 +349,13 @@ export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookC
     error: null,
   };
   const syncSkill = resolveSkillId(args.skill);
-  if (autoDbSync && ["cycle-close", "close-session", "promote-baseline"].includes(syncSkill) && (normalized.result !== "ok" || normalized.ok === false)) {
+  if (autoDbSync && ["cycle-close", "close-session", "promote-baseline", "handoff-close"].includes(syncSkill) && (normalized.result !== "ok" || normalized.ok === false)) {
     // A refused or unfinished closure must not import local projections over
     // the canonical evidence that caused its refusal.
     dbSync.enabled = true;
-    dbSync.reason = syncSkill === "cycle-close" ? "cycle_close_not_completed" : syncSkill === "promote-baseline" ? "baseline_promotion_not_completed" : "session_close_not_completed";
+    dbSync.reason = syncSkill === "cycle-close" ? "cycle_close_not_completed"
+      : syncSkill === "promote-baseline" ? "baseline_promotion_not_completed"
+      : syncSkill === "handoff-close" ? "handoff_not_completed" : "session_close_not_completed";
   } else if (autoDbSync && isDbBackedStateMode(stateMode)) {
     dbSync.enabled = true;
     dbSync.skipped = false;
