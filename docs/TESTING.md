@@ -6743,6 +6743,32 @@ Native or installed qualification. Its fresh arenas and original failures remain
 retained, and the existing attempt/storage limits are unchanged.
 
 
+## Current resource observation for handoff
+
+Run `node tools/perf/verify-standard-handoff-resource-fixtures.mjs` for the
+private closed request/observation/result and trusted-capability boundary.
+The controlled reader fixtures retain business UNKNOWN and original response/
+byte accounting; require every reconciliation discovery domain; refuse changed
+canonical content, metadata, physical identity, process prefix, authority,
+Native history and ownership across asynchronous source calls; and verify
+revocation, original issuer expiry, cancellation and read-only WAITING. They
+also exercise a long unchanged preparation without introducing an age ceiling.
+
+Independent discovery in this fixture is controlled. Its `fixture` evidence
+class remains explicit. These checks alone establish no actual OS/provider/
+Human/Native closure, canonical packet CAS/receipt, ordinary handoff or complete
+STANDARD acceptance. The mixed-host fixture below separately exercises the
+real inventory, Native history, physical owner and canonical backend readers:
+
+- `node tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs files --reconciled --handoff-resources`
+- `node tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs dual --reconciled --handoff-resources`
+- `node tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs db-only --reconciled --handoff-resources`
+
+These cases reuse the controlled post-assignment reconciliation creator once
+per backend, then observe the actual mixed host and all owned roots without
+another allocation, epoch or write. External seven-domain discovery remains a
+fixture capability. The original failed allocation and debit remain intact.
+
 ## Retained Native closure evidence for handoff
 
 Run `node tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs files`

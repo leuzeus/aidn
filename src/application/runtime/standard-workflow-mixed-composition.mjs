@@ -3,6 +3,9 @@ import { createStandardProcessAuthority } from "./standard-process-authority.mjs
 import { readAgenticProductSnapshot } from "./agentic-process-execution-composition.mjs";
 import { createStandardWorkflowOperationHost } from "./standard-workflow-operation-host.mjs";
 import { createJournaledNativeAllocation } from "./journaled-native-allocation.mjs";
+import { createStandardHandoffResources } from "./standard-handoff-resources.mjs";
+import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.mjs";
+import { createOperationJournalSigner } from "../../core/workflow/process-operation-journal.mjs";
 import { standardWorkflowOperationBindings } from "./standard-workflow-operations.mjs";
 import { shadowHash, freezeShadow, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 
@@ -34,7 +37,7 @@ export function standardWorkflowCallPort(operations, instanceId) {
 // The common reducer owns control flow. This adapter selects a port for the
 // cursor's ready leaf; it contains no standard-workflow routing decisions.
 export function createStandardWorkflowMixedHost({ configuration: suppliedConfiguration, modelSource = null, readSigningKey, authorize, humanSource, controlSource,
-  environment = process.env, now = Date.now, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, dispositionSource = null, nativeOwnerDispositionSource = null, nativeReconciliationSource = null, nativeAuthorizationSource }, { controllerFactory, validationBoundaryFactory, nativeOwnerDispositionBoundary, nativeReconciliationBoundary } = {}) {
+  environment = process.env, now = Date.now, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, dispositionSource = null, nativeOwnerDispositionSource = null, nativeReconciliationSource = null, nativeAuthorizationSource, handoffResourceSource = null }, { controllerFactory, validationBoundaryFactory, nativeOwnerDispositionBoundary, nativeReconciliationBoundary } = {}) {
   if (checkShadowJson(suppliedConfiguration)) fail("STANDARD_PROCESS_CONFIGURATION_INVALID");
   const configuration = freezeShadow(structuredClone(suppliedConfiguration));
   const model = readAgentRunFile(configuration.model.path, { sha256: configuration.model.sha256 }).value;
@@ -55,6 +58,17 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     authorize, humanSource, controlSource, processAuthority, now, validationProfile, sessionPushPort, sessionPullRequestPort, sessionReviewPort, sessionReviewEventPort,
     reconciliationConfiguration: configuration, dispositionSource, nativeOwnerDispositionSource, nativeReconciliationSource, nativeAuthorizationSource }, { validationBoundaryFactory, nativeOwnerDispositionBoundary, nativeReconciliationBoundary });
   const inspect = () => operations.inspect(configuration.instance_id);
+  let handoffResources;
+  function handoffResourceHost() {
+    if (!handoffResources) {
+      const artifacts = createStandardWorkflowArtifacts({ targetRoot: configuration.target_root });
+      handoffResources = createStandardHandoffResources({ configuration, signer: createOperationJournalSigner(readSigningKey), now,
+        readInventory: () => operations.prepareReconciliationInventory(configuration.instance_id, { expectedSha256: inspect().record.instance_sha256 }),
+        readNativeHistory: () => nativeHost().inspectClosureEvidence(),
+        readOwnership: () => ({ pending: artifacts.ownerPending(), fence: artifacts.resourceFence().read() }), source: handoffResourceSource });
+    }
+    return handoffResources;
+  }
   const callTransition = standardWorkflowCallPort(operations, configuration.instance_id);
   const nodeFor = frame => processFrameNode(model, frame);
   async function finishOperation(id, signal) {
@@ -85,6 +99,8 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     previewNative: () => nativeHost().preview(),
     inspectAllocations: () => nativeHost().inspect(),
     inspectNativeClosureEvidence: () => nativeHost().inspectClosureEvidence(),
+    prepareHandoffResourceRequest: () => handoffResourceHost().prepare(),
+    inspectHandoffResources: (request, input) => handoffResourceHost().inspect(request, input),
     readCheckpoint: generation => nativeHost().readCheckpoint(generation),
     prepareNativeAuthorizationEpoch: input => nativeHost().prepareAuthorizationEpoch(input),
     activateNativeAuthorizationEpoch: (request, input) => nativeHost().activateAuthorizationEpoch(request, input),

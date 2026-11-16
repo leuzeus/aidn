@@ -12,7 +12,8 @@ import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
 
 const mode = process.argv[2] ?? 'files';
 assert(['files', 'dual', 'db-only'].includes(mode));
-assert(process.argv.slice(3).every(arg => arg === '--reconciled'));
+assert(process.argv.slice(3).every(arg => ['--reconciled', '--handoff-resources'].includes(arg)));
+assert(!process.argv.includes('--handoff-resources') || process.argv.includes('--reconciled'));
 const sha = value => createHash('sha256').update(value).digest('hex');
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const save = (file, value) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(value)); };
@@ -126,6 +127,32 @@ if (process.argv.includes('--reconciled')) {
   assert.equal(result.entries[0].reconciliation_record_sha256, witness.record_sha256);
   assert.equal(result.permits_effects, false); assert.equal(result.complete_resource_closure, false);
   reconciled = 'PASS_ACTUAL_MIXED_HOST_CANONICAL_STORES_AND_AUTHENTICATED_RECONCILIATION';
+  if (process.argv.includes('--handoff-resources')) {
+    const before = protectedRoots.map(tree), environment = { ...process.env, AIDN_STANDARD_HOST_HOME: data.operator_home };
+    let currentChecks = 0;
+    const source = {
+      async read({ request }) {
+        return { contract_version: 'standard-handoff-resource-observation.v1', authority_id: 'fixture_handoff_discoverer',
+          request_sha256: H(request), observed_at_ms: Date.now(), evidence_class: 'fixture',
+          evidence_refs: [{ ref: 'fixture:controlled-independent-discovery', sha256: H(request) }],
+          domains: ['deterministic', 'native', 'human', 'control', 'process', 'git', 'provider'].map(domain => ({ domain,
+            complete: true, active_resources: 0, state: 'closed',
+            evidence_refs: [{ ref: 'fixture:controlled-domain-' + domain, sha256: H({ request, domain }) }] })) };
+      },
+      async verify({ request, observation }) { return { outcome: 'verified', authority_id: observation.authority_id,
+        request_sha256: H(request), observation_sha256: H(observation), evidence_class: 'fixture' }; },
+      assertCurrent() { currentChecks++; assert.deepEqual(protectedRoots.map(tree), before); },
+    };
+    const host = createStandardWorkflowMixedHost({ configuration: data.configuration, readSigningKey: () => Buffer.alloc(32, 91), environment,
+      authorize: async () => { throw Error('UNEXPECTED_PRODUCT_OPERATION'); }, handoffResourceSource: source });
+    const journal = host.inspectAllocations(), request = host.prepareHandoffResourceRequest();
+    const observed = await host.inspectHandoffResources(request, { sourceRef: 'fixture-handoff' });
+    assert.equal(observed.evidence_class, 'fixture'); assert.equal(observed.complete_resource_closure, true); assert.equal(observed.snapshot_only, true);
+    assert.equal(observed.permits_handoff, false); assert.equal(observed.permits_effects, false); assert.equal(observed.written, false);
+    assert.deepEqual(host.inspectAllocations(), journal); assert.equal(journal.allocations[0].phase, 'failed');
+    assert.deepEqual(protectedRoots.map(tree), before); assert.equal(currentChecks, 1);
+    checks++; console.log('PASS real mixed handoff resource reads retain reconciled v5 and all owned roots without allocating Native');
+  }
 }
 console.log(JSON.stringify({ status: 'PASS', checks, state_mode: mode, scope: 'READONLY_RETAINED_NATIVE_HISTORY_FOR_HANDOFF',
   synthetic_ordinary_journal_checkpoint_and_OS_closure: true, canonical_signer_and_file_reads: 'ACTUAL', authenticated_reconciled_history: reconciled,

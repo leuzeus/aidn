@@ -579,3 +579,22 @@ no record or projection and grants no effects, retry, epoch or handoff readiness
 It does not discover every current resource, retire an owner, prove global
 resource closure or complete the workflow. Handoff composition, current physical
 resource admission and its exact canonical packet CAS/receipt remain required.
+
+The private mixed-host `prepareHandoffResourceRequest` and
+`inspectHandoffResources` capabilities bind the complete authenticated retained
+inventory, verified Native closure history and current local owner/fence. A
+held owner or unresolved Native history refuses. A separate trusted source must
+discover and authenticate current closure in all seven existing reconciliation
+domains, then synchronously reobserve its current independent closure and
+permission after the host's final subject capture. JSON and a host MAC cannot
+supply that capability. Canonical bytes, metadata, physical identity, authority,
+process prefix, Native history and ownership changes across awaits refuse.
+
+The closed result is a point-in-time resource observation. It preserves unknown
+business operations and original accounting, writes nothing and supplies no
+effect, Native allocation, epoch or handoff permission. Original source issuer
+expiry remains the source's responsibility; the host adds no preparation-age
+ceiling. These private contracts belong to the existing handoff digest surface
+and create no canonical record, store, table, projection or shared method.
+Production independent-discovery wiring, canonical packet CAS/receipt and
+ordinary handoff entry remain separate work.

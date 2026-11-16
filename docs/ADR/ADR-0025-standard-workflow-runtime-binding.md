@@ -4615,3 +4615,26 @@ cold adoption of that result performs no business replay. Ambiguous effects
 retain the fence; a live owner cannot be transferred. The ordinary exact-action
 route prepares application and receipt acceptance separately. These properties
 require runtime qualification and do not inherit proof from the data contracts.
+
+## Current resource observation for general handoff, 2026-11-15
+
+The mixed host composes a private read-only handoff resource observer from the
+existing authenticated reconciliation inventory, retained Native history reader
+and local owner/fence. Its closed request binds their complete current material;
+provenance timestamps and MAC containers are excluded only from the repeated
+inventory material comparison. All retained content and subject boundaries stay.
+
+An independent constructor-owned source must discover all seven reconciliation
+domains, authenticate the exact observation and synchronously reobserve current
+closure and permission after the final local capture. Missing discovery, held
+ownership, unresolved Native history or a changed subject refuses. A host key
+and authored closure booleans never provide independent discovery. No elapsed
+preparation limit is added; original issuer expiry stays effective.
+
+The signed result preserves business UNKNOWN and original accounting. Its
+complete-resource assertion applies only to the observed subject at that read.
+It grants no handoff/effect permission, creates no journal, packet, store,
+projection, shared method or Native allocation, and changes no cursor. These
+private observations are inputs to the existing handoff digest concept.
+Production discovery, canonical packet publication/receipt and ordinary handoff
+composition still require their own implementation and qualification.
