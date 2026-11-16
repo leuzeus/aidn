@@ -1124,3 +1124,10 @@ markers. PID, host, platform and creation identity must match; current descendan
 remain visible when the observer itself is omitted. An empty owner set retains
 v1. Neither version authenticates the caller's retained claims or grants closure,
 permissions, a store, a write or an automatic seven-domain source.
+
+The default fixed-host resource source supplies existing handoff-resource
+observation v1 data from actual OS/physical and live runtime capabilities. Its
+private capture/currentness capability cannot be serialized or supplied by IR.
+Observer-console identity is read from the Windows kernel; process-observation
+v1/v2 remains unchanged. Private Native/dispatch activity snapshots grant no
+closure, effect or handoff permission and introduce no canonical store.

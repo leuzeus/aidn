@@ -7054,7 +7054,8 @@ The private observation captures configured path markers and their descendants.
 It does not discover opaque/unmarked executions by implication and is not an
 all-domain closure source. Empty rows, stable samples and contract validity
 supply no permission. The six other reconciliation domains and default-source
-composition still require their own implementation and evidence.
+composition require their own implementation and evidence; the later default
+fixed-host resource observation section records that composition separately.
 
 ### Confined asynchronous GitHub transport
 
@@ -7234,3 +7235,40 @@ identity refusal, observer-child retention and retired identities are checked.
 Both versions are current OS observations only: no Native client, provider
 request, source authentication or complete seven-domain closure is claimed.
 Linux implementation remains separate from executed Windows evidence.
+
+### Default fixed-host resource observation
+
+The ordinary Windows STANDARD entry now constructs its independent handoff
+resource source from fixed host capabilities. It authenticates the exact read
+through a private capture and current protected policy, while reobserving the OS,
+physical Git locks and retained preparation data, verified Native closure
+history, actual Native calls and parent human-verification ports, pending
+operation dispatches, synchronous signed-file sources and both provider Jobs.
+A journal MAC or serialized closure JSON cannot replace that capture. Source
+construction allocates neither a key nor a Native client.
+
+The source recognizes only the exact observer console identity returned by the
+Windows kernel, with its actual PID and creation identity. Headless consoles can
+have no console window. The read-only NtQueryInformationProcess console-host
+query uses class49 and clears its two flag bits; unsupported/failed observation
+refuses closure. Dynamic P/Invoke metadata is emitted in memory. No process-name
+exclusion, compiler temporary files or change to process observation v1/v2 is
+used. Other work descendants remain observable.
+
+Resource currentness remains callable while the publisher holds its exact own
+owner. New reads still refuse held ownership. Only the current handoff observer dispatch, bound to its actual async call,
+instance and scope, is excluded from the pending-operation count. Concurrent
+handoff dispatches in the same scope remain active resources. Completed
+synchronous history reads remain closed, while current key/profile/trust changes,
+actual Git locks, live worker processes, Native calls or parent verification
+ports prevent closure. UNKNOWN business outcomes and original Native accounting
+remain DATA; no preparation age, refund, retry, grant or budget is introduced.
+
+The existing required handoff-resource command includes the physical fixed-host
+source checks. The handoff-operation fixtures verify actual pending-dispatch
+lifetimes. The existing execution command also checks live Native call counters
+and the actual parent verification port before worker launch and after closure;
+--host-resource-activity-only selects these focused development checks without
+changing the required command or its ordered catalog. Controlled inventory and
+Native history in these fixtures do not qualify genuine Native/Human/provider,
+installed archives, full STANDARD or CI admission.

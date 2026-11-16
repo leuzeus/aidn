@@ -47,6 +47,9 @@ import { fileURLToPath } from "node:url";
 import { createProjectAgenticProcessExecution } from "../../src/application/runtime/agentic-process-execution-composition.mjs";
 import { runOwnedAgenticProcess } from "../../src/application/runtime/agentic-process-owned-run.mjs";
 import { createJournaledNativeAllocation } from "../../src/application/runtime/journaled-native-allocation.mjs";
+import { createStandardHostAuthority as createResourceProofAuthority, readStandardHostInstance as readResourceProofInstance } from "../../src/adapters/runtime/standard-host-authority.mjs";
+import { createStandardHandoffResources as createResourceProofReader } from "../../src/application/runtime/standard-handoff-resources.mjs";
+import { createOperationJournalSigner as createResourceProofSigner } from "../../src/core/workflow/process-operation-journal.mjs";
 import { verifyNativeAuthorizationEpochs, verifyInitialNativeAuthorizationEpochs } from "./native-authorization-epoch-fixture-lib.mjs";
 import { loadStandardWorkflowAssets, createStandardWorkflowExecution } from "../../src/application/runtime/standard-workflow-composition.mjs";
 import { createGithubPrOpenTransportFixture } from "./github-pr-open-fixture-lib.mjs";
@@ -250,7 +253,7 @@ function retainComposedChild(controlRoot, label, child) {
 }
 let serial = 0, completed = false;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
-async function check(name, callback) { if (process.argv.includes("--drift-git-readonly-only") && !name.startsWith("drift controlled Git ")) return; if (selectedCanonicalResumeNativeMode && !name.startsWith(`canonical resume native ${selectedCanonicalResumeNativeMode}:`)) return; if (selectedStandardExistingOpenWorkMode && !name.startsWith(`standard existing open work ${selectedStandardExistingOpenWorkMode}:`)) return; if (selectedPublishedChoiceMode && !name.startsWith(`standard selected root ${selectedPublishedChoiceMode}:`)) return; if (selectedStandardExistingCompleteMode && !name.startsWith(`standard existing complete ${selectedStandardExistingCompleteMode}:`)) return; if (selectedStandardExistingOpenMode && !name.startsWith(`standard existing open ${selectedStandardExistingOpenMode}:`)) return; if (process.argv.includes("--cycle-plan-select-native-only") && !name.startsWith("cycle plan selection native files:")) return; if (selectedCanonicalPlanSelectionMode && !name.startsWith(`cycle plan selection ${selectedCanonicalPlanSelectionMode}:`)) return; if (process.argv.includes("--canonical-plan-work-only") && !name.startsWith("canonical plan work files:")) return; if (selectedCanonicalPlanReadinessMode && !name.startsWith(`cycle plan readiness ${selectedCanonicalPlanReadinessMode}:`)) return; if (selectedCanonicalPlanAdoptionMode && !name.startsWith(`cycle plan adoption ${selectedCanonicalPlanAdoptionMode}:`)) return; if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
+async function check(name, callback) { if (process.argv.includes("--host-resource-activity-only") && !name.startsWith("host resource activity:") && name !== "worker mixed private v2 authority stops at an operation boundary without native startup") return; if (process.argv.includes("--drift-git-readonly-only") && !name.startsWith("drift controlled Git ")) return; if (selectedCanonicalResumeNativeMode && !name.startsWith(`canonical resume native ${selectedCanonicalResumeNativeMode}:`)) return; if (selectedStandardExistingOpenWorkMode && !name.startsWith(`standard existing open work ${selectedStandardExistingOpenWorkMode}:`)) return; if (selectedPublishedChoiceMode && !name.startsWith(`standard selected root ${selectedPublishedChoiceMode}:`)) return; if (selectedStandardExistingCompleteMode && !name.startsWith(`standard existing complete ${selectedStandardExistingCompleteMode}:`)) return; if (selectedStandardExistingOpenMode && !name.startsWith(`standard existing open ${selectedStandardExistingOpenMode}:`)) return; if (process.argv.includes("--cycle-plan-select-native-only") && !name.startsWith("cycle plan selection native files:")) return; if (selectedCanonicalPlanSelectionMode && !name.startsWith(`cycle plan selection ${selectedCanonicalPlanSelectionMode}:`)) return; if (process.argv.includes("--canonical-plan-work-only") && !name.startsWith("canonical plan work files:")) return; if (selectedCanonicalPlanReadinessMode && !name.startsWith(`cycle plan readiness ${selectedCanonicalPlanReadinessMode}:`)) return; if (selectedCanonicalPlanAdoptionMode && !name.startsWith(`cycle plan adoption ${selectedCanonicalPlanAdoptionMode}:`)) return; if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
   if (process.argv.includes("--native-human-port-only") && !name.startsWith("native human port:")) return;
   if (process.argv.includes("--historical-diagnostic-only") && !name.startsWith("historical diagnostic:")) return;
   if (process.argv.includes("--native-human-turn-only") && !name.startsWith("worker private before-turn")) return;
@@ -2905,12 +2908,30 @@ if (process.argv[2] === "--mixed-continue") {
     const blocked = await createStandardWorkflowOperations({ targetRoot: f.configuration.target_root }).prepareSession({ session_id: "S002", session_branch: "S002-other", objective: "Uncertain predecessor" });
     assert.equal(blocked.reason_code, "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED");
   });
+  await check("host resource activity: actual Native run lifetime and failure clear the active call", async () => {
+    for (const controllerFailure of [false, true]) {
+      let seen = false;
+      const f = journalFixture({ controllerFailure, beforeWorker(value) { const activity = value.actor.observeResourceActivity(); assert.equal(activity.active_runs, 1); seen = true; } });
+      assert.equal(f.actor.observeResourceActivity().active_runs, 0);
+      try { await f.actor.run({ execute: true, authorization: f.authorize() }); }
+      catch (cause) { assert(controllerFailure); }
+      assert(seen); assert.equal(f.actor.observeResourceActivity().active_runs, 0);
+      assert.equal(f.actor.observeResourceActivity().human_verification_ports, 0);
+    }
+  });
   await check("worker mixed private v2 authority stops at an operation boundary without native startup", async () => {
-    const f = mixedFixture("files"), processAuthority = createStandardProcessAuthority({ configuration: f.configuration, model: f.model, readSigningKey: () => f.key });
-    const actor = createJournaledNativeAllocation({ configuration: f.configuration, readSigningKey: () => f.key, processAuthority },
-      { controllerFactory: journalController(f, f.t, { realWorker: true }) });
+    const f = mixedFixture("files"), resourceHome = path.join(f.base, "resource-proof-authority"); fs.mkdirSync(resourceHome);
+    f.configuration.native.protected_roots = [...(f.configuration.native.protected_roots ?? []), resourceHome];
+    let actor, observedParentResources = false;
+    const processAuthority = createStandardProcessAuthority({ configuration: f.configuration, model: f.model, readSigningKey: () => f.key,
+      readProductSha256: () => actor.preview().product_sha256 });
+    actor = createJournaledNativeAllocation({ configuration: f.configuration, readSigningKey: () => f.key, processAuthority },
+      { controllerFactory: journalController(f, f.t, { realWorker: true, beforeWorker() {
+        const live = actor.observeResourceActivity(); assert.equal(live.active_runs, 1); assert.equal(live.human_verification_ports, 1); observedParentResources = true;
+      } }) });
     const result = await actor.run({ execute: true, authorization: f.authorize() });
     assert.equal(f.worker.status, 0, f.worker.stderr); assert.equal(result.journal_phase, "closed", JSON.stringify(result));
+    assert(observedParentResources); assert.equal(actor.observeResourceActivity().active_runs, 0); assert.equal(actor.observeResourceActivity().human_verification_ports, 0);
     assert.equal(f.t.sessions.length, 0); assert.equal(f.t.calls.length, 0);
     const checkpoint = actor.readCheckpoint(1).state;
     assert.equal(checkpoint.instance.events.length, 0); assert.equal(checkpoint.resources.length, 0);
@@ -2918,6 +2939,24 @@ if (process.argv[2] === "--mixed-continue") {
     assert.deepEqual(cursor.ready.map(id => cursor.occurrences.find(row => row.occurrence_id === id).node_id), ["reload"]);
     assert.equal(createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root }).ownerPending(), false);
     assert.equal(JSON.stringify({ result, journal: actor.inspect(), worker: f.worker }).includes(f.key.toString("base64")), false);
+    if (process.platform === "win32") {
+      const environment = { ...process.env, AIDN_STANDARD_HOST_HOME: resourceHome };
+      const locator = readResourceProofInstance({ targetRoot: f.configuration.target_root, instanceId: f.configuration.instance_id, environment });
+      fs.writeFileSync(path.join(resourceHome, locator.identity + ".key"), f.key, { flag: "wx" });
+      const authority = createResourceProofAuthority({ configuration: f.configuration, environment }), sourceHost = f.open();
+      const artifacts = createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root });
+      const readInventory = () => sourceHost.prepareReconciliationInventory({ expectedSha256: sourceHost.inspectDiagnostic().record.instance_sha256 });
+      const resourceSource = authority.createHandoffResourceSource({ readInventory, readNativeHistory: () => actor.inspectClosureEvidence(),
+        observeNativeActivity: () => actor.observeResourceActivity(), observeOperationActivity: () => sourceHost.inspectOperationResourceActivity() });
+      const resources = createResourceProofReader({ configuration: f.configuration, signer: createResourceProofSigner(authority.readKey), source: resourceSource,
+        readInventory, readNativeHistory: () => actor.inspectClosureEvidence(), readOwnership: () => ({ pending: artifacts.ownerPending(), fence: artifacts.resourceFence().read() }) });
+      const observation = await resources.observeForPublication(resources.prepare(), { sourceRef: "standard-handoff" });
+      assert.equal(observation.result?.complete_resource_closure, true, JSON.stringify(resourceSource.inspectLastObservation()));
+      assert.equal(observation.result.evidence_class, "native"); assert.equal(observation.result.permits_handoff, false);
+      const ownerPlan = shadowHash("actual closed Native resource-source publication boundary");
+      await artifacts.withLocalEffectOwner(ownerPlan, () => { artifacts.assertLocalEffectOwner(ownerPlan); observation.assertSourceCurrent(); return { effect_status: "no_effect" }; });
+      assert.equal(artifacts.ownerPending(), false);
+    }
   });
   await check("worker private allocation IPC executes the fixed entry without native startup or retained key bytes", async () => {
     for (const badOwner of [false, true]) {

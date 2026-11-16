@@ -96,7 +96,10 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
     withNativeOwner: nativeOwnership?.withOwner, reconciliationHistory,
     preview: () => executor.preview(), source: nativeAuthorizationSource, processAuthority,
     materialize: () => { if (projectionRequired) store.materialize(journalId, { write: true }); } });
+  const resourceActivity = { active_runs: 0, human_verification_ports: 0 };
   return Object.freeze({
+    observeResourceActivity() { return Object.freeze({ protocol: "standard-native-resource-activity.v1", ...resourceActivity,
+      snapshot_only: true, complete_resource_closure: false, permits_effects: false, permits_handoff: false, written: false }); },
     // Journal and description belong to the same fresh executor observation.
     // Later calls still re-read activation, pins, product and signed journal.
     preview() { const { value, current } = observe(); return { ...current, journal_id: journalId, journal_sha256: value.record ? shadowHash(value.record) : null,
@@ -116,6 +119,8 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
       return structuredClone(checkpoint(entry));
     },
     async run({ execute = false, authorization, signal, resume = false } = {}) {
+      resourceActivity.active_runs++;
+      try {
       if (typeof resume !== "boolean") fail("NATIVE_ALLOCATION_RESUME_INTENT_REQUIRED");
       if (!execute) return this.preview();
       const before = read(), previous = before.record?.allocations.at(-1), consumed = totals(before.record);
@@ -183,8 +188,11 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
           const current = read().record; signer.verify(current);
           if (current.allocations.at(-1).owner_id !== allocation.owner_id) fail("NATIVE_ALLOCATION_OWNER_CHANGED");
           const reservation = { journal_id: journalId, generation: allocation.generation, owner_id: allocation.owner_id };
-          if (processAuthority) workerHuman = await startNativeHumanVerificationPort({ reservation,
-            verify: (packet, signal) => processAuthority.verifyNativeHumanSource(packet, reservation, signal) });
+          if (processAuthority) {
+            resourceActivity.human_verification_ports++;
+            workerHuman = await startNativeHumanVerificationPort({ reservation,
+              verify: (packet, signal) => processAuthority.verifyNativeHumanSource(packet, reservation, signal) });
+          }
           return { contract_version: processAuthority ? "native-allocation-worker.v3" : "native-allocation-worker.v1", ...reservation,
             key_base64: readSigningKey().toString("base64"), ...(processAuthority ? { model_source: processAuthority.modelSource, human_verification: workerHuman.capability } : {}) };
         },
@@ -228,7 +236,7 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
       const executeAllocation = async () => { try {
         const result = await runOwnedAgenticProcess({ configuration: config, authorization: auth, execute: true, signal },
           { environment, allocationObserver: observer, processAuthority, ...(controllerFactory ? { controllerFactory } : {}) });
-        if (workerHuman) { await workerHuman.close(); workerHuman = null; }
+        if (workerHuman) { await workerHuman.close(); workerHuman = null; resourceActivity.human_verification_ports--; }
         const record = read().record;
         const last = record?.allocations.at(-1), phase = last?.phase ?? "absent";
         return { contract_version: "journaled-native-allocation-result.v1", owned_result: result, journal_id: journalId,
@@ -236,12 +244,13 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
           status: phase === "closed" ? result.status : phase === "failed" ? "FAILED" : "WAITING_FOR_RECONCILIATION",
           first_failure: last?.first_failure ?? result.first_failure, retry: false };
       } catch (error) {
-        if (workerHuman) { try { await workerHuman.close(); workerHuman = null; } catch { error = Object.assign(Error("STANDARD_DRIFT_HUMAN_PORT_CLOSE_UNCONFIRMED"), { code: "STANDARD_DRIFT_HUMAN_PORT_CLOSE_UNCONFIRMED" }); } }
+        if (workerHuman) { try { await workerHuman.close(); workerHuman = null; resourceActivity.human_verification_ports--; } catch { error = Object.assign(Error("STANDARD_DRIFT_HUMAN_PORT_CLOSE_UNCONFIRMED"), { code: "STANDARD_DRIFT_HUMAN_PORT_CLOSE_UNCONFIRMED" }); } }
         if (!claim) { if (processAuthority) error.effect_status = "no_effect"; throw error; }
         return { contract_version: "journaled-native-allocation-result.v1", owned_result: observed, journal_id: journalId, generation: claim.generation,
           journal_phase: "reconciliation_required", status: "WAITING_FOR_RECONCILIATION", first_failure: error.code ?? "NATIVE_ALLOCATION_UNCONFIRMED", retry: false };
       } };
-      return nativeOwnership ? nativeOwnership.withOwner({ instance_id: config.instance_id, authorization_sha256: shadowHash(auth) }, executeAllocation) : executeAllocation();
+      return await (nativeOwnership ? nativeOwnership.withOwner({ instance_id: config.instance_id, authorization_sha256: shadowHash(auth) }, executeAllocation) : executeAllocation());
+      } finally { resourceActivity.active_runs--; }
     },
   });
 }

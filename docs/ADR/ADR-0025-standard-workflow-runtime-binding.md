@@ -4895,3 +4895,34 @@ This supplies a required input for the independent default handoff source when
 an old host has no project path in its command line. It introduces no authority,
 store, expiry, budget, Native grant or effect, and does not itself implement
 seven-domain source composition or claim resource closure.
+
+## Independent default fixed-host handoff resource source, 2026-11-16
+
+The ordinary entry composes a private resource source from actual independent
+OS/physical observations and the current fixed actor capabilities. Authenticated
+retained owners seed cold discovery; the private host namespace covers provider
+helpers. Actual Git locks/preparation data, verified Native closure history,
+live Native calls and parent verification ports, current operation dispatches,
+synchronous signed-file actors and separate GH/Git Job observations remain
+distinct evidence. The source authenticates its own exact captured observation
+and current protected policy. A host journal key alone mints no closure.
+
+The observer and its intrinsic console are measurement support. A fresh Windows
+NtQueryInformationProcess(ProcessConsoleHostProcess,49) read binds the console
+PID to this observer, with exact process creation identity. The low two flag
+bits are masked according to the native information structure. Failure or an
+unavailable kernel query refuses; no name-based exception or discarded work
+descendant is permitted. Process-observation v1/v2 data remains unchanged.
+The existing Windows console APIs can report no window for the headless case;
+see [GetConsoleWindow](https://learn.microsoft.com/en-us/windows/console/getconsolewindow)
+and the primary [native console-host information definition](https://github.com/winsiderss/systeminformer/blob/master/phnt/include/ntpsapi.h#L764).
+
+Initial reads also observe the current actual effect owner/fence. Subsequent
+source-currentness checks reobserve independent resources and permission while
+allowing the publisher own exact owner, which the write port separately verifies.
+Only the current handoff observer dispatch, bound to its actual async call,
+instance and scope, is a measurement operation; concurrent handoffs stay active.
+A closed journal does not replace live parent resource counters. No authority,
+store, schema, Native grant, helper protocol, deadline, cap, refund or automatic
+reconciliation is added. UNKNOWN business state stays retained; all effect and
+handoff permission remains with the existing admission, grant, owner and CAS.

@@ -10,6 +10,7 @@ import { createHash, createHmac, createPublicKey, randomBytes, verify } from "no
 import { agentRunPhysicalPath, readAgentRunFile } from "../../application/runtime/agent-run-configuration-service.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { createStandardGithubProviderHost } from "./standard-github-provider-host.mjs";
+import { createStandardHostResourceSource } from "./standard-host-resource-source.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const inside = (root, file) => { const r = path.relative(root, file); return r === "" || !path.isAbsolute(r) && r !== ".." && !r.startsWith(".." + path.sep); };
@@ -103,6 +104,8 @@ export function createStandardHostAuthority({ configuration, environment = proce
     if (claim?.authority_id !== envelope.authority_id) fail("STANDARD_HOST_SOURCE_AUTHOR_CHANGED");
     return envelope;
   }
+  const sourceActivity = Object.fromEntries(["human", "control", "native-renewal"].map(kind => [kind, { active: 0, revision: 0 }]));
+  const observeSources = () => ({ protocol: "standard-host-signed-files-sync.v1", ...structuredClone(sourceActivity) });
   function source(kind) {
     const subject = input => input.question ?? input.request;
     const read = input => capture(kind, input.sourceRef, subject(input), true)?.payload ?? null;
@@ -119,7 +122,12 @@ export function createStandardHostAuthority({ configuration, environment = proce
         ...(mergeConsent ? { grant_sha256: shadowHash(envelope) } : {}),
         ...(mergeConsent || resolutionException ? { grant_expires_at_ms: envelope.expires_at_ms } : {}) };
     };
-    return Object.freeze({ read, verify: check, ...(kind === 'native-renewal' ? { assertCurrent(input) { check(input); } } : {}) });
+    const tracked = callback => input => {
+      const activity = sourceActivity[kind]; activity.active++; activity.revision++;
+      try { return callback(input); } finally { activity.active--; activity.revision++; }
+    };
+    const verifyCurrent = tracked(check);
+    return Object.freeze({ read: tracked(read), verify: verifyCurrent, ...(kind === 'native-renewal' ? { assertCurrent(input) { verifyCurrent(input); } } : {}) });
   }
   function dispositionGrant(request, permit, issuedAt, legacy = false) {
     if (!permit || !["operation_disposition", "operation_disposition_accept"].includes(request.action) || request.action !== permit.action
@@ -173,6 +181,11 @@ export function createStandardHostAuthority({ configuration, environment = proce
     return { ...body, grant_sha256: createHmac('sha256', readKey()).update(shadowHash(body)).digest('hex') };
   }
   return Object.freeze({ home, keyId, readKey, ensureKey, trustSha, githubProvider,
+    createHandoffResourceSource({ readInventory, readNativeHistory, observeNativeActivity, observeOperationActivity }) {
+      return createStandardHostResourceSource({ configuration, home, identity, readKey,
+        readTrust: () => ({ key_id: keyId(), trust_sha256: trustSha() }), observeSources, provider: githubProvider,
+        defaultTransports: useProvider && providerTransport === undefined, readInventory, readNativeHistory, observeNativeActivity, observeOperationActivity });
+    },
     authorizeNativeReconciliation: (request, permit) => nativeReconciliationGrant(request, permit, Date.now()),
     verifyNativeReconciliation(request, grant, permit) {
       const legacy = grant?.contract_version === 'process-disposition-authorization-grant.v1';

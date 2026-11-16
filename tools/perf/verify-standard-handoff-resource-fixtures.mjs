@@ -158,3 +158,6 @@ await check('publication issuer capability retains original expiry and cancellat
 console.log(JSON.stringify({ status: 'PASS', checks, scope: 'CONTROLLED_READONLY_HANDOFF_RESOURCE_CAPABILITIES_AND_CLOSED_CONTRACTS',
   canonical_inventory_and_independent_resource_discovery: 'FIXTURE', genuine_Native_Human_provider_installed_full_STANDARD: 'NOT_RUN',
   packet_CAS_receipt_ordinary_handoff: 'NOT_PROVEN' }));
+
+const {verifyStandardHostResourceSourceFixtures}=await import('./standard-host-resource-source-fixture-lib.mjs');
+console.log(JSON.stringify({default_host_source:await verifyStandardHostResourceSourceFixtures()}));

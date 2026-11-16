@@ -92,6 +92,7 @@ import { createStandardCycleCloseRecord } from "./standard-cycle-close-record.mj
 import { createStandardCycleClosureReview } from "./standard-cycle-closure-review.mjs";
 import { observeStandardCycleAudit } from "../../core/workflow/standard-cycle-audit.mjs";
 import { randomUUID } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createStandardNativeAllocationReconciliation } from "./standard-native-allocation-reconciliation.mjs";
 import { createStandardNativeOwnerDisposition } from "./standard-native-owner-disposition.mjs";
 import path from "node:path";
@@ -2290,5 +2291,18 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return structuredClone(result.output);
     },
   };
+  const activeDispatches = new Map(), dispatchContext = new AsyncLocalStorage(), dispatchOperation = operationHost.dispatch;
+  operationHost.dispatch = async (id, input) => {
+    if (input?.write !== true) return dispatchOperation.call(operationHost, id, input);
+    const record = retained(id).record, token = randomUUID();
+    activeDispatches.set(token, { dispatch_id: token, operation_id: id, instance_id: record.intent.instance_id, scope_id: record.intent.scope_id,
+      binding_ref: record.intent.binding_ref, executor_kind: record.preview.binding.executor_kind });
+    try { return await dispatchContext.run(token, () => dispatchOperation.call(operationHost, id, input)); }
+    finally { activeDispatches.delete(token); }
+  };
+  operationHost.observeResourceActivity = () => Object.freeze({ protocol: "standard-operation-resource-activity.v1",
+    current_dispatch_id: activeDispatches.has(dispatchContext.getStore()) ? dispatchContext.getStore() : null,
+    active_dispatches: Object.freeze([...activeDispatches.values()].map(row => Object.freeze({ ...row }))),
+    snapshot_only: true, complete_resource_closure: false, permits_effects: false, permits_handoff: false, written: false });
   return Object.freeze(operationHost);
 }

@@ -52,12 +52,22 @@ export async function runStandardWorkflowEntry({ request, actionFile = null, pre
   const resolved = resolveStandardWorkflowConfiguration(request), { configuration, parameters, modelSource, validationProfile } = resolved;
   const authority = createStandardHostAuthority({ configuration, environment }, { providerTransport, useProvider: observation === null });
   const provider = authority.githubProvider;
-  const compose = (authorize, dispositionSource, nativeSources) => createStandardWorkflowExecution({ configuration, readSigningKey: () => authority.keyId() === null ? Buffer.alloc(32) : authority.readKey(),
+  const compose = (authorize, dispositionSource, nativeSources) => {
+    let host;
+    const handoffResourceSource = authority.createHandoffResourceSource({
+      readInventory: () => host.prepareReconciliationInventory({ expectedSha256: host.inspectDiagnostic().record.instance_sha256 }),
+      readNativeHistory: () => host.inspectNativeClosureEvidence(),
+      observeNativeActivity: () => host.inspectNativeResourceActivity(),
+      observeOperationActivity: () => host.inspectOperationResourceActivity(),
+    });
+    host = createStandardWorkflowExecution({ configuration, readSigningKey: () => authority.keyId() === null ? Buffer.alloc(32) : authority.readKey(),
     authorize, environment, validationProfile, humanSource: authority.humanSource, controlSource: authority.controlSource,
     nativeAuthorizationSource: authority.nativeAuthorizationSource, dispositionSource,
     nativeOwnerDispositionSource: nativeSources.owner, nativeReconciliationSource: nativeSources.reconciliation,
     sessionPushPort: provider?.sessionPushPort, sessionPullRequestPort: provider?.sessionPullRequestPort,
-    sessionReviewPort: provider?.sessionReviewPort, sessionReviewEventPort: provider?.sessionReviewEventPort });
+    sessionReviewPort: provider?.sessionReviewPort, sessionReviewEventPort: provider?.sessionReviewEventPort, handoffResourceSource });
+    return host;
+  };
   return runStandardWorkflowAction({ request, configuration, parameters, modelSource, actionFile, preparedAction, decisionSource, controlSource,
     observation, authorization, execute, expectPlan, signal }, { authority, compose });
 }
