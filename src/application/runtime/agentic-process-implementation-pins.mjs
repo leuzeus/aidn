@@ -265,6 +265,7 @@ const files = [
   "src/core/contracts/workflow-definition/agentic-process-instance.v1.schema.json", "VERSION", "package.json",
 ];
 files.push("src/core/contracts/workflow-definition/standard-workflow-catalog.v4.schema.json", "src/core/contracts/workflow-definition/standard-workflow-catalog.v5.schema.json", "src/core/contracts/workflow-definition/standard-workflow-catalog.v6.schema.json");
+files.push("src/application/runtime/canonical-handoff-projection.mjs", "src/application/runtime/standard-handoff-publication.mjs", "src/core/workflow/standard-handoff-publication.mjs", "src/core/contracts/workflow-definition/standard-handoff-publication-input.v1.schema.json", "src/core/contracts/workflow-definition/standard-handoff-publication-plan.v1.schema.json", "src/core/contracts/workflow-definition/standard-handoff-publication-output.v1.schema.json", "src/application/runtime/handoff-packet-projector-use-case.mjs", "tools/runtime/project-handoff-packet.mjs", "tools/runtime/db-first-runtime-view-lib.mjs", "tools/perf/verify-current-state-consistency.mjs");
 export function agenticProcessImplementationPins() {
   const source = files.map(name => {
     const data = fs.readFileSync(new URL(`../../../${name}`, import.meta.url));

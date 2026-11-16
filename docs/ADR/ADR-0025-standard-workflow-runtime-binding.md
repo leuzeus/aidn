@@ -4681,3 +4681,29 @@ concept. They supply no resource closure, admission, write or relay permission;
 they create no store, packet, projection or shared method. No preparation-age
 limit is introduced. Canonical publication, writer ownership, result/receipt,
 ordinary IR routing and actual independent discovery remain separate work.
+
+## Canonical handoff packet publication candidate, 2026-11-16
+
+The candidate preserves the existing packet format and projection policies while
+supplying a fixed canonical artifact resolver. Explicit next role, action and
+goal remain data; they do not admit an effect. The preimage binds process and
+canonical document identities, the prior packet's content/metadata and the
+authenticated resource request. A live observation capability rechecks the exact
+resource/source subject before acquisition; current operator permission, the
+physical owner/fence and canonical CAS remain separate. No JSON exemption or
+preparation-age ceiling is added.
+
+The artifact write and complete handoff are separate stages. Confirmed packet
+persistence closes its local owner; uncertainty after CAS retains ownership.
+The common signed operation receipt, resource closure after release, normal IR
+handoff route and production independent-discovery wiring still require their
+own integration. The private output therefore grants no handoff/effect
+permission or complete-resource-closure verdict. Controlled component fixtures
+do not qualify those remaining product gates.
+
+The publication observer also retains a private synchronous source-permission
+capability. The writer invokes it after acquiring its own owner and immediately
+before packet CAS, including after the last test boundary. This checks the
+original issuer and current independent source permission; it does not assert
+resource closure for the changed owner subject. The full observation still
+rejects any active owner. Post-release closure remains a separate obligation.

@@ -128,7 +128,7 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
       if ((previous ? artifactMetadataHash(previous) : null) !== change.before_metadata_sha256) fail("STANDARD_ARTIFACT_METADATA_CONFLICT");
       const session = /^sessions\/(S\d+)(?:[-_.][^/]*)?\.md$/.exec(change.path), cycle = /^cycles\/(C\d+)[^/]*\/status\.md$/.exec(change.path);
       const kind = session ? "session" : cycle ? "cycle_status" : "other";
-      const artifact = { ...(previous ?? { path: change.path, kind, family: "normative", subtype: cycle ? "status" : null,
+      const artifact = { ...(previous ?? { path: change.path, kind, family: "normative", subtype: cycle ? "status" : change.path === "HANDOFF-PACKET.md" ? "handoff_packet" : null,
         session_id: session?.[1] ?? null, cycle_id: cycle?.[1] ?? null, gate_relevance: 0, classification_reason: "standard_workflow_creation",
         source_mode: "explicit", entity_confidence: 1, legacy_origin: null }),
         content_format: "utf8", content: change.after, sha256: undefined, size_bytes: undefined, mtime_ns: undefined,

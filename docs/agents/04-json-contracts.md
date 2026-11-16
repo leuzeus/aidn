@@ -1008,3 +1008,15 @@ also supports subsequent generations. Old epoch requests are never converted.
 Neither reconciliation nor its receipt supplies workflow resume, business
 postconditions, a new Native allocation or all-resource closure. Ordinary
 post-assignment action transport requires separate integration/qualification.
+
+Private `standard-handoff-publication-input/plan/output.v1` contracts describe
+a canonical packet-write candidate. Scalar relay intent is explicit and supplies
+no approval, callback or path capability. The plan pins the actual canonical
+projection, content/metadata preimage, authenticated process context and original
+resource request. The output confirms only packet persistence; effect and handoff
+permissions and complete resource closure stay false. A common operation receipt,
+post-release resource observation and ordinary IR handoff route remain due.
+
+The private resource reader can return a live synchronous revalidation capability
+for its exact authenticated observation. This capability is never action JSON,
+a durable grant or an exemption for an active owner.

@@ -47,13 +47,7 @@ export function createStandardHandoffResources({ configuration, signer, readInve
     same(value); return value;
   }
   const currentSignal = signal => { if (signal?.aborted) fail('STANDARD_HANDOFF_RESOURCE_OBSERVATION_ABORTED'); };
-  return Object.freeze({
-    prepare() {
-      const { material } = capture(); same(material);
-      return freezeShadow(assertHandoffResourceRequest(signer.seal({ contract_version: 'standard-handoff-resource-request.v1',
-        request_id: randomUUID(), ...material, issued_at_ms: now() })));
-    },
-    async inspect(supplied, { sourceRef, signal } = {}) {
+  async function observe(supplied, { sourceRef, signal } = {}, retainCapability = false) {
       currentSignal(signal); const q = request(supplied);
       if (typeof sourceRef !== 'string' || !sourceRef || sourceRef.length > 256
         || ['read', 'verify', 'assertCurrent'].some(method => typeof source?.[method] !== 'function'))
@@ -71,12 +65,30 @@ export function createStandardHandoffResources({ configuration, signer, readInve
       // This synchronous capability must reobserve independent resource closure
       // and current source permission, including any original issuer expiry.
       // No host-invented preparation/observation age limit is added.
-      if (source.assertCurrent({ ...input, observation }) !== undefined) fail('STANDARD_HANDOFF_RESOURCE_SOURCE_NOT_CURRENT');
-      return freezeShadow(assertHandoffResourceResult(signer.seal({ contract_version: 'standard-handoff-resource-result.v1',
+      // The issuer check remains callable after acquiring the publisher's own
+      // owner. It makes no new inventory/ownership closure assertion.
+      const assertSourceCurrent = () => {
+        currentSignal(signal);
+        if (source.assertCurrent({ ...input, observation }) !== undefined) fail('STANDARD_HANDOFF_RESOURCE_SOURCE_NOT_CURRENT');
+      };
+      const assertCurrent = () => { currentSignal(signal); same(q); assertSourceCurrent(); };
+      assertCurrent();
+      const result = freezeShadow(assertHandoffResourceResult(signer.seal({ contract_version: 'standard-handoff-resource-result.v1',
         request_sha256: shadowHash(q), ...fresh.material, observation_sha256: shadowHash(observation),
         authority_id: observation.authority_id, evidence_class: observation.evidence_class, observed_at_ms: observation.observed_at_ms,
         unknown_business_operations: fresh.inventory.operations.filter(row => row.effect_status === 'unknown').map(row => row.operation_id),
         complete_resource_closure: true, snapshot_only: true, permits_effects: false, permits_handoff: false, written: false })));
+      // A live synchronous observation capability is never serializable action
+      // data or a cached permission. It is valid only for this exact read.
+      return retainCapability ? Object.freeze({ result, assertCurrent, assertSourceCurrent }) : result;
+  }
+  return Object.freeze({
+    prepare() {
+      const { material } = capture(); same(material);
+      return freezeShadow(assertHandoffResourceRequest(signer.seal({ contract_version: 'standard-handoff-resource-request.v1',
+        request_id: randomUUID(), ...material, issued_at_ms: now() })));
     },
+    inspect: (supplied, input) => observe(supplied, input),
+    observeForPublication: (supplied, input) => observe(supplied, input, true),
   });
 }

@@ -65,7 +65,7 @@ export function createStandardWorkflowFixture(mode = "files", owned = []) {
 // This is source-install qualification, not an exact-archive qualification.
 export function createFreshStandardWorkflowFixture(mode = "db-only", owned = [], { absentOptionalDocuments = [] } = {}) {
   if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_STATE_MODE_INVALID");
-  if (!Array.isArray(absentOptionalDocuments) || absentOptionalDocuments.some(name => !["baseline/history.md", "index.md"].includes(name))
+  if (!Array.isArray(absentOptionalDocuments) || absentOptionalDocuments.some(name => !["baseline/history.md", "index.md", "HANDOFF-PACKET.md"].includes(name))
     || new Set(absentOptionalDocuments).size !== absentOptionalDocuments.length) throw Error("FIXTURE_OPTIONAL_DOCUMENT_INVALID");
   const root = fs.mkdtempSync(path.join(temporary, "aidn-standard-fresh-")); owned.push(root);
   git(root, "init", "-b", "dev"); git(root, "config", "user.name", "Fixture"); git(root, "config", "user.email", "fixture@example.invalid");

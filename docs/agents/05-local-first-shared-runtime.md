@@ -622,3 +622,25 @@ rewrites, reordering, truncation and revision inconsistency refuse. A concurrent
 proposal cannot acquire an active owner’s resource. Current operator permission,
 source, instance/journal checks, physical ownership and business CAS remain
 independent. This adds no permission cache, durable store or preparation-age cap.
+
+The private canonical packet-publication candidate adapts the existing packet
+producer through fixed canonical readers. Its DUAL/db-only observations cannot
+select visible copies. An explicit grant capability and fresh independent
+resource observation precede ownership; a synchronous current-permission check,
+exact owner, canonical content/metadata CAS and projection postconditions protect
+the write. Confirmed publication releases its own owner. Uncertainty after CAS
+retains it and blocks another publication. Newly created packets keep the
+existing other/normative/handoff_packet classification.
+
+Packet persistence is one step. The common host still needs to record its normal
+operation receipt, reobserve closure after release and route the receiving agent
+through ordinary handoff admission. The candidate performs no shared relay sync,
+Native allocation, legacy filesystem-writer call or preparation-age check. Its
+projection uses the existing role/transition policy and canonical field parser.
+
+The publication observer also retains a private synchronous source-permission
+capability. The writer invokes it after acquiring its own owner and immediately
+before packet CAS, including after the last test boundary. This checks the
+original issuer and current independent source permission; it does not assert
+resource closure for the changed owner subject. The full observation still
+rejects any active owner. Post-release closure remains a separate obligation.

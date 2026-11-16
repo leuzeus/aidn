@@ -6861,3 +6861,23 @@ old ordinary action refuses with STANDARD_ENTRY_ACTION_CHANGED. The cold
 control intent names the already-held fence as its CAS preimage and acquires no
 replacement lease. Tracked resource retirement and OS child exit remain separate
 from general A6, genuine Native, installed and full STANDARD qualification.
+
+
+## Canonical handoff packet publication candidate
+
+Run `node tools/perf/verify-standard-handoff-publication-fixtures.mjs files`
+(also `dual` and `db-only`) for the candidate artifact-write port. It uses
+actual source installation, canonical stores, Mixed context/resource readers,
+content/metadata CAS, physical owner/fence and DUAL projection or DB-only absence.
+The corpus omits its packet before its first canonical import. Current write
+permission and independent discovery are controlled capabilities; no Native or
+Human actor is launched. The tests distinguish packet persistence from complete
+handoff, retain an uncertain post-CAS owner and require later independent
+resource closure. Existing issuer expiry is enforced; unchanged preparation age
+alone creates no refusal. Common receipt/ordinary IR routing, production
+discovery and genuine Native/installed qualification remain unproven.
+
+The publication component also revokes the independent source at the actual
+pre-CAS boundary. It must preserve packet content/metadata and release its unused
+owner. Private resource-capability fixtures distinguish this current issuer
+check from complete ownership/resource closure, and retain expiry/cancellation.

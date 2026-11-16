@@ -316,6 +316,8 @@ export function buildHandoffPrioritizedArtifacts({
 }
 
 export function prepareHandoffPacketProjection({
+  updatedAt,
+  requestedNext = null,
   workspace,
   sharedRuntimeValidation,
   repairHints,
@@ -353,7 +355,7 @@ export function prepareHandoffPacketProjection({
 } = {}) {
   const handoffStatus = deriveHandoffStatus({ consistency, runtimeMap, currentMap });
   const blockingFindings = uniqueItems(parseListSection(runtimeStateText, "blocking_findings").slice(0, 5));
-  const nextRouting = deriveNextAgentRouting({
+  const nextRouting = requestedNext ?? deriveNextAgentRouting({
     handoffStatus,
     mode,
     repairStatus: repairRoutingHint,
@@ -367,6 +369,7 @@ export function prepareHandoffPacketProjection({
     toAction: nextRouting.action,
   });
   return buildHandoffPacketPayload({
+    updatedAt,
     workspace,
     sharedRuntimeValidation,
     handoffStatus,

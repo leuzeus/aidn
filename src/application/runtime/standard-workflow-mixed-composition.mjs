@@ -106,6 +106,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     inspectNativeClosureEvidence: () => nativeHost().inspectClosureEvidence(),
     prepareHandoffResourceRequest: () => handoffResourceHost().prepare(),
     inspectHandoffResources: (request, input) => handoffResourceHost().inspect(request, input),
+    observeHandoffResourcesForPublication: (request, input) => handoffResourceHost().observeForPublication(request, input),
     inspectHandoffContext: () => handoffContext.inspect(),
     readCheckpoint: generation => nativeHost().readCheckpoint(generation),
     prepareNativeAuthorizationEpoch: input => nativeHost().prepareAuthorizationEpoch(input),

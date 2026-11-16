@@ -141,6 +141,20 @@ await check('cancellation during source read refuses before verification', async
   await assert.rejects(inspect(f, f.host.prepare(), { signal: controller.signal }), { code: 'STANDARD_HANDOFF_RESOURCE_OBSERVATION_ABORTED' });
   assert.equal(f.state.verifyCalls, 0);
 });
+await check('publication source permission remains live without claiming closure for a changed owner', async () => {
+  const f = fixture(), q = f.host.prepare(), observed = await f.host.observeForPublication(q, { sourceRef: 'fixture-discovery' });
+  assert.equal(typeof observed.assertCurrent, 'function'); assert.equal(typeof observed.assertSourceCurrent, 'function');
+  observed.assertCurrent(); f.setPending(true);
+  assert.throws(() => observed.assertCurrent(), { code: 'STANDARD_HANDOFF_RESOURCE_OWNER_UNRESOLVED' });
+  observed.assertSourceCurrent(); assert.equal(observed.result.snapshot_only, true); assert.equal(observed.result.permits_handoff, false);
+  f.revoke(); assert.throws(() => observed.assertSourceCurrent(), /current independent closure permission/);
+});
+await check('publication issuer capability retains original expiry and cancellation', async () => {
+  const f = fixture(), controller = new AbortController(), q = f.host.prepare();
+  const observed = await f.host.observeForPublication(q, { sourceRef: 'fixture-discovery', signal: controller.signal });
+  f.setExpiry(1001); f.setClock(1001); assert.throws(() => observed.assertSourceCurrent(), /current independent closure permission/);
+  f.setClock(1000); controller.abort(); assert.throws(() => observed.assertSourceCurrent(), { code: 'STANDARD_HANDOFF_RESOURCE_OBSERVATION_ABORTED' });
+});
 console.log(JSON.stringify({ status: 'PASS', checks, scope: 'CONTROLLED_READONLY_HANDOFF_RESOURCE_CAPABILITIES_AND_CLOSED_CONTRACTS',
   canonical_inventory_and_independent_resource_discovery: 'FIXTURE', genuine_Native_Human_provider_installed_full_STANDARD: 'NOT_RUN',
   packet_CAS_receipt_ordinary_handoff: 'NOT_PROVEN' }));
