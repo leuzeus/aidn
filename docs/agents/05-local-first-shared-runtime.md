@@ -654,3 +654,9 @@ digest. Foreign changes refuse; the view is never persisted or exposed as global
 current resource closure. Actual ownership still has no exemption. The current
 operator source must supply a synchronous grant check at CAS; async-only sources
 refuse before ownership instead of caching their earlier permission.
+
+Mixed stepping forwards the caller cancellation signal into deterministic
+operation preparation as well as dispatch. An already cancelled packet
+publication stops before independent observation or common intent staging.
+Cancellation during observation reaches the actual source await and stops
+before verification, current grant, owner acquisition or packet CAS.

@@ -6917,3 +6917,10 @@ stage, synchronous current denial at CAS, a foreign canonical addition, refusal
 of async-only current permission, cold duplicate dispatch and retained UNKNOWN
 after CAS. Full published handoff, post-release closure, cold UNKNOWN recovery,
 genuine Native/Human, installed and full STANDARD are separate obligations.
+
+The same three common-publication fixtures also use a separate actual mixed
+composition. A successful read-only preview is the positive control; already
+cancelled read/write steps refuse before discovery, while cancellation during
+the real source await stops before verification. Project/control file trees,
+instance hash, empty Native journal, absent packet and released owner are checked.
+The resource observer remains controlled and no Native client starts.

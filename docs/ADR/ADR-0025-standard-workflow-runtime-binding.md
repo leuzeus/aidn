@@ -4725,3 +4725,9 @@ and validates the exact grant. Async-only grant sources cannot supply that
 capability. Common owner reservation binds the inner packet plan digest. The
 receipt confirms packet persistence only; post-release full closure, published
 IR handoff entry and cold UNKNOWN recovery require their own integration.
+
+The mixed-host deterministic preview retains the caller cancellation signal.
+Packet preparation uses the existing publisher/resource cancellation checks
+before source observation and after awaited reads; dispatch retains its existing
+signal. This fixes signal forwarding without a new deadline, authority, store,
+public contract or automatic historical transition.
