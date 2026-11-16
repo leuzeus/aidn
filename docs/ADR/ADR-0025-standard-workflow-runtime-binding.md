@@ -16,6 +16,27 @@ preparation-age rule changes. This prepares one necessary input to the general
 handoff port; current complete resource discovery/admission, canonical packet
 CAS, ordinary action/receipt and full handoff qualification remain separate work.
 
+
+## Concurrent continuation control history, 2026-11-15
+
+The existing control-intent container retains ordered attempts before resource
+acquisition. A proposal neither holds the resource nor revokes an earlier
+controller that still holds its exact valid lease. The continuation host verifies
+the current signed container and nested subjects, then requires every previously
+observed attempt to remain an immutable ordered prefix. Legitimate appends become
+part of that known prefix; later rewrite, truncation, reordering, foreign keys
+or inconsistent revision growth refuse. Current grants, exact lease/physical/
+source/instance/journal checks and business CAS still apply at their existing
+boundaries. Actual issuer expiry remains; no preparation-age limit is added.
+
+This changes no control schema, authority, store, migration, 32-attempt limit,
+31-follow-on-result limit or 900000-byte pre-effect storage bound. The pure reader
+is a data relation, not MAC authentication or permission. Two actual controllers
+qualify both pre-acquisition reservations and a later proposal while the first
+owner holds its lease. Signed history corruption must refuse before remaining
+business writes. Earlier failed races remain separate evidence; these component
+fixtures do not establish full A6, genuine Native or full STANDARD acceptance.
+
 ## Accepted disposition control retirement candidate, 2026-11-15
 
 A real child stop after accepted process CAS reproduced a held acceptance fence:

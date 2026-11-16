@@ -1,5 +1,14 @@
 # 04 JSON Contracts
 
+The pure `operationControlHistoryExtends` reader accepts unchanged
+`process-operation-control-intent.v1` data or an append-only extension of its
+exact ordered attempts. Operation/key identities and revision growth must agree;
+the existing 32-attempt limit remains. It authenticates no MAC, grants no effect
+and retires no owner. The continuation host separately authenticates the current
+record and every nested subject before comparing its already observed prefix.
+Current grants, exact ownership, source and CAS remain independent requirements.
+No record is converted and no new store is introduced.
+
 An already accepted disposition receipt can reuse the existing
 `operation_disposition_accept` action and its exact operation/journal/receipt
 payload to retire its authenticated abandoned acceptance control. No receipt is

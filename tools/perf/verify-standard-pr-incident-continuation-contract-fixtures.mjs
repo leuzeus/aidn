@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createAgenticProcess, advanceAgenticProcess, inspectAgenticProcess } from '../../src/core/workflow/agentic-process.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 import { prIncidentCloseOperation, prIncidentCloseReconciliationPrefix } from '../../src/core/workflow/standard-pr-incident-close.mjs';
-import { assertIncidentContinuationPlan, assertIncidentContinuationDisposition, operationDispositionResultLimit } from '../../src/core/workflow/process-operation-disposition.mjs';
+import { assertIncidentContinuationPlan, assertIncidentContinuationDisposition, operationDispositionResultLimit, operationControlHistoryExtends } from '../../src/core/workflow/process-operation-disposition.mjs';
 import { validateJsonSchema } from '../../src/core/contracts/json-schema-validator.mjs';
 import requestV2 from '../../src/core/contracts/workflow-definition/process-disposition-authorization-request.v2.schema.json' with { type: 'json' };
 import v1Plan from '../../src/core/contracts/workflow-definition/process-operation-disposition-plan.v1.schema.json' with { type: 'json' };
@@ -146,6 +146,55 @@ test('foreign progress and substituted accepted results refuse structural recons
   rejects(single.record, r => { r.results[0].receipt = receipt(1, unknown, shadowHash(single.intent)); },
     r => prIncidentCloseReconciliationPrefix(single.current, r));
 });
-console.log(JSON.stringify({ status: 'PASS', checks, scope: 'pure-v2-contracts-and-structural-prefix',
+// Deliberately structural examples: these are not authenticated grants or plans.
+const controlAttempt = ordinal => ({ action: 'acceptance', plan: { ordinal }, grant: null, inventory: {},
+  instance_sha256: H, journal_sha256: H, receipt_sha256: H, audit_sha256: H,
+  resource_fence: { record: { ordinal }, previous_sha256: null } });
+const controlHistory = ordinals => ({ contract_version: 'process-operation-control-intent.v1', operation_id: id,
+  revision: ordinals.length, attempts: ordinals.map(controlAttempt), key_id: H, authentication: H });
+test('control history permits unchanged data and append-only growth without mutating either input', () => {
+  const previous = controlHistory([1]), current = controlHistory([1, 2]), before = JSON.stringify({ previous, current });
+  current.authentication = B;
+  const frozen = JSON.stringify({ previous, current });
+  assert.equal(operationControlHistoryExtends(previous, previous), true);
+  assert.equal(operationControlHistoryExtends(previous, current), true);
+  assert.equal(operationControlHistoryExtends(current, controlHistory([1, 2, 3])), true);
+  assert.equal(JSON.stringify({ previous, current }), frozen);
+  assert.notEqual(before, frozen, 'outer MAC data differs; the reader does not authenticate it');
+});
+test('rewritten, reordered or removed known attempts refuse even with structurally valid outer data', () => {
+  const previous = controlHistory([1, 2]);
+  for (const current of [controlHistory([9, 2, 3]), controlHistory([2, 1, 3]), controlHistory([1])])
+    assert.equal(operationControlHistoryExtends(previous, current), false);
+  const revised = controlHistory([1, 2, 3]); revised.attempts[1].inventory = { substituted: true };
+  assert.equal(operationControlHistoryExtends(previous, revised), false);
+});
+test('every appended attempt consumes one existing revision without rewind or skipped counters', () => {
+  const previous = controlHistory([1]), current = controlHistory([1, 2]);
+  for (const revision of [0, 1, 3, 10]) {
+    assert.equal(operationControlHistoryExtends(previous, { ...current, revision }), false);
+  }
+  assert.equal(operationControlHistoryExtends(previous, { ...previous, revision: 2 }), false);
+});
+test('foreign operations, key identities and undeclared versions cannot extend a control history', () => {
+  const previous = controlHistory([1]), current = controlHistory([1, 2]);
+  for (const replacement of [{ operation_id: 'op_' + '2'.repeat(40) }, { key_id: B },
+    { contract_version: 'process-operation-control-intent.v2' }])
+    assert.equal(operationControlHistoryExtends(previous, { ...current, ...replacement }), false);
+});
+test('the existing 32-attempt bound remains closed and cannot be refunded by truncation', () => {
+  const full = controlHistory(Array.from({ length: 32 }, (_, i) => i + 1));
+  assert.equal(operationControlHistoryExtends(controlHistory([1]), full), true);
+  assert.equal(operationControlHistoryExtends(full, controlHistory(Array.from({ length: 33 }, (_, i) => i + 1))), false);
+  assert.equal(operationControlHistoryExtends(full, controlHistory([1])), false);
+});
+test('unknown permission fields and malformed records never supply control continuity', () => {
+  const previous = controlHistory([1]);
+  for (const current of [null, [], {}, { ...previous, permits_effects: true },
+    { ...previous, attempts: [] }, { ...previous, authentication: 'not-a-mac' }])
+    assert.equal(operationControlHistoryExtends(previous, current), false);
+  assert.equal(operationControlHistoryExtends(null, previous), false);
+});
+console.log(JSON.stringify({ status: 'PASS', checks, scope: 'pure-v2-contracts-structural-prefix-and-control-history-data',
   source_authentication: 'NOT_PROVEN_BY_PURE_CONTRACTS', continuation_execution: 'NOT_PROVEN_BY_PURE_CONTRACTS',
   Native_calls: 0, full_standard_workflow: false }));

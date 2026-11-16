@@ -7,7 +7,7 @@ import { createProcessDispatchRecordStore } from "../../adapters/runtime/process
 import { observeLocalProcess, observeLocalProcessOwner } from "../../adapters/runtime/local-process-identity.mjs";
 import { assertProcessDispatchRecord } from "../../core/workflow/process-dispatch-record.mjs";
 import { assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
-import { assertIncidentContinuationPlan, assertIncidentContinuationDisposition, operationDispositionResultLimit } from "../../core/workflow/process-operation-disposition.mjs";
+import { assertIncidentContinuationPlan, assertIncidentContinuationDisposition, operationDispositionResultLimit, operationControlHistoryExtends } from "../../core/workflow/process-operation-disposition.mjs";
 import { prIncidentCloseOperation } from "../../core/workflow/standard-pr-incident-close.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
@@ -534,14 +534,19 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       await onBoundary("disposition_fence_acquired", id);
       const auditGrant = { ...grant, verification: await verifyGrant(grant, signal) };
       observed = fresh(lease);
+      let observedControl = heldControl;
       const assertCurrent = () => {
         currentConsent(plan, grant, signal); fence.assert(lease);
-        if (shadowHash(controls.read(id).record) !== shadowHash(heldControl)
+        const currentControl = readControls(id).record;
+        if (!operationControlHistoryExtends(observedControl, currentControl)
           || readInstance(plan.instance_id).instance_sha256 !== plan.instance_sha256
           || shadowHash(readOperation(id).record) !== plan.journal_sha256
           || shadowHash(readDispatch(id, initialRecord).record) !== plan.dispatch_sha256
           || shadowHash(readAuthority()) !== plan.authority_sha256 || artifacts.localOwnerPending())
           fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+        // Preserve every authenticated attempt already observed. A later proposal
+        // is data; it cannot revoke this exact held lease or supply permission.
+        observedControl = currentControl;
       };
       let result;
       if (pending) {

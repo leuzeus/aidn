@@ -598,3 +598,13 @@ ceiling. These private contracts belong to the existing handoff digest surface
 and create no canonical record, store, table, projection or shared method.
 Production independent-discovery wiring, canonical packet CAS/receipt and
 ordinary handoff entry remain separate work.
+
+
+
+A known-partial continuation authenticates every current control-intent record
+and its nested subjects, retaining the exact ordered prefix already observed
+within the command. Valid appends cannot revoke an otherwise valid held lease;
+rewrites, reordering, truncation and revision inconsistency refuse. A concurrent
+proposal cannot acquire an active owner’s resource. Current operator permission,
+source, instance/journal checks, physical ownership and business CAS remain
+independent. This adds no permission cache, durable store or preparation-age cap.
