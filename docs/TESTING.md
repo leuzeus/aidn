@@ -6891,3 +6891,15 @@ The publication component also revokes the independent source at the actual
 pre-CAS boundary. It must preserve packet content/metadata and release its unused
 owner. Private resource-capability fixtures distinguish this current issuer
 check from complete ownership/resource closure, and retain expiry/cancellation.
+
+### Required agentic registry: 372 cases
+
+The exact ordered registry retains its historical prefixes through 366 cases.
+Three real-child continuation cases add the `disposition_receipted` boundary in
+FILES, DUAL and DB-only (369); three canonical packet-publication component cases
+complete 372. Prefix hashes and exact argv assertions reject removal, substitution
+or reordering, including the original 56 preparation-age regression selectors.
+The existing dispatcher protocol, absence of invented deadlines, finite Native
+grants and gate families are unchanged. `--manifest-only` verifies registry
+structure only; policy/component results never establish full372 execution,
+complete handoff, full A6, genuine Native or installed qualification.

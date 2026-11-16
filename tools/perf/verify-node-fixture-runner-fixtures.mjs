@@ -23,7 +23,7 @@ assert.deepEqual(manifest.cases.slice(194, 197), [
   ["tools/perf/verify-standard-pr-redelivery-fixtures.mjs", "--mode=files", "--aged-plan"],
 ]);
 console.log("PASS accepted194 cases retain their original argv and order modulo explicit age selectors with three exact additions");
-assert.equal(manifest.cases.length, 318);
+assert.equal(manifest.cases.length, 372);
 assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 197))).digest("hex"),
   "47b229353b3929aa0b52623f688b46296517e513a331a68060c4c5a0190c62f4");
 console.log("PASS accepted197 exact argv and order are preserved before twelve R05 objective components");
@@ -125,16 +125,394 @@ assert.deepEqual(manifest.cases.slice(315, 316), [["tools/perf/verify-standard-p
 assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 316))).digest("hex"),
   "14b2088e4e726544139edabf82a3fb7bfc89c024e580579e5939dbe5b016cd0b");
 console.log("PASS frozen316 preserves all315 commands and the published L1 no-incident regression");
-assert.deepEqual(manifest.cases.slice(316), [
+assert.deepEqual(manifest.cases.slice(316, 318), [
   ["tools/perf/verify-standard-pr-review-reply-fixtures.mjs", "--case=external-premerge", "--incident-receipt-loss"],
   ["tools/perf/verify-standard-pr-review-reply-fixtures.mjs", "--case=external-pretriage-session", "--incident-receipt-loss"],
 ]);
-assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases)).digest("hex"),
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 318))).digest("hex"),
   "0a973f71172b6cf10d9f7844c5c60304e2c85f3efa65e84a40ebd74e44d54c80");
-console.log("PASS current318 preserves the complete316 prefix and appends both published cold receipt-loss recoveries");
+console.log("PASS frozen318 preserves the complete316 prefix and appends both published cold receipt-loss recoveries");
+assert.deepEqual(manifest.cases.slice(318, 322), [
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-receipt-loss",
+    "--incident-state-mode=db-only"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-pretriage-session",
+    "--incident-receipt-loss",
+    "--incident-state-mode=db-only"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-receipt-loss",
+    "--incident-state-mode=dual"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-pretriage-session",
+    "--incident-receipt-loss",
+    "--incident-state-mode=dual"
+  ]
+]);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 322))).digest("hex"),
+  "b1078c49aa9e8257e30834b8833a4127d6e41d9c2fe5d498a911586b5197f01f");
+console.log("PASS first322 retains all frozen318 commands and four exact published SQLite receipt-loss cases");
+assert.deepEqual(manifest.cases.slice(322, 326), [
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-pretriage-session",
+    "--incident-partial-write"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-state-mode=dual"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-state-mode=db-only"
+  ]
+]);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 326))).digest("hex"),
+  "46b40c6932c7d854208a01ca0a043588da308f95f5128b70db73f4cb340bbef3");
+console.log("PASS frozen326 preserves both FILES partial-receipt targets and the DUAL/db-only partial-receipt cases");
+assert.deepEqual(manifest.cases.slice(326, 332), [
+  [
+    "tools/perf/verify-standard-pr-incident-continuation-contract-fixtures.mjs"
+  ],
+  [
+    "tools/perf/verify-standard-artifact-disposition-owner-fixtures.mjs"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-partial-continuation"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-state-mode=dual"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-state-mode=db-only"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-pretriage-session",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-continuation-entry"
+  ]
+]);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 332))).digest("hex"),
+  "8898cc06ac401296c9bcd4321c52d12b9d2862b5dd6c350d955d566901d587d0");
+console.log("PASS current332 appends closed continuation contracts, borrowed ownership and four exact common-host/ordinary-entry scenarios");
+assert.deepEqual(manifest.cases.slice(332, 335), [
+  [
+    "tools/perf/verify-standard-disposition-acceptance-control-fixtures.mjs",
+    "files"
+  ],
+  [
+    "tools/perf/verify-standard-disposition-acceptance-control-fixtures.mjs",
+    "dual"
+  ],
+  [
+    "tools/perf/verify-standard-disposition-acceptance-control-fixtures.mjs",
+    "db-only"
+  ]
+]);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 335))).digest("hex"), "4300790572b00aae9a0eec42f911105f7023487dbefb9d171915aeb236b01ed2");
+console.log("PASS current335 preserves exact332 and requires three accepted-control backend commands");
+assert.deepEqual(manifest.cases.slice(335, 338), [
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-continuation-cut=disposition_recorded"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-state-mode=dual",
+    "--incident-continuation-cut=disposition_recorded"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-state-mode=db-only",
+    "--incident-continuation-cut=disposition_recorded"
+  ]
+]);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 338))).digest("hex"), "031bd9c885d94d0ba29715057365a72d2bfbeef29cc09ae7d807fc46bf712261");
+console.log("PASS current338 preserves exact335 and requires three captured-result cold adoption commands");
+assert.deepEqual(manifest.cases.slice(338, 347), [
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-continuation-race=reserved"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-continuation-race=active-owner"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-state-mode=dual",
+    "--incident-continuation-race=reserved"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-state-mode=dual",
+    "--incident-continuation-race=active-owner"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-state-mode=db-only",
+    "--incident-continuation-race=reserved"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-state-mode=db-only",
+    "--incident-continuation-race=active-owner"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-continuation-race=active-owner",
+    "--incident-continuation-history=rewrite"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-continuation-race=active-owner",
+    "--incident-continuation-history=reorder"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-premerge",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-continuation-race=active-owner",
+    "--incident-continuation-history=truncate"
+  ]
+]);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 347))).digest("hex"), "3c0d23996b92b2c9c4e802da66df7d8ca104493be75ed7c775ea35bfd760f96d");
+console.log("PASS current347 preserves exact338 and adds two actual-controller schedules on three backends plus three signed-history refusals");
+assert.deepEqual(manifest.cases.slice(347, 353), [
+  [
+    "tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs",
+    "files"
+  ],
+  [
+    "tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs",
+    "dual"
+  ],
+  [
+    "tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs",
+    "db-only"
+  ],
+  [
+    "tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs",
+    "files",
+    "--reconciled"
+  ],
+  [
+    "tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs",
+    "dual",
+    "--reconciled"
+  ],
+  [
+    "tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs",
+    "db-only",
+    "--reconciled"
+  ]
+]);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 353))).digest("hex"), "48fd2653c0d665b4482559dbe7e65bf03552ec66eb4934893ce8ff8df1ed00a9");
+console.log("PASS current353 preserves exact347 and requires ordinary and authenticated reconciled Native closure reads on all three backends");
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 353))).digest("hex"), "48fd2653c0d665b4482559dbe7e65bf03552ec66eb4934893ce8ff8df1ed00a9");
+assert.deepEqual(manifest.cases.slice(353, 357), [
+  [
+    "tools/perf/verify-standard-handoff-resource-fixtures.mjs"
+  ],
+  [
+    "tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs",
+    "files",
+    "--reconciled",
+    "--handoff-resources"
+  ],
+  [
+    "tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs",
+    "dual",
+    "--reconciled",
+    "--handoff-resources"
+  ],
+  [
+    "tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs",
+    "db-only",
+    "--reconciled",
+    "--handoff-resources"
+  ]
+]);
+console.log("PASS current357 preserves exact353 and requires current-resource contracts and real mixed reads on all three backends");
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 357))).digest("hex"), "50a1f439985709718e9a424bb5cb31f024adbb797a7658eed178962dba88de9a");
+assert.deepEqual(manifest.cases.slice(357, 360), [
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-pretriage-session",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-state-mode=files",
+    "--incident-continuation-cut=disposition_acceptance_committed"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-pretriage-session",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-state-mode=dual",
+    "--incident-continuation-cut=disposition_acceptance_committed"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-pretriage-session",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-state-mode=db-only",
+    "--incident-continuation-cut=disposition_acceptance_committed"
+  ]
+]);
+console.log("PASS current360 preserves exact357 and requires accepted v2 control retirement through ordinary entry on all three backends");
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 360))).digest("hex"), "1c2cbe990e38402e9b0fe2c81b9b84e38f773e49f14d2b5d1ba39a4bd4504ef8");
+assert.deepEqual(manifest.cases.slice(360, 366), [
+  [
+    "tools/perf/verify-standard-handoff-context-fixtures.mjs",
+    "files"
+  ],
+  [
+    "tools/perf/verify-standard-handoff-context-fixtures.mjs",
+    "dual"
+  ],
+  [
+    "tools/perf/verify-standard-handoff-context-fixtures.mjs",
+    "db-only"
+  ],
+  [
+    "tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs",
+    "files",
+    "--reconciled",
+    "--handoff-resources",
+    "--handoff-context"
+  ],
+  [
+    "tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs",
+    "dual",
+    "--reconciled",
+    "--handoff-resources",
+    "--handoff-context"
+  ],
+  [
+    "tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs",
+    "db-only",
+    "--reconciled",
+    "--handoff-resources",
+    "--handoff-context"
+  ]
+]);
+console.log("PASS current366 preserves exact360 and requires canonical context components and actual mixed reads on all three backends");
+
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 366))).digest("hex"), "cce61653f37577bbc5abc0a27b5e23fa6342a62cff180b7789772c53297ac24f");
+assert.deepEqual(manifest.cases.slice(366, 369), [
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-pretriage-session",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-state-mode=files",
+    "--incident-continuation-cut=disposition_receipted"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-pretriage-session",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-state-mode=dual",
+    "--incident-continuation-cut=disposition_receipted"
+  ],
+  [
+    "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
+    "--case=external-pretriage-session",
+    "--incident-partial-write",
+    "--incident-partial-continuation",
+    "--incident-state-mode=db-only",
+    "--incident-continuation-cut=disposition_receipted"
+  ]
+]);
+console.log("PASS current369 preserves exact366 and requires the receipted continuation cut on all three backends");
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 369))).digest("hex"), "f48f7108087de121485f292663811f45ee15c9a44b00b2100467ea832e84ed7d");
+assert.deepEqual(manifest.cases.slice(369), [
+  [
+    "tools/perf/verify-standard-handoff-publication-fixtures.mjs",
+    "files"
+  ],
+  [
+    "tools/perf/verify-standard-handoff-publication-fixtures.mjs",
+    "dual"
+  ],
+  [
+    "tools/perf/verify-standard-handoff-publication-fixtures.mjs",
+    "db-only"
+  ]
+]);
+console.log("PASS current372 preserves exact369 and requires canonical packet publication on all three backends");
+
 if (process.argv.includes("--manifest-only")) {
-  console.log(JSON.stringify({ status: "PASS", checks: 8, scope: "historical prefixes, unchanged316 cases and both published cold receipt-loss recoveries only",
-    manifest_cases: 318, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
+  console.log(JSON.stringify({ status: "PASS", checks: 22, scope: "frozen326/332/335/338/347/353/357/360/366/369 prefixes plus receipted continuation and canonical publication",
+    manifest_cases: 372, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
   process.exit(0);
 }
 
