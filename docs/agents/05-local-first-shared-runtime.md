@@ -632,9 +632,9 @@ the write. Confirmed publication releases its own owner. Uncertainty after CAS
 retains it and blocks another publication. Newly created packets keep the
 existing other/normative/handoff_packet classification.
 
-Packet persistence is one step. The common host still needs to record its normal
-operation receipt, reobserve closure after release and route the receiving agent
-through ordinary handoff admission. The candidate performs no shared relay sync,
+Packet persistence is one step. The common host retains its normal operation
+receipt. Closure must then be reobserved after release and the receiving agent
+routed through ordinary handoff admission. The candidate performs no shared relay sync,
 Native allocation, legacy filesystem-writer call or preparation-age check. Its
 projection uses the existing role/transition policy and canonical field parser.
 
@@ -660,3 +660,18 @@ operation preparation as well as dispatch. An already cancelled packet
 publication stops before independent observation or common intent staging.
 Cancellation during observation reaches the actual source await and stops
 before verification, current grant, owner acquisition or packet CAS.
+
+A captured completed packet publication may recover its missing common receipt
+after the exact original producer terminates and releases its owner/fence.
+The observer reads the configured canonical backend and checks the original
+context, content and metadata; FILES/DUAL visible postimages must match and
+DB-only creates no projection. It does not call discovery, renew an old source
+grant or replay the packet writer. Current disposition consent is separate.
+The original capture stays unchanged. Held UNKNOWN still requires its own
+explicit reconciliation and remains unconfirmed by this profile.
+
+The common operation implementation digest also covers its handoff adapter,
+writer, context/resource readers, canonical projection and closed contracts.
+Those dependency bytes are checked independently of the Native global digest.
+This fills the existing source-pin coverage; it adds no new permission or age
+condition. Historical records retain their original implementation identities.

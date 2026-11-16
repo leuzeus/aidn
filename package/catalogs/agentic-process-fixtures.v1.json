@@ -1883,6 +1883,18 @@
     [
       "tools/perf/verify-standard-handoff-operation-fixtures.mjs",
       "db-only"
+    ],
+    [
+      "tools/perf/verify-standard-handoff-returned-receipt-fixtures.mjs",
+      "files"
+    ],
+    [
+      "tools/perf/verify-standard-handoff-returned-receipt-fixtures.mjs",
+      "dual"
+    ],
+    [
+      "tools/perf/verify-standard-handoff-returned-receipt-fixtures.mjs",
+      "db-only"
     ]
   ]
 }

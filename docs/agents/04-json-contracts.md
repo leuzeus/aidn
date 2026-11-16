@@ -1029,3 +1029,18 @@ claim, preview MAC, final own intent and signed dispatch before comparing the
 prepared inventory. Completed output confirms packet persistence only; its
 complete-resource-closure and handoff/effect permission fields remain false.
 The published full IR route and post-release completion are separate work.
+
+The completed `handoff_packet_publish` returned-capture profile reuses the closed
+v1 disposition plan and captured common output without adding fields or
+converting history. Only a terminated producer with one exact released owner,
+intention and fence can be confirmed. The fixed callback joins the original
+outer/inner plans, signed request, canonical context and packet content/metadata
+plus required projection. It grants no handoff permission or full closure.
+Separate current disposition consent may append the original captured receipt
+once; publication is not rerun. Held UNKNOWN and incomplete captures refuse.
+
+The common operation implementation digest also covers its handoff adapter,
+writer, context/resource readers, canonical projection and closed contracts.
+Those dependency bytes are checked independently of the Native global digest.
+This fills the existing source-pin coverage; it adds no new permission or age
+condition. Historical records retain their original implementation identities.

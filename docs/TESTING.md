@@ -6884,26 +6884,28 @@ permission and independent discovery are controlled capabilities; no Native or
 Human actor is launched. The tests distinguish packet persistence from complete
 handoff, retain an uncertain post-CAS owner and require later independent
 resource closure. Existing issuer expiry is enforced; unchanged preparation age
-alone creates no refusal. Common receipt/ordinary IR routing, production
-discovery and genuine Native/installed qualification remain unproven.
+alone creates no refusal. This private-port corpus alone establishes neither
+common receipts nor ordinary IR routing, production discovery or genuine
+Native/installed qualification.
 
 The publication component also revokes the independent source at the actual
 pre-CAS boundary. It must preserve packet content/metadata and release its unused
 owner. Private resource-capability fixtures distinguish this current issuer
 check from complete ownership/resource closure, and retain expiry/cancellation.
 
-### Required agentic registry: 375 cases
+### Required agentic registry: 378 cases
 
 The exact ordered registry retains its historical prefixes through 366 cases.
 Three real-child continuation cases add the `disposition_receipted` boundary in
 FILES, DUAL and DB-only (369); three canonical packet-publication component cases
 complete the historical 372 prefix. Three common signed packet-publication receipt
-cases require FILES, DUAL and DB-only, bringing the registry to 375.
+cases require FILES, DUAL and DB-only, retaining the exact 375 prefix.
+Three captured packet-receipt recovery cases add those same backends for 378.
 Prefix hashes and exact argv assertions reject removal, substitution
 or reordering, including the original 56 preparation-age regression selectors.
 The existing dispatcher protocol, absence of invented deadlines, finite Native
 grants and gate families are unchanged. `--manifest-only` verifies registry
-structure only; policy/component results never establish full375 execution,
+structure only; policy/component results never establish full378 execution,
 complete handoff, full A6, genuine Native or installed qualification.
 
 ### Common packet-publication receipt candidate
@@ -6924,3 +6926,27 @@ cancelled read/write steps refuse before discovery, while cancellation during
 the real source await stops before verification. Project/control file trees,
 instance hash, empty Native journal, absent packet and released owner are checked.
 The resource observer remains controlled and no Native client starts.
+
+### Captured packet receipt recovery
+
+Run `node tools/perf/verify-standard-handoff-returned-receipt-fixtures.mjs files`
+(and `dual` or `db-only`). Actual deterministic Node producers exit 42 after
+a returned completed capture or a post-CAS UNKNOWN. The fixed completed profile
+requires a terminated producer, one released original owner/fence, authenticated
+input/plan/output, unchanged canonical context and exact packet content/metadata
+and required projection. Controlled content, metadata-only and DUAL projection
+conflicts refuse. No discovery capability is supplied to the cold host.
+
+Separate current v2 consent recovers the exact original output and one receipt;
+ordinary common acceptance, duplicate delivery and the same-reducer replay/SIM
+perform no packet replay. An unchanged day-old preparation remains admissible.
+A held UNKNOWN stays held with no new consent or receipt. Original discovery and
+operator identity remain fixture capabilities; no Native client is started.
+Post-release complete closure, ordinary published IR routing, held-UNKNOWN
+recovery and genuine Native/Human/installed/provider qualification remain due.
+
+The FILES captured-recovery case first changes writer, adapter and core-reader
+bytes in memory only and checks that the actual common binding digest changes.
+The source checkout is not modified. This regression detects missing dependency
+coverage independently of the global Native configuration pin. Replay/SIM omits
+absent optional parameters while preserving the instance initial facts.

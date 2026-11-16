@@ -4731,3 +4731,26 @@ Packet preparation uses the existing publisher/resource cancellation checks
 before source observation and after awaited reads; dispatch retains its existing
 signal. This fixes signal forwarding without a new deadline, authority, store,
 public contract or automatic historical transition.
+
+## Captured packet-publication receipt recovery, 2026-11-16
+
+The fixed completed-return profile joins the original signed dispatch, exact
+released owner/intention/fence and terminated producer to the authenticated
+outer/inner packet plans and current canonical context/content/metadata. Required
+visible postimages must still match. It reuses the existing v1 disposition
+records, fresh consent and common receipt/acceptance mechanism. No store, JSON
+field, shared synchronization, historical rewrite or preparation-age ceiling is
+added. Its read-only observer supplies no permission or global resource closure.
+
+Recovery appends the captured output once without invoking the publisher or
+independent discovery again. A live producer, changed postimage/context, held
+owner, incomplete capture or UNKNOWN output refuses confirmation. Actual child
+termination and canonical stores are distinct from controlled operator/discovery
+fixtures. Full handoff routing, post-release closure and held-UNKNOWN recovery
+remain separate work under the original complete plan.
+
+The common operation implementation digest also covers its handoff adapter,
+writer, context/resource readers, canonical projection and closed contracts.
+Those dependency bytes are checked independently of the Native global digest.
+This fills the existing source-pin coverage; it adds no new permission or age
+condition. Historical records retain their original implementation identities.

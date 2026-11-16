@@ -1431,6 +1431,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     inventory: reconciliationInventory, dispositionSource, onBoundary: dispatchCheckpoint,
     confirmPrCheckpoint: (instance, record, output) => sessionPrCheckpoint?.confirmsOriginal(instance, record, output),
     confirmPrIncidentClose: (instance, record, output) => prIncidentClose.confirmsOriginal(instance, record, output),
+    confirmHandoffPublication: (instance, record, output) => handoffPublication.confirmsOriginal(instance, record, output),
     preparePrIncidentContinuation: (instance, record) => prIncidentClose.prepareContinuation(instance, record),
     applyPrIncidentContinuation: (instance, record, plan, options) => prIncidentClose.applyContinuation(instance, record, plan, options),
     confirmPrIncidentContinuation: (instance, record, output) => prIncidentClose.confirmsContinuation(instance, record, output),

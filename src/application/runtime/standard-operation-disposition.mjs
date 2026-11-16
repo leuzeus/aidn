@@ -89,7 +89,7 @@ const ownerPlanSha = record => record.intent.binding_ref === prIncidentCloseOper
     ? record.preview.prepared?.plan?.packet_plan_sha256 : record.preview.prepared?.plan_sha256;
 
 export function createStandardOperationDisposition({ targetRoot, stateMode, signer, artifacts, readOperation,
-  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, confirmPrCheckpoint, confirmPrIncidentClose, preparePrIncidentContinuation, applyPrIncidentContinuation, confirmPrIncidentContinuation, confirmInterruptedReopen,
+  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, confirmPrCheckpoint, confirmPrIncidentClose, confirmHandoffPublication, preparePrIncidentContinuation, applyPrIncidentContinuation, confirmPrIncidentContinuation, confirmInterruptedReopen,
   onBoundary = async () => {}, onLocalResource = () => {}, now = Date.now }) {
   const dispatches = createProcessDispatchRecordStore({ targetRoot, stateMode });
   const acceptance = new AsyncLocalStorage();
@@ -212,6 +212,22 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       } catch {
         return 'unknown';
       }
+    }
+    if (id === handoffPublicationOperation) {
+      const pendingReceipt = record.phase === 'dispatching' && record.results.length === 0;
+      const receipted = record.phase === 'receipted' && record.results.length === 1
+        && shadowHash(record.results[0].output) === capsule.output_sha256
+        && record.results[0].receipt.output_sha256 === capsule.output_sha256
+        && record.results[0].receipt.outcome === 'completed' && record.results[0].receipt.effect_status === 'confirmed';
+      if (!(pendingReceipt || receipted) || record.preview.binding.effect_class !== 'mutating'
+        || record.preview.binding.executor_kind !== 'deterministic' || capsule.contract_version !== 'process-dispatch-record.v2'
+        || capsule.local_owner_intentions.length !== 1 || capsule.leases.length !== 1
+        || capsule.process_identity.pid !== record.owner?.pid || capsule.leases[0].owner.pid !== record.owner.pid
+        || shadowHash(capsule.leases[0].resource_fence.process_identity) !== shadowHash(capsule.process_identity)
+        || observeLocalProcessOwner(capsule.process_identity) !== 'terminated'
+        || output.outcome !== 'completed' || output.effect_status !== 'confirmed') return 'unknown';
+      try { return confirmHandoffPublication?.(instance, record, output) === true ? 'confirmed_original' : 'unknown'; }
+      catch { return 'unknown'; }
     }
     if (!artifactProfiles.has(id)) return "unknown";
     if (output.effect_status === "no_effect" && capsule.leases.every(row => row.status === "released")) return "no_effect_original";

@@ -42,6 +42,16 @@ const correctionFiles = ["standard-reconciliation-inventory.mjs",
   new URL("../../core/workflow/standard-pr-correction-reopen.mjs", import.meta.url),
   ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-pr-correction-reopen-${kind}.v1.schema.json`, import.meta.url))];
 const files = [
+  // The common operation binding covers the writer, adapter, historical reader
+  // and closed contracts independently of the Native allocator's global pin.
+  "canonical-handoff-projection.mjs", "standard-handoff-context.mjs", "standard-handoff-resources.mjs",
+  "standard-handoff-publication.mjs", "standard-handoff-operation.mjs", "handoff-packet-projector-use-case.mjs",
+  ...["standard-handoff-context.mjs", "standard-handoff-resources.mjs", "standard-handoff-publication.mjs", "standard-handoff-operation.mjs"]
+    .map(name => new URL("../../core/workflow/" + name, import.meta.url)),
+  ...["standard-handoff-context.v1", "standard-handoff-resource-request.v1", "standard-handoff-resource-observation.v1", "standard-handoff-resource-result.v1",
+    "standard-handoff-publication-input.v1", "standard-handoff-publication-plan.v1", "standard-handoff-publication-output.v1",
+    "standard-handoff-operation-plan.v1", "standard-handoff-operation-output.v1"]
+    .map(name => new URL("../../core/contracts/workflow-definition/" + name + ".schema.json", import.meta.url)),
   ...["standard-spike-question.v2","human-spike-decision.v2","standard-spike-decision-output.v2","standard-spike-selection-output.v1","process-decision-inbox.v20","standard-mode-work-observation-output.v2"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
 "standard-cycle-prework-authority.mjs", "native-dispatch-provenance.mjs",
   new URL("../../core/workflow/native-dispatch-record.mjs", import.meta.url),

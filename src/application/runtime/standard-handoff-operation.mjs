@@ -1,12 +1,12 @@
 import { createStandardWorkflowArtifacts } from './standard-workflow-artifacts.mjs';
 import { createStandardHandoffResources } from './standard-handoff-resources.mjs';
-import { createStandardHandoffPublication } from './standard-handoff-publication.mjs';
+import { createStandardHandoffPublication, matchesCompletedHandoffPublication } from './standard-handoff-publication.mjs';
 import { createOperationJournalSigner } from '../../core/workflow/process-operation-journal.mjs';
 import { assertProcessDispatchRecord } from '../../core/workflow/process-dispatch-record.mjs';
 import { handoffInventoryMaterialSha256 } from '../../core/workflow/standard-handoff-resources.mjs';
 import { assertHandoffPublicationInput } from '../../core/workflow/standard-handoff-publication.mjs';
 import { assertHandoffOperationPlan, assertHandoffOperationPreparation, encodeHandoffPacketPlan, decodeHandoffPacketPlan,
-  handoffPublicationIntentPrefix, handoffPublicationOperation, handoffOperationResult } from '../../core/workflow/standard-handoff-operation.mjs';
+  handoffPublicationIntentPrefix, handoffPublicationOperation, handoffOperationResult, assertHandoffOperationOutput } from '../../core/workflow/standard-handoff-operation.mjs';
 import { shadowHash as H, freezeShadow } from '../../core/workflow/shadow-json.mjs';
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: 'no_effect' }); };
 const same = (a, b) => H(a) === H(b);
@@ -47,6 +47,41 @@ export function createStandardHandoffOperation({ targetRoot, configuration, read
       const plan = assertHandoffOperationPlan({ contract_version: 'standard-handoff-operation-plan.v1', operation_ref: handoffPublicationOperation,
         input, occurrence_id: occurrenceId, instance_resource: witness, ...encodeHandoffPacketPlan(prepared.plan) });
       return freezeShadow(assertHandoffOperationPreparation({ can_apply: true, plan, plan_sha256: H(plan) }));
+    },
+    confirmsOriginal(instance, record, output) {
+      instance = freezeShadow(structuredClone(instance));
+      const claimed = readClaimed(record.operation_id); signer.verify(claimed); signer.verify(claimed.preview);
+      if (!same(claimed, record)) fail('STANDARD_HANDOFF_OPERATION_CLAIM_CHANGED');
+      const prepared = assertHandoffOperationPreparation(record.preview.prepared);
+      if (!prepared.can_apply) return false;
+      const plan = prepared.plan, inner = decodeHandoffPacketPlan(plan), input = assertHandoffPublicationInput(record.preview.input);
+      if (!same(input, plan.input) || record.intent.occurrence_id !== plan.occurrence_id) fail('STANDARD_HANDOFF_OPERATION_CLAIM_CHANGED');
+      signer.verify(inner.resource_request); output = assertHandoffOperationOutput(output);
+      if (output.outcome !== 'completed' || output.effect_status !== 'confirmed'
+        || output.observations.plan_sha256 !== prepared.plan_sha256
+        || output.observations.packet_plan_sha256 !== plan.packet_plan_sha256
+        || output.observations.packet_sha256 !== inner.after_sha256
+        || output.observations.resource_material_sha256 !== inner.resource_material_sha256) return false;
+      const completed = record.phase === 'receipted' && record.results.length === 1
+        && same(record.results[0].output, output) && record.results[0].receipt.output_sha256 === H(output)
+        && record.results[0].receipt.intent_sha256 === H(record.intent)
+        && record.results[0].receipt.outcome === 'completed' && record.results[0].receipt.effect_status === 'confirmed'
+        && same(record.results[0].receipt.facts, output.facts);
+      if (!(record.phase === 'dispatching' && record.results.length === 0 || completed)) return false;
+      // Only this ephemeral view feeds the original own-intent comparison;
+      // the actual journal, receipt and historical output remain unchanged.
+      const originalClaim = completed ? { ...record, phase: 'dispatching', results: [] } : record;
+      const prefix = handoffPublicationIntentPrefix(instance, originalClaim), claimedSha = H(claimed);
+      if (prefix.instance_sha256 !== inner.context.instance_sha256) fail('STANDARD_HANDOFF_OPERATION_PREFIX_CHANGED');
+      const current = () => {
+        const actual = readCurrent(instance.instance_id), record = readClaimed(claimed.operation_id); signer.verify(record); signer.verify(record.preview);
+        if (!same(actual, instance) || H(record) !== claimedSha) fail('STANDARD_HANDOFF_OPERATION_CURRENT_CHANGED');
+        return prefix;
+      };
+      current();
+      const matches = matchesCompletedHandoffPublication({ targetRoot: artifacts.root, readCurrent: current, plan: inner,
+        packetMetadataSha256: output.observations.packet_metadata_sha256 });
+      current(); return matches;
     },
     async apply(instance, input, prepared, { operationId, assertAuthorized, assertAuthorizedCurrent, signal } = {}) {
       prepared = freezeShadow(structuredClone(assertHandoffOperationPreparation(prepared)));

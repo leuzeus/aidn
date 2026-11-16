@@ -13,6 +13,34 @@ const fail = code => { throw Object.assign(Error(code), { code, effect_status: '
 const equal = (a, b) => H(a) === H(b);
 const target = 'HANDOFF-PACKET.md';
 const contextWithoutPacket = ({ context_sha256, documents, ...body }) => ({ ...body, documents: documents.filter(row => row.path !== target) });
+function checkPublicationArtifacts(artifacts, context, plan, after = false, metadata = null) {
+  const current = context.inspect();
+  if (!equal(contextWithoutPacket(current), contextWithoutPacket(plan.context))) fail('STANDARD_HANDOFF_PUBLICATION_CONTEXT_CHANGED');
+  for (const row of plan.canonical_sources) if (row.path !== target) {
+    const [actual] = artifacts.readMany([row.path], { includeMetadata: true });
+    if (actual.sha256 !== row.sha256 || actual.metadata_sha256 !== row.metadata_sha256) fail('STANDARD_HANDOFF_PUBLICATION_SOURCE_CHANGED');
+  }
+  const [packet] = artifacts.readMany([target], { includeMetadata: true });
+  if (packet.sha256 !== (after ? plan.after_sha256 : plan.before_sha256)
+    || packet.metadata_sha256 !== (after ? metadata : plan.before_metadata_sha256)) fail('STANDARD_HANDOFF_PUBLICATION_PACKET_CHANGED');
+}
+
+// Read-only postimage observation. The fixed caller separately authenticates
+// the captured output, terminated producer, released owner and fresh consent.
+// This does not re-authorize or replay publication, nor prove resource closure.
+export function matchesCompletedHandoffPublication({ targetRoot, readCurrent, plan, packetMetadataSha256 }) {
+  assertHandoffPublicationPlan(plan);
+  if (packetMetadataSha256 !== null && !/^[a-f0-9]{64}$/.test(packetMetadataSha256 ?? '')) fail('STANDARD_HANDOFF_PUBLICATION_PACKET_CHANGED');
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot }), context = createStandardHandoffContext({ targetRoot, readCurrent });
+  checkPublicationArtifacts(artifacts, context, plan, true, packetMetadataSha256);
+  if (artifacts.describe().state_mode !== 'db-only') {
+    const visible = agentRunPhysicalPath(path.join(artifacts.root, 'docs/audit', target));
+    if (readAgentRunFile(visible, { json: false, maxBytes: STANDARD_ARTIFACT_MAX_BYTES }).sha256 !== plan.after_sha256)
+      fail('STANDARD_HANDOFF_PUBLICATION_PROJECTION_CHANGED');
+  }
+  return true;
+}
+
 // This is the canonical packet-write port. The common host must separately
 // retain its operation receipt and observe resource closure AFTER owner release
 // before declaring a complete handoff. No authored data supplies capabilities.
@@ -64,17 +92,7 @@ export function createStandardHandoffPublication({ targetRoot, readCurrent, reso
       resource_material_sha256: plan.resource_material_sha256, reason_code: reason, complete_resource_closure: false, permits_handoff: false, permits_effects: false,
       evidence_refs: confirmed ? [{ ref: 'docs/audit/' + target, sha256: plan.after_sha256 }] : [] }));
   }
-  function check(plan, after = false, metadata = null) {
-    const current = context.inspect();
-    if (!equal(contextWithoutPacket(current), contextWithoutPacket(plan.context))) fail('STANDARD_HANDOFF_PUBLICATION_CONTEXT_CHANGED');
-    for (const row of plan.canonical_sources) if (row.path !== target) {
-      const [actual] = artifacts.readMany([row.path], { includeMetadata: true });
-      if (actual.sha256 !== row.sha256 || actual.metadata_sha256 !== row.metadata_sha256) fail('STANDARD_HANDOFF_PUBLICATION_SOURCE_CHANGED');
-    }
-    const [packet] = artifacts.readMany([target], { includeMetadata: true });
-    if (packet.sha256 !== (after ? plan.after_sha256 : plan.before_sha256)
-      || packet.metadata_sha256 !== (after ? metadata : plan.before_metadata_sha256)) fail('STANDARD_HANDOFF_PUBLICATION_PACKET_CHANGED');
-  }
+  const check = (plan, after = false, metadata = null) => checkPublicationArtifacts(artifacts, context, plan, after, metadata);
   return Object.freeze({
     async prepare(input, { signal } = {}) {
       const prepared = await prepareAt(input, now(), resources.prepare(), signal);
