@@ -19,8 +19,9 @@ const sha = file => createHash('sha256').update(fs.readFileSync(file)).digest('h
 const git = (root, ...args) => execFileSync(gitExecutable, ['-C', root, '-c', 'core.hooksPath=NUL', ...args], { encoding: 'utf8', stdio: 'pipe', windowsHide: true }).trim();
 const token = 'fixture-secret-never-in-args', repository = { owner: 'fixture', name: 'repository', node_id: 'R_fixture' }, actor = { node_id: 'U_fixture', login: 'fixture-actor' };
 const environment = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^GIT_|^GH_|^GITHUB_/i.test(name)));
-let checks = 0; const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + name); };
-function fixture() {
+const asyncOnly = process.argv.includes('--async-only');
+let checks = 0; const test = async (name, fn) => { if (asyncOnly && !name.startsWith('async')) return; await fn(); checks++; console.log('PASS ' + name); };
+function fixture({ asynchronous = false } = {}) {
   const base = fs.mkdtempSync(path.join(parent, 'aidn-github-push-')); owned.push(base); const root = path.join(base, 'project'), remote = path.join(base, 'remote.git');
   fs.mkdirSync(root); fs.mkdirSync(remote); git(root, 'init', '-b', 'dev'); git(root, 'config', 'user.name', 'Fixture'); git(root, 'config', 'user.email', 'fixture@example.invalid');
   fs.mkdirSync(path.join(root, '.aidn')); fs.writeFileSync(path.join(root, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'files' } }));
@@ -29,7 +30,7 @@ function fixture() {
   git(remote, 'init', '--bare'); git(root, 'push', remote, 'HEAD:refs/heads/dev'); const initial = git(root, 'rev-parse', 'HEAD');
   git(root, 'switch', '-c', 'S001-host'); fs.writeFileSync(path.join(root, 'app.txt'), 'delivery\n'); git(root, 'add', 'app.txt'); git(root, 'commit', '-m', 'fixture delivery');
   const head = git(root, 'rev-parse', 'HEAD'), state = { actor: structuredClone(actor), repository_id: repository.node_id, push_permission: true, pushes: 0, calls: 0,
-    afterPush: null, beforePush: null, remoteFault: null, referenceFault: false };
+    afterPush: null, beforePush: null, beforeResumePush: null, remoteFault: null, referenceFault: false };
   const configuration = { targetRoot: root, gitExecutable, gitSha256: sha(gitExecutable), githubExecutable: process.execPath, githubSha256: sha(process.execPath), repository, actor, environment };
   const ref = branch => { const r = spawnSync(gitExecutable, ['--git-dir=' + remote, 'rev-parse', '--verify', 'refs/heads/' + branch], { encoding: 'utf8', windowsHide: true }); return r.status === 0 ? r.stdout.trim() : null; };
   const seams = { runGithub(_binary, args, options) {
@@ -61,7 +62,19 @@ function fixture() {
     if (action === 'push') { state.afterPush?.(); if (state.remoteFault) return { status: null, stdout: token, error: Error('synthetic timeout') }; }
     return result;
   } };
-  return { base, root, remote, state, configuration, seams, head, initial, ref, port: extra => createGithubSessionPush(configuration, { ...seams, ...extra }) };
+  const delayed = { asynchronous: true,
+    async runGithub(...args) { await new Promise(resolve => setImmediate(resolve)); await args[2].beforeResume?.(); return seams.runGithub(...args); },
+    async runRemoteGit(...args) {
+      await new Promise(resolve => setImmediate(resolve));
+      if (args[1].includes('push')) {
+        const prepared = args[1].find(arg => arg.startsWith('--git-dir='))?.slice(10);
+        assert(prepared && path.dirname(prepared) === parent && /^aidn-github-push-transport-[a-f0-9]{64}$/.test(path.basename(prepared)));
+        preparations.add(prepared); state.beforeResumePush?.();
+      }
+      await args[2].beforeResume?.(); return seams.runRemoteGit(...args);
+    } };
+  return { base, root, remote, state, configuration, seams, head, initial, ref, port: extra => createGithubSessionPush(configuration, { ...(asynchronous ? delayed : seams), ...extra }),
+    asyncPort: extra => createGithubSessionPush(configuration, { ...delayed, ...extra }) };
 }
 try {
   const f = fixture(); let ready;
@@ -196,6 +209,50 @@ try {
     const other = git(u.root, 'commit-tree', git(u.root, 'rev-parse', u.initial + '^{tree}'), '-p', u.initial, '-m', 'fixture remote successor');
     git(u.root, 'push', u.remote, other + ':refs/heads/S001-host');
     assert.equal(port.observeRemote('S001-host', { assertLocal }).remote_head, other); assert.equal(u.state.pushes, 0);
+  });
+  await test('async inspection shares the exact synchronous Git observation and confirms one real bare push', async () => {
+    const u = fixture(), historical = u.port(), delayed = u.asyncPort();
+    const expected = historical.inspect('S001-host'), actual = await delayed.inspect('S001-host'); assert.deepEqual(actual, expected);
+    const before = git(u.root, 'show-ref'), status = git(u.root, 'status', '--porcelain');
+    const result = await delayed.push(actual, { write: true, async assertAuthorized() {} });
+    assert.equal(result.effect_status, 'confirmed'); assert.equal(result.changed, true); assert.equal(u.state.pushes, 1); assert.equal(u.ref('S001-host'), u.head);
+    assert.equal(git(u.root, 'show-ref'), before); assert.equal(git(u.root, 'status', '--porcelain'), status);
+  });
+  await test('async suspended push rechecks current permission and preserves its unknown prepared transport', async () => {
+    const u = fixture({ asynchronous: true }), port = u.port(), observed = await port.inspect('S001-host'); let permitted = true;
+    u.state.beforeResumePush = () => { permitted = false; };
+    await assert.rejects(port.push(observed, { write: true, async assertAuthorized() { if (!permitted) throw Error('fixture revoked before resume'); } }),
+      { code: 'GITHUB_PUSH_RECONCILIATION_REQUIRED', effect_status: 'unknown' });
+    assert.equal(u.state.pushes, 0); assert.equal(u.ref('S001-host'), null);
+    const retained = [...preparations].find(directory => fs.existsSync(directory)
+      && JSON.parse(fs.readFileSync(path.join(directory, 'aidn-preparation.json'))).remote_identity_sha256 === observed.remote_identity_sha256);
+    assert(retained, 'unconfirmed transport preparation must remain available for explicit reconciliation');
+    await assert.rejects(port.push(observed, { write: true, assertAuthorized() {} }), { code: 'GITHUB_PUSH_RECONCILIATION_REQUIRED', effect_status: 'unknown' });
+    assert.equal(u.state.pushes, 0); assert.equal(u.ref('S001-host'), null); assert.equal(fs.existsSync(retained), true);
+  });
+  await test('async suspended push consumes the original execution budget before remote mutation', async () => {
+    let clock = 1793664000000; const u = fixture({ asynchronous: true }), port = u.port({ now: () => clock }), observed = await port.inspect('S001-host');
+    u.state.beforeResumePush = () => { clock += 60001; };
+    await assert.rejects(port.push(observed, { write: true, async assertAuthorized() {} }), { code: 'GITHUB_PUSH_RECONCILIATION_REQUIRED', effect_status: 'unknown' });
+    assert.equal(u.state.pushes, 0); assert.equal(u.ref('S001-host'), null);
+  });
+  await test('async loss of permission after a real bare ref update stays unknown without retry', async () => {
+    const u = fixture({ asynchronous: true }), port = u.port(), observed = await port.inspect('S001-host'); let permitted = true;
+    u.state.afterPush = () => { permitted = false; };
+    await assert.rejects(port.push(observed, { write: true, async assertAuthorized() { if (!permitted) throw Error('fixture revoked after push'); } }),
+      { code: 'GITHUB_PUSH_RECONCILIATION_REQUIRED', effect_status: 'unknown' });
+    assert.equal(u.state.pushes, 1); assert.equal(u.ref('S001-host'), observed.head);
+  });
+  await test('async already cancelled inspection performs no provider traffic', async () => {
+    const u = fixture({ asynchronous: true }), abort = new AbortController(); abort.abort();
+    await assert.rejects(u.port().inspect('S001-host', { signal: abort.signal }), { code: 'GITHUB_OBSERVATION_ABORTED' }); assert.equal(u.state.calls, 0);
+  });
+  await test('async remote-only observation preserves synchronous scope across an owned branch change', async () => {
+    const u = fixture(), before = u.port().inspect('S001-host'); git(u.root, 'switch', '-c', 'corrective/C001-review');
+    fs.writeFileSync(path.join(u.root, 'app.txt'), 'owned dirty metadata fixture\n');
+    const assertLocal = () => { assert.equal(git(u.root, 'branch', '--show-current'), 'corrective/C001-review'); assert.equal(git(u.root, 'rev-parse', 'HEAD'), before.head); };
+    const expected = u.port().observeRemote('S001-host', { assertLocal }), actual = await u.asyncPort().observeRemote('S001-host', { assertLocal });
+    assert.deepEqual(actual, expected); assert.equal(u.state.pushes, 0);
   });
   console.log(JSON.stringify({ status: 'PASS', checks, git_local_ancestry_lease_remote_and_application: 'ACTUAL', http_and_https_transports: 'DOUBLED',
     authenticated_actor_repository_responses: 'FIXTURE', admission_source: 'INJECTED_FIXTURE', real_github_network: 'NOT_RUN', full_standard_chain: 'NOT_RUN', native: 'NOT_RUN', installed_archive: 'NOT_RUN' }));

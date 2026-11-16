@@ -4,6 +4,7 @@ import os from 'node:os';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
+import { driveGithubObservation, driveGithubObservationAsync, runGithubObservationCommand } from './github-observation-transport.mjs';
 import { validateJsonSchema } from '../../core/contracts/json-schema-validator.mjs';
 import preparationSchema from '../../core/contracts/workflow-definition/github-push-preparation.v1.schema.json' with { type: 'json' };
 import { agentRunPhysicalPath } from '../../application/runtime/agent-run-configuration-service.mjs';
@@ -17,18 +18,21 @@ const oid = value => /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(value ?? '');
 // Only remote transports are replaceable for offline qualification. Local Git
 // inspection, ancestry and ref/index/worktree guards use actual Git.
 export function createGithubSessionPush({ targetRoot, gitExecutable, gitSha256, githubExecutable, githubSha256, repository, actor,
-  environment = process.env, hostContextSha256 = null }, { runGithub = spawnSync, runRemoteGit = spawnSync, now = Date.now } = {}) {
+  environment = process.env, hostContextSha256 = null }, { asynchronous = false, runGithub = asynchronous ? runGithubObservationCommand : spawnSync, runRemoteGit = asynchronous ? runGithubObservationCommand : spawnSync, now = Date.now } = {}) {
   const pattern = /^[a-f0-9]{64}$/;
   if (![gitExecutable, githubExecutable].every(name => path.isAbsolute(name ?? '')) || !pattern.test(gitSha256 ?? '') || !pattern.test(githubSha256 ?? '')
     || !repository || Object.keys(repository).sort().join(',') !== 'name,node_id,owner' || !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(repository.owner ?? '')
     || !/^[A-Za-z0-9_.-]{1,100}$/.test(repository.name ?? '') || ['.', '..'].includes(repository.name) || !/^[A-Za-z0-9_=-]{1,256}$/.test(repository.node_id ?? '')
-    || !actor || Object.keys(actor).sort().join(',') !== 'login,node_id' || !/^[A-Za-z0-9_=-]{1,256}$/.test(actor.node_id ?? '')
+    || typeof asynchronous !== 'boolean' || !actor || Object.keys(actor).sort().join(',') !== 'login,node_id' || !/^[A-Za-z0-9_=-]{1,256}$/.test(actor.node_id ?? '')
     || !/^[A-Za-z0-9][A-Za-z0-9-]{0,99}$/.test(actor.login ?? '') || ![runGithub, runRemoteGit, now].every(fn => typeof fn === 'function')
     || hostContextSha256 !== null && !pattern.test(hostContextSha256)
     || Object.keys(environment).some(name => /^GIT_/i.test(name))) fail('GITHUB_PUSH_HOST_CONFIGURATION_INVALID');
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
   const gitBinary = fs.realpathSync(gitExecutable), githubBinary = fs.realpathSync(githubExecutable), repo = structuredClone(repository), owner = structuredClone(actor);
   const transportCwd = path.dirname(gitBinary), temporary = agentRunPhysicalPath(os.tmpdir(), { directory: true });
+  const run = (binary, args, options) => (binary === githubBinary ? runGithub : runRemoteGit)(binary, args, options);
+  const drive = asynchronous ? (protocol, signal) => driveGithubObservationAsync(protocol, run, signal)
+    : protocol => driveGithubObservation(protocol, run);
   const remoteUrl = 'https://github.com/' + repo.owner + '/' + repo.name + '.git', prefix = 'repos/' + repo.owner + '/' + repo.name;
   const context = shadowHash({ profile: 'github-https-git.v1', root, gitBinary, gitSha256, githubBinary, githubSha256, repository: repo, actor: owner, remoteUrl,
     ...(hostContextSha256 === null ? {} : { host_context_sha256: hostContextSha256 }) });
@@ -53,32 +57,33 @@ export function createGithubSessionPush({ targetRoot, gitExecutable, gitSha256, 
     if (!Number.isFinite(elapsed) || elapsed < 0 || left <= 0) fail('GITHUB_PUSH_LIMIT');
     return left;
   }
-  function invoke(binary, args, state, env, remote = false, statuses = [0]) {
+  function* invoke(binary, args, state, env, remote = false, statuses = [0], beforeResume = null) {
     pinned(); const timeout = Math.min(30000, remaining(state));
     if (++state.calls > 24) fail('GITHUB_PUSH_LIMIT');
     let result;
-    try { result = (binary === githubBinary ? runGithub : remote ? runRemoteGit : spawnSync)(binary, args,
-      { cwd: remote ? transportCwd : root, env, encoding: 'utf8', shell: false, windowsHide: true, timeout, maxBuffer: 1048576, stdio: 'pipe' }); }
+    const options = { cwd: remote ? transportCwd : root, env, encoding: 'utf8', shell: false, windowsHide: true, timeout, maxBuffer: 1048576, stdio: 'pipe',
+      ...(asynchronous && beforeResume !== null ? { beforeResume } : {}) };
+    try { result = binary === githubBinary || remote ? (yield [binary, args, options]) : spawnSync(binary, args, options); }
     catch { fail('GITHUB_PUSH_TRANSPORT_UNAVAILABLE'); }
     if (!statuses.includes(result?.status) || result.signal || result.error || typeof result.stdout !== 'string' || Buffer.byteLength(result.stdout) > 1048576)
       fail('GITHUB_PUSH_TRANSPORT_UNAVAILABLE');
     pinned(); return result;
   }
-  function local(args, state, statuses = [0]) { return invoke(gitBinary, [...fixed, ...args], state, localEnv, false, statuses); }
+  function* local(args, state, statuses = [0]) { return yield* invoke(gitBinary, [...fixed, ...args], state, localEnv, false, statuses); }
   const transportArgs = (args, gitDir = null) => [fixed[0], ...fixed.slice(3), ...(gitDir ? ['--git-dir=' + gitDir] : []), ...args];
   function preparationPath(observed) {
     return path.join(temporary, 'aidn-github-push-transport-' + shadowHash({ context, branch: observed.branch, head: observed.head }));
   }
-  function prepareTransport(observed, state) {
+  function* prepareTransport(observed, state) {
     const directory = preparationPath(observed);
     try { fs.mkdirSync(directory); } catch (cause) {
       if (cause.code === 'EEXIST') throw Object.assign(Error('GITHUB_PUSH_PREPARATION_RECONCILIATION_REQUIRED'), { code: 'GITHUB_PUSH_PREPARATION_RECONCILIATION_REQUIRED', effect_status: 'unknown' });
       fail('GITHUB_PUSH_PREPARATION_UNAVAILABLE');
     }
     try {
-      const objects = agentRunPhysicalPath(local(['rev-parse', '--path-format=absolute', '--git-path', 'objects'], state).stdout.trim(), { directory: true });
+      const objects = agentRunPhysicalPath((yield* local(['rev-parse', '--path-format=absolute', '--git-path', 'objects'], state)).stdout.trim(), { directory: true });
       if (/[\r\n]/.test(objects)) fail('GITHUB_PUSH_OBJECT_DIRECTORY_INVALID');
-      invoke(gitBinary, ['-C', transportCwd, 'init', '--bare', '--template=', directory], state, localEnv);
+      yield* invoke(gitBinary, ['-C', transportCwd, 'init', '--bare', '--template=', directory], state, localEnv);
       const info = agentRunPhysicalPath(path.join(directory, 'objects/info'), { directory: true });
       fs.writeFileSync(path.join(info, 'alternates'), objects.replaceAll('\\', '/') + '\n', { flag: 'wx' });
       const manifest = { contract_version: 'github-push-preparation.v1',
@@ -100,79 +105,79 @@ export function createGithubSessionPush({ targetRoot, gitExecutable, gitSha256, 
       fs.rmSync(real, { recursive: true, force: false });
     } catch { throw Object.assign(Error('GITHUB_PUSH_PREPARATION_RECONCILIATION_REQUIRED'), { code: 'GITHUB_PUSH_PREPARATION_RECONCILIATION_REQUIRED', effect_status: 'unknown' }); }
   }
-  function api(endpoint, state, env) {
-    const result = invoke(githubBinary, ['api', '--hostname', 'github.com', '--method', 'GET', endpoint, '-H', 'Accept: application/vnd.github+json', '-H', 'X-GitHub-Api-Version: 2022-11-28'], state, env);
+  function* api(endpoint, state, env) {
+    const result = yield* invoke(githubBinary, ['api', '--hostname', 'github.com', '--method', 'GET', endpoint, '-H', 'Accept: application/vnd.github+json', '-H', 'X-GitHub-Api-Version: 2022-11-28'], state, env);
     try { return JSON.parse(result.stdout); } catch { fail('GITHUB_PUSH_PROVIDER_RESPONSE_INVALID'); }
   }
-  function credential(state) {
+  function* credential(state) {
     // Tokens are used only in child environments, never args, plans, receipts,
     // files or diagnostics. No credential helper/repository code is executed.
     const env = { ...environment, GH_HOST: 'github.com', GH_PROMPT_DISABLED: '1', GH_DEBUG: '', GH_FORCE_TTY: '', GH_PAGER: '' };
-    const token = invoke(githubBinary, ['auth', 'token', '--hostname', 'github.com'], state, env).stdout.trim();
+    const token = (yield* invoke(githubBinary, ['auth', 'token', '--hostname', 'github.com'], state, env)).stdout.trim();
     if (!/^[\x21-\x7e]{10,4096}$/.test(token)) fail('GITHUB_PUSH_CREDENTIAL_UNAVAILABLE');
-    const authenticated = { ...env, GH_TOKEN: token }, identity = api('user', state, authenticated), project = api(prefix, state, authenticated);
+    const authenticated = { ...env, GH_TOKEN: token }, identity = yield* api('user', state, authenticated), project = yield* api(prefix, state, authenticated);
     if (identity?.node_id !== owner.node_id || identity.login !== owner.login || project?.node_id !== repo.node_id
       || project.full_name !== repo.owner + '/' + repo.name || project.permissions?.push !== true) fail('GITHUB_PUSH_IDENTITY_CHANGED');
     return { github: authenticated, git: { ...localEnv, AIDN_GITHUB_AUTH_HEADER: 'AUTHORIZATION: basic ' + Buffer.from('x-access-token:' + token).toString('base64') } };
   }
-  function configuration(state) {
+  function* configuration(state) {
     // Scope-specific HTTP/credential settings or URL rewrites could override
     // the displayed destination/authentication. Refuse them before network I/O.
     // Query without our HTTP/credential overrides; the fixed args themselves
     // would otherwise make every configured checkout fail the check.
-    const raw = invoke(gitBinary, ['--literal-pathspecs', '-C', root, 'config', '--null', '--get-regexp', '^(url[.]|http[.]|credential[.]|remote[.].*[.](receivepack|uploadpack|proxy|pushoption)$)'], state, localEnv, false, [0, 1]);
+    const raw = yield* invoke(gitBinary, ['--literal-pathspecs', '-C', root, 'config', '--null', '--get-regexp', '^(url[.]|http[.]|credential[.]|remote[.].*[.](receivepack|uploadpack|proxy|pushoption)$)'], state, localEnv, false, [0, 1]);
     if (raw.status !== 1 || raw.stdout) fail('GITHUB_PUSH_TRANSPORT_CONFIGURATION_UNSUPPORTED');
   }
-  function ref(branch, state) {
+  function* ref(branch, state) {
     if (typeof branch !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,191}$/.test(branch)) fail('GITHUB_PUSH_BRANCH_INVALID');
-    const target = 'refs/heads/' + branch; local(['check-ref-format', target], state); return target;
+    const target = 'refs/heads/' + branch; yield* local(['check-ref-format', target], state); return target;
   }
-  function remoteHead(branch, target, state, credentials) {
-    const result = invoke(gitBinary, transportArgs(['--config-env=http.extraHeader=AIDN_GITHUB_AUTH_HEADER', 'ls-remote', '--refs', '--', remoteUrl, target]), state, credentials.git, true).stdout.trim();
+  function* remoteHead(branch, target, state, credentials) {
+    const result = (yield* invoke(gitBinary, transportArgs(['--config-env=http.extraHeader=AIDN_GITHUB_AUTH_HEADER', 'ls-remote', '--refs', '--', remoteUrl, target]), state, credentials.git, true)).stdout.trim();
     if (!result) return null;
     const rows = result.split(/\r?\n/), [head, name] = rows[0].split('\t');
     if (rows.length !== 1 || !oid(head) || name !== target) fail('GITHUB_PUSH_REMOTE_REF_INVALID');
-    const observed = api(prefix + '/git/ref/heads/' + encodeURIComponent(branch), state, credentials.github);
+    const observed = yield* api(prefix + '/git/ref/heads/' + encodeURIComponent(branch), state, credentials.github);
     if (observed?.ref !== target || observed.object?.type !== 'commit' || observed.object.sha !== head) fail('GITHUB_PUSH_REMOTE_REF_CHANGED');
     return head;
   }
-  function inspectLocal(branch, state) {
+  function* inspectLocal(branch, state) {
     const names = ['HEAD.lock', 'packed-refs.lock', 'config.lock'];
-    const paths = local(['rev-parse', ...names.flatMap(name => ['--git-path', name])], state).stdout.trimEnd().split(/\r?\n/);
+    const paths = (yield* local(['rev-parse', ...names.flatMap(name => ['--git-path', name])], state)).stdout.trimEnd().split(/\r?\n/);
     if (paths.length !== names.length || paths.some(file => !file
       || fs.existsSync(agentRunPhysicalPath(path.resolve(root, file), { missing: true })))) fail('GITHUB_PUSH_LOCAL_CONTEXT_BLOCKED');
     return localInspector().inspect({ source_branch: branch, target_branch: branch });
   }
-  function inspectInternal(branch, assertLocal = null) {
-    const state = budget(); configuration(state);
-    const localView = assertLocal ? inspectLocal(branch, state) : localInspector().inspect({ source_branch: branch, target_branch: branch });
+  function* inspectInternal(branch, assertLocal = null) {
+    const state = budget(); yield* configuration(state);
+    const localView = assertLocal ? (yield* inspectLocal(branch, state)) : localInspector().inspect({ source_branch: branch, target_branch: branch });
     if (!assertLocal && !localView.clean) fail('GITHUB_PUSH_LOCAL_CONTEXT_BLOCKED');
-    const target = ref(branch, state);
+    const target = yield* ref(branch, state);
     if (localView.current_ref !== target || localView.head !== localView.source_head || localView.source_symbolic
       || localView.target_symbolic || localView.lock_present || localView.source_lock_present) fail('GITHUB_PUSH_LOCAL_CONTEXT_BLOCKED');
     if (assertLocal) assertLocal(structuredClone(localView));
-    const credentials = credential(state), head = remoteHead(branch, target, state, credentials);
+    const credentials = yield* credential(state), head = yield* remoteHead(branch, target, state, credentials);
     if (head !== null && head !== localView.head) {
-      local(['cat-file', '-e', head + '^{commit}'], state);
-      if (local(['merge-base', '--is-ancestor', head, localView.head], state, [0, 1]).status !== 0) fail('GITHUB_PUSH_REMOTE_DIVERGED');
+      yield* local(['cat-file', '-e', head + '^{commit}'], state);
+      if ((yield* local(['merge-base', '--is-ancestor', head, localView.head], state, [0, 1])).status !== 0) fail('GITHUB_PUSH_REMOTE_DIVERGED');
     }
     if (assertLocal) {
-      const after = inspectLocal(branch, state); assertLocal(structuredClone(after));
+      const after = yield* inspectLocal(branch, state); assertLocal(structuredClone(after));
       if (shadowHash(after) !== shadowHash(localView)) fail('GITHUB_PUSH_LOCAL_CONTEXT_CHANGED');
     }
     pinned(); remaining(state);
     return { profile: 'github-https-git.v1', remote_identity_sha256: context, branch, ref: target, head: localView.head,
       remote_head: head, local_sha256: shadowHash(localView) };
   }
-  const inspect = branch => inspectInternal(branch);
-  function observeOwned(branch, { assertLocal } = {}) {
+  const inspect = (branch, { signal } = {}) => drive(inspectInternal(branch), signal);
+  function* observeOwned(branch, { assertLocal } = {}) {
     if (typeof assertLocal !== 'function') fail('GITHUB_PUSH_OWNED_OBSERVATION_REQUIRED');
-    return inspectInternal(branch, assertLocal);
+    return yield* inspectInternal(branch, assertLocal);
   }
-  function observeRemote(branch, { assertLocal } = {}) {
+  function* observeRemote(branch, { assertLocal } = {}) {
     if (typeof assertLocal !== 'function') fail('GITHUB_PUSH_OWNED_OBSERVATION_REQUIRED');
-    const state = budget(); configuration(state); const target = ref(branch, state);
-    assertLocal(); const credentials = credential(state), head = remoteHead(branch, target, state, credentials); assertLocal();
+    const state = budget(); yield* configuration(state); const target = yield* ref(branch, state);
+    assertLocal(); const credentials = yield* credential(state), head = yield* remoteHead(branch, target, state, credentials); assertLocal();
     return { profile: 'github-https-git.v1', remote_identity_sha256: context, branch, ref: target, remote_head: head };
   }
   pinned();
@@ -180,26 +185,33 @@ export function createGithubSessionPush({ targetRoot, gitExecutable, gitSha256, 
   // receives a dedicated host-owned bare configuration only after a grant.
   const outside = spawnSync(gitBinary, ['-C', transportCwd, 'rev-parse', '--absolute-git-dir'], { env: localEnv, encoding: 'utf8', shell: false, windowsHide: true, timeout: 10000, stdio: 'pipe' });
   if (outside.status !== 128 || outside.error || outside.signal) fail('GITHUB_PUSH_TRANSPORT_CWD_REQUIRED');
-  return Object.freeze({ inspect, observeOwned, observeRemote,
-    async push(observed, { write = false, assertAuthorized } = {}) {
+  return Object.freeze({ inspect,
+    observeOwned: (branch, { signal, ...input } = {}) => drive(observeOwned(branch, input), signal),
+    observeRemote: (branch, { signal, ...input } = {}) => drive(observeRemote(branch, input), signal),
+    async push(observed, { write = false, assertAuthorized, signal } = {}) {
       let attempted = false, confirmed = false, preparation = null;
       try {
         if (write !== true || typeof assertAuthorized !== 'function' || checkShadowJson(observed)) fail('GITHUB_PUSH_EXPLICIT_WRITE_REQUIRED');
         if (fs.existsSync(preparationPath(observed))) throw Object.assign(Error('GITHUB_PUSH_PREPARATION_RECONCILIATION_REQUIRED'), { code: 'GITHUB_PUSH_PREPARATION_RECONCILIATION_REQUIRED', effect_status: 'unknown' });
-        if (shadowHash(inspect(observed.branch)) !== shadowHash(observed)) fail('GITHUB_PUSH_PREVIEW_CHANGED');
+        const inspectCurrent = () => inspect(observed.branch, { signal });
+        const before = asynchronous ? await inspectCurrent() : inspectCurrent();
+        if (shadowHash(before) !== shadowHash(observed)) fail('GITHUB_PUSH_PREVIEW_CHANGED');
         await assertAuthorized();
-        if (shadowHash(inspect(observed.branch)) !== shadowHash(observed)) fail('GITHUB_PUSH_PREVIEW_CHANGED');
+        const after = asynchronous ? await inspectCurrent() : inspectCurrent();
+        if (shadowHash(after) !== shadowHash(observed)) fail('GITHUB_PUSH_PREVIEW_CHANGED');
+        if (asynchronous) await assertAuthorized();
         if (observed.remote_head === observed.head) return { ...observed, changed: false, effect_status: 'no_effect' };
-        const state = budget(); configuration(state); const credentials = credential(state);
-        if (remoteHead(observed.branch, ref(observed.branch, state), state, credentials) !== observed.remote_head) fail('GITHUB_PUSH_PREVIEW_CHANGED');
+        const state = budget(); await drive(configuration(state), signal); const credentials = await drive(credential(state), signal);
+        if ((await drive(remoteHead(observed.branch, await drive(ref(observed.branch, state), signal), state, credentials), signal)) !== observed.remote_head) fail('GITHUB_PUSH_PREVIEW_CHANGED');
         await assertAuthorized(); pinned();
-        preparation = prepareTransport(observed, state);
+        preparation = await drive(prepareTransport(observed, state), signal);
         await assertAuthorized();
         attempted = true;
-        invoke(gitBinary, transportArgs(['--config-env=http.extraHeader=AIDN_GITHUB_AUTH_HEADER', 'push', '--no-verify', '--porcelain',
-          '--force-with-lease=' + observed.ref + ':' + (observed.remote_head ?? ''), '--', remoteUrl, observed.head + ':' + observed.ref], preparation), state, credentials.git, true);
+        await drive(invoke(gitBinary, transportArgs(['--config-env=http.extraHeader=AIDN_GITHUB_AUTH_HEADER', 'push', '--no-verify', '--porcelain',
+          '--force-with-lease=' + observed.ref + ':' + (observed.remote_head ?? ''), '--', remoteUrl, observed.head + ':' + observed.ref], preparation), state, credentials.git, true, [0],
+        async () => { await assertAuthorized(); pinned(); remaining(state); }), signal);
         await assertAuthorized();
-        const current = inspect(observed.branch);
+        const current = asynchronous ? await inspectCurrent() : inspectCurrent();
         if (current.head !== observed.head || current.remote_head !== observed.head || current.local_sha256 !== observed.local_sha256
           || current.remote_identity_sha256 !== observed.remote_identity_sha256) throw Error('GITHUB_PUSH_POSTCONDITION_UNCONFIRMED');
         await assertAuthorized(); confirmed = true; return { ...current, changed: true, effect_status: 'confirmed' };

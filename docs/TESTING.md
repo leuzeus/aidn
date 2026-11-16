@@ -7153,3 +7153,25 @@ identity, exact preparation and one creation. Each must match a confirmed closed
 command in the live host capability; permission is checked before POST and again
 after suspended preparation. The original 60000 ms/24-call PR budget includes
 authentication and awaited checks. No genuine GitHub or Native proof follows.
+
+### Common synchronous and asynchronous GitHub push protocol
+
+The push port uses one generator protocol for historical synchronous transports
+and an explicitly selected asynchronous constructor interface. Local Git reads
+and ancestry/lock/index checks still use the real local inspector. Remote Git
+and provider requests can yield to the fixed host transport. Async observation
+methods accept cancellation without creating a network request when cancelled.
+
+The original inspection/execution budgets remain 60000 ms, at most 24 invocations
+and at most 30000 ms per command. The execution state is retained through credential
+reads, ref observation, isolated bare preparation and push. Current permission
+is rechecked after awaited re-preparation, before the push, after suspended
+preparation and after the effect. An attempted but unconfirmed push preserves
+UNKNOWN and its deterministic preparation for explicit reconciliation.
+
+Push fixtures compare exact sync/async observations on one real Git project,
+perform an actual local bare ref update through an asynchronous doubled HTTPS
+transport, and cover pre-resume permission loss, original-budget exhaustion,
+post-effect loss, cancelled observation and remote-only dirty-branch observation.
+This is controlled transport qualification, not genuine GitHub, Native or final
+all-provider/common-host resource closure proof.
