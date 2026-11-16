@@ -6863,6 +6863,16 @@ replacement lease. Tracked resource retirement and OS child exit remain separate
 from general A6, genuine Native, installed and full STANDARD qualification.
 
 
+The continuation cut selector also accepts `disposition_receipted` on the
+`external-pretriage-session` partial-continuation scenario, for each state mode.
+A real child exits 42 after the confirmation reaches the operation journal and
+before process acceptance or fence release. Cold application retains that exact
+confirmation without permission or business replay; ordinary acceptance separately
+requires its current authenticated grant and transfers the exact abandoned lease.
+The original UNKNOWN, metadata and confirmed traces stay unchanged. Duplicate
+acceptance and a stale ordinary action write nothing. This controlled fixture
+qualifies this boundary only; full A6 and genuine Native remain unproven.
+
 ## Canonical handoff packet publication candidate
 
 Run `node tools/perf/verify-standard-handoff-publication-fixtures.mjs files`
