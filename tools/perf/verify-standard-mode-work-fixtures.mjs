@@ -74,7 +74,10 @@ for (const [prefix, mode, disposition] of [["thinking", "THINKING", "thinking_co
     assert.equal(model.policies.find(row => row.id === node(prefix + "_session_closure_drift_report").policy_ref).mode, mode);
     assert.deepEqual(node(prefix + "_analysis_iteration").children, [prefix + "_analysis", prefix + "_observe", ...(prefix === "exploring" ? ["spike_admit"] : []), prefix + "_after_report"]);
     assert.equal(node(prefix + "_analysis_loop").until, prefix === "exploring" ? "mode_analysis_loop_complete" : "mode_analysis_completed");
-    assert.equal(node(prefix + "_continue_decide").binding_ref, "mode_work_continue_decision");
+    const continuation = node(prefix + "_continue_decide"), handoff = model.call_targets.find(row => row.model_id === "aidn-standard-mode-handoff");
+    assert.equal(continuation.kind, "call");
+    assert.deepEqual(continuation.target, { model_id: handoff.model_id, revision: handoff.revision, model_sha256: handoff.model_sha256 });
+    assert.equal(handoff.model.nodes.find(row => row.id === "mode_handoff_decide").binding_ref, "mode_work_continue_decision");
     assert.equal(node(prefix + "_admit").binding_ref, "mode_work_preflight");
     assert.equal(node(prefix + "_evaluate").binding_ref, "mode_work_evaluate");
     const policy = model.policies.find(row => row.id === node(prefix + "_analysis").policy_ref);
