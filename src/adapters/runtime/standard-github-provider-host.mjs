@@ -14,6 +14,7 @@ import { createGithubPullRequestOpen } from "../git-provider/github-pull-request
 import { createGithubWorkflowAsyncAdapter, createGithubPrContentAsyncAdapter, createGithubPrMergeAsyncAdapter, createGithubPrMergeEffectAsyncAdapter, createGithubPrReviewEventAsyncAdapter, createGithubPrReviewEffectsAsyncAdapter } from "../git-provider/github-workflow-adapter.mjs";
 import { createGithubReviewEvidenceAsyncAdapter, createGithubReviewContentAsyncAdapter } from "../git-provider/github-review-evidence.mjs";
 import { driveGithubObservation, driveGithubObservationAsync, runGithubObservationCommand } from "../git-provider/github-observation-transport.mjs";
+import { createGithubProcessTreeTransport } from "../git-provider/github-process-tree-transport.mjs";
 import { createLocalWorkflowPostMergeFetch } from "./local-workflow-post-merge-fetch.mjs";
 
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: "no_effect" }); };
@@ -32,8 +33,8 @@ function optionalFile(name, options) {
 // The caller is the private STANDARD host. The only dependency seam replaces
 // subprocess transports; the action, IR and project configuration select none.
 export function createStandardGithubProviderHost({ configuration, home, identity, environment }, {
-  runGithub = spawnSync, runGithubRead = runGithubObservationCommand, runGithubReply = runGithubObservationCommand,
-  runGithubResolution = runGithubObservationCommand, runGithubMerge = runGithubObservationCommand, runRemoteGit = spawnSync,
+  runGithub = spawnSync, runGithubRead, runGithubReply,
+  runGithubResolution, runGithubMerge, runRemoteGit = spawnSync,
 } = {}) {
   const manifest = path.join(home, identity + ".github.json");
   let snapshot, binding;
@@ -106,6 +107,17 @@ export function createStandardGithubProviderHost({ configuration, home, identity
   checkBinary(git); checkBinary(gh);
   const profile = profilePin(), local = shadowHash(repositoryBinding());
   const contextSha = shadowHash({ profile: "standard-host-github.v1", manifest: snapshot.sha256, env, profile_sha256: profile, local });
+  const defaultAsyncPorts = Object.entries({ read: runGithubRead, reply: runGithubReply,
+    resolution: runGithubResolution, merge: runGithubMerge }).filter(([, run]) => run === undefined).map(([kind]) => kind);
+  const confined = defaultAsyncPorts.length && process.platform === "win32" && configuration.controller
+    ? createGithubProcessTreeTransport({ executable: gh, cwd: home, profileSha256: contextSha,
+      helper: { path: configuration.controller.helper_path, sha256: configuration.controller.helper_sha256,
+        source_sha256: configuration.controller.helper_source_sha256 } }) : null;
+  const builtinAsyncRun = confined?.run ?? runGithubObservationCommand;
+  if (runGithubRead === undefined) runGithubRead = builtinAsyncRun;
+  if (runGithubReply === undefined) runGithubReply = builtinAsyncRun;
+  if (runGithubResolution === undefined) runGithubResolution = builtinAsyncRun;
+  if (runGithubMerge === undefined) runGithubMerge = builtinAsyncRun;
   function revalidate({ repository = true, executables = true } = {}) {
     try { file(manifest, { sha256: snapshot.sha256 }); } catch { fail("STANDARD_GITHUB_HOST_CONFIGURATION_CHANGED"); }
     if (profilePin() !== profile) fail("STANDARD_GITHUB_HOST_PROFILE_CHANGED");
@@ -128,7 +140,8 @@ export function createStandardGithubProviderHost({ configuration, home, identity
     guard();
     function* command(args, commandEnv) {
       let result;
-      try { result = yield [gh.path, args, { ...options, env: commandEnv }]; }
+      try { result = yield [gh.path, args, { ...options, env: commandEnv,
+        ...(confined && runGithubRead === confined.run ? { beforeResume: guard } : {}) }]; }
       catch { fail("STANDARD_GITHUB_AUTHENTICATION_UNAVAILABLE"); }
       // The next fixed request is yielded in this same synchronous continuation.
       guard();
@@ -157,7 +170,10 @@ export function createStandardGithubProviderHost({ configuration, home, identity
       const timeout = Math.floor(input.timeout - (performance.now() - started));
       if (timeout < 1) fail("STANDARD_GITHUB_TRANSPORT_DEADLINE");
       if (input.signal?.aborted) fail("GITHUB_OBSERVATION_ABORTED");
-      return run(binary, args, { ...input, env, timeout });
+      return run(binary, args, { ...input, env, timeout,
+        ...(confined && run === confined.run ? { async beforeResume(remaining) {
+          await input.beforeResume?.(remaining); guard();
+        } } : {}) });
     };
   }
   const authorized = (guard, input) => ({
@@ -258,7 +274,10 @@ export function createStandardGithubProviderHost({ configuration, home, identity
       await assertAuthorized();
       guard();
       if (signal?.aborted) fail(kind + "_ABORTED");
-      request = { ...options, env: authenticated, input: JSON.stringify(payload), signal };
+      request = { ...options, env: authenticated, input: JSON.stringify(payload), signal,
+        ...(confined && run === confined.run ? { async beforeResume(remaining) {
+          await assertAuthorized(); guard(); assertSendFresh?.(remaining);
+        } } : {}) };
       // The final synchronous check runs immediately before transport invocation.
       assertSendFresh?.(request.timeout);
     } catch (cause) {
@@ -323,6 +342,15 @@ export function createStandardGithubProviderHost({ configuration, home, identity
     return result;
   }
   return Object.freeze({ contextSha,
+    observeAsyncTransportResources() {
+      if (!confined) return null;
+      const guard = transportGuard(); guard();
+      const snapshot = confined.observeResources(); guard();
+      return Object.freeze({ snapshot,
+        coverage: Object.freeze({ default_async_ports: Object.freeze([...defaultAsyncPorts]),
+          synchronous_ports_observed: false, injected_transports_observed: false }),
+        assertCurrent() { guard(); confined.assertCurrent(snapshot); guard(); } });
+    },
     async verifyIdentity(signal) { await driveGithubObservationAsync(authenticate(transportGuard()), runGithubRead, signal); },
     sessionPushPort: Object.freeze({
       inspect(branch) { const guard = transportGuard(); return pushPort(guard).inspect(branch); },

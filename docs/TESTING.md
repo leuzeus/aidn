@@ -7026,7 +7026,7 @@ retains UNKNOWN with its owner and no success facts. Closed successful disposabl
 projects are removed only after resolved-path ownership checks; expected UNKNOWN
 and failed cases retain their original projects.
 
-The required catalog has 383 ordered commands and preserves the exact original382
+The required catalog has 384 ordered commands and preserves the exact original382
 prefix. Preparation remains at index381; the following process-discovery command
 adds current OS evidence. The existing six
 published waiting/continue cases now traverse preparation and packet admission.
@@ -7055,3 +7055,34 @@ It does not discover opaque/unmarked executions by implication and is not an
 all-domain closure source. Empty rows, stable samples and contract validity
 supply no permission. The six other reconciliation domains and default-source
 composition still require their own implementation and evidence.
+
+### Confined asynchronous GitHub transport
+
+The fixed Windows host uses its pinned existing process-tree controller for
+the default asynchronous GitHub reader and review mutations when controller
+pins are configured. The actual command starts suspended in a Job; protected
+source/authorization checks run before resume. The original per-command budget
+includes preparation and an awaited permission callback. Cancellation, output
+limits and direct-parent exit close descendants before the transport settles.
+A configured controller failure does not fall back to an unconfined process.
+
+`node tools/perf/verify-github-process-tree-transport-fixtures.mjs` verifies
+real Windows parent/descendant termination, cancellation, permission revocation,
+the original deadline during an awaited permission, byte limits and nonzero
+exit status. It then exercises default protected-host authentication through
+three confined commands against a pinned fixture executable and rechecks actual
+credential-file permission. No GitHub service, Native client or model is called.
+Other platforms verify admission/refusal without claiming Windows OS proof.
+
+The private live observer retains counts, active Job identities and bounded
+closed-tree evidence, and rechecks implementation/executable/helper pins.
+Its host capability also rechecks current protected source permission. These
+are snapshot observations of commands started by that fixed transport; they
+grant no effects or handoff and never claim complete resource closure.
+Synchronous push/open/remote-Git ports, injected transports, cold historical
+discovery and default seven-domain source composition remain separate work.
+Legacy hosts without controller pins and non-Windows hosts retain their prior
+direct-child transport and gain no process-tree closure claim.
+
+The required catalog contains384 ordered commands; its exact original383
+prefix and each older prefix remain unchanged. The new command is last.

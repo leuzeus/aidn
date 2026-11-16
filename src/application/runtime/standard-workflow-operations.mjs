@@ -159,6 +159,9 @@ function implementation() {
     ...["resolution-select", "thread-resolve"].flatMap(operation => ["input", "output"].map(kind =>
       new URL(`../../core/contracts/workflow-definition/standard-pr-review-${operation}-${kind}.v1.schema.json`, import.meta.url))),
     new URL("../../core/contracts/workflow-definition/github-pr-observation-output.v3.schema.json", import.meta.url),
+    new URL("../../adapters/git-provider/github-process-tree-transport.mjs", import.meta.url),
+    new URL("../../adapters/agents/process-tree/windows-process-tree-controller.mjs", import.meta.url),
+    new URL("../../adapters/agents/process-tree/windows-job-helper.cs", import.meta.url),
     new URL("../../adapters/git-provider/github-observation-transport.mjs", import.meta.url), new URL("../../adapters/git-provider/github-review-evidence.mjs", import.meta.url), new URL("../../adapters/git-provider/github-workflow-adapter.mjs", import.meta.url),
     ...["github-pr-merge-observation.v1", "standard-session-pr-merge-observe-input.v1", "standard-session-pr-merge-observe-output.v1", "standard-session-pr-review-effects-input.v1", "standard-session-pr-review-effects-output.v1", "standard-session-pr-review-effects-output.v2", "standard-pr-merge-qualification-proof.v1", "github-review-evidence.v2", "github-pr-observation-request.v2", "github-pr-observation-output.v2", "standard-session-pr-review-content-output.v1", "github-review-evidence-request.v1", "github-review-evidence.v1", "github-pr-observation-request.v1", "github-pr-observation-output.v1", "standard-session-pr-review-observe-input.v1", "standard-session-pr-review-observe-output.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
     new URL("../../core/workflow/standard-session-pr-record.mjs", import.meta.url),

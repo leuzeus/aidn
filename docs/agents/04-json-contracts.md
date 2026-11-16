@@ -1,5 +1,12 @@
 # 04 JSON Contracts
 
+Private `github-command-process-snapshot.v1` is a read-only, derived live
+transport snapshot with active Job identities, bounded confirmed closure
+evidence and explicit coverage. It changes on command activity and grants no
+effect, handoff or global resource closure. The accompanying synchronous
+currentness function is a fixed host capability, never serialized action data.
+No new canonical store or public CLI JSON surface is introduced.
+
 Private `handoff-process-observation.v1` contains two current OS samples scoped
 to configured target/control path markers and their descendants. PID creation
 identity, parent relations, marker basis, redacted command/image hashes and

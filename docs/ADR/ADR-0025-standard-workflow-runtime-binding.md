@@ -4842,3 +4842,23 @@ handoff and complete-resource permission. It has no default-source composition
 yet. Stable or empty process samples do not establish the six other domains,
 opaque/unmarked executions, provider effects or general resource closure.
 The seven-domain rule and original issuer permissions remain unchanged.
+
+### Confined asynchronous provider commands
+
+The protected Windows provider host composes the existing pinned Job controller
+for its default asynchronous reads/reply/resolution/merge transports. Prepared
+workers remain suspended until current host checks pass; mutation checks repeat
+their original authorization and send-freshness guards at this new boundary.
+The original caller timeout includes preparation and asynchronous permission
+checks, with no renewed budget or additional age threshold. A configured helper
+failure fails before effects; no unconfined fallback is selected.
+
+A private per-host resource capability observes active commands and confirmed
+Job closures, denies global effect/handoff/closure permission, and rechecks
+source, executable, implementation and helper pins. Source/credential changes
+invalidate the capability. This observes only that fixed transport, not every
+provider port or an old host. Synchronous transports and injected overrides are
+explicitly outside its coverage; legacy/non-Windows direct-child behavior keeps
+its prior limited claims. Seven-domain discovery/default composition, general
+UNKNOWN recovery, actual GitHub/Native actors and installed qualification remain
+unfinished. All historical results and original Native limits remain unchanged.

@@ -1919,6 +1919,9 @@
     ],
     [
       "tools/perf/verify-handoff-process-discovery-fixtures.mjs"
+    ],
+    [
+      "tools/perf/verify-github-process-tree-transport-fixtures.mjs"
     ]
   ]
 }
