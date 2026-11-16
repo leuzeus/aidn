@@ -644,3 +644,13 @@ before packet CAS, including after the last test boundary. This checks the
 original issuer and current independent source permission; it does not assert
 resource closure for the changed owner subject. The full observation still
 rejects any active owner. Post-release closure remains a separate obligation.
+
+The common `handoff_packet_publish` candidate uses the normal explicit grant,
+intent, signed claim/dispatch, effect owner/fence, packet CAS and receipt. Its
+ephemeral prepared-prefix view recognizes only four authenticated own additions
+and the single changed process row. It restores that retained row and the exact
+causal instance/accounting delta solely to compare the original signed material
+digest. Foreign changes refuse; the view is never persisted or exposed as global
+current resource closure. Actual ownership still has no exemption. The current
+operator source must supply a synchronous grant check at CAS; async-only sources
+refuse before ownership instead of caching their earlier permission.

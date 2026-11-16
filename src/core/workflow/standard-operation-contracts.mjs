@@ -65,6 +65,8 @@ import { assertPostMergeFastForwardInput, assertPostMergeFastForwardOutput, post
 import { assertPostMergeCompleteInput, assertPostMergeCompleteOutput, postMergeCompleteOperation } from "./standard-pr-post-merge-complete.mjs";
 import { assertPrIncidentTrackingInput, assertPrIncidentTrackingOutput, prIncidentTrackingOperations } from "./standard-pr-incident-tracking.mjs";
 import { assertPrIncidentCloseInput, assertPrIncidentCloseOutput, prIncidentCloseOperation } from "./standard-pr-incident-close.mjs";
+import { assertHandoffPublicationInput } from "./standard-handoff-publication.mjs";
+import { assertHandoffOperationOutput, handoffPublicationOperation } from "./standard-handoff-operation.mjs";
 import { assertMergeExecuteInput, assertMergeExecuteOutput, assertPostMergeWaitOutput, mergeExecuteOperation, postMergeWaitOperation } from "./standard-pr-merge-execute.mjs";
 import prReviewEffectsOutputV2 from "../contracts/workflow-definition/standard-session-pr-review-effects-output.v2.schema.json" with { type: "json" };
 import prReviewEffectsOutput from "../contracts/workflow-definition/standard-session-pr-review-effects-output.v1.schema.json" with { type: "json" };
@@ -303,6 +305,7 @@ export function assertStandardOperationInput(operation, value) {
   if (operation === postMergeCompleteOperation) return assertPostMergeCompleteInput(value);
   if (prIncidentTrackingOperations.includes(operation)) return assertPrIncidentTrackingInput(value);
   if (operation === prIncidentCloseOperation) return assertPrIncidentCloseInput(value);
+  if (operation === handoffPublicationOperation) return assertHandoffPublicationInput(value);
   if (operation === postMergeFetchOperation) return assertPostMergeFetchInput(value);
   if ([mergeExecuteOperation, postMergeWaitOperation].includes(operation)) return assertMergeExecuteInput(operation, value);
   if ([externalMergeDisposition, "session_pr_merge_basis"].includes(operation)) {
@@ -524,6 +527,7 @@ export function assertStandardOperationOutput(value) {
   if (value?.contract_version === "standard-pr-post-merge-complete-output.v1") return assertPostMergeCompleteOutput(value);
   if (value?.contract_version === "standard-pr-incident-tracking-output.v1") return assertPrIncidentTrackingOutput(value);
   if (value?.contract_version === "standard-pr-incident-close-output.v1") return assertPrIncidentCloseOutput(value);
+  if (value?.contract_version === "standard-handoff-operation-output.v1") return assertHandoffOperationOutput(value);
   if (value?.contract_version === "standard-pr-post-merge-fetch-output.v1") return assertPostMergeFetchOutput(value);
   if (value?.contract_version === "standard-pr-post-merge-wait-output.v1") return assertPostMergeWaitOutput(value);
   if (["standard-pr-merge-basis-output.v1", "standard-pr-merge-basis-output.v2", "standard-pr-premerge-observe-output.v2", "standard-pr-review-event-route-output.v1"].includes(value?.contract_version)) {

@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-handoff-operation-output.v1",
+  "x-aidn-contract-version": "standard-handoff-operation-output.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-handoff-operation-output.v1"
+    },
+    "operation_ref": {
+      "const": "handoff_packet_publish"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "blocked",
+        "deferred",
+        "reconciliation_required"
+      ]
+    },
+    "effect_status": {
+      "enum": [
+        "confirmed",
+        "no_effect",
+        "unknown"
+      ]
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "handoff_packet_published": {
+          "const": true
+        }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plan_sha256",
+        "packet_plan_sha256",
+        "packet_sha256",
+        "packet_metadata_sha256",
+        "resource_material_sha256",
+        "reason_code",
+        "complete_resource_closure",
+        "permits_handoff",
+        "permits_effects"
+      ],
+      "properties": {
+        "plan_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "packet_plan_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "packet_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "packet_metadata_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "resource_material_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "reason_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+        },
+        "complete_resource_closure": {
+          "const": false
+        },
+        "permits_handoff": {
+          "const": false
+        },
+        "permits_effects": {
+          "const": false
+        }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "const": "docs/audit/HANDOFF-PACKET.md"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

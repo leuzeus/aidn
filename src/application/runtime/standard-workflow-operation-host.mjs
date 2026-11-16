@@ -12,6 +12,8 @@ import { createStandardPrIncidentTracking } from "./standard-pr-incident-trackin
 import { prIncidentRecordOperation, prIncidentResolveOperation } from "../../core/workflow/standard-pr-incident-tracking.mjs";
 import { prIncidentCloseOperation } from "../../core/workflow/standard-pr-incident-close.mjs";
 import { createStandardPrIncidentClose } from "./standard-pr-incident-close.mjs";
+import { createStandardHandoffOperation } from "./standard-handoff-operation.mjs";
+import { handoffPublicationOperation, assertHandoffOperationPreparation, handoffOperationResult } from "../../core/workflow/standard-handoff-operation.mjs";
 import { postMergeFastForwardOperation } from "../../core/workflow/standard-pr-post-merge-fast-forward.mjs";
 import { createStandardPostMergeFastForward } from "./standard-session-pr-post-merge-fast-forward.mjs";
 import { postMergeCompleteOperation } from "../../core/workflow/standard-pr-post-merge-complete.mjs";
@@ -152,7 +154,7 @@ function controlCheckpoint(instance, eventId) {
 // Fixed local business adapters plus the common reducer/store. This host owns
 // neither model routing nor human decisions. Signing/authorization capabilities
 // must come from a trusted outer host, never authored JSON or a model tool.
-export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, reconciliationConfiguration = null, dispositionSource = null, nativeOwnerDispositionSource = null, nativeReconciliationSource = null, nativeAuthorizationSource = null }, { validationBoundaryFactory, dispatchCheckpoint, nativeOwnerDispositionBoundary, nativeReconciliationBoundary } = {}) {
+export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, reconciliationConfiguration = null, dispositionSource = null, nativeOwnerDispositionSource = null, nativeReconciliationSource = null, nativeAuthorizationSource = null, handoffResourceSource = null, handoffNativeHistory = null }, { validationBoundaryFactory, dispatchCheckpoint, nativeOwnerDispositionBoundary, nativeReconciliationBoundary, handoffPublicationBoundary } = {}) {
   if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.authenticate !== "function"
     || typeof processAuthority.authenticateOperationHost !== "function")) fail("STANDARD_HOST_CONFIGURATION_INVALID");
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
@@ -1015,6 +1017,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   function validatePreview(preview) {
     if (validateJsonSchema(preview, previewSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_HOST_PREVIEW_INVALID");
     signer.verify(preview); assertProcessOperationBinding(preview.binding); assertStandardOperationInput(preview.binding.id, preview.input);
+    if (preview.binding.id === handoffPublicationOperation) assertHandoffOperationPreparation(preview.prepared);
     if (preview.binding.id === "session_pr_correction_reopen" && preview.prepared?.can_apply) {
       assertStandardPrCorrectionPlan(preview.prepared.plan);
       if (shadowHash(preview.prepared.plan) !== preview.prepared.plan_sha256
@@ -1078,6 +1081,22 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   async function verifyGrant(record, signal) {
     if (shadowHash(await grantFor(record.preview, signal)) !== shadowHash(record.grant)) fail("STANDARD_HOST_AUTHORIZATION_CHANGED");
+  }
+  // This binding needs a synchronous current check at the physical CAS. The
+  // native entry's existing authority is synchronous. Async-only sources cannot
+  // supply this capability; a previously successful await is never a grant cache.
+  function verifyGrantCurrent(record, signal) {
+    if (signal?.aborted) fail("STANDARD_HANDOFF_OPERATION_ABORTED");
+    const preview = record.preview, grant = authorize({ binding: structuredClone(preview.binding), input: structuredClone(preview.input),
+      preview_sha256: shadowHash(preview), prepared: structuredClone(preview.prepared), scope_id: preview.scope_id, signal });
+    if (typeof grant?.then === "function") {
+      if (typeof grant.catch === "function") grant.catch(() => {});
+      fail("STANDARD_HANDOFF_OPERATION_SYNCHRONOUS_AUTHORIZATION_REQUIRED");
+    }
+    if (!grant || Object.keys(grant).sort().join(",") !== "authority_id,authorized,grant_sha256,principal_sha256" || grant.authorized !== true
+      || !processId(grant.authority_id) || ![grant.principal_sha256, grant.grant_sha256].every(value => /^[a-f0-9]{64}$/.test(value)))
+      fail("STANDARD_HOST_AUTHORIZATION_REQUIRED");
+    if (shadowHash(grant) !== shadowHash(record.grant)) fail("STANDARD_HOST_AUTHORIZATION_CHANGED");
   }
   function recoveryGrant(record, plan, signal) {
     return grantFor({ ...record.preview, binding: { ...record.preview.binding, effect_class: "mutating" },
@@ -1393,6 +1412,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readInstance: id => current(id).record, readAuthority, readContext: snapshot, readSubject: observeReconciliationSubject,
     readDiagnosticSubject: processAuthority ? observeReadOnlyReconciliationSubject : undefined,
     readNativeSubject: processAuthority ? observeNativeReconciliationSubject : undefined });
+  const handoffPublication = createStandardHandoffOperation({ targetRoot, configuration: reconciliationConfiguration, readSigningKey, now,
+    readCurrent: id => current(id).record, readClaimed: id => retained(id).record,
+    readInventory: (id, options) => reconciliationInventory.prepare(id, options), readNativeHistory: handoffNativeHistory,
+    resourceSource: handoffResourceSource }, { boundary: handoffPublicationBoundary });
   const nativeOwnerDisposition = createStandardNativeOwnerDisposition({ targetRoot: artifacts.root, stateMode: initial.stateMode, artifacts, signer, now,
     source: nativeOwnerDispositionSource, onBoundary: nativeOwnerDispositionBoundary,
     assess: (id, input) => { if (!processAuthority) fail("NATIVE_OWNER_DISPOSITION_AUTHORITY_REQUIRED"); return reconciliationInventory.prepareNativeAllocationAssessment(id, input); },
@@ -1604,7 +1627,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return result;
     },
     readControl: id => structuredClone(controls.read(id)),
-    async preview({ instanceId, expectedSha256, occurrenceId, input = {} }) {
+    async preview({ instanceId, expectedSha256, occurrenceId, input = {}, signal }) {
       const state = current(instanceId);
       if (state.record.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");
       const occurrence = state.cursor.occurrences.find(row => row.occurrence_id === occurrenceId);
@@ -1650,6 +1673,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_pr_review_reply_select" ? sessionPrReply.prepareSelection(state.record, input)
         : binding.id === "session_pr_review_resolution_select" ? sessionPrResolution.prepareSelection(state.record, input)
         : binding.id === resolutionExceptionOperation ? await sessionPrResolution.prepareException(state.record, input)
+        : binding.id === handoffPublicationOperation ? await handoffPublication.prepare(state.record, input, occurrenceId, { signal })
         : binding.id === prIncidentCloseOperation ? await prIncidentClose.prepare(state.record, input)
         : reviewEffects.has(binding.id) ? await reviewEffects.get(binding.id).prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === "session_pr_review_effects_verify" ? sessionPrEffects.prepare(state.record, input)
@@ -1850,6 +1874,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           record.preview.prepared, { signal });
         else if (record.intent.binding_ref === "session_pr_review_resolution_select") output = await sessionPrResolution.select(state.record, record.preview.input,
           record.preview.prepared, { signal });
+        else if (record.intent.binding_ref === handoffPublicationOperation) output = await handoffPublication.apply(state.record, record.preview.input, record.preview.prepared,
+          { operationId: id, signal, assertAuthorized: () => verifyGrant(record, signal), assertAuthorizedCurrent: () => verifyGrantCurrent(record, signal) });
         else if (record.intent.binding_ref === prIncidentCloseOperation) output = await prIncidentClose.apply(state.record, record.preview.input,
           record.preview.prepared, { operationId: id, assertAuthorized: async () => {
             await verifyGrant(record, signal);
@@ -2006,7 +2032,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           throw Object.assign(new Error("STANDARD_HOST_PRECONDITIONS_CHANGED"), { effect_status: "no_effect" });
       } catch (cause) {
         const noEffect = record.preview.binding.effect_class === "read-only" || cause.effect_status === "no_effect" || cause.code === "STANDARD_PLAN_EXPIRED";
-        output = { contract_version: record.preview.binding.output_contract, operation_ref: record.intent.binding_ref,
+        output = record.intent.binding_ref === handoffPublicationOperation
+          ? handoffOperationResult(record.preview.prepared, null, /^[A-Z][A-Z0-9_]{0,127}$/.test(cause.code ?? "") ? cause.code : "STANDARD_HOST_DISPATCH_UNCONFIRMED", noEffect ? "no_effect" : "unknown")
+          : { contract_version: record.preview.binding.output_contract, operation_ref: record.intent.binding_ref,
           outcome: noEffect ? "blocked" : "reconciliation_required", effect_status: noEffect ? "no_effect" : "unknown", facts: {},
           observations: { reason_code: /^[A-Z][A-Z0-9_]+$/.test(cause.code ?? "") ? cause.code : "STANDARD_HOST_DISPATCH_UNCONFIRMED" }, evidence_refs: [] };
       }

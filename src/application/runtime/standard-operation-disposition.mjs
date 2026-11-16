@@ -9,6 +9,7 @@ import { assertProcessDispatchRecord } from "../../core/workflow/process-dispatc
 import { assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
 import { assertIncidentContinuationPlan, assertIncidentContinuationDisposition, operationDispositionResultLimit, operationControlHistoryExtends } from "../../core/workflow/process-operation-disposition.mjs";
 import { prIncidentCloseOperation } from "../../core/workflow/standard-pr-incident-close.mjs";
+import { handoffPublicationOperation } from "../../core/workflow/standard-handoff-operation.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { withStandardDispatchContext } from "./standard-dispatch-context.mjs";
@@ -82,9 +83,10 @@ const readOnlyProfiles = new Set(["context_reload", "session_admit", "session_cl
 const artifactProfiles = new Set(["session_close_record"]);
 const prCheckpoint = "session_pr_checkpoint";
 const correctionReopen = "session_pr_correction_reopen";
-const planBoundOwner = id => artifactProfiles.has(id) || id === prCheckpoint || id === correctionReopen || id === prIncidentCloseOperation;
+const planBoundOwner = id => artifactProfiles.has(id) || id === prCheckpoint || id === correctionReopen || id === prIncidentCloseOperation || id === handoffPublicationOperation;
 const ownerPlanSha = record => record.intent.binding_ref === prIncidentCloseOperation
-  ? record.preview.prepared?.plan?.closure_plan_sha256 : record.preview.prepared?.plan_sha256;
+  ? record.preview.prepared?.plan?.closure_plan_sha256 : record.intent.binding_ref === handoffPublicationOperation
+    ? record.preview.prepared?.plan?.packet_plan_sha256 : record.preview.prepared?.plan_sha256;
 
 export function createStandardOperationDisposition({ targetRoot, stateMode, signer, artifacts, readOperation,
   readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, confirmPrCheckpoint, confirmPrIncidentClose, preparePrIncidentContinuation, applyPrIncidentContinuation, confirmPrIncidentContinuation, confirmInterruptedReopen,

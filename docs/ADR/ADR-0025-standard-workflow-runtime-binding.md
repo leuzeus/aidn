@@ -4707,3 +4707,21 @@ before packet CAS, including after the last test boundary. This checks the
 original issuer and current independent source permission; it does not assert
 resource closure for the changed owner subject. The full observation still
 rejects any active owner. Post-release closure remains a separate obligation.
+
+## Common packet-publication receipt candidate, 2026-11-16
+
+A fixed business binding adapts the existing canonical packet writer to the
+normal operation intent, current grant, signed journal/dispatch and receipt.
+The original packet plan/request survives staging; no fresh random preparation
+replaces it after the intent. A minimal canonical process-row witness and an
+authenticated own-intent comparison account for precisely four own additions,
+one process-row change and the causal instance/accounting delta. The original
+inventory material digest must match; other resource, Native debit, authority or
+context changes refuse. This ephemeral comparison adds no persisted store,
+source authority, active-owner waiver, shared sync or historical conversion.
+
+A synchronous check invokes the trusted current operator source at physical CAS
+and validates the exact grant. Async-only grant sources cannot supply that
+capability. Common owner reservation binds the inner packet plan digest. The
+receipt confirms packet persistence only; post-release full closure, published
+IR handoff entry and cold UNKNOWN recovery require their own integration.

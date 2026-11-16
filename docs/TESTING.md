@@ -6903,3 +6903,15 @@ The existing dispatcher protocol, absence of invented deadlines, finite Native
 grants and gate families are unchanged. `--manifest-only` verifies registry
 structure only; policy/component results never establish full372 execution,
 complete handoff, full A6, genuine Native or installed qualification.
+
+### Common packet-publication receipt candidate
+
+Run `node tools/perf/verify-standard-handoff-operation-fixtures.mjs files`
+(and `dual` or `db-only`) for the registered binding on the real common reducer,
+journal, signed dispatch, owner/fence, canonical CAS, receipt and acceptance.
+The native history, independent discovery and operator source are controlled
+fixture capabilities. The corpus checks old unchanged preparation, denial before
+stage, synchronous current denial at CAS, a foreign canonical addition, refusal
+of async-only current permission, cold duplicate dispatch and retained UNKNOWN
+after CAS. Full published handoff, post-release closure, cold UNKNOWN recovery,
+genuine Native/Human, installed and full STANDARD are separate obligations.

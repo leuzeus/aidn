@@ -1020,3 +1020,12 @@ post-release resource observation and ordinary IR handoff route remain due.
 The private resource reader can return a live synchronous revalidation capability
 for its exact authenticated observation. This capability is never action JSON,
 a durable grant or an exemption for an active owner.
+
+Private `standard-handoff-operation-plan/output.v1` adapt the canonical writer
+to the common operation journal. The closed plan retains the original packet
+plan in bounded JSON chunks, its digest, exact occurrence and one prior canonical
+process-resource row. The fixed adapter separately authenticates the current
+claim, preview MAC, final own intent and signed dispatch before comparing the
+prepared inventory. Completed output confirms packet persistence only; its
+complete-resource-closure and handoff/effect permission fields remain false.
+The published full IR route and post-release completion are separate work.
