@@ -7138,3 +7138,18 @@ Async PR creation also rechecks its current grant immediately after awaited
 remote re-preparation and before marking a POST attempted. Revocation during
 that read refuses with no effect even when a transport has no suspended hook;
 the fixed confined transport still rechecks again immediately before resume.
+
+### Default fixed-host asynchronous PR creation
+
+On a configured Windows host, the default PR-open port selects the shared async
+protocol and the pinned command-tree transport. Its authentication, preparation,
+POST and confirmation requests all retain observed Job closure and the protected
+profile marker. The constructor owns this choice; task JSON selects no adapter.
+Injected synchronous transports and unconfigured/unsupported hosts retain their
+existing interface without gaining all-provider resource coverage.
+
+A controlled compiled provider can count all 34 command executions across
+identity, exact preparation and one creation. Each must match a confirmed closed
+command in the live host capability; permission is checked before POST and again
+after suspended preparation. The original 60000 ms/24-call PR budget includes
+authentication and awaited checks. No genuine GitHub or Native proof follows.

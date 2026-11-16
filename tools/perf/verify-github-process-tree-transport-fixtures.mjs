@@ -152,7 +152,7 @@ try {
     home, identity: identityKey, environment });
     const providerBefore = provider.observeAsyncTransportResources();
     check('normal protected host selects the confined asynchronous defaults', providerBefore.snapshot.active_commands.length === 0
-      && providerBefore.coverage.default_async_ports.join(',') === 'read,reply,resolution,merge'
+      && providerBefore.coverage.default_async_ports.join(',') === 'read,reply,resolution,merge,open'
       && providerBefore.coverage.synchronous_ports_observed === false && providerBefore.coverage.injected_transports_observed === false);
     await provider.verifyIdentity();
     const providerAfter = provider.observeAsyncTransportResources(); providerAfter.assertCurrent();

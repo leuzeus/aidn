@@ -33,7 +33,7 @@ function optionalFile(name, options) {
 // The caller is the private STANDARD host. The only dependency seam replaces
 // subprocess transports; the action, IR and project configuration select none.
 export function createStandardGithubProviderHost({ configuration, home, identity, environment }, {
-  runGithub = spawnSync, runGithubRead, runGithubReply,
+  runGithub, runGithubRead, runGithubReply,
   runGithubResolution, runGithubMerge, runRemoteGit = spawnSync,
 } = {}) {
   const manifest = path.join(home, identity + ".github.json");
@@ -108,11 +108,13 @@ export function createStandardGithubProviderHost({ configuration, home, identity
   const profile = profilePin(), local = shadowHash(repositoryBinding());
   const contextSha = shadowHash({ profile: "standard-host-github.v1", manifest: snapshot.sha256, env, profile_sha256: profile, local });
   const defaultAsyncPorts = Object.entries({ read: runGithubRead, reply: runGithubReply,
-    resolution: runGithubResolution, merge: runGithubMerge }).filter(([, run]) => run === undefined).map(([kind]) => kind);
+    resolution: runGithubResolution, merge: runGithubMerge, open: runGithub }).filter(([, run]) => run === undefined).map(([kind]) => kind);
   const confined = defaultAsyncPorts.length && process.platform === "win32" && configuration.controller
     ? createGithubProcessTreeTransport({ executable: gh, cwd: home, scopeRoot: configDir, profileSha256: contextSha,
       helper: { path: configuration.controller.helper_path, sha256: configuration.controller.helper_sha256,
         source_sha256: configuration.controller.helper_source_sha256 } }) : null;
+  const defaultOpen = !!confined && runGithub === undefined;
+  runGithub ??= spawnSync;
   const builtinAsyncRun = confined?.run ?? runGithubObservationCommand;
   if (runGithubRead === undefined) runGithubRead = builtinAsyncRun;
   if (runGithubReply === undefined) runGithubReply = builtinAsyncRun;
@@ -229,6 +231,19 @@ export function createStandardGithubProviderHost({ configuration, home, identity
   });
   function openPort(guard) {
     let authenticated;
+    if (defaultOpen) {
+      const run = async (binary, args, input) => {
+        const started = performance.now();
+        authenticated ??= await driveGithubObservationAsync(authenticate(guard), runGithubRead, input.signal);
+        guard();
+        const timeout = Math.floor(input.timeout - (performance.now() - started));
+        if (timeout < 1) fail("STANDARD_GITHUB_TRANSPORT_DEADLINE");
+        return confined.run(binary, args, { ...input, env: authenticated, timeout, async beforeResume(remaining) {
+          await input.beforeResume?.(remaining); guard();
+        } });
+      };
+      return createGithubPullRequestOpen({ ...github, hostContextSha256: contextSha }, { run, asynchronous: true });
+    }
     const run = guardedRun(() => {
       authenticated ??= driveGithubObservation(authenticate(guard), runGithub);
       guard();
