@@ -1871,6 +1871,18 @@
     [
       "tools/perf/verify-standard-handoff-publication-fixtures.mjs",
       "db-only"
+    ],
+    [
+      "tools/perf/verify-standard-handoff-operation-fixtures.mjs",
+      "files"
+    ],
+    [
+      "tools/perf/verify-standard-handoff-operation-fixtures.mjs",
+      "dual"
+    ],
+    [
+      "tools/perf/verify-standard-handoff-operation-fixtures.mjs",
+      "db-only"
     ]
   ]
 }

@@ -23,7 +23,7 @@ assert.deepEqual(manifest.cases.slice(194, 197), [
   ["tools/perf/verify-standard-pr-redelivery-fixtures.mjs", "--mode=files", "--aged-plan"],
 ]);
 console.log("PASS accepted194 cases retain their original argv and order modulo explicit age selectors with three exact additions");
-assert.equal(manifest.cases.length, 372);
+assert.equal(manifest.cases.length, 375);
 assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 197))).digest("hex"),
   "47b229353b3929aa0b52623f688b46296517e513a331a68060c4c5a0190c62f4");
 console.log("PASS accepted197 exact argv and order are preserved before twelve R05 objective components");
@@ -494,7 +494,7 @@ assert.deepEqual(manifest.cases.slice(366, 369), [
 ]);
 console.log("PASS current369 preserves exact366 and requires the receipted continuation cut on all three backends");
 assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 369))).digest("hex"), "f48f7108087de121485f292663811f45ee15c9a44b00b2100467ea832e84ed7d");
-assert.deepEqual(manifest.cases.slice(369), [
+assert.deepEqual(manifest.cases.slice(369, 372), [
   [
     "tools/perf/verify-standard-handoff-publication-fixtures.mjs",
     "files"
@@ -510,9 +510,26 @@ assert.deepEqual(manifest.cases.slice(369), [
 ]);
 console.log("PASS current372 preserves exact369 and requires canonical packet publication on all three backends");
 
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 372))).digest("hex"), "7faf4c8f40faf71a692a0e91a363bebf7209fbeae7579935b48c840bab7bd4be");
+assert.deepEqual(manifest.cases.slice(372), [
+  [
+    "tools/perf/verify-standard-handoff-operation-fixtures.mjs",
+    "files"
+  ],
+  [
+    "tools/perf/verify-standard-handoff-operation-fixtures.mjs",
+    "dual"
+  ],
+  [
+    "tools/perf/verify-standard-handoff-operation-fixtures.mjs",
+    "db-only"
+  ]
+]);
+console.log("PASS current375 preserves exact372 and requires common signed handoff receipts on all three backends");
+
 if (process.argv.includes("--manifest-only")) {
-  console.log(JSON.stringify({ status: "PASS", checks: 22, scope: "frozen326/332/335/338/347/353/357/360/366/369 prefixes plus receipted continuation and canonical publication",
-    manifest_cases: 372, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
+  console.log(JSON.stringify({ status: "PASS", checks: 24, scope: "frozen326/332/335/338/347/353/357/360/366/369/372 prefixes plus receipted continuation, canonical publication and common handoff receipts",
+    manifest_cases: 375, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
   process.exit(0);
 }
 
