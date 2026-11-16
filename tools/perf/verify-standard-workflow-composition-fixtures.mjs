@@ -92,7 +92,24 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 212); assert.equal(assets.catalog.activities.length, 23);
+  // The nine shared handoff operations replace two inline continuation
+  // decisions: the original 212 bindings therefore become exactly 219.
+  assert.equal(assets.catalog.bindings.length, 219); assert.equal(assets.catalog.activities.length, 23);
+  assert.deepEqual(assets.catalog.bindings.filter(row => row.model_ref?.model_id === "aidn-standard-mode-handoff")
+    .map(row => [row.node_id, row.binding.id]).sort(), [
+      ["mode_handoff_decide", "mode_work_continue_decision"], ["mode_handoff_summary", "handoff_summary_prepare"],
+      ["mode_handoff_git", "handoff_git_checkpoint"], ["mode_handoff_prepare", "handoff_prepare"],
+      ["mode_handoff_admit", "handoff_admit"], ["mode_handoff_publish", "handoff_packet_publish"],
+      ["mode_handoff_resources", "handoff_resources_observe"], ["mode_handoff_reload", "context_reload"],
+      ["mode_handoff_readmit", "session_entry_admit"],
+    ].sort());
+  assert.equal(assets.catalog.bindings.some(row => !row.model_ref
+    && ["thinking_continue_decide", "exploring_continue_decide"].includes(row.node_id)), false);
+  const handoff = assets.model.call_targets.find(row => row.model_id === "aidn-standard-mode-handoff");
+  for (const id of ["thinking_continue_decide", "exploring_continue_decide"]) {
+    const call = assets.model.nodes.find(row => row.id === id);
+    assert.equal(call.kind, "call"); assert.deepEqual(call.target, processModelIdentity(handoff.model));
+  }
 });
 test("all corrective R05 sites bind their own evaluation and consume the shared finalizer return", () => {
   const target = assets.model.call_targets.find(row => row.model_id === "aidn-standard-corrective-drift"),
@@ -774,10 +791,10 @@ test("the ordinary loader authenticates the two final-verification operations fo
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV7, "#", { contractKind: "workflow-definition" }), []);
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 256);
-  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 132);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 80);
+  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 130);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 89);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
-  assert.equal(loaded.model.call_targets.length, 14);
+  assert.equal(loaded.model.call_targets.length, 15);
   assert.equal(child.model_id, "aidn-standard-final-verification");
   assert.deepEqual(identity, processModelIdentity(child));
   const sites = loaded.model.nodes.filter(node => node.target?.model_id === child.model_id);
