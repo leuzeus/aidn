@@ -23,7 +23,7 @@ function marker(command, root) {
   }
   return false;
 }
-function linuxSample(roots, nativeName) {
+function linuxSample(roots, nativeName, owners, controlScope) {
   const boot = fs.readFileSync('/proc/sys/kernel/random/boot_id', 'utf8').trim();
   const rows = [];
   for (const name of fs.readdirSync('/proc').filter(name => /^[1-9][0-9]*$/.test(name))) {
@@ -43,6 +43,10 @@ function linuxSample(roots, nativeName) {
   for (const row of rows) if (row.command) {
     const root = roots.find(root => marker(row.command, root.path));
     if (root) scoped.set(row.pid, { root: root.sha256, basis: 'marker' });
+  }
+  for (const owner of owners) {
+    const row = byId.get(owner.pid);
+    if (row?.creation === owner.creation && !scoped.has(row.pid)) scoped.set(row.pid, { root: controlScope, basis: "retained_owner" });
   }
   let added;
   do {
@@ -68,15 +72,24 @@ function linuxSample(roots, nativeName) {
 // primitive observes no provider state, grants nothing and never asserts
 // complete resource closure. Native launches carry control-root log/SQLite
 // arguments; opaque or unmarked executions need separate source coverage.
-export function createLocalHandoffProcessDiscovery({ targetRoot, controlRoot, nativeExecutable }) {
+export function createLocalHandoffProcessDiscovery({ targetRoot, controlRoot, nativeExecutable, ownerIdentities = [] }) {
   const physicalTarget = agentRunPhysicalPath(targetRoot, { directory: true });
   const physicalControl = agentRunPhysicalPath(controlRoot, { directory: true });
   const executable = agentRunPhysicalPath(nativeExecutable);
   const observer = observeLocalProcess(process.pid);
   if (!observer || !fs.statSync(executable).isFile()) fail('HANDOFF_PROCESS_DISCOVERY_UNAVAILABLE');
+  if (!Array.isArray(ownerIdentities) || ownerIdentities.length > 10000 || ownerIdentities.some(row => !row
+    || Object.keys(row).sort().join(',') !== 'creation,host,pid,platform' || row.platform !== observer.platform || row.host !== observer.host
+    || !Number.isSafeInteger(row.pid) || row.pid < 1 || row.pid > 4294967295 || typeof row.creation !== 'string'
+    || !(observer.platform === 'win32' ? /^[0-9]{18}$/ : /^[a-f0-9-]{36}:[0-9]+$/).test(row.creation)))
+    fail('HANDOFF_PROCESS_OWNER_SCOPE_INVALID');
+  const owners = [...new Map(ownerIdentities.map(row => [row.pid + ':' + row.creation, { ...row }])).values()]
+    .sort((a, b) => a.pid - b.pid || a.creation.localeCompare(b.creation));
+  const version = owners.length ? 2 : 1, controlScope = artifactContentHash(physicalControl);
+  const ownerScope = owners.length ? { owner_identities_sha256: H(owners) } : {};
   const roots = [...new Set([physicalTarget, physicalControl])].sort((a, b) => b.length - a.length)
     .map(root => ({ path: root, sha256: artifactContentHash(root) }));
-  const scope = H({ target_root: physicalTarget, control_root: physicalControl, native_executable: executable, observer_identity: observer });
+  const scope = H({ target_root: physicalTarget, control_root: physicalControl, native_executable: executable, observer_identity: observer, ...ownerScope });
   return Object.freeze({
     observe({ signal } = {}) {
       active(signal);
@@ -87,10 +100,11 @@ export function createLocalHandoffProcessDiscovery({ targetRoot, controlRoot, na
         let response;
         try {
           response = JSON.parse(execFileSync(powershell, ['-NoProfile', '-NonInteractive', '-Command', before.value.toString('utf8')], {
-            input: JSON.stringify({ version: 1, query_id: queryId, roots, native_name: path.basename(executable), observer_pid: process.pid }),
+            input: JSON.stringify({ version, query_id: queryId, roots, native_name: path.basename(executable), observer_pid: process.pid,
+              ...(owners.length ? { owners, control_scope_sha256: controlScope } : {}) }),
             encoding: 'utf8', windowsHide: true, shell: false, maxBuffer: 2 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'] }).trim());
         } catch { fail('HANDOFF_PROCESS_DISCOVERY_UNAVAILABLE'); }
-        if (response.version !== 1 || response.query_id !== queryId || response.observer_creation !== observer.creation
+        if (response.version !== version || response.query_id !== queryId || response.observer_creation !== observer.creation
           || !Number.isSafeInteger(response.query_pid) || response.query_pid === process.pid
           || readAgentRunFile(script, { json: false, maxBytes: 131072 }).sha256 !== before.sha256)
           fail('HANDOFF_PROCESS_DISCOVERY_CHANGED');
@@ -99,13 +113,14 @@ export function createLocalHandoffProcessDiscovery({ targetRoot, controlRoot, na
           fail('HANDOFF_PROCESS_DISCOVERY_CHANGED');
       } else if (process.platform === 'linux') {
         implementation = readAgentRunFile(fileURLToPath(import.meta.url), { json: false, maxBytes: 131072 }).sha256;
-        samples = [linuxSample(roots, path.basename(executable)), linuxSample(roots, path.basename(executable))];
+        samples = [linuxSample(roots, path.basename(executable), owners, controlScope), linuxSample(roots, path.basename(executable), owners, controlScope)];
         if (readAgentRunFile(fileURLToPath(import.meta.url), { json: false, maxBytes: 131072 }).sha256 !== implementation) fail('HANDOFF_PROCESS_DISCOVERY_CHANGED');
       } else fail('HANDOFF_PROCESS_DISCOVERY_UNAVAILABLE');
       active(signal);
       if (H(observeLocalProcess(process.pid)) !== H(observer)) fail('HANDOFF_PROCESS_DISCOVERY_CHANGED');
-      return freezeShadow(assertHandoffProcessObservation({ contract_version: 'handoff-process-observation.v1',
-        coverage_basis: 'configured_path_markers_and_descendants', scope_sha256: scope,
+      return freezeShadow(assertHandoffProcessObservation({ contract_version: 'handoff-process-observation.v' + version,
+        coverage_basis: owners.length ? 'configured_path_markers_retained_owners_and_descendants' : 'configured_path_markers_and_descendants',
+        ...ownerScope, scope_sha256: scope,
         scope_root_sha256: roots.map(root => root.sha256), observer_identity: observer, query_implementation_sha256: implementation,
         samples, stable: H(sampleMaterial(samples[0])) === H(sampleMaterial(samples[1])), snapshot_only: true,
         complete_resource_closure: false, permits_handoff: false, permits_effects: false, written: false }));

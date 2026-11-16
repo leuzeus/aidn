@@ -7221,3 +7221,16 @@ default file/Native-controller policy and every controller-helper read retain
 the single-link requirement. Actual linked-executable execution closes its Job,
 and mutation through the alias refuses before allocation. This changes no
 Native grant, helper protocol, directory admission, issuer expiry or timeout.
+
+### Retained-owner process discovery for handoff
+
+The existing required `verify-handoff-process-discovery-fixtures.mjs` command
+also starts an unmarked real Node owner and child outside both scoped paths.
+Constructor-supplied retained creation identities select the explicit v2
+observation; the path-only v1 reader keeps its original scope and shape. Exact
+PID/creation matching discovers both processes, while a reused PID identity
+adopts neither. Constructor copies, canonical deduplication, foreign/malformed
+identity refusal, observer-child retention and retired identities are checked.
+Both versions are current OS observations only: no Native client, provider
+request, source authentication or complete seven-domain closure is claimed.
+Linux implementation remains separate from executed Windows evidence.

@@ -1117,3 +1117,10 @@ Preparation verifies the actual checkpoint run ID and unskipped gate result,
 retains its unique raw command payload, and rechecks postimages plus Git scope
 after the final authorization await. Scope loss after a confirmed prefix remains
 UNKNOWN; no timestamp or historical report is refreshed to clear that condition.
+
+Private `handoff-process-observation.v2` adds the digest of constructor-supplied
+retained owner identities and distinguishes their actual OS matches from path
+markers. PID, host, platform and creation identity must match; current descendants
+remain visible when the observer itself is omitted. An empty owner set retains
+v1. Neither version authenticates the caller's retained claims or grants closure,
+permissions, a store, a write or an automatic seven-domain source.

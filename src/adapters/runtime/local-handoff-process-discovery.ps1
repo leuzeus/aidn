@@ -3,7 +3,7 @@ Set-StrictMode -Version Latest
 [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $scopeQuery = [Console]::In.ReadToEnd() | ConvertFrom-Json
-if ($scopeQuery.version -ne 1 -or $scopeQuery.query_id -notmatch '^[a-f0-9-]{36}$' -or
+if ($scopeQuery.version -notin @(1, 2) -or $scopeQuery.query_id -notmatch '^[a-f0-9-]{36}$' -or
     @($scopeQuery.roots).Count -lt 1 -or @($scopeQuery.roots).Count -gt 2 -or
     $scopeQuery.observer_pid -lt 1 -or $scopeQuery.native_name.Length -gt 256) {
     throw 'HANDOFF_PROCESS_QUERY_INVALID'
@@ -11,6 +11,19 @@ if ($scopeQuery.version -ne 1 -or $scopeQuery.query_id -notmatch '^[a-f0-9-]{36}
 foreach ($scopeRoot in $scopeQuery.roots) {
     if ($scopeRoot.path.Length -gt 4096 -or $scopeRoot.sha256 -notmatch '^[a-f0-9]{64}$') {
         throw 'HANDOFF_PROCESS_QUERY_INVALID'
+    }
+}
+$retainedOwners = @()
+if ($scopeQuery.version -eq 2) {
+    $retainedOwners = @($scopeQuery.owners)
+    if ($retainedOwners.Count -lt 1 -or $retainedOwners.Count -gt 10000 -or
+        $scopeQuery.control_scope_sha256 -notmatch '^[a-f0-9]{64}$' -or
+        $scopeQuery.control_scope_sha256 -notin @($scopeQuery.roots | ForEach-Object { $_.sha256 })) { throw 'HANDOFF_PROCESS_OWNER_SCOPE_INVALID' }
+    foreach ($owner in $retainedOwners) {
+        if ($owner.platform -ne 'win32' -or $owner.host -ne [Environment]::MachineName -or
+            [long]$owner.pid -lt 1 -or [long]$owner.pid -gt 4294967295 -or $owner.creation -notmatch '^[0-9]{18}$') {
+            throw 'HANDOFF_PROCESS_OWNER_SCOPE_INVALID'
+        }
     }
 }
 function Hash-Text([string]$value) {
@@ -48,6 +61,19 @@ function Capture-Sample {
                 }
             }
         }
+    }
+    foreach ($owner in $retainedOwners) {
+        $ownerId = [int]$owner.pid
+        if (-not $byId.ContainsKey($ownerId) -or $scoped.ContainsKey($ownerId) -or $ownerId -eq $PID) { continue }
+        try {
+            $ownerProcess = [Diagnostics.Process]::GetProcessById($ownerId)
+            if ($ownerProcess.StartTime.ToUniversalTime().Ticks.ToString() -ne $owner.creation) { continue }
+        } catch [System.ArgumentException] { continue }
+        catch {
+            # An opaque retained candidate is still scoped; the emission pass
+            # reports unavailable identity instead of treating it as absent.
+        }
+        $scoped[$ownerId] = @{ root = $scopeQuery.control_scope_sha256; basis = 'retained_owner' }
     }
     do {
         $added = $false
@@ -103,7 +129,7 @@ $observerCreation = $observerProcess.StartTime.ToUniversalTime().Ticks.ToString(
 $firstSample = Capture-Sample
 $secondSample = Capture-Sample
 $response = [pscustomobject]@{
-    version = 1; query_id = $scopeQuery.query_id; observer_creation = $observerCreation; query_pid = $PID
+    version = $scopeQuery.version; query_id = $scopeQuery.query_id; observer_creation = $observerCreation; query_pid = $PID
     samples = @($firstSample, $secondSample)
 }
 [Console]::WriteLine(($response | ConvertTo-Json -Compress -Depth 12))

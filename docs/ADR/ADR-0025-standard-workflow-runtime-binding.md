@@ -4880,3 +4880,18 @@ suspended process. Authored requests cannot select this policy. Protected
 authority files, controller helpers and default Native controllers retain the
 single-link rule. This introduces no alternate executable, implicit copy,
 credential source, helper protocol, authority, store or effect permission.
+
+## Retained owner identities in current process discovery, 2026-11-16
+
+The fixed OS reader can receive retained owner identities through its private
+constructor. It checks their host, platform, PID and exact current creation
+identity before adding the matching process and its descendants to discovery.
+An opaque retained candidate remains unavailable; a different creation identity
+is not adopted. Journal provenance alone neither authenticates a constructor
+claim nor proves a tree closed. V2 records the owner-set digest and the distinct
+retained-owner basis; v1 remains the unchanged path-only observation.
+
+This supplies a required input for the independent default handoff source when
+an old host has no project path in its command line. It introduces no authority,
+store, expiry, budget, Native grant or effect, and does not itself implement
+seven-domain source composition or claim resource closure.

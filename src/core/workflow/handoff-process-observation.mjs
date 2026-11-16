@@ -1,4 +1,5 @@
 import schema from '../contracts/workflow-definition/handoff-process-observation.v1.schema.json' with { type: 'json' };
+import ownerSchema from '../contracts/workflow-definition/handoff-process-observation.v2.schema.json' with { type: 'json' };
 import { validateJsonSchema } from '../contracts/json-schema-validator.mjs';
 import { checkShadowJson, shadowHash as H } from './shadow-json.mjs';
 const fail = () => { throw Object.assign(Error('HANDOFF_PROCESS_OBSERVATION_INVALID'), { code: 'HANDOFF_PROCESS_OBSERVATION_INVALID' }); };
@@ -6,7 +7,8 @@ const identity = row => row.platform === 'win32' ? /^[0-9]{18}$/.test(row.creati
   : /^[a-f0-9-]{36}:[0-9]+$/.test(row.creation);
 const material = sample => ({ processes: sample.processes, unavailable: sample.unavailable });
 export function assertHandoffProcessObservation(value) {
-  if (checkShadowJson(value) || validateJsonSchema(value, schema, '$', { contractKind: 'workflow-definition' }).length) fail();
+  const selected = value?.contract_version === 'handoff-process-observation.v2' ? ownerSchema : schema;
+  if (checkShadowJson(value) || validateJsonSchema(value, selected, '$', { contractKind: 'workflow-definition' }).length) fail();
   if (!identity(value.observer_identity) || new Set(value.scope_root_sha256).size !== value.scope_root_sha256.length
     || value.samples[0].captured_at_ms > value.samples[1].captured_at_ms) fail();
   for (const sample of value.samples) {

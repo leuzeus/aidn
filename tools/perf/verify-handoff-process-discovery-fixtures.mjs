@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import { createLocalHandoffProcessDiscovery } from '../../src/adapters/runtime/local-handoff-process-discovery.mjs';
 import { observeLocalProcess, observeLocalProcessOwner } from '../../src/adapters/runtime/local-process-identity.mjs';
 import { assertHandoffProcessObservation } from '../../src/core/workflow/handoff-process-observation.mjs';
+import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
 import { removePathWithRetry } from './test-git-fixture-lib.mjs';
 
 const owned = fs.mkdtempSync(path.join(os.tmpdir(), 'aidn-handoff-process-'));
@@ -47,6 +48,48 @@ try {
   const leaf = path.join(outside, 'leaf.mjs'), holder = path.join(outside, 'holder.mjs');
   fs.writeFileSync(leaf, "process.stdin.resume();process.stdin.once('data',()=>process.exit(0));process.stdout.write('ready\\n');\n");
   fs.writeFileSync(holder, "import {spawn} from 'node:child_process';const child=spawn(process.execPath,[process.argv[2]],{stdio:['pipe','pipe','inherit'],windowsHide:true});child.once('error',()=>process.exit(1));child.stdout.once('data',()=>process.stdout.write(JSON.stringify({pid:process.pid,child:child.pid})+'\\n'));process.stdin.once('data',()=>child.stdin.end('stop\\n'));child.once('exit',code=>process.exit(code??1));\n");
+  const selfIdentity = observeLocalProcess(process.pid);
+  for (const invalid of [null, 1, [null], [{ ...selfIdentity, extra: true }], [{ ...selfIdentity, pid: 0 }],
+    [{ ...selfIdentity, host: 'foreign-host' }], [{ ...selfIdentity, platform: 'foreign' }], [{ ...selfIdentity, creation: 'invalid' }],
+    Array(10001).fill(selfIdentity)]) {
+    assert.throws(() => createLocalHandoffProcessDiscovery({ ...options, ownerIdentities: invalid }), { code: 'HANDOFF_PROCESS_OWNER_SCOPE_INVALID' });
+  }
+  checks.push('trusted owner scope rejects foreign, malformed and over-inventory-limit identities');
+  parent = spawn(process.execPath, [holder, leaf], { cwd: outside, windowsHide: true, shell: false, stdio: ['pipe', 'pipe', 'pipe'] });
+  parentExit = closed(parent);
+  const unmarkedIds = await ready(parent), retained = observeLocalProcess(unmarkedIds.pid), retainedChild = observeLocalProcess(unmarkedIds.child);
+  assert(retained && retainedChild);
+  const pathOnly = observer.observe();
+  check('v1 path-only coverage retains its explicit omission of an unmarked owner and child', pathOnly.contract_version === 'handoff-process-observation.v1'
+    && pathOnly.samples.every(sample => sample.processes.every(row => row.pid !== unmarkedIds.pid && row.pid !== unmarkedIds.child)));
+  const ownerInput = [{ ...retained }], seededReader = createLocalHandoffProcessDiscovery({ ...options, ownerIdentities: ownerInput });
+  ownerInput[0].creation = 'invalid after construction';
+  const seeded = seededReader.observe(); assertHandoffProcessObservation(seeded);
+  check('v2 observes the exact retained owner with no path marker', seeded.contract_version === 'handoff-process-observation.v2'
+    && seeded.samples.every(sample => sample.processes.some(row => row.pid === unmarkedIds.pid && row.creation === retained.creation && row.scope_match === 'retained_owner')));
+  check('v2 discovers the unmarked descendant by its actual current parent identity', seeded.samples.every(sample => sample.processes.some(row => row.pid === unmarkedIds.child
+    && row.creation === retainedChild.creation && row.parent_pid === retained.pid && row.scope_match === 'descendant')));
+  check('copied constructor owner identities are bound by digest and retain redacted output', seeded.owner_identities_sha256 === H([retained])
+    && !JSON.stringify(seeded).includes(targetRoot) && !JSON.stringify(seeded).includes(controlRoot));
+  const duplicates = createLocalHandoffProcessDiscovery({ ...options, ownerIdentities: [retained, { ...retained }] }).observe();
+  check('duplicate retained owners have the same canonical scope', duplicates.scope_sha256 === seeded.scope_sha256 && duplicates.owner_identities_sha256 === seeded.owner_identities_sha256);
+  const differentCreation = retained.platform === 'win32' ? (BigInt(retained.creation) + 10n).toString()
+    : retained.creation.split(':')[0] + ':' + (BigInt(retained.creation.split(':')[1]) + 1n).toString();
+  const reused = createLocalHandoffProcessDiscovery({ ...options, ownerIdentities: [{ ...retained, creation: differentCreation }] }).observe();
+  check('a retained PID with another creation identity adopts neither the process nor its descendant', reused.samples.every(sample => sample.processes.every(row => row.pid !== unmarkedIds.pid && row.pid !== unmarkedIds.child)));
+  const ownSeed = createLocalHandoffProcessDiscovery({ ...options, ownerIdentities: [selfIdentity] }).observe();
+  check('retained observer exclusion keeps its actual unmarked work descendants visible', ownSeed.samples.every(sample => sample.processes.every(row => row.pid !== selfIdentity.pid)
+    && sample.processes.some(row => row.pid === unmarkedIds.pid && row.scope_match === 'descendant') && sample.processes.some(row => row.pid === unmarkedIds.child && row.scope_match === 'descendant')));
+  for (const mutate of [v => { delete v.owner_identities_sha256; }, v => { v.owner_identities_sha256 = 'bad'; },
+    v => { v.coverage_basis = 'configured_path_markers_and_descendants'; }, v => { v.complete_resource_closure = true; }]) {
+    const forged = structuredClone(seeded); mutate(forged); assert.throws(() => assertHandoffProcessObservation(forged), { code: 'HANDOFF_PROCESS_OBSERVATION_INVALID' });
+  }
+  checks.push('v2 refuses missing owner scope, mismatched coverage and forged closure without reinterpreting v1');
+  parent.stdin.end('stop\n'); assert.equal((await parentExit).code, 0); parent = null;
+  const retired = seededReader.observe();
+  check('fresh v2 OS samples see both retained original identities retired', observeLocalProcessOwner(retained) === 'terminated' && observeLocalProcessOwner(retainedChild) === 'terminated'
+    && retired.samples.every(sample => sample.processes.every(row => row.pid !== unmarkedIds.pid && row.pid !== unmarkedIds.child)));
+  check('owner-seeded discovery still grants no closure, handoff, effect or mutation', !seeded.complete_resource_closure && !seeded.permits_handoff && !seeded.permits_effects && !seeded.written);
   parent = spawn(process.execPath, [holder, leaf, targetRoot, 'PRIVATE_SCOPE_TOKEN_7c293'], {
     cwd: outside, windowsHide: true, shell: false, stdio: ['pipe', 'pipe', 'pipe'],
   });
