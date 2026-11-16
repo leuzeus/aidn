@@ -15,7 +15,7 @@ import { assertAgenticProcessStart } from "../../core/workflow/agentic-process-s
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { createProcessControlInboxStore } from "../../adapters/runtime/process-control-inbox-store.mjs";
-import { readNativeAllocationCheckpoint, readNativeAllocationHistory, readNativeCheckpointFile, verifyNativeResultEvidence, nativeAllocationOutputId, assertNativeAllocationProjection } from "./native-allocation-evidence.mjs";
+import { readNativeAllocationCheckpoint, readNativeAllocationHistory, readNativeAllocationClosureEvidence, readNativeCheckpointFile, verifyNativeResultEvidence, nativeAllocationOutputId, assertNativeAllocationProjection } from "./native-allocation-evidence.mjs";
 import { createNativeAllocationControls, readNativeControlContext } from "./native-allocation-controls.mjs";
 import { createNativeAuthorizationEpochs } from "./native-authorization-epochs.mjs";
 import { effectiveNativeEpochAuthorization, nativeAllocationTotals } from "../../core/workflow/native-authorization-epoch.mjs";
@@ -102,6 +102,12 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
     preview() { const { value, current } = observe(); return { ...current, journal_id: journalId, journal_sha256: value.record ? shadowHash(value.record) : null,
       generation: value.record?.allocations.length ?? 0, phase: value.record?.allocations.at(-1)?.phase ?? "absent", consumption: totals(value.record), native_started: false, written: false }; },
     inspect() { const value = read(); return value.record ? structuredClone(value.record) : null; },
+    inspectClosureEvidence() {
+      const before = read();
+      const result = readNativeAllocationClosureEvidence({ journal: before.record, configuration: config, signer, reconciliationHistory });
+      if (read().content_sha256 !== before.content_sha256) fail("NATIVE_ALLOCATION_REVISION_CHANGED");
+      return structuredClone(result);
+    },
     prepareControl: controls.prepare, captureControl: controls.capture, deliverControl: controls.deliver, readControl: controls.read,
     prepareAuthorizationEpoch: epochs.prepare, activateAuthorizationEpoch: epochs.activate,
     readCheckpoint(generation) {

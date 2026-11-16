@@ -1,5 +1,21 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Retained Native history reader for general handoff, 2026-11-15
+
+The mixed host exposes a private read of retained Native closure evidence. It
+uses the configured allocation journal, signer, checkpoint/result reader and
+existing reconciliation-history reader, including its exact canonical audit and
+physical retired-owner witness. A journal phase alone cannot establish closure.
+Ordinary closure requires the retained parent and supervisor tree; a confirmed
+later reconciliation retains the original failure without rewriting its parent.
+The journal is reread before returning. Missing or unresolved history stays
+explicit, and every result still denies effect permission and global closure.
+
+No store, schema, source authority, projection, Native allocation, budget or
+preparation-age rule changes. This prepares one necessary input to the general
+handoff port; current complete resource discovery/admission, canonical packet
+CAS, ordinary action/receipt and full handoff qualification remain separate work.
+
 ## Accepted disposition control retirement candidate, 2026-11-15
 
 A real child stop after accepted process CAS reproduced a held acceptance fence:

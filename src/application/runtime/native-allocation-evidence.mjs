@@ -1,6 +1,6 @@
 import path from "node:path";
 import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
-import { assertNativeCheckpointEvidence } from "../../core/workflow/native-allocation-journal.mjs";
+import { assertNativeCheckpointEvidence, assertNativeAllocationJournal } from "../../core/workflow/native-allocation-journal.mjs";
 import { advanceAgenticProcess, assertAgenticProcessInstance } from "../../core/workflow/agentic-process.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 
@@ -72,4 +72,44 @@ export function readNativeAllocationHistory({ journal, entry, current, configura
   }
   if (previous.instance_sha256 !== current.instance_sha256) fail("NATIVE_ALLOCATION_HISTORY_CHANGED");
   return checkpoint.state;
+}
+
+// Retained allocation history only. This read neither discovers all current
+// resources nor grants handoff, effects, renewal, retirement or workflow success.
+// The journaled host supplies its configured signer and reconciliation reader.
+export function readNativeAllocationClosureEvidence({ journal, configuration, signer, reconciliationHistory }) {
+  if (typeof signer?.verify !== 'function') fail('NATIVE_ALLOCATION_AUTHENTICATION_REQUIRED');
+  const verify = value => {
+    assertNativeAllocationJournal(value); signer.verify(value);
+    if (value.origin_journal) verify(value.origin_journal);
+  };
+  if (journal) verify(journal);
+  if (journal && journal.instance_id !== configuration.instance_id) fail('NATIVE_ALLOCATION_SCOPE_CHANGED');
+  const entries = (journal?.allocations ?? []).map(entry => {
+    if (entry.configuration_sha256 !== shadowHash(configuration)) fail('NATIVE_ALLOCATION_CONFIGURATION_CHANGED');
+    const ordinary = entry.phase === 'closed';
+    const resolution = ordinary ? null : reconciliationHistory?.resolution(journal, entry);
+    const resolved = resolution && ['reconciled_no_assignment', 'reconciled_post_assignment'].includes(resolution.kind);
+    const row = { generation: entry.generation, owner_id: entry.owner_id, original_phase: entry.phase,
+      original_first_failure: entry.first_failure, allocation_sha256: shadowHash(entry) };
+    if (!ordinary && !resolved) return { ...row, status: 'unresolved', checkpoint_sha256: null, closure_sha256: null,
+      reconciliation_receipt_sha256: null, reconciliation_record_sha256: null };
+    const checkpoint = readNativeAllocationCheckpoint(entry, configuration,
+      { scopeId: journal.scope_id, modelSha256: journal.model_sha256 });
+    if (!entry.tree_closed || ordinary && !checkpoint.state.parent_closed) fail('NATIVE_ALLOCATION_PARENT_UNCONFIRMED');
+    // A separately authenticated reconciliation can close resources after the
+    // retained failure. Do not rewrite or require a false closed original parent.
+    if (resolved && [resolution.receipt_sha256, resolution.record_sha256].some(value =>
+      typeof value !== 'string' || !/^[a-f0-9]{64}$/.test(value))) fail('NATIVE_RECONCILIATION_HISTORY_UNAUTHENTICATED');
+    return { ...row, status: ordinary ? 'ordinary_closed' : resolution.kind,
+      checkpoint_sha256: entry.checkpoint.sha256, closure_sha256: entry.closure_ref.sha256,
+      reconciliation_receipt_sha256: resolution?.receipt_sha256 ?? null,
+      reconciliation_record_sha256: resolution?.record_sha256 ?? null };
+  });
+  return { journal_id: journal?.journal_id ?? null, instance_id: configuration.instance_id,
+    scope_id: journal?.scope_id ?? null, model_sha256: journal?.model_sha256 ?? null,
+    journal_sha256: journal ? shadowHash(journal) : null,
+    retained_history_status: !journal ? 'not_allocated' : entries.every(row => row.status !== 'unresolved')
+      ? 'verified_closed_history' : 'reconciliation_required', entries,
+    permits_effects: false, complete_resource_closure: false };
 }

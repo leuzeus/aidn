@@ -84,6 +84,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     applyOperationDisposition: (plan, input) => operations.applyOperationDisposition(plan, input),
     previewNative: () => nativeHost().preview(),
     inspectAllocations: () => nativeHost().inspect(),
+    inspectNativeClosureEvidence: () => nativeHost().inspectClosureEvidence(),
     readCheckpoint: generation => nativeHost().readCheckpoint(generation),
     prepareNativeAuthorizationEpoch: input => nativeHost().prepareAuthorizationEpoch(input),
     activateNativeAuthorizationEpoch: (request, input) => nativeHost().activateAuthorizationEpoch(request, input),

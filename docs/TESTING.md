@@ -6741,3 +6741,25 @@ accepted duplicate needs no grant or write. The entry embedding is reduced to on
 operation with no Native port; this is component qualification, not full STANDARD,
 Native or installed qualification. Its fresh arenas and original failures remain
 retained, and the existing attempt/storage limits are unchanged.
+
+
+## Retained Native closure evidence for handoff
+
+Run `node tools/perf/verify-native-allocation-closure-evidence-fixtures.mjs files`
+(and `dual` or `db-only`) for the private reader. Ordinary closed journal,
+checkpoint and supervisor variants are explicitly synthetic. Canonical store
+selection for the retained failure, MAC authentication and bounded physical file
+reads are actual. Missing history, unreconciled failure, changed MAC/checkpoint/
+closure, foreign configuration, open parent/tree and missing authenticated
+reconciliation proof are checked. Each read must preserve all project/private
+files and directories. No original canonical failed generation is rewritten.
+
+Add `--reconciled` to run the existing controlled post-assignment reconciliation
+creator and reach the new mixed-host read on its authenticated v5 history. It
+checks the retained failed phase, exact reconciliation audit/receipt, original
+debit and no read mutation after a separately finite authorization epoch.
+Canonical stores, operator HMAC, independent source Ed25519 and retirement witness
+are actual; Native transport, supervisor evidence and consent remain controlled.
+The reader always reports no global closure or effect permission. These cases
+do not qualify general handoff packet writing, complete resource discovery,
+current effect admission, genuine Native/Human, installed archive or full STANDARD.

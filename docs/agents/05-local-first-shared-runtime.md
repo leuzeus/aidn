@@ -563,3 +563,19 @@ second physical effect lock and neither reacquires nor releases the controllerâ€
 lease. The controller remains responsible for durable authenticated intention,
 current operator permission, exact original ownership/source and ambiguous-effect
 retention. A controlled primitive fixture is not qualification of that controller.
+
+
+The private mixed-host `inspectNativeClosureEvidence` read reopens authenticated
+retained allocation checkpoints, bounded supervisor closure files and result
+references. Ordinary closed generations require a confirmed Native parent and
+OS tree. Failed generations remain unresolved unless the existing fixed
+reconciliation-history reader verifies the exact signed audit/receipt and
+physical retired-owner witness. A confirmed reconciliation keeps its original
+failed phase and can describe later closure without fabricating a closed
+original parent. The containing journal is reread after observation.
+
+This is retained Native history for the future general handoff port. It writes
+no record or projection and grants no effects, retry, epoch or handoff readiness.
+It does not discover every current resource, retire an owner, prove global
+resource closure or complete the workflow. Handoff composition, current physical
+resource admission and its exact canonical packet CAS/receipt remain required.
