@@ -2,6 +2,7 @@ import planSchema from '../contracts/workflow-definition/process-operation-dispo
 import recordSchema from '../contracts/workflow-definition/process-operation-disposition.v2.schema.json' with { type: 'json' };
 import receiptSchema from '../contracts/workflow-definition/process-operation-receipt.v1.schema.json' with { type: 'json' };
 import journalSchema from '../contracts/workflow-definition/process-operation-journal.v1.schema.json' with { type: 'json' };
+import controlSchema from '../contracts/workflow-definition/process-operation-control-intent.v1.schema.json' with { type: 'json' };
 import { validateJsonSchema } from '../contracts/json-schema-validator.mjs';
 import { checkShadowJson, shadowHash } from './shadow-json.mjs';
 import { assertPrIncidentCloseOutput, prIncidentCloseOperation } from './standard-pr-incident-close.mjs';
@@ -14,6 +15,16 @@ const resultFields = ['plan', 'grant', 'receipt', 'output', 'effect_knowledge', 
 export const operationDispositionResultLimit = recordSchema.properties.results.maxItems;
 if (operationDispositionResultLimit !== journalSchema.properties.results.maxItems - 1)
   fail('PROCESS_DISPOSITION_RESULT_LIMIT_DRIFT');
+
+// Data continuity only: the host must authenticate both records and separately
+// verify current permission, the exact held lease, source and business CAS.
+export function operationControlHistoryExtends(previous, current) {
+  if (!valid(previous, controlSchema) || !valid(current, controlSchema)) return false;
+  const appended = current.attempts.length - previous.attempts.length;
+  return appended >= 0 && current.revision === previous.revision + appended
+    && current.operation_id === previous.operation_id && current.key_id === previous.key_id
+    && previous.attempts.every((attempt, index) => same(attempt, current.attempts[index]));
+}
 
 // Contract checks establish shape/binding only. The owning host separately
 // authenticates MACs, original intent/source, current permission and live fences.

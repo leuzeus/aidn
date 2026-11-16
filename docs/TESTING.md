@@ -6741,3 +6741,30 @@ accepted duplicate needs no grant or write. The entry embedding is reduced to on
 operation with no Native port; this is component qualification, not full STANDARD,
 Native or installed qualification. Its fresh arenas and original failures remain
 retained, and the existing attempt/storage limits are unchanged.
+
+
+## Concurrent known-partial continuation control history
+
+The pure continuation contract fixture checks equal control data and valid
+appends, unchanged inputs, immutable earlier attempts, exact revision growth,
+foreign operation/key/version refusal, malformed data and the existing 32-attempt
+bound. It supplies no MAC authentication, permission or execution proof.
+
+The PR review fixture accepts `--incident-continuation-race=reserved|active-owner`
+with `--case=external-premerge --incident-partial-write --incident-partial-continuation`.
+Both schedules use two actual Node controllers and independently current fixture
+grants. One controller must acquire and finish; the contender must refuse while
+the first still owns the resource. Both durable proposals remain. Existing
+original UNKNOWN, confirmed prefix/metadata, separate acceptance and replay checks
+still run. Each schedule supports FILES, DUAL and db-only through the existing
+`--incident-state-mode` selector.
+
+The active-owner FILES scenario additionally accepts one
+`--incident-continuation-history=rewrite|reorder|truncate` selector. After the
+controller has observed both signed attempts and before any remaining business
+write, the fixture replaces the canonical control record with deliberately
+host-signed corrupted history. Refusal must preserve business and the original
+journal, retain the exact held lease and terminate both actual controllers.
+Original/corrupted control data and process outcomes remain in the fixture arena.
+These controlled component cases establish neither full A6 nor genuine
+Native/Human, an installed archive or the full STANDARD journey.

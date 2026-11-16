@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash, generateKeyPairSync, randomUUID, sign } from 'node:crypto';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync, fork } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createFreshStandardWorkflowFixture } from './standard-workflow-fixture-lib.mjs';
 import { createGithubReviewFixture } from './github-review-evidence-fixture-lib.mjs';
@@ -61,6 +61,13 @@ const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const save = (file, data) => fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
 const incidentModeArguments = process.argv.filter(value => value.startsWith('--incident-state-mode='));
 const incidentStateMode = incidentModeArguments[0]?.slice('--incident-state-mode='.length) ?? 'files';
+const continuationRaceArguments = process.argv.filter(value => value.startsWith('--incident-continuation-race='));
+const continuationRace = continuationRaceArguments[0]?.slice('--incident-continuation-race='.length) ?? null;
+const continuationHistoryArguments = process.argv.filter(value => value.startsWith('--incident-continuation-history='));
+const continuationHistory = continuationHistoryArguments[0]?.slice('--incident-continuation-history='.length) ?? null;
+if (continuationRaceArguments.length > 1 || continuationRace !== null && !['reserved', 'active-owner'].includes(continuationRace)
+  || continuationHistoryArguments.length > 1 || continuationHistory !== null && !['rewrite', 'reorder', 'truncate'].includes(continuationHistory))
+  throw Error('FIXTURE_INCIDENT_CONTINUATION_RACE_UNSUPPORTED');
 const continuationCutArguments = process.argv.filter(value => value.startsWith('--incident-continuation-cut='));
 const continuationCut = continuationCutArguments[0]?.slice('--incident-continuation-cut='.length) ?? null;
 if (continuationCutArguments.length > 1 || continuationCut !== null && continuationCut !== 'disposition_recorded')
@@ -156,7 +163,7 @@ function fixtureModel(prefix, fetchOnly, external = false, pretriage = false) {
   return { model, update, observe, wait, receive, select, triage, call };
 }
 
-function open(base, { initializeKey = false, providerNow, closeReceiptLoss = false, cutBoundary = null } = {}) {
+function open(base, { initializeKey = false, providerNow, closeReceiptLoss = false, cutBoundary = null, concurrencyBoundary = null } = {}) {
   const configurationFile = path.join(base, 'configuration.json');
   const data = json(configurationFile);
   const { configuration, binding, pr, prefix, behavior, submittedAt, fetchFixture } = data;
@@ -401,6 +408,7 @@ function open(base, { initializeKey = false, providerNow, closeReceiptLoss = fal
       if (controlledDenial) onceDeniedPredicate = null;
       return authority.authorizeOperation(input, denied || grants === revokeAt || controlledDenial ? null : permitted);
     } }, { dispatchCheckpoint(point, operationId) {
+      if (concurrencyBoundary) return concurrencyBoundary(point, operationId);
       if (cutBoundary === point) {
         const canonical = createStandardWorkflowArtifacts({ targetRoot }), fence = canonical.resourceFence().read();
         const captured = JSON.parse(canonical.read('workflows/operation-dispositions/' + operationId + '.json', { required: true }).content);
@@ -1934,6 +1942,147 @@ async function qualifyIncidentReceiptLoss(base, first, close, gitState) {
 }
 
 
+
+// Trusted fixture barriers coordinate real controllers; no barrier is read from product actions.
+async function continuationController(task) {
+  let fixture;
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot: json(path.join(task.base, 'configuration.json')).configuration.target_root });
+  const gates = new Map(), release = message => {
+    if (message?.kind === 'release') { const resolve = gates.get(message.point); if (resolve) resolve(); else gates.set(message.point, true); }
+  };
+  const pause = point => gates.get(point) === true ? Promise.resolve() : new Promise(resolve => gates.set(point, resolve));
+  process.on('message', release);
+  fixture = open(task.base, { concurrencyBoundary: async (point, id) => {
+    assert.equal(id, task.operation_id);
+    if (point === 'disposition_control_reserved') {
+      const control = JSON.parse(artifacts.read('workflows/operation-control-intents/' + id + '.json', { required: true }).content);
+      fixture.signer.verify(control);
+      const proposal = control.attempts.at(-1).resource_fence.record;
+      assert.equal(proposal.process_identity.pid, process.pid);
+      process.send({ kind: 'reserved', label: task.label, identity: proposal.process_identity, proposal });
+      if (task.race === 'reserved' || task.label === 'B') await pause('acquire');
+    } else if (point === 'disposition_fence_acquired') {
+      const fence = artifacts.resourceFence().read();
+      assert.equal(fence.record.process_identity.pid, process.pid);
+      process.send({ kind: 'acquired', label: task.label, lease: fence.record });
+      if (task.label === 'A') await pause('continue');
+    } else if (task.history && task.label === 'A' && point === 'incident_continuation_after_trace_0') {
+      process.send({ kind: 'observed_history', label: task.label });
+      await pause('history');
+    }
+  } });
+  try {
+    const result = await fixture.host.applyOperationDisposition(task.plan, { write: true, expectedPlanSha256: shadowHash(task.plan) });
+    process.send({ kind: 'outcome', label: task.label, result, error: null });
+  } catch (cause) {
+    process.send({ kind: 'outcome', label: task.label, result: null, error: cause.code ?? cause.message });
+    process.exitCode = 1;
+  } finally {
+    process.removeListener('message', release);
+    if (process.connected) process.disconnect();
+  }
+}
+
+async function qualifyConcurrentContinuation({ base, id, fresh, artifacts, plan, business, original }) {
+  const children = [], beforeBusiness = business();
+  const send = (row, point) => row.child.send({ kind: 'release', point });
+  const start = (label, nextPlan) => {
+    const file = path.join(base, 'continuation-controller-' + label + '.json');
+    save(file, { label, base, operation_id: id, plan: nextPlan, race: continuationRace, history: continuationHistory });
+    const child = fork(fileURLToPath(import.meta.url), ['--continue-incident-controller', file],
+      { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
+    const row = { label, child, messages: [], stdout: '', stderr: '', closed: null }, waiters = [];
+    children.push(row);
+    child.stdout.on('data', bytes => { row.stdout = (row.stdout + bytes).slice(-16384); });
+    child.stderr.on('data', bytes => { row.stderr = (row.stderr + bytes).slice(-16384); });
+    child.on('message', message => {
+      row.messages.push(message);
+      for (const waiter of [...waiters]) if (waiter.kind === message.kind) {
+        waiters.splice(waiters.indexOf(waiter), 1); waiter.resolve(message);
+      }
+    });
+    row.ended = new Promise(resolve => child.once('close', (code, signal) => {
+      row.closed = { code, signal };
+      for (const waiter of waiters.splice(0)) waiter.reject(Error('CONTROLLER_CLOSED_BEFORE_' + waiter.kind + ':' + row.stderr));
+      resolve(row.closed);
+    }));
+    row.wait = kind => {
+      const found = row.messages.find(message => message.kind === kind);
+      if (found) return Promise.resolve(found);
+      if (row.closed) return Promise.reject(Error('CONTROLLER_ALREADY_CLOSED_BEFORE_' + kind + ':' + row.stderr));
+      return new Promise((resolve, reject) => waiters.push({ kind, resolve, reject }));
+    };
+    return row;
+  };
+  try {
+    const a = start('A', plan), reservedA = await a.wait('reserved');
+    if (continuationRace === 'active-owner') await a.wait('acquired');
+    assert.equal(observeLocalProcessOwner(reservedA.identity), 'active');
+    const second = open(base), planB = await second.host.prepareOperationDisposition(id,
+      { expectedSha256: second.inspect().record.instance_sha256 });
+    const b = start('B', planB), reservedB = await b.wait('reserved');
+    assert.notEqual(reservedA.identity.pid, reservedB.identity.pid);
+    assert.equal(observeLocalProcessOwner(reservedA.identity), 'active');
+    assert.equal(observeLocalProcessOwner(reservedB.identity), 'active');
+    if (continuationRace === 'reserved') { send(a, 'acquire'); await a.wait('acquired'); }
+    send(b, 'acquire');
+    const controlPath = 'workflows/operation-control-intents/' + id + '.json';
+    const control = JSON.parse(artifacts.read(controlPath, { required: true }).content);
+    fresh.signer.verify(control); assert.equal(control.attempts.length, 2);
+    assert.equal(shadowHash(control.attempts[0].resource_fence.record), shadowHash(reservedA.proposal));
+    assert.equal(shadowHash(control.attempts[1].resource_fence.record), shadowHash(reservedB.proposal));
+    assert.notEqual(control.attempts[0].grant.request.nonce, control.attempts[1].grant.request.nonce);
+    const outcomeB = await b.wait('outcome'); await b.ended;
+    assert.equal(b.closed.code, 1);
+    assert.equal(observeLocalProcessOwner(reservedB.identity), 'terminated');
+    assert.equal(outcomeB.error, continuationRace === 'active-owner'
+      ? 'STANDARD_RESOURCE_FENCE_RECONCILIATION_REQUIRED' : 'PROCESS_DISPOSITION_OBSERVATION_CHANGED');
+    assert(!b.messages.some(message => message.kind === 'acquired'), 'only one controller may acquire');
+    assert.equal(observeLocalProcessOwner(reservedA.identity), 'active');
+    send(a, 'continue');
+    if (continuationHistory) {
+      await a.wait('observed_history');
+      assert.deepEqual(business(), beforeBusiness, 'the barrier precedes every remaining business write');
+      const changed = structuredClone(control), { key_id, authentication, ...body } = changed;
+      if (continuationHistory === 'rewrite') body.attempts[0] = structuredClone(body.attempts[1]);
+      else if (continuationHistory === 'reorder') body.attempts.reverse();
+      else { body.attempts.pop(); body.revision--; }
+      const signed = fresh.signer.seal(body); fresh.signer.verify(signed);
+      save(path.join(base, 'continuation-history-before.json'), control);
+      save(path.join(base, 'continuation-history-mutated.json'), signed);
+      // Deliberate, host-signed canonical FILES corruption is retained, never repaired.
+      save(path.resolve(artifacts.root, 'docs/audit', controlPath), signed);
+      send(a, 'history');
+    }
+    const outcomeA = await a.wait('outcome'); await a.ended;
+    assert.equal(observeLocalProcessOwner(reservedA.identity), 'terminated');
+    const fence = artifacts.resourceFence().read();
+    if (continuationHistory) {
+      assert.equal(a.closed.code, 1); assert.equal(outcomeA.error, 'PROCESS_DISPOSITION_OBSERVATION_CHANGED');
+      assert.deepEqual(business(), beforeBusiness); assert.deepEqual(fresh.host.readJournal(id), original);
+      assert.equal(fence.record.state, 'held'); assert.equal(shadowHash(fence.record), shadowHash(reservedA.proposal));
+    } else {
+      assert.equal(a.closed.code, 0, a.stderr); assert.equal(outcomeA.error, null);
+      assert.equal(outcomeA.result.status, 'receipted'); assert.equal(fence.record.state, 'released');
+      const retained = JSON.parse(artifacts.read(controlPath, { required: true }).content);
+      fresh.signer.verify(retained); assert.deepEqual(retained.attempts, control.attempts);
+    }
+    console.log(JSON.stringify({ concurrent_continuation: 'PASS', schedule: continuationRace, state_mode: artifacts.describe().state_mode,
+      history_change: continuationHistory, history_change_refused_before_remaining_effect: Boolean(continuationHistory),
+      original_unknown_preserved: true, actual_controllers_terminated: 2, single_acquiring_controller: true,
+      A_exit_code: a.closed.code, B_exit_code: b.closed.code, B_error: outcomeB.error,
+      genuine_native: 'NOT_RUN', full_A6: 'NOT_PROVEN', full_standard_workflow: false }));
+    return continuationHistory ? null : outcomeA.result;
+  } finally {
+    for (const row of children) {
+      if (row.child.exitCode === null && row.child.signalCode === null) row.child.kill();
+      await row.ended;
+      save(path.join(base, 'continuation-controller-' + row.label + '-exit.json'),
+        { messages: row.messages, exit: row.closed, stdout: row.stdout, stderr: row.stderr });
+    }
+  }
+}
+
 async function qualifyKnownPartialContinuation(base, first, close, gitState) {
   first.allow(shadowHash(close));
   const { operation_id: id } = await first.stage(close);
@@ -1986,6 +2135,8 @@ async function qualifyKnownPartialContinuation(base, first, close, gitState) {
     assert.equal(witness(), readonly, 'a revoked current operator cannot acquire a lease or change the known prefix');
     fresh.deny(false);
   }
+  const concurrentResult = continuationRace ? await qualifyConcurrentContinuation({ base, id, fresh, artifacts, plan, business, original }) : null;
+  if (continuationHistory) return;
   let captured = null, capturedBusiness = null;
   if (continuationCut) {
     const planFile = path.join(base, 'continuation-cut-plan.json'); save(planFile, plan);
@@ -2011,8 +2162,8 @@ async function qualifyKnownPartialContinuation(base, first, close, gitState) {
       assert.equal(witness(), capturedWitness, 'a capture does not supply continuing permission for its adoption');
     } finally { fresh.deny(false); }
   }
-  const result = ordinary ? (await fresh.entry({ preparedAction: preparedEntry.preview, execute: true, expectPlan: preparedEntry.action_sha256 })).result.details
-    : await fresh.host.applyOperationDisposition(plan, { write: true, expectedPlanSha256: shadowHash(plan) });
+  const result = concurrentResult ?? (ordinary ? (await fresh.entry({ preparedAction: preparedEntry.preview, execute: true, expectPlan: preparedEntry.action_sha256 })).result.details
+    : await fresh.host.applyOperationDisposition(plan, { write: true, expectedPlanSha256: shadowHash(plan) }));
   assert.equal(result.status, 'receipted');
   const continued = fresh.host.readJournal(id);
   if (captured) {
@@ -2140,6 +2291,10 @@ async function qualifyKnownPartialIncidentClose(base, first, close, gitState) {
 }
 
 async function qualifyExternalMerge(scenario) {
+  if (continuationRace && (scenario !== 'premerge' || !process.argv.includes('--incident-partial-continuation')
+    || continuationCut || process.argv.includes('--incident-continuation-entry'))
+    || continuationHistory && (continuationRace !== 'active-owner' || incidentStateMode !== 'files'))
+    throw Error('FIXTURE_INCIDENT_CONTINUATION_RACE_SCENARIO_UNSUPPORTED');
   if (continuationCut && (!process.argv.includes('--incident-partial-continuation') || scenario !== 'premerge'
     || process.argv.includes('--incident-continuation-entry'))) throw Error('FIXTURE_INCIDENT_CONTINUATION_CUT_SCENARIO_UNSUPPORTED');
   if (process.argv.includes("--incident-continuation-entry") && (!process.argv.includes("--incident-partial-continuation")
@@ -2644,7 +2799,9 @@ async function qualifyNominalConsent(prefix, choice, behavior = 'consent-session
   await qualifyConsent(base, privateKey, authority_id, { choice });
 }
 
-if (process.argv[2] === '--produce-continuation-cut') {
+if (process.argv[2] === '--continue-incident-controller') {
+  await continuationController(json(process.argv[3]));
+} else if (process.argv[2] === '--produce-continuation-cut') {
   const [, , , base, id, point, planFile] = process.argv;
   if (point !== 'disposition_recorded') throw Error('FIXTURE_INCIDENT_CONTINUATION_CUT_UNSUPPORTED');
   const f = open(base, { cutBoundary: point }), plan = json(planFile);

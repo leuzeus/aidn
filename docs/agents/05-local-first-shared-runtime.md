@@ -563,3 +563,12 @@ second physical effect lock and neither reacquires nor releases the controllerâ€
 lease. The controller remains responsible for durable authenticated intention,
 current operator permission, exact original ownership/source and ambiguous-effect
 retention. A controlled primitive fixture is not qualification of that controller.
+
+
+A known-partial continuation authenticates every current control-intent record
+and its nested subjects, retaining the exact ordered prefix already observed
+within the command. Valid appends cannot revoke an otherwise valid held lease;
+rewrites, reordering, truncation and revision inconsistency refuse. A concurrent
+proposal cannot acquire an active ownerâ€™s resource. Current operator permission,
+source, instance/journal checks, physical ownership and business CAS remain
+independent. This adds no permission cache, durable store or preparation-age cap.
