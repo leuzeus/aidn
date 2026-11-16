@@ -1916,6 +1916,9 @@
     ],
     [
       "tools/perf/verify-standard-handoff-preparation-fixtures.mjs"
+    ],
+    [
+      "tools/perf/verify-handoff-process-discovery-fixtures.mjs"
     ]
   ]
 }

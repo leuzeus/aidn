@@ -7026,10 +7026,32 @@ retains UNKNOWN with its owner and no success facts. Closed successful disposabl
 projects are removed only after resolved-path ownership checks; expected UNKNOWN
 and failed cases retain their original projects.
 
-The required catalog has 382 ordered commands and preserves the exact original381
-prefix. The new command adds the physical preparation checks; the existing six
+The required catalog has 383 ordered commands and preserves the exact original382
+prefix. Preparation remains at index381; the following process-discovery command
+adds current OS evidence. The existing six
 published waiting/continue cases now traverse preparation and packet admission.
 These remain fixture actor/Native transport/resource-source qualifications. They
 do not prove independent discovery, real resource extinction, a Native client,
 PostgreSQL, an installed archive or complete STANDARD. The earlier successful
 381-source records remain bound to their original source bytes.
+
+### Current process discovery for handoff
+
+`node tools/perf/verify-handoff-process-discovery-fixtures.mjs` exercises the
+fixed OS reader with a live, unjournaled Node holder and a descendant whose
+arguments contain no scope marker. It verifies creation identities, sibling-path
+exclusion, termination, observer exclusion without losing its markerless work
+children, redacted command/path data and unchanged target/control directories.
+Other scoped OS descendants, including console hosts, remain observable; omitting
+the observer does not imply an empty process list. Successful owned temporary roots are
+removed after resolved-path checks. A failed case retains its original root.
+
+Windows uses `Win32_Process` plus current process creation times; Linux uses
+procfs. The fixture executes its current platform, so evidence for one platform
+does not qualify the other. It starts no Codex Native client or model.
+
+The private observation captures configured path markers and their descendants.
+It does not discover opaque/unmarked executions by implication and is not an
+all-domain closure source. Empty rows, stable samples and contract validity
+supply no permission. The six other reconciliation domains and default-source
+composition still require their own implementation and evidence.

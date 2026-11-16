@@ -4818,3 +4818,27 @@ prerequisites as skipped and omits their absent diagnostic files from prioritize
 reads. Shared-planning and active-cycle variants, general
 UNKNOWN recovery, independent resource closure, genuine actors, exact installed
 archive and full STANDARD acceptance remain separate unfinished obligations.
+
+### Current OS process evidence primitive
+
+The fixed local reader samples configured target/control path markers and their
+descendant process graph twice. Native app-server arguments contain scoped
+`log_dir` and `sqlite_home` values through the existing startup builder. The
+reader can therefore observe a live marked process even without a workflow
+journal. Process creation identities and parent relations are retained; command/image data
+are returned as hashes. Opaque native-image candidates remain unavailable.
+
+The Windows implementation reads
+[Win32_Process](https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-process)
+and process start times; the Linux implementation reads
+[procfs](https://www.kernel.org/doc/html/latest/filesystems/proc.html).
+The helper receives data through stdin and executes fixed protected package
+code. It changes no execution policy and writes no project or control artifact.
+The current observer is omitted from output while its marked ancestry still
+allows discovery of its work children. The fixed query helper is excluded.
+
+This is a process-evidence primitive. Its private contract always denies effect,
+handoff and complete-resource permission. It has no default-source composition
+yet. Stable or empty process samples do not establish the six other domains,
+opaque/unmarked executions, provider effects or general resource closure.
+The seven-domain rule and original issuer permissions remain unchanged.

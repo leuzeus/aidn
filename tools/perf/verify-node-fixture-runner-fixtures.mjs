@@ -23,7 +23,9 @@ assert.deepEqual(manifest.cases.slice(194, 197), [
   ["tools/perf/verify-standard-pr-redelivery-fixtures.mjs", "--mode=files", "--aged-plan"],
 ]);
 console.log("PASS accepted194 cases retain their original argv and order modulo explicit age selectors with three exact additions");
-assert.equal(manifest.cases.length, 382);
+assert.equal(manifest.cases.length, 383);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 382))).digest("hex"), "dfb83e1921c5d3273fd5d38e848c4baee920c24a116ad72566163364048d3e3f");
+assert.deepEqual(manifest.cases[382], ["tools/perf/verify-handoff-process-discovery-fixtures.mjs"]);
 assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 381))).digest("hex"), "e5447233ec2a5f7bee2e3a36d9219d02334d7aaa46aae73258c9ab7b1f357677");
 assert.deepEqual(manifest.cases[381], ["tools/perf/verify-standard-handoff-preparation-fixtures.mjs"]);
 assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 378))).digest("hex"),
@@ -570,7 +572,7 @@ console.log("PASS current382 preserves exact381 and requires physical handoff pr
 
 if (process.argv.includes("--manifest-only")) {
   console.log(JSON.stringify({ status: "PASS", checks: 26, scope: "frozen326/332/335/338/347/353/357/360/366/369/372/375 prefixes plus receipted continuation, canonical publication, common handoff receipts and captured publication recovery",
-    manifest_cases: 382, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
+    manifest_cases: 383, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
   process.exit(0);
 }
 

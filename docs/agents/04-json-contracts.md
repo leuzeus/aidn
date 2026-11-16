@@ -1,5 +1,14 @@
 # 04 JSON Contracts
 
+Private `handoff-process-observation.v1` contains two current OS samples scoped
+to configured target/control path markers and their descendants. PID creation
+identity, parent relations, marker basis, redacted command/image hashes and
+unavailable candidates remain explicit. The core derives stability from the
+two process/unavailable sets and rejects duplicate roots and process identities.
+The contract grants no effect or handoff permission and keeps
+`complete_resource_closure: false`. It is derived handoff evidence, not a new
+canonical store, a claim about opaque executions or a seven-domain observation.
+
 Private `standard-handoff-context.v1` binds an authenticated process prefix to
 the configured canonical current/runtime/rule/snapshot/packet documents and
 exact selected session, cycle status and optional plan. Content and metadata
