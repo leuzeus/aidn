@@ -16,17 +16,18 @@ const physicalKey = value => path.resolve(value).toLowerCase();
 // A fixed host transport, never selected by request JSON. It closes the owned
 // command tree; neither a successful command nor this observer grants effects
 // or establishes all-provider/all-workflow resource closure.
-export function createGithubProcessTreeTransport({ executable, helper, cwd, profileSha256 }) {
+export function createGithubProcessTreeTransport({ executable, helper, cwd, profileSha256, scopeRoot = null }) {
   const implementation = readAgentRunFile(moduleFile, { json: false, maxBytes: 131072 }).sha256;
   const home = agentRunPhysicalPath(cwd, { directory: true });
+  const physicalScope = scopeRoot === null ? null : agentRunPhysicalPath(scopeRoot, { directory: true });
   const binary = Object.freeze({ ...executable }), pins = Object.freeze({ ...helper });
   const observer = observeLocalProcess(process.pid);
   if (!observer || !/^[a-f0-9]{64}$/.test(profileSha256 ?? '')
     || [binary.sha256, pins.sha256, pins.source_sha256].some(value => !/^[a-f0-9]{64}$/.test(value ?? '')))
     throw error('GITHUB_OBSERVATION_TREE_CONFIGURATION_INVALID');
   const controller = createWindowsProcessTreeController({ helperPath: pins.path, helperSha256: pins.sha256,
-    helperSourceSha256: pins.source_sha256, candidateSha256: implementation });
-  const scope = H({ profile: profileSha256, cwd: home, executable: binary, helper: pins, implementation, observer });
+    helperSourceSha256: pins.source_sha256, candidateSha256: implementation, helperScopeRoot: physicalScope });
+  const scope = H({ profile: profileSha256, cwd: home, scope_root: physicalScope, executable: binary, helper: pins, implementation, observer });
   const active = new Map(), recent = [];
   let revision = 0, closed = 0, notStarted = 0, unconfirmed = 0, closedDigest = H([]);
   function assertPins() {
@@ -38,7 +39,8 @@ export function createGithubProcessTreeTransport({ executable, helper, cwd, prof
       // cannot be reused while that process is still executing. Mutable files
       // and source permission retain their fresh checks.
       if (process.pid !== observer.pid || process.platform !== observer.platform || os.hostname() !== observer.host
-        || agentRunPhysicalPath(home, { directory: true }) !== home)
+        || agentRunPhysicalPath(home, { directory: true }) !== home
+        || physicalScope !== null && agentRunPhysicalPath(physicalScope, { directory: true }) !== physicalScope)
         throw error('GITHUB_OBSERVATION_TREE_BINDING_CHANGED');
     } catch { throw error('GITHUB_OBSERVATION_TREE_BINDING_CHANGED'); }
   }

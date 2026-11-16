@@ -18,7 +18,7 @@ function absolutePhysical(file, directory) {
     && fs.realpathSync.native(file).toLowerCase() === path.resolve(file).toLowerCase();
 }
 
-export function createWindowsProcessTreeController({ helperPath, helperSha256, helperSourceSha256, candidateSha256, allowNoDeadline = false } = {}) {
+export function createWindowsProcessTreeController({ helperPath, helperSha256, helperSourceSha256, candidateSha256, allowNoDeadline = false, helperScopeRoot = null } = {}) {
   if (typeof allowNoDeadline !== "boolean") throw new TypeError("PROCESS_DEADLINE_POLICY_INVALID");
   const hashes = Object.freeze({ helper_sha256: helperSha256, source_sha256: helperSourceSha256, candidate_sha256: candidateSha256 });
   async function checkAvailability({ cwd, signal, executable, executableSha256 } = {}) {
@@ -27,6 +27,7 @@ export function createWindowsProcessTreeController({ helperPath, helperSha256, h
     try {
       if (![helperSha256, helperSourceSha256, candidateSha256].every((value) => hashPattern.test(value ?? ""))
         || !absolutePhysical(helperPath, false) || !absolutePhysical(cwd, true)
+        || helperScopeRoot !== null && !absolutePhysical(helperScopeRoot, true)
         || hashFile(helperPath) !== helperSha256 || hashFile(SOURCE) !== helperSourceSha256) {
         return { available: false, reason_code: "PROCESS_HELPER_BINDING_INVALID" };
       }
@@ -72,7 +73,10 @@ export function createWindowsProcessTreeController({ helperPath, helperSha256, h
     // The helper inherits only OS bootstrap variables; worker environment travels in the bounded private pipe.
     const helperEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(SystemRoot|WINDIR|TEMP|TMP)$/iu.test(key)));
     let child;
-    try { child = spawn(helperPath, [], { cwd, env: helperEnv, shell: false, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] }); }
+    // A constructor-owned path marker lets an independent observer discover this
+    // helper and its descendants. It grants no authority and changes no protocol.
+    const helperArgs = helperScopeRoot === null ? [] : ["--aidn-resource-root", helperScopeRoot];
+    try { child = spawn(helperPath, helperArgs, { cwd, env: helperEnv, shell: false, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] }); }
     catch { return failure("PROCESS_HELPER_SPAWN_FAILED"); }
     const bytes = { stdout: 0, stderr: 0 }, digests = { stdout: createHash("sha256"), stderr: createHash("sha256") };
     let terminal = null, runner = null, nextSequence = 1, pending = 0, buffer = Buffer.alloc(0), stopped = null;

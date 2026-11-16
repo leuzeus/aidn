@@ -110,7 +110,7 @@ export function createStandardGithubProviderHost({ configuration, home, identity
   const defaultAsyncPorts = Object.entries({ read: runGithubRead, reply: runGithubReply,
     resolution: runGithubResolution, merge: runGithubMerge }).filter(([, run]) => run === undefined).map(([kind]) => kind);
   const confined = defaultAsyncPorts.length && process.platform === "win32" && configuration.controller
-    ? createGithubProcessTreeTransport({ executable: gh, cwd: home, profileSha256: contextSha,
+    ? createGithubProcessTreeTransport({ executable: gh, cwd: home, scopeRoot: configDir, profileSha256: contextSha,
       helper: { path: configuration.controller.helper_path, sha256: configuration.controller.helper_sha256,
         source_sha256: configuration.controller.helper_source_sha256 } }) : null;
   const builtinAsyncRun = confined?.run ?? runGithubObservationCommand;

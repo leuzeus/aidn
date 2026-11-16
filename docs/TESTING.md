@@ -7101,3 +7101,19 @@ and each other backend to cover the explicit v2 zero-allocation scope.
 These are fixture-clock/source/controller qualifications. They prove no genuine
 Native/Human activity or installed archive. Original wall-clock failures and
 their grants/arenas are preserved; a new validation never retimes them.
+
+### Independent discovery of provider command helpers
+
+The fixed Windows provider host supplies its protected profile directory as a
+constructor-owned helper argument marker. The process observer reads current OS
+facts to discover the helper and its descendants across a cold host boundary.
+The marker supplies no effect permission, history acceptance or all-domain
+closure. Default unmarked Native construction and finite command bounds remain.
+
+The provider process-tree fixture starts a fresh observer process while a real
+Node command is suspended. Executable, helper, observer script, argv and cwd stay
+outside the configured discovery directory. Scope arrives through stdin and no
+active-map row is supplied to the observer. The original command budget also
+bounds this observation. The command then proves its original Job closure.
+This is physical Windows process discovery with a controlled command, not a
+GitHub request, Native client or independent seven-domain source qualification.

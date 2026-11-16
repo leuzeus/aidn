@@ -97,6 +97,34 @@ try {
     const final = transport.observeResources();
     check('all allocated real command trees have confirmed closure', final.active_commands.length === 0 && final.unconfirmed_commands === 0
       && final.confirmed_closed_commands === 7 && final.recent_closures.every(row => row.termination_proof.active_processes === 0));
+    // Marker discovery must work with executable, helper, argv and cwd outside
+    // the configured root; no active-map row is supplied to the OS observer.
+    const markerRoot = path.join(owned, 'provider-discovery-root'); fs.mkdirSync(markerRoot);
+    const marked = make({ scopeRoot: markerRoot });
+    const observerFile = path.join(owned, 'independent-provider-observer.mjs');
+    const discoveryUrl = new URL('../../src/adapters/runtime/local-handoff-process-discovery.mjs', import.meta.url).href;
+    fs.writeFileSync(observerFile, "import fs from 'node:fs';import {createLocalHandoffProcessDiscovery} from " + JSON.stringify(discoveryUrl)
+      + ";const input=JSON.parse(fs.readFileSync(0,'utf8'));console.log(JSON.stringify(createLocalHandoffProcessDiscovery(input).observe()));\n");
+    let independentObservation = null, liveCommand = null;
+    const markedResult = await marked.run(process.execPath, ['-e', 'process.stdout.write("scoped")'], options({ beforeResume(remaining) {
+      liveCommand = marked.observeResources().active_commands[0];
+      independentObservation = JSON.parse(execFileSync(process.execPath, [observerFile], { cwd: owned, env: environment,
+        input: JSON.stringify({ targetRoot: markerRoot, controlRoot: markerRoot, nativeExecutable: process.execPath }),
+        encoding: 'utf8', windowsHide: true, maxBuffer: 2 * 1024 * 1024, timeout: remaining }));
+    } }));
+    check('independent OS discovery finds the marked helper and its suspended command outside argv and cwd scope',
+      liveCommand?.pid && independentObservation?.observer_identity.pid !== process.pid && independentObservation?.samples.every(sample => {
+        const command = sample.processes.find(row => row.pid === liveCommand.pid);
+        const helper = sample.processes.find(row => row.pid === command?.parent_pid);
+        return command?.scope_match === 'descendant' && helper?.scope_match === 'marker';
+      }));
+    check('independent discovery exposes hashes and grants no closure or permission',
+      !JSON.stringify(independentObservation).includes(markerRoot) && independentObservation.snapshot_only
+      && !independentObservation.complete_resource_closure && !independentObservation.permits_effects && !independentObservation.permits_handoff);
+    const markedClosed = marked.observeResources();
+    check('the discovered command retains its original budget and closes its Job', markedResult.status === 0 && markedResult.stdout === 'scoped'
+      && markedClosed.confirmed_closed_commands === 1 && markedClosed.active_commands.length === 0
+      && markedClosed.recent_closures[0].termination_proof.active_processes === 0);
     const home = path.join(owned, 'host'), project = path.join(owned, 'project'), identityKey = sha('fixture host identity');
     fs.mkdirSync(home); fs.mkdirSync(project);
     const configDir = path.join(home, identityKey + '.github'); fs.mkdirSync(configDir);
