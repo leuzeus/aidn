@@ -7175,3 +7175,17 @@ transport, and cover pre-resume permission loss, original-budget exhaustion,
 post-effect loss, cancelled observation and remote-only dirty-branch observation.
 This is controlled transport qualification, not genuine GitHub, Native or final
 all-provider/common-host resource closure proof.
+
+### Constructor-fixed provider working directories
+
+The pinned command-tree transport can accept extra physical working directories
+from its trusted constructor. Task data can select only one of these fixed roots;
+a path marker supplies no working-directory permission. Each root is rechecked
+before resume, and the selected cwd is part of the private command digest. The
+helper protocol, original command deadline and resource-closure claims stay the
+same. No JSON request can supply this constructor capability.
+
+The provider fixture runs the same real Node command in two allowed directories,
+compares their distinct command identities, rejects an unlisted marker directory
+without allocation and proves directory revocation after assignment prevents
+the actual file effect. All started command trees retain observed Job closure.

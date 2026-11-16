@@ -125,6 +125,27 @@ try {
     check('the discovered command retains its original budget and closes its Job', markedResult.status === 0 && markedResult.stdout === 'scoped'
       && markedClosed.confirmed_closed_commands === 1 && markedClosed.active_commands.length === 0
       && markedClosed.recent_closures[0].termination_proof.active_processes === 0);
+    const alternateCwd = path.join(owned, 'alternate-cwd'); fs.mkdirSync(alternateCwd);
+    const multi = make({ scopeRoot: markerRoot, additionalWorkingDirectories: [alternateCwd] });
+    const cwdArgs = ['-e', 'process.stdout.write(process.cwd())']; let originalCwdSha, alternateCwdSha;
+    const firstCwd = await multi.run(process.execPath, cwdArgs, options({ beforeResume() { originalCwdSha = multi.observeResources().active_commands[0].command_sha256; } }));
+    const otherCwd = await multi.run(process.execPath, cwdArgs, options({ cwd: alternateCwd, beforeResume() { alternateCwdSha = multi.observeResources().active_commands[0].command_sha256; } }));
+    check('constructor-fixed directories select the actual worker cwd', path.resolve(firstCwd.stdout).toLowerCase() === path.resolve(owned).toLowerCase()
+      && path.resolve(otherCwd.stdout).toLowerCase() === path.resolve(alternateCwd).toLowerCase());
+    const multiClosed = multi.observeResources();
+    check('selected cwd is bound to command identity and both jobs close', originalCwdSha !== alternateCwdSha
+      && multiClosed.confirmed_closed_commands === 2 && multiClosed.active_commands.length === 0
+      && multiClosed.recent_closures.every(row => row.termination_proof.active_processes === 0));
+    await assert.rejects(multi.run(process.execPath, cwdArgs, options({ cwd: markerRoot })), { code: 'GITHUB_OBSERVATION_TRANSPORT_INVALID' });
+    check('a scope marker grants no working-directory permission or allocation', JSON.stringify(multi.observeResources()) === JSON.stringify(multiClosed));
+    const revokedCwd = path.join(owned, 'revoked-cwd'); fs.mkdirSync(revokedCwd);
+    const revocable = make({ additionalWorkingDirectories: [revokedCwd] }), notExecuted = path.join(owned, 'revoked-cwd-must-not-run');
+    await assert.rejects(revocable.run(process.execPath, ['-e', 'require("node:fs").writeFileSync(process.argv[1],"bad")', notExecuted], options({ beforeResume() {
+      assert.equal(path.dirname(fs.realpathSync(revokedCwd)), fs.realpathSync(owned)); fs.rmdirSync(revokedCwd);
+    } })), { code: 'GITHUB_OBSERVATION_TREE_BINDING_CHANGED', effect_status: 'no_effect' });
+    fs.mkdirSync(revokedCwd);
+    check('fixed-directory revocation after assignment refuses before the effect and closes the job', !fs.existsSync(notExecuted)
+      && revocable.observeResources().confirmed_closed_commands === 1);
     const home = path.join(owned, 'host'), project = path.join(owned, 'project'), identityKey = sha('fixture host identity');
     fs.mkdirSync(home); fs.mkdirSync(project);
     const configDir = path.join(home, identityKey + '.github'); fs.mkdirSync(configDir);

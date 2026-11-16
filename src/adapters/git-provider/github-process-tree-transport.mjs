@@ -16,9 +16,12 @@ const physicalKey = value => path.resolve(value).toLowerCase();
 // A fixed host transport, never selected by request JSON. It closes the owned
 // command tree; neither a successful command nor this observer grants effects
 // or establishes all-provider/all-workflow resource closure.
-export function createGithubProcessTreeTransport({ executable, helper, cwd, profileSha256, scopeRoot = null }) {
+export function createGithubProcessTreeTransport({ executable, helper, cwd, profileSha256, scopeRoot = null, additionalWorkingDirectories = [] }) {
   const implementation = readAgentRunFile(moduleFile, { json: false, maxBytes: 131072 }).sha256;
   const home = agentRunPhysicalPath(cwd, { directory: true });
+  if (!Array.isArray(additionalWorkingDirectories)) throw error('GITHUB_OBSERVATION_TREE_CONFIGURATION_INVALID');
+  const workingRoots = [...new Map([home, ...additionalWorkingDirectories.map(value => agentRunPhysicalPath(value, { directory: true }))]
+    .map(value => [physicalKey(value), value])).values()];
   const physicalScope = scopeRoot === null ? null : agentRunPhysicalPath(scopeRoot, { directory: true });
   const binary = Object.freeze({ ...executable }), pins = Object.freeze({ ...helper });
   const observer = observeLocalProcess(process.pid);
@@ -27,7 +30,7 @@ export function createGithubProcessTreeTransport({ executable, helper, cwd, prof
     throw error('GITHUB_OBSERVATION_TREE_CONFIGURATION_INVALID');
   const controller = createWindowsProcessTreeController({ helperPath: pins.path, helperSha256: pins.sha256,
     helperSourceSha256: pins.source_sha256, candidateSha256: implementation, helperScopeRoot: physicalScope });
-  const scope = H({ profile: profileSha256, cwd: home, scope_root: physicalScope, executable: binary, helper: pins, implementation, observer });
+  const scope = H({ profile: profileSha256, cwd: home, working_roots: workingRoots, scope_root: physicalScope, executable: binary, helper: pins, implementation, observer });
   const active = new Map(), recent = [];
   let revision = 0, closed = 0, notStarted = 0, unconfirmed = 0, closedDigest = H([]);
   function assertPins() {
@@ -39,7 +42,7 @@ export function createGithubProcessTreeTransport({ executable, helper, cwd, prof
       // cannot be reused while that process is still executing. Mutable files
       // and source permission retain their fresh checks.
       if (process.pid !== observer.pid || process.platform !== observer.platform || os.hostname() !== observer.host
-        || agentRunPhysicalPath(home, { directory: true }) !== home
+        || workingRoots.some(value => agentRunPhysicalPath(value, { directory: true }) !== value)
         || physicalScope !== null && agentRunPhysicalPath(physicalScope, { directory: true }) !== physicalScope)
         throw error('GITHUB_OBSERVATION_TREE_BINDING_CHANGED');
     } catch { throw error('GITHUB_OBSERVATION_TREE_BINDING_CHANGED'); }
@@ -56,11 +59,12 @@ export function createGithubProcessTreeTransport({ executable, helper, cwd, prof
   async function run(command, args, options) {
     const started = performance.now(), { signal, timeout, maxBuffer, input, env, beforeResume } = options ?? {};
     if (signal?.aborted) throw error('GITHUB_OBSERVATION_ABORTED');
+    const commandCwd = typeof options?.cwd === 'string' ? workingRoots.find(value => physicalKey(options.cwd) === physicalKey(value)) : null;
     if (!Number.isSafeInteger(timeout) || timeout < 1 || timeout > 86400000
       || !Number.isSafeInteger(maxBuffer) || maxBuffer < 1 || maxBuffer > 1073741824
       || !Array.isArray(args) || args.some(value => typeof value !== 'string' || value.includes('\0'))
       || typeof command !== 'string' || physicalKey(command) !== physicalKey(binary.path)
-      || typeof options?.cwd !== 'string' || physicalKey(options.cwd) !== physicalKey(home)
+      || !commandCwd
       || beforeResume !== undefined && typeof beforeResume !== 'function'
       || signal !== undefined && !(signal instanceof AbortSignal)
       || input !== undefined && !(typeof input === 'string' || Buffer.isBuffer(input))
@@ -79,14 +83,14 @@ export function createGithubProcessTreeTransport({ executable, helper, cwd, prof
       assertPins();
     };
     revision++;
-    active.set(id, { command_id: id, command_sha256: H({ executable: binary, args,
+    active.set(id, { command_id: id, command_sha256: H({ executable: binary, cwd: commandCwd, args,
       input_sha256: createHash('sha256').update(input ?? '').digest('hex') }),
       phase: 'preparing', pid: null, job_name: null });
     try {
       check();
       invoked = true;
       proof = await controller.run({ runnerId: id, executable: binary.path, executableSha256: binary.sha256,
-        args, cwd: home, env, stdin: input ?? '', maxDurationMs: Math.max(1, remaining()), maxOutputBytes: maxBuffer,
+        args, cwd: commandCwd, env, stdin: input ?? '', maxDurationMs: Math.max(1, remaining()), maxOutputBytes: maxBuffer,
         maxPendingBytes: Math.min(16777216, Math.max(16384, maxBuffer)), stopTimeoutMs: 5000 },
       { signal, timeoutSignal: deadline.signal, async onEvent(event) {
         const row = active.get(id);
