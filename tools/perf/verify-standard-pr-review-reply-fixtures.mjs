@@ -70,7 +70,7 @@ if (continuationRaceArguments.length > 1 || continuationRace !== null && !['rese
   throw Error('FIXTURE_INCIDENT_CONTINUATION_RACE_UNSUPPORTED');
 const continuationCutArguments = process.argv.filter(value => value.startsWith('--incident-continuation-cut='));
 const continuationCut = continuationCutArguments[0]?.slice('--incident-continuation-cut='.length) ?? null;
-if (continuationCutArguments.length > 1 || continuationCut !== null && continuationCut !== 'disposition_recorded')
+if (continuationCutArguments.length > 1 || continuationCut !== null && !['disposition_recorded', 'disposition_acceptance_committed'].includes(continuationCut))
   throw Error('FIXTURE_INCIDENT_CONTINUATION_CUT_UNSUPPORTED');
 if (incidentModeArguments.length > 1 || !['files', 'dual', 'db-only'].includes(incidentStateMode)
   || incidentModeArguments.length && (!['--case=external-premerge', '--case=external-pretriage-session'].includes(process.argv[2])
@@ -414,10 +414,11 @@ function open(base, { initializeKey = false, providerNow, closeReceiptLoss = fal
         const captured = JSON.parse(canonical.read('workflows/operation-dispositions/' + operationId + '.json', { required: true }).content);
         signer.verify(captured);
         assert.equal(captured.output.outcome, 'completed'); assert.equal(captured.effect_knowledge, 'known_prefix');
-        assert.equal(host.readJournal(operationId).results.length, 1);
+        assert.equal(host.readJournal(operationId).results.length, point === 'disposition_acceptance_committed' ? 2 : 1);
         assert.equal(fence.record.state, 'held'); assert.equal(fence.record.process_identity.pid, process.pid);
         save(path.join(base, 'continuation-cut.json'), { point, operation_id: operationId, identity: fence.record.process_identity,
-          audit_sha256: shadowHash(captured), receipt_sha256: shadowHash(captured.receipt) });
+          audit_sha256: shadowHash(captured), receipt_sha256: shadowHash(captured.receipt), fence,
+          journal_results: host.readJournal(operationId).results.length });
         process.exit(42);
       }
       if (interruptCapture && ['post_merge_decision_reserved', 'external_merge_disposition_reserved', 'pr_review_control_reserved'].includes(point)) throw Object.assign(Error('Fixture interrupted capture'), { code: 'FIXTURE_CAPTURE_INTERRUPTED' });
@@ -2083,6 +2084,64 @@ async function qualifyConcurrentContinuation({ base, id, fresh, artifacts, plan,
   }
 }
 
+async function verifyPostAcceptanceProfile({ data, fresh, plan, witness }) {
+  assert(data.configuration.model?.path, 'ordinary model must exist before the continuation');
+  assert.equal(pin(data.configuration.model.path).sha256, data.configuration.model.sha256);
+  const before = witness(), preview = await fresh.entry({});
+  assert.equal(preview.preview.kind, 'operation_disposition'); assert.equal(witness(), before);
+  const provenance = new Set(['prepared_at_ms', 'nonce', 'key_id', 'authentication', 'inventory_sha256']);
+  const material = value => Object.fromEntries(Object.entries(value).filter(([key]) => !provenance.has(key)));
+  assert.deepEqual(material(preview.preview.payload.disposition_plan), material(plan), 'direct/Mixed subject must transfer beyond the declared inventory alias');
+}
+async function qualifyAcceptedContinuationOrphan({ base, id, fresh, artifacts, business, completedBusiness, continued }) {
+  const worker = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--produce-continuation-cut', base, id, 'disposition_acceptance_committed'],
+    { encoding: 'utf8', windowsHide: true, maxBuffer: 8388608 });
+  save(path.join(base, 'continuation-acceptance-cut-exit.json'), { status: worker.status, signal: worker.signal, stdout: worker.stdout, stderr: worker.stderr });
+  assert.equal(worker.status, 42, worker.stderr); assert.equal(worker.signal, null);
+  const cut = json(path.join(base, 'continuation-cut.json'));
+  assert.equal(cut.identity.pid, worker.pid); assert.equal(observeLocalProcessOwner(cut.identity), 'terminated');
+  assert.equal(cut.point, 'disposition_acceptance_committed'); assert.equal(cut.journal_results, 2);
+  assert.deepEqual(business(), completedBusiness);
+  const cold = open(base), accepted = cold.inspect().record, journal = cold.host.readJournal(id);
+  assert.deepEqual(journal, continued);
+  const events = accepted.events.filter(row => row.kind === 'operation_result' && row.receipt.operation_id === id);
+  assert.equal(events.length, 2); for (let i = 0; i < 2; i++) assert.deepEqual(events[i].receipt, continued.results[i].receipt);
+  const auditPath = 'workflows/operation-dispositions/' + id + '.json', controlPath = 'workflows/operation-control-intents/' + id + '.json';
+  const audit = JSON.parse(artifacts.read(auditPath, { required: true }).content), control = JSON.parse(artifacts.read(controlPath, { required: true }).content);
+  cold.signer.verify(audit); cold.signer.verify(control);
+  const snapshot = () => shadowHash({ business: business(), instance: cold.inspect().record, journal: cold.host.readJournal(id),
+    canonical: artifacts.observeInventory(), fence: artifacts.resourceFence().read() });
+  const beforeDenied = snapshot(); cold.deny(true);
+  try { await assert.rejects(cold.host.accept(id, { write: true }), { code: 'PROCESS_DISPOSITION_AUTHORIZATION_REQUIRED' }); }
+  finally { cold.deny(false); }
+  assert.equal(snapshot(), beforeDenied, 'current denial cannot retire an accepted continuation owner');
+  const entry = await cold.entry({}); assert.equal(entry.preview.kind, 'operation_disposition_accept');
+  assert.equal(snapshot(), beforeDenied, 'preparing control-only retirement is read-only');
+  const completed = await cold.entry({ preparedAction: entry.preview, execute: true, expectPlan: entry.action_sha256 });
+  assert.equal(completed.written, true); assert.deepEqual(cold.inspect().record, accepted); assert.deepEqual(cold.host.readJournal(id), journal);
+  assert.deepEqual(business(), completedBusiness);
+  const released = artifacts.resourceFence().read(); assert.equal(released.record.state, 'released');
+  assert.equal(released.record.revision, cut.fence.record.revision + 1);
+  for (const [key, value] of Object.entries(cut.fence.record)) if (!['state', 'revision'].includes(key)) assert.deepEqual(released.record[key], value);
+  assert.equal(artifacts.ownerPending(), false);
+  const afterAudit = JSON.parse(artifacts.read(auditPath, { required: true }).content), afterControl = JSON.parse(artifacts.read(controlPath, { required: true }).content);
+  cold.signer.verify(afterAudit); cold.signer.verify(afterControl);
+  for (const key of ['plan', 'grant', 'output', 'receipt', 'resource_fence', 'effect_knowledge', 'results']) assert.deepEqual(afterAudit[key], audit[key]);
+  assert.deepEqual(afterControl.attempts.slice(0, control.attempts.length), control.attempts);
+  const added = afterControl.attempts.slice(control.attempts.length); assert.equal(added.length, 1); assert.equal(added[0].action, 'acceptance');
+  assert.deepEqual(added[0].resource_fence.record, cut.fence.record);
+  assert.equal(added[0].resource_fence.previous_sha256, cut.fence.content_sha256, 'cold adoption CAS names the already-held lease');
+  const retired = snapshot(); cold.deny(true);
+  try { assert.equal((await cold.host.accept(id, { write: true })).written, false); } finally { cold.deny(false); }
+  assert.equal(snapshot(), retired, 'duplicate accepted history cannot renew permission or retire again');
+  await assert.rejects(cold.entry({ preparedAction: entry.preview, execute: true, expectPlan: entry.action_sha256 }), { code: 'STANDARD_ENTRY_ACTION_CHANGED' });
+  assert.equal(snapshot(), retired, 'stale ordinary retirement action cannot write');
+  console.log(JSON.stringify({ accepted_continuation_control_retirement: 'PASS', cut: cut.point, state_mode: artifacts.describe().state_mode,
+    actual_child_exit: 42, original_unknown_and_new_confirmation_unchanged: true, current_denial_no_write: true,
+    ordinary_entry_exact_dead_lease_retirement: true, accepted_instance_unchanged: true, no_replacement_lease: true,
+    no_business_replay: true, duplicate_no_write: true, stale_action_refused: true, genuine_native: 'NOT_RUN', full_A6: 'NOT_PROVEN' }));
+}
+
 async function qualifyKnownPartialContinuation(base, first, close, gitState) {
   first.allow(shadowHash(close));
   const { operation_id: id } = await first.stage(close);
@@ -2116,6 +2175,7 @@ async function qualifyKnownPartialContinuation(base, first, close, gitState) {
   assert.equal(plan.assessment, 'known_partial_incident_close');
   assert.equal(plan.contract_version, 'process-operation-disposition-plan.v2');
   assert.equal(witness(), readonly, 'preparing a continuation is read-only');
+  if (continuationCut === 'disposition_acceptance_committed') await verifyPostAcceptanceProfile({ data, fresh, plan, witness });
   if (ordinary) {
     const principalFile = path.join(data.home, 'principals.json'), retainedPrincipals = fs.readFileSync(principalFile);
     const principals = JSON.parse(retainedPrincipals), { publicKey } = generateKeyPairSync('ed25519');
@@ -2138,7 +2198,7 @@ async function qualifyKnownPartialContinuation(base, first, close, gitState) {
   const concurrentResult = continuationRace ? await qualifyConcurrentContinuation({ base, id, fresh, artifacts, plan, business, original }) : null;
   if (continuationHistory) return;
   let captured = null, capturedBusiness = null;
-  if (continuationCut) {
+  if (continuationCut === 'disposition_recorded') {
     const planFile = path.join(base, 'continuation-cut-plan.json'); save(planFile, plan);
     const worker = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--produce-continuation-cut', base, id, continuationCut, planFile],
       { encoding: 'utf8', windowsHide: true, maxBuffer: 8388608 });
@@ -2198,7 +2258,9 @@ async function qualifyKnownPartialContinuation(base, first, close, gitState) {
   assert.deepEqual(business().provider, before.provider);
   assert.equal(artifacts.ownerPending(), false);
   const completedBusiness = business();
-  if (ordinary) {
+  if (continuationCut === 'disposition_acceptance_committed')
+    await qualifyAcceptedContinuationOrphan({ base, id, fresh, artifacts, business, completedBusiness, continued });
+  else if (ordinary) {
     const acceptance = await fresh.entry({});
     assert.equal(acceptance.preview.kind, "operation_disposition_accept");
     await fresh.entry({ preparedAction: acceptance.preview, execute: true, expectPlan: acceptance.action_sha256 });
@@ -2295,7 +2357,8 @@ async function qualifyExternalMerge(scenario) {
     || continuationCut || process.argv.includes('--incident-continuation-entry'))
     || continuationHistory && (continuationRace !== 'active-owner' || incidentStateMode !== 'files'))
     throw Error('FIXTURE_INCIDENT_CONTINUATION_RACE_SCENARIO_UNSUPPORTED');
-  if (continuationCut && (!process.argv.includes('--incident-partial-continuation') || scenario !== 'premerge'
+  if (continuationCut && (!process.argv.includes('--incident-partial-continuation')
+    || scenario !== (continuationCut === 'disposition_recorded' ? 'premerge' : 'pretriage-session')
     || process.argv.includes('--incident-continuation-entry'))) throw Error('FIXTURE_INCIDENT_CONTINUATION_CUT_SCENARIO_UNSUPPORTED');
   if (process.argv.includes("--incident-continuation-entry") && (!process.argv.includes("--incident-partial-continuation")
     || scenario !== "pretriage-session")) throw Error("FIXTURE_INCIDENT_CONTINUATION_ENTRY_SCENARIO_UNSUPPORTED");
@@ -2803,10 +2866,12 @@ if (process.argv[2] === '--continue-incident-controller') {
   await continuationController(json(process.argv[3]));
 } else if (process.argv[2] === '--produce-continuation-cut') {
   const [, , , base, id, point, planFile] = process.argv;
-  if (point !== 'disposition_recorded') throw Error('FIXTURE_INCIDENT_CONTINUATION_CUT_UNSUPPORTED');
-  const f = open(base, { cutBoundary: point }), plan = json(planFile);
-  assert.equal(plan.operation_id, id);
-  await f.host.applyOperationDisposition(plan, { write: true, expectedPlanSha256: shadowHash(plan) });
+  if (!['disposition_recorded', 'disposition_acceptance_committed'].includes(point)) throw Error('FIXTURE_INCIDENT_CONTINUATION_CUT_UNSUPPORTED');
+  const f = open(base, { cutBoundary: point });
+  if (point === 'disposition_recorded') {
+    const plan = json(planFile); assert.equal(plan.operation_id, id);
+    await f.host.applyOperationDisposition(plan, { write: true, expectedPlanSha256: shadowHash(plan) });
+  } else await f.host.accept(id, { write: true });
   throw Error('FIXTURE_INCIDENT_CONTINUATION_CUT_NOT_REACHED');
 } else if (process.argv[2] === '--produce-partial-incident-close') {
   const [, , , base, id] = process.argv, f = open(base), record = f.host.readJournal(id);

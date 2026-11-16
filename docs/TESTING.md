@@ -6841,3 +6841,23 @@ journal, retain the exact held lease and terminate both actual controllers.
 Original/corrupted control data and process outcomes remain in the fixture arena.
 These controlled component cases establish neither full A6 nor genuine
 Native/Human, an installed archive or the full STANDARD journey.
+
+
+## Accepted v2 continuation control retirement
+
+The exact commands below interrupt a real child with exit42 immediately after
+accepting the second v2 result and before releasing its control fence:
+
+- `node tools/perf/verify-standard-pr-review-reply-fixtures.mjs --case=external-pretriage-session --incident-partial-write --incident-partial-continuation --incident-state-mode=files --incident-continuation-cut=disposition_acceptance_committed`
+- `node tools/perf/verify-standard-pr-review-reply-fixtures.mjs --case=external-pretriage-session --incident-partial-write --incident-partial-continuation --incident-state-mode=dual --incident-continuation-cut=disposition_acceptance_committed`
+- `node tools/perf/verify-standard-pr-review-reply-fixtures.mjs --case=external-pretriage-session --incident-partial-write --incident-partial-continuation --incident-state-mode=db-only --incident-continuation-cut=disposition_acceptance_committed`
+
+The pretriage profile configures the ordinary model before effects and verifies
+the current direct/Mixed subject before continuing. Cold ordinary entry must
+retire the exact terminated owner’s held fence, preserving the accepted instance,
+original UNKNOWN and later confirmation, immutable audit and business postimages.
+Current denial refuses without writing; duplicate acceptance writes nothing; an
+old ordinary action refuses with STANDARD_ENTRY_ACTION_CHANGED. The cold
+control intent names the already-held fence as its CAS preimage and acquires no
+replacement lease. Tracked resource retirement and OS child exit remain separate
+from general A6, genuine Native, installed and full STANDARD qualification.
