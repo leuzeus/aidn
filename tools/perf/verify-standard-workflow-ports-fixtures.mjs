@@ -15,7 +15,7 @@ import { checkShadowJson, shadowHash } from "../../src/core/workflow/shadow-json
 import { artifactContentHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
 import { assertProcessDispatchRecord } from "../../src/core/workflow/process-dispatch-record.mjs";
 import { createOperationJournalSigner } from "../../src/core/workflow/process-operation-journal.mjs";
-import { assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
+import { assertStandardOperationOutput, assertStandardSessionPlan } from "../../src/core/workflow/standard-operation-contracts.mjs";
 import { runReloadCheckUseCase } from "../../src/application/runtime/reload-check-use-case.mjs";
 import { verifyStandardSessionGitPlanValidity } from "./standard-session-git-plan-validity-fixture-lib.mjs";
 import { verifyStandardExistingCycleEntry } from "./verify-standard-existing-cycle-entry-fixtures.mjs";
@@ -92,6 +92,12 @@ try {
     const result = await ops.initializeSession(preview, { write: true, expectPlan: preview.plan_sha256 });
     assert.equal(result.outcome, "completed", JSON.stringify(result.observations)); assert.equal(result.effect_status, "confirmed");
     assert.equal(result.facts.session_mode_pending, true); assert.equal(git(root, "branch", "--show-current"), input.session_branch);
+    assert.equal(preview.plan.contract_version, "standard-session-initialize-plan.v2");
+    assert.equal(preview.plan.changes[2].path, "snapshots/context-snapshot.md");
+    const snapshot = createStandardWorkflowArtifacts({ targetRoot: root }).read("snapshots/context-snapshot.md", { required: true });
+    assert.match(snapshot.content, /^- Session active: S001$/m);
+    const legacy = structuredClone(preview.plan); legacy.contract_version = "standard-session-initialize-plan.v1"; legacy.changes.pop(); delete legacy.snapshot_metadata_sha256;
+    assertStandardSessionPlan(legacy);
     assert.equal(fs.existsSync(hookMarker), false, "host operation must not execute project checkout hooks");
     const text = fs.readFileSync(path.join(root, "docs/audit/sessions/S001.md"), "utf8");
     assert.equal(parseSessionMetadata(text).session_branch, input.session_branch);
@@ -119,7 +125,12 @@ try {
     }
     // Standalone components and compatibility bindings have their own fixtures.
     assert.deepEqual([...registered.keys()].filter(id => !published.has(id)).sort(),
-      ["cycle_plan_adopt", "cycle_work_evaluate", "session_admit", "session_pr_merge_observe", "session_pr_post_merge_wait", "session_pr_review_observe"]);
+      ["cycle_plan_adopt", "cycle_plan_evaluate", "cycle_work_evaluate", "session_admit", "session_pr_merge_observe", "session_pr_post_merge_wait", "session_pr_review_observe"]);
+    // The legacy cycle_plan_evaluate binding remains exercised by the typed
+    // cyclePlan fixture; ordinary root planning uses the newer prework path.
+    for (const id of ["handoff_packet_publish", "handoff_resources_observe"]) assert.equal(published.has(id), true);
+    assert.equal(registered.get("handoff_packet_publish").effect_class, "mutating");
+    assert.equal(registered.get("handoff_resources_observe").effect_class, "read-only");
     for (const id of ["cycle_entry_observe", "cycle_entry_admit", "cycle_owned_resume_admit", "cycle_canonical_resume_admit", "cycle_canonical_resume_observe", "cycle_plan_select", "cycle_execution_source_select"]) {
       assert.equal(published.has(id), true); assert.equal(registered.get(id).effect_class, "read-only");
     }
@@ -163,6 +174,8 @@ try {
     assert.equal(result.outcome, "completed", JSON.stringify(result.observations));
     const canonical = createStandardWorkflowArtifacts({ targetRoot: target });
     assert.ok(canonical.read("CURRENT-STATE.md").content.includes("active_session: S001"));
+    assert.match(canonical.read("snapshots/context-snapshot.md", { required: true }).content, /^- Session active: S001$/m);
+    assert.equal(canonical.metadataHash("snapshots/context-snapshot.md"), result.observations.snapshot_metadata_sha256);
     const sessionFile = path.join(target, "docs/audit/sessions/S001.md");
     assert.equal(fs.existsSync(sessionFile), mode === "dual");
     assert.equal(fs.readFileSync(visible, "utf8").includes("active_session: S999"), mode === "db-only");
@@ -175,6 +188,36 @@ try {
     assert.equal(git(target, "branch", "--show-current"), "dev");
     assert.equal(fs.existsSync(path.join(target, "docs/audit/sessions/S001.md")), false);
     assert.equal(createStandardWorkflowArtifacts({ targetRoot: target }).ownerPending(), false);
+  });
+  await check('v2 initialization refuses changed canonical snapshot content before branch effects', async () => {
+    const target = client('files'), bound = createStandardWorkflowOperations({ targetRoot: target }), prepared = await bound.prepareSession(input);
+    fs.appendFileSync(path.join(target, 'docs/audit/snapshots/context-snapshot.md'), '\n<!-- independent snapshot revision -->\n');
+    await assert.rejects(bound.initializeSession(prepared, { write: true, expectPlan: prepared.plan_sha256 }), { code: 'STANDARD_PREVIEW_CHANGED' });
+    assert.equal(git(target, 'branch', '--show-current'), 'dev');
+    assert.equal(fs.existsSync(path.join(target, 'docs/audit/sessions/S001.md')), false);
+    assert.equal(createStandardWorkflowArtifacts({ targetRoot: target }).ownerPending(), false);
+  });
+  await check('v2 initialization refuses metadata-only snapshot drift before branch effects', async () => {
+    const target = client('dual'), bound = createStandardWorkflowOperations({ targetRoot: target }), prepared = await bound.prepareSession(input);
+    const artifacts = createStandardWorkflowArtifacts({ targetRoot: target }), before = artifacts.read('snapshots/context-snapshot.md').sha256;
+    const file = resolveRuntimeSqliteFile({ targetRoot: target }); assert(fs.existsSync(file));
+    const DatabaseSync = getDatabaseSync(), database = new DatabaseSync(file);
+    try { assert.equal(Number(database.prepare("UPDATE artifacts SET classification_reason = 'fixture concurrent snapshot metadata' WHERE path = 'snapshots/context-snapshot.md'").run().changes), 1); }
+    finally { database.close(); }
+    assert.equal(artifacts.read('snapshots/context-snapshot.md').sha256, before);
+    assert.notEqual(artifacts.metadataHash('snapshots/context-snapshot.md'), prepared.plan.snapshot_metadata_sha256);
+    await assert.rejects(bound.initializeSession(prepared, { write: true, expectPlan: prepared.plan_sha256 }), { code: 'STANDARD_PREVIEW_CHANGED' });
+    assert.equal(git(target, 'branch', '--show-current'), 'dev'); assert.equal(artifacts.ownerPending(), false);
+    assert.equal(artifacts.read('sessions/S001.md').sha256, null);
+  });
+  await check('historical v1 initialization keeps its original two-artifact behavior', async () => {
+    const target = client('files'), bound = createStandardWorkflowOperations({ targetRoot: target }), prepared = await bound.prepareSession(input);
+    const artifacts = createStandardWorkflowArtifacts({ targetRoot: target }), before = artifacts.read('snapshots/context-snapshot.md').sha256;
+    const plan = structuredClone(prepared.plan); plan.contract_version = 'standard-session-initialize-plan.v1'; plan.changes.pop(); delete plan.snapshot_metadata_sha256;
+    assertStandardSessionPlan(plan); const legacy = { can_apply: true, plan, plan_sha256: shadowHash(plan) };
+    const result = await bound.initializeSession(legacy, { write: true, expectPlan: legacy.plan_sha256 }); assert.equal(result.outcome, 'completed');
+    assert.equal(artifacts.read('snapshots/context-snapshot.md').sha256, before);
+    assert.equal((await bound.reconcileSession(legacy)).outcome, 'completed');
   });
   await check("missing canonical store never falls back to visible state", async () => {
     const target = client("dual"), database = resolveRuntimeSqliteFile({ targetRoot: target });

@@ -1,7 +1,7 @@
 import { createNativeReconciliationHistoryReader } from "./native-reconciliation-history.mjs";
 import { MODE_WORK_CONTRACT, evaluateStandardModeWork } from "../../core/workflow/standard-mode-work.mjs";
 import { assertObjectiveReview } from "../../core/workflow/standard-drift-objective-review.mjs";
-import { observeModeWorkReport, modeWorkContinuationChoices, assertModeWorkObservationOutput } from "../../core/workflow/standard-mode-work-continuation.mjs";
+import { observeModeWorkReport, modeWorkContinuationChoices, modeWorkHandoffChoices, assertModeWorkObservationOutput } from "../../core/workflow/standard-mode-work-continuation.mjs";
 import { readStandardModeWorkContext } from "./standard-mode-work-context.mjs";
 import { readStandardCycleCloseContext } from "./standard-cycle-close-context.mjs";
 import { PR_TRIAGE_CONTRACT } from "../../core/workflow/standard-pr-triage.mjs";
@@ -407,6 +407,10 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       const priorReview = binding === "spike_conversion_decision" ? selected.record.preview.prepared.review.analysis : selected.record.preview.prepared.review;
       if (capture.source.choice !== "continue_analysis" || selected.output.facts.mode_work_continue_requested !== true)
         fail("STANDARD_MODE_WORK_CONTINUATION_REQUIRED");
+      if (capture.source.contract_version === "human-mode-work-decision.v2"
+        && (selected.output.observations.current_context_sha256 !== shadowHash(modeWorkDecisionContext(current))
+          || shadowHash(selected.record.preview.prepared.current_context) !== selected.output.observations.current_context_sha256))
+        fail("STANDARD_MODE_WORK_REVIEW_STALE");
       continuation = { operation_id: selected.record.operation_id, source_sha256: shadowHash(capture.source), question_sha256: capture.source.question_sha256,
         review_sha256: selected.output.observations.review_sha256, choice: capture.source.choice,
         information_only: true, product_effects_authorized: false, retention_authorized: false, native_authority_renewed: false,
@@ -425,18 +429,29 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     assertStandardOperationInput("mode_work_observe", input);
     return observeModeWorkReport(readActivityOutput(instance, input.report_occurrence_id, MODE_WORK_CONTRACT), prepareModeWorkActivity(instance, input.report_occurrence_id));
   }
-  function prepareModeWorkContinuation(instance, input) {
+  const modeWorkDecisionContext = current => ({ session_id: current.context.session_id, mode: current.context.mode,
+    context_sha256: current.context_sha256, product_sha256: current.context.product_sha256,
+    head: current.context.git.head, branch: current.context.git.branch });
+  function prepareModeWorkContinuation(instance, input, { version = 2 } = {}) {
     assertStandardOperationInput("mode_work_continue_decision", input);
     const accepted = acceptedOperation(instance, input.review_operation_id, "mode_work_observe");
     assertModeWorkObservationOutput(accepted.output);
     if (accepted.output.outcome !== "completed") fail("STANDARD_MODE_WORK_REVIEW_STALE");
+    if (version === 2) {
+      // The accepted report is immutable history. Current context is a separate
+      // subject; publishing a packet must not rebase an old Native report.
+      const review = accepted.output.observations.review, current = modeWorkDecisionContext(observeModeWorkContext());
+      if (current.session_id !== review.session_id || current.mode !== review.mode) fail("STANDARD_MODE_WORK_REVIEW_STALE");
+      if (!["waiting", "retain_requested"].includes(review.report.disposition)) fail("STANDARD_MODE_WORK_CONTINUATION_NOT_REQUIRED");
+      return { review, current_context: current, choices: [...modeWorkHandoffChoices] };
+    }
     const fresh = observeModeWork(instance, accepted.record.preview.input);
     if (shadowHash(fresh) !== shadowHash(accepted.output)) fail("STANDARD_MODE_WORK_REVIEW_STALE");
     if (!["waiting", "retain_requested"].includes(fresh.observations.review.report.disposition)) fail("STANDARD_MODE_WORK_CONTINUATION_NOT_REQUIRED");
     return { review: fresh.observations.review, choices: [...modeWorkContinuationChoices] };
   }
   function assertModeWorkContinuationFresh(instance, input, prepared) {
-    if (shadowHash(prepareModeWorkContinuation(instance, input)) !== shadowHash(prepared)) fail("STANDARD_MODE_WORK_REVIEW_STALE");
+    if (shadowHash(prepareModeWorkContinuation(instance, input, { version: prepared.current_context ? 2 : 1 })) !== shadowHash(prepared)) fail("STANDARD_MODE_WORK_REVIEW_STALE");
   }
   async function evaluateDriftReport(instance, input) {
     assertStandardOperationInput("drift_report_evaluate", input);

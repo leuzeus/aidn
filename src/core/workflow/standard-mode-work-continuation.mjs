@@ -4,6 +4,10 @@ import sourceSchema from "../contracts/workflow-definition/human-mode-work-decis
 import observationSchema from "../contracts/workflow-definition/standard-mode-work-observation-output.v1.schema.json" with { type: "json" };
 import observationSchemaV2 from "../contracts/workflow-definition/standard-mode-work-observation-output.v2.schema.json" with { type: "json" };
 import outputSchema from "../contracts/workflow-definition/standard-mode-work-decision-output.v1.schema.json" with { type: "json" };
+import questionSchemaV2 from "../contracts/workflow-definition/standard-mode-work-question.v2.schema.json" with { type: "json" };
+import sourceSchemaV2 from "../contracts/workflow-definition/human-mode-work-decision.v2.schema.json" with { type: "json" };
+import outputSchemaV2 from "../contracts/workflow-definition/standard-mode-work-decision-output.v2.schema.json" with { type: "json" };
+import { assertHandoffPublicationInput } from "./standard-handoff-publication.mjs";
 import { evaluateStandardModeWork, assertStandardModeWorkReport } from "./standard-mode-work.mjs";
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { checkShadowJson, shadowHash } from "./shadow-json.mjs";
@@ -11,6 +15,9 @@ import { checkShadowJson, shadowHash } from "./shadow-json.mjs";
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length;
 export const modeWorkContinuationChoices = Object.freeze(["continue_analysis", "refused", "deferred", "cancelled"]);
+export const modeWorkHandoffChoices = Object.freeze(["continue_analysis", "handoff", "refused", "deferred", "cancelled"]);
+export const modeWorkDecisionSubject = question => question.contract_version === "standard-mode-work-question.v2"
+  ? { review: question.review, current_context: question.current_context } : question.review;
 export function assertModeWorkReview(value) {
   if (!valid(value, reviewSchema) || Buffer.byteLength(JSON.stringify(value)) > 98304) fail("STANDARD_MODE_WORK_REVIEW_INVALID");
   assertStandardModeWorkReport(value.report);
@@ -46,18 +53,26 @@ export function assertModeWorkObservationOutput(value) {
   return value;
 }
 export function assertModeWorkQuestion(value) {
-  if (!valid(value, questionSchema) || Buffer.byteLength(JSON.stringify(value)) > 114688) fail("STANDARD_MODE_WORK_QUESTION_INVALID");
+  const current = value?.contract_version === "standard-mode-work-question.v2";
+  if (!valid(value, current ? questionSchemaV2 : questionSchema) || Buffer.byteLength(JSON.stringify(value)) > 114688) fail("STANDARD_MODE_WORK_QUESTION_INVALID");
   assertModeWorkReview(value.review);
   if (value.session_id !== value.review.session_id || !["waiting", "retain_requested"].includes(value.review.report.disposition)
-    || shadowHash(value.choices) !== shadowHash(modeWorkContinuationChoices)) fail("STANDARD_MODE_WORK_QUESTION_INVALID");
+    || shadowHash(value.choices) !== shadowHash(current ? modeWorkHandoffChoices : modeWorkContinuationChoices)
+    || current && (value.current_context.session_id !== value.session_id || value.current_context.mode !== value.review.mode)) fail("STANDARD_MODE_WORK_QUESTION_INVALID");
   return value;
 }
 export function assertHumanModeWorkDecision(value, question) {
-  if (!valid(value, sourceSchema) || !value.rationale.trim()
+  const current = value?.contract_version === "human-mode-work-decision.v2";
+  if (!valid(value, current ? sourceSchemaV2 : sourceSchema) || !value.rationale.trim()
     || new Set(value.evidence_refs.map(row => row.ref)).size !== value.evidence_refs.length) fail("STANDARD_MODE_WORK_DECISION_INVALID");
+  if (current) {
+    if ((value.choice === "handoff") !== (value.handoff !== null)) fail("STANDARD_MODE_WORK_DECISION_INVALID");
+    if (value.handoff) assertHandoffPublicationInput(value.handoff);
+  }
   if (question) {
     assertModeWorkQuestion(question);
-    if (value.question_sha256 !== shadowHash(question) || value.subject_sha256 !== shadowHash(question.review)) fail("PROCESS_HUMAN_QUESTION_CHANGED");
+    if (current !== (question.contract_version === "standard-mode-work-question.v2")
+      || value.question_sha256 !== shadowHash(question) || value.subject_sha256 !== shadowHash(modeWorkDecisionSubject(question))) fail("PROCESS_HUMAN_QUESTION_CHANGED");
     if (!question.choices.includes(value.choice)) fail("PROCESS_HUMAN_CHOICE_NOT_OFFERED");
   }
   return value;
@@ -65,16 +80,23 @@ export function assertHumanModeWorkDecision(value, question) {
 export function observeHumanModeWorkDecision({ question, decision }) {
   assertHumanModeWorkDecision(decision, question);
   const accepted = decision.choice === "continue_analysis";
-  return { outcome: accepted ? "completed" : decision.choice === "refused" ? "rejected" : decision.choice, effect_status: "no_effect",
-    facts: accepted ? { mode_work_continue_requested: true, mode_analysis_completed: false } : {},
+  const current = question.contract_version === "standard-mode-work-question.v2", handoff = current && decision.choice === "handoff";
+  return { outcome: accepted || handoff ? "completed" : decision.choice === "refused" ? "rejected" : decision.choice, effect_status: "no_effect",
+    facts: accepted || handoff ? { mode_work_continue_requested: accepted, mode_analysis_completed: false,
+      ...(current ? { mode_work_handoff_requested: handoff } : {}) } : {},
     observations: { question_sha256: shadowHash(question), review_sha256: shadowHash(question.review), source_sha256: shadowHash(decision),
-      choice: decision.choice, product_effects_authorized: false, retention_authorized: false, native_authority_renewed: false } };
+      choice: decision.choice, ...(current ? { current_context_sha256: shadowHash(question.current_context), handoff: structuredClone(decision.handoff) } : {}),
+      product_effects_authorized: false, retention_authorized: false, native_authority_renewed: false } };
 }
 export function assertModeWorkDecisionOutput(value) {
-  if (!valid(value, outputSchema)) fail("STANDARD_MODE_WORK_DECISION_OUTPUT_INVALID");
-  const accepted = value.observations.choice === "continue_analysis";
-  if (value.outcome !== (accepted ? "completed" : value.observations.choice === "refused" ? "rejected" : value.observations.choice)
-    || shadowHash(value.facts) !== shadowHash(accepted ? { mode_work_continue_requested: true, mode_analysis_completed: false } : {})
+  const current = value?.contract_version === "standard-mode-work-decision-output.v2";
+  if (!valid(value, current ? outputSchemaV2 : outputSchema)) fail("STANDARD_MODE_WORK_DECISION_OUTPUT_INVALID");
+  const accepted = value.observations.choice === "continue_analysis", handoff = current && value.observations.choice === "handoff";
+  if (current && handoff !== (value.observations.handoff !== null)) fail("STANDARD_MODE_WORK_DECISION_OUTPUT_INVALID");
+  if (handoff) assertHandoffPublicationInput(value.observations.handoff);
+  if (value.outcome !== (accepted || handoff ? "completed" : value.observations.choice === "refused" ? "rejected" : value.observations.choice)
+    || shadowHash(value.facts) !== shadowHash(accepted || handoff ? { mode_work_continue_requested: accepted, mode_analysis_completed: false,
+      ...(current ? { mode_work_handoff_requested: handoff } : {}) } : {})
     || value.observations.product_effects_authorized !== false || value.observations.retention_authorized !== false
     || value.observations.native_authority_renewed !== false) fail("STANDARD_MODE_WORK_DECISION_OUTPUT_INVALID");
   return value;

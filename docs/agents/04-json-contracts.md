@@ -1044,3 +1044,36 @@ writer, context/resource readers, canonical projection and closed contracts.
 Those dependency bytes are checked independently of the Native global digest.
 This fills the existing source-pin coverage; it adds no new permission or age
 condition. Historical records retain their original implementation identities.
+
+Private mode-work question/decision/output v2 and decision inbox v21 retain the
+accepted v1 analysis review as explicitly informational history and bind a
+separate current session/mode/context/product/Git summary. The explicit handoff
+choice carries the exact closed publication input; continue, refusal, defer and
+cancel stay distinct. Consent grants no product effect, retention or Native
+renewal. Historical v1 questions, sources, outputs and inbox v10 remain readable.
+
+The private handoff resource operation binds the latest accepted completed
+publication and exact packet content/metadata, including DUAL visible bytes.
+Its completed no-effect output retains the signed seven-domain resource snapshot
+with both permission flags false. A missing independent source returns waiting
+before dispatch claim/capture/result; the original staged journal remains
+unchanged across cold polls. No new persistence parent or age ceiling is added.
+
+Session initialization plan v2 includes the canonical snapshot entry pointer
+alongside the new session and CURRENT. It binds the snapshot content and metadata
+preimages and uses the existing owner and metadata-preserving CAS. The rest of
+the snapshot remains verbatim. V1 preparation readers and their original two
+changes remain supported. This repairs the observed S001/none snapshot mismatch
+before handoff; canonical consistency admission remains unchanged.
+
+Session Git checkpoint plan v2 adds the snapshot to its closed four-document
+scope only from an authenticated accepted v2 initializer and its completed output.
+Current snapshot bytes and metadata must still match that receipt. The existing
+foreign-change rule remains; no general snapshot path exemption is added. V1
+three-document plans remain readable when that initializer witness is absent.
+The trusted session adapter uses the fixed session-metadata-snapshot Git profile
+(four metadata paths maximum). The default legacy port keeps its original
+three-path scope, and process JSON cannot select or extend either profile.
+Read-only mode context now includes canonical handoff packet bytes/metadata or
+explicit absence, so re-entry material changes in DB-only even without a Git
+export. Packet text remains informational and renews no permission.

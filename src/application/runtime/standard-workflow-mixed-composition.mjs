@@ -153,6 +153,8 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
         const preview = await operations.preview({ instanceId: configuration.instance_id, expectedSha256: state.record.instance_sha256,
           occurrenceId: operation.occurrence_id, input, signal });
         if (!write) return { kind: "operation_preview", status: cursor.status, written: false, preview };
+        if (preview.binding.id === "handoff_packet_publish" && preview.prepared.can_apply === false)
+          return { kind: "operation_wait", status: "WAITING", written: false, preview };
         const staged = await operations.stage(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
         return finishOperation(staged.operation_id, signal);
       }

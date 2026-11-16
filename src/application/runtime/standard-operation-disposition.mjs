@@ -79,7 +79,7 @@ function inventoryMaterial(retained, id, reopening = false, continuation = null)
 
 // These are implementation-owned resource profiles, not declarations accepted
 // from JSON. Extend them only with a real adapter and its closure qualification.
-const readOnlyProfiles = new Set(["context_reload", "session_admit", "session_close_admit"]);
+const readOnlyProfiles = new Set(["context_reload", "session_admit", "session_close_admit", "handoff_resources_observe"]);
 const artifactProfiles = new Set(["session_close_record"]);
 const prCheckpoint = "session_pr_checkpoint";
 const correctionReopen = "session_pr_correction_reopen";

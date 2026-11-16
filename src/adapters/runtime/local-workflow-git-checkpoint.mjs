@@ -27,14 +27,17 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
   const choicePath = name => /^docs\/audit\/(?:(?:CURRENT-STATE|RUNTIME-STATE)[.]md|sessions\/S[0-9]{3,6}[.]md|snapshots\/context-snapshot[.]md|cycles\/C[0-9]{3,6}-[A-Za-z0-9._-]+\/status[.]md)$/.test(name);
   const contextPath = name => /^docs\/audit\/(?!workflows(?:\/|$))/i.test(name)
     && !name.split("/").some(part => /^(?:[.]git|[.]aidn|[.]codex|[.]agents)$/i.test(part));
-  if (!["session-metadata", "cycle-terminal", "cycle-choice", "cycle-context"].includes(profile)
-    || profile === "session-metadata" && approvedPaths !== null
-    || profile !== "session-metadata" && (!Array.isArray(approvedPaths) || approvedPaths.length > (profile === "cycle-context" ? 10000 : profile === "cycle-choice" ? 131 : 128)
+  const sessionScope = ["session-metadata", "session-metadata-snapshot"].includes(profile);
+  if (!["session-metadata", "session-metadata-snapshot", "cycle-terminal", "cycle-choice", "cycle-context"].includes(profile)
+    || sessionScope && approvedPaths !== null
+    || !sessionScope && (!Array.isArray(approvedPaths) || approvedPaths.length > (profile === "cycle-context" ? 10000 : profile === "cycle-choice" ? 131 : 128)
       || new Set(approvedPaths).size !== approvedPaths.length || !approvedPaths.every(relative)
       || profile === "cycle-choice" && !approvedPaths.every(choicePath)
       || profile === "cycle-context" && !approvedPaths.every(contextPath))) fail("WORKFLOW_GIT_SCOPE_PROFILE_INVALID");
-  const approved = new Set(approvedPaths ?? []), scopePath = profile === "session-metadata" ? sessionPath : name => approved.has(name);
-  const maxFiles = profile === "session-metadata" ? 3 : approved.size;
+  const approved = new Set(approvedPaths ?? []), scopePath = sessionScope
+    ? name => sessionPath(name) || profile === "session-metadata-snapshot" && name === "docs/audit/snapshots/context-snapshot.md"
+    : name => approved.has(name);
+  const maxFiles = sessionScope ? profile === "session-metadata-snapshot" ? 4 : 3 : approved.size;
   if (Object.keys(environment).some(name => /^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|CONFIG(?:_.*)?)$/i.test(name)))
     fail("WORKFLOW_GIT_ENV_SCOPE_CONFLICT");
   const env = Object.fromEntries(Object.entries(environment).filter(([name]) => !/^GIT_/i.test(name)));
@@ -126,7 +129,7 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
     for (const row of plan.files) if (file(row.path).sha256 !== row.sha256) fail("WORKFLOW_GIT_POSTIMAGE_CHANGED");
     return current;
   }
-  const title = profile === "session-metadata" ? "chore: checkpoint governed session metadata"
+  const title = sessionScope ? "chore: checkpoint governed session metadata"
     : profile === "cycle-choice" ? "chore: checkpoint canonical cycle choice"
     : profile === "cycle-context" ? "chore: checkpoint selected cycle context" : "chore: checkpoint approved terminal cycle";
   const message = plan => `${title}\n\nAIDN-Operation: ${plan.operation_id}\nAIDN-Plan: ${plan.plan_sha256}\n`;

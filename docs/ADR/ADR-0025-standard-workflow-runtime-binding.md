@@ -4754,3 +4754,41 @@ writer, context/resource readers, canonical projection and closed contracts.
 Those dependency bytes are checked independently of the Native global digest.
 This fills the existing source-pin coverage; it adds no new permission or age
 condition. Historical records retain their original implementation identities.
+
+### Explicit analysis handoff routing candidate
+
+The published THINKING/EXPLORING waiting-report path calls an operation/H-only
+component. A v2 current-context decision chooses continue or explicit handoff,
+with refusal, defer and cancel preserved. Handoff publishes the actual canonical
+packet, obtains an independent post-release resource snapshot, then reloads
+context and runs existing session-entry admission before asking a new decision.
+The original Native report remains historical and is never rewritten as fresh.
+A continue decision permits another analysis occurrence only under its separate
+Native authorization. The 256-node root limit and existing finite loop bounds
+remain; call-local facts isolate successive waiting reports.
+
+The resource observer waits with an unclaimed staged journal when its fixed
+trusted source is absent. It writes no business resource and retains no source
+permission as serialized action data. An authenticated snapshot supplies neither
+global handoff permission nor an automatic business-UNKNOWN recovery. The default
+production entry still has no independent seven-domain discovery source;
+fixture, real-actor and installed qualification remain separate obligations.
+
+Session initialization plan v2 includes the canonical snapshot entry pointer
+alongside the new session and CURRENT. It binds the snapshot content and metadata
+preimages and uses the existing owner and metadata-preserving CAS. The rest of
+the snapshot remains verbatim. V1 preparation readers and their original two
+changes remain supported. This repairs the observed S001/none snapshot mismatch
+before handoff; canonical consistency admission remains unchanged.
+
+Session Git checkpoint plan v2 adds the snapshot to its closed four-document
+scope only from an authenticated accepted v2 initializer and its completed output.
+Current snapshot bytes and metadata must still match that receipt. The existing
+foreign-change rule remains; no general snapshot path exemption is added. V1
+three-document plans remain readable when that initializer witness is absent.
+The trusted session adapter uses the fixed session-metadata-snapshot Git profile
+(four metadata paths maximum). The default legacy port keeps its original
+three-path scope, and process JSON cannot select or extend either profile.
+Read-only mode context now includes canonical handoff packet bytes/metadata or
+explicit absence, so re-entry material changes in DB-only even without a Git
+export. Packet text remains informational and renews no permission.

@@ -9,7 +9,7 @@ export const STANDARD_WORKFLOW_CATALOG_PATH = "package/catalogs/standard-workflo
 export const STANDARD_WORKFLOW_MODEL_PATH = "package/catalogs/process-models/aidn-standard.v1.json";
 const root = new URL("../../../", import.meta.url);
 const read = path => fs.readFileSync(new URL(path, root));
-const skillIds = ["convert-to-spike", "drift-check", "context-reload", "start-session", "cycle-create", "branch-cycle-audit", "cycle-close", "promote-baseline", "close-session", "pr-orchestrate"];
+const skillIds = ["convert-to-spike", "drift-check", "context-reload", "start-session", "cycle-create", "branch-cycle-audit", "cycle-close", "promote-baseline", "close-session", "pr-orchestrate", "handoff-close"];
 
 // The published model remains partial. The explicit ordinary STANDARD entry
 // uses this loader; default engine selection alone never selects this model.

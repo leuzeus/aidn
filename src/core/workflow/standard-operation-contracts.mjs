@@ -12,6 +12,7 @@ import spikeInitializeInput from "../contracts/workflow-definition/standard-spik
 import spikeFinalizeInput from "../contracts/workflow-definition/standard-spike-finalize-input.v1.schema.json" with { type: "json" };
 import spikeOutput from "../contracts/workflow-definition/standard-spike-output.v1.schema.json" with { type: "json" };
 import { assertSpikeDecisionOutput } from "./standard-spike-decision.mjs";
+import { assertHandoffResourceOperationInput, assertHandoffResourceOperationOutput } from "./standard-handoff-resource-operation.mjs";
 import modeWorkPreflight from "../contracts/workflow-definition/standard-mode-work-preflight-input.v1.schema.json" with { type: "json" };
 import modeWorkEvaluate from "../contracts/workflow-definition/standard-mode-work-evaluate-input.v1.schema.json" with { type: "json" };
 import modeWorkOutput from "../contracts/workflow-definition/standard-mode-work-output.v1.schema.json" with { type: "json" };
@@ -134,6 +135,7 @@ import empty from "../contracts/workflow-definition/standard-empty-input.v1.sche
 import initialize from "../contracts/workflow-definition/standard-session-initialize-input.v1.schema.json" with { type: "json" };
 import output from "../contracts/workflow-definition/standard-operation-output.v1.schema.json" with { type: "json" };
 import plan from "../contracts/workflow-definition/standard-session-initialize-plan.v1.schema.json" with { type: "json" };
+import sessionPlanV2 from "../contracts/workflow-definition/standard-session-initialize-plan.v2.schema.json" with { type: "json" };
 import outputV2 from "../contracts/workflow-definition/standard-operation-output.v2.schema.json" with { type: "json" };
 import outputV3 from "../contracts/workflow-definition/standard-operation-output.v3.schema.json" with { type: "json" };
 import sessionRef from "../contracts/workflow-definition/standard-session-reference-input.v1.schema.json" with { type: "json" };
@@ -305,6 +307,7 @@ export function assertStandardOperationInput(operation, value) {
   if (operation === postMergeCompleteOperation) return assertPostMergeCompleteInput(value);
   if (prIncidentTrackingOperations.includes(operation)) return assertPrIncidentTrackingInput(value);
   if (operation === prIncidentCloseOperation) return assertPrIncidentCloseInput(value);
+  if (operation === "handoff_resources_observe") return assertHandoffResourceOperationInput(value);
   if (operation === handoffPublicationOperation) return assertHandoffPublicationInput(value);
   if (operation === postMergeFetchOperation) return assertPostMergeFetchInput(value);
   if ([mergeExecuteOperation, postMergeWaitOperation].includes(operation)) return assertMergeExecuteInput(operation, value);
@@ -349,6 +352,7 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-handoff-resource-operation-output.v1") return assertHandoffResourceOperationOutput(value);
   if (value?.contract_version === "standard-cycle-prework-selection-output.v1") return assertStandardCyclePreworkSelection(value);
   if (value?.contract_version === "standard-cycle-prework-evaluation-output.v1") return assertStandardCyclePreworkEvaluation(value);
   if (value?.contract_version === "standard-cycle-plan-selection-output.v2") return assertCyclePlanSourceSelection(value);
@@ -472,7 +476,7 @@ export function assertStandardOperationOutput(value) {
     return value;
   }
   if (["standard-mode-work-observation-output.v1", "standard-mode-work-observation-output.v2"].includes(value?.contract_version)) return assertModeWorkObservationOutput(value);
-  if (value?.contract_version === "standard-mode-work-decision-output.v1") return assertModeWorkDecisionOutput(value);
+  if (["standard-mode-work-decision-output.v1", "standard-mode-work-decision-output.v2"].includes(value?.contract_version)) return assertModeWorkDecisionOutput(value);
   if (value?.contract_version === "standard-mode-work-output.v1") {
     if (checkShadowJson(value) || validateJsonSchema(value, modeWorkOutput, "$", { contractKind: "workflow-definition" }).length
       || (value.outcome === "blocked" ? Object.keys(value.facts).length !== 0
@@ -793,10 +797,12 @@ export function assertStandardOperationOutput(value) {
   return value;
 }
 export function assertStandardSessionPlan(value) {
-  if (validateJsonSchema(value, plan, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_PLAN_INVALID");
+  const current = value?.contract_version === "standard-session-initialize-plan.v2";
+  if (validateJsonSchema(value, current ? sessionPlanV2 : plan, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_PLAN_INVALID");
   assertStandardOperationInput("session_initialize", value.input);
   if (value.input.mode !== "UNKNOWN" || value.changes[0].path !== `sessions/${value.input.session_id}.md`
-    || value.changes[0].before_sha256 !== null || value.changes[1].path !== "CURRENT-STATE.md" || value.changes[1].before_sha256 === null) fail("STANDARD_PLAN_INVALID");
+    || value.changes[0].before_sha256 !== null || value.changes[1].path !== "CURRENT-STATE.md" || value.changes[1].before_sha256 === null
+    || current && (value.changes[2].path !== "snapshots/context-snapshot.md" || value.changes[2].before_sha256 === null)) fail("STANDARD_PLAN_INVALID");
   return value;
 }
 export function assertStandardPrCorrectionPlan(value) {

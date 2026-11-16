@@ -70,6 +70,27 @@ inputs.push({ node_id: "session_setup", fields: Object.fromEntries(["session_id"
 nodes.push(...structuredClone(startup.nodes).filter(node => ["context_reload", "session_admit", "session_start_finalize"].includes(node.id)));
 inputs.push(...structuredClone(startup.data_bindings.inputs).filter(input => ["context_reload", "session_admit", "session_start_finalize"].includes(input.node_id)));
 xor("mode_route", [["committing", "committing", "mode_committing"], ["thinking", "thinking_handoff", "mode_thinking"], ["exploring", "exploring_handoff", "mode_exploring"]]);
+// A call keeps each waiting-report decision local to that occurrence. Its loop
+// always asks first; only explicit handoff enters publication and post-release
+// discovery. Continue returns to the original Native analysis loop.
+const handoffNodeStart = nodes.length, handoffInputStart = inputs.length;
+node('mode_handoff_review', 'loop', { child: 'mode_handoff_iteration', until: 'mode_work_continue_requested', max_iterations: 32 });
+seq('mode_handoff_iteration', ['mode_handoff_decide', 'mode_handoff_route']);
+op('mode_handoff_decide', 'mode_work_continue_decision', { review_operation_id: { source: 'parameter', key: 'review_operation_id', path: [] } });
+xor('mode_handoff_route', [['handoff', 'mode_handoff_publish_and_close', 'mode_work_handoff_requested'], ['continue', 'mode_handoff_continue', null]]);
+seq('mode_handoff_continue', []);
+seq('mode_handoff_publish_and_close', ['mode_handoff_publish', 'mode_handoff_resources', 'mode_handoff_reload', 'mode_handoff_readmit']);
+op('mode_handoff_publish', 'handoff_packet_publish', Object.fromEntries(['next_agent_role', 'next_agent_action', 'next_agent_goal', 'handoff_note', 'from_agent_role', 'from_agent_action']
+  .map(key => [key, { source: 'operation_output', node_id: 'mode_handoff_decide', path: ['observations', 'handoff', key] }])));
+op('mode_handoff_resources', 'handoff_resources_observe', operation(null, 'publication_operation_id', 'mode_handoff_publish'));
+op('mode_handoff_reload', 'context_reload');
+op('mode_handoff_readmit', 'session_entry_admit', Object.fromEntries(['session_id', 'session_branch', 'objective'].map(key => [key, { source: 'parameter', key, path: [] }])));
+const handoffNodes = nodes.splice(handoffNodeStart), handoffTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-mode-handoff', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'mode_handoff_review', nodes: handoffNodes, operation_pins: pinsFor(handoffNodes),
+  call_interface: { parameters: Object.fromEntries(['review_operation_id', 'session_id', 'session_branch', 'objective'].map(key => [key, 'string'])), returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: ['review_operation_id', 'session_id', 'session_branch', 'objective'], inputs: inputs.splice(handoffInputStart) } };
+const handoffRef = pinTarget(handoffTarget);
+
 // Analysis reports retain their original outcomes. A received waiting report
 // reaches a durable human operation; continuation creates a new loop occurrence.
 // Retention still requires a separately admitted SPIKE conversion.
@@ -80,7 +101,9 @@ for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING
   seq(`${prefix}_analysis_iteration`, [`${prefix}_analysis`, `${prefix}_observe`, ...(prefix === "exploring" ? ["spike_admit"] : []), `${prefix}_after_report`]);
   op(`${prefix}_observe`, "mode_work_observe", occurrence(`${prefix}_analysis`));
   xor(`${prefix}_after_report`, [["complete", `${prefix}_evaluate`, "mode_work_report_complete"], ...(prefix === "exploring" ? [["spike", "spike_decide", "mode_work_spike_requested"]] : []), ["waiting", `${prefix}_continue_decide`, null]]);
-  op(`${prefix}_continue_decide`, "mode_work_continue_decision", { review_operation_id: { source: "operation_id", node_id: `${prefix}_observe` } });
+  node(`${prefix}_continue_decide`, "call", { target: handoffRef });
+  inputs.push({ node_id: `${prefix}_continue_decide`, fields: { review_operation_id: { source: "operation_id", node_id: `${prefix}_observe` },
+    ...Object.fromEntries(["session_id", "session_branch", "objective"].map(key => [key, { source: "parameter", key: "session", path: [key] }])) } });
   native(`${prefix}_analysis`, "mode_analyst", `${prefix}_analysis_policy`, "standard-mode-work-report.v1", ["context-reload"], ["SPEC-R01", "SPEC-R02"]);
   op(`${prefix}_evaluate`, "mode_work_evaluate", occurrence(`${prefix}_analysis`));
 }
@@ -775,6 +798,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...driftRecoveryRef, model: driftRecoveryTarget },
     { ...correctiveDriftRef, model: correctiveDriftTarget },
     { ...sessionSetupRef, model: sessionSetup },
+    { ...handoffRef, model: handoffTarget },
     { ...modeClosureRef, model: modeClosureTarget },
     { ...ownedRef, model: ownedTarget },
     { ...choiceRef, model: choiceTarget },

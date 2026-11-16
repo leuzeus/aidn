@@ -42,6 +42,9 @@ const correctionFiles = ["standard-reconciliation-inventory.mjs",
   new URL("../../core/workflow/standard-pr-correction-reopen.mjs", import.meta.url),
   ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-pr-correction-reopen-${kind}.v1.schema.json`, import.meta.url))];
 const files = [
+  "standard-handoff-resource-operation.mjs",
+  new URL("../../core/workflow/standard-handoff-resource-operation.mjs", import.meta.url),
+  ...["standard-mode-work-question.v2","human-mode-work-decision.v2","standard-mode-work-decision-output.v2","process-decision-inbox.v21","standard-handoff-resource-operation-input.v1","standard-handoff-resource-operation-plan.v1","standard-handoff-resource-operation-output.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
   // The common operation binding covers the writer, adapter, historical reader
   // and closed contracts independently of the Native allocator's global pin.
   "canonical-handoff-projection.mjs", "standard-handoff-context.mjs", "standard-handoff-resources.mjs",
@@ -159,7 +162,7 @@ function implementation() {
     new URL("../../core/workflow/standard-session-branch-integration-decision.mjs", import.meta.url), new URL("../../adapters/runtime/local-workflow-branch-integration.mjs", import.meta.url), new URL("../../core/ports/workflow-branch-integration-port.mjs", import.meta.url), new URL("../../core/contracts/workflow-definition/human-session-branch-integration-decision.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/process-decision-inbox.v6.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-branch-integrate-input.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-branch-integrate-output.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-branch-integrate-plan.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-branch-integration-decision-output.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-branch-integration-question.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-branch-integration-review-input.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-branch-integration-review-plan.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-branch-integration-review.v1.schema.json", import.meta.url),...["input","plan","output"].map(kind=>new URL(`../../core/contracts/workflow-definition/standard-session-delivery-checkpoint-${kind}.v1.schema.json`,import.meta.url)), ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-session-preclose-checkpoint-${kind}.v1.schema.json`, import.meta.url)), new URL("standard-session-close-hook.mjs", import.meta.url), ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-session-close-hook-${kind}.v1.schema.json`, import.meta.url)), new URL("../../../tools/perf/close-session-hook.mjs", import.meta.url), new URL("workflow-session-service.mjs", import.meta.url), new URL("sync-db-first-selective-use-case.mjs", import.meta.url), new URL("standard-session-close-checkpoint.mjs", import.meta.url), ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-session-close-checkpoint-${kind}.v1.schema.json`, import.meta.url)), new URL("standard-session-close-record.mjs", import.meta.url), new URL("../../core/workflow/standard-session-close-render.mjs", import.meta.url), ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-session-close-${kind}.v1.schema.json`, import.meta.url)), new URL("standard-session-closure-authority.mjs", import.meta.url), new URL("../../core/workflow/standard-session-closure-decision.mjs", import.meta.url), new URL("standard-session-closure-review.mjs", import.meta.url), new URL("standard-session-closure-context.mjs", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-closure-review.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-closure-review-input.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-closure-review-plan.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-closure-question.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/human-session-closure-decision.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-closure-decision-output.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/process-decision-inbox.v5.schema.json", import.meta.url), new URL("../../adapters/runtime/artifact-store.mjs", import.meta.url), new URL("../../adapters/runtime/postgres-artifact-command-lib.mjs", import.meta.url), new URL("../../lib/workflow/structured-artifact-parser-lib.mjs", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-close-admission-output.v1.schema.json", import.meta.url),new URL("standard-baseline-promotion-checkpoint.mjs", import.meta.url),
     ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-baseline-promotion-checkpoint-${kind}.v1.schema.json`, import.meta.url)), new URL("standard-cycle-terminal-checkpoint.mjs", import.meta.url),
     ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-cycle-terminal-checkpoint-${kind}.v1.schema.json`, import.meta.url)), new URL("standard-workflow-git-checkpoint.mjs", import.meta.url), new URL("../../adapters/runtime/local-workflow-git-checkpoint.mjs", import.meta.url), new URL("../../core/ports/workflow-git-checkpoint-port.mjs", import.meta.url),
-new URL("../../core/contracts/workflow-definition/standard-session-git-checkpoint-input.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-git-checkpoint-output.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-git-checkpoint-plan.v1.schema.json", import.meta.url),
+new URL("../../core/contracts/workflow-definition/standard-session-git-checkpoint-input.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-git-checkpoint-output.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-git-checkpoint-plan.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-git-checkpoint-plan.v2.schema.json", import.meta.url),
 new URL("standard-workflow-composition.mjs", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-workflow-catalog.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-workflow-catalog.v2.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-workflow-catalog.v3.schema.json", import.meta.url),
 new URL("standard-baseline-promotion-hook.mjs", import.meta.url), new URL("promote-baseline-checkpoint-use-case.mjs", import.meta.url), new URL("../../../tools/perf/promote-baseline-hook.mjs", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-baseline-promotion-hook-input.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-baseline-promotion-hook-plan.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-baseline-promotion-hook-output.v1.schema.json", import.meta.url),
 new URL("standard-baseline-promotion-authority.mjs", import.meta.url), new URL("standard-baseline-promotion.mjs", import.meta.url), new URL("standard-baseline-promotion-review.mjs", import.meta.url), new URL("../../core/workflow/standard-baseline-promotion.mjs", import.meta.url), new URL("../../core/workflow/standard-baseline-promotion-decision.mjs", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-baseline-promotion-input.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-baseline-promotion-plan.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-baseline-promotion-request.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-baseline-promotion-output.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-baseline-promotion-question.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-baseline-promotion-review-input.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-baseline-promotion-review-plan.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-baseline-promotion-decision-output.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/human-baseline-promotion-decision.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/process-decision-inbox.v4.schema.json", import.meta.url),
@@ -206,7 +209,7 @@ new URL("standard-cycle-implementation.mjs", import.meta.url), new URL("../../co
     new URL("../../../tools/perf/start-session-hook.mjs", import.meta.url),
     new URL("../../core/workflow/artifact-compare-swap.mjs", import.meta.url), new URL("../../adapters/runtime/workflow-record-store.mjs", import.meta.url),
     new URL("../../core/workflow/process-control-inbox.mjs", import.meta.url), new URL("../../adapters/runtime/process-control-inbox-store.mjs", import.meta.url),
-    ...["standard-empty-input.v1", "standard-session-initialize-input.v1", "standard-session-initialize-plan.v1", "standard-operation-output.v1", "process-local-effect-owner.v1", "standard-operation-preview.v1", "process-operation-journal.v1", "standard-operation-output.v2", "standard-operation-output.v3", "standard-session-reference-input.v1", "standard-mode-apply-input.v1", "standard-session-mode-plan.v1", "human-mode-decision.v1", "process-decision-inbox.v1", "standard-mode-question.v1", "standard-session-start-plan.v1", "standard-workflow-startup-catalog.v1", "standard-workflow-model-source.v1", "standard-cycle-initialize-input.v1", "standard-cycle-reference-input.v1", "standard-cycle-initialize-plan.v1", "standard-cycle-output.v1", "standard-cycle-context-plan.v1", "standard-cycle-create-catalog.v1", "process-control-request.v1", "process-control-source.v1", "process-control-inbox.v1", "process-control-inbox.v2", "process-pr-review-payload.v1", "github-pr-review-event.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url))];
+    ...["standard-empty-input.v1", "standard-session-initialize-input.v1", "standard-session-initialize-plan.v1", "standard-session-initialize-plan.v2", "standard-operation-output.v1", "process-local-effect-owner.v1", "standard-operation-preview.v1", "process-operation-journal.v1", "standard-operation-output.v2", "standard-operation-output.v3", "standard-session-reference-input.v1", "standard-mode-apply-input.v1", "standard-session-mode-plan.v1", "human-mode-decision.v1", "process-decision-inbox.v1", "standard-mode-question.v1", "standard-session-start-plan.v1", "standard-workflow-startup-catalog.v1", "standard-workflow-model-source.v1", "standard-cycle-initialize-input.v1", "standard-cycle-reference-input.v1", "standard-cycle-initialize-plan.v1", "standard-cycle-output.v1", "standard-cycle-context-plan.v1", "standard-cycle-create-catalog.v1", "process-control-request.v1", "process-control-source.v1", "process-control-inbox.v1", "process-control-inbox.v2", "process-pr-review-payload.v1", "github-pr-review-event.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url))];
   refs.push(new URL("standard-cycle-entry-admission.mjs", import.meta.url));
   for (const name of ["standard-cycle-entry-context.mjs", "standard-cycle-entry-choice-context.mjs"]) refs.push(new URL(name, import.meta.url));
   refs.push(new URL("../../core/workflow/standard-cycle-entry-choice.mjs", import.meta.url));
@@ -255,6 +258,7 @@ export function assertStandardWorkflowImplementation() {
   if (implementation() !== loadedImplementation) fail("STANDARD_IMPLEMENTATION_CHANGED");
 }
 const definitions = [
+  ["handoff_resources_observe", "handoff-close", "read-only", ["SPEC-R07", "SPEC-R10", "SPEC-R11"], "standard-handoff-resource-operation-input.v1", "deterministic", "standard-handoff-resource-operation-output.v1"],
   ["handoff_packet_publish", "handoff-close", "mutating", ["SPEC-R07", "SPEC-R10", "SPEC-R11"], "standard-handoff-publication-input.v1", "deterministic", "standard-handoff-operation-output.v1"],
   ["cycle_plan_adopt", "cycle-create", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-empty-input.v1", "deterministic", "standard-cycle-plan-adoption-output.v1"],
   ["cycle_plan_select", "cycle-create", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-empty-input.v1", "deterministic", "standard-cycle-plan-selection-output.v2"],
@@ -343,7 +347,7 @@ const definitions = [
   ["session_initialize", "start-session", "mutating", ["SPEC-R01", "SPEC-R07"], "standard-session-initialize-input.v1"],
   ["mode_work_preflight", "context-reload", "read-only", ["SPEC-R01", "SPEC-R02"], "standard-mode-work-preflight-input.v1", "deterministic", "standard-mode-work-output.v1"],
   ["mode_work_observe", "context-reload", "read-only", ["SPEC-R02", "SPEC-R11"], "standard-mode-work-evaluate-input.v1", "deterministic", "standard-mode-work-observation-output.v2"],
-  ["mode_work_continue_decision", "context-reload", "read-only", ["SPEC-R01", "SPEC-R02", "SPEC-R11"], "standard-mode-work-decision-input.v1", "human", "standard-mode-work-decision-output.v1"],
+  ["mode_work_continue_decision", "context-reload", "read-only", ["SPEC-R01", "SPEC-R02", "SPEC-R11"], "standard-mode-work-decision-input.v1", "human", "standard-mode-work-decision-output.v2"],
   ["mode_work_evaluate", "context-reload", "read-only", ["SPEC-R02", "SPEC-R11"], "standard-mode-work-evaluate-input.v1", "deterministic", "standard-mode-work-output.v1"],
   ["mode_decision", "start-session", "read-only", ["SPEC-R01", "SPEC-R02"], "standard-session-reference-input.v1", "human", "standard-operation-output.v3"],
   ["session_mode_apply", "start-session", "mutating", ["SPEC-R01", "SPEC-R02"], "standard-mode-apply-input.v1", "deterministic", "standard-operation-output.v2"],
@@ -457,7 +461,7 @@ export function createStandardWorkflowOperations({ targetRoot, now = Date.now })
     const lifecycle = await runStartSessionAdmitUseCase({ targetRoot: root, mode });
     return { prewrite, lifecycle, allowed: prewrite.ok === true && ["admitted", "admitted_with_warnings"].includes(prewrite.admission_status) && lifecycle.result === "ok" };
   }
-  async function build(input, preparedAt, acquired = false) {
+  async function build(input, preparedAt, acquired = false, version = 2) {
     input = sessionInput(input); const context = scope();
     if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
     const admitted = await admission();
@@ -477,9 +481,22 @@ export function createStandardWorkflowOperations({ targetRoot, now = Date.now })
     let current = before.content;
     for (const [key, value] of Object.entries({ active_session: input.session_id, session_branch: input.session_branch, branch_kind: "session", mode: input.mode,
       updated_at: at, session_pr_status: "none", session_pr_review_status: "unknown", post_merge_sync_status: "not_needed" })) current = replaceField(current, key, value);
-    const changes = [{ path: sessionPath, before_sha256: null, after: session }, { path: before.path, before_sha256: before.sha256, after: current }]
-      .map(row => ({ ...row, after_sha256: artifactContentHash(row.after) }));
-    const plan = { contract_version: "standard-session-initialize-plan.v1", operation_ref: "session_initialize", input, prepared_at_ms: preparedAt,
+    const changes = [{ path: sessionPath, before_sha256: null, after: session }, { path: before.path, before_sha256: before.sha256, after: current }];
+    let snapshotMetadata;
+    if (version === 2) {
+      const snapshot = artifacts.read('snapshots/context-snapshot.md', { required: true });
+      snapshotMetadata = artifacts.metadataHash(snapshot.path);
+      const entry = /(^## Next entry point[^\r\n]*\r?\n)([\s\S]*?)(?=^## |$(?![\s\S]))/gm;
+      if ([...snapshot.content.matchAll(entry)].length !== 1) fail('STANDARD_SESSION_SNAPSHOT_ENTRY_INVALID');
+      const activeCycle = analyzeStructuredArtifact(current).key_values.active_cycle || 'none';
+      const next = '- Session active: ' + input.session_id + '\n- Active cycle: ' + activeCycle
+        + '\n- Next action: Reload canonical session context and resume its admitted workflow.\n\n';
+      const after = snapshot.content.replace(entry, (_all, heading) => heading + '\n' + next);
+      changes.push({ path: snapshot.path, before_sha256: snapshot.sha256, after });
+    }
+    for (const row of changes) row.after_sha256 = artifactContentHash(row.after);
+    const plan = { contract_version: version === 2 ? 'standard-session-initialize-plan.v2' : 'standard-session-initialize-plan.v1',
+      ...(version === 2 ? { snapshot_metadata_sha256: snapshotMetadata } : {}), operation_ref: "session_initialize", input, prepared_at_ms: preparedAt,
       scope: context, template_sha256: template.sha256, predecessor, changes };
     assertStandardSessionPlan(plan);
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
@@ -594,17 +611,26 @@ export function createStandardWorkflowOperations({ targetRoot, now = Date.now })
       assertStandardSessionPlan(prepared.plan);
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
-          const observed = await build(prepared.plan.input, prepared.plan.prepared_at_ms, true);
+          const observed = await build(prepared.plan.input, prepared.plan.prepared_at_ms, true, prepared.plan.contract_version === "standard-session-initialize-plan.v2" ? 2 : 1);
           if (!observed.can_apply || observed.plan_sha256 !== expectPlan || shadowHash(scope()) !== shadowHash(prepared.plan.scope)) fail("STANDARD_PREVIEW_CHANGED");
         } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         const committed = []; let attempted = false;
         try {
           attempted = true; git(["switch", "-c", prepared.plan.input.session_branch]);
-          for (const change of prepared.plan.changes) { artifacts.compareAndSwap(change); committed.push(change.path); }
+          let snapshotMetadata;
+          for (const change of prepared.plan.changes) {
+            if (prepared.plan.contract_version === "standard-session-initialize-plan.v2" && change.path === "snapshots/context-snapshot.md")
+              snapshotMetadata = artifacts.compareAndSwapPreservingMetadata({ ...change, before_metadata_sha256: prepared.plan.snapshot_metadata_sha256 }).metadata_sha256;
+            else artifacts.compareAndSwap(change);
+            committed.push(change.path);
+          }
           const after = await postconditions(prepared.plan);
           if (!after.satisfied) fail("STANDARD_SESSION_POSTCONDITION_FAILED");
           const projection = artifacts.project(committed);
-          return output("session_initialize", "completed", "confirmed", { postconditions: after, projection, committed },
+          if (prepared.plan.contract_version === "standard-session-initialize-plan.v2"
+            && artifacts.metadataHash("snapshots/context-snapshot.md") !== snapshotMetadata) fail("STANDARD_SESSION_SNAPSHOT_METADATA_CHANGED");
+          return output("session_initialize", "completed", "confirmed", { postconditions: after, projection, committed,
+            ...(prepared.plan.contract_version === "standard-session-initialize-plan.v2" ? { snapshot_metadata_sha256: snapshotMetadata } : {}) },
             { session_initialized: true, session_mode_pending: prepared.plan.input.mode === "UNKNOWN" }, prepared.plan.changes.map(change => ({ ref: "docs/audit/" + change.path, sha256: change.after_sha256 })));
         } catch (cause) {
           if (!attempted) throw cause;

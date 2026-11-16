@@ -1,7 +1,8 @@
 import path from "node:path";
 import schema from "../../core/contracts/workflow-definition/standard-session-git-checkpoint-plan.v1.schema.json" with { type: "json" };
+import schemaV2 from "../../core/contracts/workflow-definition/standard-session-git-checkpoint-plan.v2.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
-import { assertStandardOperationInput, assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
+import { assertStandardOperationInput, assertStandardOperationOutput, assertStandardSessionPlan } from "../../core/workflow/standard-operation-contracts.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.mjs";
 import { createLocalWorkflowGitCheckpoint } from "../../adapters/runtime/local-workflow-git-checkpoint.mjs";
@@ -19,7 +20,7 @@ const emit = (outcome, effect_status, observations, facts = {}, evidence_refs = 
 export function createStandardWorkflowGitCheckpoint({ targetRoot, readContext, readCurrent, now = Date.now }, { gitPort } = {}) {
   if (typeof readContext !== "function" || typeof readCurrent !== "function") fail("STANDARD_GIT_CONTEXT_AUTHORITY_REQUIRED");
   const artifacts = createStandardWorkflowArtifacts({ targetRoot });
-  const git = assertWorkflowGitCheckpointPort(gitPort ?? createLocalWorkflowGitCheckpoint({ targetRoot: artifacts.root }));
+  const git = assertWorkflowGitCheckpointPort(gitPort ?? createLocalWorkflowGitCheckpoint({ targetRoot: artifacts.root }, { profile: "session-metadata-snapshot" }));
   async function prepare(instance, input, operationId, preparedAt, acquired = false) {
     assertStandardOperationInput("session_git_checkpoint", input);
     if (!/^op_[a-f0-9]{40}$/.test(operationId ?? "")) fail("STANDARD_GIT_OPERATION_ID_INVALID");
@@ -33,6 +34,16 @@ export function createStandardWorkflowGitCheckpoint({ targetRoot, readContext, r
     const runtimeRefs = source.context_output.evidence_refs.filter(row => row.ref === "docs/audit/RUNTIME-STATE.md");
     if (runtimeRefs.length !== 1) fail("STANDARD_GIT_RUNTIME_EVIDENCE_REQUIRED");
     const expected = [["CURRENT-STATE.md", context.current_sha256], ["RUNTIME-STATE.md", runtimeRefs[0].sha256], [sessionPath, context.session_sha256]];
+    const initialized = source.initialization, snapshot = initialized?.plan?.contract_version === "standard-session-initialize-plan.v2";
+    if (snapshot) {
+      assertStandardSessionPlan(initialized.plan);
+      const change = initialized.plan.changes[2], output = initialized.output;
+      if (initialized.plan.input.session_id !== sessionId || output?.outcome !== "completed" || output.effect_status !== "confirmed"
+        || output.facts.session_initialized !== true || !Object.hasOwn(output.observations, "snapshot_metadata_sha256")
+        || !output.evidence_refs.some(row => row.ref === "docs/audit/" + change.path && row.sha256 === change.after_sha256)
+        || artifacts.metadataHash(change.path) !== output.observations.snapshot_metadata_sha256) fail("STANDARD_GIT_SNAPSHOT_SOURCE_CHANGED");
+      expected.push([change.path, change.after_sha256]);
+    }
     const documents = expected.map(([name, sha256]) => {
       const row = artifacts.read(name, { required: true }); if (row.sha256 !== sha256) fail("STANDARD_GIT_CONTEXT_POSTIMAGE_CHANGED");
       return { path: name, sha256, metadata_sha256: artifacts.metadataHash(name) };
@@ -54,17 +65,17 @@ export function createStandardWorkflowGitCheckpoint({ targetRoot, readContext, r
       if (physical.sha256 !== doc.sha256) fail("STANDARD_GIT_PROJECTION_CHANGED");
       return { path: row.path, sha256: doc.sha256 };
     });
-    const plan = { contract_version: "standard-session-git-checkpoint-plan.v1", operation_ref: "session_git_checkpoint", input, operation_id: operationId,
+    const plan = { contract_version: snapshot ? "standard-session-git-checkpoint-plan.v2" : "standard-session-git-checkpoint-plan.v1", operation_ref: "session_git_checkpoint", input, operation_id: operationId,
       prepared_at_ms: preparedAt, session_id: sessionId, state_mode: artifacts.describe().state_mode, source_sha256: shadowHash(source), documents,
       git: { operation_kind: "metadata-objects-ref-index.v1", observed, files } };
-    if (validateJsonSchema(plan, schema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_GIT_PLAN_INVALID");
+    if (validateJsonSchema(plan, plan.contract_version === "standard-session-git-checkpoint-plan.v2" ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_GIT_PLAN_INVALID");
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }
   return Object.freeze({ prepare: (instance, input, id) => prepare(instance, input, id, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
       const plan = prepared?.plan;
       if (write !== true || !prepared?.can_apply || typeof assertAuthorized !== "function" || prepared.plan_sha256 !== expectPlan
-        || shadowHash(plan) !== expectPlan || validateJsonSchema(plan, schema, "$", { contractKind: "workflow-definition" }).length) {
+        || shadowHash(plan) !== expectPlan || validateJsonSchema(plan, plan.contract_version === "standard-session-git-checkpoint-plan.v2" ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length) {
         const cause = Object.assign(new Error("STANDARD_GIT_EXPLICIT_EFFECT_REQUIRED"), { code: "STANDARD_GIT_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" }); throw cause;
       }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {

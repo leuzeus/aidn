@@ -4,6 +4,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { modeWorkDecisionSubject } from "../../src/core/workflow/standard-mode-work-continuation.mjs";
 import { iterateAgenticProcessSimulation } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { closureHumanSource } from "./cycle-closure-fixture-lib.mjs";
 import { modeAnalysisWitness } from "./standard-mode-analysis-execution-fixture-lib.mjs";
@@ -12,6 +13,18 @@ import { modeAnalysisWitness } from "./standard-mode-analysis-execution-fixture-
 // authorities are fixture capabilities; business, Git and SQLite ports are real.
 export async function verifyModeWorkContinuationExecution({ storageMode, sessionMode, choice = "continue_analysis", firstDisposition = "waiting", mixedFixture }) {
   let sourceFile, grant, reads = 0, authorization;
+  let handoffQuestion = null, postReleaseReady = false, postReleaseWaits = 0, postReleaseSnapshots = 0, handoffSourceReads = 0, resourceAbortChecked = false;
+  const exerciseHandoff = choice === 'continue_analysis' && firstDisposition === 'waiting';
+  const handoffResourceSource = { async read({ request, sourceRef }) {
+    handoffSourceReads++;
+    if (sourceRef === 'standard-handoff-post-release') { if (!postReleaseReady) { postReleaseWaits++; return null; } postReleaseSnapshots++; }
+    return { contract_version: 'standard-handoff-resource-observation.v1', authority_id: 'fixture_handoff_discovery', request_sha256: shadowHash(request),
+      observed_at_ms: Date.now(), evidence_class: 'fixture', evidence_refs: [{ ref: 'fixture:independent-handoff', sha256: shadowHash(request) }],
+      domains: ['deterministic','native','human','control','process','git','provider'].map(domain => ({ domain, complete: true, active_resources: 0, state: 'closed',
+        evidence_refs: [{ ref: 'fixture:handoff-' + domain, sha256: shadowHash({ request, domain }) }] })) };
+  }, async verify({ request, observation }) { return { outcome: 'verified', authority_id: observation.authority_id,
+    request_sha256: shadowHash(request), observation_sha256: shadowHash(observation), evidence_class: 'fixture' }; }, assertCurrent() {} };
+
   const newRationale = "Resolve the waiting comparison by confirming that the current product still exports value 1.";
   const humanSource = { read: input => closureHumanSource(sourceFile).read(input), verify: input => input.source.authority_id === "fixture_operator"
     ? closureHumanSource(sourceFile).verify(input) : { outcome: "unverified" } };
@@ -29,12 +42,18 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
     return grant;
   }, async verify({ grant: supplied }) { assert.deepEqual(supplied, grant); return { outcome: "verified", authority_id: grant.authority_id, grant_sha256: shadowHash(grant), evidence_class: "fixture" }; } };
   const f = mixedFixture(storageMode, { standardModel: true, humanSource, nativeAuthorizationSource: epochSource, hostTrace: true,
+    synchronousAuthorization: exerciseHandoff, handoffResourceSource: exerciseHandoff ? handoffResourceSource : undefined,
     async answer({ params }) {
       const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
       assert.equal(observed.context.mode, sessionMode);
       const continuation = observed.context.continuation;
       if (continuation) {
         assert.equal(continuation.choice, "continue_analysis"); assert.equal(continuation.information_only, true);
+        if (exerciseHandoff) {
+          const packet = observed.context.documents.find(row => row.ref === "docs/audit/HANDOFF-PACKET.md");
+          assert(packet && /^[a-f0-9]{64}$/.test(packet.sha256));
+          assert(packet.content.includes("Resume this accepted analysis after reading the governed packet"));
+        }
         assert.equal(continuation.decision.rationale, newRationale); assert.equal(continuation.decision.source_event_id, "mode-resume-NEW-decision");
         assert.equal(continuation.source_sha256, shadowHash(continuation.decision));
         assert.equal(continuation.prior_report.disposition, firstDisposition); assert.equal(continuation.prior_report.objective, observed.context.objective);
@@ -63,6 +82,16 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
     for (let step = 0; step < 32; step++) {
       const beforeCount = f.t.sessions.length, state = f.open().inspect();
       if (state.cursor.status === "COMPLETED") break;
+      if (exerciseHandoff && !resourceAbortChecked && state.cursor.occurrences.some(row => row.node_id === 'mode_handoff_resources' && row.status === 'READY')) {
+        const stopped = new AbortController(); stopped.abort();
+        const before = modeAnalysisWitness(f.open(), f.configuration), sourceReads = handoffSourceReads;
+        for (const write of [false, true]) {
+          await assert.rejects(f.open().step({ write, authorization, signal: stopped.signal }), { code: 'STANDARD_HANDOFF_RESOURCE_OBSERVATION_ABORTED' });
+          assert.equal(handoffSourceReads, sourceReads); assert.equal(modeAnalysisWitness(f.open(), f.configuration), before);
+          assert.equal(f.t.sessions.length, 1);
+        }
+        resourceAbortChecked = true;
+      }
       const result = await f.open().step({ write: true, authorization: grant?.authorization ?? authorization });
       console.log(JSON.stringify({ mode_resume_step: step, kind: result.kind, status: result.status, operation_id: result.operation_id ?? null,
         journal_phase: result.journal_phase ?? null, native_sessions: f.t.sessions.length }));
@@ -84,7 +113,26 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
           } else {
             const spikeContinuation = sessionMode === "EXPLORING" && firstDisposition === "retain_requested";
             assert.equal(record.intent.binding_ref, spikeContinuation ? "spike_conversion_decision" : "mode_work_continue_decision");
-            assert.equal(result.question.contract_version, spikeContinuation ? "standard-spike-question.v2" : "standard-mode-work-question.v1");
+            assert.equal(result.question.contract_version, spikeContinuation ? "standard-spike-question.v2" : "standard-mode-work-question.v2");
+            if (!spikeContinuation && exerciseHandoff && !handoffQuestion) {
+              handoffQuestion = structuredClone(result.question);
+              const handoff = { contract_version: 'standard-handoff-publication-input.v1', next_agent_role: 'coordinator', next_agent_action: 'reanchor',
+                next_agent_goal: 'Resume this accepted analysis after reading the governed packet', handoff_note: 'Published IR fixture handoff',
+                from_agent_role: 'coordinator', from_agent_action: 'relay' };
+              publish('handoff', { contract_version: 'human-mode-work-decision.v2', source_kind: 'human', authority_id: 'fixture_operator', source_event_id: 'mode-explicit-handoff',
+                subject_sha256: shadowHash(modeWorkDecisionSubject(result.question)), question_sha256: shadowHash(result.question), choice: 'handoff', handoff,
+                rationale: 'Explicitly relay the waiting analysis', evidence_refs: [{ ref: 'fixture:explicit-handoff', sha256: 'e'.repeat(64) }] });
+              await f.open().receiveDecision(result.operation_id, { sourceRef: 'handoff', write: true });
+              const decision = f.open().readOperation(result.operation_id).results.at(-1).output;
+              assert.equal(decision.facts.mode_work_handoff_requested, true); assert.equal(decision.facts.mode_work_continue_requested, false);
+              await f.open().acceptOperation(result.operation_id, { write: true }); f.reopen(); continue;
+            }
+            if (!spikeContinuation && exerciseHandoff) {
+              assert(handoffQuestion); assert(postReleaseWaits >= 3); assert(postReleaseSnapshots > 0);
+              assert.deepEqual(result.question.review, handoffQuestion.review);
+              assert.notEqual(result.question.current_context.context_sha256, handoffQuestion.current_context.context_sha256);
+              assert.equal(f.t.sessions.length, 1); assert.equal(result.question.prior_report_information_only, true);
+            }
             assert.equal(waiting, undefined);
             waiting = f.open().inspect().record; originalAllocation = f.open().inspectAllocations().allocations[0];
             const analysisReview = spikeContinuation ? record.preview.prepared.review.analysis : record.preview.prepared.review;
@@ -93,9 +141,9 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
             const reviewOperation = f.open().readOperation(record.preview.input.review_operation_id);
             const evaluation = reviewOperation.results.at(-1).output.observations.evaluation;
             assert.equal(evaluation.outcome, "blocked"); assert.deepEqual(evaluation.facts, {});
-            const claim = { contract_version: spikeContinuation ? "human-spike-decision.v2" : "human-mode-work-decision.v1", source_kind: "human", authority_id: "fixture_operator", source_event_id: "mode-resume-NEW-decision",
-              subject_sha256: shadowHash(result.question.review), question_sha256: shadowHash(result.question), choice, rationale: newRationale,
-              ...(spikeContinuation ? { selection: null } : {}),
+            const claim = { contract_version: spikeContinuation ? "human-spike-decision.v2" : "human-mode-work-decision.v2", source_kind: "human", authority_id: "fixture_operator", source_event_id: "mode-resume-NEW-decision",
+              subject_sha256: shadowHash(spikeContinuation ? result.question.review : modeWorkDecisionSubject(result.question)), question_sha256: shadowHash(result.question), choice, rationale: newRationale,
+              ...(spikeContinuation ? { selection: null } : { handoff: null }),
               evidence_refs: [{ ref: "fixture:NEW-mode-decision", sha256: "c".repeat(64) }] };
             const witness = modeAnalysisWitness(f.open(), f.configuration);
             for (const [ref, change, code] of [["wrong-question", { question_sha256: "b".repeat(64) }, "PROCESS_HUMAN_QUESTION_CHANGED"],
@@ -171,13 +219,29 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
             assert.equal(reads, 1); assert.deepEqual(f.open().inspectAllocations().initial_authorization, original);
             assert.deepEqual(f.open().inspectAllocations().origin_journal, oldJournal);
           }
+        } else if (result.status === 'waiting_for_resource_source') {
+          assert.equal(record.intent.binding_ref, 'handoff_resources_observe'); assert.equal(record.phase, 'staged'); assert.equal(record.owner, null); assert.deepEqual(record.results, []);
+          const witness = modeAnalysisWitness(f.open(), f.configuration), staged = structuredClone(record);
+          for (let poll = 0; poll < 2; poll++) {
+            f.reopen(); const coldWait = await f.open().step({ write: true, authorization });
+            assert.equal(coldWait.status, 'waiting_for_resource_source'); assert.equal(coldWait.written, false);
+            assert.deepEqual(f.open().readOperation(result.operation_id), staged);
+            assert.equal(modeAnalysisWitness(f.open(), f.configuration), witness); assert.equal(f.t.sessions.length, 1);
+          }
+          const stopped = new AbortController(); stopped.abort(); const readsBeforeAbort = handoffSourceReads;
+          await assert.rejects(f.open().dispatchOperation(result.operation_id, { write: true, signal: stopped.signal }), { code: "STANDARD_HANDOFF_RESOURCE_OBSERVATION_ABORTED" });
+          assert.equal(handoffSourceReads, readsBeforeAbort); assert.deepEqual(f.open().readOperation(result.operation_id), staged);
+          assert.equal(modeAnalysisWitness(f.open(), f.configuration), witness);
+          postReleaseReady = true; f.reopen(); continue;
         } else assert.equal(record.results.at(-1)?.output.outcome, "completed");
         if (record.intent.binding_ref === "mode_work_evaluate") break;
       } else {
+        assert.notEqual(result.kind, "operation_wait", JSON.stringify(result.preview?.prepared ?? result));
         assert.equal(result.kind, "native"); assert.equal(result.journal_phase, "closed", JSON.stringify(result));
         assert.equal(f.t.sessions.length, beforeCount + 1); f.reopen();
       }
     }
+    if (exerciseHandoff) { assert(handoffQuestion); assert(resourceAbortChecked); assert(postReleaseWaits >= 3); assert(postReleaseSnapshots > 0); }
     const final = f.open().inspect(), journal = f.open().inspectAllocations();
     assert.ok(waiting); assert.equal(final.cursor.status, "RUNNING"); assert.equal(f.t.sessions.length, 2); assert.ok(f.t.sessions.every(row => row.closed));
     assert.deepEqual(authorization, original); assert.deepEqual(journal.initial_authorization, original); assert.deepEqual(journal.allocations[0], originalAllocation);

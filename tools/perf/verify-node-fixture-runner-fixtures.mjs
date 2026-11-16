@@ -23,7 +23,29 @@ assert.deepEqual(manifest.cases.slice(194, 197), [
   ["tools/perf/verify-standard-pr-redelivery-fixtures.mjs", "--mode=files", "--aged-plan"],
 ]);
 console.log("PASS accepted194 cases retain their original argv and order modulo explicit age selectors with three exact additions");
-assert.equal(manifest.cases.length, 378);
+assert.equal(manifest.cases.length, 381);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 378))).digest("hex"),
+  "b0a873ef60a93dd13c3760ed84a0c88cfce47e33cb352a3d839f42a09be55bec");
+assert.deepEqual(manifest.cases.slice(378), [
+  [
+    "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "--standard-mode-work-resume-mode=files",
+    "--standard-mode-work-session=EXPLORING",
+    "--retain-always"
+  ],
+  [
+    "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "--standard-mode-work-resume-mode=dual",
+    "--standard-mode-work-session=EXPLORING",
+    "--retain-always"
+  ],
+  [
+    "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "--standard-mode-work-resume-mode=db-only",
+    "--standard-mode-work-session=EXPLORING",
+    "--retain-always"
+  ]
+]);
 assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 197))).digest("hex"),
   "47b229353b3929aa0b52623f688b46296517e513a331a68060c4c5a0190c62f4");
 console.log("PASS accepted197 exact argv and order are preserved before twelve R05 objective components");
@@ -528,7 +550,7 @@ assert.deepEqual(manifest.cases.slice(372, 375), [
 console.log("PASS current375 preserves exact372 and requires common signed handoff receipts on all three backends");
 
 assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 375))).digest("hex"), "a2a740fb854b8f47bcdb5edcc320f9c50a5c00112311e83f682ed6fa661a0dcc");
-assert.deepEqual(manifest.cases.slice(375), [
+assert.deepEqual(manifest.cases.slice(375, 378), [
   [
     "tools/perf/verify-standard-handoff-returned-receipt-fixtures.mjs",
     "files"
@@ -542,11 +564,11 @@ assert.deepEqual(manifest.cases.slice(375), [
     "db-only"
   ]
 ]);
-console.log("PASS current378 preserves exact375 and requires cold captured packet receipt recovery on all three backends");
+console.log("PASS current381 preserves exact378 and requires ordinary EXPLORING handoff on all three backends");
 
 if (process.argv.includes("--manifest-only")) {
   console.log(JSON.stringify({ status: "PASS", checks: 26, scope: "frozen326/332/335/338/347/353/357/360/366/369/372/375 prefixes plus receipted continuation, canonical publication, common handoff receipts and captured publication recovery",
-    manifest_cases: 378, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
+    manifest_cases: 381, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
   process.exit(0);
 }
 

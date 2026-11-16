@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
-import { observeModeWorkReport, assertModeWorkObservationOutput, assertModeWorkQuestion, assertHumanModeWorkDecision, observeHumanModeWorkDecision, assertModeWorkDecisionOutput } from "../../src/core/workflow/standard-mode-work-continuation.mjs";
+import { observeModeWorkReport, assertModeWorkObservationOutput, assertModeWorkQuestion, assertHumanModeWorkDecision, observeHumanModeWorkDecision, assertModeWorkDecisionOutput, modeWorkDecisionSubject, modeWorkHandoffChoices } from "../../src/core/workflow/standard-mode-work-continuation.mjs";
 import { assertStandardOperationInput, assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
 import { assertDecisionInbox, decisionInboxId } from "../../src/core/workflow/process-decision-inbox.mjs";
 const H = "a".repeat(64), reference = { ref: "fixture:native-result", sha256: H };
@@ -75,4 +75,36 @@ check("new operations use closed input contracts", () => {
   assertStandardOperationInput("mode_work_continue_decision", { review_operation_id: "op_" + "a".repeat(40) });
   assert.throws(() => assertStandardOperationInput("mode_work_continue_decision", { report_occurrence_id: "root/analysis" }), { code: "STANDARD_OPERATION_INPUT_INVALID" });
 });
+for (const mode of ['THINKING', 'EXPLORING']) check(mode + '/v2 explicit handoff binds current context and preserves prior report', () => {
+  const review = produce(mode, 'waiting').observations.review;
+  const current_context = { session_id: review.session_id, mode, context_sha256: 'd'.repeat(64), product_sha256: H,
+    head: 'e'.repeat(40), branch: review.branch };
+  const question = assertModeWorkQuestion({ contract_version: 'standard-mode-work-question.v2', operation_id: 'op_' + 'c'.repeat(40), instance_id: 'instance', scope_id: 'fixture',
+    occurrence_id: 'root/decide', intent_sha256: H, session_id: 'S001', review_operation_id: 'op_' + 'd'.repeat(40), review, current_context,
+    prior_report_information_only: true, choices: [...modeWorkHandoffChoices] });
+  const packet = { contract_version: 'standard-handoff-publication-input.v1', next_agent_role: 'coordinator', next_agent_action: 'reanchor',
+    next_agent_goal: 'Continue the accepted analysis from the governed packet', handoff_note: 'Explicit fixture handoff', from_agent_role: 'coordinator', from_agent_action: 'relay' };
+  for (const choice of question.choices) {
+    const source = { contract_version: 'human-mode-work-decision.v2', source_kind: 'human', authority_id: 'fixture_user', source_event_id: 'v2-' + choice,
+      subject_sha256: shadowHash(modeWorkDecisionSubject(question)), question_sha256: shadowHash(question), choice, rationale: 'Explicit fixture choice',
+      handoff: choice === 'handoff' ? packet : null, evidence_refs: [reference] };
+    assertHumanModeWorkDecision(source, question);
+    const observed = observeHumanModeWorkDecision({ question, decision: source });
+    const output = { contract_version: 'standard-mode-work-decision-output.v2', operation_ref: 'mode_work_continue_decision', ...observed,
+      observations: { ...observed.observations, inbox_id: decisionInboxId(source), source_ref: 'fixture:v2' }, evidence_refs: [reference] };
+    assertStandardOperationOutput(output);
+    assertDecisionInbox({ contract_version: 'process-decision-inbox.v21', inbox_id: decisionInboxId(source), operation_id: question.operation_id,
+      source_ref: 'fixture:v2', source, phase: 'reserved', receipt_sha256: null, key_id: H, authentication: H });
+    assert.equal(output.observations.native_authority_renewed, false);
+    if (choice === 'handoff') { assert.equal(output.facts.mode_work_handoff_requested, true); assert.equal(output.facts.mode_work_continue_requested, false); assert.equal(output.effect_status, 'no_effect'); }
+    if (['refused', 'deferred', 'cancelled'].includes(choice)) assert.deepEqual(output.facts, {});
+    const changed = structuredClone(question); changed.current_context.context_sha256 = 'f'.repeat(64);
+    assert.throws(() => assertHumanModeWorkDecision(source, changed), { code: 'PROCESS_HUMAN_QUESTION_CHANGED' });
+    assert.throws(() => assertHumanModeWorkDecision({ ...source, handoff: choice === 'handoff' ? null : packet }, question), { code: 'STANDARD_MODE_WORK_DECISION_INVALID' });
+    assert.throws(() => assertStandardOperationOutput({ ...output, facts: { mode_work_continue_requested: true, mode_analysis_completed: true } }), { code: 'STANDARD_MODE_WORK_DECISION_OUTPUT_INVALID' });
+  }
+  assert.equal(question.review.report.context_sha256, review.context_sha256);
+  assert.notEqual(question.current_context.context_sha256, review.context_sha256);
+});
+
 console.log(JSON.stringify({ status: "PASS", checks, proof_class: "offline-contracts", native_human_real: "NOT_RUN", complete_standard_workflow: false }));

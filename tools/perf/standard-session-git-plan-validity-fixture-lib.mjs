@@ -22,7 +22,8 @@ export async function verifyStandardSessionGitPlanValidity(pass, { caseSelector 
   const git = (root, ...args) => execFileSync("git", ["-C", root, "-c", "core.hooksPath=" + (process.platform === "win32" ? "NUL" : "/dev/null"), ...args],
     { encoding: "utf8", windowsHide: true, stdio: "pipe", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } }).trim();
   const cases = [["files", "valid"], ["dual", "valid"], ["db-only", "valid"], ["files", "revoked"],
-    ["files", "accepted-source"], ["files", "head"], ["dual", "metadata"], ["files", "ack-loss"]];
+    ["files", "accepted-source"], ["files", "head"], ["dual", "metadata"], ["files", "ack-loss"],
+    ["files", "snapshot"], ["dual", "snapshot-metadata"], ["files", "unwitnessed-snapshot"], ["files", "legacy-source"]];
   const selected = cases.filter(row => caseSelector === null || row.join(":") === caseSelector);
   assert.ok(selected.length > 0, "unknown session Git fixture selector");
   for (const [mode, fault] of selected) {
@@ -32,7 +33,13 @@ export async function verifyStandardSessionGitPlanValidity(pass, { caseSelector 
       const product = path.join(root, "app.mjs"); fs.writeFileSync(product, "export const value = 1;\n");
       git(root, "add", "."); git(root, "commit", "-m", "fixture product precondition");
       let prepared = await operations.prepareSession({ session_id: "S001", session_branch: "S001-git-validity", objective: "Checkpoint only the accepted session metadata" });
-      assert.equal((await operations.initializeSession(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
+      if (fault === "legacy-source") {
+        prepared.plan.contract_version = "standard-session-initialize-plan.v1"; prepared.plan.changes.pop(); delete prepared.plan.snapshot_metadata_sha256;
+        prepared.plan_sha256 = shadowHash(prepared.plan);
+      }
+      const initialization = { operation_id: "op_" + "b".repeat(40), plan: prepared.plan,
+        output: await operations.initializeSession(prepared, { write: true, expectPlan: prepared.plan_sha256 }) };
+      assert.equal(initialization.output.outcome, "completed");
       prepared = await operations.prepareMode({ session_id: "S001", mode: "EXPLORING" });
       assert.equal((await operations.applyMode(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
       const context = await operations.prepareCycleContext({ session_id: "S001" });
@@ -40,9 +47,10 @@ export async function verifyStandardSessionGitPlanValidity(pass, { caseSelector 
       assert.equal(output.effect_status, "confirmed");
       let changed = false, clock = Date.now() - 86400000;
       const instance = { instance_id: "git-validity", instance_sha256: H };
-      const source = { context_plan: context.plan, context_output: output,
+      const source = { context_plan: context.plan, context_output: output, initialization,
         start_output: { effect_status: "confirmed", facts: { session_started: true } } };
-      const actualGit = createLocalWorkflowGitCheckpoint({ targetRoot: root });
+      if (fault === "unwitnessed-snapshot") delete source.initialization;
+      const actualGit = createLocalWorkflowGitCheckpoint({ targetRoot: root }, { profile: "session-metadata-snapshot" });
       const port = fault === "ack-loss" ? { ...actualGit, async commit(...args) {
         await actualGit.commit(...args);
         throw Object.assign(Error("FIXTURE_GIT_ACK_LOST"), { code: "FIXTURE_GIT_ACK_LOST" });
@@ -52,7 +60,13 @@ export async function verifyStandardSessionGitPlanValidity(pass, { caseSelector 
       const artifacts = createStandardWorkflowArtifacts({ targetRoot: root }), index = path.join(root, ".git/index");
       const beforePreview = { head: git(root, "rev-parse", "HEAD"), index: artifactContentHash(fs.readFileSync(index)) };
       prepared = await checkpoint.prepare(instance, { context_operation_id: id }, id);
+      if (fault === "unwitnessed-snapshot") {
+        assert.equal(prepared.can_apply, false); assert.equal(prepared.reason_code, "STANDARD_GIT_FOREIGN_CHANGES");
+        assert.equal(git(root, "rev-parse", "HEAD"), beforePreview.head); assert.equal(artifactContentHash(fs.readFileSync(index)), beforePreview.index);
+        assert.equal(artifacts.ownerPending(), false); success = true; pass("files: unproven snapshot remains a foreign change"); continue;
+      }
       assert.equal(prepared.can_apply, true, JSON.stringify(prepared));
+      assert.equal(prepared.plan.contract_version, fault === "legacy-source" ? "standard-session-git-checkpoint-plan.v1" : "standard-session-git-checkpoint-plan.v2");
       assert.equal(git(root, "rev-parse", "HEAD"), beforePreview.head); assert.equal(artifactContentHash(fs.readFileSync(index)), beforePreview.index);
       clock = null; assert.ok(Date.now() - prepared.plan.prepared_at_ms >= 86400000);
       if (fault === "accepted-source") changed = true;
@@ -63,13 +77,23 @@ export async function verifyStandardSessionGitPlanValidity(pass, { caseSelector 
         finally { store.close(); }
         return { effect_status: "confirmed" };
       });
+      if (fault === 'snapshot' || fault === 'snapshot-metadata') await artifacts.withLocalEffectOwner(shadowHash({ fixture: fault }), async () => {
+        if (fault === 'snapshot') { const row = artifacts.read('snapshots/context-snapshot.md');
+          artifacts.compareAndSwapPreservingMetadata({ path: row.path, before_sha256: row.sha256, before_metadata_sha256: artifacts.metadataHash(row.path),
+            after: row.content + String.fromCharCode(10) + '<!-- independently changed snapshot -->' });
+        } else { const store = createProjectArtifactStore({ targetRoot: root, existingOnly: true });
+          try { const row = store.getArtifact('snapshots/context-snapshot.md'); store.upsertArtifact({ ...row, classification_reason: 'fixture changed snapshot metadata only' }); }
+          finally { store.close(); }
+        }
+        return { effect_status: 'confirmed' };
+      });
       const documents = () => prepared.plan.documents.map(row => ({ artifact: artifacts.read(row.path), metadata_sha256: artifacts.metadataHash(row.path) }));
       const before = documents(), head = git(root, "rev-parse", "HEAD"), indexHash = artifactContentHash(fs.readFileSync(index)), productHash = artifactContentHash(fs.readFileSync(product));
       let authorizations = 0;
       const applying = checkpoint.apply(instance, prepared, { write: true, expectPlan: prepared.plan_sha256,
         assertAuthorized: async () => { authorizations++; if (fault === "revoked") throw Object.assign(Error("AUTHORIZATION_REVOKED"), { code: "AUTHORIZATION_REVOKED" }); } });
-      if (["revoked", "accepted-source", "head", "metadata"].includes(fault)) {
-        await assert.rejects(applying, { code: fault === "revoked" ? "AUTHORIZATION_REVOKED" : "STANDARD_GIT_PREVIEW_CHANGED", effect_status: "no_effect" });
+      if (["revoked", "accepted-source", "head", "metadata", "snapshot", "snapshot-metadata"].includes(fault)) {
+        await assert.rejects(applying, { code: fault === "revoked" ? "AUTHORIZATION_REVOKED" : fault === "snapshot" ? "STANDARD_GIT_CONTEXT_POSTIMAGE_CHANGED" : fault === "snapshot-metadata" ? "STANDARD_GIT_SNAPSHOT_SOURCE_CHANGED" : "STANDARD_GIT_PREVIEW_CHANGED", effect_status: "no_effect" });
         assert.equal(git(root, "rev-parse", "HEAD"), head); assert.equal(artifactContentHash(fs.readFileSync(index)), indexHash);
         assert.equal(artifacts.ownerPending(), false);
       } else {

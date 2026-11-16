@@ -55,6 +55,22 @@ try {
     await assert.rejects(f.port.commit(f.plan, { assertAuthorized() {} }), { code: "WORKFLOW_GIT_PRECONDITION_CHANGED", effect_status: "no_effect" });
     assert.equal(git(f.root, "rev-list", "--count", "HEAD"), count);
   });
+  await test("explicit session snapshot profile commits four metadata paths while legacy and foreign scopes refuse", async () => {
+    const f = fixture(), snapshot = "docs/audit/snapshots/context-snapshot.md";
+    write(f.root, snapshot, "governed session pointer\n");
+    const port = createLocalWorkflowGitCheckpoint({ targetRoot: f.root }, { profile: "session-metadata-snapshot" });
+    const plan = { ...f.plan, observed: port.inspect(), files: [...f.plan.files, { path: snapshot, sha256: hash(fs.readFileSync(path.join(f.root, snapshot))) }] };
+    const index = fs.readFileSync(path.join(f.root, ".git/index"));
+    await assert.rejects(f.port.commit(plan, { assertAuthorized() {} }), { code: "WORKFLOW_GIT_PLAN_INVALID", effect_status: "no_effect" });
+    await assert.rejects(port.commit({ ...plan, files: [{ path: "app.mjs", sha256: "c".repeat(64) }] }, { assertAuthorized() {} }), { code: "WORKFLOW_GIT_PLAN_INVALID", effect_status: "no_effect" });
+    await assert.rejects(port.commit({ ...plan, files: [...plan.files, { path: "docs/audit/sessions/S002.md", sha256: "d".repeat(64) }] }, { assertAuthorized() {} }), { code: "WORKFLOW_GIT_PLAN_INVALID", effect_status: "no_effect" });
+    assert.throws(() => createLocalWorkflowGitCheckpoint({ targetRoot: f.root }, { profile: "session-metadata-snapshot", approvedPaths: ["app.mjs"] }), { code: "WORKFLOW_GIT_SCOPE_PROFILE_INVALID" });
+    assert.deepEqual(fs.readFileSync(path.join(f.root, ".git/index")), index); assert.equal(git(f.root, "rev-parse", "HEAD"), f.plan.observed.head);
+    const result = await port.commit(plan, { assertAuthorized() {} }); assert.equal(result.status, "confirmed");
+    assert.deepEqual(git(f.root, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD").split("\n").sort(), plan.files.map(row => row.path).sort());
+    assert.equal(createLocalWorkflowGitCheckpoint({ targetRoot: f.root }, { profile: "session-metadata-snapshot" }).inspectCommit(plan).status, "confirmed");
+    assert.equal(git(f.root, "status", "--porcelain"), "");
+  });
   await test("clean no-op creates no commit or Git lock", async () => {
     const f = fixture(); git(f.root, "add", "."); git(f.root, "commit", "-m", "fixture settled");
     const plan = { ...f.plan, files: [], observed: f.port.inspect() };

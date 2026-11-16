@@ -1895,6 +1895,24 @@
     [
       "tools/perf/verify-standard-handoff-returned-receipt-fixtures.mjs",
       "db-only"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--standard-mode-work-resume-mode=files",
+      "--standard-mode-work-session=EXPLORING",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--standard-mode-work-resume-mode=dual",
+      "--standard-mode-work-session=EXPLORING",
+      "--retain-always"
+    ],
+    [
+      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "--standard-mode-work-resume-mode=db-only",
+      "--standard-mode-work-session=EXPLORING",
+      "--retain-always"
     ]
   ]
 }

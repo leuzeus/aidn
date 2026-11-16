@@ -6893,19 +6893,22 @@ pre-CAS boundary. It must preserve packet content/metadata and release its unuse
 owner. Private resource-capability fixtures distinguish this current issuer
 check from complete ownership/resource closure, and retain expiry/cancellation.
 
-### Required agentic registry: 378 cases
+### Required agentic registry: 381 cases
 
 The exact ordered registry retains its historical prefixes through 366 cases.
 Three real-child continuation cases add the `disposition_receipted` boundary in
 FILES, DUAL and DB-only (369); three canonical packet-publication component cases
 complete the historical 372 prefix. Three common signed packet-publication receipt
 cases require FILES, DUAL and DB-only, retaining the exact 375 prefix.
-Three captured packet-receipt recovery cases add those same backends for 378.
+Three captured packet-receipt recovery cases add those same backends for the
+unchanged 378 prefix. Three ordinary EXPLORING waiting/continue cases add the
+explicit published handoff path for 381. Existing THINKING continuation cases
+exercise that path too; their exact command lines remain unchanged.
 Prefix hashes and exact argv assertions reject removal, substitution
 or reordering, including the original 56 preparation-age regression selectors.
 The existing dispatcher protocol, absence of invented deadlines, finite Native
 grants and gate families are unchanged. `--manifest-only` verifies registry
-structure only; policy/component results never establish full378 execution,
+structure only; policy/component results never establish full381 execution,
 complete handoff, full A6, genuine Native or installed qualification.
 
 ### Common packet-publication receipt candidate
@@ -6950,3 +6953,44 @@ bytes in memory only and checks that the actual common binding digest changes.
 The source checkout is not modified. This regression detects missing dependency
 coverage independently of the global Native configuration pin. Replay/SIM omits
 absent optional parameters while preserving the instance initial facts.
+
+### Published analysis handoff and cold resource waiting candidate
+
+The existing mode-work continuation contract fixture retains v1/v10 coverage and
+checks v2/v21 explicit handoff payloads, separate current context, unchanged prior
+reports, negative choices, and refusal of forged completion or Native renewal.
+The mandatory ordinary waiting/continue execution cases for THINKING and
+EXPLORING now also traverse the shipped call target: signed explicit handoff,
+canonical publication, unavailable independent source, unchanged staged journal
+across two cold write polls, a host-signed result from the controlled resource
+source, R11 reload and
+session-entry admission, then a new context-bound continuation decision. They
+retain the original separate expiry/epoch scenario and the original Native grant.
+Business/Git/SQLite ports are real; discovery, Human identity, Native transport
+and the expiry clock remain controlled fixture capabilities. The resource stub
+declares seven closed domains, its verifier returns a verified marker, and its
+current-source assertion is a no-op. Independent discovery, source-signature
+verification and actual resource closure are not qualified. Genuine actors,
+installed archive, held UNKNOWN recovery and complete STANDARD acceptance remain
+unproven.
+
+The existing workflow-port corpus now checks v2 initialization of the canonical
+snapshot entry pointer in FILES, DUAL and DB-only. It checks refusal of changed
+snapshot bytes and metadata before branch/session effects, preservation of the
+other snapshot sections, and the original two-artifact historical v1 behavior.
+This addresses the observed published THINKING handoff consistency failure;
+it does not relax snapshot_session_aligned or establish the later handoff gates.
+
+The session Git validity corpus now supplies the actual v2 initializer plan and
+completed output through its controlled accepted-source reader. V2 checkpoint
+preparation includes the snapshot only when that source proves the current exact
+content and metadata. Original v1 three-document plans remain readable. Content
+and metadata snapshot conflicts and an unproven dirty snapshot remain refused.
+The Git port corpus commits the four exact metadata paths with the trusted
+session-metadata-snapshot profile and reopens its proof. It also checks the
+legacy three-path refusal, foreign-path and fifth-path refusal, and rejection
+of caller-supplied path extensions, with unchanged HEAD/index before refusal.
+The mode-context cases also mutate only the canonical packet while retaining an
+old visible copy in DUAL/DB-only. Context and typed-report freshness must change
+without a Git diff; a missing optional packet is explicit and supplies no null
+hash as evidence. These remain local fixture proofs with no real Native actor.

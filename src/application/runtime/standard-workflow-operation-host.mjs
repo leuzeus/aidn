@@ -13,6 +13,8 @@ import { prIncidentRecordOperation, prIncidentResolveOperation } from "../../cor
 import { prIncidentCloseOperation } from "../../core/workflow/standard-pr-incident-close.mjs";
 import { createStandardPrIncidentClose } from "./standard-pr-incident-close.mjs";
 import { createStandardHandoffOperation } from "./standard-handoff-operation.mjs";
+import { createStandardHandoffResourceOperation } from "./standard-handoff-resource-operation.mjs";
+import { handoffResourceOperation, assertHandoffResourceOperationPreparation } from "../../core/workflow/standard-handoff-resource-operation.mjs";
 import { handoffPublicationOperation, assertHandoffOperationPreparation, handoffOperationResult } from "../../core/workflow/standard-handoff-operation.mjs";
 import { postMergeFastForwardOperation } from "../../core/workflow/standard-pr-post-merge-fast-forward.mjs";
 import { createStandardPostMergeFastForward } from "./standard-session-pr-post-merge-fast-forward.mjs";
@@ -756,7 +758,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (!startId) fail("STANDARD_GIT_ACCEPTED_START_REQUIRED");
       const start = acceptedForPromotion(instance, startId, "session_start_finalize", "STANDARD_GIT_ACCEPTED_START_REQUIRED");
       if (start.record.preview.input.session_id !== context.record.preview.prepared.plan.input.session_id) fail("STANDARD_GIT_ACCEPTED_START_REQUIRED");
-      return { context_plan: context.record.preview.prepared.plan, context_output: context.output, start_operation_id: startId, start_output: start.output };
+      const initializationId = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "session_initialize").at(-1)?.intent.operation_id;
+      const initialized = initializationId ? acceptedForPromotion(instance, initializationId, "session_initialize", "STANDARD_GIT_ACCEPTED_START_REQUIRED") : null;
+      if (initialized && initialized.record.preview.input.session_id !== context.record.preview.prepared.plan.input.session_id) fail("STANDARD_GIT_ACCEPTED_START_REQUIRED");
+      return { context_plan: context.record.preview.prepared.plan, context_output: context.output, start_operation_id: startId, start_output: start.output,
+        ...(initialized ? { initialization: { operation_id: initializationId, plan: initialized.record.preview.prepared.plan, output: initialized.output } } : {}) };
     } }) : null;
   const promotionAuthority = processAuthority ? createStandardBaselinePromotionAuthority({ targetRoot,
     readAcceptedOperation: acceptedForPromotion, readTerminalRecord: readAcceptedTerminalRecord,
@@ -1018,6 +1024,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     if (validateJsonSchema(preview, previewSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_HOST_PREVIEW_INVALID");
     signer.verify(preview); assertProcessOperationBinding(preview.binding); assertStandardOperationInput(preview.binding.id, preview.input);
     if (preview.binding.id === handoffPublicationOperation) assertHandoffOperationPreparation(preview.prepared);
+    if (preview.binding.id === handoffResourceOperation) assertHandoffResourceOperationPreparation(preview.prepared);
     if (preview.binding.id === "session_pr_correction_reopen" && preview.prepared?.can_apply) {
       assertStandardPrCorrectionPlan(preview.prepared.plan);
       if (shadowHash(preview.prepared.plan) !== preview.prepared.plan_sha256
@@ -1412,6 +1419,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readInstance: id => current(id).record, readAuthority, readContext: snapshot, readSubject: observeReconciliationSubject,
     readDiagnosticSubject: processAuthority ? observeReadOnlyReconciliationSubject : undefined,
     readNativeSubject: processAuthority ? observeNativeReconciliationSubject : undefined });
+  const handoffResourceObservation = createStandardHandoffResourceOperation({ artifacts, configuration: reconciliationConfiguration, signer, now,
+    readAcceptedPublication: (instance, id) => acceptedForPromotion(instance, id, handoffPublicationOperation, "STANDARD_HANDOFF_RESOURCE_PUBLICATION_REQUIRED"),
+    readInventory: (id, options) => reconciliationInventory.prepare(id, options), readNativeHistory: handoffNativeHistory, source: handoffResourceSource });
   const handoffPublication = createStandardHandoffOperation({ targetRoot, configuration: reconciliationConfiguration, readSigningKey, now,
     readCurrent: id => current(id).record, readClaimed: id => retained(id).record,
     readInventory: (id, options) => reconciliationInventory.prepare(id, options), readNativeHistory: handoffNativeHistory,
@@ -1674,6 +1684,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_pr_review_reply_select" ? sessionPrReply.prepareSelection(state.record, input)
         : binding.id === "session_pr_review_resolution_select" ? sessionPrResolution.prepareSelection(state.record, input)
         : binding.id === resolutionExceptionOperation ? await sessionPrResolution.prepareException(state.record, input)
+        : binding.id === handoffResourceOperation ? handoffResourceObservation.prepare(state.record, input, { signal })
         : binding.id === handoffPublicationOperation ? await handoffPublication.prepare(state.record, input, occurrenceId, { signal })
         : binding.id === prIncidentCloseOperation ? await prIncidentClose.prepare(state.record, input)
         : reviewEffects.has(binding.id) ? await reviewEffects.get(binding.id).prepare(state.record, input, operationJournalId(state.record, occurrenceId))
@@ -1823,6 +1834,15 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       }
       await verifyGrant(record);
       if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
+      let resourceCapture;
+      if (record.intent.binding_ref === handoffResourceOperation) {
+        resourceCapture = await handoffResourceObservation.observe(state.record, record.preview.input, record.preview.prepared, { signal });
+        if (!resourceCapture) return { status: "waiting_for_resource_source", written: false, operation_id: id };
+        await verifyGrant(record, signal);
+        resourceCapture.assertCurrent();
+        if (current(record.intent.instance_id).record.instance_sha256 !== state.record.instance_sha256
+          || shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
+      }
       const { authentication, key_id, ...body } = record;
       const claimed = persist({ ...body, phase: "dispatching", revision: record.revision + 1, owner: { generation, pid: process.pid } }, before.content_sha256);
       const output = await disposition.run(claimed, async () => {
@@ -1830,7 +1850,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       try {
         if (current(record.intent.instance_id).record.instance_sha256 !== state.record.instance_sha256)
           throw Object.assign(new Error("STANDARD_HOST_PROCESS_CHANGED"), { code: "STANDARD_HOST_PROCESS_CHANGED", effect_status: "no_effect" });
-        if (record.intent.binding_ref === "context_reload") output = await operations.reload(record.preview.input);
+        if (record.intent.binding_ref === handoffResourceOperation) output = resourceCapture.output;
+        else if (record.intent.binding_ref === "context_reload") output = await operations.reload(record.preview.input);
         else if (record.intent.binding_ref === "session_admit") output = await operations.admitSession(record.preview.input);
         else if (record.intent.binding_ref === "session_entry_admit") output = await operations.admitSessionEntry(record.preview.input);
         else if (record.intent.binding_ref === "cycle_entry_observe") output = await operations.observeCycleEntry(record.preview.input);
