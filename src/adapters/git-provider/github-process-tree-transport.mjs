@@ -29,15 +29,15 @@ export function createGithubProcessTreeTransport({ executable, helper, cwd, prof
     || [binary.sha256, pins.sha256, pins.source_sha256].some(value => !/^[a-f0-9]{64}$/.test(value ?? '')))
     throw error('GITHUB_OBSERVATION_TREE_CONFIGURATION_INVALID');
   const controller = createWindowsProcessTreeController({ helperPath: pins.path, helperSha256: pins.sha256,
-    helperSourceSha256: pins.source_sha256, candidateSha256: implementation, helperScopeRoot: physicalScope });
+    helperSourceSha256: pins.source_sha256, candidateSha256: implementation, helperScopeRoot: physicalScope, allowExecutableHardLinks: true });
   const scope = H({ profile: profileSha256, cwd: home, working_roots: workingRoots, scope_root: physicalScope, executable: binary, helper: pins, implementation, observer });
   const active = new Map(), recent = [];
   let revision = 0, closed = 0, notStarted = 0, unconfirmed = 0, closedDigest = H([]);
   function assertPins() {
     try {
-      for (const [file, sha256, maxBytes] of [[moduleFile, implementation, 131072], [pins.path, pins.sha256, 67108864],
-        [helperSource, pins.source_sha256, 1048576], [binary.path, binary.sha256, 134217728]])
-        readAgentRunFile(file, { json: false, sha256, maxBytes });
+      for (const [file, sha256, maxBytes, allowHardLinks = false] of [[moduleFile, implementation, 131072], [pins.path, pins.sha256, 67108864],
+        [helperSource, pins.source_sha256, 1048576], [binary.path, binary.sha256, 134217728, true]])
+        readAgentRunFile(file, { json: false, sha256, maxBytes, allowHardLinks });
       // This closure executes in its original process: its creation identity
       // cannot be reused while that process is still executing. Mutable files
       // and source permission retain their fresh checks.

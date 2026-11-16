@@ -34,7 +34,7 @@ function optionalFile(name, options) {
 // subprocess transports; the action, IR and project configuration select none.
 export function createStandardGithubProviderHost({ configuration, home, identity, environment }, {
   runGithub, runGithubRead, runGithubReply,
-  runGithubResolution, runGithubMerge, runRemoteGit = spawnSync,
+  runGithubResolution, runGithubMerge, runRemoteGit,
 } = {}) {
   const manifest = path.join(home, identity + ".github.json");
   let snapshot, binding;
@@ -109,12 +109,22 @@ export function createStandardGithubProviderHost({ configuration, home, identity
   const contextSha = shadowHash({ profile: "standard-host-github.v1", manifest: snapshot.sha256, env, profile_sha256: profile, local });
   const defaultAsyncPorts = Object.entries({ read: runGithubRead, reply: runGithubReply,
     resolution: runGithubResolution, merge: runGithubMerge, open: runGithub }).filter(([, run]) => run === undefined).map(([kind]) => kind);
-  const confined = defaultAsyncPorts.length && process.platform === "win32" && configuration.controller
-    ? createGithubProcessTreeTransport({ executable: gh, cwd: home, scopeRoot: configDir, profileSha256: contextSha,
+  const defaultRemoteGit = runRemoteGit === undefined;
+  const confined = (defaultAsyncPorts.length || defaultRemoteGit) && process.platform === "win32" && configuration.controller
+    ? createGithubProcessTreeTransport({ executable: gh, cwd: home, additionalWorkingDirectories: [root], scopeRoot: configDir, profileSha256: contextSha,
+      helper: { path: configuration.controller.helper_path, sha256: configuration.controller.helper_sha256,
+        source_sha256: configuration.controller.helper_source_sha256 } }) : null;
+  const confinedGit = defaultRemoteGit && process.platform === "win32" && configuration.controller
+    ? createGithubProcessTreeTransport({ executable: git, cwd: root, additionalWorkingDirectories: [path.dirname(git.path)],
+      scopeRoot: configDir, profileSha256: contextSha,
       helper: { path: configuration.controller.helper_path, sha256: configuration.controller.helper_sha256,
         source_sha256: configuration.controller.helper_source_sha256 } }) : null;
   const defaultOpen = !!confined && runGithub === undefined;
+  const defaultPush = defaultOpen && !!confinedGit;
+  if (defaultPush) defaultAsyncPorts.push("push");
+  if (confinedGit) defaultAsyncPorts.push("post_merge_git");
   runGithub ??= spawnSync;
+  runRemoteGit ??= spawnSync;
   const builtinAsyncRun = confined?.run ?? runGithubObservationCommand;
   if (runGithubRead === undefined) runGithubRead = builtinAsyncRun;
   if (runGithubReply === undefined) runGithubReply = builtinAsyncRun;
@@ -173,7 +183,7 @@ export function createStandardGithubProviderHost({ configuration, home, identity
       if (timeout < 1) fail("STANDARD_GITHUB_TRANSPORT_DEADLINE");
       if (input.signal?.aborted) fail("GITHUB_OBSERVATION_ABORTED");
       return run(binary, args, { ...input, env, timeout,
-        ...(confined && run === confined.run ? { async beforeResume(remaining) {
+        ...((confined && run === confined.run || confinedGit && run === confinedGit.run) ? { async beforeResume(remaining) {
           await input.beforeResume?.(remaining); guard();
         } } : {}) });
     };
@@ -185,7 +195,8 @@ export function createStandardGithubProviderHost({ configuration, home, identity
   function pushPort(guard) {
     return createGithubSessionPush({ targetRoot: root, gitExecutable: git.path, gitSha256: git.sha256,
       githubExecutable: gh.path, githubSha256: gh.sha256, repository: repo, actor, environment: env, hostContextSha256: contextSha },
-    { runGithub: guardedRun(guard, runGithub), runRemoteGit: guardedRun(guard, runRemoteGit) });
+    { asynchronous: defaultPush, runGithub: guardedRun(guard, defaultPush ? confined.run : runGithub),
+      runRemoteGit: guardedRun(guard, defaultPush ? confinedGit.run : runRemoteGit) });
   }
   async function postMergeGit(args, signal, assertAuthorized) {
     function check() {
@@ -200,12 +211,14 @@ export function createStandardGithubProviderHost({ configuration, home, identity
     const { GH_TOKEN: token } = await driveGithubObservationAsync(authenticate(guard), runGithubRead, signal);
     if (assertAuthorized) await assertAuthorized();
     check();
-    const result = await runRemoteGit(git.path, ["-C", root,
+    const result = await (confinedGit?.run ?? runRemoteGit)(git.path, ["-C", root,
       "-c", "core.hooksPath=" + (process.platform === "win32" ? "NUL" : "/dev/null"),
       "-c", "protocol.allow=never", "-c", "protocol.https.allow=always", "-c", "http.sslVerify=true",
       "-c", "http.followRedirects=false", "-c", "http.proxy=", "-c", "credential.helper=", "-c", "core.askPass=",
       "-c", "fetch.writeCommitGraph=false", "--config-env=http.extraHeader=AIDN_GITHUB_AUTH_HEADER", ...args],
-    { ...options, cwd: root, signal, env: { ...gitEnv, PATH: path.dirname(git.path), GIT_NO_REPLACE_OBJECTS: "1",
+    { ...options, cwd: root, signal, ...(confinedGit ? { async beforeResume() {
+      await assertAuthorized?.(); check();
+    } } : {}), env: { ...gitEnv, PATH: path.dirname(git.path), GIT_NO_REPLACE_OBJECTS: "1",
       AIDN_GITHUB_AUTH_HEADER: "AUTHORIZATION: basic " + Buffer.from("x-access-token:" + token).toString("base64") } });
     check();
     if (result?.status !== 0 || result.signal || result.error || typeof result.stdout !== "string"
@@ -360,15 +373,15 @@ export function createStandardGithubProviderHost({ configuration, home, identity
     observeAsyncTransportResources() {
       if (!confined) return null;
       const guard = transportGuard(); guard();
-      const snapshot = confined.observeResources(); guard();
-      return Object.freeze({ snapshot,
+      const snapshot = confined.observeResources(), gitSnapshot = confinedGit?.observeResources() ?? null; guard();
+      return Object.freeze({ snapshot, git_snapshot: gitSnapshot,
         coverage: Object.freeze({ default_async_ports: Object.freeze([...defaultAsyncPorts]),
           synchronous_ports_observed: false, injected_transports_observed: false }),
-        assertCurrent() { guard(); confined.assertCurrent(snapshot); guard(); } });
+        assertCurrent() { guard(); confined.assertCurrent(snapshot); if (gitSnapshot) confinedGit.assertCurrent(gitSnapshot); guard(); } });
     },
     async verifyIdentity(signal) { await driveGithubObservationAsync(authenticate(transportGuard()), runGithubRead, signal); },
     sessionPushPort: Object.freeze({
-      inspect(branch) { const guard = transportGuard(); return pushPort(guard).inspect(branch); },
+      inspect(branch, input) { const guard = transportGuard(); return pushPort(guard).inspect(branch, input); },
       observeOwned(branch, input) { const guard = transportGuard(); return pushPort(guard).observeOwned(branch, input); },
       observeRemote(branch, input) { const guard = transportGuard(); return pushPort(guard).observeRemote(branch, input); },
       push(observed, input) { const guard = transportGuard(); return pushPort(guard).push(observed, authorized(guard, input)); },

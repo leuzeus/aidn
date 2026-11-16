@@ -4862,3 +4862,21 @@ explicitly outside its coverage; legacy/non-Windows direct-child behavior keeps
 its prior limited claims. Seven-domain discovery/default composition, general
 UNKNOWN recovery, actual GitHub/Native actors and installed qualification remain
 unfinished. All historical results and original Native limits remain unchanged.
+
+## Fixed-host remote command confinement and executable aliases, 2026-11-16
+
+The Windows provider host reuses the existing Job controller for default push
+GH/remote Git and post-merge Git commands. The two pinned executable transports
+retain their separate current observations and constructor-fixed directories;
+local synchronous Git and explicitly injected transports remain outside this
+coverage. Existing state/call budgets, permission checks, conservative UNKNOWN
+and Native allocation boundaries remain unchanged.
+
+The installed Git launcher can legitimately have multiple physical hard links.
+The provider constructor therefore opts in to reading and launching that exact
+hash-pinned executable. Stable file identity/bytes and pre-resume hash checks
+remain; the helper holds the binary read-only while checking and creating its
+suspended process. Authored requests cannot select this policy. Protected
+authority files, controller helpers and default Native controllers retain the
+single-link rule. This introduces no alternate executable, implicit copy,
+credential source, helper protocol, authority, store or effect permission.

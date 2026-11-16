@@ -83,11 +83,12 @@ export function assertAgentRunSecretScope(resourcesRoot, secretPath) {
   if (!inside(root) || inside(path.join(root, "snapshots")) || inside(path.join(root, "scratch"))) fail("AGENT_RUN_SECRET_SCOPE_INVALID");
   return secret;
 }
-export function readAgentRunFile(input, { sha256, maxBytes = 8 * 1024 * 1024, json = true, optional = false } = {}) {
+export function readAgentRunFile(input, { sha256, maxBytes = 8 * 1024 * 1024, json = true, optional = false, allowHardLinks = false } = {}) {
+  if (typeof allowHardLinks !== "boolean") fail("AGENT_RUN_FILE_INVALID");
   const file = observeAgentRunPhysicalPath(input, { missing: optional });
   if (file === null) return null;
   const before = fs.lstatSync(file);
-  if (!before.isFile() || before.nlink !== 1 || before.size > maxBytes) fail("AGENT_RUN_FILE_INVALID");
+  if (!before.isFile() || before.nlink < 1 || !allowHardLinks && before.nlink !== 1 || before.size > maxBytes) fail("AGENT_RUN_FILE_INVALID");
   const descriptor = fs.openSync(file, "r");
   try {
     const opened = fs.fstatSync(descriptor);

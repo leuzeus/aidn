@@ -11,15 +11,16 @@ const failure = (reason, state = "not_started") => ({ outcome: state === "unknow
   reason_code: reason, termination_state: state, exit_code: null, signal: null, runner: null,
   termination_proof: null, bytes: { stdout: 0, stderr: 0 } });
 const positive = (value, max) => Number.isSafeInteger(value) && value > 0 && value <= max;
-function absolutePhysical(file, directory) {
+function absolutePhysical(file, directory, allowHardLinks = false) {
   if (!path.isAbsolute(file ?? "") || file.includes("\0")) return false;
   const info = fs.lstatSync(file);
-  return !info.isSymbolicLink() && (directory ? info.isDirectory() : info.isFile() && info.nlink === 1)
+  return !info.isSymbolicLink() && (directory ? info.isDirectory() : info.isFile() && info.nlink >= 1 && (allowHardLinks || info.nlink === 1))
     && fs.realpathSync.native(file).toLowerCase() === path.resolve(file).toLowerCase();
 }
 
-export function createWindowsProcessTreeController({ helperPath, helperSha256, helperSourceSha256, candidateSha256, allowNoDeadline = false, helperScopeRoot = null } = {}) {
+export function createWindowsProcessTreeController({ helperPath, helperSha256, helperSourceSha256, candidateSha256, allowNoDeadline = false, helperScopeRoot = null, allowExecutableHardLinks = false } = {}) {
   if (typeof allowNoDeadline !== "boolean") throw new TypeError("PROCESS_DEADLINE_POLICY_INVALID");
+  if (typeof allowExecutableHardLinks !== "boolean") throw new TypeError("PROCESS_EXECUTABLE_POLICY_INVALID");
   const hashes = Object.freeze({ helper_sha256: helperSha256, source_sha256: helperSourceSha256, candidate_sha256: candidateSha256 });
   async function checkAvailability({ cwd, signal, executable, executableSha256 } = {}) {
     if (signal?.aborted) return { available: false, reason_code: "PROCESS_CHECK_CANCELLED" };
@@ -32,7 +33,7 @@ export function createWindowsProcessTreeController({ helperPath, helperSha256, h
         return { available: false, reason_code: "PROCESS_HELPER_BINDING_INVALID" };
       }
       if (executable !== undefined && (!hashPattern.test(executableSha256 ?? "")
-        || !absolutePhysical(executable, false) || hashFile(executable) !== executableSha256)) {
+        || !absolutePhysical(executable, false, allowExecutableHardLinks) || hashFile(executable) !== executableSha256)) {
         return { available: false, reason_code: "PROCESS_EXECUTABLE_BINDING_INVALID" };
       }
       return { available: true, platform: "win32", method: "windows-job-object", ...hashes };

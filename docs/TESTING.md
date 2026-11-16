@@ -7079,8 +7079,8 @@ closed-tree evidence, and rechecks implementation/executable/helper pins.
 Its host capability also rechecks current protected source permission. These
 are snapshot observations of commands started by that fixed transport; they
 grant no effects or handoff and never claim complete resource closure.
-Synchronous push/open/remote-Git ports, injected transports, cold historical
-discovery and default seven-domain source composition remain separate work.
+Injected or legacy synchronous transports, cold historical discovery and
+default seven-domain source composition retain their separate boundaries.
 Legacy hosts without controller pins and non-Windows hosts retain their prior
 direct-child transport and gain no process-tree closure claim.
 
@@ -7189,3 +7189,35 @@ The provider fixture runs the same real Node command in two allowed directories,
 compares their distinct command identities, rejects an unlisted marker directory
 without allocation and proves directory revocation after assignment prevents
 the actual file effect. All started command trees retain observed Job closure.
+
+### Fixed-host push and remote Git process confinement
+
+The default Windows host with pinned controller routes push GH and remote Git
+through separate fixed executable transports. Push selects the existing async
+protocol only when both default transports are available; injected/mixed and
+legacy hosts preserve their prior interface. Post-merge network Git also uses
+the Git controller and rechecks current authorization after Job assignment,
+before resume. Existing push state/call limits and post-merge per-command
+10000 ms bounds remain unchanged. Constructor-fixed directories cover the host,
+project and Git transport cwd; authored data selects no executable or directory.
+
+The private capability preserves its GH snapshot and adds a separate Git
+snapshot with currentness checks. Coverage names push and post_merge_git
+separately; local synchronous Git and injected transports remain unobserved.
+No empty new-host snapshot establishes cold or complete resource closure.
+
+The existing required provider process-tree fixture uses compiled GH and Git
+network doubles with actual local Git. It counts31 GH calls and10 remote Git
+calls through push and an existing-object fetch, checks both closed Job sets,
+actual proof refs and one remote update. It also refuses a cancelled inspection
+without allocation and revokes fetch authorization on its suspended Git tree.
+The last case preserves the existing conservative business UNKNOWN while
+proving no fetch/proof-ref effect and confirmed Job closure. These checks call
+neither GitHub nor Native and do not prove object transfer from a real server.
+
+The same required fixture covers installed Git executables with multiple hard
+links. A constructor-only provider opt-in accepts the exact hash-pinned binary;
+default file/Native-controller policy and every controller-helper read retain
+the single-link requirement. Actual linked-executable execution closes its Job,
+and mutation through the alias refuses before allocation. This changes no
+Native grant, helper protocol, directory admission, issuer expiry or timeout.
