@@ -1,5 +1,21 @@
 # 04 JSON Contracts
 
+An already accepted disposition receipt can reuse the existing
+`operation_disposition_accept` action and its exact operation/journal/receipt
+payload to retire its authenticated abandoned acceptance control. No receipt is
+appended again. Current grants and retirement intentions remain in the existing
+admission and control-attempt parents. A control-only write reports `written: true`
+even when the process instance hash is unchanged. Accepted UNKNOWN with unknown
+business ownership remains held; v2 `known_prefix` only permits closing the exact
+acceptance control and never changes the accepted outcome.
+
+V2 captured-result adoption prepares a new exact plan over the current fence and
+owned-state digest. Its instance, journal, dispatch, authority, unowned inventory
+and original private closure subject must match the retained capture. The audit
+keeps every captured plan/output/receipt/result row and appends the independently
+authorized adoption attempt. Adoption appends the exact captured receipt once;
+it does not call the private business continuation again.
+
 Private `standard-pr-merge-basis-output.v2` derives its explicit
 `session_pr_incident_tracking_required` fact from the exact accepted merge
 selected in the current call scope. It is true only for the authenticated L2
@@ -19,8 +35,13 @@ remain separate. At most31 follow-on results fit the unchanged32-result operatio
 journal. V1 definitions and histories are not converted. The structural source
 view removes only this operation’s final intent and ordered accepted-result
 subsequence, leaving any journaled but unaccepted UNKNOWN intact. It grants no
-permission and authenticates no source. Runtime application and ordinary-entry
-qualification remain pending; pure contract success is not continuation proof.
+permission and authenticates no source. The closed private
+`process-disposition-authorization-request.v2` binds the exact v2 plan; the v1
+request remains available for historical dispositions. The common host applies
+the candidate profile only after authenticating the original capsule, terminated
+producer, released original owner, current source and exact known business
+prefix. Runtime and ordinary-entry qualification remain separate from pure
+contract success; the complete L4 boundary set is still required.
 
 Private `standard-pr-incident-close-{input,plan,output}.v1` binds explicit R10
 cleanup to an accepted L2 external-merge source and its matching R09 resolution.

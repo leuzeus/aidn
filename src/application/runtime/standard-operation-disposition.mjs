@@ -7,6 +7,7 @@ import { createProcessDispatchRecordStore } from "../../adapters/runtime/process
 import { observeLocalProcess, observeLocalProcessOwner } from "../../adapters/runtime/local-process-identity.mjs";
 import { assertProcessDispatchRecord } from "../../core/workflow/process-dispatch-record.mjs";
 import { assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
+import { assertIncidentContinuationPlan, assertIncidentContinuationDisposition, operationDispositionResultLimit } from "../../core/workflow/process-operation-disposition.mjs";
 import { prIncidentCloseOperation } from "../../core/workflow/standard-pr-incident-close.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
@@ -14,6 +15,7 @@ import { withStandardDispatchContext } from "./standard-dispatch-context.mjs";
 import { LOCAL_ARTIFACT_FENCE_PATH } from "./local-artifact-resource-fence.mjs";
 import planSchema from "../../core/contracts/workflow-definition/process-operation-disposition-plan.v1.schema.json" with { type: "json" };
 import recordSchema from "../../core/contracts/workflow-definition/process-operation-disposition.v1.schema.json" with { type: "json" };
+import continuationRequestSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-request.v2.schema.json" with { type: "json" };
 import requestSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-request.v1.schema.json" with { type: "json" };
 import grantSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-grant.v1.schema.json" with { type: "json" };
 import currentGrantSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-grant.v2.schema.json" with { type: "json" };
@@ -28,7 +30,9 @@ const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(
 const validGrant = value => valid(value, value?.contract_version === "process-disposition-authorization-grant.v2" ? currentGrantSchema : grantSchema);
 const reopenAssessment = "confirmed_reopen";
 const isReopenPlan = plan => plan?.assessment === reopenAssessment;
+const isContinuationPlan = plan => plan?.contract_version === "process-operation-disposition-plan.v2";
 function validPlan(plan) {
+  if (isContinuationPlan(plan)) { try { assertIncidentContinuationPlan(plan); return true; } catch { return false; } }
   if (!valid(plan, planSchema) || isReopenPlan(plan) !== Object.hasOwn(plan, "reopen")) return false;
   if (!isReopenPlan(plan)) return true;
   const output = assertStandardOperationOutput(plan.reopen.output), causal = output.observations.causal;
@@ -46,6 +50,7 @@ function reopenConfirmationSubject(output) {
   return shadowHash({ ...output, observations: { ...observations, causal: subject } });
 }
 const assertRecord = value => {
+  if (value?.contract_version === "process-operation-disposition.v2") return assertIncidentContinuationDisposition(value);
   if (!valid(value, recordSchema) || !validPlan(value.plan) || value.operation_id !== value.plan.operation_id
     || value.receipt.operation_id !== value.operation_id || value.plan.output_sha256 !== value.receipt.output_sha256)
     fail("PROCESS_DISPOSITION_RECORD_INVALID");
@@ -56,11 +61,17 @@ const dispositionPath = id => {
   return `workflows/operation-dispositions/${id}.json`;
 };
 const controlPath = id => dispositionPath(id).replace("operation-dispositions/", "operation-control-intents/");
-function inventoryMaterial(retained, id, reopening = false) {
+function inventoryMaterial(retained, id, reopening = false, continuation = null) {
   const { observed_at_ms, authentication, key_id, ...material } = retained;
   const controls = ["artifact:" + dispositionPath(id), "artifact:" + controlPath(id), "artifact:" + LOCAL_ARTIFACT_FENCE_PATH];
   // These two locations are one separately authenticated physical witness.
   if (reopening) controls.push("local:effects.lock", "local:retired-" + id + ".lock");
+  if (continuation) {
+    controls.push(...continuation.owned_paths.map(name => "artifact:" + name));
+    // The original private plan authenticates every unowned context document.
+    // Only its three business paths may advance under the borrowed exact lease.
+    material.context_sha256 = continuation.boundary_sha256;
+  }
   material.resources = material.resources.filter(row => !controls.includes(row.ref));
   return material;
 }
@@ -76,7 +87,7 @@ const ownerPlanSha = record => record.intent.binding_ref === prIncidentCloseOper
   ? record.preview.prepared?.plan?.closure_plan_sha256 : record.preview.prepared?.plan_sha256;
 
 export function createStandardOperationDisposition({ targetRoot, stateMode, signer, artifacts, readOperation,
-  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, confirmPrCheckpoint, confirmPrIncidentClose, confirmInterruptedReopen,
+  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, confirmPrCheckpoint, confirmPrIncidentClose, preparePrIncidentContinuation, applyPrIncidentContinuation, confirmPrIncidentContinuation, confirmInterruptedReopen,
   onBoundary = async () => {}, onLocalResource = () => {}, now = Date.now }) {
   const dispatches = createProcessDispatchRecordStore({ targetRoot, stateMode });
   const acceptance = new AsyncLocalStorage();
@@ -128,7 +139,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
         || !valid(attempt.resource_fence.record, fenceSchema) || attempt.resource_fence.record.state !== "held"
         || attempt.resource_fence.record.physical_root_sha256 !== attempt.plan.physical_root_sha256)
         fail("PROCESS_CONTROL_INTENT_SUBJECT_CHANGED");
-      if (attempt.action === "disposition" && (!attempt.grant || !valid(attempt.grant.request, requestSchema)
+      if (attempt.action === "disposition" && (!attempt.grant || !valid(attempt.grant.request, isContinuationPlan(attempt.plan) ? continuationRequestSchema : requestSchema)
         || !validGrant(attempt.grant.grant) || attempt.grant.request.plan_sha256 !== shadowHash(attempt.plan)
         || shadowHash(attempt.grant.request.plan) !== shadowHash(attempt.plan)
         || attempt.grant.request.action !== "operation_disposition"
@@ -139,7 +150,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
         || attempt.grant.verification.authority_id !== attempt.grant.grant.authority_id
         || attempt.instance_sha256 !== attempt.plan.instance_sha256
         || attempt.journal_sha256 !== attempt.plan.journal_sha256
-        || shadowHash(inventoryMaterial(attempt.inventory, id, isReopenPlan(attempt.plan))) !== attempt.plan.inventory_sha256
+        || shadowHash(inventoryMaterial(attempt.inventory, id, isReopenPlan(attempt.plan), attempt.plan.continuation ?? null)) !== attempt.plan.inventory_sha256
         || attempt.resource_fence.previous_sha256 !== attempt.plan.fence_sha256)) fail("PROCESS_CONTROL_INTENT_SUBJECT_CHANGED");
       if (attempt.action === "acceptance" && (attempt.grant !== null || !attempt.receipt_sha256 || !attempt.audit_sha256))
         fail("PROCESS_CONTROL_INTENT_SUBJECT_CHANGED");
@@ -326,8 +337,9 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     if (!Number.isSafeInteger(plan.prepared_at_ms) || plan.prepared_at_ms < 0) fail("PROCESS_DISPOSITION_PLAN_INVALID");
   }
   async function currentGrant(subject, signal) {
-    const request = { contract_version: "process-disposition-authorization-request.v1", ...subject, nonce: randomUUID(), requested_at_ms: now() };
-    if (!valid(request, requestSchema)) fail("PROCESS_DISPOSITION_AUTHORIZATION_REQUEST_INVALID");
+    const continuing = isContinuationPlan(subject.plan);
+    const request = { contract_version: continuing ? "process-disposition-authorization-request.v2" : "process-disposition-authorization-request.v1", ...subject, nonce: randomUUID(), requested_at_ms: now() };
+    if (!valid(request, continuing ? continuationRequestSchema : requestSchema)) fail("PROCESS_DISPOSITION_AUTHORIZATION_REQUEST_INVALID");
     const grant = await invokeSource("authorize", { request }, signal);
     freshGrant(grant, request);
     const proof = await verifyGrant({ request, grant }, signal);
@@ -392,7 +404,309 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     write(dispositions, { ...bodyOf(reserved), revision: reserved.revision + 1, admissions: [...reserved.admissions, admission] }, before.content_sha256);
     return admission;
   }
+
+  function continuationOwner(record, capsule) {
+    const original = record.results[0];
+    if (record.intent.binding_ref !== prIncidentCloseOperation || record.phase !== "receipted"
+      || original?.receipt.outcome !== "reconciliation_required" || original.receipt.effect_status !== "unknown"
+      || capsule?.contract_version !== "process-dispatch-record.v2" || capsule.phase !== "returned"
+      || capsule.output_sha256 !== shadowHash(original.output) || capsule.output_sha256 !== original.receipt.output_sha256
+      || capsule.local_owner_intentions.length !== 1 || capsule.leases.length !== 1
+      || capsule.authority_sha256 !== shadowHash(readAuthority()) || artifacts.localOwnerPending())
+      fail("PROCESS_INCIDENT_CONTINUATION_SUBJECT_REQUIRED");
+    const [lease] = capsule.leases, [intention] = capsule.local_owner_intentions;
+    if (lease.status !== "released" || lease.owner.pid !== record.owner?.pid || lease.owner.pid !== capsule.process_identity.pid
+      || shadowHash(lease.owner) !== shadowHash(intention.owner)
+      || shadowHash(lease.resource_fence) !== shadowHash(intention.resource_fence.record)
+      || shadowHash(lease.resource_fence.process_identity) !== shadowHash(capsule.process_identity)
+      || observeLocalProcessOwner(capsule.process_identity) !== "terminated")
+      fail("PROCESS_INCIDENT_CONTINUATION_OWNER_REQUIRED");
+    return original;
+  }
+  function readContinuationAudit(record) {
+    const before = dispositions.read(record.operation_id), audit = before.record;
+    if (!audit) { if (record.results.length !== 1) fail("PROCESS_INCIDENT_CONTINUATION_HISTORY_REQUIRED"); return before; }
+    signer.verify(audit);
+    if (!isContinuationPlan(audit.plan)) fail("PROCESS_INCIDENT_CONTINUATION_HISTORY_REQUIRED");
+    assertIncidentContinuationDisposition(audit);
+    const retainedControls = readControls(record.operation_id).record;
+    for (const row of [...audit.results, ...audit.attempts]) {
+      signer.verify(row.plan);
+      if (row.plan.output_sha256 !== record.results[0].receipt.output_sha256
+        || row.plan.continuation.original_receipt_sha256 !== shadowHash(record.results[0].receipt)
+        || row.plan.dispatch_sha256 !== shadowHash(readDispatch(record.operation_id, record).record)
+        || !valid(row.grant.request, continuationRequestSchema) || !validGrant(row.grant.grant)
+        || row.grant.request.plan_sha256 !== shadowHash(row.plan) || shadowHash(row.grant.request.plan) !== shadowHash(row.plan)
+        || row.grant.grant.request_sha256 !== shadowHash(row.grant.request)
+        || row.grant.verification?.outcome !== "verified"
+        || row.grant.verification.request_sha256 !== shadowHash(row.grant.request)
+        || row.grant.verification.grant_sha256 !== shadowHash(row.grant.grant)
+        || row.grant.verification.authority_id !== row.grant.grant.authority_id
+        || !retainedControls?.attempts.some(attempt => attempt.action === "disposition"
+          && shadowHash(attempt.plan) === shadowHash(row.plan)
+          && shadowHash(attempt.grant.request) === shadowHash(row.grant.request)
+          && shadowHash(attempt.resource_fence.record) === shadowHash(row.resource_fence)))
+        fail("PROCESS_INCIDENT_CONTINUATION_HISTORY_REQUIRED");
+    }
+    if (audit.results.length < record.results.length - 1 || audit.results.length > record.results.length)
+      fail("PROCESS_INCIDENT_CONTINUATION_HISTORY_REQUIRED");
+    for (const [index, row] of audit.results.entries()) {
+      if (row.receipt.intent_sha256 !== shadowHash(record.intent)
+        || row.receipt.authority_id !== record.intent.authority_id
+        || index + 1 < record.results.length && shadowHash(record.results[index + 1]) !== shadowHash({ receipt: row.receipt, output: row.output })
+        || index + 1 >= record.results.length && index !== audit.results.length - 1)
+        fail("PROCESS_INCIDENT_CONTINUATION_HISTORY_REQUIRED");
+    }
+    return before;
+  }
+  function continuationObservation(id) {
+    const observed = observation(id);
+    continuationOwner(observed.operation, observed.capsule);
+    if (typeof preparePrIncidentContinuation !== "function") fail("PROCESS_INCIDENT_CONTINUATION_CAPABILITY_REQUIRED");
+    const continuation = preparePrIncidentContinuation(observed.instance, observed.operation);
+    return { ...observed, continuation, assessment: "known_partial_incident_close",
+      inventory_sha256: shadowHash(inventoryMaterial(observed.inventory_record, id, false, continuation)) };
+  }
+  function continuationSubject(observed) { return { ...subject(observed), continuation: observed.continuation }; }
+  function capturedContinuationSubject(plan) {
+    // A new adoption grant binds the current fence and owned postimages. Every
+    // other original subject field, including unowned inventory, stays exact.
+    const { prepared_at_ms, nonce, key_id, authentication, fence_sha256, continuation, ...original } = plan;
+    const { state_sha256, ...businessSubject } = continuation;
+    return { ...original, continuation: businessSubject };
+  }
+  function prepareContinuation(record, expectedSha256) {
+    const observed = continuationObservation(record.operation_id), before = readContinuationAudit(record);
+    if (observed.instance.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");
+    const previous = before.record;
+    if (previous) {
+      const latest = record.results.at(-1).receipt;
+      const accepted = observed.instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(latest));
+      // A captured unjournaled result and a journaled unaccepted result must be
+      // adopted/accepted before another business continuation can be prepared.
+      if (previous.results.length !== record.results.length && !accepted) return previous.plan;
+      // A capture's original plan predates its held fence and its own writes.
+      // Keep that plan in the audit; prepare a current plan for no-replay adoption.
+    }
+    if (record.results.length >= operationDispositionResultLimit + 1) fail("PROCESS_DISPOSITION_ADMISSION_LIMIT");
+    return signer.seal({ contract_version: "process-operation-disposition-plan.v2", ...continuationSubject(observed),
+      prepared_at_ms: now(), nonce: randomUUID() });
+  }
+  async function applyContinuation(plan, { signal }) {
+    const id = plan.operation_id, initialRecord = readOperation(id).record;
+    const previous = readContinuationAudit(initialRecord), pending = previous.record?.results.length === initialRecord.results.length;
+    if (previous.record && !pending && initialRecord.results.some(row => shadowHash(row.receipt) === shadowHash(previous.record.receipt))
+      && (shadowHash(previous.record.plan) === shadowHash(plan) || previous.record.attempts.some(row => shadowHash(row.plan) === shadowHash(plan))))
+      return { status: "retained_result", receipt: previous.record.receipt, written: false };
+    if (initialRecord.results.length >= operationDispositionResultLimit + 1 || previous.record?.attempts.length >= 32)
+      fail("PROCESS_DISPOSITION_ADMISSION_LIMIT");
+    if (pending && shadowHash(capturedContinuationSubject(previous.record.plan)) !== shadowHash(capturedContinuationSubject(plan)))
+      fail("PROCESS_DISPOSITION_ALREADY_RECORDED");
+    const planBody = Object.fromEntries(Object.entries(plan).filter(([key]) => !["contract_version", "prepared_at_ms", "nonce", "key_id", "authentication"].includes(key)));
+    const fresh = (lease = null, advancing = false) => {
+      if (signal?.aborted) fail("PROCESS_DISPOSITION_ABORTED");
+      const observed = continuationObservation(id), current = continuationSubject(observed);
+      if (lease) { artifacts.resourceFence().assert(lease); current.fence_sha256 = lease.previous_sha256; }
+      if (advancing) current.continuation = { ...current.continuation, state_sha256: plan.continuation.state_sha256 };
+      if (shadowHash(current) !== shadowHash(planBody)) fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+      if (shadowHash(readContinuationAudit(observed.operation).record) !== shadowHash(previous.record))
+        fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+      return observed;
+    };
+    let observed = fresh();
+    const grant = await currentGrant({ action: "operation_disposition", plan_sha256: shadowHash(plan), plan }, signal);
+    observed = fresh();
+    const fence = artifacts.resourceFence(), control = readControls(id), currentFence = fence.read();
+    const known = [...(control.record?.attempts.map(row => row.resource_fence.record) ?? []),
+      ...(previous.record ? [previous.record.resource_fence, ...previous.record.acceptance_reservations.map(row => row.resource_fence)] : [])]
+      .find(row => shadowHash(row) === shadowHash(currentFence.record));
+    const proposed = fence.prepareAcquire({ expectedSha256: plan.fence_sha256 });
+    currentConsent(plan, grant, signal);
+    const heldControl = reserveControl(control, { action: "disposition", plan, grant, inventory: observed.inventory_record,
+      instance_sha256: observed.instance.instance_sha256, journal_sha256: shadowHash(observed.operation),
+      receipt_sha256: pending ? shadowHash(previous.record.receipt) : null,
+      audit_sha256: previous.record ? shadowHash(previous.record) : null, resource_fence: proposed });
+    await onBoundary("disposition_control_reserved", id);
+    await verifyGrant(grant, signal); observed = fresh(); currentConsent(plan, grant, signal);
+    const lease = fence.acquire({ prepared: proposed, expectedSha256: plan.fence_sha256, ...(known ? { dispositionLease: known } : {}) });
+    let release = false;
+    try {
+      await onBoundary("disposition_fence_acquired", id);
+      const auditGrant = { ...grant, verification: await verifyGrant(grant, signal) };
+      observed = fresh(lease);
+      const assertCurrent = () => {
+        currentConsent(plan, grant, signal); fence.assert(lease);
+        if (shadowHash(controls.read(id).record) !== shadowHash(heldControl)
+          || readInstance(plan.instance_id).instance_sha256 !== plan.instance_sha256
+          || shadowHash(readOperation(id).record) !== plan.journal_sha256
+          || shadowHash(readDispatch(id, initialRecord).record) !== plan.dispatch_sha256
+          || shadowHash(readAuthority()) !== plan.authority_sha256 || artifacts.localOwnerPending())
+          fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+      };
+      let result;
+      if (pending) {
+        assertCurrent();
+        // Preserve the captured result bytes. A success may be adopted only
+        // after reobserving its actual complete original private postconditions.
+        if (previous.record.output.outcome === "completed"
+          && confirmPrIncidentContinuation?.(observed.instance, observed.operation, previous.record.output) !== true)
+          fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+        result = { output: previous.record.output, effect_knowledge: previous.record.effect_knowledge };
+      } else {
+        if (typeof applyPrIncidentContinuation !== "function") fail("PROCESS_INCIDENT_CONTINUATION_CAPABILITY_REQUIRED");
+        // Refuse a record that cannot retain either bounded output before the
+        // first business callback. Earlier results/control attempts stay intact.
+        const probe = { ...(previous.record ?? {}), plan, grant: auditGrant, output: plan.continuation.expected_output,
+          receipt: makeReceipt(initialRecord, plan.continuation.expected_output), resource_fence: lease.record,
+          results: [...(previous.record?.results ?? []), { plan, grant: auditGrant, output: plan.continuation.expected_output,
+            receipt: makeReceipt(initialRecord, plan.continuation.expected_output), effect_knowledge: "known_prefix", resource_fence: lease.record }] };
+        if (Buffer.byteLength(JSON.stringify(probe)) > 900000) fail("PROCESS_CONTROL_INTENT_STORAGE_BOUND");
+        const capability = Object.freeze({ artifactContinuation: Object.freeze({ operation_id: id,
+          plan_sha256: plan.continuation.closure_plan_sha256, lease, assertCurrent }) });
+        result = await withStandardDispatchContext(capability, () => applyPrIncidentContinuation(observed.instance, observed.operation,
+          plan.continuation, { write: true, expectedContinuationSha256: shadowHash(plan.continuation),
+            assertAuthorized: async () => { await verifyGrant(grant, signal); assertCurrent(); },
+            onBoundary: async (point, operationId) => { assertCurrent(); await onBoundary("incident_continuation_" + point, operationId); assertCurrent(); } }));
+      }
+      assertStandardOperationOutput(result.output); assertCurrent();
+      const receipt = pending ? previous.record.receipt : makeReceipt(initialRecord, result.output);
+      const row = { plan, grant: auditGrant, receipt, output: result.output, effect_knowledge: result.effect_knowledge, resource_fence: lease.record };
+      const audit = pending ? { ...bodyOf(previous.record), revision: previous.record.revision + 1,
+        attempts: [...previous.record.attempts, { plan, grant: auditGrant, resource_fence: lease.record }] }
+        : { ...(previous.record ? bodyOf(previous.record) : { contract_version: "process-operation-disposition.v2", operation_id: id,
+          attempts: [], admissions: [], acceptance_reservations: [] }), ...row,
+          revision: (previous.record?.revision ?? 0) + 1, results: [...(previous.record?.results ?? []), row] };
+      assertIncidentContinuationDisposition(signer.seal(audit));
+      write(dispositions, audit, previous.content_sha256);
+      await onBoundary("disposition_recorded", id);
+      // From this point a cold caller adopts this captured output; it never
+      // re-executes business writes to repair a journal/acceptance interruption.
+      assertCurrent();
+      if (shadowHash(appendResult(initialRecord, result.output)) !== shadowHash(receipt)) fail("PROCESS_DISPOSITION_RECEIPT_CHANGED");
+      await onBoundary("disposition_receipted", id);
+      release = result.effect_knowledge === "known_prefix";
+      return { status: "receipted", receipt, written: true };
+    } finally { if (release) fence.release(lease); }
+  }
+  async function verifyContinuationReceipt(before, record, receipt, signal) {
+    const retained = readContinuationAudit(record).record;
+    if (shadowHash(retained) !== shadowHash(before.record) || shadowHash(retained.receipt) !== shadowHash(receipt)) return false;
+    const lease = acceptance.getStore();
+    if (!lease) fail("PROCESS_DISPOSITION_ACCEPTANCE_FENCE_REQUIRED");
+    artifacts.resourceFence().assert(lease);
+    const instance = readInstance(record.intent.instance_id), capsule = readDispatch(record.operation_id, record).record;
+    continuationOwner(record, capsule);
+    if (retained.output.outcome === "completed") {
+      if (confirmPrIncidentContinuation?.(instance, record, retained.output) !== true) fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+    } else preparePrIncidentContinuation(instance, record);
+    const grant = await currentGrant({ action: "operation_disposition_accept", disposition_sha256: shadowHash(retained),
+      receipt_sha256: shadowHash(receipt), instance_sha256: instance.instance_sha256, scope_id: instance.scope_id }, signal);
+    artifacts.resourceFence().assert(lease); freshGrant(grant.grant, grant.request);
+    if (readInstance(instance.instance_id).instance_sha256 !== instance.instance_sha256
+      || shadowHash(readOperation(record.operation_id).record) !== shadowHash(record)
+      || shadowHash(dispositions.read(record.operation_id).record) !== shadowHash(retained)) fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+    continuationOwner(record, readDispatch(record.operation_id, record).record);
+    if (retained.output.outcome === "completed") {
+      if (confirmPrIncidentContinuation?.(instance, record, retained.output) !== true) fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+    } else preparePrIncidentContinuation(instance, record);
+    if (retained.admissions.length >= 32) fail("PROCESS_DISPOSITION_ADMISSION_LIMIT");
+    write(dispositions, { ...bodyOf(retained), revision: retained.revision + 1,
+      admissions: [...retained.admissions, { instance_sha256: instance.instance_sha256, receipt_sha256: shadowHash(receipt), grant }] }, before.content_sha256);
+    return true;
+  }
+
+  function acceptedControl(id, receipt, instance) {
+    const before = dispositions.read(id), audit = before.record;
+    if (!audit) return null;
+    signer.verify(audit); signer.verify(audit.plan); assertRecord(audit);
+    if (shadowHash(audit.receipt) !== shadowHash(receipt)
+      || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(receipt))) return null;
+    // Known prefix concerns ownership, not an upgrade of the accepted outcome.
+    // In particular an accepted UNKNOWN with unknown business ownership stays held.
+    if (isContinuationPlan(audit.plan) ? audit.effect_knowledge !== "known_prefix"
+      : !["confirmed", "no_effect"].includes(receipt.effect_status)) return null;
+    const record = readOperation(id).record;
+    if (isContinuationPlan(audit.plan)) readContinuationAudit(record);
+    if (audit.plan.operation_id !== id || audit.plan.instance_id !== instance.instance_id
+      || audit.plan.scope_id !== instance.scope_id || audit.plan.model_sha256 !== instance.model_sha256
+      || audit.plan.physical_root_sha256 !== shadowHash(artifacts.root) || audit.plan.runtime_sha256 !== runtime()
+      || receipt.intent_sha256 !== shadowHash(record.intent) || receipt.authority_id !== record.intent.authority_id
+      || !record.results.some(row => shadowHash(row.receipt) === shadowHash(receipt))) fail("PROCESS_DISPOSITION_SUBJECT_CHANGED");
+    const fence = artifacts.resourceFence().read();
+    if (fence.record?.state !== "held" || artifacts.localOwnerPending()) return null;
+    const control = readControls(id);
+    if (!audit.acceptance_reservations.some(row => shadowHash(row.resource_fence) === shadowHash(fence.record))
+      || !control.record?.attempts.some(row => row.action === "acceptance"
+        && row.receipt_sha256 === shadowHash(receipt) && shadowHash(row.plan) === shadowHash(audit.plan)
+        && shadowHash(row.resource_fence.record) === shadowHash(fence.record))) return null;
+    const admitted = audit.admissions.some(row => {
+      const captured = row.grant;
+      return row.receipt_sha256 === shadowHash(receipt) && valid(captured?.request, requestSchema) && validGrant(captured?.grant)
+        && captured.request.action === "operation_disposition_accept" && captured.request.receipt_sha256 === shadowHash(receipt)
+        && captured.request.instance_sha256 === row.instance_sha256 && captured.request.scope_id === instance.scope_id
+        && captured.grant.request_sha256 === shadowHash(captured.request) && captured.verification?.outcome === "verified"
+        && captured.verification.request_sha256 === shadowHash(captured.request)
+        && captured.verification.grant_sha256 === shadowHash(captured.grant)
+        && captured.verification.authority_id === captured.grant.authority_id;
+    });
+    if (!admitted) fail("PROCESS_DISPOSITION_ACCEPTANCE_FENCE_REQUIRED");
+    if (observeLocalProcessOwner(fence.record.process_identity) !== "terminated") return null;
+    return { before, record, control, fence };
+  }
+  function previewAcceptedControl(instanceId, { expectedSha256 } = {}) {
+    const instance = readInstance(instanceId), fence = artifacts.resourceFence().read();
+    if (instance.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");
+    if (fence.record?.state !== "held" || observeLocalProcessOwner(fence.record.process_identity) !== "terminated") return null;
+    for (const event of [...instance.events].reverse()) {
+      if (event.kind !== "operation_result") continue;
+      const id = event.receipt.operation_id, found = acceptedControl(id, event.receipt, instance);
+      if (found) return { operation_id: id, journal_sha256: shadowHash(found.record), receipt_sha256: shadowHash(event.receipt) };
+    }
+    return null;
+  }
+  async function retireAcceptedControl(id, receipt, { signal } = {}) {
+    const instance = readInstance(readOperation(id).record.intent.instance_id), initial = acceptedControl(id, receipt, instance);
+    if (!initial) return { written: false };
+    const retained = inventory.observeSubject(instance.instance_id).inventory;
+    const materialSha = shadowHash(inventoryMaterial(retained, id));
+    const fresh = (audit, control) => {
+      if (signal?.aborted) fail("PROCESS_DISPOSITION_ABORTED");
+      const current = readInstance(instance.instance_id), latest = acceptedControl(id, receipt, current);
+      if (!latest || current.instance_sha256 !== instance.instance_sha256
+        || shadowHash(latest.record) !== shadowHash(initial.record)
+        || shadowHash(latest.before.record) !== shadowHash(audit)
+        || shadowHash(latest.control.record) !== shadowHash(control)
+        || latest.fence.content_sha256 !== initial.fence.content_sha256
+        || shadowHash(inventoryMaterial(inventory.observeSubject(instance.instance_id).inventory, id)) !== materialSha)
+        fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+      return latest;
+    };
+    const grant = await currentGrant({ action: "operation_disposition_accept", disposition_sha256: shadowHash(initial.before.record),
+      receipt_sha256: shadowHash(receipt), instance_sha256: instance.instance_sha256, scope_id: instance.scope_id }, signal);
+    fresh(initial.before.record, initial.control.record);
+    if (initial.before.record.admissions.length >= 32) fail("PROCESS_DISPOSITION_ADMISSION_LIMIT");
+    // Reuse the exact abandoned lease. There is no replacement acquisition whose
+    // own crash window would require another owner or another recovery store.
+    const reserved = reserveControl(initial.control, { action: "acceptance", plan: initial.before.record.plan, grant: null, inventory: retained,
+      instance_sha256: instance.instance_sha256, journal_sha256: shadowHash(initial.record), receipt_sha256: shadowHash(receipt),
+      audit_sha256: shadowHash(initial.before.record), resource_fence: { record: initial.fence.record, previous_sha256: initial.fence.content_sha256 } });
+    await onBoundary("disposition_acceptance_retirement_reserved", id);
+    const proof = await verifyGrant(grant, signal);
+    fresh(initial.before.record, reserved); freshGrant(grant.grant, grant.request);
+    const admitted = write(dispositions, { ...bodyOf(initial.before.record), revision: initial.before.record.revision + 1,
+      admissions: [...initial.before.record.admissions, { instance_sha256: instance.instance_sha256,
+        receipt_sha256: shadowHash(receipt), grant: { ...grant, verification: proof } }] }, initial.before.content_sha256);
+    await onBoundary("disposition_acceptance_retirement_admitted", id);
+    await verifyGrant(grant, signal);
+    fresh(admitted, reserved); freshGrant(grant.grant, grant.request);
+    artifacts.resourceFence().release(initial.fence);
+    await onBoundary("disposition_acceptance_retired", id);
+    return { written: true, control_retired: true };
+  }
+
+
   return Object.freeze({
+    previewAcceptedControl, retireAcceptedControl,
     observeInterruptedReopen(record) {
       signer.verify(record); signer.verify(record.preview);
       const owner = reopenOwner(record, readDispatch(record.operation_id, record).record);
@@ -462,6 +776,14 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     },
     prepare(id, { expectedSha256, signal } = {}) {
       const operation = readOperation(id).record;
+      if (operation.intent.binding_ref === prIncidentCloseOperation && operation.results[0]?.receipt.effect_status === "unknown"
+        && typeof preparePrIncidentContinuation === "function") {
+        let eligible = false;
+        try { continuationOwner(operation, readDispatch(id, operation).record); eligible = true; } catch (error) {
+          if (!["PROCESS_INCIDENT_CONTINUATION_OWNER_REQUIRED", "PROCESS_INCIDENT_CONTINUATION_SUBJECT_REQUIRED"].includes(error.code)) throw error;
+        }
+        if (eligible) return prepareContinuation(operation, expectedSha256);
+      }
       if (operation.intent.binding_ref === correctionReopen && typeof confirmInterruptedReopen === "function"
         && operation.results[0]?.receipt?.outcome === "reconciliation_required"
         && operation.results[0]?.receipt?.effect_status === "unknown") {
@@ -476,6 +798,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       if (!validPlan(plan)) fail("PROCESS_DISPOSITION_PLAN_INVALID");
       signer.verify(plan);
       if (explicit !== true || expectedPlanSha256 !== shadowHash(plan)) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
+      if (isContinuationPlan(plan)) return applyContinuation(plan, { signal });
       const previous = dispositions.read(plan.operation_id);
       if (previous.record) {
         signer.verify(previous.record); signer.verify(previous.record.plan);
@@ -589,16 +912,22 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
         const reserved = write(dispositions, { ...bodyOf(before.record), revision: before.record.revision + 1,
           acceptance_reservations: [...before.record.acceptance_reservations, { instance_sha256: readInstance(before.record.plan.instance_id).instance_sha256,
             resource_fence: lease.record }] }, before.content_sha256);
-        if (!isReopenPlan(reserved.plan)) return await acceptance.run(lease, action);
-        const admission = await admitReopenReceipt(reserved, instance, lease, signal);
-        return await acceptance.run({ lease, admission }, action);
-      } finally { artifacts.resourceFence().release(lease); }
+        let result;
+        if (!isReopenPlan(reserved.plan)) result = await acceptance.run(lease, action);
+        else {
+          const admission = await admitReopenReceipt(reserved, instance, lease, signal);
+          result = await acceptance.run({ lease, admission }, action);
+        }
+        await onBoundary("disposition_acceptance_committed", id);
+        return result;
+      } finally { if (!isContinuationPlan(before.record.plan) || before.record.effect_knowledge === "known_prefix") artifacts.resourceFence().release(lease); }
     },
     async verifyReceipt(record, receipt, signal) {
       const before = dispositions.read(record.operation_id);
       if (!before.record) return false;
       signer.verify(before.record); signer.verify(before.record.plan);
       if (shadowHash(before.record.receipt) !== shadowHash(receipt)) return false;
+      if (isContinuationPlan(before.record.plan)) return verifyContinuationReceipt(before, record, receipt, signal);
       const instance = readInstance(record.intent.instance_id), capsule = readDispatch(record.operation_id, record).record;
       if (isReopenPlan(before.record.plan)) {
         const authorized = acceptance.getStore();

@@ -1,4 +1,5 @@
 import { assertNativeReconciliationRequest } from "../../core/workflow/native-allocation-reconciliation.mjs";
+import { assertIncidentContinuationPlan } from "../../core/workflow/process-operation-disposition.mjs";
 import { assertNativeOwnerDispositionRequest } from "../../core/workflow/native-owner-disposition.mjs";
 import { externalMergeQuestionVersion } from "../../core/workflow/standard-pr-external-merge.mjs";
 import { mergeConsentQuestionVersion } from "../../core/workflow/standard-pr-merge-consent.mjs";
@@ -126,10 +127,12 @@ export function createStandardHostAuthority({ configuration, environment = proce
       || keyId() !== permit.key_id || trustSha() !== permit.trust_sha256)
       fail("STANDARD_HOST_EXACT_DISPOSITION_REQUIRED");
     const apply = request.action === "operation_disposition", instance = apply ? request.plan : request;
+    const continuation = apply && request.plan?.contract_version === "process-operation-disposition-plan.v2";
+    if (continuation) assertIncidentContinuationPlan(request.plan);
     const subject = apply ? request.plan_sha256 : request.receipt_sha256;
     if (subject !== permit.subject_sha256 || instance?.scope_id !== permit.scope_id
       || instance.instance_sha256 !== permit.instance_sha256
-      || apply && (request.plan?.assessment !== "confirmed_reopen" || shadowHash(request.plan) !== subject))
+      || apply && ((!continuation && request.plan?.assessment !== "confirmed_reopen") || shadowHash(request.plan) !== subject))
       fail("STANDARD_HOST_EXACT_DISPOSITION_REQUIRED");
     const principal = shadowHash({ host: keyId(), transport: "explicit-workflow-disposition" });
     const body = { contract_version: legacy ? "process-disposition-authorization-grant.v1" : "process-disposition-authorization-grant.v2", authority_id: "standard_local_operator",

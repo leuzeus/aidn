@@ -1030,6 +1030,12 @@ events, dispatching/no-receipt and receipted/UNKNOWN, retained owners/debits,
 unreferenced evidence, substituted grants, stale prefixes and db-only projection
 non-adoption. Bigint physical identities distinguish adjacent values above
 2**53 and roundtrip through JSON; actual files are reobserved before/after reads.
+The device/inode serializer restores unsigned 64-bit identifier bits from Node’s
+signed BigInt64 stats view, including a native NTFS ID with its high bit set.
+The fixture checks adjacent high-bit IDs, signed boundaries and JSON roundtrips,
+rejects values outside the signed-view/unsigned 64-bit range and still refuses
+Number observations or negative size/link-count/mode. Existing positive
+identifiers and historical records remain unchanged.
 The embedded-operation check stages a child operation whose node ID matches
 the parent call. It verifies the child's operation pin and the absence of
 inventory writes or effect authorization after reopening the host.
@@ -6695,3 +6701,43 @@ acquisition, no invented physical lock and no lease release by the borrowed port
 Wrong plans/leases and a changed current control refuse before further changes.
 Only the controlling fixture releases its lease. This primitive check provides
 no operator-source, original-dispatch, continuation or genuine Native proof.
+
+
+The candidate `verify-standard-pr-review-reply-fixtures.mjs` selector
+`--incident-partial-write --incident-partial-continuation` starts a real child
+producer, denies admission after its first trace and accepts its original UNKNOWN.
+After proving that exact producer terminated, it prepares the v2 continuation
+read-only, checks current operator revocation, executes the original remaining
+private CAS and accepts a distinct confirmation without rewriting the first trace
+or any prior receipt. `--incident-state-mode=dual` and `=db-only` select the real
+SQLite canonical backends. The pretriage-session target additionally supports
+`--incident-continuation-entry` to exercise separate explicit ordinary actions
+through the protected host authority. That entry case changes the current trust
+registry and verifies that its saved action is refused before any effect, restores
+the exact registry bytes, then applies and accepts the separate current actions.
+Reusing the original action after acceptance is refused without replay. The direct
+host cases separately exercise current operator revocation. These selectors preserve their original
+finite fixture limits and retain failures. Their complete boundary/concurrency
+set, final integrated gates, genuine Native and installed qualification remain
+required; a single positive continuation cannot close L4 or the full plan.
+
+The premerge selector additionally accepts
+`--incident-continuation-cut=disposition_recorded` to terminate an actual controller
+after its v2 result capture and before journal append. A new host prepares a plan
+bound to the current fence and owned state, preserves every original captured
+result and appends the exact receipt without repeating business writes. The same
+selector runs against FILES, DUAL and db-only; the cutoff and all earlier failures
+are retained. This cut does not prove the other business boundaries or concurrency.
+
+`node tools/perf/verify-standard-disposition-acceptance-control-fixtures.mjs files`
+(also `dual` and `db-only`) checks one-operation accepted-control recovery with
+real local stores, exact fences, actual child termination and current fixture
+consent. It stops after the accepted process CAS and at retirement reservation and
+admission boundaries. A live owner, denied or aborted current permission cannot
+retire the control. The existing action parser and protected host authority retire
+only the exact old acceptance lease and report the control write while canonical
+business data, operation journal and process history remain unchanged. A repeated
+accepted duplicate needs no grant or write. The entry embedding is reduced to one
+operation with no Native port; this is component qualification, not full STANDARD,
+Native or installed qualification. Its fresh arenas and original failures remain
+retained, and the existing attempt/storage limits are unchanged.

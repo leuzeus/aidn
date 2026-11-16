@@ -1,5 +1,33 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Accepted disposition control retirement candidate, 2026-11-15
+
+A real child stop after accepted process CAS reproduced a held acceptance fence:
+the accepted duplicate returned before the normal release path. The candidate
+reuses the existing explicit acceptance action. A read-only preview binds the
+accepted receipt and current journal, even when the operation has completed.
+Retirement requires the exact signed acceptance reservation and control lease,
+its OS-observed terminated owner and an independently current operator grant.
+Full current business inventory, instance, journal, audit and control observations
+are rechecked across every awaited authorization boundary.
+
+The existing control intent and admission retain the new grant; a synchronous
+exact-fence release closes only that old lease. There is no replacement held lease,
+new store, plan version, implicit business replay or renewed bound. Every original
+event, result, reservation and captured output stays intact. A normal accepted
+duplicate with no eligible held control stays a no-op. Foreign ownership and v2
+unknown effect knowledge remain retained. V2 known-prefix aggregate UNKNOWN may
+close its acceptance control while its business reconciliation remains pending.
+Source, backend, cut and concurrency qualification remain separate requirements.
+
+An actual v2 controller stop after audit CAS and before final journal append also
+reproduced an obsolete plan: it retained the pre-acquisition fence digest. Cold
+adoption now prepares a current fence/state plan while retaining every other
+original subject binding. The original captured plan, output, receipt and result
+rows remain immutable; only an independently granted adoption attempt is appended.
+The adopter confirms the captured postconditions and appends that exact receipt,
+without executing the business closure again. Unowned changes stay refused.
+
 ## Retention request and analysis continuation, 2026-11-14
 
 The existing EXPLORING SPIKE question now offers both `convert-to-spike` and
@@ -4559,5 +4587,15 @@ The structural pre-intent view excludes only this operation’s exact final
 intent/result suffix; unrelated progress refuses. It is never persisted or
 accepted as a new current instance. Contract and reader qualification alone
 supplies no current source authentication, fence or effect permission. Runtime
-continuation must still implement and qualify the original intent/effect/result/
+continuation qualification must still cover the original intent/effect/result/
 acceptance boundaries through the common host and ordinary entry.
+
+The candidate common-host implementation reserves its authenticated control
+intention before acquiring the local resource fence, then lends that exact lease
+to the unchanged original private closure plan. Current consent is verified
+again before each remaining CAS; only the three owned business artifacts may
+advance. Every captured follow-on result is retained before journal append. A
+cold adoption of that result performs no business replay. Ambiguous effects
+retain the fence; a live owner cannot be transferred. The ordinary exact-action
+route prepares application and receipt acceptance separately. These properties
+require runtime qualification and do not inherit proof from the data contracts.

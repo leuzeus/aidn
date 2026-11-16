@@ -4,6 +4,7 @@ import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 import { prIncidentCloseOperation, prIncidentCloseReconciliationPrefix } from '../../src/core/workflow/standard-pr-incident-close.mjs';
 import { assertIncidentContinuationPlan, assertIncidentContinuationDisposition, operationDispositionResultLimit } from '../../src/core/workflow/process-operation-disposition.mjs';
 import { validateJsonSchema } from '../../src/core/contracts/json-schema-validator.mjs';
+import requestV2 from '../../src/core/contracts/workflow-definition/process-disposition-authorization-request.v2.schema.json' with { type: 'json' };
 import v1Plan from '../../src/core/contracts/workflow-definition/process-operation-disposition-plan.v1.schema.json' with { type: 'json' };
 import v1Record from '../../src/core/contracts/workflow-definition/process-operation-disposition.v1.schema.json' with { type: 'json' };
 
@@ -45,6 +46,15 @@ test('v2 separates original captured UNKNOWN from the expected new confirmation'
   rejects(plan, p => { p.output_sha256 = p.continuation.expected_output_sha256; }, assertIncidentContinuationPlan);
   rejects(plan, p => { p.continuation.expected_output.facts.session_pr_incident_cleanup_completed = false; }, assertIncidentContinuationPlan);
   rejects(plan, p => { p.continuation.expected_output_sha256 = B; }, assertIncidentContinuationPlan);
+});
+test('the closed v2 current-authorization request validates its embedded plan', () => {
+  const request = { contract_version: 'process-disposition-authorization-request.v2', action: 'operation_disposition',
+    nonce: plan.nonce, requested_at_ms: 0, plan_sha256: shadowHash(plan), plan };
+  assert.deepEqual(validateJsonSchema(request, requestV2, '$', { contractKind: 'workflow-definition' }), []);
+  const forged = structuredClone(request); forged.plan.continuation.permits_resume = true;
+  assert.notEqual(validateJsonSchema(forged, requestV2, '$', { contractKind: 'workflow-definition' }).length, 0);
+  const confused = structuredClone(request); confused.contract_version = 'process-disposition-authorization-request.v1';
+  assert.notEqual(validateJsonSchema(confused, requestV2, '$', { contractKind: 'workflow-definition' }).length, 0);
 });
 test('v2 refuses foreign paths, new permission fields and version confusion', () => {
   for (const changed of ['../foreign.md', 'workflows/operation-records/foreign.json', 'C:/foreign.md', 'sessions/../foreign.md'])
@@ -137,5 +147,5 @@ test('foreign progress and substituted accepted results refuse structural recons
     r => prIncidentCloseReconciliationPrefix(single.current, r));
 });
 console.log(JSON.stringify({ status: 'PASS', checks, scope: 'pure-v2-contracts-and-structural-prefix',
-  source_authentication: 'NOT_PROVEN_BY_PURE_CONTRACTS', continuation_execution: 'NOT_IMPLEMENTED_YET',
+  source_authentication: 'NOT_PROVEN_BY_PURE_CONTRACTS', continuation_execution: 'NOT_PROVEN_BY_PURE_CONTRACTS',
   Native_calls: 0, full_standard_workflow: false }));

@@ -80,6 +80,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     applyNativeOwnerDisposition: (plan, input) => operations.applyNativeOwnerDisposition(plan, input),
     readNativeOwnerDisposition: id => operations.readNativeOwnerDisposition(id),
     prepareOperationDisposition: (id, input) => operations.prepareOperationDisposition(id, input),
+    prepareAcceptedOperationControl: input => operations.prepareAcceptedOperationControl(configuration.instance_id, input),
     applyOperationDisposition: (plan, input) => operations.applyOperationDisposition(plan, input),
     previewNative: () => nativeHost().preview(),
     inspectAllocations: () => nativeHost().inspect(),

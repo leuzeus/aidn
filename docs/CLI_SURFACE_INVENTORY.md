@@ -388,6 +388,19 @@ finalization; `--verify` retains its read-only verification behavior.
     action bound to that receipt and current journal. Apply that exact action
     to advance the reducer to the corrective checkpoint. Each action needs
     its own explicit execution and current protected authority.
+    For a known partial cleanup of an L2 external-merge incident, the same
+    `operation_disposition` action finishes only the remaining trace and temporary
+    tracker writes from the original closure plan. It preserves the original
+    UNKNOWN and every later captured result. Current permission and the exact
+    expected business state are required; foreign changes or unresolved ownership
+    keep reconciliation pending. A captured result can be adopted after an
+    interruption without repeating business writes. The next explicit
+    `operation_disposition_accept` action accepts that retained result separately.
+    If a process stopped after acceptance and left its exact authenticated
+    acceptance control lease held, the same explicit acceptance action can retire
+    that control with current permission, including after the operation completed.
+    It preserves the accepted history and business data. Unknown business ownership
+    or an unrelated lease does not authorize retirement.
     `--replay` and `--simulate` observe retained model/events without writes or
     Native allocation. The console run action forwards these same selectors.
     Custom native-only v1/v2 graphs keep their owned runner; raw v2 control facts

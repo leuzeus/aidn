@@ -1,7 +1,11 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { freezeShadow, shadowHash } from '../../core/workflow/shadow-json.mjs';
 import { assertPrIncidentCloseInput, assertPrIncidentClosePlan, assertPrIncidentCloseOutput,
-  prIncidentCloseIntentPrefix, prIncidentCloseOperation, encodePrIncidentClosurePlan, decodePrIncidentClosurePlan } from '../../core/workflow/standard-pr-incident-close.mjs';
-import { createStandardWorkflowArtifacts } from './standard-workflow-artifacts.mjs';
+  prIncidentCloseIntentPrefix, prIncidentCloseReconciliationPrefix, prIncidentCloseOperation, encodePrIncidentClosurePlan, decodePrIncidentClosurePlan } from '../../core/workflow/standard-pr-incident-close.mjs';
+import { createStandardWorkflowArtifacts, STANDARD_ARTIFACT_MAX_BYTES } from './standard-workflow-artifacts.mjs';
+import { agentRunPhysicalPath, readAgentRunFile } from './agent-run-configuration-service.mjs';
+import { currentStandardDispatchContext } from './standard-dispatch-context.mjs';
 import { createStandardIncidentClosure } from './standard-incident-closure.mjs';
 
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: 'no_effect' }); };
@@ -15,8 +19,9 @@ export function createStandardPrIncidentClose({ targetRoot, readCurrent, readCla
   if (![readCurrent, readClaimed, createEvidenceReader, observeBoundary].every(value => typeof value === 'function'))
     fail('STANDARD_PR_INCIDENT_CLOSE_CAPABILITY_REQUIRED');
   const artifacts = createStandardWorkflowArtifacts({ targetRoot });
-  const port = (current, readEvidence) => createStandardIncidentClosure({ targetRoot, now,
-    readCurrent: current, readEvidence, observeBoundary }, { boundary });
+  const port = (current, readEvidence, continuationBoundary = null) => createStandardIncidentClosure({ targetRoot, now,
+    readCurrent: current, readEvidence, observeBoundary }, { boundary: continuationBoundary
+      ? async point => { await boundary(point); await continuationBoundary(point); } : boundary });
   function source(reader, instance, input) {
     const value = reader.resolution(instance, input.origin_operation_id);
     if (value.severity !== 'L2_MEDIUM' || value.resolution === null) fail('STANDARD_PR_INCIDENT_CLOSE_SOURCE_REQUIRED');
@@ -34,7 +39,85 @@ export function createStandardPrIncidentClose({ targetRoot, readCurrent, readCla
     if (!same(evidence, expected)) fail('STANDARD_PR_INCIDENT_CLOSE_EVIDENCE_CHANGED');
     return evidence;
   }
+
+  function continuationContext(instance, record, { allowCompleted = false } = {}) {
+    instance = freezeShadow(structuredClone(instance)); record = freezeShadow(structuredClone(record));
+    const claimed = readClaimed(record.operation_id), claimedSha = shadowHash(claimed);
+    if (!same(claimed, record)) fail('STANDARD_PR_INCIDENT_CLOSE_CLAIM_CHANGED');
+    const prefix = prIncidentCloseReconciliationPrefix(instance, record), input = assertPrIncidentCloseInput(record.preview.input);
+    const prepared = record.preview.prepared, plan = assertPrIncidentClosePlan(prepared?.plan), inner = decodePrIncidentClosurePlan(plan);
+    if (prepared.can_apply !== true || prepared.plan_sha256 !== shadowHash(plan) || !same(input, plan.input)
+      || inner.instance_sha256 !== prefix.instance_sha256) fail('STANDARD_PR_INCIDENT_CLOSE_PREFIX_CHANGED');
+    const original = assertPrIncidentCloseOutput(record.results[0].output);
+    if (original.outcome !== 'reconciliation_required' || original.effect_status !== 'unknown'
+      || original.observations.incident_id !== inner.incident_id || original.observations.plan_sha256 !== plan.closure_plan_sha256)
+      fail('STANDARD_PR_INCIDENT_CLOSE_PARTIAL_REQUIRED');
+    // This is a fixed read capability, never a replacement current instance.
+    const current = id => {
+      if (id !== instance.instance_id || !same(readCurrent(id), instance)
+        || shadowHash(readClaimed(record.operation_id)) !== claimedSha) fail('STANDARD_PR_INCIDENT_CLOSE_CURRENT_CHANGED');
+      return prefix;
+    };
+    if (!allowCompleted && instance.events.at(-1)?.receipt?.effect_status !== 'unknown')
+      fail('STANDARD_PR_INCIDENT_CLOSE_PARTIAL_REQUIRED');
+    const reader = createEvidenceReader(current), owned = [inner.incident_path, ...inner.traces.map(change => change.path)];
+    const authenticate = () => {
+      current(instance.instance_id);
+      const material = source(reader, prefix, input);
+      if (!same(material, plan.source)) fail('STANDARD_PR_INCIDENT_CLOSE_SOURCE_CHANGED');
+      const evidence = matchEvidence(inner, material, prefix);
+      if (shadowHash(artifacts.describe()) !== inner.selection_sha256 || observeBoundary(owned) !== inner.boundary_sha256)
+        fail('STANDARD_PR_INCIDENT_CLOSE_SOURCE_CHANGED');
+      current(instance.instance_id); return evidence;
+    };
+    const projection = name => {
+      const file = agentRunPhysicalPath(path.join(artifacts.root, 'docs/audit', name), { missing: true });
+      return fs.existsSync(file) ? readAgentRunFile(file, { json: false, maxBytes: STANDARD_ARTIFACT_MAX_BYTES }).sha256 : null;
+    };
+    const inspect = () => {
+      authenticate();
+      const rows = owned.map(name => ({ path: name, sha256: artifacts.read(name).sha256,
+        metadata_sha256: artifacts.metadataHash(name), projection_sha256: projection(name) }));
+      const tracker = rows[0];
+      const trackerState = tracker.sha256 === inner.incident_sha256 && tracker.metadata_sha256 === inner.incident_metadata_sha256
+        ? 'before' : tracker.sha256 === null && tracker.metadata_sha256 === null ? 'after' : 'conflict';
+      const states = inner.traces.map((change, index) => {
+        const row = rows[index + 1];
+        return row.sha256 === change.after_sha256 && row.metadata_sha256 === change.after_metadata_sha256 ? 'after'
+          : row.sha256 === change.before_sha256 && row.metadata_sha256 === change.before_metadata_sha256 ? 'before' : 'conflict';
+      });
+      if (trackerState === 'conflict' || states.includes('conflict') || states[0] !== 'after'
+        || trackerState === 'after' && states.some(state => state !== 'after'))
+        fail('STANDARD_PR_INCIDENT_CLOSE_PARTIAL_CHANGED');
+      if (![null, inner.incident_sha256].includes(tracker.projection_sha256)) fail('STANDARD_PR_INCIDENT_CLOSE_PROJECTION_CHANGED');
+      const mode = artifacts.describe().state_mode;
+      if (mode !== 'db-only') for (const [index, change] of inner.traces.entries()) {
+        if (![null, change.before_sha256, change.after_sha256].includes(rows[index + 1].projection_sha256))
+          fail('STANDARD_PR_INCIDENT_CLOSE_PROJECTION_CHANGED');
+      }
+      authenticate(); return { mode, rows, states: [trackerState, ...states] };
+    };
+    const state = inspect(), expected = assertPrIncidentCloseOutput({ contract_version: 'standard-pr-incident-close-output.v1',
+      operation_ref: prIncidentCloseOperation, outcome: 'completed', effect_status: 'confirmed',
+      facts: { session_pr_incident_cleanup_completed: true },
+      observations: { incident_id: inner.incident_id, plan_sha256: plan.closure_plan_sha256, reason_code: null },
+      evidence_refs: inner.traces.map(change => ({ ref: 'docs/audit/' + change.path, sha256: change.after_sha256 })) });
+    const continuation = { profile: 'standard-pr-incident-close-known-partial.v1', original_receipt_sha256: shadowHash(record.results[0].receipt),
+      closure_plan_sha256: plan.closure_plan_sha256, source_sha256: plan.source_sha256, boundary_sha256: inner.boundary_sha256,
+      state_sha256: shadowHash(state), owned_paths: owned, expected_output_sha256: shadowHash(expected), expected_output: expected };
+    return { instance, record, prefix, plan, inner, current, reader, owned, authenticate, inspect, state, continuation };
+  }
   return Object.freeze({
+    prepareContinuation(instance, record) {
+      return freezeShadow(continuationContext(instance, record).continuation);
+    },
+    confirmsContinuation(instance, record, output) {
+      const context = continuationContext(instance, record, { allowCompleted: true });
+      output = assertPrIncidentCloseOutput(output);
+      return same(output, context.continuation.expected_output)
+        && port(context.current, () => context.authenticate()).matchesCompletedArtifacts(context.prefix,
+          { can_apply: true, plan: context.inner, plan_sha256: context.plan.closure_plan_sha256 });
+    },
     async prepare(instance, input) {
       input = freezeShadow(structuredClone(assertPrIncidentCloseInput(input)));
       const reader = createEvidenceReader(readCurrent), material = source(reader, instance, input);
@@ -88,6 +171,66 @@ export function createStandardPrIncidentClose({ targetRoot, readCurrent, readCla
       if (!same(source(reader, prefix, input), material)) fail('STANDARD_PR_INCIDENT_CLOSE_SOURCE_CHANGED');
       current(instance.instance_id);
       return matches;
+    },
+
+    async applyContinuation(instance, record, continuation, { write = false, expectedContinuationSha256, assertAuthorized,
+      onBoundary = async () => {} } = {}) {
+      let context = continuationContext(instance, record), floor = context.state;
+      const borrowed = currentStandardDispatchContext()?.artifactContinuation;
+      if (write !== true || expectedContinuationSha256 !== shadowHash(continuation)
+        || !same(context.continuation, continuation) || typeof assertAuthorized !== 'function'
+        || borrowed?.operation_id !== record.operation_id || borrowed.plan_sha256 !== context.plan.closure_plan_sha256
+        || typeof borrowed.assertCurrent !== 'function') fail('STANDARD_PR_INCIDENT_CLOSE_EXPLICIT_EFFECT_REQUIRED');
+      borrowed.assertCurrent();
+      const check = () => {
+        const fresh = continuationContext(instance, record), next = fresh.state;
+        for (let index = 0; index < floor.states.length; index++) {
+          if (floor.states[index] === 'after' && next.states[index] !== 'after') fail('STANDARD_PR_INCIDENT_CLOSE_PREFIX_REGRESSED');
+          if (index > 0 && (next.mode === 'db-only'
+            ? next.rows[index].projection_sha256 !== floor.rows[index].projection_sha256
+            : floor.rows[index].projection_sha256 === context.inner.traces[index - 1].after_sha256
+              && next.rows[index].projection_sha256 !== floor.rows[index].projection_sha256))
+            fail('STANDARD_PR_INCIDENT_CLOSE_PROJECTION_CHANGED');
+        }
+        if (floor.rows[0].projection_sha256 === null && next.rows[0].projection_sha256 !== null)
+          fail('STANDARD_PR_INCIDENT_CLOSE_PROJECTION_CHANGED');
+        context = fresh; floor = next; borrowed.assertCurrent();
+      };
+      const evidence = request => {
+        check();
+        if (request.instance_id !== context.prefix.instance_id || request.incident_id !== context.inner.incident_id
+          || request.incident_sha256 !== context.inner.incident_sha256) fail('STANDARD_PR_INCIDENT_CLOSE_EVIDENCE_CHANGED');
+        const expected = context.authenticate();
+        if (artifacts.read(context.inner.incident_path).sha256 !== null) {
+          const actual = context.reader.read(request);
+          if (!same(actual, expected)) fail('STANDARD_PR_INCIDENT_CLOSE_EVIDENCE_CHANGED');
+        } else if (floor.states.slice(1).some(state => state !== 'after')) fail('STANDARD_PR_INCIDENT_CLOSE_RETAINED_TRACE_REQUIRED');
+        return expected;
+      };
+      const unresolved = reason => assertPrIncidentCloseOutput({ contract_version: 'standard-pr-incident-close-output.v1',
+        operation_ref: prIncidentCloseOperation, outcome: 'reconciliation_required', effect_status: 'unknown', facts: {},
+        observations: { incident_id: context.inner.incident_id, plan_sha256: context.plan.closure_plan_sha256,
+          reason_code: /^[A-Z][A-Z0-9_]{0,127}$/.test(reason ?? '') ? reason : 'STANDARD_PR_INCIDENT_CLOSE_CONTINUATION_UNKNOWN' }, evidence_refs: [] });
+      try {
+        const result = await port(context.current, evidence, async point => {
+          check(); await onBoundary(point, record.operation_id); check();
+        }).apply(context.prefix, { can_apply: true, plan: context.inner, plan_sha256: context.plan.closure_plan_sha256 }, {
+          write: true, expectPlan: context.plan.closure_plan_sha256,
+          assertAuthorized: async () => { await assertAuthorized(); check(); },
+        });
+        check();
+        if (result.outcome === 'completed') {
+          if (!port(context.current, evidence).matchesCompletedArtifacts(context.prefix,
+            { can_apply: true, plan: context.inner, plan_sha256: context.plan.closure_plan_sha256 }))
+            fail('STANDARD_PR_INCIDENT_CLOSE_RETAINED_TRACE_REQUIRED');
+          // This is a new confirmation of the original operation's postconditions,
+          // including an already committed prefix; it is never a captured old success.
+          return { output: context.continuation.expected_output, effect_knowledge: 'known_prefix' };
+        }
+        return { output: unresolved(result.reason_code), effect_knowledge: result.effect_status === 'unknown' ? 'unknown' : 'known_prefix' };
+      } catch (cause) {
+        return { output: unresolved(cause.code), effect_knowledge: 'unknown' };
+      }
     },
     async apply(instance, input, prepared, { operationId, assertAuthorized } = {}) {
       input = freezeShadow(structuredClone(assertPrIncidentCloseInput(input)));

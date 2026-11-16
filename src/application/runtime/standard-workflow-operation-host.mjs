@@ -1408,6 +1408,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     inventory: reconciliationInventory, dispositionSource, onBoundary: dispatchCheckpoint,
     confirmPrCheckpoint: (instance, record, output) => sessionPrCheckpoint?.confirmsOriginal(instance, record, output),
     confirmPrIncidentClose: (instance, record, output) => prIncidentClose.confirmsOriginal(instance, record, output),
+    preparePrIncidentContinuation: (instance, record) => prIncidentClose.prepareContinuation(instance, record),
+    applyPrIncidentContinuation: (instance, record, plan, options) => prIncidentClose.applyContinuation(instance, record, plan, options),
+    confirmPrIncidentContinuation: (instance, record, output) => prIncidentClose.confirmsContinuation(instance, record, output),
     async confirmInterruptedReopen(instance, record, original, options) {
       if (!prCorrectionReopen) fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED");
       const state = current(instance.instance_id);
@@ -1495,6 +1498,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     applyNativeOwnerDisposition: (plan, input) => nativeOwnerDisposition.apply(plan, input),
     readNativeOwnerDisposition: id => nativeOwnerDisposition.read(id),
     prepareOperationDisposition: (id, input) => disposition.prepare(id, input),
+    prepareAcceptedOperationControl: (id, input) => disposition.previewAcceptedControl(id, input),
     applyOperationDisposition: (plan, input) => disposition.apply(plan, input),
     inspectDiagnostic,
     prepareDecision(id) {
@@ -2161,7 +2165,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const index = selectedReceiptId === undefined ? record.results.length - 1 : record.results.findIndex(row => row.receipt.receipt_id === selectedReceiptId);
       const receipt = record.results[index]?.receipt;
       if (!receipt) fail("PROCESS_OPERATION_RECEIPT_UNAVAILABLE");
-      if (state.record.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(receipt))) return state;
+      if (state.record.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(receipt))) {
+        const retired = await disposition.retireAcceptedControl(id, receipt, { signal });
+        return { ...state, ...retired };
+      }
       if (record.intent.binding_ref === mergeConsentOperation) {
         // Keep network observations outside the reducer's bounded authority
         // callback. Its acceptance still fences this exact instance and receipt.

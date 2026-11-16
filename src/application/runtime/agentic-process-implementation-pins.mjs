@@ -6,6 +6,8 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 // their separately retained build-lock/installed-version pins. npm distributions
 // exclude package-lock.json; direct code pins must use distributed assets only.
 const files = [
+  "src/core/workflow/process-operation-disposition.mjs",
+  ...["process-operation-disposition.v2", "process-operation-disposition-plan.v2", "process-disposition-authorization-request.v2"].map(name => `src/core/contracts/workflow-definition/${name}.schema.json`),
   "src/application/runtime/native-reconciliation-history.mjs",
   "src/application/runtime/standard-native-post-assignment-assessment.mjs",
   "src/core/workflow/native-post-assignment-assessment.mjs",

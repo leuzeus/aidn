@@ -49,7 +49,22 @@ export async function verifyStandardReconciliationInventory(mode, pass, { proces
     assert.notDeepEqual(exactFileIdentity(stat), exactFileIdentity(adjacent));
     assert.deepEqual(JSON.parse(JSON.stringify(exactFileIdentity(adjacent))), exactFileIdentity(adjacent));
     assert.throws(() => exactFileIdentity({ ...stat, ino: Number(stat.ino) }), { code: "EXACT_FILE_IDENTITY_REQUIRED" });
-    pass(`${mode}: exact bigint identities distinguish adjacent inodes above 2**53 and survive JSON`);
+    // Node's signed stats view must retain all native unsigned file-ID bits.
+    const nativeId = 0xb23900000000b10en, signedId = new BigInt64Array([nativeId])[0];
+    assert.equal(signedId, -5604448261285826290n);
+    const nativeIdentity = exactFileIdentity({ ...stat, ino: signedId });
+    assert.equal(nativeIdentity.ino, '12842295812423725326');
+    assert.deepEqual(nativeIdentity, exactFileIdentity({ ...stat, ino: nativeId }));
+    assert.deepEqual(JSON.parse(JSON.stringify(nativeIdentity)), nativeIdentity);
+    assert.notEqual(nativeIdentity.ino, exactFileIdentity({ ...stat, ino: signedId + 1n }).ino);
+    assert.equal(exactFileIdentity({ ...stat, dev: signedId }).dev, '12842295812423725326');
+    assert.equal(exactFileIdentity({ ...stat, ino: -(1n << 63n) }).ino, '9223372036854775808');
+    assert.equal(exactFileIdentity({ ...stat, ino: -1n }).ino, '18446744073709551615');
+    for (const field of ['dev', 'ino']) for (const invalid of [-(1n << 63n) - 1n, 1n << 64n])
+      assert.throws(() => exactFileIdentity({ ...stat, [field]: invalid }), { code: 'EXACT_FILE_IDENTITY_REQUIRED' });
+    for (const field of ['size', 'nlink', 'mode'])
+      assert.throws(() => exactFileIdentity({ ...stat, [field]: -1n }), { code: 'EXACT_FILE_IDENTITY_REQUIRED' });
+    pass(`${mode}: exact bigint identities distinguish adjacent inodes above 2**53 and preserve signed-view uint64 bits through JSON`);
     let host = open(), initial = host.initialize({ instanceId: id });
     host.initialize({ instanceId: id, write: true, expectedResultSha256: initial.record.instance_sha256 });
     const before = instances.read(id), preview = await host.preview({ instanceId: id, expectedSha256: before.record.instance_sha256, occurrenceId: "root" });

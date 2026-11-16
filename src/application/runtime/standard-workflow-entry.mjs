@@ -109,6 +109,10 @@ export async function runStandardWorkflowAction({ request, configuration, parame
       return { kind: "control", payload: { request: host.prepareControl({ expectedSha256: state.record.instance_sha256,
         occurrenceId: standardWorkflowControlOccurrence(state) }), source_ref: controlSource } };
     }
+    if (dispositionSource && typeof host.prepareAcceptedOperationControl === "function") {
+      const retainedControl = host.prepareAcceptedOperationControl({ expectedSha256: state.record.instance_sha256 });
+      if (retainedControl) return { kind: "operation_disposition_accept", payload: retainedControl };
+    }
     const next = await host.step({ write: false, expectedInstanceSha256: state.record.instance_sha256, decisionSelected: decisionSource !== null, signal });
     if (decisionSource) {
       if (next.kind !== "human_wait") fail("STANDARD_ENTRY_HUMAN_WAIT_REQUIRED");
@@ -119,13 +123,22 @@ export async function runStandardWorkflowAction({ request, configuration, parame
     if (next.kind === "question_recovery") return { kind: "question_recovery", payload: { recovery_plan: next.plan } };
     if (next.kind === "reconciliation" && dispositionSource) {
       const frames = state.cursor.occurrences.filter(frame => frame.status === "WAITING"
-        && frame.operation?.intent?.binding_ref === "session_pr_correction_reopen"
+        && ["session_pr_correction_reopen", "session_pr_incident_close"].includes(frame.operation?.intent?.binding_ref)
         && frame.operation.receipt?.outcome === "reconciliation_required" && frame.operation.receipt.effect_status === "unknown");
       if (frames.length === 1) {
         const id = frames[0].operation.intent.operation_id, record = host.readOperation(id);
         if (record.results[0]?.receipt?.outcome === "reconciliation_required"
           && record.results[0]?.receipt?.effect_status === "unknown") {
           const plan = await host.prepareOperationDisposition(id, { expectedSha256: state.record.instance_sha256, signal });
+          if (record.intent.binding_ref === "session_pr_incident_close") {
+            if (plan.assessment !== "known_partial_incident_close") fail("STANDARD_ENTRY_DISPOSITION_PLAN_REQUIRED");
+            const latest = record.results.at(-1).receipt;
+            const accepted = state.record.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(latest));
+            if (accepted) return { kind: "operation_disposition", payload: { disposition_plan: plan } };
+            if (record.results.length < 2 || !["completed", "reconciliation_required"].includes(latest.outcome))
+              fail("STANDARD_ENTRY_DISPOSITION_RECEIPT_CHANGED");
+            return { kind: "operation_disposition_accept", payload: { operation_id: id, journal_sha256: shadowHash(record), receipt_sha256: shadowHash(latest) } };
+          }
           if (plan.assessment !== "confirmed_reopen") fail("STANDARD_ENTRY_DISPOSITION_PLAN_REQUIRED");
           if (record.results.length === 1) return { kind: "operation_disposition", payload: { disposition_plan: plan } };
           const receipt = record.results[1]?.receipt;
@@ -242,7 +255,7 @@ export async function runStandardWorkflowAction({ request, configuration, parame
   } else if (action.kind === "operation_disposition" || action.kind === "operation_disposition_accept") {
     if (!dispositionSource) fail("STANDARD_ENTRY_DISPOSITION_AUTHORITY_REQUIRED");
     const plan = action.payload.disposition_plan;
-    if (action.kind === "operation_disposition" && plan?.assessment !== "confirmed_reopen") fail("STANDARD_ENTRY_DISPOSITION_PLAN_REQUIRED");
+    if (action.kind === "operation_disposition" && !["confirmed_reopen", "known_partial_incident_close"].includes(plan?.assessment)) fail("STANDARD_ENTRY_DISPOSITION_PLAN_REQUIRED");
     permittedDisposition = { action: action.kind, scope_id: state.record.scope_id, instance_sha256: state.record.instance_sha256,
       subject_sha256: plan ? shadowHash(plan) : action.payload.receipt_sha256, action_sha256: expectPlan,
       key_id: context.key_id, trust_sha256: context.trust_sha256 };
@@ -255,7 +268,7 @@ export async function runStandardWorkflowAction({ request, configuration, parame
         fail("STANDARD_ENTRY_DISPOSITION_RECEIPT_CHANGED");
       const accepted = await host.acceptOperation(id, { write: true, receiptId: receipt.receipt_id, signal });
       output.result = { receipt, accepted };
-      output.written = accepted.record.instance_sha256 !== state.record.instance_sha256;
+      output.written = accepted.written === true || accepted.record.instance_sha256 !== state.record.instance_sha256;
     }
   } else if (action.kind === "control") {
     const result = await host.captureControl({ expectedSha256: state.record.instance_sha256, occurrenceId: action.payload.request.occurrence_id,

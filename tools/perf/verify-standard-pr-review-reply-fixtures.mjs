@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash, generateKeyPairSync, randomUUID, sign } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createFreshStandardWorkflowFixture } from './standard-workflow-fixture-lib.mjs';
 import { createGithubReviewFixture } from './github-review-evidence-fixture-lib.mjs';
@@ -61,6 +61,10 @@ const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const save = (file, data) => fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
 const incidentModeArguments = process.argv.filter(value => value.startsWith('--incident-state-mode='));
 const incidentStateMode = incidentModeArguments[0]?.slice('--incident-state-mode='.length) ?? 'files';
+const continuationCutArguments = process.argv.filter(value => value.startsWith('--incident-continuation-cut='));
+const continuationCut = continuationCutArguments[0]?.slice('--incident-continuation-cut='.length) ?? null;
+if (continuationCutArguments.length > 1 || continuationCut !== null && continuationCut !== 'disposition_recorded')
+  throw Error('FIXTURE_INCIDENT_CONTINUATION_CUT_UNSUPPORTED');
 if (incidentModeArguments.length > 1 || !['files', 'dual', 'db-only'].includes(incidentStateMode)
   || incidentModeArguments.length && (!['--case=external-premerge', '--case=external-pretriage-session'].includes(process.argv[2])
     || !['--incident-receipt-loss', '--incident-partial-write'].some(flag => process.argv.includes(flag))))
@@ -152,7 +156,7 @@ function fixtureModel(prefix, fetchOnly, external = false, pretriage = false) {
   return { model, update, observe, wait, receive, select, triage, call };
 }
 
-function open(base, { initializeKey = false, providerNow, closeReceiptLoss = false } = {}) {
+function open(base, { initializeKey = false, providerNow, closeReceiptLoss = false, cutBoundary = null } = {}) {
   const configurationFile = path.join(base, 'configuration.json');
   const data = json(configurationFile);
   const { configuration, binding, pr, prefix, behavior, submittedAt, fetchFixture } = data;
@@ -367,7 +371,7 @@ function open(base, { initializeKey = false, providerNow, closeReceiptLoss = fal
     try { Date.now = now; return authority.humanSource[method](input); }
     finally { Date.now = clock; }
   }])) : authority.humanSource;
-  const mixed = authorize => createStandardWorkflowMixedHost({ configuration, environment, now, readSigningKey: readKey, authorize,
+  const mixed = (authorize, dispositionSource = null) => createStandardWorkflowMixedHost({ configuration, environment, now, readSigningKey: readKey, authorize, dispositionSource,
     humanSource, sessionReviewPort: provider.sessionReviewPort,
     ...(pretriage ? { sessionPushPort: provider.sessionPushPort, sessionPullRequestPort: provider.sessionPullRequestPort,
       sessionReviewEventPort: provider.sessionReviewEventPort } : {}) });
@@ -397,6 +401,17 @@ function open(base, { initializeKey = false, providerNow, closeReceiptLoss = fal
       if (controlledDenial) onceDeniedPredicate = null;
       return authority.authorizeOperation(input, denied || grants === revokeAt || controlledDenial ? null : permitted);
     } }, { dispatchCheckpoint(point, operationId) {
+      if (cutBoundary === point) {
+        const canonical = createStandardWorkflowArtifacts({ targetRoot }), fence = canonical.resourceFence().read();
+        const captured = JSON.parse(canonical.read('workflows/operation-dispositions/' + operationId + '.json', { required: true }).content);
+        signer.verify(captured);
+        assert.equal(captured.output.outcome, 'completed'); assert.equal(captured.effect_knowledge, 'known_prefix');
+        assert.equal(host.readJournal(operationId).results.length, 1);
+        assert.equal(fence.record.state, 'held'); assert.equal(fence.record.process_identity.pid, process.pid);
+        save(path.join(base, 'continuation-cut.json'), { point, operation_id: operationId, identity: fence.record.process_identity,
+          audit_sha256: shadowHash(captured), receipt_sha256: shadowHash(captured.receipt) });
+        process.exit(42);
+      }
       if (interruptCapture && ['post_merge_decision_reserved', 'external_merge_disposition_reserved', 'pr_review_control_reserved'].includes(point)) throw Object.assign(Error('Fixture interrupted capture'), { code: 'FIXTURE_CAPTURE_INTERRUPTED' });
       if (crash && point === 'effect_returned') throw Object.assign(Error('Fixture interrupted owner'), { code: 'FIXTURE_DISPATCH_INTERRUPTED' });
       if (closeReceiptLoss && point === 'dispatch_returned'
@@ -1918,7 +1933,150 @@ async function qualifyIncidentReceiptLoss(base, first, close, gitState) {
   return fresh.host.readJournal(id);
 }
 
+
+async function qualifyKnownPartialContinuation(base, first, close, gitState) {
+  first.allow(shadowHash(close));
+  const { operation_id: id } = await first.stage(close);
+  const child = JSON.parse(execFileSync(process.execPath,
+    [fileURLToPath(import.meta.url), '--produce-partial-incident-close', base, id],
+    { encoding: 'utf8', windowsHide: true }));
+  assert.equal(child.live_assessment, 'unknown');
+  const fresh = open(base), data = json(path.join(base, 'configuration.json')), targetRoot = data.configuration.target_root;
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot }), inner = decodePrIncidentClosurePlan(close.prepared.plan);
+  const names = [inner.incident_path, ...inner.traces.map(row => row.path)];
+  const capsule = createProcessDispatchRecordStore({ targetRoot, stateMode: artifacts.describe().state_mode }).read(id).record;
+  fresh.signer.verify(capsule); assert.equal(shadowHash(capsule), child.capsule_sha256);
+  assert.equal(observeLocalProcessOwner(capsule.process_identity), 'terminated');
+  const original = fresh.host.readJournal(id), originalInstance = fresh.inspect().record;
+  assert.equal(original.results.length, 1); assert.equal(original.results[0].receipt.effect_status, 'unknown');
+  assert.equal(artifacts.ownerPending(), false);
+  for (const [index, row] of inner.traces.entries()) {
+    assert.equal(artifacts.read(row.path).sha256, index === 0 ? row.after_sha256 : row.before_sha256);
+    assert.equal(artifacts.metadataHash(row.path), index === 0 ? row.after_metadata_sha256 : row.before_metadata_sha256);
+  }
+  const business = () => ({ artifacts: names.map(name => ({ path: name, sha256: artifacts.read(name).sha256,
+    metadata_sha256: artifacts.metadataHash(name), visible_sha256: fs.existsSync(path.resolve(targetRoot, 'docs/audit', name))
+      ? pin(path.resolve(targetRoot, 'docs/audit', name)).sha256 : null })), git: gitState(), provider: json(fresh.providerFile) });
+  const before = business(), witness = () => shadowHash({ business: business(), instance: fresh.inspect().record,
+    journal: fresh.host.readJournal(id), inventory: artifacts.inventory().paths, fence: artifacts.resourceFence().read() });
+  const readonly = witness(), ordinary = process.argv.includes("--incident-continuation-entry");
+  const preparedEntry = ordinary ? await fresh.entry({}) : null;
+  if (ordinary) assert.equal(preparedEntry.preview.kind, "operation_disposition");
+  let plan = ordinary ? preparedEntry.preview.payload.disposition_plan : await fresh.host.prepareOperationDisposition(id,
+    { expectedSha256: fresh.inspect().record.instance_sha256 });
+  assert.equal(plan.assessment, 'known_partial_incident_close');
+  assert.equal(plan.contract_version, 'process-operation-disposition-plan.v2');
+  assert.equal(witness(), readonly, 'preparing a continuation is read-only');
+  if (ordinary) {
+    const principalFile = path.join(data.home, 'principals.json'), retainedPrincipals = fs.readFileSync(principalFile);
+    const principals = JSON.parse(retainedPrincipals), { publicKey } = generateKeyPairSync('ed25519');
+    principals.principals.push({ authority_id: 'fixture-continuation-authority-change', kinds: ['human'],
+      public_key: publicKey.export({ type: 'spki', format: 'pem' }) });
+    try {
+      save(principalFile, principals);
+      await assert.rejects(fresh.entry({ preparedAction: preparedEntry.preview, execute: true, expectPlan: preparedEntry.action_sha256 }),
+        { code: 'STANDARD_ENTRY_PRECONDITIONS_CHANGED' });
+      assert.equal(witness(), readonly, 'a changed protected authority cannot acquire a lease or change the known prefix');
+    } finally { fs.writeFileSync(principalFile, retainedPrincipals); }
+    assert.deepEqual(fs.readFileSync(principalFile), retainedPrincipals);
+  } else {
+    fresh.deny(true);
+    await assert.rejects(fresh.host.applyOperationDisposition(plan, { write: true, expectedPlanSha256: shadowHash(plan) }),
+      { code: 'PROCESS_DISPOSITION_AUTHORIZATION_REQUIRED' });
+    assert.equal(witness(), readonly, 'a revoked current operator cannot acquire a lease or change the known prefix');
+    fresh.deny(false);
+  }
+  let captured = null, capturedBusiness = null;
+  if (continuationCut) {
+    const planFile = path.join(base, 'continuation-cut-plan.json'); save(planFile, plan);
+    const worker = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--produce-continuation-cut', base, id, continuationCut, planFile],
+      { encoding: 'utf8', windowsHide: true, maxBuffer: 8388608 });
+    save(path.join(base, 'continuation-cut-exit.json'), { status: worker.status, signal: worker.signal, stdout: worker.stdout, stderr: worker.stderr });
+    assert.equal(worker.status, 42, worker.stderr); assert.equal(worker.signal, null);
+    const cut = json(path.join(base, 'continuation-cut.json'));
+    assert.equal(cut.identity.pid, worker.pid); assert.equal(observeLocalProcessOwner(cut.identity), 'terminated');
+    captured = JSON.parse(artifacts.read('workflows/operation-dispositions/' + id + '.json', { required: true }).content);
+    fresh.signer.verify(captured); assert.equal(shadowHash(captured), cut.audit_sha256);
+    assert.equal(shadowHash(captured.receipt), cut.receipt_sha256); assert.equal(captured.results.length, 1);
+    assert.deepEqual(fresh.host.readJournal(id), original); capturedBusiness = business();
+    const capturedWitness = witness();
+    plan = await fresh.host.prepareOperationDisposition(id, { expectedSha256: fresh.inspect().record.instance_sha256 });
+    assert.equal(witness(), capturedWitness, 'preparing adoption preserves the capture and business state');
+    assert.notEqual(shadowHash(plan), shadowHash(captured.plan));
+    assert.equal(plan.fence_sha256, artifacts.resourceFence().read().content_sha256);
+    fresh.deny(true);
+    try {
+      await assert.rejects(fresh.host.applyOperationDisposition(plan, { write: true, expectedPlanSha256: shadowHash(plan) }),
+        { code: 'PROCESS_DISPOSITION_AUTHORIZATION_REQUIRED' });
+      assert.equal(witness(), capturedWitness, 'a capture does not supply continuing permission for its adoption');
+    } finally { fresh.deny(false); }
+  }
+  const result = ordinary ? (await fresh.entry({ preparedAction: preparedEntry.preview, execute: true, expectPlan: preparedEntry.action_sha256 })).result.details
+    : await fresh.host.applyOperationDisposition(plan, { write: true, expectedPlanSha256: shadowHash(plan) });
+  assert.equal(result.status, 'receipted');
+  const continued = fresh.host.readJournal(id);
+  if (captured) {
+    const adopted = JSON.parse(artifacts.read('workflows/operation-dispositions/' + id + '.json', { required: true }).content);
+    fresh.signer.verify(adopted);
+    assert.deepEqual(adopted.results, captured.results, 'adoption retains every captured result byte');
+    for (const key of ['plan', 'grant', 'output', 'receipt', 'resource_fence', 'effect_knowledge']) assert.deepEqual(adopted[key], captured[key]);
+    assert.equal(adopted.attempts.length, captured.attempts.length + 1);
+    assert.deepEqual(continued.results[1], { output: captured.output, receipt: captured.receipt });
+    assert.deepEqual(business(), capturedBusiness, 'adopting a capture never repeats business writes');
+    assert.equal(artifacts.resourceFence().read().record.state, 'released');
+  }
+  assert.equal(continued.results.length, 2);
+  assert.deepEqual(continued.results[0], original.results[0], 'the original unknown stays byte-equivalent');
+  for (const key of ['preview', 'intent', 'grant', 'owner']) assert.deepEqual(continued[key], original[key]);
+  assert.equal(continued.results[1].output.outcome, 'completed'); assert.equal(continued.results[1].output.effect_status, 'confirmed');
+  assert.equal(artifacts.read(inner.incident_path).sha256, null);
+  for (const row of inner.traces) {
+    assert.equal(artifacts.read(row.path).sha256, row.after_sha256);
+    assert.equal(artifacts.metadataHash(row.path), row.after_metadata_sha256);
+  }
+  assert.deepEqual(business().artifacts[1], before.artifacts[1], 'the confirmed first trace and metadata are not rewritten');
+  if (artifacts.describe().state_mode === 'db-only')
+    assert.deepEqual(business().artifacts.slice(1).map(row => row.visible_sha256), before.artifacts.slice(1).map(row => row.visible_sha256));
+  const unownedGit = ({ status, ...identity }) => ({ ...identity, status: status.split("\n").filter(row => {
+    const line = row.trimStart();
+    return !names.some((name, index) => line === (index === 0 ? "D " : "M ") + "docs/audit/" + name);
+  }).join("\n") });
+  // The exact owned postimages above account for their expected tracked diff.
+  // Git identity/refs and every other working-tree status remain unchanged.
+  assert.deepEqual(unownedGit(business().git), unownedGit(before.git));
+  assert.deepEqual(business().provider, before.provider);
+  assert.equal(artifacts.ownerPending(), false);
+  const completedBusiness = business();
+  if (ordinary) {
+    const acceptance = await fresh.entry({});
+    assert.equal(acceptance.preview.kind, "operation_disposition_accept");
+    await fresh.entry({ preparedAction: acceptance.preview, execute: true, expectPlan: acceptance.action_sha256 });
+  } else await fresh.host.accept(id, { write: true });
+  assert.deepEqual(business(), completedBusiness);
+  const after = fresh.inspect().record;
+  assert.deepEqual(after.events.slice(0, originalInstance.events.length), originalInstance.events);
+  const accepted = after.events.filter(row => row.kind === 'operation_result' && row.receipt.operation_id === id);
+  assert.equal(accepted.length, 2); assert.deepEqual(accepted[0].receipt, original.results[0].receipt);
+  assert.deepEqual(accepted[1].receipt, continued.results[1].receipt);
+  if (ordinary) {
+    const acceptedWitness = witness();
+    await assert.rejects(fresh.entry({ preparedAction: preparedEntry.preview, execute: true, expectPlan: preparedEntry.action_sha256 }),
+      { code: 'STANDARD_ENTRY_PRECONDITIONS_CHANGED' });
+    assert.equal(witness(), acceptedWitness, 'the stale ordinary action cannot replay a completed continuation');
+  } else assert.equal((await fresh.host.applyOperationDisposition(plan, { write: true, expectedPlanSha256: shadowHash(plan) })).status, 'retained_result');
+  assert.deepEqual(business(), completedBusiness); replay(open(base));
+  console.log(JSON.stringify({ published_known_partial_continuation: 'PASS', state_mode: artifacts.describe().state_mode,
+    producer: 'terminated-real-node-child', original_unknown_preserved: true,
+    current_revocation_no_effect: ordinary ? 'NOT_RUN' : true, protected_authority_change_no_effect: ordinary ? true : 'NOT_RUN',
+    original_closure_remaining_writes: true, confirmed_prefix_unchanged: true, canonical_metadata_confirmed: true,
+    db_only_trace_projections_unchanged: artifacts.describe().state_mode === 'db-only',
+    separate_confirmation_accepted: true, duplicate_no_replay: true, ordinary_entry: ordinary ? 'PASS' : 'NOT_RUN', genuine_native: 'NOT_RUN', full_standard_workflow: false }));
+  if (captured) console.log(JSON.stringify({ captured_result_cold_adoption: 'PASS', cut: continuationCut,
+    state_mode: artifacts.describe().state_mode, original_capture_preserved: true, current_plan_and_permission: true, business_replayed: false }));
+}
+
 async function qualifyKnownPartialIncidentClose(base, first, close, gitState) {
+  if (process.argv.includes("--incident-partial-continuation")) return qualifyKnownPartialContinuation(base, first, close, gitState);
   const { configuration: { target_root: targetRoot } } = json(path.join(base, 'configuration.json'));
   const artifacts = createStandardWorkflowArtifacts({ targetRoot }), inner = decodePrIncidentClosurePlan(close.prepared.plan);
   const names = [inner.incident_path, ...inner.traces.map(trace => trace.path)];
@@ -1982,6 +2140,12 @@ async function qualifyKnownPartialIncidentClose(base, first, close, gitState) {
 }
 
 async function qualifyExternalMerge(scenario) {
+  if (continuationCut && (!process.argv.includes('--incident-partial-continuation') || scenario !== 'premerge'
+    || process.argv.includes('--incident-continuation-entry'))) throw Error('FIXTURE_INCIDENT_CONTINUATION_CUT_SCENARIO_UNSUPPORTED');
+  if (process.argv.includes("--incident-continuation-entry") && (!process.argv.includes("--incident-partial-continuation")
+    || scenario !== "pretriage-session")) throw Error("FIXTURE_INCIDENT_CONTINUATION_ENTRY_SCENARIO_UNSUPPORTED");
+  if (process.argv.includes("--incident-partial-continuation") && !process.argv.includes("--incident-partial-write"))
+    throw Error("FIXTURE_INCIDENT_CONTINUATION_PARTIAL_REQUIRED");
   if (process.argv.includes('--incident-partial-write') && (!['premerge', 'pretriage-session'].includes(scenario)
     || ['--incident-receipt-loss', '--incident-evidence', '--incident-tracking', '--incident-cleanup', '--incident-low-severity'].some(flag => process.argv.includes(flag))))
     throw Error('FIXTURE_INCIDENT_PARTIAL_WRITE_SCENARIO_UNSUPPORTED');
@@ -2480,7 +2644,32 @@ async function qualifyNominalConsent(prefix, choice, behavior = 'consent-session
   await qualifyConsent(base, privateKey, authority_id, { choice });
 }
 
-if (process.argv[2] === '--lose-incident-close-receipt') {
+if (process.argv[2] === '--produce-continuation-cut') {
+  const [, , , base, id, point, planFile] = process.argv;
+  if (point !== 'disposition_recorded') throw Error('FIXTURE_INCIDENT_CONTINUATION_CUT_UNSUPPORTED');
+  const f = open(base, { cutBoundary: point }), plan = json(planFile);
+  assert.equal(plan.operation_id, id);
+  await f.host.applyOperationDisposition(plan, { write: true, expectedPlanSha256: shadowHash(plan) });
+  throw Error('FIXTURE_INCIDENT_CONTINUATION_CUT_NOT_REACHED');
+} else if (process.argv[2] === '--produce-partial-incident-close') {
+  const [, , , base, id] = process.argv, f = open(base), record = f.host.readJournal(id);
+  const data = json(path.join(base, 'configuration.json')), artifacts = createStandardWorkflowArtifacts({ targetRoot: data.configuration.target_root });
+  const inner = decodePrIncidentClosurePlan(record.preview.prepared.plan);
+  f.allow(shadowHash(record.preview)); let stopped = false;
+  f.denyOnceWhen(() => {
+    const stop = artifacts.read(inner.traces[0].path).sha256 === inner.traces[0].after_sha256
+      && artifacts.read(inner.traces[1].path).sha256 === inner.traces[1].before_sha256;
+    if (stop) stopped = true; return stop;
+  });
+  assert.equal((await f.host.dispatch(id, { write: true })).status, 'receipted');
+  await f.host.accept(id, { write: true }); assert.equal(stopped, true);
+  const partial = f.host.readJournal(id); assert.equal(partial.results[0].receipt.effect_status, 'unknown');
+  const capsule = createProcessDispatchRecordStore({ targetRoot: data.configuration.target_root, stateMode: data.state_mode ?? 'files' }).read(id).record;
+  f.signer.verify(capsule); assert.equal(capsule.phase, 'returned'); assert.equal(capsule.leases[0].status, 'released');
+  const live = await f.host.prepareOperationDisposition(id, { expectedSha256: f.inspect().record.instance_sha256 });
+  assert.equal(live.assessment, 'unknown');
+  console.log(JSON.stringify({ capsule_sha256: shadowHash(capsule), live_assessment: live.assessment }));
+} else if (process.argv[2] === '--lose-incident-close-receipt') {
   const [, , , base, id] = process.argv, f = open(base, { closeReceiptLoss: true });
   const original = f.host.readJournal(id);
   assert.equal(original.intent.binding_ref, 'session_pr_incident_close');
