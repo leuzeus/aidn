@@ -7117,3 +7117,24 @@ active-map row is supplied to the observer. The original command budget also
 bounds this observation. The command then proves its original Job closure.
 This is physical Windows process discovery with a controlled command, not a
 GitHub request, Native client or independent seven-domain source qualification.
+
+### Shared synchronous and asynchronous PR-open protocol
+
+The PR-open adapter consumes one generator protocol through either the retained
+synchronous driver or an explicitly selected asynchronous constructor driver.
+Both interfaces preserve the exact plans, pagination, head/base reobservations,
+24-call maximum and original 60000 ms request budget. The async mutation
+request supplies a pre-resume capability for the fixed transport to recheck
+current authorization and remaining budget after awaited preparation.
+
+The PR-open fixtures compare the full synchronous and delayed asynchronous
+call sequences, prove pre-resume revocation and budget exhaustion make zero
+POSTs, and refuse an already cancelled preparation without provider traffic.
+An attempted POST retains the existing conservative UNKNOWN result even when
+the async fixture proves a pre-resume refusal. This is controlled REST fixture
+evidence; it grants no genuine GitHub or common-host confinement qualification.
+
+Async PR creation also rechecks its current grant immediately after awaited
+remote re-preparation and before marking a POST attempted. Revocation during
+that read refuses with no effect even when a transport has no suspended hook;
+the fixed confined transport still rechecks again immediately before resume.

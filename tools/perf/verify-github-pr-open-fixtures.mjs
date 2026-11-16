@@ -10,12 +10,12 @@ const head = 'a'.repeat(40), base = 'b'.repeat(40), operationId = 'op_' + '1'.re
 const request = { contract_version: 'github-pr-open-request.v1', head_branch: 'S001-example', base_branch: 'dev', head_oid: head, title: 'Session S001', body: 'Bound fixture description' };
 const config = { executable: process.execPath, executableSha256: sha(fs.readFileSync(process.execPath)), workingDirectory: root,
   repository: { owner: 'fixture', name: 'repository', node_id: 'R_fixture' }, environment: { GH_HOST: 'foreign.invalid', GH_DEBUG: 'api', GH_TOKEN: 'fixture-not-a-token' } };
-function fixture({ before = null, response = null, afterCreate = null, clock = Date.now } = {}) {
+function fixture({ before = null, response = null, afterCreate = null, clock = Date.now, asynchronous = false, honorBeforeResume = true } = {}) {
   const state = { head, base, pulls: [], posts: 0, calls: 0 }, calls = [];
   const raw = (extra = {}) => ({ node_id: 'PR_fixture', number: 7, head: { ref: request.head_branch, sha: state.head, repo: { node_id: 'R_fixture' } },
     base: { ref: request.base_branch, sha: state.base, repo: { node_id: 'R_fixture' } }, title: request.title, body: request.body,
     state: 'open', merged_at: null, draft: false, html_url: 'https://github.com/fixture/repository/pull/7', ...extra });
-  const adapter = createGithubPullRequestOpen(config, { now: clock, run(binary, args, options) {
+  const run = (binary, args, options) => {
     assert.equal(binary, fs.realpathSync(process.execPath)); assert.equal(options.cwd, root); assert.equal(options.shell, false); assert.equal(options.windowsHide, true);
     assert.equal(options.env.GH_HOST, 'github.com'); assert.equal(options.env.GH_DEBUG, ''); assert.equal(options.env.GH_PROMPT_DISABLED, '1');
     assert.ok(options.timeout > 0 && options.timeout <= 60000);
@@ -34,11 +34,15 @@ function fixture({ before = null, response = null, afterCreate = null, clock = D
       state.posts++; data = raw(); state.pulls.push(data); afterCreate?.({ state, data });
     } else assert.fail('Unexpected provider call');
     return { status: 0, stdout: JSON.stringify(data), stderr: '' };
-  } });
+  };
+  const adapter = createGithubPullRequestOpen(config, { now: clock, asynchronous, run: asynchronous ? async (...args) => {
+    await new Promise(resolve => setImmediate(resolve)); if (honorBeforeResume) await args[2].beforeResume?.(); return run(...args);
+  } : run });
   return { adapter, state, calls, raw };
 }
 let checks = 0;
-const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + name); };
+const asyncOnly = process.argv.includes('--async-only');
+const test = async (name, fn) => { if (asyncOnly && !name.startsWith('async')) return; await fn(); checks++; console.log('PASS ' + name); };
 try {
   await test('private request, plan and link schemas are closed and use supported vocabulary', () => {
     for (const name of ['github-pr-open-request.v1', 'github-pr-open-plan.v1', 'github-pr-link.v1']) {
@@ -122,6 +126,41 @@ try {
     assert.throws(() => createGithubPullRequestOpen({ ...config, executableSha256: '0'.repeat(64) }), { code: 'GITHUB_PR_OPEN_HOST_PIN_CHANGED' });
     let time = 1793664000000; const f = fixture({ clock: () => time, before() { time += 60001; } });
     assert.throws(() => f.adapter.prepare(request, operationId), { code: 'GITHUB_PR_OPEN_LIMIT' }); assert.equal(f.state.posts, 0);
+  });
+  await test('async and historical ports share exact plans, calls and confirmed effects', async () => {
+    const sync = fixture(), delayed = fixture({ asynchronous: true });
+    const expected = sync.adapter.prepare(request, operationId), actual = await delayed.adapter.prepare(request, operationId);
+    assert.deepEqual(actual, expected);
+    const a = await sync.adapter.apply(expected, { write: true, expectPlan: expected.plan_sha256, assertAuthorized() {} });
+    const b = await delayed.adapter.apply(actual, { write: true, expectPlan: actual.plan_sha256, assertAuthorized() {} });
+    assert.deepEqual(b, a); assert.deepEqual(delayed.calls, sync.calls); assert.equal(delayed.state.posts, 1);
+  });
+  await test('async pre-resume revocation prevents POST and retains conservative unknown', async () => {
+    const f = fixture({ asynchronous: true }), p = await f.adapter.prepare(request, operationId); let grants = 0;
+    await assert.rejects(f.adapter.apply(p, { write: true, expectPlan: p.plan_sha256, async assertAuthorized() {
+      if (++grants === 3) throw Error('fixture permission revoked before resume');
+    } }), { code: 'GITHUB_PR_OPEN_RECONCILIATION_REQUIRED', effect_status: 'unknown' });
+    assert.equal(f.state.posts, 0); assert.equal(grants, 3);
+  });
+  await test('async permission observation consumes the original sixty-second request budget', async () => {
+    let time = 1793664000000; const f = fixture({ asynchronous: true, clock: () => time }), p = await f.adapter.prepare(request, operationId); let grants = 0;
+    await assert.rejects(f.adapter.apply(p, { write: true, expectPlan: p.plan_sha256, async assertAuthorized() { if (++grants === 3) time += 60001; } }),
+      { code: 'GITHUB_PR_OPEN_RECONCILIATION_REQUIRED', effect_status: 'unknown' });
+    assert.equal(f.state.posts, 0); assert.equal(grants, 3);
+  });
+  await test('async cancelled preparation makes no provider call', async () => {
+    const f = fixture({ asynchronous: true }), abort = new AbortController(); abort.abort();
+    await assert.rejects(f.adapter.prepare(request, operationId, { signal: abort.signal }), { code: 'GITHUB_OBSERVATION_ABORTED' });
+    assert.equal(f.state.calls, 0);
+  });
+  await test('async permission revoked after remote re-preparation prevents POST without a suspended hook', async () => {
+    let permitted = true;
+    const f = fixture({ asynchronous: true, honorBeforeResume: false, before({ state }) { if (state.calls === 18) permitted = false; } });
+    const p = await f.adapter.prepare(request, operationId);
+    const settled = await f.adapter.apply(p, { write: true, expectPlan: p.plan_sha256, async assertAuthorized() { if (!permitted) throw Error('fixture revoked after second preparation'); } })
+      .then(value => ({ value }), error => ({ error }));
+    assert.equal(f.state.posts, 0, 'revocation after awaited read must refuse the POST');
+    assert.equal(settled.error?.effect_status, 'no_effect');
   });
   console.log(JSON.stringify({ status: 'PASS', checks, transport: 'DOUBLED_GH_REST', business_adapter: 'ACTUAL', real_github: 'NOT_RUN', standard_host: 'NOT_RUN', native: 'NOT_RUN', installed_archive: 'NOT_RUN' }));
 } finally { assert.equal(path.dirname(fs.realpathSync(root)), parent); assert.ok(path.basename(root).startsWith('aidn-github-open-')); fs.rmSync(root, { recursive: true, force: true }); console.log(JSON.stringify({ cleanup_completed: true })); }
