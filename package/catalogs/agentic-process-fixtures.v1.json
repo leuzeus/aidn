@@ -1913,6 +1913,9 @@
       "--standard-mode-work-resume-mode=db-only",
       "--standard-mode-work-session=EXPLORING",
       "--retain-always"
+    ],
+    [
+      "tools/perf/verify-standard-handoff-preparation-fixtures.mjs"
     ]
   ]
 }

@@ -133,3 +133,14 @@ DB synchronization, including `--db-sync` requested in that same invocation.
 The `handoff_not_completed` reason retains the checkpoint outcome. Synchronizing a visible
 projection remains a separate explicit operation; the refused hook must preserve
 the canonical evidence it just read.
+
+The private ordinary analysis handoff preparation uses the existing synchronization
+use case with a fixed `importIntent: false` capability and full fallback disabled.
+That profile refuses any changed audit projection before import and runs repair
+diagnostics without canonical repair application. It is not a CLI flag or an
+authored JSON capability; the explicit public synchronization defaults remain.
+A separately admitted checkpoint first commits only the four proved session
+metadata paths. The subsequent CURRENT/runtime refresh uses metadata-aware CAS.
+The summary and checkpoint ports recheck current authorization after awaited
+preparation and before their first canonical or diagnostic effect. A refusal
+there releases the owner without inventing an uncertain business write.

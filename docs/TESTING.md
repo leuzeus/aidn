@@ -7007,3 +7007,29 @@ content and metadata remain unchanged, including with explicit `--db-sync` in
 the incomplete invocation. The default suite retains these cases alongside its
 existing provenance and concurrent-context tests. Git, SQLite and the hook CLI
 are real disposable ports; no Native client or installed archive is exercised.
+
+### Physical analysis handoff preparation candidate
+
+`node tools/perf/verify-standard-handoff-preparation-fixtures.mjs` creates fresh
+source-installed FILES, DUAL and DB-only projects, initializes actual v2 session
+metadata and runs the real start hook. Explicit fixture actor capabilities feed
+the application ports; they do not establish Human/control authentication. The
+checks exercise summary preview/CAS, the fixed four-path Git checkpoint with the
+accepted initializer witness, strict handoff hook and hydration, non-importing
+synchronization, canonical runtime refresh and owner release. A stale visible
+projection is refused before any import/repair write. Optional FILES prerequisites
+are reported as skipped and their absent diagnostics are omitted from required
+runtime reads. Revocation during awaited summary/checkpoint preparation refuses
+before canonical or diagnostic effects and releases the owner. A HEAD change
+during the final post-write authorization
+retains UNKNOWN with its owner and no success facts. Closed successful disposable
+projects are removed only after resolved-path ownership checks; expected UNKNOWN
+and failed cases retain their original projects.
+
+The required catalog has 382 ordered commands and preserves the exact original381
+prefix. The new command adds the physical preparation checks; the existing six
+published waiting/continue cases now traverse preparation and packet admission.
+These remain fixture actor/Native transport/resource-source qualifications. They
+do not prove independent discovery, real resource extinction, a Native client,
+PostgreSQL, an installed archive or complete STANDARD. The earlier successful
+381-source records remain bound to their original source bytes.

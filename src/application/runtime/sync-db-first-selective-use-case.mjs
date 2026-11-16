@@ -304,7 +304,10 @@ export async function runSyncDbFirstSelectiveUseCase({
   gitAdapter,
   processAdapter,
   repairLayerTriageSummaryScript,
+  importIntent = true,
 }) {
+  if (typeof importIntent !== "boolean" || !importIntent && args.fallbackFull !== false)
+    throw Object.assign(new Error("SYNC_IMPORT_INTENT_INVALID"), { code: "SYNC_IMPORT_INTENT_INVALID" });
   const stateMode = resolveStateMode(targetRoot, args.stateMode);
   const strictByState = stateMode === "dual" || stateMode === "db-only";
   const strict = args.strict || strictByState;
@@ -336,6 +339,12 @@ export async function runSyncDbFirstSelectiveUseCase({
       throw error;
     }
   }
+
+  // A fixed internal caller can request observation/diagnostics only. No
+  // canonical import, fallback or repair apply is reachable in that profile.
+  // The CLI keeps its existing explicit synchronization behavior.
+  if (!importIntent && (!gitAvailable || requiresFullSync || changedPaths.length))
+    throw Object.assign(new Error("SYNC_IMPORTS_NOT_AUTHORIZED"), { code: "SYNC_IMPORTS_NOT_AUTHORIZED" });
 
   const summary = {
     changed_paths_count: changedPaths.length,
@@ -486,7 +495,7 @@ export async function runSyncDbFirstSelectiveUseCase({
         indexFile: args.sqliteFile,
         indexBackend: "sqlite",
         reportFile: args.repairLayerReportFile,
-        apply: true,
+        apply: importIntent,
       },
       targetRoot,
     });

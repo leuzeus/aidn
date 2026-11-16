@@ -1077,3 +1077,22 @@ three-path scope, and process JSON cannot select or extend either profile.
 Read-only mode context now includes canonical handoff packet bytes/metadata or
 explicit absence, so re-entry material changes in DB-only even without a Git
 export. Packet text remains informational and renews no permission.
+
+Private handoff summary/prepare/admission v1 and handoff Git input/plan/output v1
+connect the explicit v2 analysis handoff choice to real preparation ports. The
+summary binds the current accepted H subject, exact canonical metadata and Git
+scope. Its four-document source feeds a fixed handoff profile of the existing
+Git checkpoint port; the accepted initializer snapshot witness remains required.
+The strict hook, operation-scoped hydration, non-importing sync and canonical
+CURRENT/runtime postimages are captured by the common operation journal. FILES
+reports optional hook/hydration/sync as skipped. A partial effect retains UNKNOWN,
+empty success facts and the owner for reconciliation. The actual packet admission
+checks the accepted publication/resource source and a coherent current document
+subject; it grants no global handoff/effect permission. Historical contracts stay
+readable. Active-cycle/shared-planning relay variants remain outside this
+THINKING/EXPLORING session candidate and require their own preparation.
+
+Preparation verifies the actual checkpoint run ID and unskipped gate result,
+retains its unique raw command payload, and rechecks postimages plus Git scope
+after the final authorization await. Scope loss after a confirmed prefix remains
+UNKNOWN; no timestamp or historical report is refreshed to clear that condition.

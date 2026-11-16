@@ -79,11 +79,12 @@ function inventoryMaterial(retained, id, reopening = false, continuation = null)
 
 // These are implementation-owned resource profiles, not declarations accepted
 // from JSON. Extend them only with a real adapter and its closure qualification.
-const readOnlyProfiles = new Set(["context_reload", "session_admit", "session_close_admit", "handoff_resources_observe"]);
+const readOnlyProfiles = new Set(["context_reload", "session_admit", "session_close_admit", "handoff_resources_observe", "handoff_admit"]);
 const artifactProfiles = new Set(["session_close_record"]);
 const prCheckpoint = "session_pr_checkpoint";
 const correctionReopen = "session_pr_correction_reopen";
-const planBoundOwner = id => artifactProfiles.has(id) || id === prCheckpoint || id === correctionReopen || id === prIncidentCloseOperation || id === handoffPublicationOperation;
+const handoffPlanOwnerProfiles = new Set(["handoff_summary_prepare", "handoff_git_checkpoint", "handoff_prepare"]);
+const planBoundOwner = id => handoffPlanOwnerProfiles.has(id) || artifactProfiles.has(id) || id === prCheckpoint || id === correctionReopen || id === prIncidentCloseOperation || id === handoffPublicationOperation;
 const ownerPlanSha = record => record.intent.binding_ref === prIncidentCloseOperation
   ? record.preview.prepared?.plan?.closure_plan_sha256 : record.intent.binding_ref === handoffPublicationOperation
     ? record.preview.prepared?.plan?.packet_plan_sha256 : record.preview.prepared?.plan_sha256;

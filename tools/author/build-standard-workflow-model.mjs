@@ -79,7 +79,11 @@ seq('mode_handoff_iteration', ['mode_handoff_decide', 'mode_handoff_route']);
 op('mode_handoff_decide', 'mode_work_continue_decision', { review_operation_id: { source: 'parameter', key: 'review_operation_id', path: [] } });
 xor('mode_handoff_route', [['handoff', 'mode_handoff_publish_and_close', 'mode_work_handoff_requested'], ['continue', 'mode_handoff_continue', null]]);
 seq('mode_handoff_continue', []);
-seq('mode_handoff_publish_and_close', ['mode_handoff_publish', 'mode_handoff_resources', 'mode_handoff_reload', 'mode_handoff_readmit']);
+seq('mode_handoff_publish_and_close', ['mode_handoff_summary', 'mode_handoff_git', 'mode_handoff_prepare', 'mode_handoff_publish', 'mode_handoff_resources', 'mode_handoff_admit', 'mode_handoff_reload', 'mode_handoff_readmit']);
+op('mode_handoff_summary', 'handoff_summary_prepare', { session_id: { source: 'parameter', key: 'session_id', path: [] }, decision_operation_id: { source: 'operation_id', node_id: 'mode_handoff_decide' } });
+op('mode_handoff_git', 'handoff_git_checkpoint', operation(null, 'summary_operation_id', 'mode_handoff_summary'));
+op('mode_handoff_prepare', 'handoff_prepare', { summary_operation_id: { source: 'operation_id', node_id: 'mode_handoff_summary' }, git_operation_id: { source: 'operation_id', node_id: 'mode_handoff_git' } });
+op('mode_handoff_admit', 'handoff_admit', { publication_operation_id: { source: 'operation_id', node_id: 'mode_handoff_publish' }, resource_operation_id: { source: 'operation_id', node_id: 'mode_handoff_resources' } });
 op('mode_handoff_publish', 'handoff_packet_publish', Object.fromEntries(['next_agent_role', 'next_agent_action', 'next_agent_goal', 'handoff_note', 'from_agent_role', 'from_agent_action']
   .map(key => [key, { source: 'operation_output', node_id: 'mode_handoff_decide', path: ['observations', 'handoff', key] }])));
 op('mode_handoff_resources', 'handoff_resources_observe', operation(null, 'publication_operation_id', 'mode_handoff_publish'));

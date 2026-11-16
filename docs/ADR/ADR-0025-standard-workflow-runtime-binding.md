@@ -4792,3 +4792,29 @@ three-path scope, and process JSON cannot select or extend either profile.
 Read-only mode context now includes canonical handoff packet bytes/metadata or
 explicit absence, so re-entry material changes in DB-only even without a Git
 export. Packet text remains informational and renews no permission.
+
+### Analysis handoff preparation ports candidate
+
+After the explicit H handoff choice, the shared call target records a short
+CURRENT relay intent through canonical metadata CAS, checkpoints the exact four
+session metadata documents, executes the strict handoff hook and hydration,
+then verifies synchronization without importing projections or applying repairs.
+The actual runtime projector supplies the canonical digest, and the packet goes
+through existing publication/resource observation and real handoff admission
+before R11/session-entry re-admission. Current H material is checked before the
+summary; an accepted old report remains informational. Current permission is
+rechecked after awaited preparation, before summary or checkpoint effects. A
+revocation at that boundary refuses with no effect and releases the owner. The
+Git source still
+requires the accepted v2 initializer and its exact snapshot content/metadata.
+
+Operation-scoped diagnostic paths retain distinct hook/hydration evidence. The
+internal synchronization profile forbids imports and full fallback rather than
+letting an unexpected visible projection overwrite canonical rows. Public CLI
+defaults stay intact. Canonical postimages use the selected artifact backend,
+metadata CAS and the existing owner/fence. Partial effects remain UNKNOWN with
+no success fact. No preparation-age threshold is added. FILES reports optional
+prerequisites as skipped and omits their absent diagnostic files from prioritized
+reads. Shared-planning and active-cycle variants, general
+UNKNOWN recovery, independent resource closure, genuine actors, exact installed
+archive and full STANDARD acceptance remain separate unfinished obligations.

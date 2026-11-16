@@ -13,6 +13,8 @@ import { prIncidentRecordOperation, prIncidentResolveOperation } from "../../cor
 import { prIncidentCloseOperation } from "../../core/workflow/standard-pr-incident-close.mjs";
 import { createStandardPrIncidentClose } from "./standard-pr-incident-close.mjs";
 import { createStandardHandoffOperation } from "./standard-handoff-operation.mjs";
+import { createStandardHandoffPreparation } from "./standard-handoff-preparation.mjs";
+import { assertHandoffPreparation, assertHandoffGitPlan } from "../../core/workflow/standard-handoff-preparation.mjs";
 import { createStandardHandoffResourceOperation } from "./standard-handoff-resource-operation.mjs";
 import { handoffResourceOperation, assertHandoffResourceOperationPreparation } from "../../core/workflow/standard-handoff-resource-operation.mjs";
 import { handoffPublicationOperation, assertHandoffOperationPreparation, handoffOperationResult } from "../../core/workflow/standard-handoff-operation.mjs";
@@ -764,6 +766,24 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return { context_plan: context.record.preview.prepared.plan, context_output: context.output, start_operation_id: startId, start_output: start.output,
         ...(initialized ? { initialization: { operation_id: initializationId, plan: initialized.record.preview.prepared.plan, output: initialized.output } } : {}) };
     } }) : null;
+  const handoffPreparation = createStandardHandoffPreparation({ targetRoot, now, observeScope: operations.observeScope,
+    readDecisionContext(instance, id) { const selected = acceptedForPromotion(instance, id, "mode_work_continue_decision", "STANDARD_HANDOFF_EXPLICIT_DECISION_REQUIRED");
+      if (!processAuthority) fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED");
+      return processAuthority.prepareModeWorkContinuation(instance, selected.record.preview.input, { version: 2 }).current_context; },
+    readCurrent: id => current(id).record,
+    readAccepted: (instance, id, binding) => acceptedForPromotion(instance, id, binding, "STANDARD_HANDOFF_ACCEPTED_SOURCE_REQUIRED") });
+  const handoffGitCheckpoint = createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
+    readContext(instance, input) {
+      const summary = acceptedForPromotion(instance, input.summary_operation_id, "handoff_summary_prepare", "STANDARD_HANDOFF_SUMMARY_REQUIRED");
+      const startId = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "session_start_finalize").at(-1)?.intent.operation_id;
+      const start = acceptedForPromotion(instance, startId, "session_start_finalize", "STANDARD_GIT_ACCEPTED_START_REQUIRED");
+      const initializationId = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "session_initialize").at(-1)?.intent.operation_id;
+      const initialized = acceptedForPromotion(instance, initializationId, "session_initialize", "STANDARD_GIT_ACCEPTED_START_REQUIRED");
+      const id = summary.record.preview.input.session_id;
+      if (start.record.preview.input.session_id !== id || initialized.record.preview.input.session_id !== id) fail("STANDARD_GIT_ACCEPTED_START_REQUIRED");
+      return { context_plan: summary.record.preview.prepared.plan, context_output: summary.output, start_operation_id: startId, start_output: start.output,
+        initialization: { operation_id: initializationId, plan: initialized.record.preview.prepared.plan, output: initialized.output } };
+    } }, { handoff: true });
   const promotionAuthority = processAuthority ? createStandardBaselinePromotionAuthority({ targetRoot,
     readAcceptedOperation: acceptedForPromotion, readTerminalRecord: readAcceptedTerminalRecord,
     human: { question: record => human.question(record), captured: record => human.captured(record) } }) : null;
@@ -1024,6 +1044,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     if (validateJsonSchema(preview, previewSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_HOST_PREVIEW_INVALID");
     signer.verify(preview); assertProcessOperationBinding(preview.binding); assertStandardOperationInput(preview.binding.id, preview.input);
     if (preview.binding.id === handoffPublicationOperation) assertHandoffOperationPreparation(preview.prepared);
+    if (preview.binding.id === "handoff_git_checkpoint" && preview.prepared?.can_apply) { assertHandoffGitPlan(preview.prepared.plan); if (shadowHash(preview.prepared.plan) !== preview.prepared.plan_sha256) fail("STANDARD_GIT_PLAN_INVALID"); }
+    if (["handoff_summary_prepare", "handoff_prepare"].includes(preview.binding.id)) assertHandoffPreparation(preview.prepared);
     if (preview.binding.id === handoffResourceOperation) assertHandoffResourceOperationPreparation(preview.prepared);
     if (preview.binding.id === "session_pr_correction_reopen" && preview.prepared?.can_apply) {
       assertStandardPrCorrectionPlan(preview.prepared.plan);
@@ -1684,6 +1706,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_pr_review_reply_select" ? sessionPrReply.prepareSelection(state.record, input)
         : binding.id === "session_pr_review_resolution_select" ? sessionPrResolution.prepareSelection(state.record, input)
         : binding.id === resolutionExceptionOperation ? await sessionPrResolution.prepareException(state.record, input)
+        : binding.id === "handoff_summary_prepare" ? await handoffPreparation.prepareSummary(state.record, input, operationJournalId(state.record, occurrenceId))
+        : binding.id === "handoff_git_checkpoint" ? await handoffGitCheckpoint.prepare(state.record, { summary_operation_id: input.summary_operation_id }, operationJournalId(state.record, occurrenceId))
+        : binding.id === "handoff_prepare" ? await handoffPreparation.prepareCheckpoint(state.record, input, operationJournalId(state.record, occurrenceId))
+        : binding.id === "handoff_admit" ? { can_apply: true }
         : binding.id === handoffResourceOperation ? handoffResourceObservation.prepare(state.record, input, { signal })
         : binding.id === handoffPublicationOperation ? await handoffPublication.prepare(state.record, input, occurrenceId, { signal })
         : binding.id === prIncidentCloseOperation ? await prIncidentClose.prepare(state.record, input)
@@ -1851,6 +1877,14 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         if (current(record.intent.instance_id).record.instance_sha256 !== state.record.instance_sha256)
           throw Object.assign(new Error("STANDARD_HOST_PROCESS_CHANGED"), { code: "STANDARD_HOST_PROCESS_CHANGED", effect_status: "no_effect" });
         if (record.intent.binding_ref === handoffResourceOperation) output = resourceCapture.output;
+        else if (record.intent.binding_ref === "handoff_summary_prepare" || record.intent.binding_ref === "handoff_prepare") {
+          const apply = record.intent.binding_ref === "handoff_summary_prepare" ? handoffPreparation.applySummary : handoffPreparation.applyCheckpoint;
+          output = await apply(state.record, record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256, signal,
+            assertAuthorized: () => verifyGrant(record, signal), assertCurrent: () => { if (current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256) fail("STANDARD_HANDOFF_PREPARATION_PROCESS_CHANGED"); } });
+        }
+        else if (record.intent.binding_ref === "handoff_git_checkpoint") output = await handoffGitCheckpoint.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
+        else if (record.intent.binding_ref === "handoff_admit") output = await handoffPreparation.inspectAdmission(state.record, record.preview.input);
         else if (record.intent.binding_ref === "context_reload") output = await operations.reload(record.preview.input);
         else if (record.intent.binding_ref === "session_admit") output = await operations.admitSession(record.preview.input);
         else if (record.intent.binding_ref === "session_entry_admit") output = await operations.admitSessionEntry(record.preview.input);
