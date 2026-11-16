@@ -89,7 +89,7 @@ export function createNativeAuthorizationEpochs({ configuration, signer, read, w
         if (verified?.outcome !== "verified" || verified.authority_id !== grant.authority_id || verified.grant_sha256 !== shadowHash(grant)
           || verified.evidence_class !== grant.closure.evidence_class) fail("NATIVE_EPOCH_SOURCE_NOT_AUTHENTICATED");
         const now = Date.now();
-        if (grant.closure.observed_at_ms > now || now - grant.closure.observed_at_ms > 60000
+        if (grant.closure.observed_at_ms > now
           || grant.authorization.global_deadline_ms <= now + 30000 || grant.authorization.workflow_deadline_ms <= now + 30000) fail("NATIVE_EPOCH_FRESH_CLOSURE_REQUIRED");
         const before = current(request), journal = before.record;
         if (journal?.epochs?.some(row => row.grant.authority_id === grant.authority_id && row.grant.source_event_id === grant.source_event_id)) fail("NATIVE_EPOCH_SOURCE_REUSED");
@@ -103,11 +103,12 @@ export function createNativeAuthorizationEpochs({ configuration, signer, read, w
         // their constructor-owned verifier without acquiring a JSON authority.
         if (typeof source.assertCurrent === 'function' && source.assertCurrent({ request, grant, sourceRef }) !== undefined)
           fail('NATIVE_EPOCH_SOURCE_NOT_AUTHENTICATED');
-        // Preserve the existing request/closure/grant windows at the actual
-        // write boundary even when the current-state observation was lengthy.
+        // Terminal closure age grants no current permission and supplies no
+        // independent invalidation condition. Recheck current scope/source and
+        // the original signed request/grant windows at the actual write boundary.
         const commitNow = Date.now();
         if (commitNow < request.issued_at_ms || commitNow >= request.expires_at_ms) fail('NATIVE_EPOCH_REQUEST_EXPIRED');
-        if (grant.closure.observed_at_ms > commitNow || commitNow - grant.closure.observed_at_ms > 60000
+        if (grant.closure.observed_at_ms > commitNow
           || grant.authorization.global_deadline_ms <= commitNow + 30000 || grant.authorization.workflow_deadline_ms <= commitNow + 30000)
           fail('NATIVE_EPOCH_FRESH_CLOSURE_REQUIRED');
         committing = true;

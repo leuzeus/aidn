@@ -1,5 +1,20 @@
 # ADR-0026 - Explicit native authorization epochs
 
+## Current Native closure permission without a host age ceiling
+
+Epoch activation no longer rejects an unchanged terminal closure solely because
+sixty seconds elapsed. Scope, product, allocation/accounting, source signature,
+source/principal permission, owner/fence and final canonical CAS retain their
+current checks. Future closure timestamps still refuse activation.
+
+The original signed request window, issuer expiry, finite global/workflow/turn
+deadlines, cumulative response/byte caps and thirty-second closure reserve remain.
+No grant, timestamp, deadline or historical request is renewed or converted.
+An observed rejection at that former age limit remains a failed execution.
+Fresh fixture-clock and public resource-action qualification are separate from
+genuine Native/Human, independent all-domain discovery and installed proof.
+
+
 ## Native owner provenance candidate, 2026-11-14
 
 The fixed mixed allocator and Native epoch activation compose their existing

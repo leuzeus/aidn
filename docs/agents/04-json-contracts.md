@@ -1,5 +1,10 @@
 # 04 JSON Contracts
 
+Native epoch closure `observed_at_ms` remains bound chronology/provenance.
+A consumer-added sixty-second ceiling does not override current scope/source
+checks and the original signed request, issuer and Native grant deadlines.
+Native request/grant/closure shapes and all retained readers stay unchanged.
+
 Private `github-command-process-snapshot.v1` is a read-only, derived live
 transport snapshot with active Job identities, bounded confirmed closure
 evidence and explicit coverage. It changes on command activity and grants no

@@ -7086,3 +7086,18 @@ direct-child transport and gain no process-tree closure claim.
 
 The required catalog contains384 ordered commands; its exact original383
 prefix and each older prefix remain unchanged. The new command is last.
+
+### Native epoch terminal-closure currentness
+
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs
+--native-epoch-mode=files --retain-always` and its dual/db-only variants retain
+their original negative scope, signature, budget, replay and old-history checks.
+The positive activation advances only a new scenario's injected fixture clock
+by65000ms after verification. Exact closed scope and the original grant bytes
+must stay unchanged; a future closure or insufficient remaining Native reserve
+still refuses. Initial-epoch variants use `--native-initial-epoch-mode=files`
+and each other backend to cover the explicit v2 zero-allocation scope.
+
+These are fixture-clock/source/controller qualifications. They prove no genuine
+Native/Human activity or installed archive. Original wall-clock failures and
+their grants/arenas are preserved; a new validation never retimes them.

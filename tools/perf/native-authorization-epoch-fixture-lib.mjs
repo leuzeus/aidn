@@ -36,7 +36,7 @@ export async function verifyInitialNativeAuthorizationEpochs(check, { journalFix
     const f = journalFixture({ stateMode: mode, git: true }), original = f.authorize(), realNow = Date.now;
     assert.throws(() => f.open().prepareAuthorizationEpoch({ originalAuthorization: original }), /INITIAL_AUTHORIZATION_NOT_EXPIRED/);
     const offset = original.global_deadline_ms + 1 - realNow(); Date.now = () => realNow() + offset;
-    let lastGrant, mutation, verified = 0;
+    let lastGrant, mutation, verified = 0, delayVerification = false, originalClosureObservedAt = null, originalGrantAuthorization = null;
     const source = { async read({ request }) {
       lastGrant = { contract_version: "native-authorization-epoch-grant.v1", authority_id: "fixture_initial_consent", source_event_id: `initial-${request.epoch}`,
         request_sha256: shadowHash(request), authorization: freshFixtureEpochAuthorization(original, 600000, { max_responses: 10 }),
@@ -45,7 +45,15 @@ export async function verifyInitialNativeAuthorizationEpochs(check, { journalFix
           resources: request.resources.map(resource => ({ resource_sha256: shadowHash(resource), state: "closed", evidence_refs: [{ ref: "fixture:scope-resource-discovery", sha256: shadowHash(resource) }] })) },
         evidence_refs: [{ ref: "fixture:fresh-explicit-initial-consent", sha256: "c".repeat(64) }] };
       mutation?.(lastGrant); return lastGrant;
-    }, async verify({ grant }) { verified++; return { outcome: "verified", authority_id: grant.authority_id, grant_sha256: shadowHash(grant), evidence_class: "fixture" }; } };
+    }, async verify({ grant }) {
+      verified++;
+      if (delayVerification) {
+        delayVerification = false; originalClosureObservedAt = grant.closure.observed_at_ms;
+        originalGrantAuthorization = structuredClone(grant.authorization);
+        const previousNow = Date.now; Date.now = () => previousNow() + 65000;
+      }
+      return { outcome: "verified", authority_id: grant.authority_id, grant_sha256: shadowHash(grant), evidence_class: "fixture" };
+    } };
     const actor = () => f.open(() => f.key, source);
     try {
       await assert.rejects(f.open().run({ execute: true, authorization: original }), { code: "PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED" });
@@ -63,8 +71,12 @@ export async function verifyInitialNativeAuthorizationEpochs(check, { journalFix
       mutation = null;
       const unverified = f.open(() => f.key, { read: source.read, async verify() { return { outcome: "denied" }; } });
       await assert.rejects(unverified.activateAuthorizationEpoch(request, { write: true, sourceRef: "fresh" }), /SOURCE_NOT_AUTHENTICATED/);
+      delayVerification = true;
       assert.equal((await actor().activateAuthorizationEpoch(request, { write: true, sourceRef: "fresh" })).journal_phase, "absent");
+      assert.equal(lastGrant.closure.observed_at_ms, originalClosureObservedAt);
+      assert(Date.now() - lastGrant.closure.observed_at_ms >= 65000);
       const active = actor().inspect(); assertNativeAllocationJournal(active);
+      assert.deepEqual(active.epochs[0].grant.authorization, originalGrantAuthorization);
       assert.equal(active.contract_version, "native-allocation-journal.v3"); assert.equal(active.origin_journal, null);
       assert.deepEqual(active.initial_authorization, original); assert.deepEqual(active.allocations, []); assert.equal(f.launches ?? 0, 0);
       const verifiedBefore = verified; assert.equal((await actor().activateAuthorizationEpoch(request)).authorization_status, "active"); assert.equal(verified, verifiedBefore);
@@ -136,6 +148,7 @@ export async function verifyNativeAuthorizationEpochs(check, { readyResumeFixtur
       assert.equal((await h.activateAuthorizationEpoch(request)).status, "preview");
       await assert.rejects(h.activateAuthorizationEpoch(request, { write: true, sourceRef: "fresh" }), /AUTHENTICATED_SOURCE_REQUIRED/);
       let grant, mutation = null, reads = 0, verified = 0, refuse = false;
+      let delayVerification = false, originalClosureObservedAt = null, originalGrantAuthorization = null;
       const createGrant = () => ({ contract_version: "native-authorization-epoch-grant.v1", authority_id: "fixture_human_and_resource_owner", source_event_id: `fresh-consent-${request.epoch}`,
         request_sha256: shadowHash(request), authorization: freshFixtureEpochAuthorization(original, 240000, { max_responses: 9, max_bytes: original.max_bytes + 1048576 }),
         closure: { contract_version: "native-resource-closure.v1", request_sha256: shadowHash(request), inventory_sha256: shadowHash(request.resources),
@@ -145,6 +158,11 @@ export async function verifyNativeAuthorizationEpochs(check, { readyResumeFixtur
       const source = { async read() { reads++; if (refuse) return null; grant = createGrant(); mutation?.(grant); return grant; },
         async verify({ grant: received }) {
           verified++; assert.deepEqual(received, grant); assert.equal(f.t.sessions.every(row => row.closed), true);
+          if (delayVerification) {
+            delayVerification = false; originalClosureObservedAt = received.closure.observed_at_ms;
+            originalGrantAuthorization = structuredClone(received.authorization);
+            const previousNow = Date.now; Date.now = () => previousNow() + 65000;
+          }
           return { outcome: "verified", authority_id: grant.authority_id, grant_sha256: shadowHash(grant), evidence_class: "fixture" };
         } };
       const actor = () => f.open(() => f.key, source);
@@ -161,6 +179,7 @@ export async function verifyNativeAuthorizationEpochs(check, { readyResumeFixtur
         value => { value.authorization.max_responses = request.consumption.responses; },
         value => { value.authorization.max_bytes = request.consumption.bytes + 1048575; },
         value => { value.closure.observed_at_ms = Date.now() + 50000; },
+        value => { const deadline = Date.now() + 20000; value.authorization.global_deadline_ms = deadline; value.authorization.workflow_deadline_ms = deadline; },
         value => { value.authorization.approved = false; },
       ];
       for (mutation of denials) {
@@ -174,9 +193,15 @@ export async function verifyNativeAuthorizationEpochs(check, { readyResumeFixtur
       await assert.rejects(actor().activateAuthorizationEpoch(createOperationJournalSigner(() => f.key).seal(stale), { write: true, sourceRef: "fresh" }), /CONTEXT_CHANGED/);
       const unverified = f.open(() => f.key, { read: source.read, async verify() { return { outcome: "denied" }; } });
       await assert.rejects(unverified.activateAuthorizationEpoch(request, { write: true, sourceRef: "fresh" }), /SOURCE_NOT_AUTHENTICATED/);
+      // A new controlled scenario advances only its fixture clock while the
+      // exact closed scope, source permission and original grant bounds stay.
+      delayVerification = true;
       const result = await actor().activateAuthorizationEpoch(request, { write: true, sourceRef: "fresh" });
+      assert.equal(grant.closure.observed_at_ms, originalClosureObservedAt);
+      assert(Date.now() - grant.closure.observed_at_ms >= 65000);
       assert.equal(result.epoch, 2); assert.equal(result.native_started, false); assert.equal(result.written, true);
       let activated = actor().inspect(), acceptedGrant = activated.epochs[0].grant.authorization;
+      assert.deepEqual(acceptedGrant, originalGrantAuthorization);
       assertNativeAllocationJournal(activated); assert.equal(activated.contract_version, "native-allocation-journal.v2");
       assert.deepEqual(activated.allocations, initial.allocations); assert.deepEqual(activated.initial_authorization, original);
       assert.deepEqual(activated.origin_journal, initial); assertNativeAllocationJournal(activated.origin_journal);
