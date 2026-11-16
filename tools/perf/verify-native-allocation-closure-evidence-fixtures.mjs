@@ -12,8 +12,9 @@ import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
 
 const mode = process.argv[2] ?? 'files';
 assert(['files', 'dual', 'db-only'].includes(mode));
-assert(process.argv.slice(3).every(arg => ['--reconciled', '--handoff-resources'].includes(arg)));
+assert(process.argv.slice(3).every(arg => ['--reconciled', '--handoff-resources', '--handoff-context'].includes(arg)));
 assert(!process.argv.includes('--handoff-resources') || process.argv.includes('--reconciled'));
+assert(!process.argv.includes('--handoff-context') || process.argv.includes('--handoff-resources'));
 const sha = value => createHash('sha256').update(value).digest('hex');
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const save = (file, value) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(value)); };
@@ -107,7 +108,7 @@ readonly('data-only reconciliation without the existing authenticated record and
     { code: 'NATIVE_RECONCILIATION_HISTORY_UNAUTHENTICATED' });
 });
 assert.deepEqual(fixture.store.read(fixture.journalId).record, fixture.failed, 'the actual original canonical failure stays unchanged');
-let reconciled = 'NOT_RUN';
+let reconciled = 'NOT_RUN', contextRead = 'NOT_RUN';
 if (process.argv.includes('--reconciled')) {
   const witness = await verifyNativePostAssignmentReconciliationFixture(mode), data = json(witness.data_file);
   const protectedRoots = [...new Set([data.root, data.configuration.control_root, data.configuration.review_root,
@@ -152,8 +153,18 @@ if (process.argv.includes('--reconciled')) {
     assert.deepEqual(host.inspectAllocations(), journal); assert.equal(journal.allocations[0].phase, 'failed');
     assert.deepEqual(protectedRoots.map(tree), before); assert.equal(currentChecks, 1);
     checks++; console.log('PASS real mixed handoff resource reads retain reconciled v5 and all owned roots without allocating Native');
+    if (process.argv.includes('--handoff-context')) {
+      const context = host.inspectHandoffContext();
+      assert.equal(context.instance_sha256, host.inspect().record.instance_sha256);
+      assert.equal(context.state_mode, mode); assert.equal(context.canonical_source, mode === 'files' ? 'files' : 'sqlite');
+      for (const key of ['permits_effects', 'permits_handoff', 'complete_resource_closure', 'written']) assert.equal(context[key], false);
+      assert.deepEqual(host.inspectAllocations(), journal); assert.deepEqual(protectedRoots.map(tree), before);
+      checks++; contextRead = 'PASS_ACTUAL_MIXED_CANONICAL_CONTEXT';
+      console.log('PASS actual mixed canonical handoff context preserves all owned roots and the original Native journal');
+    }
   }
 }
 console.log(JSON.stringify({ status: 'PASS', checks, state_mode: mode, scope: 'READONLY_RETAINED_NATIVE_HISTORY_FOR_HANDOFF',
   synthetic_ordinary_journal_checkpoint_and_OS_closure: true, canonical_signer_and_file_reads: 'ACTUAL', authenticated_reconciled_history: reconciled,
+  canonical_handoff_context: contextRead,
   complete_handoff: 'NOT_PROVEN', global_resource_closure: 'NOT_PROVEN', genuine_Native_Human_installed_full_STANDARD: 'NOT_RUN' }));

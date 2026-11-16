@@ -4,6 +4,7 @@ import { readAgenticProductSnapshot } from "./agentic-process-execution-composit
 import { createStandardWorkflowOperationHost } from "./standard-workflow-operation-host.mjs";
 import { createJournaledNativeAllocation } from "./journaled-native-allocation.mjs";
 import { createStandardHandoffResources } from "./standard-handoff-resources.mjs";
+import { createStandardHandoffContext } from "./standard-handoff-context.mjs";
 import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.mjs";
 import { createOperationJournalSigner } from "../../core/workflow/process-operation-journal.mjs";
 import { standardWorkflowOperationBindings } from "./standard-workflow-operations.mjs";
@@ -58,6 +59,10 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     authorize, humanSource, controlSource, processAuthority, now, validationProfile, sessionPushPort, sessionPullRequestPort, sessionReviewPort, sessionReviewEventPort,
     reconciliationConfiguration: configuration, dispositionSource, nativeOwnerDispositionSource, nativeReconciliationSource, nativeAuthorizationSource }, { validationBoundaryFactory, nativeOwnerDispositionBoundary, nativeReconciliationBoundary });
   const inspect = () => operations.inspect(configuration.instance_id);
+  // Context observation authenticates the retained process prefix without admitting
+  // effects or converting an unresolved Native allocation into resource closure.
+  const handoffContext = createStandardHandoffContext({ targetRoot: configuration.target_root,
+    readCurrent: () => operations.inspectDiagnostic(configuration.instance_id).record });
   let handoffResources;
   function handoffResourceHost() {
     if (!handoffResources) {
@@ -101,6 +106,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     inspectNativeClosureEvidence: () => nativeHost().inspectClosureEvidence(),
     prepareHandoffResourceRequest: () => handoffResourceHost().prepare(),
     inspectHandoffResources: (request, input) => handoffResourceHost().inspect(request, input),
+    inspectHandoffContext: () => handoffContext.inspect(),
     readCheckpoint: generation => nativeHost().readCheckpoint(generation),
     prepareNativeAuthorizationEpoch: input => nativeHost().prepareAuthorizationEpoch(input),
     activateNativeAuthorizationEpoch: (request, input) => nativeHost().activateAuthorizationEpoch(request, input),

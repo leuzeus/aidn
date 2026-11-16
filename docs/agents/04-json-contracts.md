@@ -1,5 +1,15 @@
 # 04 JSON Contracts
 
+Private `standard-handoff-context.v1` binds an authenticated process prefix to
+the configured canonical current/runtime/rule/snapshot/packet documents and
+exact selected session, cycle status and optional plan. Content and metadata
+digests remain distinct. A missing optional document is retained explicitly;
+missing required rules or selected owners refuse. The context hash authenticates
+no source by itself. All effect, handoff and resource-closure permissions remain
+false. The fixed process reader authenticates the diagnostic prefix even when
+a Native allocation remains unresolved; it supplies no execution admission.
+It creates no canonical record, projection or historical conversion.
+
 The pure `operationControlHistoryExtends` reader accepts unchanged
 `process-operation-control-intent.v1` data or an append-only extension of its
 exact ordered attempts. Operation/key identities and revision growth must agree;

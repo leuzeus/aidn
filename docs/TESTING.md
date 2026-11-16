@@ -6745,6 +6745,30 @@ retained, and the existing attempt/storage limits are unchanged.
 
 ## Current resource observation for handoff
 
+`node tools/perf/verify-standard-handoff-context-fixtures.mjs files` (also
+`dual` and `db-only`) exercises the actual configured canonical store, CAS and
+authenticated process reader for the private handoff context. Selected session,
+cycle and plan fingerprints include metadata; canonical spaced labels and quoted
+values select the same exact owners, while empty owner fields remain unknown; a
+plan revision changes context;
+missing owners, changed process identity and unavailable canonical storage
+refuse. Stale visible database projections remain non-authoritative. Every
+observation and refusal snapshots all fixture files/directories to check that
+the observer writes nothing. These component cases grant no admission or
+resource closure and do not prove packet publication or ordinary handoff.
+
+For the actual mixed composition, add `--handoff-context` to each existing
+`verify-native-allocation-closure-evidence-fixtures.mjs <mode> --reconciled
+--handoff-resources` case. The same controlled reconciliation arena is read;
+the original failed Native journal and all owned roots stay unchanged. External
+discovery, OS closure and Human/Native actors remain controlled fixture evidence.
+The existing public Native entry fixture also calls
+`verifyUnresolvedNativeHandoffContext` before any owner retirement. Its actual
+published prefix and failed allocation are observed through the mixed host;
+ordinary inspection still refuses, and all owned roots, original failure, owner
+and debits remain unchanged. The same helper can qualify observation separately
+on a fresh published-prefix fixture without replaying resource recovery.
+
 Run `node tools/perf/verify-standard-handoff-resource-fixtures.mjs` for the
 private closed request/observation/result and trusted-capability boundary.
 The controlled reader fixtures retain business UNKNOWN and original response/

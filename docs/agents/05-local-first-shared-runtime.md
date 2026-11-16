@@ -599,6 +599,20 @@ and create no canonical record, store, table, projection or shared method.
 Production independent-discovery wiring, canonical packet CAS/receipt and
 ordinary handoff entry remain separate work.
 
+The private mixed-host `inspectHandoffContext` reads through the configured
+canonical artifact port and the fixed authenticated diagnostic process reader.
+An unresolved Native allocation remains unresolved and ordinary effect admission
+still refuses; observation does not retire its owner or refund its debits. The
+already-bound canonical structured parser normalizes labels such as `Active
+Session` and `Active Cycle` before selecting the exact current session and cycle, and
+retains content/metadata fingerprints for their documents, plan, rules, snapshot,
+runtime digest and previous packet. An optional absence stays explicit. Two
+independent captures must agree on process identity, selected documents and
+backend binding. A stale visible DUAL/db-only copy cannot replace a canonical
+row; unavailable canonical storage refuses. The read creates no projection,
+packet, admission, resource closure or permission. Publication still needs its
+own exact grant, owner/fence, canonical CAS, receipt and ordinary IR route.
+
 
 
 A known-partial continuation authenticates every current control-intent record

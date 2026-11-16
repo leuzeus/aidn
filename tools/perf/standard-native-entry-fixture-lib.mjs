@@ -13,6 +13,7 @@ import { createStandardHostAuthority } from '../../src/adapters/runtime/standard
 import { createStandardProcessAuthority } from '../../src/application/runtime/standard-process-authority.mjs';
 import { loadStandardWorkflowAssets, createStandardWorkflowExecution } from '../../src/application/runtime/standard-workflow-composition.mjs';
 import { createStandardWorkflowOperationHost } from '../../src/application/runtime/standard-workflow-operation-host.mjs';
+import { createStandardWorkflowMixedHost } from '../../src/application/runtime/standard-workflow-mixed-composition.mjs';
 import { createStandardWorkflowArtifacts } from '../../src/application/runtime/standard-workflow-artifacts.mjs';
 import { readAgenticProductSnapshot } from '../../src/application/runtime/agentic-process-execution-composition.mjs';
 import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
@@ -184,9 +185,42 @@ async function revokeEpochSourceAfterVerification(data, action) {
   console.log(JSON.stringify({ status: 'EPOCH_SOURCE_REVOKED_AFTER_VERIFICATION_REFUSED_BEFORE_NATIVE_CAS', Native_calls: 0, original_native_journal_exact: true }));
 }
 
+// The published prefix and actual signed failed allocation already exist. Only
+// observe this unresolved state; no retirement, reconciliation or Native call.
+export function verifyUnresolvedNativeHandoffContext(data) {
+  function tree(root) {
+    const rows = {};
+    const walk = at => {
+      for (const entry of fs.readdirSync(at, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+        const file = path.join(at, entry.name), key = path.relative(root, file);
+        if (entry.isSymbolicLink()) rows[key] = 'LINK:' + fs.readlinkSync(file);
+        else if (entry.isDirectory()) { rows[key + path.sep] = 'DIRECTORY'; walk(file); }
+        else rows[key] = sha(fs.readFileSync(file));
+      }
+    }; walk(root); return rows;
+  }
+  const roots = [...new Set([data.root, data.base])], before = roots.map(tree);
+  const local = createStandardHostAuthority({ configuration: data.configuration, environment: environment(data) }, { useProvider: false });
+  const host = createStandardWorkflowMixedHost({ configuration: data.configuration, modelSource: data.model_source,
+    readSigningKey: () => local.readKey(), environment: environment(data), humanSource: local.humanSource,
+    nativeAuthorizationSource: local.nativeAuthorizationSource, authorize: async () => { throw Error('UNEXPECTED_PRODUCT_OPERATION'); } });
+  const journal = host.inspectAllocations(); assert.equal(journal.allocations[0].phase, 'failed');
+  assert.throws(() => host.inspect(), { code: 'STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE' });
+  const canonical = host.inspectDiagnostic().record, context = host.inspectHandoffContext();
+  assert.equal(context.instance_sha256, canonical.instance_sha256); assert.equal(context.state_mode, data.mode);
+  for (const key of ['permits_effects', 'permits_handoff', 'complete_resource_closure', 'written']) assert.equal(context[key], false);
+  assert.deepEqual(host.inspectAllocations(), journal);
+  assert.equal(createStandardWorkflowArtifacts({ targetRoot: data.root }).ownerPending(), true);
+  assert.deepEqual(roots.map(tree), before, 'unresolved Native context must preserve all owned roots');
+  return { status: 'PASS_UNRESOLVED_NATIVE_HANDOFF_CONTEXT', mode: data.mode, instance_sha256: canonical.instance_sha256,
+    original_failure_owner_and_debits_unchanged: true, ordinary_Native_admission: 'REFUSED', new_effects: 0, Native_calls: 0,
+    packet_handoff_and_resource_closure: 'NOT_PROVEN' };
+}
+
 export async function verifyPublicNativeEntryFixture(mode) {
   const proof = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aidn-public-native-proof-')), file = path.join(proof, 'fixture.json');
   worker(['produce', mode, file]); const data = JSON.parse(fs.readFileSync(file, 'utf8')), original = canonical(data);
+  const handoffContext = verifyUnresolvedNativeHandoffContext(data);
   const ownerConsole = runConsole(data, { operation: 'run', input: { configuration: data.config_file } });
   assert.deepEqual(ownerConsole.errors, [], JSON.stringify(ownerConsole)); assert.ok(ownerConsole.action.effects.includes('native_owner_retirement'));
   const owner = ownerConsole.action.preview; assert.deepEqual(ownerConsole.action.request.input.preparedAction, owner.preview);
@@ -227,6 +261,7 @@ export async function verifyPublicNativeEntryFixture(mode) {
   assert.equal(artifacts.resourceFence().read().record.state, 'released');
   if (mode === 'db-only') assert.equal(fs.existsSync(path.join(data.root, 'docs/audit/workflows/native-allocation-reconciliations')), false);
   return { status: 'PASS_PUBLIC_NATIVE_RESOURCE_ACTIONS', mode, proof, target: data.root, actual_CLI_and_console_and_published_model: true,
+    unresolved_handoff_context: handoffContext,
     actual_operator_HMAC_and_source_Ed25519: true, source_revoked_after_verification_refused_before_epoch_CAS: true, actual_creator_terminated: true, FILES_post_CAS_cold_ack: mode === 'files',
     original_failure_deadline_dispatch_debits_preserved: true, native_allocations_after_authorization: 0, Native_calls: 0,
     Native_return_checkpoint_OS_closure_and_human_epoch_consent: 'SYNTHETIC_FIXTURE', genuine_human_or_Native: false, installed_archive: false, full_standard: false };

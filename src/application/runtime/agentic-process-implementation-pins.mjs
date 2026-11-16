@@ -6,6 +6,9 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 // their separately retained build-lock/installed-version pins. npm distributions
 // exclude package-lock.json; direct code pins must use distributed assets only.
 const files = [
+  "src/application/runtime/standard-handoff-context.mjs",
+  "src/core/workflow/standard-handoff-context.mjs",
+  "src/core/contracts/workflow-definition/standard-handoff-context.v1.schema.json",
   "src/application/runtime/standard-handoff-resources.mjs",
   "src/core/workflow/standard-handoff-resources.mjs",
   ...["request", "observation", "result"].map(kind => `src/core/contracts/workflow-definition/standard-handoff-resource-${kind}.v1.schema.json`),

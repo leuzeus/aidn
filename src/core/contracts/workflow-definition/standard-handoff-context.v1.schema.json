@@ -1,0 +1,204 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-handoff-context.v1",
+  "x-aidn-contract-version": "standard-handoff-context.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "instance_id",
+    "instance_sha256",
+    "scope_id",
+    "model_sha256",
+    "policy_sha256",
+    "physical_root_sha256",
+    "state_mode",
+    "canonical_source",
+    "runtime_binding_sha256",
+    "current",
+    "selected",
+    "documents",
+    "permits_effects",
+    "permits_handoff",
+    "complete_resource_closure",
+    "written",
+    "context_sha256"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-handoff-context.v1"
+    },
+    "instance_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "instance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "model_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "policy_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "physical_root_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "state_mode": {
+      "enum": [
+        "files",
+        "dual",
+        "db-only"
+      ]
+    },
+    "canonical_source": {
+      "enum": [
+        "files",
+        "sqlite",
+        "postgres"
+      ]
+    },
+    "runtime_binding_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "current": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "branch_kind",
+        "active_session",
+        "active_cycle",
+        "dor_state",
+        "first_plan_step_sha256"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        },
+        "branch_kind": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        },
+        "active_session": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        },
+        "active_cycle": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        },
+        "dor_state": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        },
+        "first_plan_step_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "selected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_path",
+        "cycle_status_path",
+        "cycle_plan_path"
+      ],
+      "properties": {
+        "session_path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 192
+        },
+        "cycle_status_path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 192
+        },
+        "cycle_plan_path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 192
+        }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256",
+          "metadata_sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 192
+          },
+          "sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "metadata_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "permits_effects": {
+      "const": false
+    },
+    "permits_handoff": {
+      "const": false
+    },
+    "complete_resource_closure": {
+      "const": false
+    },
+    "written": {
+      "const": false
+    },
+    "context_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

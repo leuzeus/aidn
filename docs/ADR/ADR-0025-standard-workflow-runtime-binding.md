@@ -4659,3 +4659,25 @@ projection, shared method or Native allocation, and changes no cursor. These
 private observations are inputs to the existing handoff digest concept.
 Production discovery, canonical packet publication/receipt and ordinary handoff
 composition still require their own implementation and qualification.
+
+## Canonical context for general handoff, 2026-11-16
+
+The mixed host exposes a private canonical handoff context read. The existing
+artifact port supplies current/runtime/rule/snapshot/packet observations and
+session/cycle topology from its configured authority. Content, metadata,
+selected paths, backend and authenticated process prefix are compared across
+two independent captures. Optional absence remains data; required missing
+documents, ambiguous owners or changed subject refuse. The legacy visible-file
+projector and its writer are not invoked by this path.
+
+The existing bound canonical structured parser handles spaced labels and quoted
+owner values. The fixed diagnostic process reader permits context observation
+on an authenticated unresolved Native prefix without admitting effects, retiring
+an owner or changing its retained failure/accounting. Ordinary Native inspection
+continues to refuse that unresolved allocation.
+
+The closed context and its hash remain inputs to the existing handoff digest
+concept. They supply no resource closure, admission, write or relay permission;
+they create no store, packet, projection or shared method. No preparation-age
+limit is introduced. Canonical publication, writer ownership, result/receipt,
+ordinary IR routing and actual independent discovery remain separate work.

@@ -293,7 +293,7 @@ const METADATA_POLICIES = freezeDeep([
     label: "Handoff packet",
     required: ["contract_version", "updated_at", "handoff_status", "active_session", "active_cycle", "source_of_truth", "source_mode", "lifecycle_status"],
     sourceOfTruthConcept: "runtime_digests",
-    evidenceTargets: ["tools/runtime/project-handoff-packet.mjs", "src/application/runtime/standard-handoff-resources.mjs", "src/core/workflow/standard-handoff-resources.mjs", "src/core/contracts/workflow-definition/standard-handoff-resource-request.v1.schema.json", "src/core/contracts/workflow-definition/standard-handoff-resource-observation.v1.schema.json", "src/core/contracts/workflow-definition/standard-handoff-resource-result.v1.schema.json"],
+    evidenceTargets: ["tools/runtime/project-handoff-packet.mjs", "src/application/runtime/standard-handoff-context.mjs", "src/core/workflow/standard-handoff-context.mjs", "src/core/contracts/workflow-definition/standard-handoff-context.v1.schema.json", "src/application/runtime/standard-handoff-resources.mjs", "src/core/workflow/standard-handoff-resources.mjs", "src/core/contracts/workflow-definition/standard-handoff-resource-request.v1.schema.json", "src/core/contracts/workflow-definition/standard-handoff-resource-observation.v1.schema.json", "src/core/contracts/workflow-definition/standard-handoff-resource-result.v1.schema.json"],
     recommended: ["owner", "steward", "privacy_classification", "retention_policy"],
     legacyTolerated: ["source_of_truth", "source_mode", "lifecycle_status", "owner", "steward", "privacy_classification", "retention_policy"],
     lifecycle: "draft -> ready -> consumed -> archived",
