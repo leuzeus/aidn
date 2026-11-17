@@ -9,7 +9,7 @@ import { createStandardReviewEventFixture } from './standard-pr-review-event-fix
 const data = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 assert.equal(data.proof_class, 'offline-fixture-only');
 const f = data.fixture, configuration = f.configuration;
-const r09 = data.preflight.stop === 'nominal_post_merge_complete'
+const r09 = data.preflight.stop === 'nominal_post_merge_complete' || f.r09Request
   ? attachComposedR09Provider({ configuration, remoteRoot: f.sessionPushRemoteRoot, initialize: false }) : null;
 const host = createStandardWorkflowExecution({ configuration, readSigningKey: r09?.authority.readKey ?? (() => Buffer.alloc(32, 91)),
   ...(r09 ? { environment: r09.environment, humanSource: r09.authority.humanSource } : {}),
@@ -21,6 +21,12 @@ const host = createStandardWorkflowExecution({ configuration, readSigningKey: r0
   sessionReviewPort: r09?.provider.sessionReviewPort ?? createComposedGithubReviewFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: configuration.control_root }),
   sessionReviewEventPort: r09?.provider.sessionReviewEventPort ?? createStandardReviewEventFixture(configuration.control_root) });
 const before = host.inspect(), allocations = host.inspectAllocations();
+if (process.argv.includes('--inspect-authority-only')) {
+  console.log(JSON.stringify({ status: 'PASS_COLD_REVIEW_AUTHORITY_ONLY',
+    authority_profile: r09 ? 'R09' : 'PRIVATE_FIXTURE', instance_sha256: before.record.instance_sha256,
+    new_native_allocations: 0, control_delivery: 'NOT_RUN', full_standard: false }));
+  process.exit(0);
+}
 assert.equal(host.readControl(process.argv[3]).phase, 'reserved');
 await host.deliverControl(process.argv[3], { write: true });
 if (host.inspect().cursor.occurrences.some(row => row.wait_reason === 'call_return')) {

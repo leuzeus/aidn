@@ -2043,6 +2043,14 @@ also injects a failed acknowledgement after the canonical event and repairs it
 without the source. These are component checks; the candidate standard graph's
 PR wait/triage route, live provider/native and exact archive remain separate.
 
+The cold review-control fixture retains the R09 authority when its descriptor
+contains `fixture.r09Request`, including corrective-checkpoint prefixes. The
+historical `nominal_post_merge_complete` selector remains compatible, and private
+fixtures retain their private key. Its `--inspect-authority-only` diagnostic stops
+after authenticated history inspection; it delivers no reserved control event
+and starts no Native allocation. This read-only authority check does not qualify
+PR review continuation or corrective Git recovery.
+
 `node tools/perf/verify-github-observation-async-fixtures.mjs` includes cancellation
 through the external inbox, application PR observer and actual direct subprocess.
 It observes that subprocess's close separately from the inbox return. Human
