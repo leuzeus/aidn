@@ -7308,18 +7308,26 @@ bounded component results; complete L4/A6/L7/L8 qualification remains due.
 
 The required common handoff operation command also calls
 `verify-standard-handoff-disposition-fixtures.mjs`. Its default scenarios are
-`nominal`, `disposition_recorded`, `permission_revoked` and `cancelled`. DUAL
-also requires `projection_ack_lost`. `--case=<name>` selects one when run
-directly with a mode argument. These use the actual operation host's v3
-preparation, current-grant/refusal, durable control, fence/lock retirement,
-follow-on receipt and separate common acceptance. The capture scenario kills a
-real second controller after durable output capture and reconstructs the host;
-a fresh grant must adopt the identical receipt without a second private port or
-projection call. Packet metadata and original UNKNOWN/capsule stay exact.
-Execution, replay and SIM must reach the same instance hash with the same IR
-and reducer. Both independent child roles retain their explicit120000 ms bound.
-Permissions remain fixture-controlled; this does not qualify the normal full
-published entry, all other interruption cuts, genuine actors or installed code.
+`nominal`, `disposition_recorded`, `permission_revoked`, `cancelled`,
+`disposition_control_reserved`, `disposition_fence_acquired`,
+`handoff_continuation_owner_retired`, `handoff_continuation_projected`,
+`disposition_receipted` and `disposition_acceptance_committed`. DUAL also
+requires `projection_ack_lost`. `--case=<name>` selects one when run directly
+with a mode argument. These use the actual operation host's v3 preparation,
+current-grant/refusal, durable control, fence/lock retirement, follow-on receipt
+and separate common acceptance. Each interruption kills a real second
+controller at its observed boundary and reconstructs the host. A still-live
+fence owner must refuse a distinct authorized contender before business effects.
+Before durable output capture, recovery can finish only the remaining packet
+projection. Captured/receipted results are adopted without another private-port
+call; after acceptance, recovery closes only the abandoned control and preserves
+the process instance hash. Packet metadata, original UNKNOWN/capsule and retired
+lock witness stay exact. An already-current DUAL projection retains its physical
+identity across recovery. Execution, replay and SIM use the same IR and reducer.
+Both independent child roles retain their explicit120000 ms bound. Permissions
+remain fixture-controlled; these cases do not qualify the full normal published
+journey, original publisher loss without its returned receipt, arbitrary CAS
+races, genuine actors or installed code.
 
 The v3 disposition fixture additionally requires `permission_revoked` and
 `cancelled` on all three modes. Both stop immediately before projection,
