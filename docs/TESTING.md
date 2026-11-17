@@ -2274,6 +2274,39 @@ wall clock and elapsed call time, without result bodies or signing material.
 They measure the named public call, including its nested work and waits; they
 are not timings of individual internal functions or actual model usage.
 
+For a fresh Git recovery producer, the fixture-only selector
+`--standard-composed-checkpoint-recovery-prefix` requires the correction scenario,
+FILES or DUAL, `--standard-composed-stop=session_pr_correction_decide` and
+`--retain-always`. It follows the actual common host to the ready corrective Git
+checkpoint, then retains `standard-git-checkpoint-prefix.json` before dispatch.
+The packet contains the exact signed preview, authenticated earlier-operation
+digests and the unchanged original Native authorization and allocation digests.
+The selection survives the existing cold child without renewing any limit.
+This is prefix preparation only: it executes neither the checkpoint nor crash
+recovery and supplies no genuine Native, human, provider or installed evidence.
+
+`verify-standard-git-checkpoint-crash-recovery-fixtures.mjs` consumes a fresh
+actual prefix for each `--mode=files|dual` and
+`--cut=effect_returned|receipted|accepted` selection. Its owned producer pauses
+after the real Git commit, before the signed return, after the receipt, or after
+acceptance as selected. The default checkpoint-worker bound remains 120000 ms.
+The separate `--checkpoint-worker-bound-ms=300000` scenario allows the measured
+real Git execution plus live inventory observation on a fresh arena; it does
+not renew an earlier attempt or its Native grant. Both processes retain one
+absolute producer deadline, with an independent child watchdog and explicit
+elapsed-time checks. Historical failures and their original bounds remain.
+The parent checks actual kernel death, commit/ref/index observations,
+unchanged dispatch bytes, current authorization, separate acceptance and exact
+replay/SIM. The unreturned selection exercises the existing explicit checkpoint
+reconciliation with two contenders. A failed attempt retains its fresh arena;
+the selector does not qualify the public recovery entry or genuine actors.
+Before creating that prefix, `--wiring-only` (also run by the full selection)
+checks `dispatch_reserved` and `effect_returned` on the published model's actual
+read-only context operation. The adapter is attached to the real operation host
+under the same common instance; the mixed host does not forward that adapter.
+The check authenticates the running/null-output capsule and zero results. It
+does not execute or qualify the Git checkpoint, and adds no runtime adapter.
+
 The fault interrupts only the atomic rename of a completed checkpoint receipt.
 The real signed dispatch remains, with its actual Git commit and released local
 effect owner. A new Node process invokes the mixed host's explicit-write
