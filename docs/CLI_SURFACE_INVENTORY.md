@@ -404,6 +404,14 @@ finalization; `--verify` retains its read-only verification behavior.
     A fresh authorized adoption can append the captured receipt after a crash
     without invoking the business port again. Acceptance remains a separate
     exact action. Preview retires no owner and starts no Native client.
+    An unreturned publisher at its exact canonical postimage uses the closed v4
+    disposition. The original running capsule stays unchanged; the current
+    confirmation is the first returned result and repeats no packet CAS.
+    A terminated unreturned publisher whose exact packet beforeimage and metadata
+    remain unchanged uses the closed v5 disposition. Its current confirmation is
+    blocked/no-effect. The separate acceptance leaves publication incomplete.
+    Publishing then requires a fresh operation intention and current permission.
+    Both profiles preserve the original absent return and Native accounting.
     If a process stopped after acceptance and left its exact authenticated
     acceptance control lease held, the same explicit acceptance action can retire
     that control with current permission, including after the operation completed.

@@ -13,7 +13,7 @@ import { prIncidentRecordOperation, prIncidentResolveOperation } from "../../cor
 import { prIncidentCloseOperation } from "../../core/workflow/standard-pr-incident-close.mjs";
 import { createStandardPrIncidentClose } from "./standard-pr-incident-close.mjs";
 import { createStandardHandoffOperation } from "./standard-handoff-operation.mjs";
-import { createStandardHandoffContinuation } from "./standard-handoff-continuation.mjs";
+import { createStandardHandoffContinuation, createStandardHandoffBeforeEffectContinuation } from "./standard-handoff-continuation.mjs";
 import { createStandardHandoffPreparation } from "./standard-handoff-preparation.mjs";
 import { assertHandoffPreparation, assertHandoffGitPlan } from "../../core/workflow/standard-handoff-preparation.mjs";
 import { createStandardHandoffResourceOperation } from "./standard-handoff-resource-operation.mjs";
@@ -1453,6 +1453,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const handoffContinuation = createStandardHandoffContinuation({ targetRoot, readSigningKey,
     readCurrent: id => current(id).record, readClaimed: id => retained(id).record },
     { ...(handoffPublicationBoundary ? { boundary: handoffPublicationBoundary } : {}) });
+  const handoffBeforeEffect = createStandardHandoffBeforeEffectContinuation({ targetRoot, readSigningKey,
+    readCurrent: id => current(id).record, readClaimed: id => retained(id).record },
+    { ...(handoffPublicationBoundary ? { boundary: handoffPublicationBoundary } : {}) });
   const nativeOwnerDisposition = createStandardNativeOwnerDisposition({ targetRoot: artifacts.root, stateMode: initial.stateMode, artifacts, signer, now,
     source: nativeOwnerDispositionSource, onBoundary: nativeOwnerDispositionBoundary,
     assess: (id, input) => { if (!processAuthority) fail("NATIVE_OWNER_DISPOSITION_AUTHORITY_REQUIRED"); return reconciliationInventory.prepareNativeAllocationAssessment(id, input); },
@@ -1472,6 +1475,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     prepareHandoffContinuation: (instance, record, options) => handoffContinuation.describe(instance, record, options),
     applyHandoffContinuation: (instance, record, plan, options) => handoffContinuation.apply(instance, record, plan, options),
     confirmHandoffContinuation: (instance, record, output, options) => handoffContinuation.confirms(instance, record, output, options),
+    prepareHandoffBeforeEffect: (instance, record, options) => handoffBeforeEffect.describe(instance, record, options),
+    applyHandoffBeforeEffect: (instance, record, plan, options) => handoffBeforeEffect.apply(instance, record, plan, options),
+    confirmHandoffBeforeEffect: (instance, record, output, options) => handoffBeforeEffect.confirms(instance, record, output, options),
     preparePrIncidentContinuation: (instance, record) => prIncidentClose.prepareContinuation(instance, record),
     applyPrIncidentContinuation: (instance, record, plan, options) => prIncidentClose.applyContinuation(instance, record, plan, options),
     confirmPrIncidentContinuation: (instance, record, output) => prIncidentClose.confirmsContinuation(instance, record, output),

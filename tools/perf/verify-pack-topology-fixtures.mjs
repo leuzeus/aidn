@@ -177,6 +177,7 @@ function inspectPackageDocsAllowlist(files) {
     "docs/BPMN_EXECUTION_PROFILE.md",
     "docs/BPMN_EXECUTION_PROFILE_V2.md",
     "docs/CODEX_NATIVE_QUALIFICATION.md",
+    "docs/qualification/GLOBAL_WINDOWS.md",
     "docs/CODEX_CLIENT_MIGRATION.md",
     "docs/WINDOWS_PROJECT_SETUP.md",
     "docs/GLOBAL_SETUP.md",

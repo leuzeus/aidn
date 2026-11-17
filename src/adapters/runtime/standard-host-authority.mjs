@@ -1,5 +1,5 @@
 import { assertNativeReconciliationRequest } from "../../core/workflow/native-allocation-reconciliation.mjs";
-import { assertIncidentContinuationPlan, assertHandoffContinuationPlan, assertUnreturnedHandoffContinuationPlan } from "../../core/workflow/process-operation-disposition.mjs";
+import { assertIncidentContinuationPlan, assertHandoffContinuationPlan, assertUnreturnedHandoffContinuationPlan, assertHandoffBeforeEffectPlan } from "../../core/workflow/process-operation-disposition.mjs";
 import { assertNativeOwnerDispositionRequest } from "../../core/workflow/native-owner-disposition.mjs";
 import { externalMergeQuestionVersion } from "../../core/workflow/standard-pr-external-merge.mjs";
 import { mergeConsentQuestionVersion } from "../../core/workflow/standard-pr-merge-consent.mjs";
@@ -135,10 +135,11 @@ export function createStandardHostAuthority({ configuration, environment = proce
       || keyId() !== permit.key_id || trustSha() !== permit.trust_sha256)
       fail("STANDARD_HOST_EXACT_DISPOSITION_REQUIRED");
     const apply = request.action === "operation_disposition", instance = apply ? request.plan : request;
-    const unreturned = apply && request.plan?.contract_version === "process-operation-disposition-plan.v4";
+    const beforeEffect = apply && request.plan?.contract_version === "process-operation-disposition-plan.v5";
+    const unreturned = apply && (request.plan?.contract_version === "process-operation-disposition-plan.v4" || beforeEffect);
     const handoff = apply && (request.plan?.contract_version === "process-operation-disposition-plan.v3" || unreturned);
     const continuation = apply && (request.plan?.contract_version === "process-operation-disposition-plan.v2" || handoff);
-    if (continuation) (unreturned ? assertUnreturnedHandoffContinuationPlan : handoff ? assertHandoffContinuationPlan : assertIncidentContinuationPlan)(request.plan);
+    if (continuation) (beforeEffect ? assertHandoffBeforeEffectPlan : unreturned ? assertUnreturnedHandoffContinuationPlan : handoff ? assertHandoffContinuationPlan : assertIncidentContinuationPlan)(request.plan);
     const subject = apply ? request.plan_sha256 : request.receipt_sha256;
     if (subject !== permit.subject_sha256 || instance?.scope_id !== permit.scope_id
       || instance.instance_sha256 !== permit.instance_sha256

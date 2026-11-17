@@ -1,8 +1,10 @@
+import beforeEffectPlanSchema from '../contracts/workflow-definition/process-operation-disposition-plan.v5.schema.json' with { type: 'json' };
+import beforeEffectRecordSchema from '../contracts/workflow-definition/process-operation-disposition.v5.schema.json' with { type: 'json' };
 import unreturnedHandoffPlanSchema from '../contracts/workflow-definition/process-operation-disposition-plan.v4.schema.json' with { type: 'json' };
 import unreturnedHandoffRecordSchema from '../contracts/workflow-definition/process-operation-disposition.v4.schema.json' with { type: 'json' };
 import handoffPlanSchema from '../contracts/workflow-definition/process-operation-disposition-plan.v3.schema.json' with { type: 'json' };
 import handoffRecordSchema from '../contracts/workflow-definition/process-operation-disposition.v3.schema.json' with { type: 'json' };
-import { assertHandoffOperationOutput, handoffPublicationOperation } from './standard-handoff-operation.mjs';
+import { assertHandoffOperationOutput, handoffPublicationOperation, handoffBeforeEffectReason } from './standard-handoff-operation.mjs';
 import planSchema from '../contracts/workflow-definition/process-operation-disposition-plan.v2.schema.json' with { type: 'json' };
 import recordSchema from '../contracts/workflow-definition/process-operation-disposition.v2.schema.json' with { type: 'json' };
 import receiptSchema from '../contracts/workflow-definition/process-operation-receipt.v1.schema.json' with { type: 'json' };
@@ -208,5 +210,46 @@ export function assertUnreturnedHandoffContinuationDisposition(value) {
     if (!same(unreturnedHandoffContinuationSubject(assertUnreturnedHandoffContinuationPlan(attempt.plan)), subject))
       fail('PROCESS_DISPOSITION_RECORD_INVALID');
   }
+  return value;
+}
+
+
+// A current no-effect confirmation is a separate receipt, never an original
+// producer return. Exactly one terminal confirmation is retained at index zero.
+export function assertHandoffBeforeEffectPlan(value) {
+  if (!valid(value, beforeEffectPlanSchema)) fail('PROCESS_DISPOSITION_PLAN_INVALID');
+  const c = value.continuation, output = assertHandoffOperationOutput(c.expected_output);
+  if (!same(c.owned_paths, []) || output.operation_ref !== handoffPublicationOperation
+    || output.outcome !== 'blocked' || output.effect_status !== 'no_effect'
+    || output.observations.reason_code !== handoffBeforeEffectReason
+    || shadowHash(output) !== c.expected_output_sha256
+    || output.observations.packet_plan_sha256 !== c.packet_plan_sha256)
+    fail('PROCESS_DISPOSITION_PLAN_INVALID');
+  return value;
+}
+function assertBeforeEffectResult(row, id) {
+  const plan = assertHandoffBeforeEffectPlan(row.plan), c = plan.continuation;
+  const output = assertHandoffOperationOutput(row.output), receipt = row.receipt;
+  if (plan.operation_id !== id || !valid(receipt, receiptSchema) || receipt.operation_id !== id
+    || receipt.intent_sha256 === undefined || receipt.output_sha256 !== shadowHash(output)
+    || receipt.outcome !== 'blocked' || receipt.effect_status !== 'no_effect'
+    || !same(receipt.facts, output.facts) || row.effect_knowledge !== 'known_prefix'
+    || receipt.output_sha256 !== c.expected_output_sha256
+    || output.observations.plan_sha256 !== c.expected_output.observations.plan_sha256
+    || output.observations.packet_plan_sha256 !== c.packet_plan_sha256
+    || output.observations.resource_material_sha256 !== c.expected_output.observations.resource_material_sha256)
+    fail('PROCESS_DISPOSITION_RECORD_INVALID');
+  return unreturnedHandoffContinuationSubject(plan);
+}
+export function assertHandoffBeforeEffectDisposition(value) {
+  if (!valid(value, beforeEffectRecordSchema)) fail('PROCESS_DISPOSITION_RECORD_INVALID');
+  const subject = assertBeforeEffectResult(value, value.operation_id);
+  if (value.results.length !== 1 || !same(assertBeforeEffectResult(value.results[0], value.operation_id), subject)
+    || value.receipt.receipt_id !== 'receipt_' + value.operation_id.slice(3)
+    || !same(Object.fromEntries(resultFields.map(key => [key, value[key]])), value.results[0]))
+    fail('PROCESS_DISPOSITION_RECORD_INVALID');
+  for (const attempt of value.attempts)
+    if (!same(unreturnedHandoffContinuationSubject(assertHandoffBeforeEffectPlan(attempt.plan)), subject))
+      fail('PROCESS_DISPOSITION_RECORD_INVALID');
   return value;
 }

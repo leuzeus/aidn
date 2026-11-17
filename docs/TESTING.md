@@ -7430,4 +7430,54 @@ cancelled preparation before reading signing keys. DB-only creates no projection
 Replay and SIM retain the unchanged original process. Resource/current-operator
 sources are controlled fixtures and no Native/model is launched. The observer
 grants no effects and produces no no-effect receipt; product before-effect
-reconciliation and its subsequent fresh intention remain unimplemented.
+reconciliation and its subsequent fresh intention require the separate controller fixture below.
+
+
+## Before-effect disposition and fresh intention fixtures
+
+Run `node tools/perf/verify-standard-handoff-before-effect-disposition-fixtures.mjs files`
+(and `dual` / `db-only`). The required common handoff command retains all old
+cases and additionally invokes this fixture. A real bounded producer stops
+before packet CAS and is actually terminated. Live transfer refuses. The
+current controller must prepare a closed v5 plan without writes or grants,
+retire the exact old owner under fresh consent, capture its own blocked/no-effect
+receipt at index zero and accept it separately. The original capsule and its
+absent result remain unchanged. An actual packet CAS requires a new
+operation identity, a new current operation grant and normal acceptance; only
+that fresh publication executes a CAS. Replay and SIM use the same IR.
+
+These are controlled source/operator fixtures with actual local processes and
+original 120000 ms producer bounds, no genuine Native/model calls and no
+aggregate manifest deadline. Public/installed/genuine actor and broader A6
+Git/GitHub crash/concurrency evidence remain separate requirements.
+
+The common handoff command also invokes
+`verify-standard-handoff-before-effect-cut-fixtures.mjs`. Its nine cases interrupt
+the actual controller at reservation, acquired fence, old-owner retirement,
+no-effect confirmation, durable capture, receipt and committed acceptance, and
+exercise current permission revocation and cancellation. A live contender cannot
+borrow the held fence. Recovery preserves the original running capsule and its
+empty returned-result history; accepted blocked/no-effect confirmation requires
+a fresh operation intention and current grant before exactly one new packet CAS.
+These controlled component checks do not qualify the public suffix or Git/GitHub
+crash recovery and do not close A6.
+
+The before-effect port explicitly classifies its own failed application as
+no-effect because it performs reads only. Current permission revocation and
+cancellation must close only the new controller after exact unchanged-subject
+reobservation. The revocation fixture gives its authority callback an UNKNOWN
+error tag to verify that the fixed read-only port owns this classification.
+A changed subject or unverifiable original ownership still prevents release.
+
+The public fixture also supports
+`node tools/perf/verify-standard-handoff-entry-recovery-fixtures.mjs files --before-effect`
+(and `dual` / `db-only`). This fixture selector uses the existing public CLI
+and console actions, without adding a public CLI flag. A real producer stops
+before packet CAS. The CLI applies its current v5 blocked/no-effect confirmation;
+the console accepts it separately, then publishes through a new operation
+identity and current exact-action permission. The ordinary published resource,
+handoff, reload and session-entry suffix must finish. The running original
+capsule and empty returned-result history remain intact. Replay and SIM agree.
+All old returned and unreturned profiles remain mandatory. These are offline
+fixtures with one controlled RPC session and no genuine Native/Human/provider
+or installed-archive qualification; they do not close full A6.

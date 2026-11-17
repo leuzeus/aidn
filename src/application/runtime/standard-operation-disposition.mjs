@@ -7,15 +7,16 @@ import { createProcessDispatchRecordStore } from "../../adapters/runtime/process
 import { observeLocalProcess, observeLocalProcessOwner } from "../../adapters/runtime/local-process-identity.mjs";
 import { assertProcessDispatchRecord } from "../../core/workflow/process-dispatch-record.mjs";
 import { assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
-import { assertIncidentContinuationPlan, assertIncidentContinuationDisposition, assertHandoffContinuationPlan, assertHandoffContinuationDisposition, assertUnreturnedHandoffContinuationPlan, assertUnreturnedHandoffContinuationDisposition, operationDispositionResultLimit, operationControlHistoryExtends } from "../../core/workflow/process-operation-disposition.mjs";
+import { assertIncidentContinuationPlan, assertIncidentContinuationDisposition, assertHandoffBeforeEffectPlan, assertHandoffBeforeEffectDisposition, assertHandoffContinuationPlan, assertHandoffContinuationDisposition, assertUnreturnedHandoffContinuationPlan, assertUnreturnedHandoffContinuationDisposition, operationDispositionResultLimit, operationControlHistoryExtends } from "../../core/workflow/process-operation-disposition.mjs";
 import { prIncidentCloseOperation } from "../../core/workflow/standard-pr-incident-close.mjs";
-import { handoffPublicationOperation } from "../../core/workflow/standard-handoff-operation.mjs";
+import { handoffPublicationOperation, handoffBeforeEffectProfile } from "../../core/workflow/standard-handoff-operation.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { withStandardDispatchContext } from "./standard-dispatch-context.mjs";
 import { LOCAL_ARTIFACT_FENCE_PATH } from "./local-artifact-resource-fence.mjs";
 import planSchema from "../../core/contracts/workflow-definition/process-operation-disposition-plan.v1.schema.json" with { type: "json" };
 import recordSchema from "../../core/contracts/workflow-definition/process-operation-disposition.v1.schema.json" with { type: "json" };
+import beforeEffectRequestSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-request.v5.schema.json" with { type: "json" };
 import unreturnedHandoffContinuationRequestSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-request.v4.schema.json" with { type: "json" };
 import handoffContinuationRequestSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-request.v3.schema.json" with { type: "json" };
 import continuationRequestSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-request.v2.schema.json" with { type: "json" };
@@ -33,12 +34,14 @@ const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(
 const validGrant = value => valid(value, value?.contract_version === "process-disposition-authorization-grant.v2" ? currentGrantSchema : grantSchema);
 const reopenAssessment = "confirmed_reopen";
 const isReopenPlan = plan => plan?.assessment === reopenAssessment;
-const isUnreturnedHandoffContinuationPlan = plan => plan?.contract_version === "process-operation-disposition-plan.v4";
+const isBeforeEffectPlan = plan => plan?.contract_version === "process-operation-disposition-plan.v5";
+const isUnreturnedHandoffContinuationPlan = plan => plan?.contract_version === "process-operation-disposition-plan.v4" || isBeforeEffectPlan(plan);
 const isHandoffContinuationPlan = plan => plan?.contract_version === "process-operation-disposition-plan.v3" || isUnreturnedHandoffContinuationPlan(plan);
-const assertContinuationPlan = plan => (isUnreturnedHandoffContinuationPlan(plan) ? assertUnreturnedHandoffContinuationPlan : isHandoffContinuationPlan(plan) ? assertHandoffContinuationPlan : assertIncidentContinuationPlan)(plan);
+const assertContinuationPlan = plan => (isBeforeEffectPlan(plan) ? assertHandoffBeforeEffectPlan : isUnreturnedHandoffContinuationPlan(plan) ? assertUnreturnedHandoffContinuationPlan : isHandoffContinuationPlan(plan) ? assertHandoffContinuationPlan : assertIncidentContinuationPlan)(plan);
 const isContinuationPlan = plan => plan?.contract_version === "process-operation-disposition-plan.v2" || isHandoffContinuationPlan(plan);
-const continuationRequestFor = plan => isUnreturnedHandoffContinuationPlan(plan) ? unreturnedHandoffContinuationRequestSchema : isHandoffContinuationPlan(plan) ? handoffContinuationRequestSchema : continuationRequestSchema;
-const assertContinuationDisposition = value => value?.contract_version === "process-operation-disposition.v4"
+const continuationRequestFor = plan => isBeforeEffectPlan(plan) ? beforeEffectRequestSchema : isUnreturnedHandoffContinuationPlan(plan) ? unreturnedHandoffContinuationRequestSchema : isHandoffContinuationPlan(plan) ? handoffContinuationRequestSchema : continuationRequestSchema;
+const assertContinuationDisposition = value => value?.contract_version === "process-operation-disposition.v5"
+  ? assertHandoffBeforeEffectDisposition(value) : value?.contract_version === "process-operation-disposition.v4"
   ? assertUnreturnedHandoffContinuationDisposition(value) : value?.contract_version === "process-operation-disposition.v3"
   ? assertHandoffContinuationDisposition(value) : assertIncidentContinuationDisposition(value);
 function validPlan(plan) {
@@ -60,7 +63,7 @@ function reopenConfirmationSubject(output) {
   return shadowHash({ ...output, observations: { ...observations, causal: subject } });
 }
 const assertRecord = value => {
-  if (["process-operation-disposition.v2", "process-operation-disposition.v3", "process-operation-disposition.v4"].includes(value?.contract_version)) return assertContinuationDisposition(value);
+  if (["process-operation-disposition.v2", "process-operation-disposition.v3", "process-operation-disposition.v4", "process-operation-disposition.v5"].includes(value?.contract_version)) return assertContinuationDisposition(value);
   if (!valid(value, recordSchema) || !validPlan(value.plan) || value.operation_id !== value.plan.operation_id
     || value.receipt.operation_id !== value.operation_id || value.plan.output_sha256 !== value.receipt.output_sha256)
     fail("PROCESS_DISPOSITION_RECORD_INVALID");
@@ -75,7 +78,7 @@ function inventoryMaterial(retained, id, reopening = false, continuation = null)
   const { observed_at_ms, authentication, key_id, ...material } = retained;
   const controls = ["artifact:" + dispositionPath(id), "artifact:" + controlPath(id), "artifact:" + LOCAL_ARTIFACT_FENCE_PATH];
   // These two locations are one separately authenticated physical witness.
-  if (reopening || ["standard-handoff-publication-known-partial.v1", "standard-handoff-publication-unreturned.v1"].includes(continuation?.profile)) controls.push("local:effects.lock", "local:retired-" + id + ".lock");
+  if (reopening || ["standard-handoff-publication-known-partial.v1", "standard-handoff-publication-unreturned.v1", handoffBeforeEffectProfile].includes(continuation?.profile)) controls.push("local:effects.lock", "local:retired-" + id + ".lock");
   if (continuation) {
     controls.push(...continuation.owned_paths.map(name => "artifact:" + name));
     // The original private plan authenticates every unowned context document.
@@ -99,7 +102,7 @@ const ownerPlanSha = record => record.intent.binding_ref === prIncidentCloseOper
     ? record.preview.prepared?.plan?.packet_plan_sha256 : record.preview.prepared?.plan_sha256;
 
 export function createStandardOperationDisposition({ targetRoot, stateMode, signer, artifacts, readOperation,
-  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, confirmPrCheckpoint, confirmPrIncidentClose, confirmHandoffPublication, prepareHandoffContinuation, applyHandoffContinuation, confirmHandoffContinuation, preparePrIncidentContinuation, applyPrIncidentContinuation, confirmPrIncidentContinuation, confirmInterruptedReopen,
+  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, confirmPrCheckpoint, confirmPrIncidentClose, confirmHandoffPublication, prepareHandoffContinuation, applyHandoffContinuation, confirmHandoffContinuation, prepareHandoffBeforeEffect, applyHandoffBeforeEffect, confirmHandoffBeforeEffect, preparePrIncidentContinuation, applyPrIncidentContinuation, confirmPrIncidentContinuation, confirmInterruptedReopen,
   onBoundary = async () => {}, onLocalResource = () => {}, now = Date.now }) {
   const dispatches = createProcessDispatchRecordStore({ targetRoot, stateMode });
   const acceptance = new AsyncLocalStorage();
@@ -370,7 +373,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
   }
   async function currentGrant(subject, signal) {
     const continuing = isContinuationPlan(subject.plan);
-    const request = { contract_version: isUnreturnedHandoffContinuationPlan(subject.plan) ? "process-disposition-authorization-request.v4" : isHandoffContinuationPlan(subject.plan) ? "process-disposition-authorization-request.v3" : continuing ? "process-disposition-authorization-request.v2" : "process-disposition-authorization-request.v1", ...subject, nonce: randomUUID(), requested_at_ms: now() };
+    const request = { contract_version: isBeforeEffectPlan(subject.plan) ? "process-disposition-authorization-request.v5" : isUnreturnedHandoffContinuationPlan(subject.plan) ? "process-disposition-authorization-request.v4" : isHandoffContinuationPlan(subject.plan) ? "process-disposition-authorization-request.v3" : continuing ? "process-disposition-authorization-request.v2" : "process-disposition-authorization-request.v1", ...subject, nonce: randomUUID(), requested_at_ms: now() };
     if (!valid(request, continuing ? continuationRequestFor(subject.plan) : requestSchema)) fail("PROCESS_DISPOSITION_AUTHORIZATION_REQUEST_INVALID");
     const grant = await invokeSource("authorize", { request }, signal);
     freshGrant(grant, request);
@@ -538,11 +541,39 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     const handoff = observed.operation.intent.binding_ref === handoffPublicationOperation;
     const interruptedOwner = handoff ? handoffContinuationOwner(observed.operation, observed.capsule) : null;
     if (!handoff) continuationOwner(observed.operation, observed.capsule);
-    const prepare = handoff ? prepareHandoffContinuation : preparePrIncidentContinuation;
-    if (typeof prepare !== "function") fail("PROCESS_CONTINUATION_CAPABILITY_REQUIRED");
-    const prepared = prepare(observed.instance, observed.operation, handoff ? continuationOptions(observed.operation) : undefined);
+    let beforeEffect = false, prepared;
+    if (handoff) {
+      const retained = dispositions.read(id).record;
+      if (retained) { signer.verify(retained); assertRecord(retained); }
+      const history = (readControls(id).record?.attempts ?? []).map(row => row.plan).filter(isHandoffContinuationPlan);
+      const pinned = retained?.plan ?? history[0] ?? null;
+      if (pinned && (pinned.dispatch_sha256 !== shadowHash(observed.capsule)
+        || history.some(plan => isBeforeEffectPlan(plan) !== isBeforeEffectPlan(pinned))))
+        fail("PROCESS_INCIDENT_CONTINUATION_HISTORY_REQUIRED");
+      const before = () => {
+        if (typeof prepareHandoffBeforeEffect !== "function") fail("PROCESS_CONTINUATION_CAPABILITY_REQUIRED");
+        beforeEffect = true;
+        return prepareHandoffBeforeEffect(observed.instance, observed.operation, continuationOptions(observed.operation));
+      };
+      if (isBeforeEffectPlan(pinned)) prepared = before();
+      else {
+        if (typeof prepareHandoffContinuation !== "function") fail("PROCESS_CONTINUATION_CAPABILITY_REQUIRED");
+        try { prepared = prepareHandoffContinuation(observed.instance, observed.operation, continuationOptions(observed.operation)); }
+        catch (error) {
+          // Profile selection is locked by the first authenticated reservation.
+          // A later beforeimage cannot erase an already observed postimage.
+          if (pinned || !isUnreturnedHandoffCapsule(observed.operation, observed.capsule)
+            || error.code !== "STANDARD_HANDOFF_PUBLICATION_PACKET_CHANGED") throw error;
+          prepared = before();
+        }
+      }
+    } else {
+      if (typeof preparePrIncidentContinuation !== "function") fail("PROCESS_CONTINUATION_CAPABILITY_REQUIRED");
+      prepared = preparePrIncidentContinuation(observed.instance, observed.operation);
+    }
     const continuation = handoff ? { ...prepared, lock_sha256: interruptedOwner.lock.sha256 } : prepared;
-    return { ...observed, continuation, interruptedOwner, assessment: handoff ? "known_partial_handoff_publication" : "known_partial_incident_close",
+    return { ...observed, continuation, interruptedOwner,
+      assessment: beforeEffect ? "known_before_effect_handoff_publication" : handoff ? "known_partial_handoff_publication" : "known_partial_incident_close",
       inventory_sha256: shadowHash(inventoryMaterial(observed.inventory_record, id, false, continuation)) };
   }
   function continuationSubject(observed) { return { ...subject(observed), continuation: observed.continuation }; }
@@ -558,7 +589,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     if (observed.instance.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");
     const previous = before.record;
     if (previous) {
-      if (record.intent.binding_ref === handoffPublicationOperation && previous.output.outcome === "completed"
+      if (record.intent.binding_ref === handoffPublicationOperation && (previous.output.outcome === "completed" || isBeforeEffectPlan(previous.plan))
         && record.results.some(row => shadowHash(row.receipt) === shadowHash(previous.receipt))) return previous.plan;
       const latest = record.results.at(-1)?.receipt;
       const accepted = latest ? observed.instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(latest)) : false;
@@ -569,18 +600,18 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       // Keep that plan in the audit; prepare a current plan for no-replay adoption.
     }
     if (record.results.length >= continuationJournalLimit(record)) fail("PROCESS_DISPOSITION_ADMISSION_LIMIT");
-    return signer.seal({ contract_version: continuationOriginalResultCount(record) === 0 ? "process-operation-disposition-plan.v4" : record.intent.binding_ref === handoffPublicationOperation ? "process-operation-disposition-plan.v3" : "process-operation-disposition-plan.v2", ...continuationSubject(observed),
+    return signer.seal({ contract_version: observed.assessment === "known_before_effect_handoff_publication" ? "process-operation-disposition-plan.v5" : continuationOriginalResultCount(record) === 0 ? "process-operation-disposition-plan.v4" : record.intent.binding_ref === handoffPublicationOperation ? "process-operation-disposition-plan.v3" : "process-operation-disposition-plan.v2", ...continuationSubject(observed),
       prepared_at_ms: now(), nonce: randomUUID() });
   }
   async function applyContinuation(plan, { signal }) {
     const id = plan.operation_id, initialRecord = readOperation(id).record, handoff = isHandoffContinuationPlan(plan);
-    const applyBusiness = handoff ? applyHandoffContinuation : applyPrIncidentContinuation;
-    const confirmBusiness = handoff ? confirmHandoffContinuation : confirmPrIncidentContinuation;
+    const applyBusiness = isBeforeEffectPlan(plan) ? applyHandoffBeforeEffect : handoff ? applyHandoffContinuation : applyPrIncidentContinuation;
+    const confirmBusiness = isBeforeEffectPlan(plan) ? confirmHandoffBeforeEffect : handoff ? confirmHandoffContinuation : confirmPrIncidentContinuation;
     const previous = readContinuationAudit(initialRecord), pending = previous.record?.results.length === initialRecord.results.length - continuationOriginalResultCount(initialRecord) + 1;
     if (previous.record && !pending && initialRecord.results.some(row => shadowHash(row.receipt) === shadowHash(previous.record.receipt))
       && (shadowHash(previous.record.plan) === shadowHash(plan) || previous.record.attempts.some(row => shadowHash(row.plan) === shadowHash(plan))))
       return { status: "retained_result", receipt: previous.record.receipt, written: false };
-    if (initialRecord.results.length >= continuationJournalLimit(initialRecord) || previous.record?.attempts.length >= 32)
+    if (initialRecord.results.length >= (isBeforeEffectPlan(plan) ? 1 : continuationJournalLimit(initialRecord)) || previous.record?.attempts.length >= 32)
       fail("PROCESS_DISPOSITION_ADMISSION_LIMIT");
     if (pending && shadowHash(capturedContinuationSubject(previous.record.plan)) !== shadowHash(capturedContinuationSubject(plan)))
       fail("PROCESS_DISPOSITION_ALREADY_RECORDED");
@@ -643,7 +674,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
         assertCurrent();
         // Preserve the captured result bytes. A success may be adopted only
         // after reobserving its actual complete original private postconditions.
-        if (previous.record.output.outcome === "completed"
+        if ((previous.record.output.outcome === "completed" || isBeforeEffectPlan(plan))
           && confirmBusiness?.(observed.instance, observed.operation, previous.record.output, handoff ? continuationOptions(observed.operation) : undefined) !== true)
           fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
         result = { output: previous.record.output, effect_knowledge: previous.record.effect_knowledge };
@@ -666,13 +697,13 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
             onBoundary: async (point, operationId) => { assertCurrent(); await onBoundary("incident_continuation_" + point, operationId); assertCurrent(); } }));
       }
       businessSettled = true;
-      if (handoff) { await onBoundary("handoff_continuation_projected", id); assertCurrent(); }
+      if (handoff) { await onBoundary(isBeforeEffectPlan(plan) ? "handoff_no_effect_confirmed" : "handoff_continuation_projected", id); assertCurrent(); }
       assertStandardOperationOutput(result.output); assertCurrent();
       const receipt = pending ? previous.record.receipt : makeReceipt(initialRecord, result.output);
       const row = { plan, grant: auditGrant, receipt, output: result.output, effect_knowledge: result.effect_knowledge, resource_fence: lease.record };
       const audit = pending ? { ...bodyOf(previous.record), revision: previous.record.revision + 1,
         attempts: [...previous.record.attempts, { plan, grant: auditGrant, resource_fence: lease.record }] }
-        : { ...(previous.record ? bodyOf(previous.record) : { contract_version: isUnreturnedHandoffContinuationPlan(plan) ? "process-operation-disposition.v4" : handoff ? "process-operation-disposition.v3" : "process-operation-disposition.v2", operation_id: id,
+        : { ...(previous.record ? bodyOf(previous.record) : { contract_version: isBeforeEffectPlan(plan) ? "process-operation-disposition.v5" : isUnreturnedHandoffContinuationPlan(plan) ? "process-operation-disposition.v4" : handoff ? "process-operation-disposition.v3" : "process-operation-disposition.v2", operation_id: id,
           attempts: [], admissions: [], acceptance_reservations: [] }), ...row,
           revision: (previous.record?.revision ?? 0) + 1, results: [...(previous.record?.results ?? []), row] };
       assertContinuationDisposition(signer.seal(audit));
@@ -696,7 +727,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
           const current = readInstance(plan.instance_id), operation = readOperation(id).record;
           const control = readControls(id).record;
           const owner = handoffContinuationOwner(operation, readDispatch(id, operation).record);
-          const state = prepareHandoffContinuation(current, operation, continuationOptions(operation));
+          const state = (isBeforeEffectPlan(plan) ? prepareHandoffBeforeEffect : prepareHandoffContinuation)(current, operation, continuationOptions(operation));
           if (current.instance_sha256 === plan.instance_sha256 && shadowHash(operation) === plan.journal_sha256
             && operationControlHistoryExtends(heldControl, control) && owner.lock.sha256 === plan.continuation.lock_sha256
             && shadowHash({ ...state, lock_sha256: owner.lock.sha256 }) === shadowHash(plan.continuation)) release = true;
@@ -712,10 +743,11 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     if (!lease) fail("PROCESS_DISPOSITION_ACCEPTANCE_FENCE_REQUIRED");
     artifacts.resourceFence().assert(lease);
     const instance = readInstance(record.intent.instance_id), capsule = readDispatch(record.operation_id, record).record;
-    const handoff = isHandoffContinuationPlan(retained.plan), confirmBusiness = handoff ? confirmHandoffContinuation : confirmPrIncidentContinuation;
-    const prepareBusiness = handoff ? prepareHandoffContinuation : preparePrIncidentContinuation;
+    const handoff = isHandoffContinuationPlan(retained.plan), beforeEffect = isBeforeEffectPlan(retained.plan);
+    const confirmBusiness = beforeEffect ? confirmHandoffBeforeEffect : handoff ? confirmHandoffContinuation : confirmPrIncidentContinuation;
+    const prepareBusiness = beforeEffect ? prepareHandoffBeforeEffect : handoff ? prepareHandoffContinuation : preparePrIncidentContinuation;
     continuationOwner(record, capsule);
-    if (retained.output.outcome === "completed") {
+    if (retained.output.outcome === "completed" || beforeEffect) {
       if (confirmBusiness?.(instance, record, retained.output, handoff ? continuationOptions(record) : undefined) !== true) fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
     } else prepareBusiness(instance, record, handoff ? continuationOptions(record) : undefined);
     const grant = await currentGrant({ action: "operation_disposition_accept", disposition_sha256: shadowHash(retained),
@@ -725,7 +757,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       || shadowHash(readOperation(record.operation_id).record) !== shadowHash(record)
       || shadowHash(dispositions.read(record.operation_id).record) !== shadowHash(retained)) fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
     continuationOwner(record, readDispatch(record.operation_id, record).record);
-    if (retained.output.outcome === "completed") {
+    if (retained.output.outcome === "completed" || beforeEffect) {
       if (confirmBusiness?.(instance, record, retained.output, handoff ? continuationOptions(record) : undefined) !== true) fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
     } else prepareBusiness(instance, record, handoff ? continuationOptions(record) : undefined);
     if (handoff) currentConsent(retained.plan, grant, signal);

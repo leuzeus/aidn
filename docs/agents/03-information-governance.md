@@ -161,3 +161,11 @@ this does not fabricate an original publisher return. No new canonical parent,
 store or migration is introduced. DUAL may materialize only the already-canonical
 packet projection; DB-only creates no visible packet. A matching visible copy
 never replaces canonical content, metadata or the exact owner/witness evidence.
+
+
+Before-effect disposition v5 remains in process_operation_journal and the
+existing disposition/control stores. It retains a null original output/receipt
+and one genuine current-controller blocked/no-effect result at index zero.
+The immutable original running capsule is not rewritten. Separate acceptance
+permits a fresh operation intention under the existing reducer; no new record
+concept, backend, projection, shared capability or Native allocation is added.

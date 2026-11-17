@@ -4997,3 +4997,22 @@ owner/fence and lock, source guarantees and current consent before any distinct
 no-effect confirmation or fresh operation intention. The existing v3/v4
 postimage/projection profiles remain separate; before-effect recovery is not
 implemented by this observation capability.
+
+
+## Before-effect handoff controller candidate
+
+A separate closed v5 profile binds the authenticated unreturned held-owner
+prefix to the original packet beforeimage. The fixed original implementation
+has one packet CAS and no rollback; the controller must prove actual producer
+termination, exact exclusive owner/fence and lock, unchanged canonical metadata
+and non-packet sources, and fresh consent before retiring that old lock under
+a new fence. A matching image by itself remains insufficient. Equal before/after
+images use postcondition confirmation instead of attributing original execution.
+
+The private before-effect port publishes nothing. It supplies one genuine
+current-controller blocked/no-effect confirmation, followed by separate common
+acceptance. The existing blocked-frame rule then admits a new operation identity
+and fresh current grant. The original capsule stays running without output.
+Signed control history locks the selected before/postimage profile so later
+bytes cannot erase an earlier observation. No new store, shared authority,
+Native grant, age ceiling or historical timeout renewal is introduced.

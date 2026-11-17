@@ -163,3 +163,12 @@ owner, lease, native authorization or new effect capability. Preview is read-onl
 Apply and separate acceptance still require explicit intent and the exact
 current prepared subject. Recognizing an unreturned capsule does not authorize
 repeating the original packet CAS or allocating a model.
+
+
+The separate before-effect v5 candidate uses the same operation_disposition and
+operation_disposition_accept exact-action boundary. A dead unreturned publisher
+can receive a distinct current blocked/no-effect confirmation only under the
+authenticated fixed beforeimage profile and a fresh controller fence/grant.
+Acceptance preserves the original capsule and opens the ordinary blocked-frame
+repreparation path. A subsequent publication has a new operation identity and
+requires its own current grant; the old packet writer is never replayed.

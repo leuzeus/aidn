@@ -139,11 +139,13 @@ export async function runStandardWorkflowAction({ request, configuration, parame
       if (pending) {
         const record = host.readOperation(next.operation_id);
         const plan = await host.prepareOperationDisposition(next.operation_id, { expectedSha256: state.record.instance_sha256, signal });
-        if (plan.contract_version === "process-operation-disposition-plan.v4") {
-          if (plan.assessment !== "known_partial_handoff_publication") fail("STANDARD_ENTRY_DISPOSITION_PLAN_REQUIRED");
+        if (["process-operation-disposition-plan.v4", "process-operation-disposition-plan.v5"].includes(plan.contract_version)) {
+          const beforeEffect = plan.contract_version === "process-operation-disposition-plan.v5";
+          if (plan.assessment !== (beforeEffect ? "known_before_effect_handoff_publication" : "known_partial_handoff_publication")) fail("STANDARD_ENTRY_DISPOSITION_PLAN_REQUIRED");
           const latest = record.results.at(-1)?.receipt;
           if (!latest) return { kind: "operation_disposition", payload: { disposition_plan: plan } };
-          if (!["completed", "reconciliation_required"].includes(latest.outcome)) fail("STANDARD_ENTRY_DISPOSITION_RECEIPT_CHANGED");
+          if (!(beforeEffect ? latest.outcome === "blocked" && latest.effect_status === "no_effect"
+            : ["completed", "reconciliation_required"].includes(latest.outcome))) fail("STANDARD_ENTRY_DISPOSITION_RECEIPT_CHANGED");
           return { kind: "operation_disposition_accept", payload: { operation_id: next.operation_id, journal_sha256: shadowHash(record), receipt_sha256: shadowHash(latest) } };
         }
       }
@@ -283,7 +285,7 @@ export async function runStandardWorkflowAction({ request, configuration, parame
   } else if (action.kind === "operation_disposition" || action.kind === "operation_disposition_accept") {
     if (!dispositionSource) fail("STANDARD_ENTRY_DISPOSITION_AUTHORITY_REQUIRED");
     const plan = action.payload.disposition_plan;
-    if (action.kind === "operation_disposition" && !["confirmed_reopen", "known_partial_incident_close", "known_partial_handoff_publication"].includes(plan?.assessment)) fail("STANDARD_ENTRY_DISPOSITION_PLAN_REQUIRED");
+    if (action.kind === "operation_disposition" && !["confirmed_reopen", "known_partial_incident_close", "known_partial_handoff_publication", "known_before_effect_handoff_publication"].includes(plan?.assessment)) fail("STANDARD_ENTRY_DISPOSITION_PLAN_REQUIRED");
     permittedDisposition = { action: action.kind, scope_id: state.record.scope_id, instance_sha256: state.record.instance_sha256,
       subject_sha256: plan ? shadowHash(plan) : action.payload.receipt_sha256, action_sha256: expectPlan,
       key_id: context.key_id, trust_sha256: context.trust_sha256 };

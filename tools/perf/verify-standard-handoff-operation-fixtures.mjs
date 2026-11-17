@@ -1,3 +1,4 @@
+import {verifyStandardHandoffBeforeEffectCuts} from "./verify-standard-handoff-before-effect-cut-fixtures.mjs";
 import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';import os from 'node:os';
 import { createFreshStandardWorkflowFixture } from './standard-workflow-fixture-lib.mjs';
 import { createStandardWorkflowOperationHost } from '../../src/application/runtime/standard-workflow-operation-host.mjs';
@@ -11,6 +12,7 @@ import { verifyStandardHandoffContinuation } from './verify-standard-handoff-con
 import { verifyStandardHandoffDisposition } from './verify-standard-handoff-disposition-fixtures.mjs';
 import { verifyPublicHandoffEntry } from './verify-standard-handoff-entry-recovery-fixtures.mjs';
 import { verifyStandardHandoffBeforeimageObservation } from './verify-standard-handoff-beforeimage-fixtures.mjs';
+import { verifyStandardHandoffBeforeEffectDisposition } from './verify-standard-handoff-before-effect-disposition-fixtures.mjs';
 const mode=process.argv[2];assert(['files','dual','db-only'].includes(mode));assert.equal(process.argv.length,3);
 const owned=[],root=createFreshStandardWorkflowFixture(mode,owned,{absentOptionalDocuments:['HANDOFF-PACKET.md']}),artifacts=createStandardWorkflowArtifacts({targetRoot:root}),key=Buffer.alloc(32,149),signer=createOperationJournalSigner(()=>key);
 const control=fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()),'aidn-handoff-operation-control-'));owned.push(control);
@@ -46,6 +48,9 @@ const projectionContinuation = await verifyStandardHandoffContinuation(mode);
 const dispositionContinuation = await verifyStandardHandoffDisposition(mode);
 const unreturnedDispositionContinuation = await verifyStandardHandoffDisposition(mode,{unreturned:true});
 const beforeimageObservation = await verifyStandardHandoffBeforeimageObservation(mode);
+const beforeEffectDisposition = await verifyStandardHandoffBeforeEffectDisposition(mode);
+const beforeEffectCuts = await verifyStandardHandoffBeforeEffectCuts(mode);
 const publicReturnedHandoff = await verifyPublicHandoffEntry(mode);
 const publicUnreturnedHandoff = await verifyPublicHandoffEntry(mode,{unreturned:true});
-console.log(JSON.stringify({status:'PASS',mode,checks,root,control,mixed_cancellation:mixedCancellation,projection_continuation_component:projectionContinuation,public_disposition_component:dispositionContinuation,unreturned_disposition_component:unreturnedDispositionContinuation,beforeimage_observation_component:beforeimageObservation,public_returned_handoff:publicReturnedHandoff,public_unreturned_handoff:publicUnreturnedHandoff,actual_common_reducer_grant_journal_dispatch_owner_CAS_receipt_acceptance:true,independent_discovery_and_native_history:'CONTROLLED_FIXTURE_CAPABILITIES',source_reads:sourceReads,Native_calls:0,full_published_IR_handoff:'OFFLINE_HANDOFF_JOURNEY_BOTH_PROFILES',post_release_complete_handoff:'OFFLINE_PUBLISHED_SUFFIX_BOTH_PROFILES',cold_unknown_recovery:'RETURNED_UNKNOWN_AND_UNRETURNED_DISPATCH_COMPONENT_PROFILES',genuine_Native_Human_installed_full_STANDARD:'NOT_RUN'}));
+const publicBeforeEffectHandoff = await verifyPublicHandoffEntry(mode,{beforeEffect:true});
+console.log(JSON.stringify({status:'PASS',mode,checks,root,control,mixed_cancellation:mixedCancellation,projection_continuation_component:projectionContinuation,public_disposition_component:dispositionContinuation,unreturned_disposition_component:unreturnedDispositionContinuation,beforeimage_observation_component:beforeimageObservation,before_effect_disposition_component:beforeEffectDisposition,before_effect_controller_cuts:beforeEffectCuts,public_returned_handoff:publicReturnedHandoff,public_unreturned_handoff:publicUnreturnedHandoff,public_before_effect_handoff:publicBeforeEffectHandoff,actual_common_reducer_grant_journal_dispatch_owner_CAS_receipt_acceptance:true,independent_discovery_and_native_history:'CONTROLLED_FIXTURE_CAPABILITIES',source_reads:sourceReads,Native_calls:0,full_published_IR_handoff:'OFFLINE_HANDOFF_JOURNEY_THREE_RECOVERY_PROFILES',post_release_complete_handoff:'OFFLINE_PUBLISHED_SUFFIX_THREE_RECOVERY_PROFILES',cold_unknown_recovery:'RETURNED_UNKNOWN_AND_UNRETURNED_DISPATCH_COMPONENT_PROFILES',genuine_Native_Human_installed_full_STANDARD:'NOT_RUN'}));

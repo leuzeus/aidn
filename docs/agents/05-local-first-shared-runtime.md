@@ -715,3 +715,14 @@ Unknown projection effects retain the new controller owner. Current subject,
 source permission and explicit issuer/Native bounds remain independent;
 preparation age adds no validity ceiling. Shared coordination and backend
 authority remain unchanged.
+
+
+The before-effect handoff controller candidate reuses the signed original
+intent/capsule, exact old owner/fence and retained physical lock witness. After
+actual termination and fresh exact consent it acquires its own fence, retires
+only that lock and confirms the fixed single-CAS writer still has its original
+canonical beforeimage and non-packet source state. Its private port performs
+no packet CAS or projection. The new blocked/no-effect receipt and its separate
+acceptance remain distinct from the absent original return. A new ordinary
+intention and current grant are required before actual publication. Existing
+backend authority, explicit issuer/Native limits and shared boundaries remain.

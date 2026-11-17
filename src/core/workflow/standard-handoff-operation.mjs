@@ -158,6 +158,53 @@ export function handoffPublicationUnreturnedPrefix(instance, record) {
   return prefix;
 }
 
+export const handoffBeforeEffectProfile = 'standard-handoff-publication-before-effect.v1';
+export const handoffBeforeEffectReason = 'STANDARD_HANDOFF_ORIGINAL_NO_EFFECT_CONFIRMED';
+export function handoffPublicationBeforeEffectPrefix(instance, record) {
+  assertAgenticProcessInstance(instance);
+  if (!Array.isArray(record?.results) || record.results.length > 1
+    || record.phase !== (record.results.length ? 'receipted' : 'dispatching')
+    || record.intent?.binding_ref !== handoffPublicationOperation || record.preview?.binding?.id !== handoffPublicationOperation)
+    fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_REQUIRED');
+  const prepared = assertHandoffOperationPreparation(record.preview.prepared);
+  if (!prepared.can_apply) fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_REQUIRED');
+  const plan = prepared.plan, inner = decodeHandoffPacketPlan(plan);
+  if (record.intent.occurrence_id !== plan.occurrence_id || H(record.preview.input) !== H(plan.input))
+    fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_REQUIRED');
+  for (const [index, row] of record.results.entries()) {
+    const out = assertHandoffOperationOutput(row.output), rec = row.receipt;
+    if (rec?.operation_id !== record.operation_id || rec.intent_sha256 !== H(record.intent)
+      || rec.output_sha256 !== H(out) || rec.outcome !== out.outcome || rec.effect_status !== out.effect_status
+      || H(rec.facts) !== H(out.facts) || out.observations.plan_sha256 !== prepared.plan_sha256
+      || out.observations.packet_plan_sha256 !== plan.packet_plan_sha256
+      || out.observations.resource_material_sha256 !== inner.resource_material_sha256
+      || rec.receipt_id !== 'receipt_' + record.operation_id.slice(3) + (index ? '_' + index : '')
+      || out.outcome !== 'blocked' || out.effect_status !== 'no_effect'
+      || out.observations.reason_code !== handoffBeforeEffectReason)
+      fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_REQUIRED');
+  }
+  const own = instance.events.map((event,index) => ({event,index})).filter(row => row.event.kind === 'operation_intent'
+    && row.event.intent.operation_id === record.operation_id);
+  if (own.length !== 1 || H(own[0].event.intent) !== H(record.intent)) fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_REQUIRED');
+  const accepted = instance.events.slice(own[0].index + 1);
+  let next = 0;
+  for (const event of accepted) {
+    if (event.kind !== 'operation_result' || event.occurrence_id !== record.intent.occurrence_id)
+      fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_REQUIRED');
+    const matched = record.results.findIndex((row,index) => index >= next && H(row.receipt) === H(event.receipt));
+    if (event.kind !== 'operation_result' || event.occurrence_id !== record.intent.occurrence_id
+      || matched < 0) fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_REQUIRED');
+    next = matched + 1;
+  }
+  const { instance_sha256, ...body } = instance;
+  body.events = body.events.slice(0, own[0].index + 1); body.revision -= accepted.length;
+  const pending = { ...body, instance_sha256: H(body) }; assertAgenticProcessInstance(pending);
+  const prefix = handoffPublicationIntentPrefix(pending, { ...record, phase: 'dispatching', results: [] });
+  if (prefix.instance_sha256 !== inner.context.instance_sha256)
+    fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_REQUIRED');
+  return prefix;
+}
+
 export function assertHandoffOperationOutput(value) {
   if (!valid(value, outputSchema)) fail('STANDARD_OPERATION_OUTPUT_INVALID');
   const o = value.observations, completed = value.outcome === 'completed';

@@ -1180,3 +1180,15 @@ receipt, packet plan and current canonical beforeimage, with snapshot-only and
 false effect/handoff/closure permission flags. A separate currentness function
 rechecks the signed subject and source. No original result is fabricated, and
 matching beforeimages alone do not establish a product no-effect receipt.
+
+
+## Before-effect handoff disposition candidate
+
+Closed process-operation-disposition-plan.v5, process-operation-disposition.v5
+and process-disposition-authorization-request.v5 describe the separate
+standard-handoff-publication-before-effect.v1 profile. Original output and
+receipt hashes are null; owned_paths is empty. The expected output is the
+existing blocked/no_effect handoff output with its fixed no-effect confirmation
+reason. At most one terminal controller receipt is retained at index zero.
+Historical v1-v4 contracts and readers stay separate. Data alone grants no
+permission and matching beforeimages alone do not prove original non-execution.
