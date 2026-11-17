@@ -1,5 +1,5 @@
 import { createStandardWorkflowArtifacts } from './standard-workflow-artifacts.mjs';
-import { observeHandoffPublicationPostimages } from './standard-handoff-publication.mjs';
+import { observeHandoffPublicationPostimages, observeHandoffPublicationBeforeimages } from './standard-handoff-publication.mjs';
 import { currentStandardDispatchContext } from './standard-dispatch-context.mjs';
 import { createOperationJournalSigner } from '../../core/workflow/process-operation-journal.mjs';
 import { assertHandoffOperationPreparation, decodeHandoffPacketPlan, handoffPublicationInterruptedPrefix, handoffPublicationUnreturnedPrefix,
@@ -119,6 +119,53 @@ export function createStandardHandoffContinuation({ targetRoot, readSigningKey, 
         const reason = /^[A-Z][A-Z0-9_]{0,127}$/.test(cause.code ?? '') ? cause.code : 'STANDARD_HANDOFF_CONTINUATION_UNCONFIRMED';
         return { output: handoffOperationResult(record.preview.prepared, null, reason, 'unknown'), effect_knowledge: 'unknown' };
       }
+    },
+  });
+}
+
+
+// An authenticated subject plus current beforeimages, never a no-effect
+// conclusion about the original producer. The future controller must separately
+// authenticate the capsule, termination, exact owner/fence and current consent.
+export function createStandardHandoffBeforeEffectObservation({ targetRoot, readSigningKey, readCurrent, readClaimed }) {
+  if ([readSigningKey, readCurrent, readClaimed].some(fn => typeof fn !== 'function'))
+    fail('STANDARD_HANDOFF_BEFOREIMAGE_CAPABILITY_REQUIRED');
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot });
+  return Object.freeze({
+    observe(instance, record, { signal } = {}) {
+      active(signal);
+      instance = freezeShadow(structuredClone(instance));
+      record = freezeShadow(structuredClone(record));
+      const signer = createOperationJournalSigner(readSigningKey);
+      signer.verify(record); signer.verify(record.preview);
+      if (record.phase !== 'dispatching' || record.results.length !== 0)
+        fail('STANDARD_HANDOFF_BEFOREIMAGE_SUBJECT_REQUIRED');
+      const prepared = assertHandoffOperationPreparation(record.preview.prepared);
+      if (!prepared.can_apply) fail('STANDARD_HANDOFF_BEFOREIMAGE_SUBJECT_REQUIRED');
+      const inner = decodeHandoffPacketPlan(prepared.plan);
+      signer.verify(inner.resource_request);
+      const prefix = handoffPublicationUnreturnedPrefix(instance, record);
+      const readPrefix = () => {
+        const current = readCurrent(instance.instance_id), claimed = readClaimed(record.operation_id);
+        signer.verify(claimed); signer.verify(claimed.preview);
+        if (H(current) !== H(instance) || H(claimed) !== H(record))
+          fail('STANDARD_HANDOFF_BEFOREIMAGE_SUBJECT_CHANGED');
+        return prefix;
+      };
+      const capture = () => {
+        active(signal); readPrefix();
+        const value = observeHandoffPublicationBeforeimages({ targetRoot: artifacts.root, readCurrent: readPrefix, plan: inner });
+        readPrefix(); active(signal); return value;
+      };
+      const state = capture();
+      const data = freezeShadow({ operation_id: record.operation_id, instance_sha256: instance.instance_sha256,
+        original_intent_sha256: H(record.intent), original_output_sha256: null, original_receipt_sha256: null,
+        packet_plan_sha256: H(inner), state, state_sha256: H(state),
+        snapshot_only: true, written: false, complete_resource_closure: false,
+        permits_handoff: false, permits_effects: false });
+      return Object.freeze({ data, assertCurrent() {
+        if (H(capture()) !== data.state_sha256) fail('STANDARD_HANDOFF_BEFOREIMAGE_STATE_CHANGED');
+      } });
     },
   });
 }

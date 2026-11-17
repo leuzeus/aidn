@@ -25,6 +25,28 @@ function checkPublicationArtifacts(artifacts, context, plan, after = false, meta
     || packet.metadata_sha256 !== (after ? metadata : plan.before_metadata_sha256)) fail('STANDARD_HANDOFF_PUBLICATION_PACKET_CHANGED');
 }
 
+
+// Private point-in-time beforeimage observation. Matching bytes do not prove
+// that an old producer never ran; owner, dispatch and recovery authority remain
+// separate. This reader has no publication, projection or receipt capability.
+export function observeHandoffPublicationBeforeimages({ targetRoot, readCurrent, plan }) {
+  assertHandoffPublicationPlan(plan);
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot });
+  const context = createStandardHandoffContext({ targetRoot, readCurrent });
+  checkPublicationArtifacts(artifacts, context, plan);
+  const [packet] = artifacts.readMany([target], { includeMetadata: true });
+  const mode = artifacts.describe().state_mode;
+  let projection = null;
+  if (mode !== 'db-only') {
+    const file = agentRunPhysicalPath(path.join(artifacts.root, 'docs/audit', target), { missing: true });
+    projection = readAgentRunFile(file, { json: false, optional: true, maxBytes: STANDARD_ARTIFACT_MAX_BYTES })?.sha256 ?? null;
+  }
+  return freezeShadow({ state_mode: mode, packet_sha256: packet.sha256,
+    packet_metadata_sha256: packet.metadata_sha256, projection_sha256: projection,
+    snapshot_only: true, written: false, complete_resource_closure: false,
+    permits_handoff: false, permits_effects: false });
+}
+
 // Read-only postimage observation. The fixed caller separately authenticates
 // the captured output, terminated producer, released owner and fresh consent.
 // This does not re-authorize or replay publication, nor prove resource closure.

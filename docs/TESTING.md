@@ -7413,3 +7413,21 @@ the RPC session must close. Human decisions are signed fixture decisions.
 There are zero genuine Native clients or model calls, and no genuine Human,
 provider or installed-archive qualification. A successful handoff suffix does
 not establish before-effect recovery or complete A6/full STANDARD acceptance.
+
+
+## Private beforeimage observation fixtures
+
+Run `node tools/perf/verify-standard-handoff-beforeimage-fixtures.mjs files`
+(and `dual` / `db-only`). The required common handoff command also invokes this
+component while retaining every existing returned, unreturned and public case.
+A real producer pauses before packet CAS with a signed running capsule, an empty
+result journal and its held owner/fence. Live transfer refuses; the producer is
+actually terminated within its original 120000 ms bound.
+
+The fixed observation reads the canonical packet beforeimage and metadata,
+preserves capsule and journal bytes, rejects a changed process subject and stops
+cancelled preparation before reading signing keys. DB-only creates no projection.
+Replay and SIM retain the unchanged original process. Resource/current-operator
+sources are controlled fixtures and no Native/model is launched. The observer
+grants no effects and produces no no-effect receipt; product before-effect
+reconciliation and its subsequent fresh intention remain unimplemented.

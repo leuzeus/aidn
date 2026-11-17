@@ -4980,3 +4980,20 @@ results remain within the unchanged32-result common journal. Before-effect or
 foreign/missing postimages remain UNKNOWN/refused; this profile does not infer
 original producer completion from matching bytes. Full normal-entry, installed,
 genuine actor and broader A6 qualification remain separate evidence.
+
+
+## Private beforeimage observation candidate
+
+A separate private read-only capability observes the original packet beforeimage
+and canonical metadata on an authenticated unreturned dispatch prefix. It rechecks
+the unchanged instance, journal, signed plan and non-packet context, and exposes
+a retained currentness check. FILES/DUAL visible bytes are observed separately;
+DB-only reads no projection. The snapshot grants no effect, closure or handoff
+permission and creates no output or receipt for the original publisher.
+
+This is evidence preparation for before-effect reconciliation. A product
+controller must still authenticate the capsule, actual termination, exact held
+owner/fence and lock, source guarantees and current consent before any distinct
+no-effect confirmation or fresh operation intention. The existing v3/v4
+postimage/projection profiles remain separate; before-effect recovery is not
+implemented by this observation capability.

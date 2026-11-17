@@ -1172,3 +1172,11 @@ termination, held lease, exact retired-lock witness, current source and packet
 postimage. The plan/record data grant no authority by themselves. Historical
 v1/v2/v3 definitions and retained histories remain separate. A before-effect,
 missing or foreign postimage is not successful reconciliation.
+
+
+The private beforeimage observation candidate has no public result or disposition
+contract. Its frozen data binds the original intent, null original output and
+receipt, packet plan and current canonical beforeimage, with snapshot-only and
+false effect/handoff/closure permission flags. A separate currentness function
+rechecks the signed subject and source. No original result is fabricated, and
+matching beforeimages alone do not establish a product no-effect receipt.
