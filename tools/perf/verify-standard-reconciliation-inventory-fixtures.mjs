@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { execFileSync, spawn } from "node:child_process";
 import { once } from "node:events";
@@ -26,6 +26,8 @@ import { controlInboxId, controlReservationId } from "../../src/core/workflow/pr
 import { externalMergeEventKey } from "../../src/core/workflow/standard-pr-external-merge.mjs";
 import { createProcessDecisionInboxStore } from "../../src/adapters/runtime/process-decision-inbox-store.mjs";
 
+const shadowHashBytes = bytes => createHash("sha256").update(bytes).digest("hex");
+
 // Fault-injected journal states below qualify discovery/authentication only.
 // They are not real process-death, external closure or disposition evidence.
 export async function verifyStandardReconciliationInventory(mode, pass, { processOwnerObservation = false } = {}) {
@@ -36,7 +38,8 @@ export async function verifyStandardReconciliationInventory(mode, pass, { proces
     participants: [{ id: "project" }], roles: [], policies: [], operation_pins: { context_reload: shadowHash(binding) }, entry: "reload",
     nodes: [{ id: "reload", kind: "operation", participant_ref: "project", binding_ref: "context_reload" }] };
   let authorizations = 0;
-  const open = () => createStandardWorkflowOperationHost({ targetRoot: root, model, readSigningKey: () => key,
+  const open = (reconciliationConfiguration = null) => createStandardWorkflowOperationHost({ targetRoot: root, model, readSigningKey: () => key,
+    reconciliationConfiguration,
     authorize: async () => { authorizations++; throw Error("UNEXPECTED_AUTHORIZATION"); } });
   const artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
   const journals = createProcessOperationJournalStore({ targetRoot: root, stateMode: mode });
@@ -98,6 +101,44 @@ export async function verifyStandardReconciliationInventory(mode, pass, { proces
     assert.equal(changedContext.instance_sha256, inventory.instance_sha256);
     assert.equal(changedContext.permits_effects, false); assert.equal(authorizations, 0);
     pass(`${mode}: an already open host freshly observes changed Git context without renewing authority or writing an inventory`);
+
+    // A Native generation retains both an output directory and closure sidecar
+    // files directly under control_root. All are observed, never executed.
+    const outputControl = path.join(root, ".aidn/runtime/inventory-control");
+    const generation = id + ".g2", closureName = generation + "-CLOSURE.json";
+    fs.mkdirSync(path.join(outputControl, generation, "evidence"), { recursive: true });
+    const closureFile = path.join(outputControl, closureName);
+    const closureBytes = Buffer.from('{"process_tree":{"termination_state":"confirmed"}}\n');
+    fs.writeFileSync(closureFile, closureBytes);
+    const nestedFile = path.join(outputControl, generation, "evidence/native.txt");
+    fs.writeFileSync(nestedFile, "retained Native evidence\n");
+    fs.writeFileSync(path.join(outputControl, id + "-foreign.g2-CLOSURE.json"), "foreign instance\n");
+    const configured = open({ control_root: outputControl });
+    const readOutputs = () => configured.prepareReconciliationInventory(id, { expectedSha256: before.record.instance_sha256 });
+    const outputState = artifacts.observeInventory(), closureIdentity = exactFileIdentity(fs.lstatSync(closureFile, { bigint: true }));
+    const withOutputs = readOutputs(); signer.verify(withOutputs);
+    const closureResource = withOutputs.resources.find(row => row.ref === "execution:" + closureName);
+    assert.equal(closureResource.kind, "local_evidence");
+    assert.equal(closureResource.disposition, "unresolved");
+    assert.equal(closureResource.sha256, shadowHashBytes(closureBytes));
+    assert.deepEqual(closureResource.details.physical_identity, closureIdentity);
+    assert.equal(withOutputs.resources.find(row => row.ref === "execution:" + generation + ":evidence/native.txt")?.sha256,
+      shadowHashBytes(fs.readFileSync(nestedFile)));
+    assert(!withOutputs.resources.some(row => row.ref.includes("foreign")));
+    assert.equal(withOutputs.complete_resource_closure, false); assert.equal(withOutputs.permits_effects, false);
+    assert.deepEqual(fs.readFileSync(closureFile), closureBytes);
+    assert.deepEqual(exactFileIdentity(fs.lstatSync(closureFile, { bigint: true })), closureIdentity);
+    assert.deepEqual(artifacts.observeInventory(), outputState); assert.equal(authorizations, 0);
+    fs.writeFileSync(closureFile, "changed closure evidence\n");
+    const changedClosure = fs.readFileSync(closureFile);
+    assert.equal(readOutputs().resources.find(row => row.ref === "execution:" + closureName).sha256, shadowHashBytes(changedClosure));
+    assert.deepEqual(fs.readFileSync(closureFile), changedClosure);
+    const oversized = path.join(outputControl, id + ".g3-CLOSURE.json");
+    fs.closeSync(fs.openSync(oversized, "wx")); fs.truncateSync(oversized, 16777217);
+    try { assert.throws(readOutputs, { code: "PROCESS_RECONCILIATION_RESOURCE_UNSUPPORTED" }); }
+    finally { fs.unlinkSync(oversized); }
+    assert.deepEqual(artifacts.observeInventory(), outputState); assert.equal(authorizations, 0);
+    pass(`${mode}: generation closure files and nested output evidence are freshly observed with exact identities and existing bounds, without writes or closure authority`);
 
     const emptyInputs = { contract_version: "process-data-bindings.v4", parameter_keys: [], inputs: [{ node_id: "reload", fields: {} }] };
     const target = { ...model, model_id: "inventory-call-target", data_bindings: emptyInputs,

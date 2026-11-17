@@ -279,9 +279,12 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
       const root = agentRunPhysicalPath(directory, { missing: true }); let entries = 0, total = 0;
       const walk = (at, depth) => {
         if (depth > 32) fail("PROCESS_RECONCILIATION_INVENTORY_TRUNCATED");
-        for (const name of fs.readdirSync(at).sort()) {
+        // Native output roots include regular generation closure sidecars as
+        // well as directories. Both use the same bounded identity-checked read.
+        const names = fs.lstatSync(at).isDirectory() ? fs.readdirSync(at).sort() : [""];
+        for (const name of names) {
           if (++entries > 10000) fail("PROCESS_RECONCILIATION_INVENTORY_TRUNCATED");
-          const file = agentRunPhysicalPath(path.join(at, name)), stat = fs.lstatSync(file, { bigint: true });
+          const file = agentRunPhysicalPath(name === "" ? at : path.join(at, name)), stat = fs.lstatSync(file, { bigint: true });
           if (stat.isDirectory()) { walk(file, depth + 1); continue; }
           const identity = exactFileIdentity(stat);
           if (!stat.isFile() || identity.nlink !== 1 || identity.size > 16777216 || (total += identity.size) > 33554432)
@@ -300,7 +303,7 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
             if (validateJsonSchema(owner, ownerSchema, "$", { contractKind: "workflow-definition" }).length
               || owner.scope_sha256 !== shadowHash({ physical_root: artifacts.root })) fail("STANDARD_EFFECT_OWNER_INVALID");
           }
-          add(label + ":" + relative, owner ? "local_effect_owner" : "local_evidence", hash(bytes), {
+          add(label + (relative ? ":" + relative : ""), owner ? "local_effect_owner" : "local_evidence", hash(bytes), {
             bytes: bytes.length, owner, physical_identity: identity, physical_identity_sha256: shadowHash(identity) });
         }
       };

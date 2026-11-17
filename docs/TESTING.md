@@ -1052,6 +1052,14 @@ not real crashes, external closure, a disposition or the full STANDARD model.
 No authorization callback or model call is expected. General reconciliation
 and the entire L1-L8/A1-A10 objective remain unqualified.
 
+The configured output-root check observes both generation directories and their
+regular closure sidecar files. It retains each file's content hash and exact
+physical identity, excludes foreign instance names and freshly reads changed
+closure evidence. Oversized files still refuse under the existing bound.
+These rows remain unresolved local evidence; a closure filename or JSON body
+does not establish resource closure or permission. The check performs no Native
+execution and preserves canonical state without effect authorization.
+
 Add `--process-owner-observation` to this fixture for the internal owner
 observation. The fixture signs a dispatch linked to a real disposable local
 child. It reads the same identity while the child is alive and after its
