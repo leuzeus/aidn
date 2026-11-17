@@ -34,6 +34,16 @@ export function createGithubReviewFixture({ workingDirectory, pullRequest }) {
 // durable store, then read the current refs from their real local bare remote.
 // The synthetic successful review/check is a fixture capability, never native
 // evidence or an approval inferred from the incoming observation request.
+export function applyComposedGithubReviewScenario(fixture, controlRoot) {
+  const correctionFile = path.join(controlRoot, 'standard-pr-correction-fixture.json');
+  if (fs.existsSync(correctionFile)) {
+    const correction = JSON.parse(fs.readFileSync(correctionFile, 'utf8'));
+    if (typeof correction.review_body !== 'string' || !correction.review_body.trim()) throw Error('FIXTURE_REVIEW_BODY_INVALID');
+    fixture.state.reviews[0].body = correction.review_body;
+    fixture.state.reviews[0].state = 'CHANGES_REQUESTED';
+  }
+}
+
 export function createComposedGithubReviewFixture({ controlRoot, remoteRoot }) {
   function port() {
     const state = JSON.parse(fs.readFileSync(path.join(controlRoot, 'pr-open-provider-fixture.json'), 'utf8'));
@@ -44,13 +54,7 @@ export function createComposedGithubReviewFixture({ controlRoot, remoteRoot }) {
     const fixture = createGithubReviewFixture({ workingDirectory: controlRoot, pullRequest: { repository_id: row.head.repo.node_id,
       node_id: row.node_id, number: row.number, head_oid: ref(row.head.ref), base_oid: ref(row.base.ref), head_branch: row.head.ref,
       base_branch: row.base.ref, state: row.state.toUpperCase(), draft: row.draft } });
-    const correctionFile = path.join(controlRoot, 'standard-pr-correction-fixture.json');
-    if (fs.existsSync(correctionFile)) {
-      const correction = JSON.parse(fs.readFileSync(correctionFile, 'utf8'));
-      if (typeof correction.review_body !== 'string' || !correction.review_body.trim()) throw Error('FIXTURE_REVIEW_BODY_INVALID');
-      fixture.state.reviews[0].body = correction.review_body;
-      fixture.state.reviews[0].state = 'CHANGES_REQUESTED';
-    }
+    applyComposedGithubReviewScenario(fixture, controlRoot);
     return fixture.port;
   }
   return { observeReviewEvidence: input => port().observeReviewEvidence(input), observePullRequest: input => port().observePullRequest(input),

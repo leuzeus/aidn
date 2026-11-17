@@ -10,10 +10,14 @@ import { observeLocalProcessOwner } from '../../src/adapters/runtime/local-proce
 import { createAgenticProcess, advanceAgenticProcess, inspectAgenticProcess } from '../../src/core/workflow/agentic-process.mjs';
 import { iterateAgenticProcessSimulation } from '../../src/core/workflow/agentic-process-simulation.mjs';
 import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
+import { runStandardWorkflowEntry } from '../../src/application/runtime/standard-workflow-entry.mjs';
+import { runPublicCheckpointEntryControllers } from './standard-git-checkpoint-entry-controllers-fixture-lib.mjs';
 
 const cut = process.argv.find(arg => arg.startsWith('--cut='))?.slice(6) ?? 'effect_returned';
 const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'files';
 const workerBoundMs = Number(process.argv.find(arg => arg.startsWith('--checkpoint-worker-bound-ms='))?.split('=')[1] ?? 120000);
+const publicEntryService = process.argv.includes('--public-entry-service');
+assert(!publicEntryService || mode === 'files' && cut === 'effect_returned', 'PUBLIC_GIT_ENTRY_FIXTURE_SCOPE_INVALID');
 assert(['effect_returned', 'receipted', 'accepted'].includes(cut), 'GIT_RECOVERY_CUT_INVALID');
 assert(['files', 'dual'].includes(mode), 'GIT_RECOVERY_MODE_INVALID');
 assert([120000, 300000].includes(workerBoundMs), 'GIT_CHECKPOINT_WORKER_BOUND_INVALID');
@@ -29,7 +33,8 @@ const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aidn-actual
 console.error(JSON.stringify({ actual_git_recovery_arena: base, mode, cut, retained: true }));
 const prefixArgs = ['tools/perf/verify-agentic-process-execution-fixtures.mjs',
   '--standard-composed-mode=' + mode, '--standard-composed-stop=session_pr_correction_decide',
-  '--standard-composed-scenario=correction', '--standard-composed-checkpoint-recovery-prefix', '--retain-always'];
+  '--standard-composed-scenario=correction', '--standard-composed-checkpoint-recovery-prefix', '--retain-always',
+  ...(publicEntryService ? ['--standard-composed-public-checkpoint-prefix'] : [])];
 const prefix = spawnSync(process.execPath, prefixArgs, {
   cwd: process.cwd(), encoding: 'utf8', windowsHide: true, maxBuffer: 1048576,
 });
@@ -71,9 +76,19 @@ try {
   stateBefore = bound.host.inspect();
   if (cut === 'effect_returned') {
     const inventory = H(bound.artifacts.observeInventory());
-    const live = await bound.host.prepareOperationDisposition(message.operation_id,
-      { expectedSha256: stateBefore.record.instance_sha256 });
-    assert.equal(live.assessment, 'unknown', 'LIVE_ORIGINAL_MUST_NOT_BECOME_A_CONFIRMED_RETURN');
+    if (publicEntryService) {
+      assert(bound.publicFixture && packet.fixture.r09Request, 'RETAINED_PUBLIC_HOST_CONFIGURATION_REQUIRED');
+      const live = await runStandardWorkflowEntry({ request: packet.fixture.r09Request,
+        environment: bound.publicFixture.environment }, { providerTransport: bound.publicFixture.providerTransport });
+      fs.writeFileSync(path.join(base, 'public-entry-live-preview.json'), JSON.stringify(live) + '\n', { flag: 'wx' });
+      assert.equal(live.written, false); assert.equal(live.can_apply, false);
+      assert.equal(live.preview.kind, 'observe');
+      assert.equal(live.preview.payload.reason, 'checkpoint_original_process_active');
+    } else {
+      const live = await bound.host.prepareOperationDisposition(message.operation_id,
+        { expectedSha256: stateBefore.record.instance_sha256 });
+      assert.equal(live.assessment, 'unknown', 'LIVE_ORIGINAL_MUST_NOT_BECOME_A_CONFIRMED_RETURN');
+    }
     assert.equal(H(bound.artifacts.observeInventory()), inventory);
   }
   assert(Date.now() < producerDeadlineMs, 'GIT_CHECKPOINT_WORKER_BOUND_EXPIRED');
@@ -110,36 +125,83 @@ fs.writeFileSync(path.join(base, 'after-death-observation.json'), JSON.stringify
 let result;
 if (cut === 'effect_returned') {
   assert.equal(original.phase, 'dispatching'); assert.deepEqual(original.results, []);
-  await assert.rejects(bound.host.reconcileCorrectionCheckpoint(id), { code: 'STANDARD_HOST_EXPLICIT_WRITE_REQUIRED' });
-  const denied = openCommonGitCheckpointPrefix(packet, { authorize() {
-    throw Object.assign(Error('FIXTURE_GIT_CURRENT_GRANT_REQUIRED'), { code: 'FIXTURE_GIT_CURRENT_GRANT_REQUIRED' });
-  } });
-  const inventory = H(bound.artifacts.observeInventory());
-  await assert.rejects(denied.host.reconcileCorrectionCheckpoint(id, { write: true }),
-    { code: 'FIXTURE_GIT_CURRENT_GRANT_REQUIRED' });
-  assert.equal(H(bound.artifacts.observeInventory()), inventory);
-  const contender = openCommonGitCheckpointPrefix(packet);
-  const competitors = await Promise.allSettled([
-    bound.host.reconcileCorrectionCheckpoint(id, { write: true }),
-    contender.host.reconcileCorrectionCheckpoint(id, { write: true }),
-  ]);
-  fs.writeFileSync(path.join(base, 'competing-recovery.json'), JSON.stringify(competitors.map(row =>
-    row.status === 'fulfilled' ? { status: row.status, value: row.value }
-      : { status: row.status, code: row.reason.code ?? null, message: row.reason.message })) + '\n', { flag: 'wx' });
-  assert.equal(competitors.filter(row => row.status === 'fulfilled' && row.value.status === 'receipted').length, 1);
-  for (const row of competitors.filter(row => row.status === 'rejected')) assert([
-    'PROCESS_JOURNAL_OWNER_CHANGED', 'STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_REQUIRED',
-    'STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_CHANGED',
-  ].includes(row.reason.code), row.reason.code);
-  result = competitors.find(row => row.status === 'fulfilled' && row.value.status === 'receipted').value;
+  if (publicEntryService) {
+    assert(bound.publicFixture && packet.fixture.r09Request, 'RETAINED_PUBLIC_HOST_CONFIGURATION_REQUIRED');
+    const entryOptions = { request: packet.fixture.r09Request, environment: bound.publicFixture.environment };
+    const entryPorts = { providerTransport: bound.publicFixture.providerTransport };
+    const inventoryBefore = H(bound.artifacts.observeInventory());
+    const prepared = await runStandardWorkflowEntry(entryOptions, entryPorts);
+    fs.writeFileSync(path.join(base, 'public-entry-preview.json'), JSON.stringify(prepared) + '\n', { flag: 'wx' });
+    assert.equal(prepared.written, false); assert.equal(H(bound.artifacts.observeInventory()), inventoryBefore);
+    assert.equal(prepared.preview.kind, 'dispatch'); assert.equal(prepared.can_apply, true);
+    assert.equal(prepared.preview.payload.operation_id, id);
+    const actionFile = path.join(base, 'public-entry-prepared-action.json');
+    fs.writeFileSync(actionFile, JSON.stringify(prepared.preview) + '\n', { flag: 'wx' });
+    const controllers = await runPublicCheckpointEntryControllers({ producerFile: producer,
+      prefixFile: retained.file, actionFile, evidenceRoot: base, boundMs: workerBoundMs });
+    fs.writeFileSync(path.join(base, 'public-entry-controllers.json'), JSON.stringify(controllers) + '\n', { flag: 'wx' });
+    for (const row of controllers.filter(row => row.status === 'rejected')) assert([
+      'STANDARD_ENTRY_PRECONDITIONS_CHANGED', 'STANDARD_ENTRY_ACTION_CHANGED', 'PROCESS_JOURNAL_OWNER_CHANGED',
+      'PROCESS_RECONCILIATION_OBSERVATION_CHANGED', 'PROCESS_RECONCILIATION_RESOURCE_CHANGED',
+      'PROCESS_REVISION_CONFLICT', 'PROCESS_OWNER_OBSERVATION_UNKNOWN_REQUIRED',
+      'WORKFLOW_INSTANCE_LOCK_RECONCILIATION_REQUIRED', 'WORKFLOW_INSTANCE_REVISION_CONFLICT',
+      'STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_REQUIRED', 'STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_CHANGED',
+    ].includes(row.error.code), JSON.stringify(row.error));
+    const completed = controllers.filter(row => row.status === 'fulfilled');
+    assert(completed.length > 0, 'ONE_PUBLIC_CHECKPOINT_CONTROLLER_MUST_COMPLETE');
+    const recovered = bound.host.readOperation(id);
+    assert.equal(recovered.results.length, 1);
+    for (const lock of [path.join(root, 'docs/audit/workflows/process-instances', packet.fixture.configuration.instance_id + '.json.lock'),
+      path.join(root, 'docs/audit/workflows/operation-records', id + '.json.lock')])
+      assert.equal(fs.existsSync(lock), false, 'PUBLIC_CONTROLLER_RECORD_LOCK_RETAINED');
+    const accepted = bound.host.inspect().record.events.filter(event => event.kind === 'operation_result'
+      && event.receipt.operation_id === id);
+    assert.equal(accepted.length, 1, 'PUBLIC_CONTROLLER_MUST_ACCEPT_BEFORE_PARENT_OBSERVATION');
+    for (const row of completed) {
+      const applied = row.applied;
+      assert.equal(applied.result.operation_outcome, 'completed', 'PUBLIC_ENTRY_GIT_RECONCILIATION_REQUIRED');
+      assert.equal(applied.result.effect_status, 'confirmed'); assert.equal(applied.result.native_started, false);
+      assert.equal(applied.result.workflow_completed, false);
+      assert.equal(H(applied.result.details.receipt), H(recovered.results[0].receipt));
+    }
+    const applied = completed[0].applied;
+    fs.writeFileSync(path.join(base, 'public-entry-applied.json'), JSON.stringify(applied) + '\n', { flag: 'wx' });
+    fs.writeFileSync(path.join(base, 'public-entry-journal-after.json'), JSON.stringify(recovered) + '\n', { flag: 'wx' });
+    result = applied.result.details;
+  } else {
+    await assert.rejects(bound.host.reconcileCorrectionCheckpoint(id), { code: 'STANDARD_HOST_EXPLICIT_WRITE_REQUIRED' });
+    const denied = openCommonGitCheckpointPrefix(packet, { authorize() {
+      throw Object.assign(Error('FIXTURE_GIT_CURRENT_GRANT_REQUIRED'), { code: 'FIXTURE_GIT_CURRENT_GRANT_REQUIRED' });
+    } });
+    const inventory = H(bound.artifacts.observeInventory());
+    await assert.rejects(denied.host.reconcileCorrectionCheckpoint(id, { write: true }),
+      { code: 'FIXTURE_GIT_CURRENT_GRANT_REQUIRED' });
+    assert.equal(H(bound.artifacts.observeInventory()), inventory);
+    const contender = openCommonGitCheckpointPrefix(packet);
+    const competitors = await Promise.allSettled([
+      bound.host.reconcileCorrectionCheckpoint(id, { write: true }),
+      contender.host.reconcileCorrectionCheckpoint(id, { write: true }),
+    ]);
+    fs.writeFileSync(path.join(base, 'competing-recovery.json'), JSON.stringify(competitors.map(row =>
+      row.status === 'fulfilled' ? { status: row.status, value: row.value }
+        : { status: row.status, code: row.reason.code ?? null, message: row.reason.message })) + '\n', { flag: 'wx' });
+    assert.equal(competitors.filter(row => row.status === 'fulfilled' && row.value.status === 'receipted').length, 1);
+    for (const row of competitors.filter(row => row.status === 'rejected')) assert([
+      'PROCESS_JOURNAL_OWNER_CHANGED', 'STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_REQUIRED',
+      'STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_CHANGED',
+    ].includes(row.reason.code), row.reason.code);
+    result = competitors.find(row => row.status === 'fulfilled' && row.value.status === 'receipted').value;
+  }
   const recovered = bound.host.readOperation(id);
   for (const field of ['preview', 'intent', 'grant', 'owner']) assert.deepEqual(recovered[field], original[field]);
   assert.equal(recovered.results.length, 1); assert.equal(recovered.revision, original.revision + 1);
   assert.equal(recovered.results[0].output.observations.reconciliation, 'observed-existing-commit');
   assert.equal(recovered.results[0].output.observations.dispatch_sha256, H(original));
   assert.equal(result.receipt.effect_status, 'confirmed'); assert.equal(result.receipt.outcome, 'completed');
-  assert.equal(bound.host.inspect().record.instance_sha256, stateBefore.record.instance_sha256);
-  assert.equal((await bound.host.reconcileCorrectionCheckpoint(id, { write: true })).status, 'retained_result');
+  if (!publicEntryService) {
+    assert.equal(bound.host.inspect().record.instance_sha256, stateBefore.record.instance_sha256);
+    assert.equal((await bound.host.reconcileCorrectionCheckpoint(id, { write: true })).status, 'retained_result');
+  }
   assert.deepEqual(bound.host.readOperation(id), recovered);
 } else {
   assert.equal(original.results.length, 1); result = { receipt: original.results[0].receipt };
@@ -164,12 +226,15 @@ let last, rows = 0;
 for (const row of iterateAgenticProcessSimulation({ ...initial, events: stable.events })) { last = row; rows++; }
 assert.equal(rows, stable.events.length + 1); assert.equal(last.instance_sha256, stable.instance_sha256);
 assert.deepEqual(last.cursor, accepted.cursor);
-console.log(JSON.stringify({ status: 'PASS_ACTUAL_COMMON_GIT_CRASH_RECOVERY_COMPONENT', mode, cut, base, root,
+console.log(JSON.stringify({ status: publicEntryService ? 'PASS_PUBLIC_ENTRY_SERVICE_ACTUAL_GIT_CRASH_RECOVERY_COMPONENT'
+  : 'PASS_ACTUAL_COMMON_GIT_CRASH_RECOVERY_COMPONENT', mode, cut, base, root,
   retained_prefix: retained.file, operation_id: id, original_results: original.results.length,
   kernel_termination_observed: true, original_worker_bound_ms: workerBoundMs, timer_expired: false,
   new_confirmation_after_unreturned_effect: cut === 'effect_returned',
-  competing_observers_single_append: cut === 'effect_returned', git_commit_repeated: false,
-  original_capsule_bytes_and_metadata_preserved: true, separate_acceptance: true, replay_sim_equal: true,
+  competing_observers_single_append: cut === 'effect_returned', public_controller_processes: publicEntryService ? 2 : 0, git_commit_repeated: false,
+  original_capsule_bytes_and_metadata_preserved: true, separate_acceptance: !publicEntryService, replay_sim_equal: true,
+  acceptance_mode: publicEntryService ? 'existing public dispatch then acceptance' : 'explicit host calls',
   native_limits_unchanged: true, new_native_allocations: 0,
   genuine_Native_clients: 0, genuine_model_calls: 0, human_provider_authorities: 'FIXTURE',
-  actual_public_entry: 'NOT_RUN', installed_archive: 'NOT_RUN', full_standard_workflow: false }));
+  actual_public_entry: publicEntryService ? 'SERVICE_WITH_IDENTIFIED_PROVIDER_TRANSPORT_FIXTURE' : 'NOT_RUN',
+  actual_CLI_shell: 'NOT_RUN', installed_archive: 'NOT_RUN', full_standard_workflow: false }));

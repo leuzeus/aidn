@@ -181,6 +181,7 @@ const standardHostTrace = process.argv.includes('--standard-composed-host-trace'
 const standardCheckpointAckLoss = process.argv.includes('--standard-composed-checkpoint-ack-loss');
 const standardCheckpointOwnerAckLoss = process.argv.includes('--standard-composed-checkpoint-owner-ack-loss');
 const standardCheckpointRecoveryPrefix = process.argv.includes('--standard-composed-checkpoint-recovery-prefix');
+const standardPublicCheckpointPrefix = process.argv.includes('--standard-composed-public-checkpoint-prefix');
 const retainAlways = process.argv.includes('--retain-always');
 if ((standardHostTrace || standardCheckpointAckLoss || standardCheckpointOwnerAckLoss) && !selectedStandardComposedMode) throw Error('STANDARD_FIXTURE_EXPERIMENT_MODE_REQUIRED');
 if (selectedStandardComposedMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardComposedMode)) throw Error("STANDARD_COMPOSED_FIXTURE_MODE_INVALID");
@@ -218,6 +219,8 @@ if (standardCheckpointOwnerAckLoss && (standardCheckpointAckLoss || !['files', '
 if (standardCheckpointRecoveryPrefix && (standardCheckpointAckLoss || standardCheckpointOwnerAckLoss || !retainAlways
   || !['files', 'dual'].includes(selectedStandardComposedMode) || standardScenarioName !== 'correction'
   || standardComposedStop !== 'session_pr_correction_decide')) throw Error('STANDARD_FIXTURE_CHECKPOINT_PREFIX_SCOPE_INVALID');
+if (standardPublicCheckpointPrefix && (!standardCheckpointRecoveryPrefix || selectedStandardComposedMode !== 'files'))
+  throw Error('STANDARD_FIXTURE_PUBLIC_CHECKPOINT_PREFIX_SCOPE_INVALID');
 const standardScenario = selectedStandardComposedMode ? JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/standard-workflow/composed-" +
   (fullCorrection ? "correction.v3" : standardScenarioName === "correction" ? "correction.v2" : "positive.v1") + ".json", import.meta.url), "utf8")) : null;
 if (standardResponseText !== undefined) standardScenario.max_responses = Number(standardResponseText);
@@ -229,7 +232,8 @@ if (standardResumeInput) {
   if (Boolean(standardResumeInput.experiment?.host_trace) !== standardHostTrace
     || Boolean(standardResumeInput.experiment?.checkpoint_ack_loss) !== standardCheckpointAckLoss
     || Boolean(standardResumeInput.experiment?.checkpoint_owner_ack_loss) !== standardCheckpointOwnerAckLoss
-    || Boolean(standardResumeInput.experiment?.checkpoint_recovery_prefix) !== standardCheckpointRecoveryPrefix) throw Error('STANDARD_FIXTURE_ORIGINAL_EXPERIMENT_CHANGED');
+    || Boolean(standardResumeInput.experiment?.checkpoint_recovery_prefix) !== standardCheckpointRecoveryPrefix
+    || Boolean(standardResumeInput.experiment?.public_checkpoint_prefix) !== standardPublicCheckpointPrefix) throw Error('STANDARD_FIXTURE_ORIGINAL_EXPERIMENT_CHANGED');
   assert.deepEqual(standardResumeInput.scenario, standardScenario, "Cold resume must preserve the initial fixture scenario");
   assert.equal(standardResumeInput.authorization.max_responses, standardScenario.max_responses, "Cold resume must preserve the original cumulative ceiling");
 }
@@ -1167,7 +1171,7 @@ if (process.argv[2] === "--mixed-continue") {
     const runsClosure = runsPromotion || standardComposedStop === "promotion_decide";
     const runsCycle = runsClosure || standardComposedStop === "closure_decide";
     let nativeAnswerSource;
-    const f = factory(mode, { standardModel: true, validation: runsCycle, r09: nominalPostMerge, humanSource, hostTrace: standardHostTrace, async answer({ params }) {
+    const f = factory(mode, { standardModel: true, validation: runsCycle, r09: nominalPostMerge || standardPublicCheckpointPrefix, humanSource, hostTrace: standardHostTrace, async answer({ params }) {
       const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
       if (observed.context.contract_version === "standard-cycle-prework-context.v1") {
         const planning = preworkPlanningContext(observed);
@@ -1281,7 +1285,8 @@ if (process.argv[2] === "--mixed-continue") {
         human_source_file: sourceFile, sessionPushRemoteRoot: f.sessionPushRemoteRoot, ...(r09Request ? { r09Request } : {}), ...(f.validationProfile ? { validationProfile: f.validationProfile } : {}) },
         scenario: standardScenario, preflight: standardPreflight, authorization: auth,
         experiment: { host_trace: standardHostTrace, checkpoint_ack_loss: standardCheckpointAckLoss, checkpoint_owner_ack_loss: standardCheckpointOwnerAckLoss,
-          ...(standardCheckpointRecoveryPrefix ? { checkpoint_recovery_prefix: true } : {}) } }));
+          ...(standardCheckpointRecoveryPrefix ? { checkpoint_recovery_prefix: true } : {}),
+          ...(standardPublicCheckpointPrefix ? { public_checkpoint_prefix: true } : {}) } }));
     }
     const priorNativeResults = resumed ? f.open().inspect().record.events.filter(event => event.kind === "result").length : 0;
     let childNativeSessions = 0, coldContinuation = false;
@@ -1452,7 +1457,7 @@ if (process.argv[2] === "--mixed-continue") {
       let result;
       if (standardCheckpointRecoveryPrefix && frame.node_id === 'session_pr_correction_checkpoint') {
         console.log(JSON.stringify(await retainStandardGitCheckpointPrefix({ host: f.open(), resumeFile,
-          authorization: auth, readSigningKey: () => f.key })));
+          authorization: auth, readSigningKey: f.r09?.authority.readKey ?? (() => f.key) })));
         return;
       }
       if (standardCheckpointOwnerAckLoss && frame.node_id === 'session_pr_correction_checkpoint') {
@@ -1604,6 +1609,7 @@ if (process.argv[2] === "--mixed-continue") {
             ...(standardHostTrace ? ['--standard-composed-host-trace'] : []), ...(standardCheckpointAckLoss ? ['--standard-composed-checkpoint-ack-loss'] : []),
             ...(retainAlways ? ['--retain-always'] : []),
             ...(standardCheckpointRecoveryPrefix ? ['--standard-composed-checkpoint-recovery-prefix'] : []),
+            ...(standardPublicCheckpointPrefix ? ['--standard-composed-public-checkpoint-prefix'] : []),
             ...(standardCheckpointOwnerAckLoss ? ['--standard-composed-checkpoint-owner-ack-loss'] : [])],
           { encoding: "utf8", shell: false, windowsHide: true, timeout: childTimeoutMs, maxBuffer: 262144 });
           retainComposedChild(f.configuration.control_root, 'composed-cold-child', child);

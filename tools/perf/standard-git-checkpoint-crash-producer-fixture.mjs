@@ -12,6 +12,9 @@ import { createGithubPrOpenTransportFixture } from './github-pr-open-fixture-lib
 import { createComposedGithubReviewFixture } from './github-review-evidence-fixture-lib.mjs';
 import { createStandardReviewEventFixture } from './standard-pr-review-event-fixture-lib.mjs';
 import { closureHumanSource } from './cycle-closure-fixture-lib.mjs';
+import { attachComposedR09Provider } from './standard-composed-r09-provider-fixture-lib.mjs';
+import { resolveStandardWorkflowConfiguration, runStandardWorkflowEntry } from '../../src/application/runtime/standard-workflow-entry.mjs';
+import { observeLocalProcess } from '../../src/adapters/runtime/local-process-identity.mjs';
 import { createOperationJournalSigner } from '../../src/core/workflow/process-operation-journal.mjs';
 import { assertStandardPrCorrectionCheckpointPlan } from '../../src/core/workflow/standard-operation-contracts.mjs';
 import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
@@ -22,14 +25,19 @@ const key = () => Buffer.alloc(32, 91);
 export const commonGitFixtureGrant = () => ({ authorized: true, authority_id: 'fixture_operator',
   principal_sha256: 'a'.repeat(64), grant_sha256: 'b'.repeat(64) });
 
-export function openCommonCheckpointFixtureHost(f, { authorize = commonGitFixtureGrant, dispatchCheckpoint } = {}) {
+export function openCommonCheckpointFixtureHost(f, { authorize = null, dispatchCheckpoint } = {}) {
   const configuration = f.configuration;
-  const options = { configuration, readSigningKey: key, authorize,
-    humanSource: closureHumanSource(f.human_source_file), validationProfile: f.validationProfile,
+  if (f.r09Request) assert.deepEqual(resolveStandardWorkflowConfiguration(f.r09Request).configuration, configuration);
+  const r09 = f.r09Request ? attachComposedR09Provider({ configuration, remoteRoot: f.sessionPushRemoteRoot, initialize: false }) : null;
+  const fixtureKey = r09?.authority.readKey ?? key;
+  const options = { configuration, readSigningKey: fixtureKey,
+    authorize: authorize ?? (r09 ? input => r09.authority.authorizeOperation(input, input.preview_sha256) : commonGitFixtureGrant),
+    ...(r09 ? { environment: r09.environment } : {}),
+    humanSource: r09?.authority.humanSource ?? closureHumanSource(f.human_source_file), validationProfile: f.validationProfile,
     sessionPushPort: f.sessionPushRemoteRoot ? createLocalWorkflowSessionPush({ targetRoot: configuration.target_root, remoteRoot: f.sessionPushRemoteRoot }) : null,
     sessionPullRequestPort: f.sessionPushRemoteRoot ? createGithubPrOpenTransportFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: configuration.control_root }).port : null,
-    sessionReviewPort: f.sessionPushRemoteRoot ? createComposedGithubReviewFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: configuration.control_root }) : null,
-    sessionReviewEventPort: f.sessionPushRemoteRoot ? createStandardReviewEventFixture(configuration.control_root) : null };
+    sessionReviewPort: r09?.provider.sessionReviewPort ?? (f.sessionPushRemoteRoot ? createComposedGithubReviewFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: configuration.control_root }) : null),
+    sessionReviewEventPort: r09?.provider.sessionReviewEventPort ?? (f.sessionPushRemoteRoot ? createStandardReviewEventFixture(configuration.control_root) : null) };
   const host = createStandardWorkflowExecution(options);
   let operationActor = null;
   if (dispatchCheckpoint) {
@@ -39,14 +47,15 @@ export function openCommonCheckpointFixtureHost(f, { authorize = commonGitFixtur
     const assets = loadStandardWorkflowAssets();
     const productSnapshot = () => readAgenticProductSnapshot(configuration.product_root, configuration.product_files);
     const processAuthority = createStandardProcessAuthority({ configuration, model: assets.model,
-      modelSource: assets.source, readSigningKey: key, humanSource: options.humanSource,
+      modelSource: assets.source, readSigningKey: fixtureKey, humanSource: options.humanSource,
+      ...(r09 ? { environment: r09.environment } : {}),
       readProductSnapshot: productSnapshot, readProductSha256: () => H(productSnapshot()) });
     operationActor = createStandardWorkflowOperationHost({ ...options, targetRoot: configuration.target_root,
       model: assets.model, modelSource: assets.source, processAuthority,
       reconciliationConfiguration: configuration }, { dispatchCheckpoint });
   }
   return { host, operationActor, artifacts: createStandardWorkflowArtifacts({ targetRoot: configuration.target_root }),
-    signer: createOperationJournalSigner(key) };
+    signer: createOperationJournalSigner(fixtureKey), publicFixture: r09 };
 }
 
 export function openCommonGitCheckpointPrefix(packet, options = {}) {
@@ -139,4 +148,39 @@ async function runProducer(prefixFile, cut, deadlineMs) {
   throw Error('GIT_CHECKPOINT_REQUESTED_BOUNDARY_NOT_REACHED');
 }
 
+async function runEntryController(prefixFile, actionFile, resultFile, deadlineMs) {
+  assert(Number.isSafeInteger(deadlineMs) && deadlineMs > Date.now(), 'GIT_CHECKPOINT_WORKER_BOUND_EXPIRED');
+  assert.equal(typeof process.send, 'function', 'OWNED_CHECKPOINT_CHILD_IPC_REQUIRED');
+  const timer = setTimeout(() => process.exit(124), deadlineMs - Date.now());
+  try {
+    const packet = JSON.parse(fs.readFileSync(prefixFile, 'utf8'));
+    assert(packet.fixture.r09Request, 'RETAINED_PUBLIC_HOST_CONFIGURATION_REQUIRED');
+    const action = JSON.parse(fs.readFileSync(actionFile, 'utf8'));
+    assert.equal(action.kind, 'dispatch');
+    const bound = openCommonCheckpointFixtureHost(packet.fixture);
+    assert(bound.publicFixture, 'RETAINED_PUBLIC_HOST_CONFIGURATION_REQUIRED');
+    const identity = observeLocalProcess(process.pid);
+    const go = new Promise(resolve => process.once('message', message => {
+      assert.equal(message.kind, 'apply_prepared_checkpoint_action'); resolve();
+    }));
+    process.send({ status: 'public_checkpoint_controller_ready', identity });
+    await go;
+    const startedAtMs = Date.now(); let outcome;
+    try {
+      const applied = await runStandardWorkflowEntry({ request: packet.fixture.r09Request,
+        environment: bound.publicFixture.environment, preparedAction: action, execute: true, expectPlan: H(action) },
+      { providerTransport: bound.publicFixture.providerTransport });
+      outcome = { status: 'fulfilled', applied };
+    } catch (error) {
+      outcome = { status: 'rejected', error: { code: error.code ?? null, message: String(error.message).slice(0, 4096) } };
+      process.exitCode = 2;
+    }
+    fs.writeFileSync(resultFile, JSON.stringify({ ...outcome, identity, started_at_ms: startedAtMs,
+      ended_at_ms: Date.now(), actual_public_service: true, provider_transport: 'IDENTIFIED_FIXTURE',
+      genuine_Native_clients: 0, genuine_model_calls: 0, full_standard: false }) + '\n', { flag: 'wx' });
+    process.disconnect();
+  } finally { clearTimeout(timer); }
+}
+
 if (process.argv[2] === '--worker') await runProducer(process.argv[3], process.argv[4], Number(process.argv[5]));
+if (process.argv[2] === '--entry-controller') await runEntryController(process.argv[3], process.argv[4], process.argv[5], Number(process.argv[6]));

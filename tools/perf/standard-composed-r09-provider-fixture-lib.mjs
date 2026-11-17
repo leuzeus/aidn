@@ -9,7 +9,7 @@ import { createStandardGithubProviderHost } from '../../src/adapters/runtime/sta
 import { createStandardHostAuthority, readStandardHostInstance } from '../../src/adapters/runtime/standard-host-authority.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 import { createGithubPrOpenTransportFixture } from './github-pr-open-fixture-lib.mjs';
-import { createGithubReviewFixture } from './github-review-evidence-fixture-lib.mjs';
+import { createGithubReviewFixture, applyComposedGithubReviewScenario } from './github-review-evidence-fixture-lib.mjs';
 
 const repository = { host: 'github.com', owner: 'fixture', name: 'repository', node_id: 'R_fixture' };
 const actor = { login: 'fixture-operator', node_id: 'U_fixture_operator' };
@@ -114,6 +114,7 @@ export function createComposedGithubR09ProviderFixture({ targetRoot, controlRoot
     assert.deepEqual(args, ['api', 'graphql', '--hostname', 'github.com', '--input', '-']);
     const { query, variables } = JSON.parse(options.input);
     const fixture = createGithubReviewFixture({ workingDirectory: controlRoot, pullRequest: pull });
+    applyComposedGithubReviewScenario(fixture, controlRoot);
     const published = fs.existsSync(reviewFile) ? readJson(reviewFile) : null;
     if (published?.pr === pull.node_id && published.head === pull.head_oid && published.base === pull.base_oid)
       Object.assign(fixture.state.reviews[0], { submittedAt: published.at, updatedAt: published.at });

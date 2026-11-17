@@ -2319,6 +2319,24 @@ under the same common instance; the mixed host does not forward that adapter.
 The check authenticates the running/null-output capsule and zero results. It
 does not execute or qualify the Git checkpoint, and adds no runtime adapter.
 
+The experimental `--public-entry-service` selection is restricted to FILES and
+`effect_returned`. It requests the same actual correction prefix with
+`--standard-composed-public-checkpoint-prefix`, preserving its standard host
+authority/configuration, signed fixture humans and identified provider transport.
+While the original producer is active, its real public preview must remain a
+read-only wait. After real Git observation and producer death, two fresh Node
+controller processes receive the same current prepared action and invoke
+`runStandardWorkflowEntry` before any private reconciliation. Their intervals
+must overlap. Both exit identities, raw results and exact original deadlines
+are retained; each controller receives the selected worker bound once at fork,
+without renewing the producer's bound or any Native grant. Exactly one result
+append and one accepted process event must survive; a stale competitor may
+refuse or retain that same result, never dispatch the Git effect again. Raw
+preview, result or error and journal observations survive a failed expectation.
+The selection asserts public-service recovery; it supplies no spawned CLI,
+console, installed archive or genuine actor proof. Its outcome must be recorded
+separately from internal-port or wiring qualification.
+
 The fault interrupts only the atomic rename of a completed checkpoint receipt.
 The real signed dispatch remains, with its actual Git commit and released local
 effect owner. A new Node process invokes the mixed host's explicit-write
