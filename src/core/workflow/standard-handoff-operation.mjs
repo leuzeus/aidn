@@ -57,7 +57,7 @@ export function handoffPublicationIntentPrefix(instance, record) {
 // and current disposition grant. No stored event or old result is rewritten.
 export function handoffPublicationInterruptedPrefix(instance, record) {
   assertAgenticProcessInstance(instance);
-  if (record?.phase !== 'receipted' || !Array.isArray(record.results) || record.results.length !== 1
+  if (record?.phase !== 'receipted' || !Array.isArray(record.results) || !record.results.length || record.results.length > 32
     || record.intent?.binding_ref !== handoffPublicationOperation || record.preview?.binding?.id !== handoffPublicationOperation)
     fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_REQUIRED');
   const prepared = assertHandoffOperationPreparation(record.preview.prepared);
@@ -73,15 +73,35 @@ export function handoffPublicationInterruptedPrefix(instance, record) {
     || receipt.effect_status !== output.effect_status || H(receipt.facts) !== H(output.facts)
     || record.intent.occurrence_id !== plan.occurrence_id || H(record.preview.input) !== H(plan.input))
     fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_REQUIRED');
-  let pending = instance;
-  const last = instance.events.at(-1);
-  if (last?.kind === 'operation_result') {
-    if (H(last.receipt) !== H(receipt)) fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_REQUIRED');
-    const { instance_sha256, ...body } = instance;
-    body.events = body.events.slice(0, -1); body.revision--;
-    pending = { ...body, instance_sha256: H(body) };
-    assertAgenticProcessInstance(pending);
+  for (const [index, row] of record.results.entries()) {
+    const out = assertHandoffOperationOutput(row.output), rec = row.receipt;
+    if (rec?.operation_id !== record.operation_id || rec.intent_sha256 !== H(record.intent)
+      || rec.output_sha256 !== H(out) || rec.outcome !== out.outcome || rec.effect_status !== out.effect_status
+      || H(rec.facts) !== H(out.facts) || out.observations.plan_sha256 !== prepared.plan_sha256
+      || out.observations.packet_plan_sha256 !== plan.packet_plan_sha256
+      || out.observations.resource_material_sha256 !== inner.resource_material_sha256
+      || rec.receipt_id !== 'receipt_' + record.operation_id.slice(3) + (index ? '_' + index : '')
+      || index < record.results.length - 1 && out.outcome !== 'reconciliation_required'
+      || !['completed','reconciliation_required'].includes(out.outcome)
+      || out.outcome === 'completed' && out.observations.packet_sha256 !== inner.after_sha256)
+      fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_REQUIRED');
   }
+  const own = instance.events.map((event,index) => ({event,index})).filter(row => row.event.kind === 'operation_intent'
+    && row.event.intent.operation_id === record.operation_id);
+  if (own.length !== 1 || H(own[0].event.intent) !== H(record.intent)) fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_REQUIRED');
+  const accepted = instance.events.slice(own[0].index + 1);
+  let next = 0;
+  for (const event of accepted) {
+    if (event.kind !== 'operation_result' || event.occurrence_id !== record.intent.occurrence_id)
+      fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_REQUIRED');
+    const matched = record.results.findIndex((row,index) => index >= next && H(row.receipt) === H(event.receipt));
+    if (event.kind !== 'operation_result' || event.occurrence_id !== record.intent.occurrence_id
+      || matched < 0 || next === 0 && matched !== 0) fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_REQUIRED');
+    next = matched + 1;
+  }
+  const { instance_sha256, ...body } = instance;
+  body.events = body.events.slice(0, own[0].index + 1); body.revision -= accepted.length;
+  const pending = { ...body, instance_sha256: H(body) }; assertAgenticProcessInstance(pending);
   const prefix = handoffPublicationIntentPrefix(pending, { ...record, phase: 'dispatching', results: [] });
   if (prefix.instance_sha256 !== inner.context.instance_sha256)
     fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_REQUIRED');

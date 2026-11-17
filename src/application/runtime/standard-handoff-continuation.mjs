@@ -18,8 +18,7 @@ export function createStandardHandoffContinuation({ targetRoot, readSigningKey, 
   if ([readSigningKey, readCurrent, readClaimed, boundary].some(fn => typeof fn !== 'function'))
     fail('STANDARD_HANDOFF_CONTINUATION_CAPABILITY_REQUIRED');
   const artifacts = createStandardWorkflowArtifacts({ targetRoot });
-  return Object.freeze({
-    prepare(instance, record, { signal: preparationSignal } = {}) {
+  function prepare(instance, record, { signal: preparationSignal } = {}) {
       active(preparationSignal);
       instance = freezeShadow(structuredClone(instance)); record = freezeShadow(structuredClone(record));
       const signer = createOperationJournalSigner(readSigningKey);
@@ -44,7 +43,9 @@ export function createStandardHandoffContinuation({ targetRoot, readSigningKey, 
       const before = observe(), output = handoffOperationResult(prepared, { status: 'packet_written', packet_sha256: inner.after_sha256,
         packet_metadata_sha256: before.packet_metadata_sha256,
         evidence_refs: [{ ref: 'docs/audit/' + target, sha256: inner.after_sha256 }] });
-      const data = freezeShadow({ operation_id: record.operation_id, instance_sha256: instance.instance_sha256,
+      const { context_sha256, documents, ...boundaryContext } = inner.context;
+      const data = freezeShadow({ source_sha256: H(inner.canonical_sources.filter(row => row.path !== target)),
+        boundary_sha256: H({ ...boundaryContext, documents: documents.filter(row => row.path !== target) }), operation_id: record.operation_id, instance_sha256: instance.instance_sha256,
         original_intent_sha256: H(record.intent), original_output_sha256: H(record.results[0].output),
         original_receipt_sha256: H(record.results[0].receipt), packet_plan_sha256: H(inner), owned_paths: [target],
         expected_output: output, expected_output_sha256: H(output), state: before, state_sha256: H(before),
@@ -85,6 +86,32 @@ export function createStandardHandoffContinuation({ targetRoot, readSigningKey, 
           });
         },
       });
+  }
+  const describeData = data => freezeShadow({ profile: 'standard-handoff-publication-known-partial.v1',
+    original_receipt_sha256: data.original_receipt_sha256, packet_plan_sha256: data.packet_plan_sha256,
+    source_sha256: data.source_sha256, boundary_sha256: data.boundary_sha256, state_sha256: data.state_sha256,
+    owned_paths: data.owned_paths, expected_output_sha256: data.expected_output_sha256, expected_output: data.expected_output });
+  return Object.freeze({ prepare,
+    describe(instance, record, options) { return describeData(prepare(instance, record, options).data); },
+    confirms(instance, record, output) {
+      const cap = prepare(instance, record);
+      return cap.data.state.projection_status !== 'pending' && H(output) === cap.data.expected_output_sha256;
+    },
+    async apply(instance, record, descriptor, { write = false, expectedContinuationSha256, assertAuthorized,
+      assertAuthorizedCurrent, signal } = {}) {
+      active(signal);
+      if (write !== true || expectedContinuationSha256 !== H(descriptor) || typeof assertAuthorized !== 'function'
+        || typeof assertAuthorizedCurrent !== 'function') fail('STANDARD_HANDOFF_CONTINUATION_EXPLICIT_EFFECT_REQUIRED');
+      const cap = prepare(instance, record, { signal });
+      if (H({ ...describeData(cap.data), lock_sha256: descriptor.lock_sha256 }) !== H(descriptor))
+        fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_CHANGED');
+      await assertAuthorized(); active(signal); cap.assertCurrent();
+      try { return await cap.complete({ write, assertAuthorizedCurrent, signal }); }
+      catch (cause) {
+        if (cause.effect_status !== 'unknown') throw cause;
+        const reason = /^[A-Z][A-Z0-9_]{0,127}$/.test(cause.code ?? '') ? cause.code : 'STANDARD_HANDOFF_CONTINUATION_UNCONFIRMED';
+        return { output: handoffOperationResult(record.preview.prepared, null, reason, 'unknown'), effect_knowledge: 'unknown' };
+      }
     },
   });
 }

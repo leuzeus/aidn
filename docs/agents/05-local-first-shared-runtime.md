@@ -686,7 +686,11 @@ and retire the old physical lock to a retained witness before lending that
 fence. The primitive cannot transfer or release an owner. It materializes only
 the already-canonical packet under the borrowed fence, preserves canonical
 metadata and every original UNKNOWN result, and never reuses the old resource
-grant as permission. The fixture controller proves this bounded mechanism with
-a real terminated child; product disposition/acceptance and cold adoption remain
-separate implementation work. No new store, shared coordination, age ceiling or
+grant as permission. The ordinary v3 controller authenticates that old held owner and its exact
+retained lock witness, reserves the control intention before fresh-fence CAS,
+then lends only its own fence to the packet projection capability. Its captured
+follow-on output, receipt, adoption attempts and acceptance remain distinct
+from the original UNKNOWN. The normal entry uses an exact-action grant and
+rechecks it synchronously at local effects. Cold/public and genuine actor
+qualification remain independent of the earlier fixture-controller proof. No new store, shared coordination, age ceiling or
 Native allocation is introduced.

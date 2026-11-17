@@ -28,11 +28,12 @@ const correctionFiles = ["standard-reconciliation-inventory.mjs",
   ...["request", "grant"].map(kind => new URL(`../../core/contracts/workflow-definition/process-disposition-authorization-${kind}.v1.schema.json`, import.meta.url)),
   new URL("../../core/contracts/workflow-definition/process-disposition-authorization-grant.v2.schema.json", import.meta.url),
   new URL("../../core/contracts/workflow-definition/process-disposition-authorization-request.v2.schema.json", import.meta.url),
+  new URL("../../core/contracts/workflow-definition/process-disposition-authorization-request.v3.schema.json", import.meta.url),
   new URL("../../core/workflow/process-operation-disposition.mjs", import.meta.url),
   new URL("../../adapters/runtime/local-process-identity.mjs", import.meta.url),
   new URL("../../adapters/runtime/process-dispatch-record-store.mjs", import.meta.url),
   new URL("../../core/workflow/process-dispatch-record.mjs", import.meta.url),
-  ...["process-dispatch-record.v1", "process-dispatch-record.v2", "process-operation-disposition.v1", "process-operation-disposition.v2", "process-operation-disposition-plan.v1", "process-operation-disposition-plan.v2", "process-operation-control-intent.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
+  ...["process-dispatch-record.v1", "process-dispatch-record.v2", "process-operation-disposition.v1", "process-operation-disposition.v2", "process-operation-disposition-plan.v1", "process-operation-disposition-plan.v2", "process-operation-disposition.v3", "process-operation-disposition-plan.v3", "process-operation-control-intent.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
   new URL("../../lib/fs/exact-file-identity.mjs", import.meta.url),
   new URL("../../core/workflow/process-reconciliation-inventory.mjs", import.meta.url),
   new URL("../../core/contracts/workflow-definition/process-reconciliation-inventory.v1.schema.json", import.meta.url),
@@ -56,7 +57,7 @@ const files = [
   // The common operation binding covers the writer, adapter, historical reader
   // and closed contracts independently of the Native allocator's global pin.
   "canonical-handoff-projection.mjs", "standard-handoff-context.mjs", "standard-handoff-resources.mjs",
-  "standard-handoff-publication.mjs", "standard-handoff-operation.mjs", "handoff-packet-projector-use-case.mjs",
+  "standard-handoff-publication.mjs", "standard-handoff-operation.mjs", "standard-handoff-continuation.mjs", "handoff-packet-projector-use-case.mjs",
   ...["standard-handoff-context.mjs", "standard-handoff-resources.mjs", "standard-handoff-publication.mjs", "standard-handoff-operation.mjs"]
     .map(name => new URL("../../core/workflow/" + name, import.meta.url)),
   ...["standard-handoff-context.v1", "standard-handoff-resource-request.v1", "standard-handoff-resource-observation.v1", "standard-handoff-resource-result.v1",

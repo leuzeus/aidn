@@ -1141,5 +1141,8 @@ fields grant no effects or handoff permission. The private projection capability
 requires the exact implementation-owned borrowed disposition scope and a current
 synchronous permit. It has no canonical CAS. A projection call followed by lost
 acknowledgement retains unknown effect status even if a nested failure says
-no-effect. This primitive is not wired to a public disposition plan or receipt;
-the existing closed v1/v2 disposition contracts and readers stay unchanged.
+no-effect. The ordinary controller uses the separate closed v3 disposition plan, record
+and authorization request for this one-packet continuation. V3 retains each new
+output/receipt separately from the original UNKNOWN, with the existing bounded
+result history and explicit current synchronous permission. The closed v1/v2
+contracts and readers stay unchanged.

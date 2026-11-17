@@ -590,3 +590,12 @@ these same ports and the existing exact-action CLI/console boundary. It adds no
 new permission, persistence authority or all-resource closure claim.
 A newly approved finite epoch separately covers the Native scope and preserves
 the failed history; it does not start another Native allocation.
+
+Private handoff disposition v3 is retained within process_operation_journal at
+the existing operation-disposition/control-intent paths. It adds no table,
+backend, shared synchronization, Native grant or automatic db-only export.
+The fixed profile owns only HANDOFF-PACKET.md projection, under a separately
+reserved current control fence after exact dead-owner lock retirement. The
+canonical packet, original UNKNOWN journal/capsule and retired witness remain
+intact. Its new captured confirmation, adoption attempts and acceptance do not
+convert the v1/v2 incident/reopen histories or imply global resource closure.

@@ -7,7 +7,7 @@ import { createProcessDispatchRecordStore } from "../../adapters/runtime/process
 import { observeLocalProcess, observeLocalProcessOwner } from "../../adapters/runtime/local-process-identity.mjs";
 import { assertProcessDispatchRecord } from "../../core/workflow/process-dispatch-record.mjs";
 import { assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
-import { assertIncidentContinuationPlan, assertIncidentContinuationDisposition, operationDispositionResultLimit, operationControlHistoryExtends } from "../../core/workflow/process-operation-disposition.mjs";
+import { assertIncidentContinuationPlan, assertIncidentContinuationDisposition, assertHandoffContinuationPlan, assertHandoffContinuationDisposition, operationDispositionResultLimit, operationControlHistoryExtends } from "../../core/workflow/process-operation-disposition.mjs";
 import { prIncidentCloseOperation } from "../../core/workflow/standard-pr-incident-close.mjs";
 import { handoffPublicationOperation } from "../../core/workflow/standard-handoff-operation.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
@@ -16,6 +16,7 @@ import { withStandardDispatchContext } from "./standard-dispatch-context.mjs";
 import { LOCAL_ARTIFACT_FENCE_PATH } from "./local-artifact-resource-fence.mjs";
 import planSchema from "../../core/contracts/workflow-definition/process-operation-disposition-plan.v1.schema.json" with { type: "json" };
 import recordSchema from "../../core/contracts/workflow-definition/process-operation-disposition.v1.schema.json" with { type: "json" };
+import handoffContinuationRequestSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-request.v3.schema.json" with { type: "json" };
 import continuationRequestSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-request.v2.schema.json" with { type: "json" };
 import requestSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-request.v1.schema.json" with { type: "json" };
 import grantSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-grant.v1.schema.json" with { type: "json" };
@@ -31,9 +32,13 @@ const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(
 const validGrant = value => valid(value, value?.contract_version === "process-disposition-authorization-grant.v2" ? currentGrantSchema : grantSchema);
 const reopenAssessment = "confirmed_reopen";
 const isReopenPlan = plan => plan?.assessment === reopenAssessment;
-const isContinuationPlan = plan => plan?.contract_version === "process-operation-disposition-plan.v2";
+const isHandoffContinuationPlan = plan => plan?.contract_version === "process-operation-disposition-plan.v3";
+const isContinuationPlan = plan => plan?.contract_version === "process-operation-disposition-plan.v2" || isHandoffContinuationPlan(plan);
+const continuationRequestFor = plan => isHandoffContinuationPlan(plan) ? handoffContinuationRequestSchema : continuationRequestSchema;
+const assertContinuationDisposition = value => value?.contract_version === "process-operation-disposition.v3"
+  ? assertHandoffContinuationDisposition(value) : assertIncidentContinuationDisposition(value);
 function validPlan(plan) {
-  if (isContinuationPlan(plan)) { try { assertIncidentContinuationPlan(plan); return true; } catch { return false; } }
+  if (isContinuationPlan(plan)) { try { (isHandoffContinuationPlan(plan) ? assertHandoffContinuationPlan : assertIncidentContinuationPlan)(plan); return true; } catch { return false; } }
   if (!valid(plan, planSchema) || isReopenPlan(plan) !== Object.hasOwn(plan, "reopen")) return false;
   if (!isReopenPlan(plan)) return true;
   const output = assertStandardOperationOutput(plan.reopen.output), causal = output.observations.causal;
@@ -51,7 +56,7 @@ function reopenConfirmationSubject(output) {
   return shadowHash({ ...output, observations: { ...observations, causal: subject } });
 }
 const assertRecord = value => {
-  if (value?.contract_version === "process-operation-disposition.v2") return assertIncidentContinuationDisposition(value);
+  if (["process-operation-disposition.v2", "process-operation-disposition.v3"].includes(value?.contract_version)) return assertContinuationDisposition(value);
   if (!valid(value, recordSchema) || !validPlan(value.plan) || value.operation_id !== value.plan.operation_id
     || value.receipt.operation_id !== value.operation_id || value.plan.output_sha256 !== value.receipt.output_sha256)
     fail("PROCESS_DISPOSITION_RECORD_INVALID");
@@ -66,7 +71,7 @@ function inventoryMaterial(retained, id, reopening = false, continuation = null)
   const { observed_at_ms, authentication, key_id, ...material } = retained;
   const controls = ["artifact:" + dispositionPath(id), "artifact:" + controlPath(id), "artifact:" + LOCAL_ARTIFACT_FENCE_PATH];
   // These two locations are one separately authenticated physical witness.
-  if (reopening) controls.push("local:effects.lock", "local:retired-" + id + ".lock");
+  if (reopening || continuation?.profile === "standard-handoff-publication-known-partial.v1") controls.push("local:effects.lock", "local:retired-" + id + ".lock");
   if (continuation) {
     controls.push(...continuation.owned_paths.map(name => "artifact:" + name));
     // The original private plan authenticates every unowned context document.
@@ -90,7 +95,7 @@ const ownerPlanSha = record => record.intent.binding_ref === prIncidentCloseOper
     ? record.preview.prepared?.plan?.packet_plan_sha256 : record.preview.prepared?.plan_sha256;
 
 export function createStandardOperationDisposition({ targetRoot, stateMode, signer, artifacts, readOperation,
-  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, confirmPrCheckpoint, confirmPrIncidentClose, confirmHandoffPublication, preparePrIncidentContinuation, applyPrIncidentContinuation, confirmPrIncidentContinuation, confirmInterruptedReopen,
+  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, confirmPrCheckpoint, confirmPrIncidentClose, confirmHandoffPublication, prepareHandoffContinuation, applyHandoffContinuation, confirmHandoffContinuation, preparePrIncidentContinuation, applyPrIncidentContinuation, confirmPrIncidentContinuation, confirmInterruptedReopen,
   onBoundary = async () => {}, onLocalResource = () => {}, now = Date.now }) {
   const dispatches = createProcessDispatchRecordStore({ targetRoot, stateMode });
   const acceptance = new AsyncLocalStorage();
@@ -142,7 +147,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
         || !valid(attempt.resource_fence.record, fenceSchema) || attempt.resource_fence.record.state !== "held"
         || attempt.resource_fence.record.physical_root_sha256 !== attempt.plan.physical_root_sha256)
         fail("PROCESS_CONTROL_INTENT_SUBJECT_CHANGED");
-      if (attempt.action === "disposition" && (!attempt.grant || !valid(attempt.grant.request, isContinuationPlan(attempt.plan) ? continuationRequestSchema : requestSchema)
+      if (attempt.action === "disposition" && (!attempt.grant || !valid(attempt.grant.request, isContinuationPlan(attempt.plan) ? continuationRequestFor(attempt.plan) : requestSchema)
         || !validGrant(attempt.grant.grant) || attempt.grant.request.plan_sha256 !== shadowHash(attempt.plan)
         || shadowHash(attempt.grant.request.plan) !== shadowHash(attempt.plan)
         || attempt.grant.request.action !== "operation_disposition"
@@ -353,12 +358,16 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
   function currentConsent(plan, captured, signal) {
     if (signal?.aborted) fail("PROCESS_DISPOSITION_ABORTED");
     freshGrant(captured.grant, captured.request);
+    if (isHandoffContinuationPlan(plan)) {
+      if (typeof dispositionSource?.assertCurrent !== "function" || dispositionSource.assertCurrent(captured) !== undefined)
+        fail("PROCESS_DISPOSITION_CURRENT_AUTHORITY_REQUIRED");
+    }
     if (!Number.isSafeInteger(plan.prepared_at_ms) || plan.prepared_at_ms < 0) fail("PROCESS_DISPOSITION_PLAN_INVALID");
   }
   async function currentGrant(subject, signal) {
     const continuing = isContinuationPlan(subject.plan);
-    const request = { contract_version: continuing ? "process-disposition-authorization-request.v2" : "process-disposition-authorization-request.v1", ...subject, nonce: randomUUID(), requested_at_ms: now() };
-    if (!valid(request, continuing ? continuationRequestSchema : requestSchema)) fail("PROCESS_DISPOSITION_AUTHORIZATION_REQUEST_INVALID");
+    const request = { contract_version: isHandoffContinuationPlan(subject.plan) ? "process-disposition-authorization-request.v3" : continuing ? "process-disposition-authorization-request.v2" : "process-disposition-authorization-request.v1", ...subject, nonce: randomUUID(), requested_at_ms: now() };
+    if (!valid(request, continuing ? continuationRequestFor(subject.plan) : requestSchema)) fail("PROCESS_DISPOSITION_AUTHORIZATION_REQUEST_INVALID");
     const grant = await invokeSource("authorize", { request }, signal);
     freshGrant(grant, request);
     const proof = await verifyGrant({ request, grant }, signal);
@@ -424,7 +433,34 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     return admission;
   }
 
+  function handoffContinuationOwner(record, capsule) {
+    const original = record.results[0];
+    if (record.intent.binding_ref !== handoffPublicationOperation || record.phase !== "receipted"
+      || original?.receipt.outcome !== "reconciliation_required" || original.receipt.effect_status !== "unknown"
+      || capsule?.contract_version !== "process-dispatch-record.v2" || capsule.phase !== "returned"
+      || capsule.output_sha256 !== shadowHash(original.output) || capsule.output_sha256 !== original.receipt.output_sha256
+      || capsule.local_owner_intentions.length !== 1 || capsule.leases.length !== 1
+      || capsule.authority_sha256 !== shadowHash(readAuthority())) fail("PROCESS_HANDOFF_CONTINUATION_SUBJECT_REQUIRED");
+    const [originalLease] = capsule.leases, [intention] = capsule.local_owner_intentions;
+    const fence = artifacts.resourceFence().read(), dispatchSha = shadowHash(capsule);
+    const originalHeld = shadowHash(originalLease.resource_fence) === shadowHash(fence.record);
+    const transfers = originalHeld ? [] : readControls(record.operation_id).record?.attempts ?? [];
+    const known = transfers.find(attempt => isHandoffContinuationPlan(attempt.plan)
+      && attempt.plan.dispatch_sha256 === dispatchSha && attempt.plan.continuation.original_receipt_sha256 === shadowHash(original.receipt)
+      && [attempt.resource_fence.record, { ...attempt.resource_fence.record, state: "released", revision: attempt.resource_fence.record.revision + 1 }]
+        .some(row => shadowHash(row) === shadowHash(fence.record)));
+    const lock = inspectInterruptedReopenLock(artifacts.root, record.operation_id, intention, originalLease,
+      { allowRetired: Boolean(known) && !originalHeld });
+    if (originalLease.status !== "held" || originalLease.owner.pid !== record.owner?.pid
+      || originalLease.owner.pid !== capsule.process_identity.pid
+      || shadowHash(originalLease.resource_fence) !== shadowHash(intention.resource_fence.record)
+      || shadowHash(originalLease.resource_fence.process_identity) !== shadowHash(capsule.process_identity)
+      || !(originalHeld || known) || known && known.plan.continuation.lock_sha256 !== lock.sha256
+      || observeLocalProcessOwner(capsule.process_identity) !== "terminated") fail("PROCESS_HANDOFF_CONTINUATION_OWNER_REQUIRED");
+    return { original, originalLease, intention, lock, fence, dispatch_sha256: dispatchSha };
+  }
   function continuationOwner(record, capsule) {
+    if (record.intent.binding_ref === handoffPublicationOperation) return handoffContinuationOwner(record, capsule).original;
     const original = record.results[0];
     if (record.intent.binding_ref !== prIncidentCloseOperation || record.phase !== "receipted"
       || original?.receipt.outcome !== "reconciliation_required" || original.receipt.effect_status !== "unknown"
@@ -447,14 +483,14 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     if (!audit) { if (record.results.length !== 1) fail("PROCESS_INCIDENT_CONTINUATION_HISTORY_REQUIRED"); return before; }
     signer.verify(audit);
     if (!isContinuationPlan(audit.plan)) fail("PROCESS_INCIDENT_CONTINUATION_HISTORY_REQUIRED");
-    assertIncidentContinuationDisposition(audit);
+    assertContinuationDisposition(audit);
     const retainedControls = readControls(record.operation_id).record;
     for (const row of [...audit.results, ...audit.attempts]) {
       signer.verify(row.plan);
       if (row.plan.output_sha256 !== record.results[0].receipt.output_sha256
         || row.plan.continuation.original_receipt_sha256 !== shadowHash(record.results[0].receipt)
         || row.plan.dispatch_sha256 !== shadowHash(readDispatch(record.operation_id, record).record)
-        || !valid(row.grant.request, continuationRequestSchema) || !validGrant(row.grant.grant)
+        || !valid(row.grant.request, continuationRequestFor(row.plan)) || !validGrant(row.grant.grant)
         || row.grant.request.plan_sha256 !== shadowHash(row.plan) || shadowHash(row.grant.request.plan) !== shadowHash(row.plan)
         || row.grant.grant.request_sha256 !== shadowHash(row.grant.request)
         || row.grant.verification?.outcome !== "verified"
@@ -480,10 +516,14 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
   }
   function continuationObservation(id) {
     const observed = observation(id);
-    continuationOwner(observed.operation, observed.capsule);
-    if (typeof preparePrIncidentContinuation !== "function") fail("PROCESS_INCIDENT_CONTINUATION_CAPABILITY_REQUIRED");
-    const continuation = preparePrIncidentContinuation(observed.instance, observed.operation);
-    return { ...observed, continuation, assessment: "known_partial_incident_close",
+    const handoff = observed.operation.intent.binding_ref === handoffPublicationOperation;
+    const interruptedOwner = handoff ? handoffContinuationOwner(observed.operation, observed.capsule) : null;
+    if (!handoff) continuationOwner(observed.operation, observed.capsule);
+    const prepare = handoff ? prepareHandoffContinuation : preparePrIncidentContinuation;
+    if (typeof prepare !== "function") fail("PROCESS_CONTINUATION_CAPABILITY_REQUIRED");
+    const prepared = prepare(observed.instance, observed.operation);
+    const continuation = handoff ? { ...prepared, lock_sha256: interruptedOwner.lock.sha256 } : prepared;
+    return { ...observed, continuation, interruptedOwner, assessment: handoff ? "known_partial_handoff_publication" : "known_partial_incident_close",
       inventory_sha256: shadowHash(inventoryMaterial(observed.inventory_record, id, false, continuation)) };
   }
   function continuationSubject(observed) { return { ...subject(observed), continuation: observed.continuation }; }
@@ -499,6 +539,8 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     if (observed.instance.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");
     const previous = before.record;
     if (previous) {
+      if (record.intent.binding_ref === handoffPublicationOperation && previous.output.outcome === "completed"
+        && record.results.some(row => shadowHash(row.receipt) === shadowHash(previous.receipt))) return previous.plan;
       const latest = record.results.at(-1).receipt;
       const accepted = observed.instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(latest));
       // A captured unjournaled result and a journaled unaccepted result must be
@@ -508,11 +550,13 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       // Keep that plan in the audit; prepare a current plan for no-replay adoption.
     }
     if (record.results.length >= operationDispositionResultLimit + 1) fail("PROCESS_DISPOSITION_ADMISSION_LIMIT");
-    return signer.seal({ contract_version: "process-operation-disposition-plan.v2", ...continuationSubject(observed),
+    return signer.seal({ contract_version: record.intent.binding_ref === handoffPublicationOperation ? "process-operation-disposition-plan.v3" : "process-operation-disposition-plan.v2", ...continuationSubject(observed),
       prepared_at_ms: now(), nonce: randomUUID() });
   }
   async function applyContinuation(plan, { signal }) {
-    const id = plan.operation_id, initialRecord = readOperation(id).record;
+    const id = plan.operation_id, initialRecord = readOperation(id).record, handoff = isHandoffContinuationPlan(plan);
+    const applyBusiness = handoff ? applyHandoffContinuation : applyPrIncidentContinuation;
+    const confirmBusiness = handoff ? confirmHandoffContinuation : confirmPrIncidentContinuation;
     const previous = readContinuationAudit(initialRecord), pending = previous.record?.results.length === initialRecord.results.length;
     if (previous.record && !pending && initialRecord.results.some(row => shadowHash(row.receipt) === shadowHash(previous.record.receipt))
       && (shadowHash(previous.record.plan) === shadowHash(plan) || previous.record.attempts.some(row => shadowHash(row.plan) === shadowHash(plan))))
@@ -536,7 +580,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     const grant = await currentGrant({ action: "operation_disposition", plan_sha256: shadowHash(plan), plan }, signal);
     observed = fresh();
     const fence = artifacts.resourceFence(), control = readControls(id), currentFence = fence.read();
-    const known = [...(control.record?.attempts.map(row => row.resource_fence.record) ?? []),
+    const known = [...(observed.interruptedOwner ? [observed.interruptedOwner.originalLease.resource_fence] : []), ...(control.record?.attempts.map(row => row.resource_fence.record) ?? []),
       ...(previous.record ? [previous.record.resource_fence, ...previous.record.acceptance_reservations.map(row => row.resource_fence)] : [])]
       .find(row => shadowHash(row) === shadowHash(currentFence.record));
     const proposed = fence.prepareAcquire({ expectedSha256: plan.fence_sha256 });
@@ -561,23 +605,31 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
           || readInstance(plan.instance_id).instance_sha256 !== plan.instance_sha256
           || shadowHash(readOperation(id).record) !== plan.journal_sha256
           || shadowHash(readDispatch(id, initialRecord).record) !== plan.dispatch_sha256
-          || shadowHash(readAuthority()) !== plan.authority_sha256 || artifacts.localOwnerPending())
+          || shadowHash(readAuthority()) !== plan.authority_sha256
+          || artifacts.localOwnerPending() && !(handoff && !handoffContinuationOwner(initialRecord, readDispatch(id, initialRecord).record).lock.retired))
           fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
         // Preserve every authenticated attempt already observed. A later proposal
         // is data; it cannot revoke this exact held lease or supply permission.
         observedControl = currentControl;
       };
+      if (handoff) {
+        const owner = handoffContinuationOwner(initialRecord, readDispatch(id, initialRecord).record);
+        retireInterruptedReopenLock({ targetRoot: artifacts.root, operationId: id, intention: owner.intention,
+          originalLease: owner.originalLease, fence, dispositionLease: lease, expectedLockSha256: plan.continuation.lock_sha256,
+          assertPermit: assertCurrent, write: true });
+        await onBoundary("handoff_continuation_owner_retired", id); assertCurrent();
+      }
       let result;
       if (pending) {
         assertCurrent();
         // Preserve the captured result bytes. A success may be adopted only
         // after reobserving its actual complete original private postconditions.
         if (previous.record.output.outcome === "completed"
-          && confirmPrIncidentContinuation?.(observed.instance, observed.operation, previous.record.output) !== true)
+          && confirmBusiness?.(observed.instance, observed.operation, previous.record.output) !== true)
           fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
         result = { output: previous.record.output, effect_knowledge: previous.record.effect_knowledge };
       } else {
-        if (typeof applyPrIncidentContinuation !== "function") fail("PROCESS_INCIDENT_CONTINUATION_CAPABILITY_REQUIRED");
+        if (typeof applyBusiness !== "function") fail("PROCESS_INCIDENT_CONTINUATION_CAPABILITY_REQUIRED");
         // Refuse a record that cannot retain either bounded output before the
         // first business callback. Earlier results/control attempts stay intact.
         const probe = { ...(previous.record ?? {}), plan, grant: auditGrant, output: plan.continuation.expected_output,
@@ -586,21 +638,23 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
             receipt: makeReceipt(initialRecord, plan.continuation.expected_output), effect_knowledge: "known_prefix", resource_fence: lease.record }] };
         if (Buffer.byteLength(JSON.stringify(probe)) > 900000) fail("PROCESS_CONTROL_INTENT_STORAGE_BOUND");
         const capability = Object.freeze({ artifactContinuation: Object.freeze({ operation_id: id,
-          plan_sha256: plan.continuation.closure_plan_sha256, lease, assertCurrent }) });
-        result = await withStandardDispatchContext(capability, () => applyPrIncidentContinuation(observed.instance, observed.operation,
+          plan_sha256: handoff ? plan.continuation.packet_plan_sha256 : plan.continuation.closure_plan_sha256, lease, assertCurrent }) });
+        result = await withStandardDispatchContext(capability, () => applyBusiness(observed.instance, observed.operation,
           plan.continuation, { write: true, expectedContinuationSha256: shadowHash(plan.continuation),
             assertAuthorized: async () => { await verifyGrant(grant, signal); assertCurrent(); },
+            assertAuthorizedCurrent: assertCurrent, signal,
             onBoundary: async (point, operationId) => { assertCurrent(); await onBoundary("incident_continuation_" + point, operationId); assertCurrent(); } }));
       }
+      if (handoff) { await onBoundary("handoff_continuation_projected", id); assertCurrent(); }
       assertStandardOperationOutput(result.output); assertCurrent();
       const receipt = pending ? previous.record.receipt : makeReceipt(initialRecord, result.output);
       const row = { plan, grant: auditGrant, receipt, output: result.output, effect_knowledge: result.effect_knowledge, resource_fence: lease.record };
       const audit = pending ? { ...bodyOf(previous.record), revision: previous.record.revision + 1,
         attempts: [...previous.record.attempts, { plan, grant: auditGrant, resource_fence: lease.record }] }
-        : { ...(previous.record ? bodyOf(previous.record) : { contract_version: "process-operation-disposition.v2", operation_id: id,
+        : { ...(previous.record ? bodyOf(previous.record) : { contract_version: handoff ? "process-operation-disposition.v3" : "process-operation-disposition.v2", operation_id: id,
           attempts: [], admissions: [], acceptance_reservations: [] }), ...row,
           revision: (previous.record?.revision ?? 0) + 1, results: [...(previous.record?.results ?? []), row] };
-      assertIncidentContinuationDisposition(signer.seal(audit));
+      assertContinuationDisposition(signer.seal(audit));
       write(dispositions, audit, previous.content_sha256);
       await onBoundary("disposition_recorded", id);
       // From this point a cold caller adopts this captured output; it never
@@ -619,10 +673,12 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     if (!lease) fail("PROCESS_DISPOSITION_ACCEPTANCE_FENCE_REQUIRED");
     artifacts.resourceFence().assert(lease);
     const instance = readInstance(record.intent.instance_id), capsule = readDispatch(record.operation_id, record).record;
+    const handoff = isHandoffContinuationPlan(retained.plan), confirmBusiness = handoff ? confirmHandoffContinuation : confirmPrIncidentContinuation;
+    const prepareBusiness = handoff ? prepareHandoffContinuation : preparePrIncidentContinuation;
     continuationOwner(record, capsule);
     if (retained.output.outcome === "completed") {
-      if (confirmPrIncidentContinuation?.(instance, record, retained.output) !== true) fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
-    } else preparePrIncidentContinuation(instance, record);
+      if (confirmBusiness?.(instance, record, retained.output) !== true) fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+    } else prepareBusiness(instance, record);
     const grant = await currentGrant({ action: "operation_disposition_accept", disposition_sha256: shadowHash(retained),
       receipt_sha256: shadowHash(receipt), instance_sha256: instance.instance_sha256, scope_id: instance.scope_id }, signal);
     artifacts.resourceFence().assert(lease); freshGrant(grant.grant, grant.request);
@@ -631,8 +687,9 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       || shadowHash(dispositions.read(record.operation_id).record) !== shadowHash(retained)) fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
     continuationOwner(record, readDispatch(record.operation_id, record).record);
     if (retained.output.outcome === "completed") {
-      if (confirmPrIncidentContinuation?.(instance, record, retained.output) !== true) fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
-    } else preparePrIncidentContinuation(instance, record);
+      if (confirmBusiness?.(instance, record, retained.output) !== true) fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+    } else prepareBusiness(instance, record);
+    if (handoff) currentConsent(retained.plan, grant, signal);
     if (retained.admissions.length >= 32) fail("PROCESS_DISPOSITION_ADMISSION_LIMIT");
     write(dispositions, { ...bodyOf(retained), revision: retained.revision + 1,
       admissions: [...retained.admissions, { instance_sha256: instance.instance_sha256, receipt_sha256: shadowHash(receipt), grant }] }, before.content_sha256);
@@ -800,6 +857,15 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     },
     prepare(id, { expectedSha256, signal } = {}) {
       const operation = readOperation(id).record;
+      if (operation.intent.binding_ref === handoffPublicationOperation && operation.results[0]?.receipt.effect_status === "unknown"
+        && typeof prepareHandoffContinuation === "function") {
+        if (signal?.aborted) fail("PROCESS_DISPOSITION_ABORTED");
+        let eligible = false;
+        try { handoffContinuationOwner(operation, readDispatch(id, operation).record); eligible = true; } catch (error) {
+          if (!["PROCESS_HANDOFF_CONTINUATION_OWNER_REQUIRED", "PROCESS_HANDOFF_CONTINUATION_SUBJECT_REQUIRED"].includes(error.code)) throw error;
+        }
+        if (eligible) return prepareContinuation(operation, expectedSha256);
+      }
       if (operation.intent.binding_ref === prIncidentCloseOperation && operation.results[0]?.receipt.effect_status === "unknown"
         && typeof preparePrIncidentContinuation === "function") {
         let eligible = false;

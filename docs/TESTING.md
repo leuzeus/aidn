@@ -7296,6 +7296,21 @@ accepted UNKNOWN whose old prefix is reconstructed without rewriting history.
 DUAL must materialize only the pending packet; FILES already has the canonical
 file; DB-only must create no visible packet. Matching afterimages do not prove
 the original writer completed. The new confirmation remains distinct from the
-original UNKNOWN, and no common continuation receipt is yet emitted by product
-code. These are bounded component results; public/cold recovery and complete
-L4/A6/L7/L8 qualification remain due.
+original UNKNOWN, and this component never emits a product continuation receipt. The separate
+closed v3 product profile must also qualify normal exact-action consent, actual
+dead-owner retirement, follow-on receipt/acceptance and cold adoption. These are
+bounded component results; complete L4/A6/L7/L8 qualification remains due.
+
+The required common handoff operation command also calls
+`verify-standard-handoff-disposition-fixtures.mjs`. Its default scenarios are
+`nominal` and `disposition_recorded`; `--case=<name>` selects one when run
+directly with a mode argument. These use the actual operation host's v3
+preparation, current-grant/refusal, durable control, fence/lock retirement,
+follow-on receipt and separate common acceptance. The capture scenario kills a
+real second controller after durable output capture and reconstructs the host;
+a fresh grant must adopt the identical receipt without a second private port or
+projection call. Packet metadata and original UNKNOWN/capsule stay exact.
+Execution, replay and SIM must reach the same instance hash with the same IR
+and reducer. Both independent child roles retain their explicit120000 ms bound.
+Permissions remain fixture-controlled; this does not qualify the normal full
+published entry, all other interruption cuts, genuine actors or installed code.

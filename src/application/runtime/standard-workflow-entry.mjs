@@ -90,6 +90,7 @@ export async function runStandardWorkflowAction({ request, configuration, parame
   const dispositionSource = typeof authority.authorizeDisposition === "function" && typeof authority.verifyDisposition === "function" ? {
     authorize: ({ request }) => authority.authorizeDisposition(request, permittedDisposition),
     verify: ({ request, grant }) => authority.verifyDisposition(request, grant, permittedDisposition),
+    assertCurrent: ({ request, grant }) => { authority.verifyDisposition(request, grant, permittedDisposition); },
   } : null;
   const host = compose(input => authority.authorizeOperation(input, permittedOperation), dispositionSource, nativeSources);
   let state = null, nativeRecovery = false;
@@ -133,15 +134,15 @@ export async function runStandardWorkflowAction({ request, configuration, parame
     if (next.kind === "question_recovery") return { kind: "question_recovery", payload: { recovery_plan: next.plan } };
     if (next.kind === "reconciliation" && dispositionSource) {
       const frames = state.cursor.occurrences.filter(frame => frame.status === "WAITING"
-        && ["session_pr_correction_reopen", "session_pr_incident_close"].includes(frame.operation?.intent?.binding_ref)
+        && ["session_pr_correction_reopen", "session_pr_incident_close", "handoff_packet_publish"].includes(frame.operation?.intent?.binding_ref)
         && frame.operation.receipt?.outcome === "reconciliation_required" && frame.operation.receipt.effect_status === "unknown");
       if (frames.length === 1) {
         const id = frames[0].operation.intent.operation_id, record = host.readOperation(id);
         if (record.results[0]?.receipt?.outcome === "reconciliation_required"
           && record.results[0]?.receipt?.effect_status === "unknown") {
           const plan = await host.prepareOperationDisposition(id, { expectedSha256: state.record.instance_sha256, signal });
-          if (record.intent.binding_ref === "session_pr_incident_close") {
-            if (plan.assessment !== "known_partial_incident_close") fail("STANDARD_ENTRY_DISPOSITION_PLAN_REQUIRED");
+          if (["session_pr_incident_close", "handoff_packet_publish"].includes(record.intent.binding_ref)) {
+            if (plan.assessment !== (record.intent.binding_ref === "handoff_packet_publish" ? "known_partial_handoff_publication" : "known_partial_incident_close")) fail("STANDARD_ENTRY_DISPOSITION_PLAN_REQUIRED");
             const latest = record.results.at(-1).receipt;
             const accepted = state.record.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(latest));
             if (accepted) return { kind: "operation_disposition", payload: { disposition_plan: plan } };
@@ -265,7 +266,7 @@ export async function runStandardWorkflowAction({ request, configuration, parame
   } else if (action.kind === "operation_disposition" || action.kind === "operation_disposition_accept") {
     if (!dispositionSource) fail("STANDARD_ENTRY_DISPOSITION_AUTHORITY_REQUIRED");
     const plan = action.payload.disposition_plan;
-    if (action.kind === "operation_disposition" && !["confirmed_reopen", "known_partial_incident_close"].includes(plan?.assessment)) fail("STANDARD_ENTRY_DISPOSITION_PLAN_REQUIRED");
+    if (action.kind === "operation_disposition" && !["confirmed_reopen", "known_partial_incident_close", "known_partial_handoff_publication"].includes(plan?.assessment)) fail("STANDARD_ENTRY_DISPOSITION_PLAN_REQUIRED");
     permittedDisposition = { action: action.kind, scope_id: state.record.scope_id, instance_sha256: state.record.instance_sha256,
       subject_sha256: plan ? shadowHash(plan) : action.payload.receipt_sha256, action_sha256: expectPlan,
       key_id: context.key_id, trust_sha256: context.trust_sha256 };

@@ -396,6 +396,14 @@ finalization; `--verify` retains its read-only verification behavior.
     keep reconciliation pending. A captured result can be adopted after an
     interruption without repeating business writes. The next explicit
     `operation_disposition_accept` action accepts that retained result separately.
+    A returned UNKNOWN packet publication uses the separate closed v3
+    one-packet disposition. Under current exact-action permission and a proved
+    terminated producer, it finishes only a pending HANDOFF-PACKET projection;
+    it never repeats the canonical packet CAS. DB-only creates no visible
+    export. The original UNKNOWN and captured confirmation stay separate.
+    A fresh authorized adoption can append the captured receipt after a crash
+    without invoking the business port again. Acceptance remains a separate
+    exact action. Preview retires no owner and starts no Native client.
     If a process stopped after acceptance and left its exact authenticated
     acceptance control lease held, the same explicit acceptance action can retire
     that control with current permission, including after the operation completed.
