@@ -110,6 +110,9 @@ export async function verifyStandardReconciliationInventory(mode, pass, { proces
     const closureFile = path.join(outputControl, closureName);
     const closureBytes = Buffer.from('{"process_tree":{"termination_state":"confirmed"}}\n');
     fs.writeFileSync(closureFile, closureBytes);
+    const firstClosureName = id + "-CLOSURE.json", firstClosureFile = path.join(outputControl, firstClosureName);
+    fs.writeFileSync(firstClosureFile, closureBytes);
+    fs.writeFileSync(path.join(outputControl, id + "-foreign-CLOSURE.json"), "foreign first-generation closure\n");
     const nestedFile = path.join(outputControl, generation, "evidence/native.txt");
     fs.writeFileSync(nestedFile, "retained Native evidence\n");
     fs.writeFileSync(path.join(outputControl, id + "-foreign.g2-CLOSURE.json"), "foreign instance\n");
@@ -121,6 +124,11 @@ export async function verifyStandardReconciliationInventory(mode, pass, { proces
     assert.equal(closureResource.kind, "local_evidence");
     assert.equal(closureResource.disposition, "unresolved");
     assert.equal(closureResource.sha256, shadowHashBytes(closureBytes));
+    const firstClosureResource = withOutputs.resources.find(row => row.ref === "execution:" + firstClosureName);
+    assert.equal(firstClosureResource?.kind, "local_evidence", "FIRST_GENERATION_CLOSURE_EVIDENCE_REQUIRED");
+    assert.equal(firstClosureResource.disposition, "unresolved");
+    assert.equal(firstClosureResource.sha256, shadowHashBytes(closureBytes));
+    assert.deepEqual(firstClosureResource.details.physical_identity, exactFileIdentity(fs.lstatSync(firstClosureFile, { bigint: true })));
     assert.deepEqual(closureResource.details.physical_identity, closureIdentity);
     assert.equal(withOutputs.resources.find(row => row.ref === "execution:" + generation + ":evidence/native.txt")?.sha256,
       shadowHashBytes(fs.readFileSync(nestedFile)));

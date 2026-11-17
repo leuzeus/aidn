@@ -315,7 +315,8 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
       // evidence. It makes no claim about unjournaled provider/native sessions.
       const control = agentRunPhysicalPath(configuration.control_root);
       for (const name of fs.readdirSync(control).sort()) {
-        if (name === instance.instance_id || name.startsWith(instance.instance_id + ".g")) physical(path.join(control, name), "execution:" + name);
+        if (name === instance.instance_id || name === instance.instance_id + "-CLOSURE.json"
+          || name.startsWith(instance.instance_id + ".g")) physical(path.join(control, name), "execution:" + name);
       }
     }
     operations.sort((a, b) => a.operation_id.localeCompare(b.operation_id, "en"));
