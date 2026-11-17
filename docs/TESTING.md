@@ -1977,7 +1977,12 @@ real. The fixture rejects missing/malformed product snapshots with a typed code
 before Native allocation. The accepted mode result must retain context, product
 output and native-result evidence. The fixture preserves the product. If
 EXPLORING creates its governed session metadata checkpoint, the fixture checks
-its receipt, parent and paths against Git and pins the resulting HEAD. A
+its receipt, parent and paths against Git and pins the resulting HEAD. The v2
+checkpoint includes the authenticated initialized context snapshot: the prepared
+document set must be exactly current state, runtime state, the selected session
+and that snapshot. Committed paths must include the snapshot and equal the
+prepared Git delta, with matching canonical hashes; the actual Git diff must
+still match that complete delta. A
 retention request also checks the SPIKE admission and staged decision against
 the same observed report and confirms the decision still awaits a result. The
 fixture checks D/H and missing-answer polling allocate no Native, then tests read-only

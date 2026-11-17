@@ -162,8 +162,16 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
         assert.equal(output.effect_status, "confirmed");
         assert.equal(output.facts.session_git_ready_for_cycle, true);
         const { git: checkpoint, committed_paths: paths } = output.observations;
-        const allowed = ["docs/audit/CURRENT-STATE.md", "docs/audit/RUNTIME-STATE.md", "docs/audit/sessions/S001.md"];
+        const allowed = ["docs/audit/CURRENT-STATE.md", "docs/audit/RUNTIME-STATE.md", "docs/audit/sessions/S001.md", "docs/audit/snapshots/context-snapshot.md"];
+        const checkpointPlan = record.preview.prepared.plan;
+        assert.equal(checkpointPlan.contract_version, "standard-session-git-checkpoint-plan.v2");
+        assert.deepEqual(checkpointPlan.documents.map(row => "docs/audit/" + row.path).sort(), [...allowed].sort());
         assert.ok(paths.length > 0 && paths.every(file => allowed.includes(file)));
+        assert.ok(paths.includes("docs/audit/snapshots/context-snapshot.md"), "The initialized v2 snapshot must be checkpointed");
+        assert.deepEqual([...paths].sort(), checkpointPlan.git.files.map(row => row.path).sort());
+        for (const file of checkpointPlan.git.files) {
+          assert.equal(file.sha256, checkpointPlan.documents.find(row => "docs/audit/" + row.path === file.path)?.sha256);
+        }
         assert.equal(checkpoint.parent_sha, originalHead);
         assert.equal(git("rev-parse", "HEAD"), checkpoint.commit_sha);
         assert.equal(git("show", "-s", "--format=%P", checkpoint.commit_sha), originalHead);
