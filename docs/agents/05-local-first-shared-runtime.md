@@ -675,3 +675,18 @@ writer, context/resource readers, canonical projection and closed contracts.
 Those dependency bytes are checked independently of the Native global digest.
 This fills the existing source-pin coverage; it adds no new permission or age
 condition. Historical records retain their original implementation identities.
+
+The internal UNKNOWN handoff projection continuation reads the configured
+canonical packet and all original unowned context/source postconditions. The
+physical projection may only match the original beforeimage or desired
+afterimage; foreign content refuses. DB-only requests no export. Its caller
+must separately authenticate the original producer and signed held owner, prove
+actual termination, durably reserve current consent, acquire its own exact fence
+and retire the old physical lock to a retained witness before lending that
+fence. The primitive cannot transfer or release an owner. It materializes only
+the already-canonical packet under the borrowed fence, preserves canonical
+metadata and every original UNKNOWN result, and never reuses the old resource
+grant as permission. The fixture controller proves this bounded mechanism with
+a real terminated child; product disposition/acceptance and cold adoption remain
+separate implementation work. No new store, shared coordination, age ceiling or
+Native allocation is introduced.

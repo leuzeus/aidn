@@ -41,6 +41,29 @@ export function matchesCompletedHandoffPublication({ targetRoot, readCurrent, pl
   return true;
 }
 
+// Read-only state for an explicitly authorized projection continuation. Packet
+// content must already equal the original plan. This does not attribute that
+// content to the interrupted creator or declare the original operation complete.
+export function observeHandoffPublicationPostimages({ targetRoot, readCurrent, plan }) {
+  assertHandoffPublicationPlan(plan);
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot });
+  const context = createStandardHandoffContext({ targetRoot, readCurrent });
+  const [packet] = artifacts.readMany([target], { includeMetadata: true });
+  checkPublicationArtifacts(artifacts, context, plan, true, packet.metadata_sha256);
+  const mode = artifacts.describe().state_mode;
+  let projection = null;
+  if (mode !== 'db-only') {
+    const file = agentRunPhysicalPath(path.join(artifacts.root, 'docs/audit', target), { missing: true });
+    projection = readAgentRunFile(file, { json: false, optional: true, maxBytes: STANDARD_ARTIFACT_MAX_BYTES })?.sha256 ?? null;
+    if (projection !== plan.before_sha256 && projection !== plan.after_sha256)
+      fail('STANDARD_HANDOFF_PUBLICATION_PROJECTION_CHANGED');
+  }
+  checkPublicationArtifacts(artifacts, context, plan, true, packet.metadata_sha256);
+  return freezeShadow({ state_mode: mode, packet_sha256: packet.sha256, packet_metadata_sha256: packet.metadata_sha256,
+    projection_sha256: projection, projection_status: mode === 'db-only' ? 'not_requested'
+      : projection === plan.after_sha256 ? 'current' : 'pending' });
+}
+
 // This is the canonical packet-write port. The common host must separately
 // retain its operation receipt and observe resource closure AFTER owner release
 // before declaring a complete handoff. No authored data supplies capabilities.

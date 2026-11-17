@@ -7272,3 +7272,30 @@ and the actual parent verification port before worker launch and after closure;
 changing the required command or its ordered catalog. Controlled inventory and
 Native history in these fixtures do not qualify genuine Native/Human/provider,
 installed archives, full STANDARD or CI admission.
+
+## Internal interrupted handoff projection continuation
+
+The existing required command
+`node tools/perf/verify-standard-handoff-operation-fixtures.mjs files`
+(and `dual` / `db-only`) also calls
+`verify-standard-handoff-continuation-fixtures.mjs`. The latter can run alone
+with the same mode argument. It uses a real common packet operation on a fresh
+project, a controlled resource/permission source and a separate Node producer.
+The new producer has an explicit 120000 ms bound, starts no Native client and
+is actually terminated only after returning its signed UNKNOWN. Live-owner
+fence transfer must refuse without writes. The fixture controller authenticates
+the retained dispatch/owner, records a separate intention, acquires a new fence
+and renames the exact abandoned lock to its preserved witness. This controller
+is a fixture capability, not a product disposition path.
+
+The primitive checks include cancelled preparation before key reads, cancelled
+retained captures, substituted receipts/plans, current denial before projection,
+loss of projection acknowledgement, unchanged canonical bytes/metadata and old
+journal, no repeated projection, controller-only fence release, and an actual
+accepted UNKNOWN whose old prefix is reconstructed without rewriting history.
+DUAL must materialize only the pending packet; FILES already has the canonical
+file; DB-only must create no visible packet. Matching afterimages do not prove
+the original writer completed. The new confirmation remains distinct from the
+original UNKNOWN, and no common continuation receipt is yet emitted by product
+code. These are bounded component results; public/cold recovery and complete
+L4/A6/L7/L8 qualification remain due.

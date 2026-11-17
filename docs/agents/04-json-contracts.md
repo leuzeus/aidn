@@ -1131,3 +1131,15 @@ private capture/currentness capability cannot be serialized or supplied by IR.
 Observer-console identity is read from the Windows kernel; process-observation
 v1/v2 remains unchanged. Private Native/dispatch activity snapshots grant no
 closure, effect or handoff permission and introduce no canonical store.
+
+The internal interrupted-handoff observer recognizes the exact receipted UNKNOWN
+publication and, if accepted, only its own final result event. It reconstructs
+an ephemeral preparation prefix without changing the process or old journal.
+Its private snapshot binds the original intent/receipt, packet plan, canonical
+content/metadata, visible projection and expected new confirmation. These data
+fields grant no effects or handoff permission. The private projection capability
+requires the exact implementation-owned borrowed disposition scope and a current
+synchronous permit. It has no canonical CAS. A projection call followed by lost
+acknowledgement retains unknown effect status even if a nested failure says
+no-effect. This primitive is not wired to a public disposition plan or receipt;
+the existing closed v1/v2 disposition contracts and readers stay unchanged.
