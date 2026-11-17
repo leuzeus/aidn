@@ -703,3 +703,15 @@ An earlier captured UNKNOWN with unknown ownership stays held. A projection
 attempt keeps unknown effect knowledge even when a nested error says no-effect.
 Original UNKNOWN data, retired witness and all old attempts remain unchanged;
 this control closure never confirms the business outcome or allocates Native.
+
+
+Unreturned handoff continuation authenticates the original signed running
+capsule and absent result before selecting its distinct v4 profile. A current
+controller needs fresh exact consent, actual original-owner termination, a
+new fenced reservation and exact lock retirement. It may finish only the
+pending projection of the already-canonical packet. It cannot replay its CAS,
+rewrite the original capsule, refund native consumption or renew an old grant.
+Unknown projection effects retain the new controller owner. Current subject,
+source permission and explicit issuer/Native bounds remain independent;
+preparation age adds no validity ceiling. Shared coordination and backend
+authority remain unchanged.

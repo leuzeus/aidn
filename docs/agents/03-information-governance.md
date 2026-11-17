@@ -151,3 +151,13 @@ PostgreSQL database transaction, with a positive planning revision; the first
 historical planning write remains revision zero. Activation and termination
 fixture doubles validate persistence decisions only. They do not qualify a
 native executor, delegated admission or process-tree confinement.
+
+
+The unreturned handoff candidate retains its new controller disposition under
+the existing process_operation_journal concept and configured artifact backend.
+The original signed dispatch capsule remains running and unchanged. The common
+operation journal may append a genuine controller result and advance its phase;
+this does not fabricate an original publisher return. No new canonical parent,
+store or migration is introduced. DUAL may materialize only the already-canonical
+packet projection; DB-only creates no visible packet. A matching visible copy
+never replaces canonical content, metadata or the exact owner/witness evidence.

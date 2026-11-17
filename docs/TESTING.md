@@ -7356,3 +7356,30 @@ keep resource closure blocked. Verify the public preparation itself, preserve
 canonical inventory during preview, and keep a distinct live marked process
 refused. Existing CLI help, parser, JSON, effect and foreground-listener checks
 remain required. Native and installed claims still need their own evidence.
+
+
+## Unreturned handoff controller candidate fixtures
+
+The common handoff operation command retains the returned-UNKNOWN scenarios
+and additionally invokes verifyStandardHandoffDisposition(mode,{unreturned:true}).
+The fixture can run directly with a mode, --unreturned and optional --case=name.
+Its original publisher pauses synchronously after real packet CAS before any
+result. The parent verifies a signed running capsule and empty journal, refuses
+a live-owner transfer and then actually terminates the producer. The publisher
+and each interrupted controller retain their own original120000ms bounds. No
+aggregate manifest deadline or native allocation is added.
+
+The new profile exercises nominal completion, capture adoption, current denial,
+cancellation, reserve/fence/retirement/projection/receipt/acceptance cuts and a
+distinct live authorized contender. DUAL also retains projection-acknowledgement
+loss as a new UNKNOWN with a held controller. Original packet content/metadata
+and running capsule must remain exact. A v4 plan must reject invented original
+output/receipt digests, foreign owned paths and relabelled output. The first
+actual controller receipt uses index zero; no original result event is created.
+Execution, replay and SIM use the same model and reducer.
+
+These are controlled-canonical/permission fixtures with actual local processes.
+They do not qualify arbitrary foreign canonical mutations, before-effect
+continuation, normal published v4 entry, genuine Native/Human/provider activity,
+installed code or complete A6/full STANDARD acceptance. Required full manifests
+retain every existing command and historical failed scenario.

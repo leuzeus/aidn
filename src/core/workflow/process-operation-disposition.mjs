@@ -1,3 +1,5 @@
+import unreturnedHandoffPlanSchema from '../contracts/workflow-definition/process-operation-disposition-plan.v4.schema.json' with { type: 'json' };
+import unreturnedHandoffRecordSchema from '../contracts/workflow-definition/process-operation-disposition.v4.schema.json' with { type: 'json' };
 import handoffPlanSchema from '../contracts/workflow-definition/process-operation-disposition-plan.v3.schema.json' with { type: 'json' };
 import handoffRecordSchema from '../contracts/workflow-definition/process-operation-disposition.v3.schema.json' with { type: 'json' };
 import { assertHandoffOperationOutput, handoffPublicationOperation } from './standard-handoff-operation.mjs';
@@ -145,6 +147,65 @@ export function assertHandoffContinuationDisposition(value) {
     fail('PROCESS_DISPOSITION_RECORD_INVALID');
   for (const attempt of value.attempts) {
     if (!same(handoffContinuationSubject(assertHandoffContinuationPlan(attempt.plan)), subject))
+      fail('PROCESS_DISPOSITION_RECORD_INVALID');
+  }
+  return value;
+}
+
+// Unreturned handoff is a distinct closed profile. The original signed running
+// capsule/output absence are authenticated by the host, never inferred here.
+if (unreturnedHandoffRecordSchema.properties.results.maxItems !== operationDispositionResultLimit)
+  fail('PROCESS_DISPOSITION_RESULT_LIMIT_DRIFT');
+export function assertUnreturnedHandoffContinuationPlan(value) {
+  if (!valid(value, unreturnedHandoffPlanSchema)) fail('PROCESS_DISPOSITION_PLAN_INVALID');
+  const c = value.continuation, output = assertHandoffOperationOutput(c.expected_output);
+  if (value.output_sha256 === c.expected_output_sha256 || !same(c.owned_paths, ['HANDOFF-PACKET.md'])
+    || output.operation_ref !== handoffPublicationOperation || output.outcome !== 'completed' || output.effect_status !== 'confirmed'
+    || shadowHash(output) !== c.expected_output_sha256 || output.observations.packet_plan_sha256 !== c.packet_plan_sha256
+    || output.evidence_refs[0]?.ref !== 'docs/audit/HANDOFF-PACKET.md') fail('PROCESS_DISPOSITION_PLAN_INVALID');
+  return value;
+}
+function unreturnedHandoffContinuationSubject(plan) {
+  const c = plan.continuation;
+  return { operation_id: plan.operation_id, instance_id: plan.instance_id, scope_id: plan.scope_id,
+    model_sha256: plan.model_sha256, authority_sha256: plan.authority_sha256, runtime_sha256: plan.runtime_sha256,
+    physical_root_sha256: plan.physical_root_sha256, dispatch_sha256: plan.dispatch_sha256,
+    original_output_sha256: plan.output_sha256, original_receipt_sha256: c.original_receipt_sha256,
+    packet_plan_sha256: c.packet_plan_sha256, source_sha256: c.source_sha256, boundary_sha256: c.boundary_sha256,
+    lock_sha256: c.lock_sha256, owned_paths: c.owned_paths, expected_output_sha256: c.expected_output_sha256 };
+}
+function assertUnreturnedHandoffResult(row, id) {
+  const plan = assertUnreturnedHandoffContinuationPlan(row.plan), c = plan.continuation;
+  const output = assertHandoffOperationOutput(row.output), receipt = row.receipt;
+  if (plan.operation_id !== id || !valid(receipt, receiptSchema) || receipt.operation_id !== id
+    || receipt.output_sha256 !== shadowHash(output) || receipt.outcome !== output.outcome
+    || receipt.effect_status !== output.effect_status || !same(receipt.facts, output.facts)
+    || output.observations.plan_sha256 !== c.expected_output.observations.plan_sha256
+    || output.observations.packet_plan_sha256 !== c.packet_plan_sha256
+    || output.observations.resource_material_sha256 !== c.expected_output.observations.resource_material_sha256
+    || shadowHash(receipt) === c.original_receipt_sha256) fail('PROCESS_DISPOSITION_RECORD_INVALID');
+  if (output.outcome === 'completed') {
+    if (row.effect_knowledge !== 'known_prefix' || receipt.output_sha256 !== c.expected_output_sha256)
+      fail('PROCESS_DISPOSITION_RECORD_INVALID');
+  } else if (output.outcome !== 'reconciliation_required' || output.effect_status !== 'unknown')
+    fail('PROCESS_DISPOSITION_RECORD_INVALID');
+  return unreturnedHandoffContinuationSubject(plan);
+}
+export function assertUnreturnedHandoffContinuationDisposition(value) {
+  if (!valid(value, unreturnedHandoffRecordSchema)) fail('PROCESS_DISPOSITION_RECORD_INVALID');
+  const subject = assertUnreturnedHandoffResult(value, value.operation_id), receiptIds = new Set();
+  for (const [index, row] of value.results.entries()) {
+    if (!same(assertUnreturnedHandoffResult(row, value.operation_id), subject)
+      || row.receipt.receipt_id !== 'receipt_' + value.operation_id.slice(3) + (index ? '_' + index : '')
+      || receiptIds.has(row.receipt.receipt_id)
+      || index < value.results.length - 1 && row.output.outcome !== 'reconciliation_required')
+      fail('PROCESS_DISPOSITION_RECORD_INVALID');
+    receiptIds.add(row.receipt.receipt_id);
+  }
+  if (!same(Object.fromEntries(resultFields.map(key => [key, value[key]])), value.results.at(-1)))
+    fail('PROCESS_DISPOSITION_RECORD_INVALID');
+  for (const attempt of value.attempts) {
+    if (!same(unreturnedHandoffContinuationSubject(assertUnreturnedHandoffContinuationPlan(attempt.plan)), subject))
       fail('PROCESS_DISPOSITION_RECORD_INVALID');
   }
   return value;

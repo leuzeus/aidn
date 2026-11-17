@@ -1,4 +1,4 @@
-import { assertHandoffContinuationPlan, assertHandoffContinuationDisposition, assertIncidentContinuationPlan } from "../../src/core/workflow/process-operation-disposition.mjs";
+import { assertHandoffContinuationPlan, assertHandoffContinuationDisposition, assertUnreturnedHandoffContinuationPlan, assertUnreturnedHandoffContinuationDisposition, assertIncidentContinuationPlan } from "../../src/core/workflow/process-operation-disposition.mjs";
 import { createAgenticProcess, advanceAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import {createStandardHandoffContinuation} from "../../src/application/runtime/standard-handoff-continuation.mjs";
@@ -22,7 +22,7 @@ if (process.argv[2] === '--worker') {
   const source={async read({request:q}){return{contract_version:'standard-handoff-resource-observation.v1',authority_id:'fixture_handoff_discovery',request_sha256:H(q),observed_at_ms:c.clock,evidence_class:'fixture',evidence_refs:[{ref:'fixture:controlled-source',sha256:H(q)}],domains:['deterministic','native','human','control','process','git','provider'].map(domain=>({domain,complete:true,active_resources:0,state:'closed',evidence_refs:[{ref:'fixture:'+domain,sha256:H({q,domain})}]}))};},async verify({request:q,observation:o}){return{outcome:'verified',authority_id:o.authority_id,request_sha256:H(q),observation_sha256:H(o),evidence_class:'fixture'};},assertCurrent(){}};
   process.on('message',()=>{});
   const workerDisposition={async authorize({request}){return{contract_version:'process-disposition-authorization-grant.v2',authority_id:'fixture_current_disposition',authorized:true,request_sha256:H(request),principal_sha256:H('controlled current operator'),grant_sha256:H({request,permission:'new-exact-disposition'}),observed_at_ms:c.clock,evidence_refs:[{ref:'fixture:new-exact-disposition',sha256:H(request)}]};},async verify({request,grant}){return{outcome:'verified',authority_id:grant.authority_id,request_sha256:H(request),grant_sha256:H(grant)};},assertCurrent({request,grant}){assert.equal(grant.request_sha256,H(request));}};
-  const host=createStandardWorkflowOperationHost({targetRoot:c.root,model:c.model,now:()=>c.clock,readSigningKey:()=>Buffer.from(c.key,'hex'),authorize:value=>({authorized:true,authority_id:'fixture_operator',principal_sha256:H('controlled operator'),grant_sha256:H({preview:value.preview_sha256,scope:value.scope_id})}),reconciliationConfiguration:{instance_id:c.id,target_root:c.root,control_root:c.control},dispositionSource:workerDisposition,handoffResourceSource:source,handoffNativeHistory:()=>({instance_id:c.id,scope_id:null,model_sha256:null,journal_id:null,journal_sha256:null,retained_history_status:'not_allocated',entries:[],permits_effects:false,complete_resource_closure:false})},{dispatchCheckpoint:async point=>{phase(point);if(c.plan&&point===c.boundary){const a=createStandardWorkflowArtifacts({targetRoot:c.root});const identity=point==='disposition_control_reserved'?JSON.parse(a.read('workflows/operation-control-intents/'+c.operation_id+'.json',{required:true}).content).attempts.at(-1).resource_fence.record.process_identity:a.resourceFence().read().record.process_identity;assert.equal(identity.pid,process.pid);process.send({status:'controller_boundary',boundary:point,identity});await new Promise(()=>{});}},handoffPublicationBoundary:point=>{phase(point);if(point==='after_packet_cas')throw Object.assign(Error('FIXTURE_LOST_AFTER_PACKET_CAS'),{code:'FIXTURE_LOST_AFTER_PACKET_CAS'});}});
+  const host=createStandardWorkflowOperationHost({targetRoot:c.root,model:c.model,now:()=>c.clock,readSigningKey:()=>Buffer.from(c.key,'hex'),authorize:value=>({authorized:true,authority_id:'fixture_operator',principal_sha256:H('controlled operator'),grant_sha256:H({preview:value.preview_sha256,scope:value.scope_id})}),reconciliationConfiguration:{instance_id:c.id,target_root:c.root,control_root:c.control},dispositionSource:workerDisposition,handoffResourceSource:source,handoffNativeHistory:()=>({instance_id:c.id,scope_id:null,model_sha256:null,journal_id:null,journal_sha256:null,retained_history_status:'not_allocated',entries:[],permits_effects:false,complete_resource_closure:false})},{dispatchCheckpoint:async point=>{phase(point);if(c.plan&&point===c.boundary){const a=createStandardWorkflowArtifacts({targetRoot:c.root});const identity=point==='disposition_control_reserved'?JSON.parse(a.read('workflows/operation-control-intents/'+c.operation_id+'.json',{required:true}).content).attempts.at(-1).resource_fence.record.process_identity:a.resourceFence().read().record.process_identity;assert.equal(identity.pid,process.pid);process.send({status:'controller_boundary',boundary:point,identity});await new Promise(()=>{});}},handoffPublicationBoundary:point=>{phase(point);if(point==='after_packet_cas'){if(c.unreturned){const a=createStandardWorkflowArtifacts({targetRoot:c.root}),record=host.readJournal(c.operation_id),capsule=JSON.parse(a.read('workflows/dispatch-records/'+c.operation_id+'.json',{required:true}).content);assert.equal(record.phase,'dispatching');assert.deepEqual(record.results,[]);assert.equal(capsule.phase,'running');assert.equal(capsule.output,null);const marker=configFile+'.packet-cas.json';fs.writeFileSync(marker+'.tmp',JSON.stringify({status:'packet_cas_before_first_result',identity:capsule.process_identity})+'\n',{flag:'wx'});fs.renameSync(marker+'.tmp',marker);Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0);}throw Object.assign(Error('FIXTURE_LOST_AFTER_PACKET_CAS'),{code:'FIXTURE_LOST_AFTER_PACKET_CAS'});}}});
   phase('host_opened');
   const result=c.receipt_id?await host.accept(c.operation_id,{write:true,receiptId:c.receipt_id}):c.plan?await host.applyOperationDisposition(c.plan,{write:true,expectedPlanSha256:H(c.plan)}):await host.dispatch(c.operation_id,{write:true}),record=host.readJournal(c.operation_id);
   assert.equal(result.status,'receipted');assert.equal(record.results[0].output.effect_status,'unknown');
@@ -32,14 +32,16 @@ if (process.argv[2] === '--worker') {
   process.send({status:'unknown_returned',identity:capsule.process_identity});
   await new Promise(()=>{});
 } else if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- console.log(JSON.stringify(await verifyStandardHandoffDisposition(process.argv[2],{only:process.argv.find(a=>a.startsWith('--case='))?.slice(7)??null})));
+ console.log(JSON.stringify(await verifyStandardHandoffDisposition(process.argv[2],{only:process.argv.find(a=>a.startsWith('--case='))?.slice(7)??null,unreturned:process.argv.includes('--unreturned')})));
 }
-export async function verifyStandardHandoffDisposition(mode,{only=null}={}){
+export async function verifyStandardHandoffDisposition(mode,{only=null,unreturned=false}={}){
  const cases=['nominal','disposition_recorded','permission_revoked','cancelled',...(mode==='dual'?['projection_ack_lost']:[]),'disposition_control_reserved','disposition_fence_acquired','handoff_continuation_owner_retired','handoff_continuation_projected','disposition_receipted','disposition_acceptance_committed'];if(only!==null&&!cases.includes(only))throw Error('FIXTURE_CASE_INVALID');
- const results=[];for(const name of cases)if(only===null||only===name)results.push(await runCase(mode,name));
- return {status:'PASS_PUBLIC_HANDOFF_DISPOSITION_COMPONENT',mode,cases:results.map(r=>r.scenario??'nominal'),results,Native_clients:0,model_calls:0,complete_standard_workflow:false};
+ const results=[];for(const name of cases)if(only===null||only===name)results.push(await runCase(mode,name,{unreturned}));
+ return {status:unreturned?'PASS_UNRETURNED_HANDOFF_DISPOSITION_COMPONENT':'PASS_PUBLIC_HANDOFF_DISPOSITION_COMPONENT',original_result_count:unreturned?0:1,mode,cases:results.map(r=>r.scenario??'nominal'),results,Native_clients:0,model_calls:0,complete_standard_workflow:false};
 }
-async function runCase(mode,scenario){
+async function runCase(mode,scenario,{unreturned=false}={}){
+const assertPlan=unreturned?assertUnreturnedHandoffContinuationPlan:assertHandoffContinuationPlan;
+const assertAudit=unreturned?assertUnreturnedHandoffContinuationDisposition:assertHandoffContinuationDisposition;
 assert(['files','dual','db-only'].includes(mode));
 const owned=[],root=createFreshStandardWorkflowFixture(mode,owned,{absentOptionalDocuments:['HANDOFF-PACKET.md']}),artifacts=createStandardWorkflowArtifacts({targetRoot:root}),key=Buffer.alloc(32,149),signer=createOperationJournalSigner(()=>key);
 const control=fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()),'aidn-handoff-operation-control-'));owned.push(control);
@@ -70,7 +72,7 @@ const prepared=await prepare('projection-continuation-physical-bounded',{boundar
  if(point==='after_handoff_projection'&&scenario==='projection_ack_lost')throw Object.assign(Error('FIXTURE_PUBLIC_PROJECTION_ACK_LOST'),{code:'FIXTURE_PUBLIC_PROJECTION_ACK_LOST',effect_status:'no_effect'});
 }});
 const staged=await prepared.host.stage(prepared.preview,{write:true,expectedPreviewSha256:H(prepared.preview)});
-const config={root,control,model,clock,key:key.toString('hex'),id:prepared.id,operation_id:staged.operation_id};
+const config={root,control,model,clock,key:key.toString('hex'),id:prepared.id,operation_id:staged.operation_id,unreturned};
 const configFile=path.join(control,'physical-worker.json');fs.writeFileSync(configFile,JSON.stringify(config)+'\n',{flag:'wx'});
 const child=fork(fileURLToPath(import.meta.url),['--worker',configFile],{cwd:root,windowsHide:true,stdio:['ignore','pipe','pipe','ipc']});
 let stderr='',message,exit,timerExpired=false;child.stdout.resume();child.stderr.on('data',b=>{stderr+=b;if(stderr.length>16384)child.kill();});
@@ -78,35 +80,37 @@ const ended=new Promise(resolve=>child.once('close',(code,signal)=>resolve({code
 const timer=setTimeout(()=>{timerExpired=true;child.kill();},120000);
 let record,capsule,originalLock;
 try {
- message=await new Promise((resolve,reject)=>{child.once('error',reject);child.once('message',m=>m.status==='unknown_returned'?resolve(m):reject(Error(JSON.stringify(m))));child.once('close',()=>reject(Error('WORKER_CLOSED_BEFORE_UNKNOWN:'+stderr.slice(-2048))));});
+ message=unreturned?await new Promise((resolve,reject)=>{const marker=configFile+'.packet-cas.json';let interval;const done=(error,value)=>{clearInterval(interval);error?reject(error):resolve(value);};interval=setInterval(()=>{try{if(fs.existsSync(marker))done(null,JSON.parse(fs.readFileSync(marker,'utf8')));}catch(error){done(error);}},25);child.once('error',error=>done(error));child.once('close',()=>done(Error('WORKER_CLOSED_BEFORE_PACKET_CAS:'+stderr.slice(-2048))));}):await new Promise((resolve,reject)=>{child.once('error',reject);child.once('message',m=>m.status==='unknown_returned'?resolve(m):reject(Error(JSON.stringify(m))));child.once('close',()=>reject(Error('WORKER_CLOSED_BEFORE_UNKNOWN:'+stderr.slice(-2048))));});
  record=prepared.host.readJournal(staged.operation_id);signer.verify(record);signer.verify(record.preview);
  capsule=JSON.parse(artifacts.read('workflows/dispatch-records/'+staged.operation_id+'.json',{required:true}).content);signer.verify(capsule);
- assert.equal(capsule.phase,'returned');assert.equal(capsule.output_sha256,H(record.results[0].output));
+ assert.equal(capsule.phase,unreturned?'running':'returned');assert.equal(capsule.output_sha256,unreturned?null:H(record.results[0].output));if(unreturned){assert.equal(capsule.output,null);assert.equal(capsule.context_after_sha256,null);assert.equal(record.phase,'dispatching');assert.deepEqual(record.results,[]);}
  assert.equal(capsule.leases.length,1);assert.equal(capsule.local_owner_intentions.length,1);
  assert.equal(observeLocalProcessOwner(message.identity),'active');
  const fence=artifacts.resourceFence(), before=tree(), current=fence.read();
  assert.throws(()=>fence.acquire({expectedSha256:current.content_sha256,dispositionLease:capsule.leases[0].resource_fence}),{code:'STANDARD_RESOURCE_FENCE_RECONCILIATION_REQUIRED'});
  assert.deepEqual(tree(),before);
  console.log('PASS real live original producer prevents exact-fence transfer without writes');
+ if(unreturned){const liveState=prepared.host.inspect(prepared.id).record,livePlan=await readonly('live unreturned publisher prepares no v4 transfer',()=>prepared.host.prepareOperationDisposition(staged.operation_id,{expectedSha256:liveState.instance_sha256}));assert.equal(livePlan.contract_version,'process-operation-disposition-plan.v1');assert.equal(livePlan.assessment,'unknown');const refused=await readonly('live unreturned publisher application remains UNKNOWN without a grant',()=>prepared.host.applyOperationDisposition(livePlan,{write:true,expectedPlanSha256:H(livePlan)}));assert.equal(refused.status,'reconciliation_required');assert.equal(refused.written,false);assert.equal(dispositionRequests.length,0);}
  child.kill();exit=await ended;assert.equal(observeLocalProcessOwner(message.identity),'terminated');
 } finally {
  clearTimeout(timer);if(child.exitCode===null&&child.signalCode===null)child.kill();exit??=await ended;
  fs.writeFileSync(configFile+'.exit.json',JSON.stringify({identity:message?.identity??null,exit,stderr,timer_expired:timerExpired,original_worker_bound_ms:120000,actual_process_termination:true})+'\n',{flag:'wx'});
 }
 assert.equal(timerExpired,false);
-const opid=staged.operation_id,original=structuredClone(record.results[0]),capsuleSha=H(capsule);
+const opid=staged.operation_id,original=unreturned?null:structuredClone(record.results[0]),originalResults=unreturned?[]:[original],originalCount=originalResults.length,capsuleSha=H(capsule);
 const packetBefore=artifacts.readMany(['HANDOFF-PACKET.md'],{includeMetadata:true});
-const originalAccepted=await prepared.host.accept(opid,{write:true});assert.equal(originalAccepted.written,true);
-assert.deepEqual(prepared.host.readJournal(opid).results,[original]);assert.equal(artifacts.ownerPending(),true);
+if(!unreturned){const originalAccepted=await prepared.host.accept(opid,{write:true});assert.equal(originalAccepted.written,true);}
+assert.deepEqual(prepared.host.readJournal(opid).results,originalResults);assert.equal(artifacts.ownerPending(),true);
 const current=prepared.host.inspect(prepared.id).record,readOnly=tree();
 const plan=await prepared.host.prepareOperationDisposition(opid,{expectedSha256:current.instance_sha256});
 assert.deepEqual(tree(),readOnly);assert.equal(dispositionRequests.length,0);
-assert.equal(plan.contract_version,'process-operation-disposition-plan.v3');assert.equal(plan.assessment,'known_partial_handoff_publication');
-assert.deepEqual(plan.continuation.owned_paths,['HANDOFF-PACKET.md']);assert.equal(plan.continuation.original_receipt_sha256,H(original.receipt));
-console.log('PASS actual public preparation selects one-packet v3 without grants or writes');
-assertHandoffContinuationPlan(plan);const wrongPath=structuredClone(plan);wrongPath.continuation.owned_paths=['CURRENT-STATE.md'];assert.throws(()=>assertHandoffContinuationPlan(wrongPath),{code:'PROCESS_DISPOSITION_PLAN_INVALID'});
-const relabel=structuredClone(plan);relabel.continuation.expected_output_sha256=relabel.output_sha256;assert.throws(()=>assertHandoffContinuationPlan(relabel),{code:'PROCESS_DISPOSITION_PLAN_INVALID'});assert.throws(()=>assertIncidentContinuationPlan(plan),{code:'PROCESS_DISPOSITION_PLAN_INVALID'});
-console.log('PASS v3 refuses a foreign owned path and UNKNOWN relabel; the closed incident v2 reader refuses v3');
+assert.equal(plan.contract_version,unreturned?'process-operation-disposition-plan.v4':'process-operation-disposition-plan.v3');assert.equal(plan.assessment,'known_partial_handoff_publication');
+assert.deepEqual(plan.continuation.owned_paths,['HANDOFF-PACKET.md']);assert.equal(plan.continuation.original_receipt_sha256,unreturned?null:H(original.receipt));if(unreturned)assert.equal(plan.output_sha256,null);
+console.log('PASS actual public preparation selects its closed one-packet profile without grants or writes');
+assertPlan(plan);const wrongPath=structuredClone(plan);wrongPath.continuation.owned_paths=['CURRENT-STATE.md'];assert.throws(()=>assertPlan(wrongPath),{code:'PROCESS_DISPOSITION_PLAN_INVALID'});
+const relabel=structuredClone(plan);relabel.continuation.expected_output_sha256=relabel.output_sha256;assert.throws(()=>assertPlan(relabel),{code:'PROCESS_DISPOSITION_PLAN_INVALID'});assert.throws(()=>assertIncidentContinuationPlan(plan),{code:'PROCESS_DISPOSITION_PLAN_INVALID'});
+if(unreturned){for(const field of ['output_sha256','original_receipt_sha256']){const invented=structuredClone(plan);if(field==='output_sha256')invented[field]=H('invented original output');else invented.continuation[field]=H('invented original receipt');assert.throws(()=>assertPlan(invented),{code:'PROCESS_DISPOSITION_PLAN_INVALID'});}assert.throws(()=>assertHandoffContinuationPlan(plan),{code:'PROCESS_DISPOSITION_PLAN_INVALID'});}
+console.log('PASS closed handoff profile refuses foreign paths, relabelled or invented original results and the incident reader');
 
 await assert.rejects(prepared.host.applyOperationDisposition(plan,{write:false,expectedPlanSha256:H(plan)}),{code:'STANDARD_HOST_EXPLICIT_WRITE_REQUIRED'});assert.deepEqual(tree(),readOnly);
 dispositionAllowed=false;await assert.rejects(prepared.host.applyOperationDisposition(plan,{write:true,expectedPlanSha256:H(plan)}),{code:'FIXTURE_CURRENT_DISPOSITION_REQUIRED'});assert.deepEqual(tree(),readOnly);dispositionAllowed=true;
@@ -115,25 +119,25 @@ if(['permission_revoked','cancelled'].includes(scenario)){
  const canonicalBefore=artifacts.readMany(['HANDOFF-PACKET.md'],{includeMetadata:true});
  const projectionPath=path.join(root,'docs/audit/HANDOFF-PACKET.md'),beforeProjection=fs.existsSync(projectionPath)?fs.readFileSync(projectionPath):null;
  await assert.rejects(prepared.host.applyOperationDisposition(plan,{write:true,expectedPlanSha256:H(plan),signal:refusalSignal.signal}),error=>scenario==='permission_revoked'?error.code==='FIXTURE_CURRENT_DISPOSITION_REQUIRED':['STANDARD_HANDOFF_CONTINUATION_ABORTED','PROCESS_DISPOSITION_ABORTED'].includes(error.code));
- assert.deepEqual(prepared.host.readJournal(opid).results,[original]);assert.deepEqual(artifacts.readMany(['HANDOFF-PACKET.md'],{includeMetadata:true}),canonicalBefore);
+ assert.deepEqual(prepared.host.readJournal(opid).results,originalResults);assert.deepEqual(artifacts.readMany(['HANDOFF-PACKET.md'],{includeMetadata:true}),canonicalBefore);
  assert.deepEqual(fs.existsSync(projectionPath)?fs.readFileSync(projectionPath):null,beforeProjection);
  const controls=JSON.parse(artifacts.read('workflows/operation-control-intents/'+opid+'.json',{required:true}).content);signer.verify(controls);
  const proposedControlFence=controls.attempts.at(-1).resource_fence.record,currentFence=artifacts.resourceFence().read().record;
  assert.equal(currentFence.token,proposedControlFence.token);assert.equal(currentFence.process_identity.pid,process.pid);assert.equal(currentFence.state,'released');
  assert.equal(fs.existsSync(path.join(root,'.aidn/runtime/standard-workflow/retired-'+opid+'.lock')),true);assert.equal(artifacts.ownerPending(),false);
- assert(prepared.host.inspect(prepared.id).cursor.occurrences.some(f=>f.operation?.intent.operation_id===opid&&f.status==='WAITING'));
+ if(unreturned){assert.equal(prepared.host.readJournal(opid).phase,'dispatching');assert.deepEqual(prepared.host.readJournal(opid).results,[]);}else assert(prepared.host.inspect(prepared.id).cursor.occurrences.some(f=>f.operation?.intent.operation_id===opid&&f.status==='WAITING'));
  console.log('PASS '+scenario+' closes its own proved no-effect control and preserves original UNKNOWN');
- return{status:'PASS_CURRENT_CONTROL_REFUSAL_CLEANUP_COMPONENT',scenario,mode,root,control,original_unknown_preserved:true,new_controller_lease_closed:true,canonical_CAS_replayed:false,projection_attempted:false,Native_clients:0,model_calls:0,complete_standard_workflow:false};
+ return{status:'PASS_CURRENT_CONTROL_REFUSAL_CLEANUP_COMPONENT',scenario,mode,root,control,original_unknown_preserved:!unreturned,original_unreturned_dispatch_preserved:unreturned,original_result_count:originalCount,new_controller_lease_closed:true,canonical_CAS_replayed:false,projection_attempted:false,Native_clients:0,model_calls:0,complete_standard_workflow:false};
 }
 if(scenario==='projection_ack_lost'){
  const result=await prepared.host.applyOperationDisposition(plan,{write:true,expectedPlanSha256:H(plan)});
  assert.equal(result.status,'receipted');assert.equal(result.receipt.outcome,'reconciliation_required');assert.equal(result.receipt.effect_status,'unknown');
- const now=prepared.host.readJournal(opid);assert.equal(now.results.length,2);assert.deepEqual(now.results[0],original);assert.deepEqual(now.results[1].output.facts,{});
- const audit=JSON.parse(artifacts.read('workflows/operation-dispositions/'+opid+'.json',{required:true}).content);signer.verify(audit);assertHandoffContinuationDisposition(audit);assert.equal(audit.effect_knowledge,'unknown');
+ const now=prepared.host.readJournal(opid);assert.equal(now.results.length,originalCount+1);assert.deepEqual(now.results.slice(0,originalCount),originalResults);assert.deepEqual(now.results[originalCount].output.facts,{});
+ const audit=JSON.parse(artifacts.read('workflows/operation-dispositions/'+opid+'.json',{required:true}).content);signer.verify(audit);assertAudit(audit);assert.equal(audit.effect_knowledge,'unknown');
  assert.equal(artifacts.resourceFence().read().record.state,'held');assert.equal(artifacts.ownerPending(),true);
  assert.deepEqual(artifacts.readMany(['HANDOFF-PACKET.md'],{includeMetadata:true}),packetBefore);assert(fs.existsSync(path.join(root,'docs/audit/HANDOFF-PACKET.md')));
  console.log('PASS loss after actual DUAL projection retains a new UNKNOWN and its owner even with a nested no-effect tag');
- return{status:'PASS_UNKNOWN_PROJECTION_OWNER_RETAINED_COMPONENT',scenario,mode,root,control,original_unknown_preserved:true,new_unknown_preserved:true,new_controller_lease_held:true,canonical_CAS_replayed:false,Native_clients:0,model_calls:0,complete_standard_workflow:false};
+ return{status:'PASS_UNKNOWN_PROJECTION_OWNER_RETAINED_COMPONENT',scenario,mode,root,control,original_unknown_preserved:!unreturned,original_unreturned_dispatch_preserved:unreturned,original_result_count:originalCount,new_unknown_preserved:true,new_controller_lease_held:true,canonical_CAS_replayed:false,Native_clients:0,model_calls:0,complete_standard_workflow:false};
 }
 let adoptionPlan=plan,resumedHost=prepared.host,applied,adopted;
 if(scenario!=='nominal'){
@@ -160,7 +164,7 @@ controller.kill();controllerExit=await controllerEnded;assert.equal(observeLocal
 finally{clearTimeout(controllerTimer);if(controller.exitCode===null&&controller.signalCode===null)controller.kill();controllerExit??=await controllerEnded;fs.writeFileSync(controllerConfig+'.exit.json',JSON.stringify({boundary:scenario,identity:controllerMessage?.identity??null,exit:controllerExit,stderr:controllerStderr,original_worker_bound_ms:120000,timer_expired:controllerTimedOut})+'\n',{flag:'wx'});}
 assert.equal(controllerTimedOut,false);
 const receipted=['disposition_receipted','disposition_acceptance_committed'].includes(scenario),capturedExpected=receipted||scenario==='disposition_recorded';
-const retained=prepared.host.readJournal(opid);assert.deepEqual(retained.results[0],original);assert.equal(retained.results.length,receipted?2:1);
+const retained=prepared.host.readJournal(opid);assert.deepEqual(retained.results.slice(0,originalCount),originalResults);assert.equal(retained.results.length,originalCount+(receipted?1:0));
 const auditPath='workflows/operation-dispositions/'+opid+'.json',audit=artifacts.read(auditPath),captured=audit.content?JSON.parse(audit.content):null;
 assert.equal(Boolean(captured),capturedExpected);if(captured){signer.verify(captured);signer.verify(captured.plan);assert.equal(captured.results.length,1);assert.equal(captured.output.outcome,'completed');}assert.equal(artifacts.ownerPending(),true);
 const projectionPath=path.join(root,'docs/audit/HANDOFF-PACKET.md'),projectionIdentity=fs.existsSync(projectionPath)?fs.statSync(projectionPath,{bigint:true}):null;
@@ -186,22 +190,22 @@ console.log('PASS actual controller termination at '+scenario+' resumes with fre
  adopted=JSON.parse(artifacts.read('workflows/operation-dispositions/'+opid+'.json',{required:true}).content);
 }
 assert(['receipted','retained_result'].includes(applied.status));assert.equal(applied.receipt.outcome,'completed');assert.equal(applied.receipt.effect_status,'confirmed');
-const recovered=prepared.host.readJournal(opid);assert.equal(recovered.results.length,2);assert.deepEqual(recovered.results[0],original);
-assert.notEqual(H(recovered.results[1].receipt),H(original.receipt));assert.equal(H(recovered.results[1].output),plan.continuation.expected_output_sha256);
+const recovered=prepared.host.readJournal(opid);assert.equal(recovered.results.length,originalCount+1);assert.deepEqual(recovered.results.slice(0,originalCount),originalResults);
+if(original)assert.notEqual(H(recovered.results[originalCount].receipt),H(original.receipt));assert.equal(H(recovered.results[originalCount].output),plan.continuation.expected_output_sha256);assert.equal(recovered.results[originalCount].receipt.receipt_id,'receipt_'+opid.slice(3)+(originalCount?'_'+originalCount:''));
 assert.deepEqual(artifacts.readMany(['HANDOFF-PACKET.md'],{includeMetadata:true}),packetBefore);
 assert.equal(H(JSON.parse(artifacts.read('workflows/dispatch-records/'+opid+'.json',{required:true}).content)),capsuleSha);
 if(scenario!=='disposition_receipted')assert.equal(artifacts.ownerPending(),false);assert.equal(fs.existsSync(path.join(root,'.aidn/runtime/standard-workflow/retired-'+opid+'.lock')),true);
 if(mode==='db-only')assert.equal(fs.existsSync(path.join(root,'docs/audit/HANDOFF-PACKET.md')),false);
 console.log('PASS public apply retires exact old owner and appends a distinct confirmation without packet CAS replay');
 if(scenario!=='disposition_acceptance_committed'){const accepted=await resumedHost.accept(opid,{write:true,receiptId:applied.receipt.receipt_id});assert.equal(accepted.written,true);}
-const final=prepared.host.inspect(prepared.id);assert(final.record.events.some(e=>e.kind==='operation_result'&&H(e.receipt)===H(original.receipt)));assert(final.record.events.some(e=>e.kind==='operation_result'&&H(e.receipt)===H(applied.receipt)));
+const final=prepared.host.inspect(prepared.id);if(original)assert(final.record.events.some(e=>e.kind==='operation_result'&&H(e.receipt)===H(original.receipt)));else assert.equal(final.record.events.filter(e=>e.kind==='operation_result'&&e.receipt.operation_id===opid).length,1);assert(final.record.events.some(e=>e.kind==='operation_result'&&H(e.receipt)===H(applied.receipt)));
 assert.equal(artifacts.ownerPending(),false);assert.equal(dispositionRequests.filter(r=>r.action==='operation_disposition').length,scenario==='disposition_receipted'?0:scenario==='disposition_fence_acquired'?2:1);assert.equal(dispositionRequests.filter(r=>r.action==='operation_disposition_accept').length,1);
 const stable=tree();dispositionAllowed=false;const duplicate=await resumedHost.applyOperationDisposition(adoptionPlan,{write:true,expectedPlanSha256:H(adoptionPlan)});assert.equal(duplicate.status,'retained_result');assert.deepEqual(duplicate.receipt,applied.receipt);assert.deepEqual(tree(),stable);
 console.log('PASS common acceptance preserves old UNKNOWN and duplicate apply returns retained receipt without another grant/effect');
-assertHandoffContinuationDisposition(adopted);const forgedAudit=structuredClone(adopted);forgedAudit.results[0].receipt.output_sha256=H('foreign output');assert.throws(()=>assertHandoffContinuationDisposition(forgedAudit),{code:'PROCESS_DISPOSITION_RECORD_INVALID'});
+assertAudit(adopted);const forgedAudit=structuredClone(adopted);forgedAudit.results[0].receipt.output_sha256=H('foreign output');assert.throws(()=>assertAudit(forgedAudit),{code:'PROCESS_DISPOSITION_RECORD_INVALID'});
 const replayInput={instanceId:final.record.instance_id,model,policyPins:final.record.policy_pins,scopeId:final.record.scope_id,facts:final.record.initial_facts};let replay=createAgenticProcess(replayInput);for(const event of final.record.events)replay=advanceAgenticProcess(replay,event);assert.equal(replay.instance_sha256,final.record.instance_sha256);
 const simulation=simulateAgenticProcess({...replayInput,events:final.record.events});assert.equal(simulation.trace.at(-1).instance_sha256,final.record.instance_sha256);
 console.log('PASS recovered execution, replay and SIM use the same IR and reducer; substituted audit output refuses');
 
-return {status:'PASS_PUBLIC_HANDOFF_DISPOSITION_COMPONENT',mode,root,control,original_unknown_preserved:true,follow_on_receipts:1,canonical_CAS_replayed:false,actual_original_producer_termination:true,permission_source:'CONTROLLED_FIXTURE_CURRENT_OPERATOR',Native_clients:0,model_calls:0,genuine_normal_entry:'NOT_RUN',scenario,live_contender_refusal:scenario==='disposition_fence_acquired',cold_controller_kill_boundaries:scenario==='nominal'?[]:[scenario],captured_receipt_adopted_exactly_once:scenario==='disposition_recorded',complete_standard_workflow:false};
+return {status:'PASS_PUBLIC_HANDOFF_DISPOSITION_COMPONENT',mode,root,control,original_unknown_preserved:!unreturned,original_unreturned_dispatch_preserved:unreturned,original_result_count:originalCount,follow_on_receipts:1,canonical_CAS_replayed:false,actual_original_producer_termination:true,permission_source:'CONTROLLED_FIXTURE_CURRENT_OPERATOR',Native_clients:0,model_calls:0,genuine_normal_entry:'NOT_RUN',scenario,live_contender_refusal:scenario==='disposition_fence_acquired',cold_controller_kill_boundaries:scenario==='nominal'?[]:[scenario],captured_receipt_adopted_exactly_once:scenario==='disposition_recorded',complete_standard_workflow:false};
 }

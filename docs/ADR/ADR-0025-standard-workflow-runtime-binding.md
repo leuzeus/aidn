@@ -4952,3 +4952,31 @@ Native grant, finite worker bound, canonical contract or historical record.
 Actual foreign marked work remains observable and prevents resource closure.
 Source-level direct composition alone cannot qualify the public launcher;
 CLI/console and installed-package evidence must exercise their real frontends.
+
+
+## Unreturned original handoff publisher candidate
+
+A producer may die after canonical packet CAS before returning its first common
+result. The original signed capsule then remains running with no output, and
+the journal has no original receipt. Returned-UNKNOWN v3 cannot describe that
+state without inventing history. A separate closed v4 disposition profile
+therefore retains explicit null original output/receipt digests and records
+only genuine current-controller confirmations. Historical definitions and
+capsule bytes are not converted.
+
+The current controller authenticates the original intent, actual dead producer,
+held lease, exact lock witness and canonical packet postimage. It obtains new
+exact consent and a new control fence before retiring that original lock. The
+existing fixed private port can finish only the packet projection; it has no
+canonical CAS. Capture/receipt/acceptance interruptions adopt the retained
+confirmation before another business completion. The original capsule remains
+unreturned even when the new confirmation is accepted. Unknown controller
+effects keep their actual owner.
+
+This profile reuses the operation journal and existing FILES/DUAL/DB-only ports.
+It adds no canonical concept, shared-coordination capability, native grant,
+preparation-age ceiling or historical deadline renewal. At most31 controller
+results remain within the unchanged32-result common journal. Before-effect or
+foreign/missing postimages remain UNKNOWN/refused; this profile does not infer
+original producer completion from matching bytes. Full normal-entry, installed,
+genuine actor and broader A6 qualification remain separate evidence.

@@ -1154,3 +1154,21 @@ and authorization request for this one-packet continuation. V3 retains each new
 output/receipt separately from the original UNKNOWN, with the existing bounded
 result history and explicit current synchronous permission. The closed v1/v2
 contracts and readers stay unchanged.
+
+
+## Unreturned handoff publication continuation candidate
+
+Private process-operation-disposition-plan.v4, process-operation-disposition.v4
+and process-disposition-authorization-request.v4 are a separate closed profile
+for a signed original dispatch capsule that remains running without an output.
+The original output and receipt digests are explicitly null. The original
+capsule stays byte-exact; its absence of a result is never replaced with a
+fictitious UNKNOWN receipt. The first common result is a genuine current
+controller confirmation. Its receipt index begins at zero, and at most31
+controller results fit within the unchanged32-result common journal bound.
+
+The fixed host authenticates the original intent, capsule, actual producer
+termination, held lease, exact retired-lock witness, current source and packet
+postimage. The plan/record data grant no authority by themselves. Historical
+v1/v2/v3 definitions and retained histories remain separate. A before-effect,
+missing or foreign postimage is not successful reconciliation.

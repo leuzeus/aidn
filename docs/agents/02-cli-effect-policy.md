@@ -154,3 +154,12 @@ precedence and effect admissions still come from the existing registry and
 adapters. This avoids creating a separate target-marked launcher that remains
 alive while the resource observer runs. Other target/control processes and
 retained owners remain subject to the existing independent discovery.
+
+
+The unreturned handoff candidate uses the existing operation_disposition and
+operation_disposition_accept exact-action boundary. The fixed host selects its
+closed v4 plan from authenticated unreturned history; action JSON supplies no
+owner, lease, native authorization or new effect capability. Preview is read-only.
+Apply and separate acceptance still require explicit intent and the exact
+current prepared subject. Recognizing an unreturned capsule does not authorize
+repeating the original packet CAS or allocating a model.
