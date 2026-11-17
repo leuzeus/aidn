@@ -172,3 +172,13 @@ authenticated fixed beforeimage profile and a fresh controller fence/grant.
 Acceptance preserves the original capsule and opens the ordinary blocked-frame
 repreparation path. A subsequent publication has a new operation identity and
 requires its own current grant; the old packet writer is never replayed.
+
+An ordinary dispatch action for an interrupted corrective Git checkpoint first
+reobserves the original process through the host's signed owner observation.
+Active or unresolved originals remain read-only waits. A new confirmation after
+actual absence uses only the existing exact-commit observer under current
+operation permission, followed by ordinary receipt acceptance. It never falls
+back to another Git dispatch after an observation or permission refusal. A
+staged checkpoint retains its normal first dispatch; a retained confirmation
+needs no new observation result. Cancellation and exact-action checks precede
+execution. No action kind, JSON capability, Native grant or age ceiling is added.

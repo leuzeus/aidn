@@ -85,6 +85,7 @@ export async function runStandardWorkflowAction({ request, configuration, parame
     "$", { contractKind: "workflow-definition" }).length)) fail("STANDARD_ENTRY_ACTION_INVALID");
   const supplied = candidate === null ? null : structuredClone(candidate);
   if (execute && (!supplied || expectPlan !== shadowHash(supplied))) fail("STANDARD_ENTRY_EXACT_ACTION_REQUIRED");
+  if (execute && signal?.aborted) fail("STANDARD_ENTRY_ABORTED");
   let permittedOperation = null, permittedDisposition = null, permittedNative = null;
   const nativeSources = standardNativeEntryOperatorSources(authority, () => permittedNative);
   const dispositionSource = typeof authority.authorizeDisposition === "function" && typeof authority.verifyDisposition === "function" ? {
@@ -105,6 +106,19 @@ export async function runStandardWorkflowAction({ request, configuration, parame
   if (state && shadowHash(state.record.initial_parameters ?? {}) !== shadowHash(parameters)) fail("STANDARD_ENTRY_PARAMETERS_CHANGED");
   const context = { request_sha256: shadowHash(request), configuration_sha256: shadowHash(configuration), model_source_sha256: shadowHash(modelSource),
     instance_sha256: state?.record.instance_sha256 ?? null, native: host.previewNative(), key_id: authority.keyId(), trust_sha256: authority.trustSha() };
+  const checkpointRecoveryAction = operationId => {
+    const record = host.readOperation(operationId), receipt = record.results.at(-1)?.receipt;
+    if (record.intent.binding_ref !== "session_pr_correction_checkpoint") return null;
+    if (record.phase === "receipted" && receipt?.outcome === "completed" && receipt.effect_status === "confirmed")
+      return { kind: "dispatch", payload: { operation_id: operationId, journal_sha256: shadowHash(record) } };
+    if (!(record.phase === "dispatching" && record.results.length === 0 || record.phase === "receipted"
+        && receipt?.outcome === "reconciliation_required" && receipt.effect_status === "unknown")) return null;
+    if (signal?.aborted) fail("STANDARD_ENTRY_ABORTED");
+    const { observation } = host.prepareProcessOwnerObservation({ expectedSha256: state.record.instance_sha256, operationId });
+    if (observation.owner_status !== "original_process_absent") return { kind: "observe", payload: { status: "WAITING",
+      reason: observation.owner_status === "original_process_active" ? "checkpoint_original_process_active" : "checkpoint_original_process_unresolved" } };
+    return { kind: "dispatch", payload: { operation_id: operationId, journal_sha256: shadowHash(record) } };
+  };
   const currentKind = async () => {
     if (authority.keyId() === null) return { kind: "prepare_host", payload: {} };
     if (!state) return { kind: "initialize", payload: { instance_sha256: initial.record.instance_sha256 } };
@@ -132,6 +146,19 @@ export async function runStandardWorkflowAction({ request, configuration, parame
     if (next.kind === "call") return { kind: "call", payload: { ...next.transition, instance_id: state.record.instance_id,
       model_sha256: state.record.model_sha256 } };
     if (next.kind === "question_recovery") return { kind: "question_recovery", payload: { recovery_plan: next.plan } };
+    if (next.kind === "operation_wait" && next.operation_id) {
+      const recovery = checkpointRecoveryAction(next.operation_id);
+      if (recovery) return recovery;
+    }
+    if (next.kind === "reconciliation") {
+      const pending = state.cursor.occurrences.find(frame => frame.status === "WAITING"
+        && frame.operation?.intent?.binding_ref === "session_pr_correction_checkpoint"
+        && frame.operation.receipt?.outcome === "reconciliation_required" && frame.operation.receipt.effect_status === "unknown");
+      if (pending) {
+        const recovery = checkpointRecoveryAction(pending.operation.intent.operation_id);
+        if (recovery) return recovery;
+      }
+    }
     if (next.kind === "operation_wait" && dispositionSource && next.operation_id) {
       const pending = state.cursor.occurrences.find(frame => frame.status === "WAITING"
         && frame.operation?.intent?.operation_id === next.operation_id
@@ -272,7 +299,13 @@ export async function runStandardWorkflowAction({ request, configuration, parame
     let id = action.payload.operation_id;
     const beforeJournal = id ? shadowHash(host.readOperation(id)) : null;
     if (action.kind === "operation") id = (await host.stageOperation(preview, { write: true, expectedPreviewSha256: permittedOperation })).operation_id;
+    const retainedCheckpoint = action.kind === "dispatch" ? host.readOperation(id) : null;
+    const checkpointReceipt = retainedCheckpoint?.results.at(-1)?.receipt;
+    const recoverCheckpoint = retainedCheckpoint?.intent.binding_ref === "session_pr_correction_checkpoint"
+      && (retainedCheckpoint.phase === "dispatching" && retainedCheckpoint.results.length === 0 || retainedCheckpoint.phase === "receipted"
+        && checkpointReceipt?.outcome === "reconciliation_required" && checkpointReceipt.effect_status === "unknown");
     const result = action.kind === "decision" ? await host.receiveDecision(id, { sourceRef: action.payload.source_ref, write: true, signal })
+      : recoverCheckpoint ? await host.reconcileCorrectionCheckpoint(id, { write: true, signal })
       : await host.dispatchOperation(id, { write: true, signal });
     output.result = ["receipted", "retained_result"].includes(result.status) ? { ...result, accepted: await host.acceptOperation(id, { write: true, signal }) } : result;
     output.written = beforeJournal !== shadowHash(host.readOperation(id)) || host.inspect().record.instance_sha256 !== state.record.instance_sha256;

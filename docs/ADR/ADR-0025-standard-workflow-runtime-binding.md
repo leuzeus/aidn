@@ -3647,6 +3647,28 @@ generic-host tests do not prove positive recovery through the full correction
 producer/host chain. Ordinary entry and complete-workflow status stay unchanged.
 
 
+### Public corrective-checkpoint observation, 2026-11-17
+
+The ordinary entry routes an already-dispatched corrective checkpoint through
+the existing exact `dispatch` action and fixed retrospective observer. Before
+offering a new confirmation it freshly obtains the signed two-sample original
+process observation. An active or unresolved original remains a read-only wait.
+Explicit application reobserves the owner and current journal before obtaining
+the existing operation grant; elapsed age supplies no ownership evidence.
+
+The observer retains its exact commit/provider/postimage checks and common
+journal CAS. It neither commits Git nor rewrites the original dispatch capsule.
+An earlier UNKNOWN result remains immutable. Ordinary receipt acceptance follows
+the new confirmation; an already-retained confirmation needs only acceptance,
+without another result append. A staged checkpoint keeps its first normal
+dispatch. Refused permission or an unconfirmed witness never falls back to that
+business dispatch. Cancellation stops before a new owner observation or writer.
+
+This adds no action version, JSON capability, persistence store or Native grant.
+Constructor-port fixtures establish the entry routing and refusal behavior only;
+actual process death, Git witnesses and public composed recovery require their
+separate runtime evidence. The historical 2026-11-04 component scope stays intact.
+
 ### Owned canonical correction observation
 
 Push admission remains a clean-checkout observation. During correction reopening,

@@ -2275,6 +2275,17 @@ wall clock and elapsed call time, without result bodies or signing material.
 They measure the named public call, including its nested work and waits; they
 are not timings of individual internal functions or actual model usage.
 
+`node tools/perf/standard-checkpoint-entry-routing-fixture-lib.mjs` exercises
+the real entry orchestrator with identified constructor-port doubles. Its twelve
+checks cover missing and accepted-UNKNOWN checkpoint receipts, staged first
+dispatch, retained confirmation acceptance, active/unresolved original owners,
+fresh owner evidence at application, current permission, unconfirmed witnesses,
+cancellation and foreign journal digests. No failed observation falls back to
+business dispatch. Preview grants no operation permission. This check also joins
+the existing required composition command without changing its argv or catalog
+order. It proves no actual process death, Git witness, public CLI, installed
+archive, Native/Human/provider qualification or complete STANDARD workflow.
+
 For a fresh Git recovery producer, the fixture-only selector
 `--standard-composed-checkpoint-recovery-prefix` requires the correction scenario,
 FILES or DUAL, `--standard-composed-stop=session_pr_correction_decide` and

@@ -28,6 +28,7 @@ import { CODEX_STARTUP_ENVIRONMENT_PROFILES } from "../../src/core/agents/codex-
 import { PR_TRIAGE_CONTRACT } from "../../src/core/workflow/standard-pr-triage.mjs";
 import { CYCLE_WORK_CONTRACT } from "../../src/core/workflow/standard-cycle-work.mjs";
 import { verifyStandardRecoveryCallFixture } from "./standard-composed-recovery-call-fixture-lib.mjs";
+import { verifyStandardCheckpointEntryRouting } from "./standard-checkpoint-entry-routing-fixture-lib.mjs";
 
 const root = new URL("../../", import.meta.url), read = name => fs.readFileSync(new URL(name, root));
 const assets = loadStandardWorkflowAssets();
@@ -962,4 +963,12 @@ test("source authoring preview leaves the exact published JSON bytes unchanged",
   assert.equal(result.write, false); assert.deepEqual(names.map(name => shadowHash([...read(name)])), before);
   assert.equal(result.model_sha256, assets.source.model_sha256);
 });
-console.log(JSON.stringify({ status: "PASS", checks, scope: "offline-source-composition", application_ports: "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN", full_standard_workflow: "NOT_COMPLETE" }));
+const checkpointRouting = await verifyStandardCheckpointEntryRouting();
+test("corrective checkpoint entry preserves exact consent, owner observation and no business retry", () => {
+  assert.equal(checkpointRouting.checks, 12);
+  assert.equal(checkpointRouting.actual_Git_witness, "NOT_RUN");
+  assert.equal(checkpointRouting.full_standard, false);
+});
+console.log(JSON.stringify({ status: "PASS", checks, scope: "offline-source-composition", application_ports: "NOT_RUN",
+  entry_routing: "CONSTRUCTOR_PORT_DOUBLES_ONLY", entry_routing_checks: checkpointRouting.checks,
+  native: "NOT_RUN", installed_archive: "NOT_RUN", full_standard_workflow: "NOT_COMPLETE" }));

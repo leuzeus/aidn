@@ -374,6 +374,14 @@ finalization; `--verify` retains its read-only verification behavior.
     completion; each write uses its own exact action-file authorization.
     Ordinary and L1 merges skip incident writes. An open PR waits, and a closure without merge is reported
     separately.
+    An interrupted corrective Git checkpoint uses the existing `dispatch`
+    action. Its preview freshly reads the signed original-process observation;
+    active or unresolved producers remain read-only waits. After observed
+    absence, exact action-file execution invokes the existing commit witness
+    observer under current operation permission and accepts its confirmation.
+    It preserves prior UNKNOWN results and never repeats the Git commit. A
+    confirmation already retained before acceptance is accepted without another
+    result append. A staged checkpoint still takes its ordinary first dispatch.
     With no source selector, a recoverable R09 question previews a
     `question_recovery` action. Apply the saved action with the same exact
     `--action-file --execute --expect-plan` boundary. The action records the
