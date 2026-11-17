@@ -2328,7 +2328,7 @@ The check authenticates the running/null-output capsule and zero results. It
 does not execute or qualify the Git checkpoint, and adds no runtime adapter.
 
 The experimental `--public-entry-service` selection is restricted to FILES and
-`effect_returned`. It requests the same actual correction prefix with
+supports `effect_returned`, `receipted` and `accepted`. Each selection requests its own actual correction prefix with
 `--standard-composed-public-checkpoint-prefix`, preserving its standard host
 authority/configuration, signed fixture humans and identified provider transport.
 While the original producer is active, its real public preview must remain a
@@ -2344,6 +2344,17 @@ preview, result or error and journal observations survive a failed expectation.
 The selection asserts public-service recovery; it supplies no spawned CLI,
 console, installed archive or genuine actor proof. Its outcome must be recorded
 separately from internal-port or wiring qualification.
+
+For `receipted`, the two public controllers accept the original confirmed
+receipt after producer death, without appending a new result or repeating Git.
+For `accepted`, the producer retains the real public action before acceptance,
+then accepts and pauses. After its death both public controllers must refuse
+that stale action; the current read-only preview and canonical history remain
+unchanged. The first acceptance precedes the interruption in this selection.
+Both selections preserve the original journal, capsule, Native allocation
+digests, Git witness and exact replay/SIM checks. A short first-operation
+controller check establishes helper wiring only; full Git crash qualification
+requires a separately executed fresh actual checkpoint prefix for each cut.
 
 The fault interrupts only the atomic rename of a completed checkpoint receipt.
 The real signed dispatch remains, with its actual Git commit and released local

@@ -100,7 +100,7 @@ async function runProducer(prefixFile, cut, deadlineMs) {
   const phaseFile = path.join(packet.fixture.configuration.control_root, 'git-checkpoint-producer-' + cut + '-' + process.pid + '.jsonl');
   const phase = (point, extra = {}) => fs.appendFileSync(phaseFile, JSON.stringify({ point, pid: process.pid, at_ms: Date.now(), ...extra }) + '\n');
   phase('worker_entered'); process.on('message', () => {});
-  let bound;
+  let bound, priorPublicActionFile = null;
   const pause = async operationId => {
     const record = bound.host.readOperation(operationId); bound.signer.verify(record); bound.signer.verify(record.preview);
     const capsule = JSON.parse(bound.artifacts.read('workflows/dispatch-records/' + operationId + '.json', { required: true }).content);
@@ -127,7 +127,8 @@ async function runProducer(prefixFile, cut, deadlineMs) {
     phase('requested_boundary_observed', { cut, operation_id: operationId });
     process.send({ status: 'actual_git_checkpoint_boundary', cut, operation_id: operationId,
       identity: capsule.process_identity, capsule_sha256: H(capsule), journal_sha256: H(record),
-      git: observed, phase_file: phaseFile, accepted, genuine_Native_clients: 0, genuine_model_calls: 0 });
+      git: observed, phase_file: phaseFile, accepted, prior_public_action_file: priorPublicActionFile,
+      genuine_Native_clients: 0, genuine_model_calls: 0 });
     await new Promise(() => {});
   };
   bound = openCommonGitCheckpointPrefix(packet, { dispatchCheckpoint: async (point, operationId) => {
@@ -142,6 +143,17 @@ async function runProducer(prefixFile, cut, deadlineMs) {
   assert.equal(result.status, 'receipted'); assert.equal(result.receipt.effect_status, 'confirmed');
   if (cut === 'receipted') await pause(staged.operation_id);
   if (cut === 'accepted') {
+    if (bound.publicFixture) {
+      const inventoryBefore = H(bound.artifacts.observeInventory());
+      const prepared = await runStandardWorkflowEntry({ request: packet.fixture.r09Request,
+        environment: bound.publicFixture.environment }, { providerTransport: bound.publicFixture.providerTransport });
+      assert.equal(prepared.written, false); assert.equal(prepared.preview.kind, 'dispatch');
+      assert.equal(prepared.preview.payload.operation_id, staged.operation_id);
+      assert.equal(H(bound.artifacts.observeInventory()), inventoryBefore);
+      priorPublicActionFile = path.join(packet.fixture.configuration.control_root,
+        'git-checkpoint-preacceptance-action-' + process.pid + '.json');
+      fs.writeFileSync(priorPublicActionFile, JSON.stringify(prepared.preview) + '\n', { flag: 'wx' });
+    }
     await bound.host.acceptOperation(staged.operation_id, { write: true });
     await pause(staged.operation_id);
   }

@@ -12,12 +12,13 @@ import { iterateAgenticProcessSimulation } from '../../src/core/workflow/agentic
 import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
 import { runStandardWorkflowEntry } from '../../src/application/runtime/standard-workflow-entry.mjs';
 import { runPublicCheckpointEntryControllers } from './standard-git-checkpoint-entry-controllers-fixture-lib.mjs';
+import { verifyPublicCheckpointReceiptBoundary } from './standard-git-checkpoint-receipt-boundary-fixture-lib.mjs';
 
 const cut = process.argv.find(arg => arg.startsWith('--cut='))?.slice(6) ?? 'effect_returned';
 const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'files';
 const workerBoundMs = Number(process.argv.find(arg => arg.startsWith('--checkpoint-worker-bound-ms='))?.split('=')[1] ?? 120000);
 const publicEntryService = process.argv.includes('--public-entry-service');
-assert(!publicEntryService || mode === 'files' && cut === 'effect_returned', 'PUBLIC_GIT_ENTRY_FIXTURE_SCOPE_INVALID');
+assert(!publicEntryService || mode === 'files', 'PUBLIC_GIT_ENTRY_FIXTURE_SCOPE_INVALID');
 assert(['effect_returned', 'receipted', 'accepted'].includes(cut), 'GIT_RECOVERY_CUT_INVALID');
 assert(['files', 'dual'].includes(mode), 'GIT_RECOVERY_MODE_INVALID');
 assert([120000, 300000].includes(workerBoundMs), 'GIT_CHECKPOINT_WORKER_BOUND_INVALID');
@@ -122,7 +123,7 @@ const recoveryProbe = { cut, operation_id: id, producer_identity: message.identi
   native_allocations_sha256: H(bound.host.inspectAllocations()), full_standard_workflow: false,
   genuine_Native_clients: 0, genuine_model_calls: 0, human_provider_authorities: 'FIXTURE' };
 fs.writeFileSync(path.join(base, 'after-death-observation.json'), JSON.stringify(recoveryProbe) + '\n', { flag: 'wx' });
-let result;
+let result, publicReceiptBoundary = null;
 if (cut === 'effect_returned') {
   assert.equal(original.phase, 'dispatching'); assert.deepEqual(original.results, []);
   if (publicEntryService) {
@@ -206,6 +207,9 @@ if (cut === 'effect_returned') {
 } else {
   assert.equal(original.results.length, 1); result = { receipt: original.results[0].receipt };
   assert.equal(result.receipt.outcome, 'completed'); assert.equal(result.receipt.effect_status, 'confirmed');
+  if (publicEntryService) publicReceiptBoundary = await verifyPublicCheckpointReceiptBoundary({ packet, bound,
+    producerFile: producer, prefixFile: retained.file, operationId: id, evidenceRoot: base,
+    boundMs: workerBoundMs, cut, priorActionFile: message.prior_public_action_file });
 }
 const accepted = await bound.host.acceptOperation(id, { write: true });
 if (cut === 'accepted') assert.equal(accepted.record.instance_sha256, stateBefore.record.instance_sha256);
@@ -233,7 +237,9 @@ console.log(JSON.stringify({ status: publicEntryService ? 'PASS_PUBLIC_ENTRY_SER
   new_confirmation_after_unreturned_effect: cut === 'effect_returned',
   competing_observers_single_append: cut === 'effect_returned', public_controller_processes: publicEntryService ? 2 : 0, git_commit_repeated: false,
   original_capsule_bytes_and_metadata_preserved: true, separate_acceptance: !publicEntryService, replay_sim_equal: true,
-  acceptance_mode: publicEntryService ? 'existing public dispatch then acceptance' : 'explicit host calls',
+  acceptance_mode: !publicEntryService ? 'explicit host calls' : cut === 'accepted'
+    ? 'public stale-action refusal after accepted result' : 'existing public dispatch then acceptance',
+  public_receipt_boundary: publicReceiptBoundary,
   native_limits_unchanged: true, new_native_allocations: 0,
   genuine_Native_clients: 0, genuine_model_calls: 0, human_provider_authorities: 'FIXTURE',
   actual_public_entry: publicEntryService ? 'SERVICE_WITH_IDENTIFIED_PROVIDER_TRANSPORT_FIXTURE' : 'NOT_RUN',
