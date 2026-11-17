@@ -2356,6 +2356,16 @@ digests, Git witness and exact replay/SIM checks. A short first-operation
 controller check establishes helper wiring only; full Git crash qualification
 requires a separately executed fresh actual checkpoint prefix for each cut.
 
+The R09 fixture transport also supplies the production push observer's fixed
+credential, actor, repository and ref reads. Its GitHub-shaped `ls-remote`
+queries read the same owned bare remote used by the prefix. The transport
+refuses push/PR-open mutations and foreign endpoints in these read handlers;
+the existing merge and post-merge fetch fixtures keep their separate paths.
+These are identified offline transports.
+Retained-history read checks must preserve the original operation, capsule,
+Native grant/allocation digests and arena bytes. They do not append or accept a
+recovery result, and do not replace a fresh full checkpoint interruption case.
+
 The fault interrupts only the atomic rename of a completed checkpoint receipt.
 The real signed dispatch remains, with its actual Git commit and released local
 effect owner. A new Node process invokes the mixed host's explicit-write

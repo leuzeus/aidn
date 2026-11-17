@@ -138,6 +138,28 @@ export function createComposedGithubR09ProviderFixture({ targetRoot, controlRoot
     return ok(result);
   }
 
+  // The public checkpoint recovery reobserves an earlier push through the
+  // production GitHub port. Only its credential/identity/ref reads are doubled;
+  // a new push or PR-open mutation remains outside this read handler.
+  function githubPushRead(binary, args) {
+    assert.equal(binary, binding.gh.path);
+    if (args[0] === 'auth') {
+      assert.deepEqual(args, ['auth', 'token', '--hostname', 'github.com']);
+      return ok('composed-fixture-only-token');
+    }
+    assert.deepEqual(args.slice(0, 5), ['api', '--hostname', 'github.com', '--method', 'GET']);
+    assert.deepEqual(args.slice(6), ['-H', 'Accept: application/vnd.github+json', '-H', 'X-GitHub-Api-Version: 2022-11-28']);
+    const endpoint = args[5];
+    if (endpoint === 'user') return ok(actor);
+    if (endpoint === repoPath) return ok({ node_id: repository.node_id, full_name: 'fixture/repository', permissions: { push: true } });
+    const prefix = repoPath + '/git/ref/heads/';
+    assert(endpoint.startsWith(prefix), 'UNEXPECTED_R09_PUSH_READ_ENDPOINT');
+    const branch = decodeURIComponent(endpoint.slice(prefix.length));
+    assert.match(branch, /^[A-Za-z0-9][A-Za-z0-9._/-]{0,191}$/);
+    git(['check-ref-format', ref(branch)]);
+    return ok({ ref: ref(branch), object: { type: 'commit', sha: bare('rev-parse', '--verify', ref(branch)) } });
+  }
+
   function githubMerge(binary, args, options) {
     assert.equal(binary, binding.gh.path);
     assert.deepEqual(args, ['api', 'graphql', '--hostname', 'github.com', '--input', '-']);
@@ -158,8 +180,20 @@ export function createComposedGithubR09ProviderFixture({ targetRoot, controlRoot
       pullRequest: { id: pull.node_id, merged: true, mergeCommit: { oid } } } } });
   }
 
-  function remoteGit(binary, args) {
+  function remoteGit(binary, args, options) {
     assert.equal(binary, binding.git.path);
+    if (args[0] === '--literal-pathspecs') {
+      const separator = args.indexOf('--'), command = args.indexOf('ls-remote');
+      assert(command >= 0, 'R09_PUSH_TRANSPORT_READ_REQUIRED');
+      assert.deepEqual(args.slice(command, separator), ['ls-remote', '--refs']);
+      assert.deepEqual(args.slice(separator + 1, -1), [origin]);
+      const target = args.at(-1);
+      assert.match(target, /^refs\/heads\/[A-Za-z0-9][A-Za-z0-9._/-]{0,191}$/);
+      git(['check-ref-format', target]);
+      assert.equal(options.env.AIDN_GITHUB_AUTH_HEADER,
+        'AUTHORIZATION: basic ' + Buffer.from('x-access-token:composed-fixture-only-token').toString('base64'));
+      return ok(git(['-C', targetRoot, 'ls-remote', '--refs', '--', pathToFileURL(remoteRoot).href, target]));
+    }
     assert.deepEqual(args.slice(0, 2), ['-C', targetRoot]);
     const separator = args.indexOf('--');
     assert.deepEqual(args.slice(separator + 1, -1), [origin]);
@@ -177,7 +211,7 @@ export function createComposedGithubR09ProviderFixture({ targetRoot, controlRoot
   }
 
   const forbidden = () => assert.fail('Unexpected provider transport in the nominal R09 fixture');
-  const providerTransport = { runGithub: forbidden, runGithubRead: githubRead, runGithubReply: forbidden, runGithubResolution: forbidden,
+  const providerTransport = { runGithub: githubPushRead, runGithubRead: githubRead, runGithubReply: forbidden, runGithubResolution: forbidden,
     runGithubMerge: githubMerge, runRemoteGit: remoteGit };
   const provider = createStandardGithubProviderHost({ configuration: { target_root: targetRoot, instance_id: instanceId },
     home, identity, environment }, providerTransport);
