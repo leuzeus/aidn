@@ -7340,6 +7340,15 @@ do not convert an old unknown business effect into a no-effect result.
 
 ## Common workflow CLI observer process
 
+The default fixed-host resource-source fixture also exercises the actual
+`standard-handoff-post-release` consumer with its current observer dispatch.
+It must retain UNKNOWN business history, refuse a concurrent observer, reject
+foreign instance/configuration/physical-root or unknown consumer references,
+and refuse using its private capture as a publication-consumer capture.
+The required handoff-resource command keeps its full default checks. These
+source fixtures do not qualify the complete
+published handoff suffix, genuine actors or installed code.
+
 Qualification of ordinary handoff resource observation must invoke the public
 CLI/console frontends with an explicit target. A direct runtime import can
 prepare the same operation while a separate target-marked CLI launcher would

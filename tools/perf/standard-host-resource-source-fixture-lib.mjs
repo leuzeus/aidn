@@ -48,6 +48,35 @@ try{
  const cold=authority.createHandoffResourceSource({readInventory:()=>signer.seal(inventory),readNativeHistory:()=>structuredClone(native),...activityReaders});
  await assert.rejects(cold.verify({request,sourceRef:'standard-handoff',observation:rawObservation}),{code:'STANDARD_RESOURCE_SOURCE_CAPTURE_REQUIRED'});
  check('JSON or a journal MAC never replaces a private current resource capture',true);
+ const postReleaseSource=authority.createHandoffResourceSource({readInventory:()=>signer.seal(inventory),readNativeHistory:()=>structuredClone(native),...activityReaders});
+ for(const sourceRef of ['standard-handoff-foreign','standard-handoff-post-release-foreign']){
+  await assert.rejects(postReleaseSource.read({request,sourceRef}),{code:'STANDARD_RESOURCE_SOURCE_REQUEST_SCOPE_CHANGED'});
+ }
+ for(const [field,value]of [['instance_id','foreign-instance'],['configuration_sha256',H('foreign configuration')],['physical_root_sha256',H('foreign physical root')]]){
+  const {key_id,authentication,...body}=request,foreign=signer.seal({...body,[field]:value});
+  await assert.rejects(postReleaseSource.read({request:foreign,sourceRef:'standard-handoff-post-release'}),{code:'STANDARD_RESOURCE_SOURCE_REQUEST_SCOPE_CHANGED'});
+ }
+ check('post-release source refuses unknown consumers and foreign instance, configuration or physical root',true);
+ const postDispatch={dispatch_id:randomUUID(),operation_id:'op_'+'6'.repeat(40),instance_id:config.instance_id,scope_id:'fixture-scope',binding_ref:'handoff_resources_observe',executor_kind:'deterministic'};
+ let postRaw;
+ const postTapped={...postReleaseSource,async read(input){postRaw=await postReleaseSource.read(input);return postRaw;}};
+ const postResources=createStandardHandoffResources({configuration:config,signer,source:postTapped,readInventory:()=>signer.seal(inventory),readNativeHistory:()=>structuredClone(native),readOwnership:()=>({pending:artifacts.ownerPending(),fence:artifacts.resourceFence().read()})});
+ operationActivity.current_dispatch_id=postDispatch.dispatch_id;
+ operationActivity.active_dispatches=[postDispatch,{...postDispatch,dispatch_id:randomUUID(),operation_id:'op_'+'7'.repeat(40)}];
+ try{
+  assert.equal(await postReleaseSource.read({request,sourceRef:'standard-handoff-post-release'}),null);
+  assert(postReleaseSource.inspectLastObservation().deterministic.active_resources>0);
+  check('a concurrent post-release observer remains an active resource',true);
+  operationActivity.active_dispatches=[postDispatch];
+  const postObserved=await postResources.observeForPublication(request,{sourceRef:'standard-handoff-post-release'});
+  assert.equal(postObserved.result?.complete_resource_closure,true);
+  assert.equal(postObserved.result.permits_handoff,false);assert.equal(postObserved.result.permits_effects,false);
+  assert.deepEqual(postObserved.result.unknown_business_operations,['op_'+'1'.repeat(40)]);
+  assert.deepEqual(Object.keys(postReleaseSource.inspectLastObservation()),RECONCILIATION_DISCOVERY_DOMAINS);
+  await assert.rejects(postReleaseSource.verify({request,sourceRef:'standard-handoff',observation:postRaw}),{code:'STANDARD_RESOURCE_SOURCE_CAPTURE_REQUIRED'});
+  postObserved.assertSourceCurrent();assert.deepEqual(projectTree(),beforeRead);
+  check('actual post-release consumer closes seven domains, retains UNKNOWN and refuses a publication capture substitution',true);
+ }finally{operationActivity.active_dispatches=[];operationActivity.current_dispatch_id=null;}
  await artifacts.withLocalEffectOwner(H('actual publisher owner'),()=>{artifacts.assertLocalEffectOwner(H('actual publisher owner'));observed.assertSourceCurrent();assert.throws(()=>observed.assertCurrent(),{code:'STANDARD_HANDOFF_RESOURCE_OWNER_UNRESOLVED'});return {effect_status:'no_effect'};});
  assert.equal(artifacts.ownerPending(),false);check('current source stays valid inside the actual publication owner and the known no-effect owner releases',true);
  const indexLock=path.join(dirs.project,'.git','index.lock');fs.writeFileSync(indexLock,'held');

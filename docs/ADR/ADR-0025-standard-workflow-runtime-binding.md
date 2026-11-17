@@ -4930,6 +4930,14 @@ handoff permission remains with the existing admission, grant, owner and CAS.
 
 ## Common workflow CLI observer process
 
+The same fixed resource source serves packet preparation through
+`standard-handoff` and the existing post-release observation through
+`standard-handoff-post-release`. These are two closed implementation-owned
+consumer references, with the same exact signed scope and independent discovery.
+Their private captures are not interchangeable. The post-release port separately
+authenticates the accepted publication and exact packet before observation;
+recognizing its consumer does not grant publication, admission or global closure.
+
 A synchronous CLI launcher that forwards --target to another Node process
 remains a live marked process during the child observer. Independent discovery
 correctly counts that launcher and its console host, so a complete resource

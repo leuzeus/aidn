@@ -223,7 +223,7 @@ export function createStandardHostResourceSource({ configuration, home, identity
       retained = null; active(signal); assertHandoffResourceRequest(request);
       const signer = createOperationJournalSigner(readKey); signer.verify(request);
       if (request.instance_id !== config.instance_id || request.configuration_sha256 !== H(config) || request.physical_root_sha256 !== H(root)
-        || sourceRef !== 'standard-handoff')
+        || !['standard-handoff', 'standard-handoff-post-release'].includes(sourceRef))
         fail('STANDARD_RESOURCE_SOURCE_REQUEST_SCOPE_CHANGED');
       if (process.platform !== 'win32' || !config.controller) return null;
       if (artifacts.ownerPending()) { diagnostics = freezeShadow({ deterministic: { complete: false, active_resources: 1 } }); return null; }

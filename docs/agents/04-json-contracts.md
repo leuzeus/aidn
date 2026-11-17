@@ -1132,6 +1132,14 @@ Observer-console identity is read from the Windows kernel; process-observation
 v1/v2 remains unchanged. Private Native/dispatch activity snapshots grant no
 closure, effect or handoff permission and introduce no canonical store.
 
+The fixed source recognizes the two implementation-owned consumers
+`standard-handoff` and `standard-handoff-post-release`. Both retain the exact
+signed instance, configuration and physical-root checks. A private capture stays
+bound to its original consumer and request; the other recognized consumer cannot
+reuse it. Unknown consumer references refuse before discovery. The post-release
+operation still authenticates its accepted publication and packet before reading
+resources, and observation supplies no effect or handoff permission.
+
 The internal interrupted-handoff observer recognizes the exact receipted UNKNOWN
 publication and, if accepted, only its own final result event. It reconstructs
 an ephemeral preparation prefix without changing the process or old journal.
