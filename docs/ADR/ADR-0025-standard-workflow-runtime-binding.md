@@ -4926,3 +4926,21 @@ A closed journal does not replace live parent resource counters. No authority,
 store, schema, Native grant, helper protocol, deadline, cap, refund or automatic
 reconciliation is added. UNKNOWN business state stays retained; all effect and
 handoff permission remains with the existing admission, grant, owner and CAS.
+
+
+## Common workflow CLI observer process
+
+A synchronous CLI launcher that forwards --target to another Node process
+remains a live marked process during the child observer. Independent discovery
+correctly counts that launcher and its console host, so a complete resource
+observation cannot be obtained through that launch shape. The common workflow
+frontends therefore load their registered CLI adapter in the invoking process.
+The adapter retains its exact parser, JSON envelope, help/effect precedence and
+explicit action consent. The registry remains the routing authority. Generic
+script dispatch remains available to the other commands.
+
+This changes no discovery rule, current permission, original issuer deadline,
+Native grant, finite worker bound, canonical contract or historical record.
+Actual foreign marked work remains observable and prevents resource closure.
+Source-level direct composition alone cannot qualify the public launcher;
+CLI/console and installed-package evidence must exercise their real frontends.

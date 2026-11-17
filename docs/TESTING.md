@@ -7336,3 +7336,14 @@ and close only the newly acquired controller fence. DUAL also requires
 `projection_ack_lost`: a failure after its real projection, even with a nested
 no-effect tag, retains a new UNKNOWN result and held control. These scenarios
 do not convert an old unknown business effect into a no-effect result.
+
+
+## Common workflow CLI observer process
+
+Qualification of ordinary handoff resource observation must invoke the public
+CLI/console frontends with an explicit target. A direct runtime import can
+prepare the same operation while a separate target-marked CLI launcher would
+keep resource closure blocked. Verify the public preparation itself, preserve
+canonical inventory during preview, and keep a distinct live marked process
+refused. Existing CLI help, parser, JSON, effect and foreground-listener checks
+remain required. Native and installed claims still need their own evidence.

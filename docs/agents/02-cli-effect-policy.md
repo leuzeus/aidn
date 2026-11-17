@@ -144,3 +144,13 @@ metadata paths. The subsequent CURRENT/runtime refresh uses metadata-aware CAS.
 The summary and checkpoint ports recheck current authorization after awaited
 preparation and before their first canonical or diagnostic effect. A refusal
 there releases the owner without inventing an uncertain business write.
+
+
+## Common workflow CLI observer process
+
+The registered workflow-run and workflow-console CLI adapters execute in the
+invoking CLI process. Their implementation paths, fixed arguments, help
+precedence and effect admissions still come from the existing registry and
+adapters. This avoids creating a separate target-marked launcher that remains
+alive while the resource observer runs. Other target/control processes and
+retained owners remain subject to the existing independent discovery.
