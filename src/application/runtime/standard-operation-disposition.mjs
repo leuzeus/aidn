@@ -592,7 +592,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     await onBoundary("disposition_control_reserved", id);
     await verifyGrant(grant, signal); observed = fresh(); currentConsent(plan, grant, signal);
     const lease = fence.acquire({ prepared: proposed, expectedSha256: plan.fence_sha256, ...(known ? { dispositionLease: known } : {}) });
-    let release = false;
+    let release = false, businessEntered = false, businessSettled = false;
     try {
       await onBoundary("disposition_fence_acquired", id);
       const auditGrant = { ...grant, verification: await verifyGrant(grant, signal) };
@@ -639,12 +639,14 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
         if (Buffer.byteLength(JSON.stringify(probe)) > 900000) fail("PROCESS_CONTROL_INTENT_STORAGE_BOUND");
         const capability = Object.freeze({ artifactContinuation: Object.freeze({ operation_id: id,
           plan_sha256: handoff ? plan.continuation.packet_plan_sha256 : plan.continuation.closure_plan_sha256, lease, assertCurrent }) });
+        businessEntered = true;
         result = await withStandardDispatchContext(capability, () => applyBusiness(observed.instance, observed.operation,
           plan.continuation, { write: true, expectedContinuationSha256: shadowHash(plan.continuation),
             assertAuthorized: async () => { await verifyGrant(grant, signal); assertCurrent(); },
             assertAuthorizedCurrent: assertCurrent, signal,
             onBoundary: async (point, operationId) => { assertCurrent(); await onBoundary("incident_continuation_" + point, operationId); assertCurrent(); } }));
       }
+      businessSettled = true;
       if (handoff) { await onBoundary("handoff_continuation_projected", id); assertCurrent(); }
       assertStandardOperationOutput(result.output); assertCurrent();
       const receipt = pending ? previous.record.receipt : makeReceipt(initialRecord, result.output);
@@ -664,6 +666,24 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       await onBoundary("disposition_receipted", id);
       release = result.effect_knowledge === "known_prefix";
       return { status: "receipted", receipt, written: true };
+    } catch (cause) {
+      // Retire only this invocation's control after a proved no-effect refusal.
+      // Original UNKNOWN/capsule/witness and every captured result stay intact.
+      const knownBeforeEffect = !pending || previous.record.effect_knowledge === "known_prefix";
+      if (handoff && !businessSettled && knownBeforeEffect
+        && (!businessEntered || cause.effect_status === "no_effect")) {
+        try {
+          fence.assert(lease);
+          const current = readInstance(plan.instance_id), operation = readOperation(id).record;
+          const control = readControls(id).record;
+          const owner = handoffContinuationOwner(operation, readDispatch(id, operation).record);
+          const state = prepareHandoffContinuation(current, operation);
+          if (current.instance_sha256 === plan.instance_sha256 && shadowHash(operation) === plan.journal_sha256
+            && operationControlHistoryExtends(heldControl, control) && owner.lock.sha256 === plan.continuation.lock_sha256
+            && shadowHash({ ...state, lock_sha256: owner.lock.sha256 }) === shadowHash(plan.continuation)) release = true;
+        } catch { /* Unverifiable business ownership stays held for explicit reconciliation. */ }
+      }
+      throw cause;
     } finally { if (release) fence.release(lease); }
   }
   async function verifyContinuationReceipt(before, record, receipt, signal) {

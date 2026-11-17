@@ -35,7 +35,7 @@ if (process.argv[2] === '--worker') {
  console.log(JSON.stringify(await verifyStandardHandoffDisposition(process.argv[2],{only:process.argv.find(a=>a.startsWith('--case='))?.slice(7)??null})));
 }
 export async function verifyStandardHandoffDisposition(mode,{only=null}={}){
- const cases=['nominal','disposition_recorded'];if(only!==null&&!cases.includes(only))throw Error('FIXTURE_CASE_INVALID');
+ const cases=['nominal','disposition_recorded','permission_revoked','cancelled',...(mode==='dual'?['projection_ack_lost']:[])];if(only!==null&&!cases.includes(only))throw Error('FIXTURE_CASE_INVALID');
  const results=[];for(const name of cases)if(only===null||only===name)results.push(await runCase(mode,name));
  return {status:'PASS_PUBLIC_HANDOFF_DISPOSITION_COMPONENT',mode,cases:results.map(r=>r.scenario??'nominal'),results,Native_clients:0,model_calls:0,complete_standard_workflow:false};
 }
@@ -64,7 +64,11 @@ async function prepare(id,options={}){const host=compose(id,options),initial=hos
 async function dispatch(c){const staged=await c.host.stage(c.preview,{write:true,expectedPreviewSha256:H(c.preview)});assert.equal(c.host.observeResourceActivity().active_dispatches.length,0);const pending=c.host.dispatch(staged.operation_id,{write:true});assert.equal(c.host.observeResourceActivity().current_dispatch_id,null);assert(c.host.observeResourceActivity().active_dispatches.some(row=>row.operation_id===staged.operation_id&&row.binding_ref==='handoff_packet_publish'));const result=await pending;assert.equal(c.host.observeResourceActivity().active_dispatches.length,0);assert.equal(result.status,'receipted');const record=c.host.readJournal(staged.operation_id);signer.verify(record);signer.verify(record.preview);assert.equal(record.results.length,1);assertHandoffOperationOutput(record.results[0].output);return{...c,operation_id:staged.operation_id,result,record,output:record.results[0].output};}
 
 
-const prepared=await prepare('projection-continuation-physical-bounded');
+const refusalSignal=new AbortController();
+const prepared=await prepare('projection-continuation-physical-bounded',{boundary:point=>{
+ if(point==='before_handoff_projection'){if(scenario==='permission_revoked')dispositionAllowed=false;else if(scenario==='cancelled')refusalSignal.abort();}
+ if(point==='after_handoff_projection'&&scenario==='projection_ack_lost')throw Object.assign(Error('FIXTURE_PUBLIC_PROJECTION_ACK_LOST'),{code:'FIXTURE_PUBLIC_PROJECTION_ACK_LOST',effect_status:'no_effect'});
+}});
 const staged=await prepared.host.stage(prepared.preview,{write:true,expectedPreviewSha256:H(prepared.preview)});
 const config={root,control,model,clock,key:key.toString('hex'),id:prepared.id,operation_id:staged.operation_id};
 const configFile=path.join(control,'physical-worker.json');fs.writeFileSync(configFile,JSON.stringify(config)+'\n',{flag:'wx'});
@@ -107,6 +111,30 @@ console.log('PASS v3 refuses a foreign owned path and UNKNOWN relabel; the close
 await assert.rejects(prepared.host.applyOperationDisposition(plan,{write:false,expectedPlanSha256:H(plan)}),{code:'STANDARD_HOST_EXPLICIT_WRITE_REQUIRED'});assert.deepEqual(tree(),readOnly);
 dispositionAllowed=false;await assert.rejects(prepared.host.applyOperationDisposition(plan,{write:true,expectedPlanSha256:H(plan)}),{code:'FIXTURE_CURRENT_DISPOSITION_REQUIRED'});assert.deepEqual(tree(),readOnly);dispositionAllowed=true;
 console.log('PASS explicit-write refusal and current consent denial precede any controller mutation');
+if(['permission_revoked','cancelled'].includes(scenario)){
+ const canonicalBefore=artifacts.readMany(['HANDOFF-PACKET.md'],{includeMetadata:true});
+ const projectionPath=path.join(root,'docs/audit/HANDOFF-PACKET.md'),beforeProjection=fs.existsSync(projectionPath)?fs.readFileSync(projectionPath):null;
+ await assert.rejects(prepared.host.applyOperationDisposition(plan,{write:true,expectedPlanSha256:H(plan),signal:refusalSignal.signal}),error=>scenario==='permission_revoked'?error.code==='FIXTURE_CURRENT_DISPOSITION_REQUIRED':['STANDARD_HANDOFF_CONTINUATION_ABORTED','PROCESS_DISPOSITION_ABORTED'].includes(error.code));
+ assert.deepEqual(prepared.host.readJournal(opid).results,[original]);assert.deepEqual(artifacts.readMany(['HANDOFF-PACKET.md'],{includeMetadata:true}),canonicalBefore);
+ assert.deepEqual(fs.existsSync(projectionPath)?fs.readFileSync(projectionPath):null,beforeProjection);
+ const controls=JSON.parse(artifacts.read('workflows/operation-control-intents/'+opid+'.json',{required:true}).content);signer.verify(controls);
+ const proposedControlFence=controls.attempts.at(-1).resource_fence.record,currentFence=artifacts.resourceFence().read().record;
+ assert.equal(currentFence.token,proposedControlFence.token);assert.equal(currentFence.process_identity.pid,process.pid);assert.equal(currentFence.state,'released');
+ assert.equal(fs.existsSync(path.join(root,'.aidn/runtime/standard-workflow/retired-'+opid+'.lock')),true);assert.equal(artifacts.ownerPending(),false);
+ assert(prepared.host.inspect(prepared.id).cursor.occurrences.some(f=>f.operation?.intent.operation_id===opid&&f.status==='WAITING'));
+ console.log('PASS '+scenario+' closes its own proved no-effect control and preserves original UNKNOWN');
+ return{status:'PASS_CURRENT_CONTROL_REFUSAL_CLEANUP_COMPONENT',scenario,mode,root,control,original_unknown_preserved:true,new_controller_lease_closed:true,canonical_CAS_replayed:false,projection_attempted:false,Native_clients:0,model_calls:0,complete_standard_workflow:false};
+}
+if(scenario==='projection_ack_lost'){
+ const result=await prepared.host.applyOperationDisposition(plan,{write:true,expectedPlanSha256:H(plan)});
+ assert.equal(result.status,'receipted');assert.equal(result.receipt.outcome,'reconciliation_required');assert.equal(result.receipt.effect_status,'unknown');
+ const now=prepared.host.readJournal(opid);assert.equal(now.results.length,2);assert.deepEqual(now.results[0],original);assert.deepEqual(now.results[1].output.facts,{});
+ const audit=JSON.parse(artifacts.read('workflows/operation-dispositions/'+opid+'.json',{required:true}).content);signer.verify(audit);assertHandoffContinuationDisposition(audit);assert.equal(audit.effect_knowledge,'unknown');
+ assert.equal(artifacts.resourceFence().read().record.state,'held');assert.equal(artifacts.ownerPending(),true);
+ assert.deepEqual(artifacts.readMany(['HANDOFF-PACKET.md'],{includeMetadata:true}),packetBefore);assert(fs.existsSync(path.join(root,'docs/audit/HANDOFF-PACKET.md')));
+ console.log('PASS loss after actual DUAL projection retains a new UNKNOWN and its owner even with a nested no-effect tag');
+ return{status:'PASS_UNKNOWN_PROJECTION_OWNER_RETAINED_COMPONENT',scenario,mode,root,control,original_unknown_preserved:true,new_unknown_preserved:true,new_controller_lease_held:true,canonical_CAS_replayed:false,Native_clients:0,model_calls:0,complete_standard_workflow:false};
+}
 let adoptionPlan=plan,resumedHost=prepared.host,applied,adopted;
 if(scenario==='disposition_recorded'){
 const controllerConfig=path.join(control,'controller-interruption.json');fs.writeFileSync(controllerConfig,JSON.stringify({...config,plan,boundary:'disposition_recorded'})+'\n',{flag:'wx'});

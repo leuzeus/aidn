@@ -1,7 +1,7 @@
 {
   "contract_version": "agentic-process-model.v2",
   "model_id": "aidn-standard-startup",
-  "revision": 448,
+  "revision": 449,
   "participants": [
     {
       "id": "project"
@@ -116,12 +116,12 @@
     }
   ],
   "operation_pins": {
-    "context_reload": "1bd43800ae54cf7cf37a73084d5cd4034a4aed8d6b0c90446501081f4a660826",
-    "session_entry_admit": "ee0363e5c35abd9a01e735c58ccf1b895708c1483a46cd2616488f117447303f",
-    "session_initialize": "40c22e87b514cd2cb1bc9c00de45798b22192c48ff34b6e5a1370a7843096a53",
-    "mode_decision": "9bbe2bccf50ee5a582b35c93028425df97d4acd369d537121a316b851011f293",
-    "session_mode_apply": "a15a10eed8e88b433328b09a3820093fb641624c59755d051067f8d645a5c57a",
-    "session_start_finalize": "2fdf10e712ad5aa7354ca2fa392f977da813f2ee3fe1f66b85fee411820010b6"
+    "context_reload": "a0b3e3b6bde7b8427a873e76f4956dab03e6141bdc1ceacdafff278e0d063519",
+    "session_entry_admit": "b0b2393f05cdc287019b455512f2f1cd7e20374855af284f22b1029750507dd0",
+    "session_initialize": "9722c96307b9cfec30e7649c106ed49709f67103a4e48780676fe6ac9a5fd8ef",
+    "mode_decision": "b8aa1fca6608c60937d03e5ab88fce16faea3e1a356fb66dae3b1c6a1b970c76",
+    "session_mode_apply": "ff3d4f8851020ee31c62d0ab7c4d09861814b44ea3ef7c591dec6b9ebee57406",
+    "session_start_finalize": "96143235d5ec4426fe05cef945bc0bf726487fcd31a15c589ed20911728237b3"
   },
   "data_bindings": {
     "contract_version": "process-data-bindings.v4",

@@ -7308,7 +7308,8 @@ bounded component results; complete L4/A6/L7/L8 qualification remains due.
 
 The required common handoff operation command also calls
 `verify-standard-handoff-disposition-fixtures.mjs`. Its default scenarios are
-`nominal` and `disposition_recorded`; `--case=<name>` selects one when run
+`nominal`, `disposition_recorded`, `permission_revoked` and `cancelled`. DUAL
+also requires `projection_ack_lost`. `--case=<name>` selects one when run
 directly with a mode argument. These use the actual operation host's v3
 preparation, current-grant/refusal, durable control, fence/lock retirement,
 follow-on receipt and separate common acceptance. The capture scenario kills a
@@ -7319,3 +7320,11 @@ Execution, replay and SIM must reach the same instance hash with the same IR
 and reducer. Both independent child roles retain their explicit120000 ms bound.
 Permissions remain fixture-controlled; this does not qualify the normal full
 published entry, all other interruption cuts, genuine actors or installed code.
+
+The v3 disposition fixture additionally requires `permission_revoked` and
+`cancelled` on all three modes. Both stop immediately before projection,
+retain original UNKNOWN/canonical bytes, reobserve the exact planned prefix
+and close only the newly acquired controller fence. DUAL also requires
+`projection_ack_lost`: a failure after its real projection, even with a nested
+no-effect tag, retains a new UNKNOWN result and held control. These scenarios
+do not convert an old unknown business effect into a no-effect result.

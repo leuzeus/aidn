@@ -694,3 +694,12 @@ from the original UNKNOWN. The normal entry uses an exact-action grant and
 rechecks it synchronously at local effects. Cold/public and genuine actor
 qualification remain independent of the earlier fixture-controller proof. No new store, shared coordination, age ceiling or
 Native allocation is introduced.
+
+A refused/cancelled v3 packet continuation can close its newly acquired control
+only after the fixed port proves no projection attempt and a separate read
+reconfirms the exact planned canonical/projection/context state, journal,
+control-history extension and old lock witness under the still-current lease.
+An earlier captured UNKNOWN with unknown ownership stays held. A projection
+attempt keeps unknown effect knowledge even when a nested error says no-effect.
+Original UNKNOWN data, retired witness and all old attempts remain unchanged;
+this control closure never confirms the business outcome or allocates Native.

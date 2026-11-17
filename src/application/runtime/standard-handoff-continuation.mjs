@@ -53,37 +53,37 @@ export function createStandardHandoffContinuation({ targetRoot, readSigningKey, 
       const assertCurrent = () => { if (H(observe()) !== data.state_sha256) fail('STANDARD_HANDOFF_CONTINUATION_STATE_CHANGED'); };
       return Object.freeze({ data, assertCurrent,
         async complete({ write = false, assertAuthorizedCurrent, signal } = {}) {
-          if (write !== true || typeof assertAuthorizedCurrent !== 'function')
-            fail('STANDARD_HANDOFF_CONTINUATION_EXPLICIT_EFFECT_REQUIRED');
-          active(preparationSignal); active(signal);
-          const borrowed = currentStandardDispatchContext()?.artifactContinuation;
-          if (borrowed?.operation_id !== record.operation_id || borrowed.plan_sha256 !== H(inner))
-            fail('STANDARD_HANDOFF_CONTINUATION_OWNER_REQUIRED');
-          const permit = () => { active(preparationSignal); active(signal); if (assertAuthorizedCurrent() !== undefined)
-            fail('STANDARD_HANDOFF_CONTINUATION_CURRENT_PERMISSION_REQUIRED'); };
-          permit(); assertCurrent();
           let projectionAttempted = false;
-          return artifacts.withLocalEffectOwner(H(inner), () => {
-            artifacts.assertLocalEffectOwner(H(inner)); permit(); assertCurrent();
-            if (boundary('before_handoff_projection') !== undefined) fail('STANDARD_HANDOFF_CONTINUATION_BOUNDARY_INVALID');
+          try {
+            if (write !== true || typeof assertAuthorizedCurrent !== 'function')
+              fail('STANDARD_HANDOFF_CONTINUATION_EXPLICIT_EFFECT_REQUIRED');
+            active(preparationSignal); active(signal);
+            const borrowed = currentStandardDispatchContext()?.artifactContinuation;
+            if (borrowed?.operation_id !== record.operation_id || borrowed.plan_sha256 !== H(inner))
+              fail('STANDARD_HANDOFF_CONTINUATION_OWNER_REQUIRED');
+            const permit = () => { active(preparationSignal); active(signal); if (assertAuthorizedCurrent() !== undefined)
+              fail('STANDARD_HANDOFF_CONTINUATION_CURRENT_PERMISSION_REQUIRED'); };
             permit(); assertCurrent();
-            const projected = before.projection_status === 'pending';
-            if (projected) { projectionAttempted = true; artifacts.project([target]); }
-            if (boundary('after_handoff_projection') !== undefined) fail('STANDARD_HANDOFF_CONTINUATION_BOUNDARY_INVALID');
-            artifacts.assertLocalEffectOwner(H(inner)); permit();
-            const expected = before.state_mode === 'db-only' ? before
-              : { ...before, projection_sha256: inner.after_sha256, projection_status: 'current' };
-            if (H(observe()) !== H(expected)) fail('STANDARD_HANDOFF_CONTINUATION_POSTIMAGE_CHANGED');
-            return Object.freeze({ output, effect_status: 'confirmed', effect_knowledge: 'known_prefix', canonical_written: false, projected });
-          }).catch(cause => {
-            // The projection call may have written before acknowledgement or a
-            // subsequent permission/postimage check failed. Its uncertainty
-            // cannot be reclassified by a nested precondition's no-effect flag.
-            if (!projectionAttempted) throw cause;
+            return await artifacts.withLocalEffectOwner(H(inner), () => {
+              artifacts.assertLocalEffectOwner(H(inner)); permit(); assertCurrent();
+              if (boundary('before_handoff_projection') !== undefined) fail('STANDARD_HANDOFF_CONTINUATION_BOUNDARY_INVALID');
+              permit(); assertCurrent();
+              const projected = before.projection_status === 'pending';
+              if (projected) { projectionAttempted = true; artifacts.project([target]); }
+              if (boundary('after_handoff_projection') !== undefined) fail('STANDARD_HANDOFF_CONTINUATION_BOUNDARY_INVALID');
+              artifacts.assertLocalEffectOwner(H(inner)); permit();
+              const expected = before.state_mode === 'db-only' ? before
+                : { ...before, projection_sha256: inner.after_sha256, projection_status: 'current' };
+              if (H(observe()) !== H(expected)) fail('STANDARD_HANDOFF_CONTINUATION_POSTIMAGE_CHANGED');
+              return Object.freeze({ output, effect_status: 'confirmed', effect_knowledge: 'known_prefix', canonical_written: false, projected });
+            });
+          } catch (cause) {
+            // This fixed port has only one possible business write. Classify its
+            // own projection, independently of an authority callback's error tag.
             const code = /^[A-Z][A-Z0-9_]{0,127}$/.test(cause?.code ?? '')
               ? cause.code : 'STANDARD_HANDOFF_CONTINUATION_UNCONFIRMED';
-            throw Object.assign(Error(code), { code, cause, effect_status: 'unknown' });
-          });
+            throw Object.assign(Error(code), { code, cause, effect_status: projectionAttempted ? 'unknown' : 'no_effect' });
+          }
         },
       });
   }
@@ -102,13 +102,18 @@ export function createStandardHandoffContinuation({ targetRoot, readSigningKey, 
       active(signal);
       if (write !== true || expectedContinuationSha256 !== H(descriptor) || typeof assertAuthorized !== 'function'
         || typeof assertAuthorizedCurrent !== 'function') fail('STANDARD_HANDOFF_CONTINUATION_EXPLICIT_EFFECT_REQUIRED');
-      const cap = prepare(instance, record, { signal });
-      if (H({ ...describeData(cap.data), lock_sha256: descriptor.lock_sha256 }) !== H(descriptor))
-        fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_CHANGED');
-      await assertAuthorized(); active(signal); cap.assertCurrent();
-      try { return await cap.complete({ write, assertAuthorizedCurrent, signal }); }
+      try {
+        const cap = prepare(instance, record, { signal });
+        if (H({ ...describeData(cap.data), lock_sha256: descriptor.lock_sha256 }) !== H(descriptor))
+          fail('STANDARD_HANDOFF_CONTINUATION_SUBJECT_CHANGED');
+        await assertAuthorized(); active(signal); cap.assertCurrent();
+        return await cap.complete({ write, assertAuthorizedCurrent, signal });
+      }
       catch (cause) {
-        if (cause.effect_status !== 'unknown') throw cause;
+        if (cause.effect_status !== 'unknown') {
+          const code = /^[A-Z][A-Z0-9_]{0,127}$/.test(cause?.code ?? '') ? cause.code : 'STANDARD_HANDOFF_CONTINUATION_UNCONFIRMED';
+          throw Object.assign(Error(code), { code, cause, effect_status: 'no_effect' });
+        }
         const reason = /^[A-Z][A-Z0-9_]{0,127}$/.test(cause.code ?? '') ? cause.code : 'STANDARD_HANDOFF_CONTINUATION_UNCONFIRMED';
         return { output: handoffOperationResult(record.preview.prepared, null, reason, 'unknown'), effect_knowledge: 'unknown' };
       }
