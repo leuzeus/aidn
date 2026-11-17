@@ -132,6 +132,22 @@ export async function runStandardWorkflowAction({ request, configuration, parame
     if (next.kind === "call") return { kind: "call", payload: { ...next.transition, instance_id: state.record.instance_id,
       model_sha256: state.record.model_sha256 } };
     if (next.kind === "question_recovery") return { kind: "question_recovery", payload: { recovery_plan: next.plan } };
+    if (next.kind === "operation_wait" && dispositionSource && next.operation_id) {
+      const pending = state.cursor.occurrences.find(frame => frame.status === "WAITING"
+        && frame.operation?.intent?.operation_id === next.operation_id
+        && frame.operation.intent.binding_ref === "handoff_packet_publish" && !frame.operation.receipt);
+      if (pending) {
+        const record = host.readOperation(next.operation_id);
+        const plan = await host.prepareOperationDisposition(next.operation_id, { expectedSha256: state.record.instance_sha256, signal });
+        if (plan.contract_version === "process-operation-disposition-plan.v4") {
+          if (plan.assessment !== "known_partial_handoff_publication") fail("STANDARD_ENTRY_DISPOSITION_PLAN_REQUIRED");
+          const latest = record.results.at(-1)?.receipt;
+          if (!latest) return { kind: "operation_disposition", payload: { disposition_plan: plan } };
+          if (!["completed", "reconciliation_required"].includes(latest.outcome)) fail("STANDARD_ENTRY_DISPOSITION_RECEIPT_CHANGED");
+          return { kind: "operation_disposition_accept", payload: { operation_id: next.operation_id, journal_sha256: shadowHash(record), receipt_sha256: shadowHash(latest) } };
+        }
+      }
+    }
     if (next.kind === "reconciliation" && dispositionSource) {
       const frames = state.cursor.occurrences.filter(frame => frame.status === "WAITING"
         && ["session_pr_correction_reopen", "session_pr_incident_close", "handoff_packet_publish"].includes(frame.operation?.intent?.binding_ref)
@@ -146,7 +162,8 @@ export async function runStandardWorkflowAction({ request, configuration, parame
             const latest = record.results.at(-1).receipt;
             const accepted = state.record.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(latest));
             if (accepted) return { kind: "operation_disposition", payload: { disposition_plan: plan } };
-            if (record.results.length < 2 || !["completed", "reconciliation_required"].includes(latest.outcome))
+            if (record.results.length < (plan.contract_version === "process-operation-disposition-plan.v4" ? 1 : 2)
+              || !["completed", "reconciliation_required"].includes(latest.outcome))
               fail("STANDARD_ENTRY_DISPOSITION_RECEIPT_CHANGED");
             return { kind: "operation_disposition_accept", payload: { operation_id: id, journal_sha256: shadowHash(record), receipt_sha256: shadowHash(latest) } };
           }

@@ -9,6 +9,7 @@ import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
 import { verifyHandoffMixedCancellation } from './standard-handoff-mixed-cancellation-fixture-lib.mjs';
 import { verifyStandardHandoffContinuation } from './verify-standard-handoff-continuation-fixtures.mjs';
 import { verifyStandardHandoffDisposition } from './verify-standard-handoff-disposition-fixtures.mjs';
+import { verifyPublicHandoffEntry } from './verify-standard-handoff-entry-recovery-fixtures.mjs';
 const mode=process.argv[2];assert(['files','dual','db-only'].includes(mode));assert.equal(process.argv.length,3);
 const owned=[],root=createFreshStandardWorkflowFixture(mode,owned,{absentOptionalDocuments:['HANDOFF-PACKET.md']}),artifacts=createStandardWorkflowArtifacts({targetRoot:root}),key=Buffer.alloc(32,149),signer=createOperationJournalSigner(()=>key);
 const control=fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()),'aidn-handoff-operation-control-'));owned.push(control);
@@ -43,4 +44,6 @@ const mixedCancellation = await verifyHandoffMixedCancellation(mode); checks += 
 const projectionContinuation = await verifyStandardHandoffContinuation(mode);
 const dispositionContinuation = await verifyStandardHandoffDisposition(mode);
 const unreturnedDispositionContinuation = await verifyStandardHandoffDisposition(mode,{unreturned:true});
-console.log(JSON.stringify({status:'PASS',mode,checks,root,control,mixed_cancellation:mixedCancellation,projection_continuation_component:projectionContinuation,public_disposition_component:dispositionContinuation,unreturned_disposition_component:unreturnedDispositionContinuation,actual_common_reducer_grant_journal_dispatch_owner_CAS_receipt_acceptance:true,independent_discovery_and_native_history:'CONTROLLED_FIXTURE_CAPABILITIES',source_reads:sourceReads,Native_calls:0,full_published_IR_handoff:'NOT_RUN_BY_COMPONENT',post_release_complete_handoff:'NOT_PROVEN',cold_unknown_recovery:'RETURNED_UNKNOWN_AND_UNRETURNED_DISPATCH_COMPONENT_PROFILES',genuine_Native_Human_installed_full_STANDARD:'NOT_RUN'}));
+const publicReturnedHandoff = await verifyPublicHandoffEntry(mode);
+const publicUnreturnedHandoff = await verifyPublicHandoffEntry(mode,{unreturned:true});
+console.log(JSON.stringify({status:'PASS',mode,checks,root,control,mixed_cancellation:mixedCancellation,projection_continuation_component:projectionContinuation,public_disposition_component:dispositionContinuation,unreturned_disposition_component:unreturnedDispositionContinuation,public_returned_handoff:publicReturnedHandoff,public_unreturned_handoff:publicUnreturnedHandoff,actual_common_reducer_grant_journal_dispatch_owner_CAS_receipt_acceptance:true,independent_discovery_and_native_history:'CONTROLLED_FIXTURE_CAPABILITIES',source_reads:sourceReads,Native_calls:0,full_published_IR_handoff:'OFFLINE_HANDOFF_JOURNEY_BOTH_PROFILES',post_release_complete_handoff:'OFFLINE_PUBLISHED_SUFFIX_BOTH_PROFILES',cold_unknown_recovery:'RETURNED_UNKNOWN_AND_UNRETURNED_DISPATCH_COMPONENT_PROFILES',genuine_Native_Human_installed_full_STANDARD:'NOT_RUN'}));

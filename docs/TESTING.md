@@ -7383,3 +7383,33 @@ They do not qualify arbitrary foreign canonical mutations, before-effect
 continuation, normal published v4 entry, genuine Native/Human/provider activity,
 installed code or complete A6/full STANDARD acceptance. Required full manifests
 retain every existing command and historical failed scenario.
+
+
+## Public published handoff recovery fixtures
+
+The required common handoff command also invokes
+`verify-standard-handoff-entry-recovery-fixtures.mjs` for both the returned
+UNKNOWN and unreturned publisher profiles. Run that fixture directly with
+`files`, `dual` or `db-only`; add `--unreturned` to select the second profile.
+Both use the actual published STANDARD model, public CLI and console previews,
+normal exact-action apply and separate receipt acceptance. They execute the
+summary, Git checkpoint and packet preparation, then the resource observation,
+handoff admission, context reload and session entry suffix. Preview must leave
+the canonical inventory exact, and a separate live target-marked parent must
+prevent publication. Execution, replay and SIM retain the same IR and reducer.
+
+The publisher performs the real packet CAS and remains alive either after its
+signed UNKNOWN return or before any result. A live publisher cannot transfer
+ownership. After its actual termination, the entry selects the separate v3 or
+v4 plan. The v4 case retains a signed running capsule and empty original result
+sequence; its first real controller receipt is index zero. Both preserve the
+original capsule, packet bytes and metadata without repeating the packet CAS.
+Each publisher keeps its original 600000 ms bound, calibrated for the public
+cold CLI path. The component producer/controller bounds remain 120000 ms.
+
+These are offline fixtures. Their single controlled analysis RPC has one reply,
+600000 ms workflow/global limits, 60000 ms turn limit and 33554432 byte limit;
+the RPC session must close. Human decisions are signed fixture decisions.
+There are zero genuine Native clients or model calls, and no genuine Human,
+provider or installed-archive qualification. A successful handoff suffix does
+not establish before-effect recovery or complete A6/full STANDARD acceptance.

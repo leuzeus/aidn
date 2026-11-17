@@ -126,7 +126,7 @@ if(['permission_revoked','cancelled'].includes(scenario)){
  assert.equal(currentFence.token,proposedControlFence.token);assert.equal(currentFence.process_identity.pid,process.pid);assert.equal(currentFence.state,'released');
  assert.equal(fs.existsSync(path.join(root,'.aidn/runtime/standard-workflow/retired-'+opid+'.lock')),true);assert.equal(artifacts.ownerPending(),false);
  if(unreturned){assert.equal(prepared.host.readJournal(opid).phase,'dispatching');assert.deepEqual(prepared.host.readJournal(opid).results,[]);}else assert(prepared.host.inspect(prepared.id).cursor.occurrences.some(f=>f.operation?.intent.operation_id===opid&&f.status==='WAITING'));
- console.log('PASS '+scenario+' closes its own proved no-effect control and preserves original UNKNOWN');
+ console.log('PASS '+scenario+' closes its own proved no-effect control and preserves original dispatch history');
  return{status:'PASS_CURRENT_CONTROL_REFUSAL_CLEANUP_COMPONENT',scenario,mode,root,control,original_unknown_preserved:!unreturned,original_unreturned_dispatch_preserved:unreturned,original_result_count:originalCount,new_controller_lease_closed:true,canonical_CAS_replayed:false,projection_attempted:false,Native_clients:0,model_calls:0,complete_standard_workflow:false};
 }
 if(scenario==='projection_ack_lost'){
@@ -201,7 +201,7 @@ if(scenario!=='disposition_acceptance_committed'){const accepted=await resumedHo
 const final=prepared.host.inspect(prepared.id);if(original)assert(final.record.events.some(e=>e.kind==='operation_result'&&H(e.receipt)===H(original.receipt)));else assert.equal(final.record.events.filter(e=>e.kind==='operation_result'&&e.receipt.operation_id===opid).length,1);assert(final.record.events.some(e=>e.kind==='operation_result'&&H(e.receipt)===H(applied.receipt)));
 assert.equal(artifacts.ownerPending(),false);assert.equal(dispositionRequests.filter(r=>r.action==='operation_disposition').length,scenario==='disposition_receipted'?0:scenario==='disposition_fence_acquired'?2:1);assert.equal(dispositionRequests.filter(r=>r.action==='operation_disposition_accept').length,1);
 const stable=tree();dispositionAllowed=false;const duplicate=await resumedHost.applyOperationDisposition(adoptionPlan,{write:true,expectedPlanSha256:H(adoptionPlan)});assert.equal(duplicate.status,'retained_result');assert.deepEqual(duplicate.receipt,applied.receipt);assert.deepEqual(tree(),stable);
-console.log('PASS common acceptance preserves old UNKNOWN and duplicate apply returns retained receipt without another grant/effect');
+console.log('PASS common acceptance preserves original dispatch history and duplicate apply returns retained receipt without another grant/effect');
 assertAudit(adopted);const forgedAudit=structuredClone(adopted);forgedAudit.results[0].receipt.output_sha256=H('foreign output');assert.throws(()=>assertAudit(forgedAudit),{code:'PROCESS_DISPOSITION_RECORD_INVALID'});
 const replayInput={instanceId:final.record.instance_id,model,policyPins:final.record.policy_pins,scopeId:final.record.scope_id,facts:final.record.initial_facts};let replay=createAgenticProcess(replayInput);for(const event of final.record.events)replay=advanceAgenticProcess(replay,event);assert.equal(replay.instance_sha256,final.record.instance_sha256);
 const simulation=simulateAgenticProcess({...replayInput,events:final.record.events});assert.equal(simulation.trace.at(-1).instance_sha256,final.record.instance_sha256);

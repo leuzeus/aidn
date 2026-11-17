@@ -54,14 +54,29 @@ function applyConsole(data, prepared, expectedPreview = null) {
 
 const canonical = data => H(createStandardWorkflowArtifacts({ targetRoot: data.root }).observeInventory());
 function transport(body, privateKey) { return { ...body, signature: sign(null, Buffer.from(H(body)), privateKey).toString('base64') }; }
-async function produce(mode, file, { nativeModel = 'fixture-no-native', controllerPins = {}, retainFailure = null } = {}) {
+async function produce(mode, file, { nativeModel = 'fixture-no-native', controllerPins = {}, retainFailure = null, handoffBaseline = false } = {}) {
   const retained = [], root = createFreshStandardWorkflowFixture(mode, retained);
   const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aidn-public-native-entry-'));
   const directories = Object.fromEntries(['control', 'review', 'home', 'authority', 'issuer'].map(name => { const p = path.join(base, name); fs.mkdirSync(p); return [name, p]; }));
   const product = path.join(root, 'product'); fs.mkdirSync(product); fs.writeFileSync(path.join(product, 'app.mjs'), 'export const value = 1;\n');
+  // Explicit fixture construction for the handoff's clean Git precondition.
+  if (handoffBaseline) {
+    // Fixture construction only, before any governed workflow or Native grant.
+    // Seed exactly this new fixture product; never sweep unrelated staged paths.
+    const fixtureGit=(...args)=>execFileSync('git',['--no-optional-locks','-C',root,...args],{encoding:'utf8',windowsHide:true});
+    assert.equal(fixtureGit('diff','--cached','--name-only'),'');
+    assert.equal(fixtureGit('status','--porcelain=v1','--untracked-files=all').trim(),'?? product/app.mjs');
+    fixtureGit('add','--','product/app.mjs');
+    assert.deepEqual(fixtureGit('diff','--cached','--name-only','-z').split('\0').filter(Boolean),['product/app.mjs']);
+    fixtureGit('-c','user.name=AIDN Fixture','-c','user.email=fixture@example.invalid','commit','--no-gpg-sign','-m','test: seed fixture product baseline');
+    assert.equal(fixtureGit('status','--porcelain=v1','--untracked-files=all'),'');
+    fs.writeFileSync(path.join(base,'fixture-product-baseline.json'),JSON.stringify({stage:'fixture_construction_before_workflow',head:fixtureGit('rev-parse','HEAD').trim(),product_path:'product/app.mjs',product_sha256:pin(path.join(product,'app.mjs')).sha256,git_status:'clean'})+'\n',{flag:'wx'});
+  }
   const criteria = path.join(base, 'criteria.md'); fs.writeFileSync(criteria, 'Qualify public Native resource recovery without launching Native.\n');
   const human = generateKeyPairSync('ed25519'), resource = generateKeyPairSync('ed25519'), nativePrivate = path.join(directories.issuer, 'resource-owner.pem');
   fs.writeFileSync(nativePrivate, resource.privateKey.export({ type: 'pkcs8', format: 'pem' }));
+  const humanPrivate = handoffBaseline ? path.join(directories.issuer, 'fixture-human.pem') : null;
+  if (humanPrivate) fs.writeFileSync(humanPrivate, human.privateKey.export({ type: 'pkcs8', format: 'pem' }));
   fs.mkdirSync(path.join(directories.authority, 'inbox'));
   fs.writeFileSync(path.join(directories.authority, 'principals.json'), JSON.stringify({ contract_version: 'standard-host-principals.v1', principals: [
     { authority_id: 'fixture_human', kinds: ['human'], public_key: human.publicKey.export({ type: 'spki', format: 'pem' }) },
@@ -69,13 +84,13 @@ async function produce(mode, file, { nativeModel = 'fixture-no-native', controll
   const request = { contract_version: 'standard-workflow-execution.v1', execution: { instance_id: 'public-native-entry', target_root: root,
     product_root: product, product_files: ['app.mjs'], control_root: directories.control, review_root: directories.review, criteria: pin(criteria),
     authorities: { project: pin(path.join(root, 'AGENTS.md')) }, instructions: {}, controller: controllerPins,
-    native: { executable: process.execPath, sha256: pin(process.execPath).sha256, home: directories.home, tool_roots: [], protected_roots: [directories.authority],
+    native: { executable: process.execPath, sha256: pin(process.execPath).sha256, home: directories.home, tool_roots: [], protected_roots: [directories.authority, ...(handoffBaseline ? [directories.issuer] : [])],
       hook_hashes: { work: ['sha256:' + 'a'.repeat(64), 'sha256:' + 'b'.repeat(64)], review: [] }, model: nativeModel, effort: 'medium',
       startup: { mcp_server_ids: [], plugin_ids: [], app_ids: [], environment_override_names: [], environment_names: [...CODEX_STARTUP_ENVIRONMENT_PROFILES.worker],
         log_dir: directories.control, sqlite_home: directories.control } } },
     parameters: { session: { session_id: 'S001', session_branch: 'S001-public-native-entry', objective: 'Public Native recovery fixture' },
       cycle: { cycle_id: 'C001', cycle_type: 'FEATURE', title: 'Unused cycle', objective: 'No retained cycle' } } };
-  const data = { root, base, mode, operator_home: directories.authority, resource_private_key: nativePrivate, request,
+  const data = { root, base, mode, operator_home: directories.authority, resource_private_key: nativePrivate, ...(humanPrivate ? { human_private_key: humanPrivate } : {}), request,
     config_file: path.join(base, 'configuration.json'), action_file: path.join(base, 'action.json') };
   fs.writeFileSync(data.config_file, JSON.stringify(request));
   let ready;
@@ -108,7 +123,7 @@ async function produce(mode, file, { nativeModel = 'fixture-no-native', controll
     original_journal_sha256: artifacts.read('workflows/native-allocations/' + fixture.journalId + '.json').sha256,
     original_dispatch_sha256: artifacts.read('workflows/native-dispatches/' + fixture.dispatch.dispatch_id + '.json').sha256 };
   fs.writeFileSync(file, JSON.stringify(saved), { flag: 'wx' });
-  console.log(JSON.stringify({ status: retainFailure ? 'PUBLISHED_PREFIX_AND_CONTROLLED_POST_ASSIGNMENT_FAILURE_RETAINED'
+  console.log(JSON.stringify({ status: handoffBaseline ? 'PUBLISHED_PREFIX_AND_CONTROLLED_ANALYSIS_RESULT_RETAINED' : retainFailure ? 'PUBLISHED_PREFIX_AND_CONTROLLED_POST_ASSIGNMENT_FAILURE_RETAINED'
     : 'PUBLISHED_PREFIX_AND_SYNTHETIC_NO_ASSIGNMENT_FAILURE_RETAINED', file, root, base, Native_calls: 0 }));
 }
 function worker(args, expected = 0) {
