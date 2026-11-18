@@ -63,7 +63,8 @@ try {
     store.compareAndSwap(record, null); journals.push(record);
     instance = advanceAgenticProcess(instance, { event_id: "result_" + node, kind: "operation_result", occurrence_id: occurrenceId, receipt });
   }
-  const open = (config = configuration, readSigningKey = () => key) => createStandardProcessAuthority({ configuration: config, model, readSigningKey });
+  const open = (config = configuration, readSigningKey = () => key) => createStandardProcessAuthority({ configuration: config, model, readSigningKey,
+    readProductSha256: () => { throw Error("HISTORICAL_DIAGNOSTIC_PRODUCT_READ_UNEXPECTED"); } });
   const authority = open();
   createAgenticProcessStore({ targetRoot: root, stateMode: "files" }).compareAndSwap(instance, null);
   let authorizations = 0, nativeControllers = 0;
