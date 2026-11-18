@@ -23,7 +23,13 @@ assert.deepEqual(manifest.cases.slice(194, 197), [
   ["tools/perf/verify-standard-pr-redelivery-fixtures.mjs", "--mode=files", "--aged-plan"],
 ]);
 console.log("PASS accepted194 cases retain their original argv and order modulo explicit age selectors with three exact additions");
-assert.equal(manifest.cases.length, 384);
+assert.equal(manifest.cases.length, 385);
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 384))).digest("hex"),
+  "8dcdac2f64b4185139cc5bbc744ba8f48fa6364086f696e0a4fdc7b99c08da3e");
+assert.deepEqual(manifest.cases[384], [
+  "tools/perf/verify-standard-git-checkpoint-crash-recovery-fixtures.mjs",
+  "--mode=files", "--cut=dispatch_reserved", "--checkpoint-worker-bound-ms=300000", "--public-entry-service",
+]);
 assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 383))).digest("hex"), "106c7f74c8f85d474927bae6e96bfeb049ca61432979d5c251951d2888dc0a6e");
 assert.deepEqual(manifest.cases[383], ["tools/perf/verify-github-process-tree-transport-fixtures.mjs"]);
 assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 382))).digest("hex"), "dfb83e1921c5d3273fd5d38e848c4baee920c24a116ad72566163364048d3e3f");
@@ -574,7 +580,7 @@ console.log("PASS current382 preserves exact381 and requires physical handoff pr
 
 if (process.argv.includes("--manifest-only")) {
   console.log(JSON.stringify({ status: "PASS", checks: 28, scope: "frozen326/332/335/338/347/353/357/360/366/369/372/375 prefixes plus receipted continuation, canonical publication, common handoff receipts and captured publication recovery",
-    manifest_cases: 384, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
+    manifest_cases: manifest.cases.length, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
   process.exit(0);
 }
 

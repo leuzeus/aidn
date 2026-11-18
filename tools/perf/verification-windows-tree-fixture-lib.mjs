@@ -7,8 +7,8 @@ import { runOwnedVerificationCommandSync, verificationCallerIdentity } from "../
 import { runNodeFixtureCases } from "../verify/node-fixture-runner-lib.mjs";
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-const powershell = path.join(process.env.SystemRoot, "System32/WindowsPowerShell/v1.0/powershell.exe");
-function identities(ids) {
+
+function identities(powershell, ids) {
   const result = spawnSync(powershell, ["-NoProfile", "-NonInteractive", "-Command",
     `$ids=@(${ids.join(",")}); @(Get-CimInstance Win32_Process | Where-Object { $ids -contains $_.ProcessId } | Select-Object ProcessId,ParentProcessId,CreationDate,ExecutablePath,CommandLine) | ConvertTo-Json -Compress`],
   { encoding: "utf8", windowsHide: true, shell: false, timeout: 10000, maxBuffer: 65536 });
@@ -23,6 +23,7 @@ async function waitFor(file, child) {
 
 export async function verifyWindowsVerificationTree(base) {
   if (process.platform !== "win32") { console.log("SKIP Windows Job OS fixture on non-Windows"); return; }
+  const powershell = path.join(process.env.SystemRoot, "System32/WindowsPowerShell/v1.0/powershell.exe");
   const source = fileURLToPath(new URL("../verify/owned-verification-process-lib.mjs", import.meta.url));
   const library = new URL("../verify/node-fixture-runner-lib.mjs", import.meta.url).href;
   const tree = path.join(base, "owned tree.mjs"), dispatcher = path.join(base, "relative-dispatcher.mjs");
@@ -40,7 +41,7 @@ process.exitCode=result.exit_code||1;\n`);
   const foreign = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { stdio: "ignore", windowsHide: true });
   const foreignClosed = new Promise(resolve => foreign.once("close", resolve));
   try {
-    const foreignBefore = identities([foreign.pid]); assert.equal(foreignBefore.length, 1);
+    const foreignBefore = identities(powershell, [foreign.pid]); assert.equal(foreignBefore.length, 1);
     // Both commands use the same production supervisor as the family runner.
     // The second kills its supervisor with the real Windows TerminateProcess
     // behavior, bypassing JS signal handlers and exercising helper pipe EOF.
@@ -76,10 +77,10 @@ const result=runOwnedVerificationCommandSync({command:process.execPath,args:['re
 process.exitCode=result.error?1:0;\n`);
         const caller = spawn(process.execPath, [callerFile, log, ready, forbidden, dir], { cwd: base, stdio: "ignore", shell: false, windowsHide: true });
         const closed = new Promise(resolve => caller.once("close", resolve));
-        const callerBefore = identities([caller.pid]);
+        const callerBefore = identities(powershell, [caller.pid]);
         try { await waitFor(ready, caller); }
         finally { caller.kill(); await closed; }
-        receipt = { synchronous_caller_pid: caller.pid, caller_before: callerBefore, caller_after: identities([caller.pid]),
+        receipt = { synchronous_caller_pid: caller.pid, caller_before: callerBefore, caller_after: identities(powershell, [caller.pid]),
           evidence_dir: dir, caller_death: true, cleanup: "observe_exact_identities_below" };
         assert.deepEqual(receipt.caller_after.filter(row => callerBefore.some(old => old.ProcessId === row.ProcessId && old.CreationDate === row.CreationDate)), []);
       } else {
@@ -100,13 +101,13 @@ process.exitCode=result.error?1:0;\n`);
       for (const row of before) assert.ok(row.CreationDate && row.CommandLine && row.ExecutablePath);
       let after, same;
       const until = Date.now() + 10000;
-      do { after = identities(before.map(row => row.ProcessId));
+      do { after = identities(powershell, before.map(row => row.ProcessId));
         same = after.filter(row => before.some(old => old.ProcessId === row.ProcessId && old.CreationDate === row.CreationDate));
         if (same.length) await delay(100);
       } while (same.length && Date.now() < until);
       assert.deepEqual(same, [], "owned process identities survived");
       assert.equal(fs.existsSync(forbidden), false, "dispatcher allocated another case after stop");
-      const foreignAfter = identities([foreign.pid]); assert.deepEqual(foreignAfter, foreignBefore);
+      const foreignAfter = identities(powershell, [foreign.pid]); assert.deepEqual(foreignAfter, foreignBefore);
       fs.writeFileSync(path.join(dir, "os-proof.json"), JSON.stringify({ mode, receipt, roles, before, after,
         same_identities_alive: same, forbidden_allocated: false, foreign_before: foreignBefore, foreign_after: foreignAfter }, null, 2));
       console.log("PASS Windows " + mode + ": exact parent/child/grandchild identities stopped; no next allocation; foreign identity unchanged");
