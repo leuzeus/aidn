@@ -156,7 +156,7 @@ export function inferGateContext({
   return branch.startsWith("release/") ? "release" : "dev";
 }
 
-function defaultCommandRunner({
+export function defaultCommandRunner({
   repoRoot,
   script,
   env,

@@ -5,6 +5,7 @@ import contextCompletionCases from "../../package/catalogs/context-completion-fi
 import contextCoordinationCases from "../../package/catalogs/context-coordination-fixtures.v1.json" with { type: "json" };
 import agenticProcessCases from "../../package/catalogs/agentic-process-fixtures.v1.json" with { type: "json" };
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { parseDocument } from "yaml";
 import {
   loadWorkflowSources,
@@ -19,6 +20,11 @@ import {
 import { runGovernanceRouteFixtureSuite } from "./verify-governance-route-fixtures.mjs";
 import { validateContextResiliencePolicy } from "./context-resilience-policy.mjs";
 import { resolvePostgresTestRuntime, preparePostgresTestRuntime } from "../ci/resolve-postgres-test-runtime.mjs";
+import { verifyHostedAgenticReceiptFixtures } from "./hosted-agentic-receipt-fixtures-lib.mjs";
+import {
+  expectedAgenticQualificationJob, expectedAgenticReceiptDownload, hostedAgenticWorkflowIssues,
+  hostedPublicationVerification, readHostedAgenticWorkflowGraph,
+} from "./hosted-agentic-workflow-policy-lib.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const catalogPath = path.join(repoRoot, "package", "catalogs", "gates.v1.json");
@@ -404,8 +410,8 @@ const contextNegativeProbes = {
 };
 
 const commandCommentMutation = releaseText.replaceAll(
-  "run: npm run verify:release",
-  "run: npm run perf:verify-release-version\n        # run: npm run verify:release",
+  `run: ${hostedPublicationVerification}`,
+  `run: npm run perf:verify-release-version\n        # run: ${hostedPublicationVerification}`,
 );
 const missingJobMutation = releaseText.replace("  publish:\n", "  publish_removed:\n");
 const duplicateJobMutation = `${releaseText}\n  publish:\n    runs-on: ubuntu-latest\n    steps: []\n`;
@@ -436,7 +442,11 @@ const admissionText = fs.readFileSync(path.join(repoRoot, admissionPath), "utf8"
 const admissionRunnerCommand = "node tools/verify/run-gate-family.mjs "
   + "\"${{ matrix.family }}\" --context "
   + "\"${{ needs.classify.outputs.context }}\" --admission";
-const admissionJobIds = Object.freeze(["classify", "gates", "admission"]);
+const admissionRuntimeCommand = 'node tools/ci/run-hosted-gate-family.mjs runtime "${{ needs.classify.outputs.context }}"';
+const candidateSource = "${{ github.event.pull_request.head.sha || github.sha }}";
+const admissionMatrixCondition = "${{ !cancelled() && needs.classify.result == 'success' && needs.classify.outputs.family_count != '0' }}";
+const admissionAgenticCondition = "${{ needs.classify.result == 'success' && contains(fromJSON(needs.classify.outputs.families), 'runtime') }}";
+const admissionJobIds = Object.freeze(["classify", "agentic", "gates", "admission"]);
 
 function namedStep(job, name) {
   const matches = (job?.steps ?? []).filter((step) => step.name === name);
@@ -468,6 +478,10 @@ function evaluateGovernanceAdmissionExecutable(source) {
   const classify = model.jobs?.classify;
   const gates = model.jobs?.gates;
   const admission = model.jobs?.admission;
+  if (!isDeepStrictEqual(model.jobs?.agentic, expectedAgenticQualificationJob({ needs: "classify", source: candidateSource,
+    context: "${{ needs.classify.outputs.context }}", condition: admissionAgenticCondition }))) {
+    sourceIssues.push("admission must run the required hosted fixture chain for the selected runtime family");
+  }
   if (hasOwn(classify, "if") || hasOwn(classify, "continue-on-error")) {
     sourceIssues.push("admission classification job must be unconditional and blocking");
   }
@@ -487,8 +501,8 @@ function evaluateGovernanceAdmissionExecutable(source) {
     || !String(classificationIntegrity.run ?? "").includes("!route.ok")) {
     sourceIssues.push("admission must fail on classification integrity errors");
   }
-  if (gates?.if
-    !== "${{ needs.classify.result == 'success' && needs.classify.outputs.family_count != '0' }}"
+  if (gates?.if !== admissionMatrixCondition
+    || !isDeepStrictEqual(gates?.needs, ["classify", "agentic"])
     || gates?.strategy?.["fail-fast"] !== false
     || gates?.strategy?.matrix?.family
       !== "${{ fromJSON(needs.classify.outputs.families) }}") {
@@ -513,6 +527,8 @@ function evaluateGovernanceAdmissionExecutable(source) {
   const installIndex = gateSteps.indexOf(installStep);
   const runnerStep = namedStep(gates, "Run Selected Family Once");
   const runnerIndex = gateSteps.indexOf(runnerStep);
+  const runtimeStep = namedStep(gates, "Run Runtime Family Once");
+  const receiptStep = namedStep(gates, "Download Agentic Fixture Receipts");
   if (!installStep
     || String(installStep.run ?? "").trim()
       !== "npm ci --include=dev --include=optional --ignore-scripts --no-audit --no-fund"
@@ -540,8 +556,8 @@ function evaluateGovernanceAdmissionExecutable(source) {
     || String(source).split(admissionRunnerCommand).length - 1 !== 1) {
     sourceIssues.push("admission must execute each selected family through one canonical runner call");
   }
-  if (hasOwn(runnerStep, "if") || hasOwn(runnerStep, "continue-on-error")) {
-    sourceIssues.push("admission family execution must be unconditional and blocking inside its matrix cell");
+  if (runnerStep?.if !== "${{ matrix.family != 'runtime' }}" || hasOwn(runnerStep, "continue-on-error")) {
+    sourceIssues.push("ordinary admission runner must execute only non-runtime families and remain blocking");
   }
   if (runnerStep?.env?.AIDN_BRANCH_POLICY_HEAD_REF !== "${{ github.head_ref || github.ref_name }}"
     || runnerStep?.env?.AIDN_BRANCH_POLICY_BASE_REF !== "${{ github.base_ref || 'dev' }}"
@@ -549,6 +565,15 @@ function evaluateGovernanceAdmissionExecutable(source) {
     || runnerStep?.env?.AIDN_BRANCH_POLICY_EXPECTED_SHA
       !== "${{ github.event.pull_request.head.sha || github.sha }}") {
     sourceIssues.push("admission must preserve exact candidate provenance for PR and branch dispatch");
+  }
+  if (gateSteps.length !== 8 || !isDeepStrictEqual(receiptStep, expectedAgenticReceiptDownload(
+    "${{ matrix.family == 'runtime' && needs.agentic.result == 'success' }}"))
+    || gateSteps.indexOf(receiptStep) <= postgresIndex || gateSteps.indexOf(runtimeStep) <= gateSteps.indexOf(receiptStep)
+    || !runtimeStep || runtimeStep.if !== "${{ matrix.family == 'runtime' }}" || hasOwn(runtimeStep, "continue-on-error")
+    || runtimeStep.run !== admissionRuntimeCommand || String(source).split(admissionRuntimeCommand).length - 1 !== 1
+    || !isDeepStrictEqual(runtimeStep.env, { ...runnerStep?.env, AIDN_AGENTIC_CHAIN_RESULT: "${{ needs.agentic.result }}",
+      AIDN_AGENTIC_SOURCE_SHA: candidateSource })) {
+    sourceIssues.push("runtime admission must consume the exact successful hosted fixture chain before the remaining gates");
   }
   const rollupStep = namedStep(admission, "Enforce Required Child Results");
   if (admission?.name !== "Governance Admission"
@@ -568,6 +593,14 @@ function evaluateGovernanceAdmissionExecutable(source) {
   return sourceIssues;
 }
 issues.push(...evaluateGovernanceAdmissionExecutable(admissionText));
+const hostedAgenticGraph = readHostedAgenticWorkflowGraph(repoRoot);
+issues.push(...hostedAgenticWorkflowIssues(hostedAgenticGraph));
+const hostedReceiptProbes = verifyHostedAgenticReceiptFixtures(repoRoot);
+function hostedGraphRejected(change) {
+  const candidate = structuredClone(hostedAgenticGraph);
+  change(candidate);
+  return hostedAgenticWorkflowIssues(candidate).length > 0;
+}
 const capturedFetchCalls = [];
 const fetchHelperResult = fetchBranchPolicySources({
   headRef: "codex/governance-probe",
@@ -655,7 +688,7 @@ const admissionFetchContinueOnErrorMutation = mutateNamedStepProperty(
   "true",
 );
 const admissionGatesIfFalseMutation = admissionText.replace(
-  "    if: ${{ needs.classify.result == 'success' && needs.classify.outputs.family_count != '0' }}",
+  `    if: ${admissionMatrixCondition}`,
   "    if: ${{ false }}",
 );
 const admissionGatesContinueOnErrorMutation = mutateNamedJobProperty(
@@ -1084,6 +1117,19 @@ const negativeProbes = {
     evaluateGovernanceAdmissionExecutable(admissionRunnerDuplicateMutation).length > 0,
   admission_family_runner_blocking:
     evaluateGovernanceAdmissionExecutable(admissionRunnerContinueOnErrorMutation).length > 0,
+  hosted_agentic_segment_omission_rejected:
+    hostedGraphRejected(([chain]) => { delete chain.jobs.segment_2; }),
+  hosted_agentic_segment_reorder_rejected:
+    hostedGraphRejected(([chain]) => { chain.jobs.segment_3.needs = "segment_1"; }),
+  hosted_agentic_segment_source_substitution_rejected:
+    hostedGraphRejected(([chain]) => { chain.jobs.segment_3.with.source = "main"; }),
+  hosted_agentic_segment_nonblocking_rejected:
+    hostedGraphRejected(([, leaf]) => { leaf.jobs.fixtures.steps[4]["continue-on-error"] = true; }),
+  hosted_agentic_receipt_upload_skip_rejected:
+    hostedGraphRejected(([, leaf]) => { leaf.jobs.fixtures.steps[5].with["if-no-files-found"] = "ignore"; }),
+  hosted_agentic_admission_chain_bypass_rejected: evaluateGovernanceAdmissionExecutable(admissionText.replace(
+    "AIDN_AGENTIC_CHAIN_RESULT: ${{ needs.agentic.result }}", "AIDN_AGENTIC_CHAIN_RESULT: success",
+  )).length > 0,
   admission_gate_matrix_condition_required:
     evaluateGovernanceAdmissionExecutable(admissionGatesIfFalseMutation).length > 0,
   admission_gate_matrix_blocking:
@@ -1226,6 +1272,7 @@ const output = {
     manual_dispatch: true,
   },
   negative_probes: negativeProbes,
+  hosted_agentic_receipt_probes: hostedReceiptProbes,
   postgres_runtime_prerequisite_probes: postgresRuntimeProbes,
   context_resilience_positive_probes: contextPositiveProbes,
   issues,

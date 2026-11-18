@@ -27,6 +27,12 @@ byte from artifact identity while preserving the ustar payload. Qualification
 reports record Node/zlib/platform versions; byte parity across different
 compression implementations requires measured evidence.
 
+2026-11-18: publication proves the exact merged source before running the
+ordered hosted agentic fixture jobs. The publish job rechecks its publication
+source and verifies the complete manifest receipts from the same workflow run
+before executing the remaining release obligations. This precedes exact-source
+build and artifact verification, tag creation and GitHub Release creation.
+
 ## Context
 
 AIDN ships as a package source repository with local release artifacts, manifests and checksums. The release surface is already validated by `build-release`, `npm pack --dry-run` and topology checks, but the source of version truth and the provenance of published artifacts still need an explicit architectural home.

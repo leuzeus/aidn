@@ -4,6 +4,7 @@ import agenticProcessCases from "../../package/catalogs/agentic-process-fixtures
 import path from "node:path";
 import { parseDocument } from "yaml";
 import { validateContextResiliencePolicy } from "./context-resilience-policy.mjs";
+import { hostedPublicationVerification } from "./hosted-agentic-workflow-policy-lib.mjs";
 
 const LOCKED_GATE_INSTALL_COMMAND = "npm ci --include=dev --include=optional --ignore-scripts --no-audit --no-fund";
 const DEPENDENCY_BEARING_GATE_COMMANDS = new Set([
@@ -128,6 +129,7 @@ const REQUIRED_WORKFLOW_POLICY = Object.freeze({
     },
     jobs: {
       classify: [],
+      agentic: [],
       gates: [],
       admission: [],
     },
@@ -137,7 +139,9 @@ const REQUIRED_WORKFLOW_POLICY = Object.freeze({
       push: ["main"],
     },
     jobs: {
-      publish: ["verify:release", "perf:verify-release-artifacts"],
+      publication_source: [],
+      agentic: [],
+      publish: { commands: ["perf:verify-release-artifacts"], requiredRuns: [hostedPublicationVerification] },
     },
   },
   ".github/workflows/runtime-ops-live-smoke.yml": {
@@ -542,6 +546,11 @@ export function validateGateAndWorkflowPolicy({
       for (const command of commands) {
         if (!model.jobs[job].commands.includes(command)) {
           issues.push(`${workflowPath}/${job}: missing semantic npm command ${command}`);
+        }
+      }
+      for (const command of (jobPolicy.requiredRuns ?? [])) {
+        if ((model.jobs[job].steps ?? []).filter(step => step.run === command).length !== 1) {
+          issues.push(`${workflowPath}/${job}: missing or duplicated exact command ${command}`);
         }
       }
       const expectedSteps = Array.isArray(jobPolicy) ? null : jobPolicy.steps;

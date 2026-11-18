@@ -8,8 +8,37 @@ permissions:
   contents: read
 
 jobs:
+  publication_source:
+    name: Check Publication Source
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.13"
+      - name: Prove Publication Source Before Fixture Jobs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/ci/prove-publication-source.mjs
+
+  agentic:
+    name: Qualify Required Agentic Fixtures
+    needs: publication_source
+    uses: ./.github/workflows/agentic-fixture-qualification.yml
+    with:
+      source: ${{ github.sha }}
+      context: main
+
   publish:
     name: Publish Merged Release
+    needs: agentic
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     permissions:
@@ -35,11 +64,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: node tools/ci/prove-publication-source.mjs
 
+      - name: Download Agentic Fixture Receipts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: aidn-agentic-segment-*
+          path: ${{ runner.temp }}/aidn-agentic-segments
+
       - name: Verify Version, Provenance, Topology, And Sensitivity
         env:
+          AIDN_AGENTIC_CHAIN_RESULT: ${{ needs.agentic.result }}
+          AIDN_AGENTIC_SOURCE_SHA: ${{ github.sha }}
           AIDN_BRANCH_POLICY_EXPECTED_SHA: ${{ github.sha }}
           AIDN_BRANCH_POLICY_CONTAINS_REF: origin/main
-        run: npm run verify:release
+        run: node tools/ci/run-hosted-gate-family.mjs obligations main
 
       - name: Refuse Existing Tag Or Release
         id: version

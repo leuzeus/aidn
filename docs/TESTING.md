@@ -95,6 +95,32 @@ The ordered manifest and its exact-command policy guard are changed together.
 The previous cases retain their relative order and the full nominal remains
 the final case. The dispatcher adds no aggregate or per-case wall-clock limit.
 
+## Ordered agentic fixture jobs on GitHub-hosted runners
+
+The required agentic gate uses the same ordered manifest through the local
+`npm run perf:verify-agentic-process` dispatcher and in GitHub Actions. Hosted
+execution divides the manifest into successive jobs. Each job checks out the
+exact candidate, installs locked dependencies, resolves the test PostgreSQL
+runtime and dispatches its contiguous range with the existing fixture runner.
+The split addresses the hosted job duration limit. Each invocation keeps its
+original arguments and any explicit bound supplied by its own caller.
+
+The runtime family verifies all hosted receipts in manifest order. Each receipt
+binds its command observations to the exact commit, manifest, gate context and
+GitHub run.
+The verifier rejects omissions, overlaps, reordering, mismatched arguments and
+failed or interrupted commands. Successful prerequisites can retain their
+receipts when GitHub reruns failed jobs in the same workflow run. Governance
+Admission still requires the runtime family and every other selected family.
+
+Publication runs its own fixture jobs for the exact merged `main` commit after
+validating the publication source. It verifies that run's complete receipts
+before accepting the release obligations and creating a tag or release. Run
+`node tools/verify/verify-gate-catalog.mjs` and
+`node tools/verify/verify-release-workflow-policy.mjs` for the workflow and
+receipt-policy guards. Their receipt fixtures exercise the verifier with
+controlled observations. The hosted run supplies the actual fixture results.
+
 ## Delivered root work from an owned OPEN plan candidate, 2026-11-12
 
 The focused `--standard-existing-open-work-mode=files|dual|db-only` cases load

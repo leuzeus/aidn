@@ -37,6 +37,12 @@ final rollup. Branch protection on `dev` and `main` requires exactly
 `Governance Admission`; the temporary compatibility check names used during the
 live migration have been removed.
 
+2026-11-18: the required agentic fixture gate can span ordered GitHub-hosted
+jobs so that execution does not depend on a single job's six-hour capacity.
+The runtime family verifies complete ordered receipts tied to the exact source,
+manifest and workflow run. A missing or unsuccessful job or receipt blocks the
+family and the same `Governance Admission` rollup.
+
 ## Context
 
 AIDN already governs 45 verification gates through

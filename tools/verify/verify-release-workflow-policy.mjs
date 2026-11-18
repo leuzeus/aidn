@@ -1,17 +1,24 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { parseDocument } from "yaml";
 import {
   classifyPublicationSource,
   provePublicationSource,
 } from "../ci/prove-publication-source.mjs";
+import {
+  expectedAgenticQualificationJob, expectedAgenticReceiptDownload, hostedAgenticWorkflowIssues,
+  hostedPublicationVerification, readHostedAgenticWorkflowGraph,
+} from "./hosted-agentic-workflow-policy-lib.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const workflowPath = ".github/workflows/release.yml";
 const workflow = fs.readFileSync(path.join(repoRoot, workflowPath), "utf8");
 const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
 const publicationProofCommand = "node tools/ci/prove-publication-source.mjs";
+const exactMainTrigger = "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}";
+const exactMainSource = "${{ github.sha }}";
 const refusalScript = `VERSION="$(cat VERSION)"
 TAG="v\${VERSION}"
 if git ls-remote --exit-code --tags origin "refs/tags/\${TAG}" >/dev/null 2>&1; then
@@ -116,13 +123,24 @@ function evaluateWorkflow(candidate) {
   if (!sameSet(model?.on?.push?.branches, ["main"]) || model?.on?.push?.tags != null) {
     issues.push("release publication must trigger only on pushes to main");
   }
-  const verifyJob = model?.jobs?.verify;
   const publishJob = model?.jobs?.publish;
-  if (verifyJob != null) {
-    issues.push("release pull-request verification must be owned by Governance Admission");
+  const preflight = model?.jobs?.publication_source;
+  const preflightProof = namedStep(preflight, "Prove Publication Source Before Fixture Jobs");
+  if (!sameSet(Object.keys(model.jobs ?? {}), ["publication_source", "agentic", "publish"])
+      || preflight?.if !== exactMainTrigger || hasOwn(preflight, "continue-on-error")
+      || !isDeepStrictEqual(preflight?.permissions, { contents: "read", "pull-requests": "read" })
+      || !isDeepStrictEqual(preflight?.steps?.[0], { uses: "actions/checkout@v4", with: { ref: exactMainSource, "fetch-depth": 0 } })
+      || !isDeepStrictEqual(preflight?.steps?.[1], { uses: "actions/setup-node@v4", with: { "node-version": "22.13" } })
+      || preflight?.steps?.length !== 3 || preflightProof !== preflight?.steps?.[2]
+      || !exactRun(preflightProof, publicationProofCommand) || preflightProof?.env?.GH_TOKEN !== "${{ github.token }}") {
+    issues.push("release must prove the exact publication source before running the hosted fixture chain");
   }
-  if (publishJob?.if
-    !== "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}") {
+  requireBlockingStep(preflightProof, "release source preflight proof", issues);
+  if (!isDeepStrictEqual(model?.jobs?.agentic, expectedAgenticQualificationJob({ needs: "publication_source",
+    source: exactMainSource, context: "main" })) || publishJob?.needs !== "agentic") {
+    issues.push("release publication must depend on the full fixture chain for the same main commit");
+  }
+  if (publishJob?.if !== exactMainTrigger) {
     issues.push("release publish job must be restricted to pushes on refs/heads/main");
   }
   if (hasOwn(publishJob, "continue-on-error")) {
@@ -141,13 +159,19 @@ function evaluateWorkflow(candidate) {
     publishJob,
     "Verify Version, Provenance, Topology, And Sensitivity",
   );
+  const receiptStep = namedStep(publishJob, "Download Agentic Fixture Receipts");
   if (!publicationVerificationStep
-    || !exactRun(publicationVerificationStep, "npm run verify:release")) {
-    issues.push("release publication must run only the complete verify:release aggregate");
+    || !exactRun(publicationVerificationStep, hostedPublicationVerification)
+    || !isDeepStrictEqual(receiptStep, expectedAgenticReceiptDownload())
+    || !isDeepStrictEqual(publicationVerificationStep.env, {
+      AIDN_AGENTIC_CHAIN_RESULT: "${{ needs.agentic.result }}", AIDN_AGENTIC_SOURCE_SHA: exactMainSource,
+      AIDN_BRANCH_POLICY_EXPECTED_SHA: exactMainSource, AIDN_BRANCH_POLICY_CONTAINS_REF: "origin/main",
+    })) {
+    issues.push("release publication must run all obligations with receipts from the successful exact-head fixture chain");
   }
   requireBlockingStep(
     publicationVerificationStep,
-    "release publication verify:release step",
+    "release publication obligation verification step",
     issues,
   );
   const installStep = namedStep(publishJob, "Install Locked Gate Dependencies");
@@ -163,6 +187,8 @@ function evaluateWorkflow(candidate) {
   const steps = publishJob?.steps ?? [];
   if (steps.indexOf(postgresStep) <= steps.indexOf(installStep)
     || steps.indexOf(postgresStep) >= steps.indexOf(publicationVerificationStep)
+    || steps.indexOf(proofStep) <= steps.indexOf(postgresStep) || steps.indexOf(receiptStep) <= steps.indexOf(proofStep)
+    || steps.indexOf(receiptStep) >= steps.indexOf(publicationVerificationStep)
     || hasOwn(postgresStep, "env") || hasOwn(publicationVerificationStep?.env, "PG_BIN_DIR")) {
     issues.push("release PostgreSQL preflight must follow installation and provide the verified runtime to verification");
   }
@@ -415,7 +441,8 @@ async function evaluateHelperBehavior() {
 }
 
 const helperBehavior = await evaluateHelperBehavior();
-const issues = [...evaluateWorkflow(workflow), ...helperBehavior.issues];
+const issues = [...evaluateWorkflow(workflow), ...helperBehavior.issues,
+  ...hostedAgenticWorkflowIssues(readHostedAgenticWorkflowGraph(repoRoot))];
 if (packageJson.scripts?.["verify:release"]
   !== "node tools/verify/run-gate-family.mjs obligations") {
   issues.push("verify:release must execute every contextual catalog obligation");
@@ -472,6 +499,15 @@ const negativeProbes = {
       "true",
     ),
   ),
+  publication_hosted_chain_bypass_rejected: candidateRejected(workflow.replace(
+    "    needs: agentic\n", "    needs: publication_source\n",
+  )),
+  publication_pre_fixture_proof_disabled_rejected: candidateRejected(mutateNamedStepProperty(
+    workflow, "Prove Publication Source Before Fixture Jobs", "if", "${{ false }}",
+  )),
+  publication_receipt_run_substitution_rejected: candidateRejected(workflow.replace(
+    "AIDN_AGENTIC_CHAIN_RESULT: ${{ needs.agentic.result }}", "AIDN_AGENTIC_CHAIN_RESULT: success",
+  )),
   tag_release_refusal_if_false_rejected: candidateRejected(mutateNamedStepProperty(
     workflow,
     "Refuse Existing Tag Or Release",

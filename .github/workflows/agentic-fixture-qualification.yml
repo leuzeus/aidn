@@ -1,0 +1,126 @@
+name: Required Agentic Fixture Qualification
+
+on:
+  workflow_call:
+    inputs:
+      source:
+        required: true
+        type: string
+      context:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  segment_1:
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 1
+
+  segment_2:
+    needs: segment_1
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 2
+
+  segment_3:
+    needs: segment_2
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 3
+
+  segment_4:
+    needs: segment_3
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 4
+
+  segment_5:
+    needs: segment_4
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 5
+
+  segment_6:
+    needs: segment_5
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 6
+
+  segment_7:
+    needs: segment_6
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 7
+
+  segment_8:
+    needs: segment_7
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 8
+
+  segment_9:
+    needs: segment_8
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 9
+
+  segment_10:
+    needs: segment_9
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 10
+
+  segment_11:
+    needs: segment_10
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 11
+
+  segment_12:
+    needs: segment_11
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 12
+
+  segment_13:
+    needs: segment_12
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 13
+
+  segment_14:
+    needs: segment_13
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 14

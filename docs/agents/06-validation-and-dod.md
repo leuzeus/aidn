@@ -27,6 +27,9 @@ A task is done only when:
 - pull-request governance emits one `governance-route.v1` artifact, executes
   each selected family at most once, and exposes the exact `Governance Admission`
   rollup required by branch protection
+- GitHub-hosted execution of the required agentic fixture manifest uses ordered,
+  blocking jobs. The runtime family and publication verify every receipt for
+  their own run and exact source before accepting the complete manifest result.
 - every failed gate retains a bounded, redacted exit code, signal, and
   stdout/stderr tail; named fixture assertions and cleanup results must survive
   through both direct output and the family summary

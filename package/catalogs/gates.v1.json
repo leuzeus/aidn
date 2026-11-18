@@ -741,6 +741,14 @@
   ],
   "workflow_inventory": [
     {
+      "path": ".github/workflows/agentic-fixture-qualification.yml",
+      "classification": "gate"
+    },
+    {
+      "path": ".github/workflows/agentic-fixture-segment.yml",
+      "classification": "gate"
+    },
+    {
       "path": ".github/workflows/governance-admission.yml",
       "classification": "gate"
     },
