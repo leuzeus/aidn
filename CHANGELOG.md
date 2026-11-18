@@ -1,15 +1,15 @@
 # Changelog
 
-## 0.20.0 (unreleased)
+## 0.20.0 (2026-11-18)
 
-- Prepare the canonical JSON STANDARD workflow and the default v2 process
+- Add the canonical JSON STANDARD workflow and the default v2 process
   engine, with ordinary CLI/console entry, authenticated decisions and governed
   operations. BPMN remains an optional input to the process IR.
 - Preserve the published 0.19.1 history, historical readers, canonical storage
   authority and original finite Native grants.
-- Qualification and delivery remain in progress. Full workflow/crash scenarios,
-  the final installed archive, genuine actors and final required gates must
-  retain their own results; earlier failures remain recorded.
+- Keep offline, installed-archive and genuine-actor qualification tied to its
+  exact source and archive. Preserve original failures and unknown outcomes
+  across later recoveries.
 
 ## 0.19.1 (2026-11-01)
 
