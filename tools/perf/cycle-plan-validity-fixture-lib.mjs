@@ -44,7 +44,7 @@ export async function verifyCyclePreparedPlanValidity(check, proposalFactory) {
           const material = path => { const row = rows.get(path); assert.ok(row, path); return { ...row, sha256: artifactContentHash(row.content), source: "postgres" }; };
           globalThis[Symbol.for(key)] = { root: "C:/controlled-cycle-plan-validity",
             describe: () => ({ database: true, backend: "postgres", state_mode: "db-only" }), ownerPending: () => owner,
-            read: material, metadataHash: path => material(path).metadata_sha256,
+            read: material, readMany: paths => paths.map(material), metadataHash: path => material(path).metadata_sha256,
             async withLocalEffectOwner(plan, action) {
               assert.match(plan, /^[a-f0-9]{64}$/);
               assert.equal(owner, false); owner = true; ownerPlan = plan;
@@ -101,7 +101,7 @@ export async function verifyCyclePreparedPlanValidity(check, proposalFactory) {
           assert.equal(authorizationCalls, invalidation === "evaluation" ? 0 : 1);
           assert.equal(owner, false);
           assert.equal(ownerPlan, null);
-          assert.equal(ownerAssertions > 0, !planning);
+          assert.ok(ownerAssertions > 0);
         });
       }
     }
