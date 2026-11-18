@@ -1922,6 +1922,13 @@
     ],
     [
       "tools/perf/verify-github-process-tree-transport-fixtures.mjs"
+    ],
+    [
+      "tools/perf/verify-standard-git-checkpoint-crash-recovery-fixtures.mjs",
+      "--mode=files",
+      "--cut=dispatch_reserved",
+      "--checkpoint-worker-bound-ms=300000",
+      "--public-entry-service"
     ]
   ]
 }

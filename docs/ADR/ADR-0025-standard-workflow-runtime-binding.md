@@ -5038,3 +5038,28 @@ and fresh current grant. The original capsule stays running without output.
 Signed control history locks the selected before/postimage profile so later
 bytes cannot erase an earlier observation. No new store, shared authority,
 Native grant, age ceiling or historical timeout renewal is introduced.
+
+
+### Reserved corrective checkpoint recovery
+
+The fixed host distinguishes a signed `process-dispatch-record.v2` reservation
+from a running callback. Its durable `reserved` revision precedes the CAS to
+`running`, which precedes calling the business port. A reservation alone grants
+no recovery: the host verifies the original producer's kernel termination,
+matching owner/intent/preview/root/backend and current authority/context, empty
+owner-intention/lease/output fields and absence of a pending owner or held fence.
+The checkpoint port separately reobserves canonical accepted source/postimages,
+exact Git preimage, provider source and current operation permission before and
+after awaits. A missing commit or an unchanged HEAD alone proves nothing.
+
+The current observer may append only the existing checkpoint `blocked/no_effect`
+output, with empty positive facts and a digest of the unchanged reservation.
+This is a new authenticated observation, not an invented original return or a
+completed checkpoint. Journal CAS and canonical acceptance retain one result
+under concurrent receivers. Original intent, preview, grant, owner, capsule and
+previous results are not replaced. The reducer's existing blocked-result path
+requires a fresh ordinary intent and current grant for the subsequent Git port.
+No public action kind, JSON shape, store, shared coordination surface, Native
+allocation or preparation-age ceiling is added. Running/returned capsules retain
+their separate reconciliation requirements. Component observations do not close
+the full A6 boundary/concurrency, installed or genuine-actor qualification.

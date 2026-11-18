@@ -748,6 +748,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readCurrentPrefix: id => service.inspect(id).record }) : null;
   const prCorrectionCheckpoint = prCorrectionAuthority ? createStandardPrCorrectionCheckpoint({ targetRoot, now,
     authority: prCorrectionAuthority, readAcceptedOperation: acceptedForPromotion, readDispatchedOperation: readDispatchedCheckpoint,
+    readReservedDispatch: record => disposition.observeReservedDispatch(record),
     readCurrent: id => current(id).record }) : null;
   const prCorrectionCycle = prCorrectionCheckpoint ? createStandardPrCorrectionCycle({ targetRoot, now, operations,
     readAcceptedOperation: acceptedForPromotion, readCheckpoint: prCorrectionCheckpoint.readCompleted,

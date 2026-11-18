@@ -13,13 +13,15 @@ import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
 import { runStandardWorkflowEntry } from '../../src/application/runtime/standard-workflow-entry.mjs';
 import { runPublicCheckpointEntryControllers } from './standard-git-checkpoint-entry-controllers-fixture-lib.mjs';
 import { verifyPublicCheckpointReceiptBoundary } from './standard-git-checkpoint-receipt-boundary-fixture-lib.mjs';
+import { verifyPublicCheckpointBeforeEffectBoundary } from './standard-git-checkpoint-before-effect-fixture-lib.mjs';
 
 const cut = process.argv.find(arg => arg.startsWith('--cut='))?.slice(6) ?? 'effect_returned';
 const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'files';
 const workerBoundMs = Number(process.argv.find(arg => arg.startsWith('--checkpoint-worker-bound-ms='))?.split('=')[1] ?? 120000);
 const publicEntryService = process.argv.includes('--public-entry-service');
 assert(!publicEntryService || mode === 'files', 'PUBLIC_GIT_ENTRY_FIXTURE_SCOPE_INVALID');
-assert(['effect_returned', 'receipted', 'accepted'].includes(cut), 'GIT_RECOVERY_CUT_INVALID');
+assert(['dispatch_reserved', 'effect_returned', 'receipted', 'accepted'].includes(cut), 'GIT_RECOVERY_CUT_INVALID');
+assert(cut !== 'dispatch_reserved' || publicEntryService && mode === 'files', 'BEFORE_EFFECT_PUBLIC_FILES_REQUIRED');
 assert(['files', 'dual'].includes(mode), 'GIT_RECOVERY_MODE_INVALID');
 assert([120000, 300000].includes(workerBoundMs), 'GIT_CHECKPOINT_WORKER_BOUND_INVALID');
 const wiring = await verifyCommonGitCheckpointBoundaryWiring();
@@ -75,7 +77,7 @@ try {
   assert.equal(H(original), message.journal_sha256);
   capsuleBefore = bound.artifacts.readMany(['workflows/dispatch-records/' + message.operation_id + '.json'], { includeMetadata: true });
   stateBefore = bound.host.inspect();
-  if (cut === 'effect_returned') {
+  if (['dispatch_reserved', 'effect_returned'].includes(cut)) {
     const inventory = H(bound.artifacts.observeInventory());
     if (publicEntryService) {
       assert(bound.publicFixture && packet.fixture.r09Request, 'RETAINED_PUBLIC_HOST_CONFIGURATION_REQUIRED');
@@ -110,6 +112,11 @@ const id = message.operation_id, root = packet.fixture.configuration.target_root
 const git = (...args) => execFileSync('git', ['--no-optional-locks', '-C', root, ...args],
   { encoding: 'utf8', windowsHide: true, timeout: 10000 }).trim();
 const head = git('rev-parse', 'HEAD'), count = git('rev-list', '--count', 'HEAD');
+if (cut === 'dispatch_reserved') {
+  const report = await verifyPublicCheckpointBeforeEffectBoundary({ packet, bound, producerFile: producer,
+    prefixFile: retained.file, operationId: id, original, capsuleBefore, evidenceRoot: base, boundMs: workerBoundMs });
+  console.log(JSON.stringify(report));
+} else {
 const observed = observeCommonCheckpointGit(root, original);
 assert.equal(observed.proof.status, 'confirmed');
 assert.equal(observed.proof.commit_sha, head);
@@ -244,3 +251,4 @@ console.log(JSON.stringify({ status: publicEntryService ? 'PASS_PUBLIC_ENTRY_SER
   genuine_Native_clients: 0, genuine_model_calls: 0, human_provider_authorities: 'FIXTURE',
   actual_public_entry: publicEntryService ? 'SERVICE_WITH_IDENTIFIED_PROVIDER_TRANSPORT_FIXTURE' : 'NOT_RUN',
   actual_CLI_shell: 'NOT_RUN', installed_archive: 'NOT_RUN', full_standard_workflow: false }));
+}

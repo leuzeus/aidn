@@ -16,7 +16,7 @@ const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(
 // Internal component: accepted operation identities are resolved by a trusted
 // signed-journal reader, never by a process-authored list of paths or hashes.
 // This commits metadata only. It does not push, create a cycle or admit product.
-export function createStandardPrCorrectionCheckpoint({ targetRoot, readAcceptedOperation, readDispatchedOperation, authority, readCurrent, now = Date.now }) {
+export function createStandardPrCorrectionCheckpoint({ targetRoot, readAcceptedOperation, readDispatchedOperation, readReservedDispatch, authority, readCurrent, now = Date.now }) {
   if (![readAcceptedOperation, authority?.verifySource, authority?.verifyProviderSource, readCurrent].every(fn => typeof fn === 'function'))
     fail('STANDARD_PR_CORRECTION_CHECKPOINT_AUTHORITY_REQUIRED');
   const artifacts = createStandardWorkflowArtifacts({ targetRoot });
@@ -109,6 +109,8 @@ export function createStandardPrCorrectionCheckpoint({ targetRoot, readAcceptedO
       || prepared.can_apply !== true || shadowHash(plan) !== prepared.plan_sha256
       || shadowHash(selected.preview.input) !== shadowHash(plan.input)) fail('STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_REQUIRED');
     const selectedHash = shadowHash(selected);
+    const reservation = typeof readReservedDispatch === 'function' ? readReservedDispatch(selected) : null;
+    const reservationHash = reservation ? shadowHash(reservation) : null;
     const unchanged = () => {
       current(instance, signal);
       if (artifacts.ownerPending()) fail('STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED');
@@ -119,9 +121,6 @@ export function createStandardPrCorrectionCheckpoint({ targetRoot, readAcceptedO
         || plan.state_mode !== value.state_mode || plan.git.observed.head !== value.correction_source.pull_request.head_oid
         || plan.git.observed.branch !== value.correction_source.pull_request.head_branch
         || !plan.git.observed.index_clean || plan.git.observed.lock_present) fail('STANDARD_PR_CORRECTION_CHECKPOINT_SOURCE_CHANGED');
-      // Zero-effect plans have no operation-specific Git witness. Never infer
-      // that their historical dispatch finished just because HEAD is unchanged.
-      if (!plan.git.files.length) fail('STANDARD_PR_CORRECTION_CHECKPOINT_COMMIT_WITNESS_REQUIRED');
       const files = plan.git.observed.changes.map(row => {
         const postimage = value.postimages.find(file => 'docs/audit/' + file.path === row.path);
         if (!postimage || row.status !== ' M') fail('STANDARD_PR_CORRECTION_CHECKPOINT_FOREIGN_CHANGE');
@@ -129,7 +128,17 @@ export function createStandardPrCorrectionCheckpoint({ targetRoot, readAcceptedO
       });
       if (shadowHash(files) !== shadowHash(plan.git.files)) fail('STANDARD_PR_CORRECTION_CHECKPOINT_SOURCE_CHANGED');
       const git = port(value), gitPlan = { ...plan.git, operation_id: operationId,
-        prepared_at_ms: plan.prepared_at_ms, plan_sha256: prepared.plan_sha256 }, view = git.inspect(), proof = git.inspectCommit(gitPlan);
+        prepared_at_ms: plan.prepared_at_ms, plan_sha256: prepared.plan_sha256 }, view = git.inspect();
+      if (reservation) {
+        const currentReservation = readReservedDispatch(selected);
+        if (!currentReservation || shadowHash(currentReservation) !== reservationHash
+          || shadowHash(view) !== shadowHash(plan.git.observed)) fail('STANDARD_PR_CORRECTION_CHECKPOINT_BEFORE_EFFECT_CHANGED');
+        return { value, view, reservation: currentReservation };
+      }
+      // Outside the authenticated pre-dispatch boundary, an unchanged HEAD
+      // cannot prove that a historical zero-effect dispatch finished.
+      if (!plan.git.files.length) fail('STANDARD_PR_CORRECTION_CHECKPOINT_COMMIT_WITNESS_REQUIRED');
+      const proof = git.inspectCommit(gitPlan);
       if (view.branch !== plan.git.observed.branch || view.ref !== plan.git.observed.ref || !view.index_clean || view.lock_present || view.changes.length
         || proof.status !== 'confirmed' || proof.commit_sha !== view.head || proof.parent_sha !== plan.git.observed.head
         || shadowHash(view.identity) !== shadowHash(plan.git.observed.identity) || view.signing !== plan.git.observed.signing)
@@ -137,10 +146,20 @@ export function createStandardPrCorrectionCheckpoint({ targetRoot, readAcceptedO
       return { value, proof };
     };
     const before = unchanged(); await assertAuthorized(); unchanged();
-    const external = await authority.verifyProviderSource(instance, before.value.correction_source, { signal });
+    const external = reservation
+      ? await authority.verifySource(instance, before.value.correction_source, { signal, assertLocal: () => unchanged() })
+      : await authority.verifyProviderSource(instance, before.value.correction_source, { signal });
     if (external?.origin_source_sha256 !== shadowHash(before.value.correction_source)) fail('STANDARD_PR_CORRECTION_CHECKPOINT_SOURCE_CHANGED');
     const after = unchanged(); await assertAuthorized(); const final = unchanged();
     if (shadowHash(before) !== shadowHash(after) || shadowHash(before) !== shadowHash(final)) fail('STANDARD_PR_CORRECTION_CHECKPOINT_UNCONFIRMED');
+    if (reservation) return emit('blocked', 'no_effect', {
+      reason_code: 'STANDARD_PR_CORRECTION_CHECKPOINT_NOT_DISPATCHED',
+      reopen_operation_id: plan.input.reopen_operation_id, source_sha256: plan.source_sha256,
+      reconciliation: 'observed-reserved-before-effect', dispatch_sha256: selectedHash,
+      reserved_dispatch_sha256: reservation.dispatch_sha256, reservation_sha256: reservationHash,
+      git: { effect_status: 'no_effect', observed: final.view }, external,
+      product_admission: 'not-established', cycle: 'not-created',
+      remote_head: final.value.correction_source.pull_request.head_oid });
     const result = { ...final.proof, effect_status: 'confirmed' };
     return emit('completed', 'confirmed', { reopen_operation_id: plan.input.reopen_operation_id, source_sha256: plan.source_sha256,
       git: result, external, reconciliation: 'observed-existing-commit', dispatch_sha256: selectedHash,

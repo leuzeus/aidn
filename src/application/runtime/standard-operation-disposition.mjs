@@ -859,6 +859,29 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
 
   return Object.freeze({
     previewAcceptedControl, retireAcceptedControl,
+    observeReservedDispatch(record) {
+      signer.verify(record); signer.verify(record.preview);
+      const capsule = readDispatch(record.operation_id, record).record;
+      if (!capsule || capsule.phase !== "reserved") return null;
+      const observed = observeBoundary ? observeBoundary() : { authority: readAuthority(), context: readContext() };
+      // The durable transition to running precedes every invocation of the
+      // effect callback. A dead producer's untouched reservation therefore
+      // proves non-dispatch; an unchanged Git HEAD alone does not.
+      if (capsule.contract_version !== "process-dispatch-record.v2" || capsule.revision !== 1
+        || record.phase !== "dispatching" || record.results.length !== 0
+        || capsule.process_identity.pid !== record.owner?.pid
+        || capsule.local_owner_intentions.length !== 0 || capsule.leases.length !== 0
+        || capsule.output !== null || capsule.output_sha256 !== null || capsule.context_after_sha256 !== null
+        || capsule.authority_sha256 !== shadowHash(observed.authority)
+        || capsule.context_before_sha256 !== shadowHash(observed.context)
+        || shadowHash(readOperation(record.operation_id).record) !== shadowHash(record)
+        || artifacts.localOwnerPending() || artifacts.resourceFence().read().record?.state === "held"
+        || observeLocalProcessOwner(capsule.process_identity) !== "terminated")
+        fail("PROCESS_RESERVED_DISPATCH_UNCONFIRMED");
+      return { dispatch_sha256: shadowHash(capsule), operation_owner_sha256: capsule.operation_owner_sha256,
+        process_identity: capsule.process_identity, authority_sha256: capsule.authority_sha256,
+        context_sha256: capsule.context_before_sha256 };
+    },
     observeInterruptedReopen(record) {
       signer.verify(record); signer.verify(record.preview);
       const owner = reopenOwner(record, readDispatch(record.operation_id, record).record);

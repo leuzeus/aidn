@@ -14,10 +14,12 @@ import { agenticProcessImplementationPins } from '../../src/application/runtime/
 import { createOperationJournalSigner } from '../../src/core/workflow/process-operation-journal.mjs';
 import { createProcessOperationJournalStore } from '../../src/adapters/runtime/process-operation-journal-store.mjs';
 import { standardWorkflowOperationBindings } from '../../src/application/runtime/standard-workflow-operations.mjs';
+import { verifyPrCorrectionReservedDispatch } from './standard-pr-correction-reserved-dispatch-fixture-lib.mjs';
 const H = 'a'.repeat(64), op = n => 'op_' + String(n).repeat(40), owned = [], temporary = fs.realpathSync(os.tmpdir());
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
 const input = { contract_version: 'standard-pr-correction-checkpoint-input.v1', reopen_operation_id: op(1) };
 const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files';
+const reservedOnly = process.argv.includes('--reserved-only');
 let checks = 0;
 const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + name); };
 // Public fixture key, not a production identity. The complete host's canonical
@@ -54,6 +56,7 @@ function checkpoint(f, accepted, state = {}) {
   };
   return createStandardPrCorrectionCheckpoint({ targetRoot: f.root, authority, readCurrent: () => f.instance,
     now: () => state.now ?? Date.now(),
+    readReservedDispatch: record => state.reservationReader?.(record) ?? null,
     readDispatchedOperation(_instance, id) {
       const record = structuredClone(journal(f).read(id).record);
       if (state.tamperedDispatch) record.preview.prepared.plan.prepared_at_ms++;
@@ -82,6 +85,7 @@ if (childArg) {
   console.log(JSON.stringify(output)); process.exit(0);
 }
 try {
+  if (!reservedOnly) {
   await test('three private schemas use supported validation keywords', () => {
     for (const kind of ['input', 'plan', 'output']) assert.deepEqual(validateJsonSchemaDefinition(JSON.parse(fs.readFileSync(
       new URL('../../src/core/contracts/workflow-definition/standard-pr-correction-checkpoint-' + kind + '.v1.schema.json', import.meta.url))), '#', { contractKind: 'workflow-definition' }), []);
@@ -263,9 +267,24 @@ try {
     assert.equal(git(foreign.root, 'rev-parse', 'HEAD^^'), foreign.head);
     assert.equal((await foreign.checkpoint.prepare(foreign.instance, input, op(4))).can_apply, false);
   });
+  }
+  await test('a terminated reserved producer proves non-dispatch without a checkpoint completion', async () => {
+    const reserved = await fixture(mode), prepared = await reserved.checkpoint.prepare(reserved.instance, input, op(2));
+    retainDispatch(reserved, prepared);
+    const head = git(reserved.root, 'rev-parse', 'HEAD'), status = git(reserved.root, 'status', '--porcelain');
+    await verifyPrCorrectionReservedDispatch(reserved, prepared, owned);
+    assert.equal(git(reserved.root, 'rev-parse', 'HEAD'), head);
+    assert.equal(git(reserved.root, 'status', '--porcelain'), status);
+  });
+  if (mode === 'files') await test('a running capsule with an invoked callback is not a pre-dispatch reservation', async () => {
+    const running = await fixture(mode), prepared = await running.checkpoint.prepare(running.instance, input, op(2));
+    retainDispatch(running, prepared);
+    await verifyPrCorrectionReservedDispatch(running, prepared, owned, { boundary: 'effect_returned' });
+  });
   console.log(JSON.stringify({ status: 'PASS', checks, mode, git_cas_projection_admission: 'ACTUAL', accepted_source_native_provider_event: 'DOUBLED',
     checkpoint_dispatch_hmac: 'ACTUAL_PUBLIC_FIXTURE_KEY',
-    checkpoint_recovery: mode === 'db-only' ? 'REFUSED_NO_COMMIT_WITNESS' : 'POSITIVE_MISSING_RECEIPT_OWNER_RELEASED',
+    checkpoint_recovery: reservedOnly ? 'NOT_RUN_RESERVED_OBSERVATION_ONLY'
+      : mode === 'db-only' ? 'REFUSED_NO_COMMIT_WITNESS' : 'POSITIVE_MISSING_RECEIPT_OWNER_RELEASED',
     host_ir_binding: 'SOURCE_BOUND_NOT_EXECUTED_BY_THIS_SUITE', cycle_creation: 'NOT_RUN', native_models: 0, full_standard: false, installed_archive: 'NOT_RUN' }));
 } finally {
   for (const root of owned.reverse()) {

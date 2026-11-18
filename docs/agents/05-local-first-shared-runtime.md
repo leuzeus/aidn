@@ -726,3 +726,23 @@ no packet CAS or projection. The new blocked/no-effect receipt and its separate
 acceptance remain distinct from the absent original return. A new ordinary
 intention and current grant are required before actual publication. Existing
 backend authority, explicit issuer/Native limits and shared boundaries remain.
+
+
+## Reserved corrective checkpoint before dispatch
+
+A signed v2 dispatch capsule at revision one and phase `reserved` precedes the
+transition to `running` and every effect callback. The corrective checkpoint
+observer can confirm non-dispatch only after authenticating that exact capsule,
+intent, preview, original owner, physical root, backend and current authority and
+context. The original process must be kernel-terminated; local owner intentions,
+leases and output must be absent, and no local owner or held fence may remain.
+Current operation permission, canonical postimages, exact Git preimage and
+provider source are rechecked across awaits. No elapsed-age rule is added.
+
+That observation records the existing `blocked/no_effect` checkpoint output with
+empty completion facts. Journal CAS permits one result; ordinary acceptance
+keeps the occurrence waiting. The original preview, intent, grant, owner and
+dispatch capsule remain intact. A later Git effect needs a new ordinary intent,
+a new current operation grant and the normal effect owner/fence. A running or
+returned capsule cannot use this pre-dispatch proof. Existing post-effect
+reconciliation still requires its exact committed Git witness.

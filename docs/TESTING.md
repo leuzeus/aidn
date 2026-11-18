@@ -7581,3 +7581,37 @@ capsule and empty returned-result history remain intact. Replay and SIM agree.
 All old returned and unreturned profiles remain mandatory. These are offline
 fixtures with one controlled RPC session and no genuine Native/Human/provider
 or installed-archive qualification; they do not close full A6.
+
+
+## Reserved corrective checkpoint observation
+
+The existing `verify-standard-pr-correction-checkpoint-fixtures.mjs --mode=files`
+command also interrupts a real producer inside the production dispatch wrapper
+at `dispatch_reserved`. Its live reservation refuses observation; after actual
+kernel termination the fixed reader authenticates the unchanged v2 reservation
+and the checkpoint port can emit only `blocked/no_effect`, without completion
+facts or a Git commit. The tests reject current grant revocation, changed
+provider/context and a running capsule whose callback has already been invoked.
+The DUAL and DB-only selections run the reserved-observation case as well.
+
+The producer retains one absolute 120000 ms worker bound. No aggregate case or
+manifest deadline is added. Source/operator authority is doubled; reservation
+ordering, kernel identity, stores, SQLite where selected and Git are real. These
+component cases leave the journal/capsule unchanged and do not execute canonical
+acceptance. Full public A6 evidence must additionally accept the blocked result
+once under two competing controllers, prepare a different operation and grant,
+then observe exactly one normal Git checkpoint and exact replay/SIM. The original
+pre-fix observation on `2be2e93b` remains a two-controller refusal, not a recovery
+PASS. The ordered mandatory command manifest remains unchanged.
+
+
+The actual public before-effect Git recovery case is selected by
+`verify-standard-git-checkpoint-crash-recovery-fixtures.mjs --mode=files --cut=dispatch_reserved --checkpoint-worker-bound-ms=300000 --public-entry-service`.
+The required agentic manifest preserves the original 384 commands and appends
+this case, for a total of 385 mandatory commands. The exact governed list is updated
+with the same addition; no earlier command or order is removed or replaced.
+Two actual public controllers must retain one accepted blocked/no-effect result
+without Git mutation. A new ordinary action then requires a different intent
+and current grant, exactly one real Git commit, unchanged original capsule and
+Native allocations, and exact replay/SIM. Source/provider/H/Native doubles remain
+identified; this component does not prove installed or genuine-actor behavior.
