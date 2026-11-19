@@ -4,13 +4,15 @@ import fs from "node:fs";
 import path from "node:path";
 
 // Closing ordinals in the required manifest. The completed nominal at 304
-// runs in its own job. These divisions impose no deadline on a case.
+// runs in its own job. The public handoff cases at 373–375 need the Windows
+// resource observer. These divisions impose no deadline on a case.
 export const agenticSegmentEnds = Object.freeze([
-  44, 82, 103, 130, 160, 178, 218, 250, 278, 303, 304, 340, 378, 385,
+  44, 82, 103, 130, 160, 178, 218, 250, 278, 303, 304, 340, 372, 373, 374, 375, 378, 385,
 ]);
+export const agenticWindowsSegments = Object.freeze([14, 15, 16]);
 export const agenticSegmentArtifact = "aidn-agentic-segment-";
 
-const receiptVersion = "hosted-agentic-fixture-segment.v1";
+const receiptVersion = "hosted-agentic-fixture-segment.v2";
 const receiptFile = "aidn-agentic-segment.json";
 
 function hash(bytes) {
@@ -44,7 +46,8 @@ export function agenticFixtureSegment(manifest, number) {
   }
   const previousEnd = agenticSegmentEnds[number - 2] ?? 0;
   const end = agenticSegmentEnds[number - 1];
-  return { number, first: previousEnd + 1, last: end, cases: manifest.cases.slice(previousEnd, end) };
+  const platform = agenticWindowsSegments.includes(number) ? "win32" : "linux";
+  return { number, first: previousEnd + 1, last: end, platform, cases: manifest.cases.slice(previousEnd, end) };
 }
 
 export function hostedAgenticIdentity(repoRoot, context, env = process.env) {
@@ -84,8 +87,9 @@ function verifySegmentObservations(segment, events, summary) {
   }
 }
 
-export function saveAgenticSegmentReceipt({ dir, manifest, number, identity, evidenceDir }) {
+export function saveAgenticSegmentReceipt({ dir, manifest, number, identity, evidenceDir, platform = process.platform }) {
   const segment = agenticFixtureSegment(manifest, number);
+  if (platform !== segment.platform) throw Error(`AGENTIC_SEGMENT_PLATFORM_MISMATCH:${number}`);
   const ledger = readJson(path.join(evidenceDir, "cases.json"));
   if (ledger.contract_version !== "node-fixture-observation.v1"
       || JSON.stringify(ledger.cases) !== JSON.stringify(segment.cases)) throw Error("AGENTIC_SEGMENT_LEDGER_MISMATCH");
@@ -94,7 +98,7 @@ export function saveAgenticSegmentReceipt({ dir, manifest, number, identity, evi
   verifySegmentObservations(segment, events, summary);
   fs.writeFileSync(path.join(dir, receiptFile), JSON.stringify({
     contract_version: receiptVersion, ...identity, manifest_sha256: manifest.sha256,
-    segment: number, first: segment.first, last: segment.last, events, summary,
+    segment: number, first: segment.first, last: segment.last, platform, events, summary,
   }) + "\n", { flag: "wx" });
 }
 
@@ -113,7 +117,7 @@ export function verifyHostedAgenticReceipts({ dir, manifest, identity }) {
     }
     const receipt = readJson(path.join(receiptDir, receiptFile));
     assertKeys(receipt, ["contract_version", "repository", "run_id", "attempt", "source", "context", "manifest_sha256",
-      "segment", "first", "last", "events", "summary"], "AGENTIC_SEGMENT_RECEIPT_INVALID");
+      "segment", "first", "last", "platform", "events", "summary"], "AGENTIC_SEGMENT_RECEIPT_INVALID");
     // GitHub can rerun a failed job and its dependants in the same run.
     // Successful prerequisites retain their earlier attempt receipts.
     if (receipt.contract_version !== receiptVersion || receipt.repository !== identity.repository
@@ -121,7 +125,7 @@ export function verifyHostedAgenticReceipts({ dir, manifest, identity }) {
         || typeof receipt.attempt !== "string" || !/^[1-9]\d*$/.test(receipt.attempt)
         || BigInt(receipt.attempt) > BigInt(identity.attempt)
         || receipt.manifest_sha256 !== manifest.sha256 || receipt.segment !== segment.number
-        || receipt.first !== segment.first || receipt.last !== segment.last) {
+        || receipt.first !== segment.first || receipt.last !== segment.last || receipt.platform !== segment.platform) {
       throw Error(`AGENTIC_SEGMENT_IDENTITY_MISMATCH:${segment.number}`);
     }
     verifySegmentObservations(segment, receipt.events, receipt.summary);

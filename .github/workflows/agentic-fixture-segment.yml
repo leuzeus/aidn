@@ -19,13 +19,17 @@ permissions:
 jobs:
   fixtures:
     name: Run Required Agentic Fixture Segment
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.segment >= 14 && inputs.segment <= 16 && 'windows-2025' || 'ubuntu-latest' }}
     steps:
       - name: Checkout Exact Candidate
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.source }}
           fetch-depth: 0
+        env:
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: "false"
 
       - name: Setup Node
         uses: actions/setup-node@v4

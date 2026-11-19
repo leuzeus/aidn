@@ -844,6 +844,19 @@ const simulatedRuntime = {
 postgresRuntimeProbes.resolves_existing_runtime = resolvePostgresTestRuntime(simulatedRuntime).bin_dir === testBinDir
   && JSON.stringify(binaryChecks) === JSON.stringify(["initdb", "pg_ctl", "postgres"].map((name) => path.join(testBinDir, name)))
   && binaryCalls.length === 4 && JSON.stringify(binaryCalls[0]) === JSON.stringify(["pg_config", ["--bindir"]]);
+for (const [label, env, expected] of [
+  ["windows_image_bin", { PGBIN: testBinDir }, testBinDir],
+  ["windows_explicit_bin_takes_priority", { PGBIN: testBinDir, PG_BIN_DIR: path.resolve("explicit-postgres-bin") }, path.resolve("explicit-postgres-bin")],
+]) {
+  const commands = [];
+  const result = resolvePostgresTestRuntime({ ...simulatedRuntime, platform: "win32", env,
+    run(command) {
+      commands.push(command);
+      return `${path.basename(command, ".exe")} (PostgreSQL) 17.11\n`;
+    } });
+  postgresRuntimeProbes[label] = result.bin_dir === expected
+    && JSON.stringify(commands) === JSON.stringify(["initdb", "pg_ctl", "postgres"].map(name => path.join(expected, name + ".exe")));
+}
 for (const [name, override] of Object.entries({
   missing_pg_config_fails: { run() { throw new Error("unavailable"); } },
   relative_directory_fails: { env: { PG_BIN_DIR: "relative/bin" } },
@@ -1123,6 +1136,8 @@ const negativeProbes = {
     hostedGraphRejected(([chain]) => { chain.jobs.segment_3.needs = "segment_1"; }),
   hosted_agentic_segment_source_substitution_rejected:
     hostedGraphRejected(([chain]) => { chain.jobs.segment_3.with.source = "main"; }),
+  hosted_agentic_segment_platform_substitution_rejected:
+    hostedGraphRejected(([, leaf]) => { leaf.jobs.fixtures["runs-on"] = "ubuntu-latest"; }),
   hosted_agentic_segment_nonblocking_rejected:
     hostedGraphRejected(([, leaf]) => { leaf.jobs.fixtures.steps[4]["continue-on-error"] = true; }),
   hosted_agentic_receipt_upload_skip_rejected:

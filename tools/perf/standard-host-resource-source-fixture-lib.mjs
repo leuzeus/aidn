@@ -103,7 +103,7 @@ try{
   assert.equal(await source.read({request:currentRequest,sourceRef:'standard-handoff'}),null);assert(source.inspectLastObservation().deterministic.active_resources>0);
   check('a concurrent handoff in the same instance and scope remains an active resource',true);
   operationActivity.active_dispatches=[ownDispatch];
-  assert(await source.read({request:currentRequest,sourceRef:'standard-handoff'}));
+  assert(await source.read({request:currentRequest,sourceRef:'standard-handoff'}),JSON.stringify(source.inspectLastObservation()));
   check('only the exact current observer dispatch is excluded from its own count',source.inspectLastObservation().deterministic.active_resources===0);
  }finally{operationActivity.active_dispatches=[];operationActivity.current_dispatch_id=null;}
 

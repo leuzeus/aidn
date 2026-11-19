@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { parseDocument } from "yaml";
-import { agenticSegmentArtifact, agenticSegmentEnds } from "../ci/agentic-fixture-segments-lib.mjs";
+import { agenticSegmentArtifact, agenticSegmentEnds, agenticWindowsSegments } from "../ci/agentic-fixture-segments-lib.mjs";
 
 const qualification = ".github/workflows/agentic-fixture-qualification.yml";
 const leaf = ".github/workflows/agentic-fixture-segment.yml";
@@ -42,15 +42,18 @@ export function hostedAgenticWorkflowIssues([chain, job]) {
       with: { source: "${{ inputs.source }}", context: "${{ inputs.context }}", segment: index + 1 },
     }])),
   };
+  const runner = "${{ inputs.segment >= " + agenticWindowsSegments[0]
+    + " && inputs.segment <= " + agenticWindowsSegments.at(-1) + " && 'windows-2025' || 'ubuntu-latest' }}";
   const expectedJob = {
     name: "Agentic Fixture Segment",
     on: { workflow_call: { inputs: { ...inputs, segment: { required: true, type: "number" } } } },
     permissions: contentsRead,
     jobs: { fixtures: {
       name: "Run Required Agentic Fixture Segment",
-      "runs-on": "ubuntu-latest",
+      "runs-on": runner,
       steps: [
-        { name: "Checkout Exact Candidate", uses: "actions/checkout@v4", with: { ref: "${{ inputs.source }}", "fetch-depth": 0 } },
+        { name: "Checkout Exact Candidate", uses: "actions/checkout@v4", with: { ref: "${{ inputs.source }}", "fetch-depth": 0 },
+          env: { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "core.autocrlf", GIT_CONFIG_VALUE_0: "false" } },
         { name: "Setup Node", uses: "actions/setup-node@v4", with: { "node-version": "22.13" } },
         { name: "Install Locked Gate Dependencies", run: "npm ci --include=dev --include=optional --ignore-scripts --no-audit --no-fund" },
         { name: "Resolve Ephemeral PostgreSQL Runtime", run: "node tools/ci/resolve-postgres-test-runtime.mjs" },

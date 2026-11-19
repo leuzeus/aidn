@@ -103,15 +103,21 @@ execution divides the manifest into successive jobs. Each job checks out the
 exact candidate, installs locked dependencies, resolves the test PostgreSQL
 runtime and dispatches its contiguous range with the existing fixture runner.
 The split addresses the hosted job duration limit. Each invocation keeps its
-original arguments and any explicit bound supplied by its own caller.
+original arguments and any explicit bound supplied by its own caller. Cases
+373–375 each run in their own Windows Server 2025 job because their published
+handoff exercises the real Windows resource observer. The other ranges run on
+Ubuntu. The Windows runner uses its provisioned PostgreSQL binaries from
+`PGBIN` unless `PG_BIN_DIR` is explicitly supplied. Checkout preserves the
+tracked line endings.
 
 The runtime family verifies all hosted receipts in manifest order. Each receipt
-binds its command observations to the exact commit, manifest, gate context and
-GitHub run.
-The verifier rejects omissions, overlaps, reordering, mismatched arguments and
-failed or interrupted commands. Successful prerequisites can retain their
-receipts when GitHub reruns failed jobs in the same workflow run. Governance
-Admission still requires the runtime family and every other selected family.
+binds its command observations to the exact commit, manifest, gate context,
+GitHub run and required operating system.
+The verifier rejects omissions, overlaps, reordering, mismatched arguments or
+operating systems, and failed or interrupted commands. Successful prerequisites
+can retain their receipts when GitHub reruns failed jobs in the same workflow
+run. Governance Admission still requires the runtime family and every other
+selected family.
 
 Publication runs its own fixture jobs for the exact merged `main` commit after
 validating the publication source. It verifies that run's complete receipts

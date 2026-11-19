@@ -15,6 +15,7 @@ const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const identity = hostedAgenticIdentity(repoRoot, process.env.AIDN_GATE_CONTEXT);
 const manifest = readAgenticFixtureManifest(repoRoot);
 const segment = agenticFixtureSegment(manifest, Number(process.env.AIDN_AGENTIC_SEGMENT));
+if (segment.platform !== process.platform) throw Error(`AGENTIC_SEGMENT_PLATFORM_MISMATCH:${segment.number}`);
 const dir = fs.realpathSync(process.env.RUNNER_TEMP);
 const evidenceRoot = verificationEvidenceDirectory(repoRoot, dir);
 

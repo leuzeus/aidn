@@ -124,3 +124,35 @@ jobs:
       source: ${{ inputs.source }}
       context: ${{ inputs.context }}
       segment: 14
+
+  segment_15:
+    needs: segment_14
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 15
+
+  segment_16:
+    needs: segment_15
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 16
+
+  segment_17:
+    needs: segment_16
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 17
+
+  segment_18:
+    needs: segment_17
+    uses: ./.github/workflows/agentic-fixture-segment.yml
+    with:
+      source: ${{ inputs.source }}
+      context: ${{ inputs.context }}
+      segment: 18

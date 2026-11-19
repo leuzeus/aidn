@@ -15,6 +15,10 @@ export function verifyHostedAgenticReceiptFixtures(repoRoot) {
   const manifest = readAgenticFixtureManifest(repoRoot);
   const segments = agenticSegmentEnds.map((_, index) => agenticFixtureSegment(manifest, index + 1));
   assert.deepEqual(segments.flatMap(segment => segment.cases), manifest.cases);
+  const windows = segments.filter(segment => segment.platform === "win32");
+  const windowsProgram = "tools/perf/verify-standard-handoff-operation-fixtures.mjs";
+  assert.deepEqual(windows.map(({ first, last }) => [first, last]), [[373, 373], [374, 374], [375, 375]]);
+  assert.deepEqual(windows.flatMap(segment => segment.cases), ["files", "dual", "db-only"].map(mode => [windowsProgram, mode]));
 
   const temp = fs.realpathSync.native(os.tmpdir());
   const root = fs.mkdtempSync(path.join(temp, "aidn-agentic-receipt-fixture-"));
@@ -41,12 +45,16 @@ export function verifyHostedAgenticReceiptFixtures(repoRoot) {
       writeJson(path.join(evidenceDir, "summary.json"), { exit_code: 0, signal: null, completed: segment.cases.length,
         required: segment.cases.length, ended_at: timestamp });
       // Successful prerequisites can survive a failed-job rerun of this same run.
-      saveAgenticSegmentReceipt({ dir: artifact, manifest, number: segment.number, evidenceDir,
-        identity: { ...identity, attempt: segment.number === 1 ? "1" : "2" } });
+      const receipt = { dir: artifact, manifest, number: segment.number, evidenceDir,
+        identity: { ...identity, attempt: segment.number === 1 ? "1" : "2" } };
+      if (segment.platform === "win32") {
+        assert.throws(() => saveAgenticSegmentReceipt({ ...receipt, platform: "linux" }), /PLATFORM_MISMATCH/);
+      }
+      saveAgenticSegmentReceipt({ ...receipt, platform: segment.platform });
     }
 
     assert.equal(verify(), manifest.cases.length);
-    checks.push("ordered_manifest_with_prior_successful_attempt");
+    checks.push("windows_receipts_refuse_linux_execution", "ordered_manifest_with_prior_successful_attempt");
 
     const last = path.join(dir, agenticSegmentArtifact + segments.length, "aidn-agentic-segment.json");
     const original = fs.readFileSync(last);
@@ -66,6 +74,7 @@ export function verifyHostedAgenticReceiptFixtures(repoRoot) {
     reject("foreign_run", receipt => { receipt.run_id = "99"; }, /IDENTITY_MISMATCH/);
     reject("foreign_gate_context", receipt => { receipt.context = "main"; }, /IDENTITY_MISMATCH/);
     reject("future_attempt", receipt => { receipt.attempt = "3"; }, /IDENTITY_MISMATCH/);
+    reject("different_platform", receipt => { receipt.platform = "win32"; }, /IDENTITY_MISMATCH/);
     reject("different_manifest", receipt => { receipt.manifest_sha256 = "0".repeat(64); }, /IDENTITY_MISMATCH/);
     reject("duplicate_segment", receipt => { receipt.segment -= 1; }, /IDENTITY_MISMATCH/);
     reject("shortened_range", receipt => { receipt.last -= 1; }, /IDENTITY_MISMATCH/);
