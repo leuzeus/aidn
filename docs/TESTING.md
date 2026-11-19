@@ -4497,7 +4497,10 @@ fresh core prerequisites. Error, timeout and out-of-coverage tests remain necess
 exclusion of standard OneDrive paths, aliases and explicitly excluded roots.
 Filesystem sentinels prove that rejected targets are not observed. Disposable
 Git and installation-pointer fixtures test refusal before activation follows an
-excluded destination. These checks change no user permissions and do not prove
+excluded destination. The Windows checks also cover ordinary protected files
+when Node 22.13 reports a zero volume identifier in path metadata. A read-only
+handle supplies the volume identifier after rechecking the file ID and metadata
+at the path. These checks change no user permissions and do not prove
 a Windows read denial, native hook execution or universal shell interception.
 This suite is already part of `runtime-agent-run-lifecycle`; do not rerun it as a
 second admission invocation.

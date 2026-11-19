@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
-import { exactFileIdentity } from "../../lib/fs/exact-file-identity.mjs";
+import { exactFileIdentity, resolveFileStatDevice } from "../../lib/fs/exact-file-identity.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { observeLocalProcessOwner } from "../../adapters/runtime/local-process-identity.mjs";
 
@@ -21,10 +21,11 @@ function read(file) {
   try { before = fs.lstatSync(checked, { bigint: true }); }
   catch (cause) { if (cause.code === "ENOENT") return null; throw cause; }
   if (!before.isFile() || before.nlink !== 1n) fail("PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED");
-  const identity = exactFileIdentity(before);
+  const changed = () => fail("PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED");
+  const identity = exactFileIdentity(resolveFileStatDevice(checked, before, changed));
   const found = readAgentRunFile(checked, { maxBytes: 4096 });
-  if (!same(exactFileIdentity(fs.lstatSync(found.path, { bigint: true })), identity))
-    fail("PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED");
+  const current = resolveFileStatDevice(found.path, fs.lstatSync(found.path, { bigint: true }), changed);
+  if (!same(exactFileIdentity(current), identity)) changed();
   return { ...found, identity };
 }
 

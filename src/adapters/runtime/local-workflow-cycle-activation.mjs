@@ -6,6 +6,7 @@ import { createLocalWorkflowBranchIntegration } from "./local-workflow-branch-in
 import { agentRunPhysicalPath } from "../../application/runtime/agent-run-configuration-service.mjs";
 import { checkShadowJson, shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { assertWorkflowCycleActivationPort } from "../../core/ports/workflow-cycle-activation-port.mjs";
+import { resolveFileStatDevice } from "../../lib/fs/exact-file-identity.mjs";
 
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
 const fail = code => { throw Object.assign(Error(code), { code }); };
@@ -162,10 +163,12 @@ export function createLocalWorkflowCycleActivation({ targetRoot, environment = p
   async function activate(plan, { write = false, assertAuthorized } = {}) {
     const expected = assertPlan(plan), owned = [], applied = new Set(); let attempted = false, temporary = null, loose = null, primary = null;
     const inode = stat => String(stat.dev) + ":" + String(stat.ino);
+    const lockChanged = () => fail("WORKFLOW_ACTIVATION_LOCK_CHANGED");
+    const lockIdentity = file => inode(resolveFileStatDevice(file, fs.lstatSync(file, { bigint: true }), lockChanged));
     function release(row) {
       if (row.descriptor !== null) { fs.closeSync(row.descriptor); row.descriptor = null; }
       if (row.released) return;
-      if (!fs.existsSync(row.path) || inode(fs.lstatSync(row.path)) !== row.inode || hash(fs.readFileSync(row.path)) !== row.sha256)
+      if (!fs.existsSync(row.path) || lockIdentity(row.path) !== row.inode || hash(fs.readFileSync(row.path)) !== row.sha256)
         fail("WORKFLOW_ACTIVATION_LOCK_CHANGED");
       fs.unlinkSync(row.path); row.released = true;
     }
@@ -173,14 +176,14 @@ export function createLocalWorkflowCycleActivation({ targetRoot, environment = p
       const token = JSON.stringify({ token: randomUUID(), operation_id: plan.operation_id, plan_sha256: plan.plan_sha256 });
       fs.mkdirSync(path.dirname(name), { recursive: true });
       let descriptor; try { descriptor = fs.openSync(name, "wx"); } catch { fail("WORKFLOW_ACTIVATION_LOCKED"); }
-      attempted = true; const row = { path: name, field, descriptor, inode: inode(fs.fstatSync(descriptor)), sha256: hash(token), released: false };
+      attempted = true; const row = { path: name, field, descriptor, inode: inode(fs.fstatSync(descriptor, { bigint: true })), sha256: hash(token), released: false };
       owned.push(row); fs.writeFileSync(descriptor, token); fs.fsyncSync(descriptor); return row;
     }
     function fresh() {
       assertBinding();
       const actual = observer.inspect(expected.base);
       for (const row of owned) {
-        if (inode(fs.lstatSync(row.path)) !== row.inode || hash(fs.readFileSync(row.path)) !== row.sha256) fail("WORKFLOW_ACTIVATION_LOCK_CHANGED");
+        if (lockIdentity(row.path) !== row.inode || hash(fs.readFileSync(row.path)) !== row.sha256) fail("WORKFLOW_ACTIVATION_LOCK_CHANGED");
         actual[row.field] = false;
       }
       actual.clean = expected.base.clean;

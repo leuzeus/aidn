@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { agentRunPhysicalPath, readAgentRunFile } from '../../application/runtime/agent-run-configuration-service.mjs';
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
+import { resolveFileStatDevice } from '../../lib/fs/exact-file-identity.mjs';
 
 const prefix = 'WORKFLOW_POST_MERGE_FAST_FORWARD_';
 const fail = suffix => { throw Object.assign(Error(prefix + suffix), { code: prefix + suffix, effect_status: 'no_effect' }); };
@@ -22,7 +23,7 @@ function physical(file, missing = false) {
   try {
     const row = fs.lstatSync(file, { bigint: true });
     if (!row.isFile() || row.nlink !== 1n) fail('FILE_UNSUPPORTED');
-    return row;
+    return resolveFileStatDevice(file, row, () => fail('PREIMAGE_CHANGED'));
   } catch (cause) {
     if (missing && cause.code === 'ENOENT') return null;
     throw cause;

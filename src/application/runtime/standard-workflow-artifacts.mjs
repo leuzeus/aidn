@@ -11,7 +11,7 @@ import { writeFileAtomicSync } from "../../lib/fs/atomic-write-lib.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import ownerSchema from "../../core/contracts/workflow-definition/process-local-effect-owner.v1.schema.json" with { type: "json" };
-import { exactFileIdentity } from "../../lib/fs/exact-file-identity.mjs";
+import { exactFileIdentity, resolveFileStatDevice } from "../../lib/fs/exact-file-identity.mjs";
 import { currentStandardDispatchContext } from "./standard-dispatch-context.mjs";
 import { createLocalArtifactResourceFence } from "./local-artifact-resource-fence.mjs";
 
@@ -192,8 +192,9 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
       activeOwner = false;
       try {
         const retained = readAgentRunFile(file).value;
+        const observed = resolveFileStatDevice(file, fs.lstatSync(file, { bigint: true }), () => fail("STANDARD_EFFECT_OWNER_CHANGED"));
         if (shadowHash(retained) !== shadowHash(owner)
-          || shadowHash(exactFileIdentity(fs.lstatSync(file, { bigint: true }))) !== shadowHash(exactFileIdentity(fs.fstatSync(descriptor, { bigint: true }))))
+          || shadowHash(exactFileIdentity(observed)) !== shadowHash(exactFileIdentity(fs.fstatSync(descriptor, { bigint: true }))))
           fail("STANDARD_EFFECT_OWNER_CHANGED");
         if (!uncertain) {
           // This is the original live owner's ordinary release. No reconciler
@@ -210,7 +211,8 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     fence().assert(activeOwner.lease);
     if (activeOwner.borrowed) { activeOwner.borrowed.assertCurrent(); return; }
     const file = lock(), retained = readAgentRunFile(file).value;
-    const actual = fs.lstatSync(file, { bigint: true }), opened = fs.fstatSync(activeOwner.descriptor, { bigint: true });
+    const actual = resolveFileStatDevice(file, fs.lstatSync(file, { bigint: true }), () => fail("STANDARD_EFFECT_OWNER_CHANGED"));
+    const opened = fs.fstatSync(activeOwner.descriptor, { bigint: true });
     if (!actual.isFile() || actual.nlink !== 1n || actual.ino !== opened.ino || actual.dev !== opened.dev
       || shadowHash(retained) !== shadowHash(activeOwner.owner)) fail("STANDARD_EFFECT_OWNER_CHANGED");
   }

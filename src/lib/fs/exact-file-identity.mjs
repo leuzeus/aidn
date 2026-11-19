@@ -1,3 +1,24 @@
+import fs from "node:fs";
+
+const unchangedFileFields = ["ino", "mode", "nlink", "size", "mtimeNs", "ctimeNs", "birthtimeNs"];
+
+// Some Windows libuv versions omit the volume serial from path-based stats.
+// Recover it from a handle, with the same file observed at the path on both
+// sides of the open. Callers still compare device and inode with their handle.
+export function resolveFileStatDevice(file, observed, changed) {
+  if (process.platform !== "win32" || observed.dev !== 0n || !observed.isFile()) return observed;
+  const descriptor = fs.openSync(file, "r");
+  try {
+    const opened = fs.fstatSync(descriptor, { bigint: true });
+    const current = fs.lstatSync(file, { bigint: true });
+    if (!opened.isFile() || !current.isFile() || opened.dev === 0n || opened.ino === 0n
+      || current.dev !== 0n && current.dev !== opened.dev
+      || unchangedFileFields.some(field => opened[field] !== observed[field] || current[field] !== observed[field]))
+      changed();
+    return opened;
+  } finally { fs.closeSync(descriptor); }
+}
+
 // Node's Number stat fields can merge adjacent NTFS identities above 2**53.
 // Require bigint observations and serialize identifiers/times losslessly.
 export function exactFileIdentity(stat) {

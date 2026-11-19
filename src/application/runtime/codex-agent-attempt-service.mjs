@@ -14,6 +14,7 @@ import { startAgentAdmissionTransport } from "../../adapters/runtime/agent-admis
 import { readActivation } from "../install/project-activation-service.mjs";
 import { createCodexNativeProfileVerifier, createCodexNativeProfileObserver, observerMetadata } from "./codex-native-profile-observation-service.mjs";
 import { bootstrapCodexNativeProfile } from "./codex-native-profile-bootstrap-service.mjs";
+import { resolveFileStatDevice } from "../../lib/fs/exact-file-identity.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const requireProof = (value, code) => { if (!value) fail(code); };
@@ -27,27 +28,30 @@ function physical(input, type = "file") {
   requireProof(typeof input === "string" && path.isAbsolute(input) && path.normalize(input) === input, "AGENT_NATIVE_PATH_INVALID");
   let current = input;
   while (true) { const stat = fs.lstatSync(current); requireProof(!stat.isSymbolicLink(), "AGENT_NATIVE_PATH_REDIRECT"); const parent = path.dirname(current); if (parent === current) break; current = parent; }
-  const stat = fs.lstatSync(input);
-  requireProof(type === "directory" ? stat.isDirectory() : stat.isFile() && stat.nlink === 1, "AGENT_NATIVE_PATH_INVALID");
+  const stat = fs.lstatSync(input, { bigint: true });
+  requireProof(type === "directory" ? stat.isDirectory() : stat.isFile() && stat.nlink === 1n, "AGENT_NATIVE_PATH_INVALID");
   requireProof(equalPath(fs.realpathSync.native(input), input), "AGENT_NATIVE_PATH_REDIRECT"); return stat;
 }
 function fileHash(file, maxBytes = 64 * 1024 * 1024) {
-  const stat = physical(file); requireProof(stat.size <= maxBytes, "AGENT_NATIVE_EVIDENCE_LIMIT");
+  const observed = physical(file); requireProof(observed.size <= maxBytes, "AGENT_NATIVE_EVIDENCE_LIMIT");
+  const changed = () => fail("AGENT_NATIVE_EVIDENCE_CHANGED");
+  const stat = resolveFileStatDevice(file, observed, changed);
   const descriptor = fs.openSync(file, "r");
   try {
-    const opened = fs.fstatSync(descriptor);
-    requireProof(opened.isFile() && opened.nlink === 1 && opened.size <= maxBytes, "AGENT_NATIVE_EVIDENCE_LIMIT");
-    requireProof(stat.ino === opened.ino && stat.dev === opened.dev && stat.size === opened.size
-      && stat.mtimeMs === opened.mtimeMs && stat.ctimeMs === opened.ctimeMs, "AGENT_NATIVE_EVIDENCE_CHANGED");
-    const bytes = Buffer.alloc(opened.size); let offset = 0;
+    const opened = fs.fstatSync(descriptor, { bigint: true });
+    requireProof(opened.isFile() && opened.nlink === 1n && opened.size <= maxBytes, "AGENT_NATIVE_EVIDENCE_LIMIT");
+    if (stat.ino !== opened.ino || stat.dev !== opened.dev || stat.size !== opened.size
+      || stat.mtimeNs !== opened.mtimeNs || stat.ctimeNs !== opened.ctimeNs) changed();
+    const bytes = Buffer.alloc(Number(opened.size)); let offset = 0;
     while (offset < bytes.length) {
       const read = fs.readSync(descriptor, bytes, offset, bytes.length - offset, offset);
       requireProof(read > 0, "AGENT_NATIVE_EVIDENCE_CHANGED"); offset += read;
     }
-    const after = fs.fstatSync(descriptor), final = physical(file);
-    requireProof(after.size === opened.size && after.mtimeMs === opened.mtimeMs && after.ctimeMs === opened.ctimeMs
-      && final.ino === opened.ino && final.dev === opened.dev && final.size === opened.size
-      && final.mtimeMs === opened.mtimeMs && final.ctimeMs === opened.ctimeMs, "AGENT_NATIVE_EVIDENCE_CHANGED");
+    const after = fs.fstatSync(descriptor, { bigint: true });
+    const final = resolveFileStatDevice(file, physical(file), changed);
+    if (after.size !== opened.size || after.mtimeNs !== opened.mtimeNs || after.ctimeNs !== opened.ctimeNs
+      || final.ino !== opened.ino || final.dev !== opened.dev || final.size !== opened.size
+      || final.mtimeNs !== opened.mtimeNs || final.ctimeNs !== opened.ctimeNs) changed();
     return { bytes, sha256: hash(bytes) };
   } finally { fs.closeSync(descriptor); }
 }

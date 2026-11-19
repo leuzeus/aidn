@@ -4,6 +4,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { fingerprintAgentExecutionValue } from "../../core/agents/agent-execution-contracts.mjs";
 import { assertWorkflowSegmentBinding } from "../../core/workflow/workflow-segment-binding.mjs";
+import { resolveFileStatDevice } from "../../lib/fs/exact-file-identity.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const HASH = /^[a-f0-9]{64}$/;
@@ -87,21 +88,26 @@ export function readAgentRunFile(input, { sha256, maxBytes = 8 * 1024 * 1024, js
   if (typeof allowHardLinks !== "boolean") fail("AGENT_RUN_FILE_INVALID");
   const file = observeAgentRunPhysicalPath(input, { missing: optional });
   if (file === null) return null;
-  const before = fs.lstatSync(file);
-  if (!before.isFile() || before.nlink < 1 || !allowHardLinks && before.nlink !== 1 || before.size > maxBytes) fail("AGENT_RUN_FILE_INVALID");
+  const observed = fs.lstatSync(file, { bigint: true });
+  if (!observed.isFile() || observed.nlink < 1n || !allowHardLinks && observed.nlink !== 1n || observed.size > maxBytes)
+    fail("AGENT_RUN_FILE_INVALID");
+  const changed = () => fail("AGENT_RUN_FILE_CHANGED");
+  const before = resolveFileStatDevice(file, observed, changed);
   const descriptor = fs.openSync(file, "r");
   try {
-    const opened = fs.fstatSync(descriptor);
-    if (opened.ino !== before.ino || opened.dev !== before.dev || opened.size !== before.size) fail("AGENT_RUN_FILE_CHANGED");
-    const bytes = Buffer.alloc(opened.size);
+    const opened = fs.fstatSync(descriptor, { bigint: true });
+    if (!opened.isFile() || opened.ino !== before.ino || opened.dev !== before.dev || opened.size !== before.size
+      || opened.nlink !== before.nlink) changed();
+    const bytes = Buffer.alloc(Number(opened.size));
     let offset = 0;
     while (offset < bytes.length) {
       const count = fs.readSync(descriptor, bytes, offset, bytes.length - offset, offset);
       if (!count) fail("AGENT_RUN_FILE_CHANGED"); offset += count;
     }
-    const after = fs.fstatSync(descriptor), final = fs.lstatSync(file);
-    if (after.size !== opened.size || after.mtimeMs !== opened.mtimeMs || after.ctimeMs !== opened.ctimeMs
-      || final.ino !== opened.ino || final.dev !== opened.dev || final.isSymbolicLink()) fail("AGENT_RUN_FILE_CHANGED");
+    const after = fs.fstatSync(descriptor, { bigint: true });
+    const final = resolveFileStatDevice(file, fs.lstatSync(file, { bigint: true }), changed);
+    if (after.size !== opened.size || after.mtimeNs !== opened.mtimeNs || after.ctimeNs !== opened.ctimeNs
+      || final.ino !== opened.ino || final.dev !== opened.dev || !final.isFile()) changed();
     const digest = createHash("sha256").update(bytes).digest("hex");
     if (sha256 && digest !== sha256) fail("AGENT_RUN_FILE_CHANGED");
     return { value: json ? JSON.parse(bytes.toString("utf8")) : bytes, sha256: digest, bytes: bytes.length, path: file };

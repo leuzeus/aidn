@@ -18,7 +18,7 @@ import { assertProcessOwnerObservation, assertProcessReconciliationInventory, RE
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import ownerSchema from "../../core/contracts/workflow-definition/process-local-effect-owner.v1.schema.json" with { type: "json" };
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
-import { exactFileIdentity } from "../../lib/fs/exact-file-identity.mjs";
+import { exactFileIdentity, resolveFileStatDevice } from "../../lib/fs/exact-file-identity.mjs";
 import { assertProcessDispatchRecord, dispatchRecordPath } from "../../core/workflow/process-dispatch-record.mjs";
 import { observeLocalProcessOwner } from "../../adapters/runtime/local-process-identity.mjs";
 import { assertNativeDispatchRecord, nativeDispatchPath } from "../../core/workflow/native-dispatch-record.mjs";
@@ -286,15 +286,17 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
           if (++entries > 10000) fail("PROCESS_RECONCILIATION_INVENTORY_TRUNCATED");
           const file = agentRunPhysicalPath(name === "" ? at : path.join(at, name)), stat = fs.lstatSync(file, { bigint: true });
           if (stat.isDirectory()) { walk(file, depth + 1); continue; }
-          const identity = exactFileIdentity(stat);
+          const changed = () => fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
+          const identity = exactFileIdentity(resolveFileStatDevice(file, stat, changed));
           if (!stat.isFile() || identity.nlink !== 1 || identity.size > 16777216 || (total += identity.size) > 33554432)
             fail("PROCESS_RECONCILIATION_RESOURCE_UNSUPPORTED");
           let bytes; const fd = fs.openSync(file, "r");
           try {
             if (shadowHash(exactFileIdentity(fs.fstatSync(fd, { bigint: true }))) !== shadowHash(identity)) fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
             bytes = fs.readFileSync(fd);
+            const current = resolveFileStatDevice(file, fs.lstatSync(file, { bigint: true }), changed);
             if (bytes.length !== identity.size || shadowHash(exactFileIdentity(fs.fstatSync(fd, { bigint: true }))) !== shadowHash(identity)
-              || shadowHash(exactFileIdentity(fs.lstatSync(file, { bigint: true }))) !== shadowHash(identity)) fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
+              || shadowHash(exactFileIdentity(current)) !== shadowHash(identity)) changed();
           } finally { fs.closeSync(fd); }
           const relative = path.relative(root, file).replaceAll("\\", "/");
           let owner = null;

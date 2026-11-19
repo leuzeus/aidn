@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { agentRunPhysicalPath, readAgentRunFile } from './agent-run-configuration-service.mjs';
-import { exactFileIdentity } from '../../lib/fs/exact-file-identity.mjs';
+import { exactFileIdentity, resolveFileStatDevice } from '../../lib/fs/exact-file-identity.mjs';
 import { observeLocalProcessOwner } from '../../adapters/runtime/local-process-identity.mjs';
 import { nativeDispatchPath } from '../../core/workflow/native-dispatch-record.mjs';
 import { shadowHash as H } from '../../core/workflow/shadow-json.mjs';
@@ -19,8 +19,11 @@ function read(file) {
   try { stat = fs.lstatSync(checked, { bigint: true }); }
   catch (error) { if (error.code === 'ENOENT') return null; throw error; }
   if (!stat.isFile() || stat.nlink !== 1n) fail('NATIVE_OWNER_PHYSICAL_LOCK_CHANGED');
-  const identity = exactFileIdentity(stat), observed = readAgentRunFile(checked, { maxBytes: 4096 });
-  if (H(exactFileIdentity(fs.lstatSync(checked, { bigint: true }))) !== H(identity)) fail('NATIVE_OWNER_PHYSICAL_LOCK_CHANGED');
+  const changed = () => fail('NATIVE_OWNER_PHYSICAL_LOCK_CHANGED');
+  const identity = exactFileIdentity(resolveFileStatDevice(checked, stat, changed));
+  const observed = readAgentRunFile(checked, { maxBytes: 4096 });
+  const current = resolveFileStatDevice(checked, fs.lstatSync(checked, { bigint: true }), changed);
+  if (H(exactFileIdentity(current)) !== H(identity)) changed();
   return { ...observed, identity };
 }
 // Original owner/lease provenance must already be authenticated by the fixed
