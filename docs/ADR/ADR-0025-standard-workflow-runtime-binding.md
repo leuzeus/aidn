@@ -9,6 +9,12 @@ cursor and matches the same allocation generation and journal digest. The
 workflow remains incomplete. Owner disposition and reconciliation require their
 own exact actions and sources. The entry result contract stays at version 1.
 
+The Native RPC adapter retains the allowlisted status and error tag reported in
+an unsuccessful terminal notification, and a valid upstream HTTP status when
+present. This private diagnostic accompanies the frame digest. Free-text error
+messages and additional details are excluded. The worker still reports its
+existing first failure and the evidence cannot authorize another turn.
+
 ## Retained Native history reader for general handoff, 2026-11-15
 
 The mixed host exposes a private read of retained Native closure evidence. It

@@ -5,6 +5,40 @@ import { spawn } from "node:child_process";
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
 const failure = code => Object.assign(new Error(code), { code });
 
+const terminalErrorCodes = new Set([
+  "contextWindowExceeded", "sessionBudgetExceeded", "usageLimitExceeded", "rateLimitExceeded",
+  "flexUnavailable", "serverOverloaded", "modelNotFound", "policyCapacityUnavailable",
+  "cyberPolicy", "misalignmentPolicyViolation", "tooManyDenials", "internalServerError",
+  "unauthorized", "badRequest", "threadRollbackFailed", "sandboxError", "other",
+]);
+const upstreamErrorCodes = new Set([
+  "httpConnectionFailed", "responseStreamConnectionFailed", "responseStreamDisconnected", "responseTooManyFailedAttempts",
+]);
+
+// The transport digest commits to the whole frame. Retain only known
+// protocol tags and the upstream HTTP status alongside that digest.
+function failedTurnDiagnostic(message) {
+  if (message.method !== "turn/completed" || Object.hasOwn(message, "id")) return {};
+  const turn = message.params?.turn;
+  if (turn?.status === "completed") return {};
+  const info = turn?.error?.codexErrorInfo;
+  const keys = info && typeof info === "object" && !Array.isArray(info) ? Object.keys(info) : [];
+  const variant = keys.length === 1 ? keys[0] : null;
+  let code = info == null ? null : "unrecognized";
+  let status = null;
+  if (terminalErrorCodes.has(info)) code = info;
+  else if (variant === "activeTurnNotSteerable") code = variant;
+  else if (upstreamErrorCodes.has(variant)) {
+    code = variant;
+    status = info[variant]?.httpStatusCode;
+  }
+  return {
+    turn_status: ["failed", "interrupted", "inProgress"].includes(turn?.status) ? turn.status : "unrecognized",
+    codex_error_info: code,
+    upstream_http_status: Number.isInteger(status) && status >= 100 && status <= 599 ? status : null,
+  };
+}
+
 // This child must run inside the composition's owned process tree. close()
 // confirms the direct child only; the outer controller proves tree termination.
 export function createAgenticCodexRpc({ executable, sha256, args, cwd, env, deadline, onNotification,
@@ -44,7 +78,7 @@ export function createAgenticCodexRpc({ executable, sha256, args, cwd, env, dead
       const interested = !message.method || Object.hasOwn(message, "id") || !notificationMethods || notificationMethods.includes(message.method);
       if (message.method && (typeof message.method !== "string" || !/^[a-zA-Z][a-zA-Z0-9/_-]{0,127}$/.test(message.method))) { stop("PROCESS_RPC_METHOD_INVALID"); return; }
       try { if (interested) diagnostic({ type: message.method ?? "reply", id: Number.isSafeInteger(message.id) ? message.id : null,
-        ...(typeof message.id === "string" ? { foreign_id_sha256: hash(message.id), foreign_id_bytes: Buffer.byteLength(message.id) } : {}), bytes: line.length, sha256: hash(line) }); }
+        ...(typeof message.id === "string" ? { foreign_id_sha256: hash(message.id), foreign_id_bytes: Buffer.byteLength(message.id) } : {}), bytes: line.length, sha256: hash(line), ...failedTurnDiagnostic(message) }); }
       catch { stop("PROCESS_RPC_DIAGNOSTIC_FAILED"); return; }
       if (Object.hasOwn(message, "id") && !message.method) {
         const row = pending.get(message.id);

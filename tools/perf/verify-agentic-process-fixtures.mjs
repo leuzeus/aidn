@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { createHash } from "node:crypto";
+import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
+import { createAgenticCodexRpc } from "../../src/adapters/agents/agentic-codex-rpc.mjs";
 import { assertAgenticProcessModel, agenticPolicyPins, agenticProcessCapabilities } from "../../src/core/workflow/agentic-process-model.mjs";
 import { createAgenticProcess, inspectAgenticProcess, advanceAgenticProcess, assertAgenticProcessInstance } from "../../src/core/workflow/agentic-process.mjs";
 import { createAgenticProcessService } from "../../src/application/runtime/agentic-process-service.mjs";
@@ -519,6 +523,43 @@ try {
     const state = initial(gateway("and")), cancel = event({ kind: "cancel" }), stopped = advanceAgenticProcess(state, cancel);
     assert.equal(inspect(stopped).status, "CANCELLED");
     assert.throws(() => completed(stopped, "root/flow-0"), /PROCESS_EVENT_ORDER_INVALID/);
+  });
+
+  await check("Native transport retains bounded turn failure metadata without private content", async () => {
+    const child = new EventEmitter();
+    child.stdin = new PassThrough(); child.stdout = new PassThrough(); child.stderr = new PassThrough();
+    child.kill = () => { queueMicrotask(() => child.emit("close", 0, null)); return true; };
+    const diagnostics = [], notifications = [];
+    const sha256 = value => createHash("sha256").update(value).digest("hex");
+    const rpc = createAgenticCodexRpc({ executable: process.execPath, sha256: sha256(fs.readFileSync(process.execPath)),
+      args: [], cwd: temp, env: {}, deadline: Date.now() + 10000, spawnProcess: () => child,
+      onNotification: message => notifications.push(message), diagnostic: record => diagnostics.push(record) });
+    const privateText = "private fixture content";
+    const samples = [
+      ["failed", { responseStreamDisconnected: { httpStatusCode: 503, privateText } },
+        { turn_status: "failed", codex_error_info: "responseStreamDisconnected", upstream_http_status: 503 }],
+      ["interrupted", "unauthorized", { turn_status: "interrupted", codex_error_info: "unauthorized", upstream_http_status: null }],
+      ["failed", privateText, { turn_status: "failed", codex_error_info: "unrecognized", upstream_http_status: null }],
+      ["failed", { httpConnectionFailed: { httpStatusCode: privateText } },
+        { turn_status: "failed", codex_error_info: "httpConnectionFailed", upstream_http_status: null }],
+      ["failed", { unauthorized: { httpStatusCode: 401 } },
+        { turn_status: "failed", codex_error_info: "unrecognized", upstream_http_status: null }],
+      ["failed", { activeTurnNotSteerable: { turnKind: "review", httpStatusCode: 599 } },
+        { turn_status: "failed", codex_error_info: "activeTurnNotSteerable", upstream_http_status: null }],
+      ["failed", null, { turn_status: "failed", codex_error_info: null, upstream_http_status: null }],
+      ["completed", null, {}],
+    ];
+    try {
+      for (const [status, codexErrorInfo, expected] of samples) {
+        const notification = { method: "turn/completed", params: { turn: { id: privateText, status,
+          error: { codexErrorInfo, message: privateText, additionalDetails: privateText } } } };
+        const frame = Buffer.from(JSON.stringify(notification));
+        child.stdout.write(Buffer.concat([frame, Buffer.from("\n")]));
+        await rpc.flush();
+        assert.deepEqual(diagnostics.at(-1), { type: "turn/completed", id: null, bytes: frame.length, sha256: sha256(frame), ...expected });
+        assert.deepEqual(notifications.at(-1), notification);
+      }
+    } finally { assert.equal((await rpc.close()).closed, true); }
   });
   await check("ordinary STANDARD returns the retained Native failure after the execution cursor is fenced", async () => {
     await import("./verify-standard-native-failed-return-fixtures.mjs");

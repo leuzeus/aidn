@@ -127,6 +127,13 @@ is confirmed. A changed journal, unconfirmed closure or another inspection
 error still refuses. The post-assignment fixture also applies the ordinary
 action against the real host and journal with a controlled transport.
 
+The kernel also sends terminal notifications through the Native RPC adapter
+with an in-memory child process. It checks that failed turns retain only the
+recognized status, error tag and valid upstream HTTP status alongside the
+frame digest. The fixture covers interrupted and failed turns, unrecognized
+and absent error tags, invalid HTTP status and a successful turn. Raw error
+text and additional details are excluded from the retained diagnostic.
+
 A suite that takes hours requires a one-off investigation with a question and
 a completion condition. Remove the suite and its trigger at the end of that
 investigation. Preserve its result and add a focused check for any recurring
