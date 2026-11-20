@@ -11,7 +11,7 @@ import { createAgenticProcessExecutionHost } from "./agentic-process-execution-h
 import { createAgenticProcessStore } from "../../adapters/runtime/agentic-process-store.mjs";
 import { createAgenticCodexSessions } from "../../adapters/agents/agentic-codex-session.mjs";
 import { CYCLE_PREWORK_CONTRACT } from "../../core/workflow/standard-cycle-prework.mjs";
-import { DRIFT_REPORT_CONTRACT, nativeActivityOutputSkill, nativeActivityOutputInstructions, nativeActivityAnswerSchema, nativeActivityOutputBindings } from "../../core/workflow/native-activity-output.mjs";
+import { DRIFT_REPORT_CONTRACT, nativeActivityOutputSkill, nativeActivityOutputInstructions, nativeActivityTransportSchema, nativeActivityOutputBindings } from "../../core/workflow/native-activity-output.mjs";
 import { CYCLE_WORK_CONTRACT, CYCLE_TASK_WORK_CONTRACT, isStandardCycleWorkContract } from "../../core/workflow/standard-cycle-work.mjs";
 import { readWorkflowProjectExecutionAuthority } from "./workflow-instance-composition.mjs";
 import { agenticPolicyPins, assertAgenticProcessModel, processId, processFail as fail } from "../../core/workflow/agentic-process-model.mjs";
@@ -142,7 +142,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       } else if (!skill || node?.kind !== "activity" || !role?.skills.includes(skill)
         || config.skills?.[skill]?.sha256 !== hash(fs.readFileSync(new URL(`../../../scaffold/codex/aidn-${skill}/SKILL.md`, import.meta.url)))) fail("PROCESS_ACTIVITY_OUTPUT_BINDING_INVALID");
       if (skill === "cycle-create" && model.policies.find(row => row.id === node.policy_ref)?.allowed_permissions.includes("write:product")) fail("PROCESS_ACTIVITY_OUTPUT_BINDING_INVALID");
-      nativeActivityAnswerSchema(contractRef, "0".repeat(64));
+      nativeActivityTransportSchema(contractRef, "0".repeat(64));
     }
   }
   if (processModels(model).some(component => component.nodes.some(node => node.kind === "operation")) && !processAuthority) fail("PROCESS_EXECUTION_MODEL_PROFILE_UNSUPPORTED");

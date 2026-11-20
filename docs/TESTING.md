@@ -140,6 +140,11 @@ same kernel exercises orderly end-of-input and the forced stop of a pending
 RPC request. Concurrent close requests share the in-flight shutdown. A client
 exit is direct-child evidence and does not establish Windows Job closure.
 
+The kernel checks the strict Codex response projection for every supported
+Native activity report. It verifies explicit types and required closed object
+fields, retained literals and enumerations, and rejection by the unchanged
+host validator when projected string or array bounds are violated.
+
 A suite that takes hours requires a one-off investigation with a question and
 a completion condition. Remove the suite and its trigger at the end of that
 investigation. Preserve its result and add a focused check for any recurring

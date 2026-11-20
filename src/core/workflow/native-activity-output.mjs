@@ -124,6 +124,37 @@ export function nativeActivityAnswerSchema(contractRef = null, contextSha256 = n
   if (validateJsonSchemaDefinition(validationRoot(schema), "#", { contractKind: "workflow-definition" }).length) fail("PROCESS_ACTIVITY_OUTPUT_SCHEMA_INVALID");
   return schema;
 }
+const nativeTransportTypes = new Set(["object", "array", "string", "number", "integer", "boolean", "null"]);
+
+// Codex sends outputSchema as a strict provider response format. Keep the
+// closed shape and exact values here, and enforce the complete report schema
+// (including bounds and representation constraints) when the answer returns.
+function projectNativeTransportSchema(schema) {
+  if (schema.anyOf) return { anyOf: schema.anyOf.map(projectNativeTransportSchema) };
+  const stringLiterals = typeof schema.const === "string" || schema.enum?.every(value => typeof value === "string");
+  const type = schema.type ?? (stringLiterals ? "string" : undefined);
+  const types = Array.isArray(type) ? type : [type];
+  if (!types.length || types.some(value => !nativeTransportTypes.has(value))) fail("PROCESS_ACTIVITY_TRANSPORT_SCHEMA_INVALID");
+  const projected = { type };
+  if (Object.hasOwn(schema, "const")) projected.const = schema.const;
+  if (Object.hasOwn(schema, "enum")) projected.enum = schema.enum;
+  if (types.includes("object")) {
+    const keys = Object.keys(schema.properties ?? {});
+    if (schema.additionalProperties !== false || !Array.isArray(schema.required)
+      || schema.required.length !== keys.length || keys.some(key => !schema.required.includes(key)))
+      fail("PROCESS_ACTIVITY_TRANSPORT_SCHEMA_INVALID");
+    projected.properties = Object.fromEntries(keys.map(key => [key, projectNativeTransportSchema(schema.properties[key])]));
+    projected.required = schema.required;
+    projected.additionalProperties = false;
+  }
+  if (types.includes("array")) projected.items = projectNativeTransportSchema(schema.items);
+  return projected;
+}
+
+export function nativeActivityTransportSchema(contractRef = null, contextSha256 = null, outputBindings = null) {
+  return projectNativeTransportSchema(nativeActivityAnswerSchema(contractRef, contextSha256, outputBindings));
+}
+
 export function assertNativeActivityAnswer(answer, contractRef = null, contextSha256 = null, outputBindings = null) {
   const schema = validationRoot(nativeActivityAnswerSchema(contractRef, contextSha256, outputBindings));
   if (checkShadowJson(answer) || validateJsonSchema(answer, schema, "$", { contractKind: "workflow-definition" }).length)

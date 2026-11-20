@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { createAgenticCodexRpc } from "../../src/adapters/agents/agentic-codex-rpc.mjs";
+import { nativeActivityAnswerSchema, nativeActivityTransportSchema, assertNativeActivityAnswer } from "../../src/core/workflow/native-activity-output.mjs";
 import { assertAgenticProcessModel, agenticPolicyPins, agenticProcessCapabilities } from "../../src/core/workflow/agentic-process-model.mjs";
 import { createAgenticProcess, inspectAgenticProcess, advanceAgenticProcess, assertAgenticProcessInstance } from "../../src/core/workflow/agentic-process.mjs";
 import { createAgenticProcessService } from "../../src/application/runtime/agentic-process-service.mjs";
@@ -525,6 +526,47 @@ try {
     assert.throws(() => completed(stopped, "root/flow-0"), /PROCESS_EVENT_ORDER_INVALID/);
   });
 
+  await check("Native response formats use typed closed shapes and preserve full host validation", () => {
+    const contracts = [null, "standard-drift-report.v1", "standard-mode-work-report.v1", "standard-pr-triage-report.v1",
+      "standard-cycle-plan-proposal.v1", "standard-cycle-prework-report.v1", "standard-cycle-work-report.v1",
+      "standard-cycle-task-work-report.v1", "standard-cycle-audit-report.v1"];
+    const context = "c".repeat(64);
+    const keywords = new Set(["type", "const", "enum", "anyOf", "properties", "required", "additionalProperties", "items"]);
+    function checkWire(schema) {
+      assert(Object.keys(schema).every(key => keywords.has(key)));
+      if (schema.anyOf) {
+        schema.anyOf.forEach(checkWire);
+        return;
+      }
+      assert(Object.hasOwn(schema, "type"));
+      if (schema.properties) {
+        assert.equal(schema.additionalProperties, false);
+        assert.deepEqual([...schema.required].sort(), Object.keys(schema.properties).sort());
+        Object.values(schema.properties).forEach(checkWire);
+      }
+      if (schema.items) checkWire(schema.items);
+    }
+    for (const contract of contracts) {
+      const wire = nativeActivityTransportSchema(contract, contract ? context : null);
+      assert.equal(wire.type, "object");
+      checkWire(wire);
+    }
+    const contract = "standard-drift-report.v1";
+    const full = nativeActivityAnswerSchema(contract, context).properties.report.anyOf[1];
+    const wire = nativeActivityTransportSchema(contract, context).properties.report.anyOf[1];
+    assert.deepEqual(wire.properties.context_sha256, { type: "string", const: context });
+    assert.deepEqual(wire.properties.contract_version, { type: "string", const: contract });
+    assert.deepEqual(wire.properties.drift_level, { type: "string", enum: ["none", "mild", "severe"] });
+    assert.equal(full.properties.rationale.minLength, 1);
+    assert.equal(full.properties.evidence_refs.minItems, 1);
+    const answer = { outcome: "completed", summary: "Scoped diagnostic.", report: { contract_version: contract, context_sha256: context,
+      original_objective: "Neutral objective.", current_objective: "Neutral objective.", drift_level: "none", objective_changed: false,
+      changes: [], keep: [], discard: [], split_recommendation: { new_cycle: false, new_branch: false, change_request_required: false, impact: "none" },
+      recommendation: "continue", rationale: "No deviation observed.", evidence_refs: [{ ref: "fixture:report", sha256: "a".repeat(64) }] } };
+    assertNativeActivityAnswer(answer, contract, context);
+    assert.throws(() => assertNativeActivityAnswer({ ...answer, report: { ...answer.report, rationale: "" } }, contract, context), /PROCESS_SESSION_ANSWER_INVALID/);
+    assert.throws(() => assertNativeActivityAnswer({ ...answer, report: { ...answer.report, evidence_refs: [] } }, contract, context), /PROCESS_SESSION_ANSWER_INVALID/);
+  });
   await check("Native transport retains bounded turn failure metadata without private content", async () => {
     const child = new EventEmitter();
     child.stdin = new PassThrough(); child.stdout = new PassThrough(); child.stderr = new PassThrough();

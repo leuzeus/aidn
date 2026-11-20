@@ -1,6 +1,6 @@
 import path from "node:path";
 import fs from "node:fs";
-import { nativeActivityAnswerSchema, assertNativeActivityAnswer } from "../../core/workflow/native-activity-output.mjs";
+import { nativeActivityTransportSchema, assertNativeActivityAnswer } from "../../core/workflow/native-activity-output.mjs";
 import { randomUUID } from "node:crypto";
 import { createAgenticCodexRpc } from "./agentic-codex-rpc.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
@@ -172,7 +172,7 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
         const abort = () => reject(Object.assign(Error("PROCESS_SESSION_CANCELLED"), { code: "PROCESS_SESSION_CANCELLED" })); signal?.addEventListener("abort", abort, { once: true });
         try {
           const result = await rpc.request("turn/start", { threadId, effort: native.effort,
-            input: [{ type: "text", text: instruction, text_elements: [] }], outputSchema: nativeActivityAnswerSchema(output_contract, output_context_sha256, output_bindings) }, Math.max(1, turnRemaining));
+            input: [{ type: "text", text: instruction, text_elements: [] }], outputSchema: nativeActivityTransportSchema(output_contract, output_context_sha256, output_bindings) }, Math.max(1, turnRemaining));
           if (typeof result?.turn?.id !== "string") fail("PROCESS_SESSION_TURN_ID_MISSING");
           active.turnId = result.turn.id;
           for (const event of active.pending.splice(0)) await notification(event);

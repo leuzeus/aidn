@@ -1,5 +1,14 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Native response format and host validation, 2026-11-20
+
+The Codex request uses a portable strict response schema with explicit types,
+closed required object fields, exact literals, enumerations and nested unions.
+The AIDN host still validates the complete versioned answer schema and report,
+including lengths, item bounds, patterns, bindings and cross-field rules. The
+transport schema is derived for the current request and grants no authority.
+Canonical report schemas, retained receipts and acceptance rules stay the same.
+
 ## Retained failure of an ordinary Native action, 2026-11-20
 
 The ordinary entry returns the first worker failure when the allocation is
