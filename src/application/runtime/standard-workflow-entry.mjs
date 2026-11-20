@@ -354,13 +354,29 @@ export async function runStandardWorkflowAction({ request, configuration, parame
     output.result = await host.step({ write: true, authorization, signal, expectedInstanceSha256: context.instance_sha256 }); output.written = true;
   }
   output.can_apply = false;
-  const current = action.kind === "prepare_host" ? null : host.inspect();
+  const failedAllocation = action.kind === "native" && output.result.status === "FAILED" && output.result.journal_phase === "failed";
+  let current = null;
+  if (action.kind !== "prepare_host") {
+    try { current = host.inspect(); }
+    catch (cause) {
+      if (!failedAllocation || cause.code !== "STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE") throw cause;
+
+      // Return the failed action's evidence through the read-only authenticated
+      // cursor. The ordinary execution exclusion still guards the next action.
+      current = host.inspectDiagnostic();
+      const journal = current.native.journal;
+      const allocation = journal?.allocations.at(-1);
+      if (allocation?.phase !== "failed" || allocation.tree_closed !== true
+        || allocation.generation !== output.result.generation || journal.journal_id !== output.result.journal_id
+        || shadowHash(journal) !== output.result.journal_sha256) throw cause;
+    }
+  }
   const receipt = output.result?.receipt ?? null;
   const outcome = receipt?.outcome ?? null;
   // A successfully processed command is distinct from the workflow's state.
   // Waiting/refusal/defer/cancel/UNKNOWN never become a completed workflow.
   output.result = { contract_version: "standard-workflow-entry-result.v1", action_kind: action.kind,
-    process_status: current?.cursor.status ?? null, workflow_completed: current?.cursor.status === "COMPLETED",
+    process_status: current?.cursor.status ?? null, workflow_completed: !failedAllocation && current?.cursor.status === "COMPLETED",
     operation_outcome: outcome, effect_status: receipt?.effect_status ?? null, written: output.written,
     native_started: action.kind === "native" ? null : false, details: output.result };
   if (validateJsonSchema(output.result, resultSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_ENTRY_RESULT_INVALID");

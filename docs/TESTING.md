@@ -119,6 +119,14 @@ in November 2026. The interrupted GitHub run retained 82 successful cases
 from its first two segments and no completion receipt for segment 3.
 See [the interrupted run](https://github.com/leuzeus/aidn/actions/runs/44722527838).
 
+The agentic kernel includes the focused
+`verify-standard-native-failed-return-fixtures.mjs` regression. It checks
+that ordinary entry retrieves the first failure through the diagnostic cursor
+when the returned allocation matches the failed journal and its tree closure
+is confirmed. A changed journal, unconfirmed closure or another inspection
+error still refuses. The post-assignment fixture also applies the ordinary
+action against the real host and journal with a controlled transport.
+
 A suite that takes hours requires a one-off investigation with a question and
 a completion condition. Remove the suite and its trigger at the end of that
 investigation. Preserve its result and add a focused check for any recurring

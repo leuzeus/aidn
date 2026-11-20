@@ -520,6 +520,9 @@ try {
     assert.equal(inspect(stopped).status, "CANCELLED");
     assert.throws(() => completed(stopped, "root/flow-0"), /PROCESS_EVENT_ORDER_INVALID/);
   });
+  await check("ordinary STANDARD returns the retained Native failure after the execution cursor is fenced", async () => {
+    await import("./verify-standard-native-failed-return-fixtures.mjs");
+  });
 } finally {
   const resolvedTemp = fs.realpathSync(temp), tempParent = fs.realpathSync(os.tmpdir());
   assert.equal(resolvedTemp.startsWith(tempParent + path.sep) && path.basename(resolvedTemp).startsWith("aidn-agentic-process-"), true);

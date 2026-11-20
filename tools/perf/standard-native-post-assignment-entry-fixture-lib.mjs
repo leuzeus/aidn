@@ -11,6 +11,7 @@ import { producePublicNativeEntryFixture, runPublicNativeEntryFixtureCLI as run,
   selectPublicNativeEntryFixtureSource as selectSource, issuePublicNativeEntryFixtureSource as issue,
   interruptPublicNativeEntryFixtureCAS } from './standard-native-entry-fixture-lib.mjs';
 import { createStandardWorkflowExecution } from '../../src/application/runtime/standard-workflow-composition.mjs';
+import { runStandardWorkflowAction } from '../../src/application/runtime/standard-workflow-entry.mjs';
 import { createProjectAgenticProcessExecution } from '../../src/application/runtime/agentic-process-execution-composition.mjs';
 import { createNativeAllocationWorkerAuthority } from '../../src/application/runtime/native-allocation-worker-authority.mjs';
 import { createStandardWorkflowArtifacts } from '../../src/application/runtime/standard-workflow-artifacts.mjs';
@@ -63,11 +64,21 @@ async function retainPostAssignmentFailure({ data, configuration, key, modelSour
     authorized_at_ms: now, global_deadline_ms: now + 600000, workflow_deadline_ms: now + 600000,
     max_turn_ms: 60000, max_responses: 1, max_bytes: 33554432 };
   fs.writeFileSync(path.join(data.base, 'original-controlled-native-authorization.json'), JSON.stringify(authorization), { flag: 'wx' });
-  const result = await host.step({ write: true, authorization });
-  assert.equal(result.kind, 'native'); assert.equal(launches, 1); assert.equal(rpc.sessions.length, 1);
+  const input = { request: data.request, configuration, parameters: data.request.parameters, modelSource, authorization };
+  const ports = { authority: local, compose: () => host };
+  const action = await runStandardWorkflowAction(input, ports);
+  assert.equal(action.preview.kind, 'native');
+  const applied = await runStandardWorkflowAction({ ...input, preparedAction: action.preview, execute: true,
+    expectPlan: action.action_sha256 }, ports);
+  assert.equal(applied.result.action_kind, 'native'); assert.equal(applied.result.workflow_completed, false);
+  assert.equal(applied.result.written, true);
+  const result = applied.result.details;
+  assert.equal(result.kind, 'native'); assert.equal(result.status, 'FAILED'); assert.equal(launches, 1); assert.equal(rpc.sessions.length, 1);
   assert.equal(rpc.sessions.every(row => row.closed), true);
   const journal = assertNativeAllocationJournal(host.inspectAllocations()), entry = journal.allocations[0];
   assert.equal(journal.allocations.length, 1); assert.equal(entry.phase, 'failed'); assert.equal(entry.consumption.responses_observed, 1);
+  assert.equal(result.first_failure, entry.first_failure);
+  assert.equal(result.journal_sha256, H(journal));
   assert.equal(entry.initial_instance_sha256, instance.instance_sha256);
   const current = host.inspectDiagnostic().record;
   assert.notEqual(current.instance_sha256, instance.instance_sha256);

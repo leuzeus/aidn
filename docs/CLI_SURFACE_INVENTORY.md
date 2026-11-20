@@ -338,7 +338,12 @@ finalization; `--verify` retains its read-only verification behavior.
     supplies project/native pins and roots; the host supplies the model, skills,
     typed activity outputs and implementation pins. Save the returned `preview`
     object and apply it with `--action-file <file> --execute --expect-plan <sha256>`.
-    Each invocation admits one exact action. Native resource actions use
+    Each invocation admits one exact action. A Native allocation that returns a
+    failed result with a matching authenticated journal and confirmed process
+    tree closure keeps the first failure in `result.details.first_failure`.
+    `result.process_status` reflects the authenticated cursor,
+    `result.workflow_completed` is false, and recovery remains a separate action.
+    Native resource actions use
     `standard-workflow-native-action.v1`: `native_owner_retire`,
     `native_allocation_reconcile`, and `native_authorization_epoch`. A failed
     no-assignment allocation first offers physical-owner retirement, then

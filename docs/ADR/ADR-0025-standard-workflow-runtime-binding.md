@@ -1,5 +1,14 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Retained failure of an ordinary Native action, 2026-11-20
+
+The ordinary entry returns the first worker failure when the allocation is
+recorded as failed and its process tree closure is confirmed. When ordinary
+cursor inspection is fenced, the entry reads the authenticated diagnostic
+cursor and matches the same allocation generation and journal digest. The
+workflow remains incomplete. Owner disposition and reconciliation require their
+own exact actions and sources. The entry result contract stays at version 1.
+
 ## Retained Native history reader for general handoff, 2026-11-15
 
 The mixed host exposes a private read of retained Native closure evidence. It
