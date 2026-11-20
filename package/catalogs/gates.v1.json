@@ -95,7 +95,11 @@
         "tests/fixtures/**"
       ],
       "handoff": [
+        ".github/workflows/governance-admission.yml",
         "src/**/standard-handoff*",
+        "src/**/local-handoff-process-discovery.*",
+        "src/**/local-process-identity.mjs",
+        "src/**/standard-process-authority.mjs",
         "src/adapters/runtime/standard-host-authority.mjs",
         "src/adapters/runtime/standard-host-resource-source.mjs",
         "src/**/native-allocation*",

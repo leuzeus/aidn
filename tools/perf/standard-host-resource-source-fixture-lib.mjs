@@ -22,8 +22,13 @@ for(const name of ['project','control','review','native-home','authority']){dirs
 const git=fs.realpathSync.native(execFileSync(path.join(process.env.SystemRoot,'System32/where.exe'),['git.exe'],{encoding:'utf8',windowsHide:true}).trim().split(/\r?\n/)[0]);
 execFileSync(git,['-C',dirs.project,'-c','init.templateDir=','init','--initial-branch=work'],{windowsHide:true,stdio:'pipe'});
 fs.mkdirSync(path.join(dirs.project,'.aidn'));fs.writeFileSync(path.join(dirs.project,'.aidn','config.json'),JSON.stringify({runtime:{stateMode:'files',persistence:{backend:'sqlite'}}}));
-const {manifest}=verificationWindowsController(owned),config={target_root:dirs.project,control_root:dirs.control,review_root:dirs.review,instance_id:'resource-source-case',
-implementation_sha256:agenticProcessImplementationPins().sha256,native:{executable:process.execPath,home:dirs['native-home'],tool_roots:[],protected_roots:[dirs.authority]},
+const {manifest}=verificationWindowsController(owned);
+const scopedNativeExecutable=path.join(owned,'aidn-resource-fixture-native-'+randomUUID()+'.exe');
+fs.copyFileSync(manifest.helper_path,scopedNativeExecutable);
+// Discovery treats opaque processes with the configured Native basename as
+// candidates. The fixture gives that basename to its own executable.
+const config={target_root:dirs.project,control_root:dirs.control,review_root:dirs.review,instance_id:'resource-source-case',
+implementation_sha256:agenticProcessImplementationPins().sha256,native:{executable:scopedNativeExecutable,home:dirs['native-home'],tool_roots:[],protected_roots:[dirs.authority]},
 controller:{helper_path:manifest.helper_path,helper_sha256:manifest.helper_sha256,helper_source_sha256:manifest.source_sha256}};
 const authority=createStandardHostAuthority({configuration:config,environment:{AIDN_STANDARD_HOST_HOME:dirs.authority}});
 const previewSource=authority.createHandoffResourceSource({readInventory:()=>{throw Error('preview must not invoke inventory')},readNativeHistory:()=>{throw Error('preview must not invoke Native')},...activityReaders});

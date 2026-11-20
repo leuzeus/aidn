@@ -121,7 +121,11 @@ export function runGovernanceRouteFixtureSuite(catalog = loadCatalog()) {
     "R100\0docs/PLAN_OLD.md\0src/application/query/new.mjs\0D\0docs/PLAN_GONE.md\0",
   );
   const assuredRequired = unresolved.gate_selection.required;
-  const handoff = route(catalog, ["src/adapters/runtime/standard-host-resource-source.mjs"]);
+  const handoffRoutes = [
+    "src/adapters/runtime/standard-host-resource-source.mjs",
+    "src/adapters/runtime/local-handoff-process-discovery.ps1",
+    ".github/workflows/governance-admission.yml",
+  ].map(file => route(catalog, [file]));
   const ordinaryRelease = route(catalog, [".github/workflows/release.yml"], { baseBranch: "main", headBranch: "release/v0.7.2" });
   const adverseChecks = {
     unknown_path_standard_conservative: unknown.lane === "STANDARD"
@@ -160,7 +164,9 @@ export function runGovernanceRouteFixtureSuite(catalog = loadCatalog()) {
     agentic_exhaustive_and_long_gates_deferred: catalog.on_demand_gates.every(id => !assuredRequired.includes(id)
       && unresolved.gate_selection.skipped.includes(id)
       && unresolved.evidence_status.some(item => item.id === id && item.status === "SKIP")),
-    windows_handoff_required_only_for_relevant_or_unknown_changes: handoff.gate_selection.required.includes("handoff-windows-resource-source")
+    windows_handoff_required_only_for_relevant_or_unknown_changes: handoffRoutes.every(
+      result => result.gate_selection.required.includes("handoff-windows-resource-source"),
+    )
       && !fixtureRoutes.D.gate_selection.required.includes("handoff-windows-resource-source"),
     release_uses_its_own_selected_checks: ordinaryRelease.gate_selection.families.includes("release")
       && !ordinaryRelease.gate_selection.families.includes("runtime")

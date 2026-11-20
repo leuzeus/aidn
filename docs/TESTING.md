@@ -127,7 +127,7 @@ risk it identifies.
 Publication uses `npm run verify:release -- --context main` after proving the
 exact merged source. It checks version, reproducibility, release policy,
 package topology, tracked-tree sensitivity and the gate catalog before
-building and checking the release artifacts. It does not repeat PR families.
+building and checking the release artifacts.
 Measure the wall time from trigger to verdict and add elapsed runner time
 across jobs. Report Codex tokens only from recorded usage.
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import assertStrict from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -179,17 +180,17 @@ function main() {
       } };
     const targeted = runGateFamily({ ...selection, requested: "synthetic", admission: true });
     assert(targeted.ok);
-    assert.deepEqual(calls.splice(0), ["short-check"]);
-    assert.equal(targeted.results[1].status, "SKIP");
-    assert.match(targeted.results[1].reason, /on-demand/);
+    assertStrict.deepEqual(calls.splice(0), ["short-check"]);
+    assertStrict.equal(targeted.results[1].status, "SKIP");
+    assertStrict.match(targeted.results[1].reason, /on-demand/);
     const diagnostic = runGateFamily({ ...selection, requested: "synthetic", explicitGate: "diagnostic-check" });
     assert(diagnostic.ok);
-    assert.deepEqual(calls.splice(0), ["diagnostic-check"]);
+    assertStrict.deepEqual(calls.splice(0), ["diagnostic-check"]);
     const publication = runGateFamily({ ...selection, requested: "publication" });
     assert(publication.ok);
-    assert.deepEqual(calls.splice(0), ["short-check"]);
+    assertStrict.deepEqual(calls.splice(0), ["short-check"]);
     for (const id of ["missing", "diagnostic-check"]) {
-      assert.throws(() => runGateFamily({ ...selection, catalog: { ...quickCatalog, publication_gates: [id] },
+      assertStrict.throws(() => runGateFamily({ ...selection, catalog: { ...quickCatalog, publication_gates: [id] },
         requested: "publication" }), /Invalid publication gate selection/);
     }
 
