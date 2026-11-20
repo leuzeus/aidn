@@ -547,12 +547,18 @@ try {
       ["failed", { activeTurnNotSteerable: { turnKind: "review", httpStatusCode: 599 } },
         { turn_status: "failed", codex_error_info: "activeTurnNotSteerable", upstream_http_status: null }],
       ["failed", null, { turn_status: "failed", codex_error_info: null, upstream_http_status: null }],
+      ["failed", "other", { turn_status: "failed", codex_error_info: "other", upstream_http_status: null,
+        reported_provider_error_code: "invalid_json_schema" }, JSON.stringify({ error: { code: "invalid_json_schema", message: privateText } })],
+      ["failed", "other", { turn_status: "failed", codex_error_info: "other", upstream_http_status: null },
+        JSON.stringify({ error: { code: privateText, message: privateText } })],
+      ["failed", "other", { turn_status: "failed", codex_error_info: "other", upstream_http_status: null },
+        JSON.stringify({ error: { code: "invalid_json_schema", message: privateText.repeat(4096) } })],
       ["completed", null, {}],
     ];
     try {
-      for (const [status, codexErrorInfo, expected] of samples) {
+      for (const [status, codexErrorInfo, expected, message = privateText] of samples) {
         const notification = { method: "turn/completed", params: { turn: { id: privateText, status,
-          error: { codexErrorInfo, message: privateText, additionalDetails: privateText } } } };
+          error: { codexErrorInfo, message, additionalDetails: privateText } } } };
         const frame = Buffer.from(JSON.stringify(notification));
         child.stdout.write(Buffer.concat([frame, Buffer.from("\n")]));
         await rpc.flush();

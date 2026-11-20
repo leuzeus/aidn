@@ -11,8 +11,11 @@ own exact actions and sources. The entry result contract stays at version 1.
 
 The Native RPC adapter retains the allowlisted status and error tag reported in
 an unsuccessful terminal notification, and a valid upstream HTTP status when
-present. This private diagnostic accompanies the frame digest. Free-text error
-messages and additional details are excluded. The worker still reports its
+present. The `other` tag can wrap a provider JSON error in the message field.
+For a bounded message of that shape, the adapter retains an allowlisted
+reported provider code separately from the structured HTTP status. Free-text
+messages, JSON response bodies and additional details are excluded. These
+private diagnostics accompany the frame digest. The worker still reports its
 existing first failure and the evidence cannot authorize another turn.
 
 After observing the matching terminal turn, an idle RPC transport closes its

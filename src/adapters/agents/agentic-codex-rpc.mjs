@@ -15,6 +15,19 @@ const upstreamErrorCodes = new Set([
   "httpConnectionFailed", "responseStreamConnectionFailed", "responseStreamDisconnected", "responseTooManyFailedAttempts",
 ]);
 
+const providerErrorCodes = new Set([
+  "invalid_json_schema", "invalid_api_key", "model_not_found", "context_length_exceeded",
+  "rate_limit_exceeded", "insufficient_quota", "credit_balance_exhausted", "server_is_overloaded",
+]);
+
+function reportedProviderErrorCode(message) {
+  if (typeof message !== "string" || Buffer.byteLength(message) > 4096) return null;
+  try {
+    const code = JSON.parse(message)?.error?.code;
+    return providerErrorCodes.has(code) ? code : null;
+  } catch { return null; }
+}
+
 // The transport digest commits to the whole frame. Retain only known
 // protocol tags and the upstream HTTP status alongside that digest.
 function failedTurnDiagnostic(message) {
@@ -32,7 +45,9 @@ function failedTurnDiagnostic(message) {
     code = variant;
     status = info[variant]?.httpStatusCode;
   }
+  const providerCode = code === "other" ? reportedProviderErrorCode(turn?.error?.message) : null;
   return {
+    ...(providerCode ? { reported_provider_error_code: providerCode } : {}),
     turn_status: ["failed", "interrupted", "inProgress"].includes(turn?.status) ? turn.status : "unrecognized",
     codex_error_info: code,
     upstream_http_status: Number.isInteger(status) && status >= 100 && status <= 599 ? status : null,

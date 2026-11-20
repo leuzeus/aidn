@@ -130,9 +130,12 @@ action against the real host and journal with a controlled transport.
 The kernel also sends terminal notifications through the Native RPC adapter
 with an in-memory child process. It checks that failed turns retain only the
 recognized status, error tag and valid upstream HTTP status alongside the
-frame digest. The fixture covers interrupted and failed turns, unrecognized
-and absent error tags, invalid HTTP status and a successful turn. Raw error
-text and additional details are excluded from the retained diagnostic. The
+frame digest. It separately verifies extraction of a recognized provider code
+from a bounded JSON error carried by an `other` notification. Unknown codes,
+plain text and oversized messages do not provide this classification. The other
+cases cover interrupted and failed turns, unknown and absent error tags,
+invalid HTTP status and a successful turn. Response bodies, raw error text and
+additional details are excluded from the retained diagnostic. The
 same kernel exercises orderly end-of-input and the forced stop of a pending
 RPC request. Concurrent close requests share the in-flight shutdown. A client
 exit is direct-child evidence and does not establish Windows Job closure.
