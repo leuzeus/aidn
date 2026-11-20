@@ -15,6 +15,13 @@ present. This private diagnostic accompanies the frame digest. Free-text error
 messages and additional details are excluded. The worker still reports its
 existing first failure and the evidence cannot authorize another turn.
 
+After observing the matching terminal turn, an idle RPC transport closes its
+input stream so the client can finish local writes. The existing two-second
+termination window is capped by the remaining transport deadline for this
+orderly shutdown. Pending requests, unconfirmed turns and transport failures
+still use forced termination. A direct-child exit continues to require the
+outer Windows Job proof for allocation closure.
+
 ## Retained Native history reader for general handoff, 2026-11-15
 
 The mixed host exposes a private read of retained Native closure evidence. It

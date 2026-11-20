@@ -36,6 +36,7 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
     const developer = input.developer_instructions;
     const sessionId = `context-${randomUUID()}`; // host-owned context identity, never an alias inferred from a native ID
     let threadId = null, nativeSessionId = null, binding = null, closed = false, active = null, wireFailure = null;
+    let terminalTurnObserved = false;
     const context = [shadowHash(developer)];
     const expectedConfig = { profileId, permissionProfile, model: native.model, effort: native.effort };
     const args = [...buildCodexStartupArguments({ ...native.startup, log_dir: path.join(controlRoot, `native-${index}-logs`),
@@ -76,6 +77,7 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
         if (p.item.phase === "final_answer" || p.item.phase == null) active.answers.push({ text: p.item.text, phase: p.item.phase ?? null });
       } else if (message.method === "turn/completed") {
         active.terminal = true;
+        terminalTurnObserved = ["completed", "failed", "interrupted"].includes(p.turn?.status);
         if (p.turn?.status !== "completed") { active.reject(Object.assign(Error("PROCESS_SESSION_TURN_FAILED"), { code: "PROCESS_SESSION_TURN_FAILED" })); return; }
         active.resolve();
       }
@@ -164,6 +166,7 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
         let resolve, reject;
         const completion = new Promise((yes, no) => { resolve = yes; reject = no; });
         completion.catch(() => {}); // rejection may precede the turn/start reply
+        terminalTurnObserved = false;
         active = { turnId: null, pending: [], answers: [], usage: null, responseIds: new Set(), tools: 0, resolve, reject };
         const timer = setTimeout(() => reject(Object.assign(Error("PROCESS_SESSION_DEADLINE"), { code: "PROCESS_SESSION_DEADLINE" })), Math.max(1, turnRemaining));
         const abort = () => reject(Object.assign(Error("PROCESS_SESSION_CANCELLED"), { code: "PROCESS_SESSION_CANCELLED" })); signal?.addEventListener("abort", abort, { once: true });
@@ -185,7 +188,10 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
           return { session_id: sessionId, binding_sha256: binding, outcome: answer.outcome, evidence_refs: [ref] };
         } finally { clearTimeout(timer); signal?.removeEventListener("abort", abort); active = null; }
       },
-      async close() { closed = true; return rpc.close(); },
+      async close() {
+        closed = true;
+        return rpc.close({ graceful: terminalTurnObserved && !active && !wireFailure });
+      },
     });
   } });
 }

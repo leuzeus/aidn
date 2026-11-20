@@ -561,6 +561,23 @@ try {
       }
     } finally { assert.equal((await rpc.close()).closed, true); }
   });
+  await check("Native RPC closes settled stdio by EOF and still terminates a pending transport", async () => {
+    const executableSha256 = createHash("sha256").update(fs.readFileSync(process.execPath)).digest("hex");
+    for (const pending of [false, true]) {
+      const child = new EventEmitter(), shutdown = [];
+      child.stdin = new PassThrough(); child.stdout = new PassThrough(); child.stderr = new PassThrough();
+      child.stdin.once("finish", () => { shutdown.push("eof"); child.emit("close", 0, null); });
+      child.kill = () => { shutdown.push("signal"); queueMicrotask(() => child.emit("close", null, "SIGTERM")); return true; };
+      const rpc = createAgenticCodexRpc({ executable: process.execPath, sha256: executableSha256, args: [],
+        cwd: temp, env: {}, deadline: Date.now() + 10000, spawnProcess: () => child });
+      const rejected = pending ? assert.rejects(rpc.request("thread/read", {}), { code: "PROCESS_RPC_STOPPED" }) : null;
+      const closing = rpc.close({ graceful: true });
+      assert.equal(rpc.close(), closing);
+      assert.equal((await closing).closed, true);
+      await rejected;
+      assert.deepEqual(shutdown, [pending ? "signal" : "eof"]);
+    }
+  });
   await check("ordinary STANDARD returns the retained Native failure after the execution cursor is fenced", async () => {
     await import("./verify-standard-native-failed-return-fixtures.mjs");
   });

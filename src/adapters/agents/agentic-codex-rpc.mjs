@@ -48,12 +48,13 @@ export function createAgenticCodexRpc({ executable, sha256, args, cwd, env, dead
     || !/^[a-f0-9]{64}$/.test(sha256) || hash(fs.readFileSync(executable)) !== sha256) throw failure("PROCESS_RPC_PIN_INVALID");
   const child = spawnProcess(executable, args, { cwd, env, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
   const pending = new Map(); let next = 0, buffer = Buffer.alloc(0), bytes = 0, stopped = null, closed = false, queue = Promise.resolve();
-  function stop(code) {
+  let closing = null;
+  function stop(code, terminate = true) {
     if (stopped) return; stopped = code;
     try { diagnostic({ code, pending_ids: [...pending.keys()], buffered_bytes: buffer.length, observed_bytes: bytes }); } catch { /* preserve first failure */ }
     try { onFailure(failure(code)); } catch { /* failure reporting cannot prevent cleanup */ }
     for (const row of pending.values()) { clearTimeout(row.timer); row.reject(failure(code)); }
-    pending.clear(); if (!closed) child.kill();
+    pending.clear(); if (terminate && !closed) child.kill();
   }
   function send(message) {
     const text = JSON.stringify(message) + "\n";
@@ -95,6 +96,19 @@ export function createAgenticCodexRpc({ executable, sha256, args, cwd, env, dead
     }
   });
   const globalTimer = setTimeout(() => stop("PROCESS_RPC_GLOBAL_DEADLINE"), Math.max(1, deadline - Date.now()));
+  async function closeTransport(graceful) {
+    clearTimeout(globalTimer);
+    const endInput = graceful && !stopped && !closed && pending.size === 0 && Date.now() < deadline;
+    stop("PROCESS_RPC_STOPPED", !endInput);
+    if (!closed) await new Promise(resolve => {
+      const finish = () => { clearTimeout(timer); child.off("close", finish); resolve(); };
+      const timeout = endInput ? Math.min(2000, Math.max(0, deadline - Date.now())) : 2000;
+      const timer = setTimeout(() => { child.kill("SIGKILL"); finish(); }, timeout);
+      child.once("close", finish);
+      if (endInput) child.stdin.end();
+    });
+    return { closed, direct_child_only: true, bytes };
+  }
   return Object.freeze({
     request(method, params, timeoutMs = 20000) {
       if (stopped) return Promise.reject(failure(stopped));
@@ -108,13 +122,9 @@ export function createAgenticCodexRpc({ executable, sha256, args, cwd, env, dead
     },
     notify(method, params) { if (stopped) throw failure(stopped); send({ method, params }); },
     async flush() { await queue; if (stopped) throw failure(stopped); },
-    async close() {
-      clearTimeout(globalTimer); stop(stopped ?? "PROCESS_RPC_STOPPED");
-      if (!closed) await new Promise(resolve => {
-        const timer = setTimeout(() => { child.kill("SIGKILL"); resolve(); }, 2000);
-        child.once("close", () => { clearTimeout(timer); resolve(); });
-      });
-      return { closed, direct_child_only: true, bytes };
+    close({ graceful = false } = {}) {
+      closing ??= closeTransport(graceful).finally(() => { closing = null; });
+      return closing;
     },
   });
 }
