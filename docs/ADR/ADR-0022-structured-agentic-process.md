@@ -233,6 +233,11 @@ Connection material is confined to trusted runtime, PostgreSQL artifact workers
 and the author's pinned admission-hook host. Model-shell environments, independent
 review and retained metadata exclude it. A verified installation receipt supplies
 the global hook runtime home, rather than an arbitrary inherited home.
+Synchronous PostgreSQL read callers may reuse a worker thread in the owning
+runtime process. Only get, get-many and list enter that worker. Every request
+re-resolves the canonical project and connection before opening its own
+read-only transaction. The caller's original timeout and JSON output bound
+apply to each request. Mutation continues through the separate process.
 Logical canonical-payload budget debits and physical server storage are distinct;
 unobserved PostgreSQL pages/indexes/WAL remain NON_MESURE. Offline SQLite and SQL
 transport fixtures establish compatibility contracts, not live PostgreSQL

@@ -4552,6 +4552,11 @@ The project artifact command fixture checks bounded PostgreSQL journal reads
 with a doubled SQL transport. It covers canonical scope selection, requested
 order, missing paths, invalid requests, bounded output and a failed worker.
 Use a private PostgreSQL cluster to measure worker starts and wall time.
+The project artifact fixture also exercises the default read worker with a
+backend change and verifies the calling process exits. The live artifact-query
+smoke uses a private PostgreSQL cluster to check fresh reads after a commit,
+missing connection material, a blocked read reaching its caller deadline and
+successful reads after the lock is released.
 Qualification of the composed DB-only workflow requires its separate terminal
 run and retained evidence.
 

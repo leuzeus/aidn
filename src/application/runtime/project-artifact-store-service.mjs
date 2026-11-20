@@ -2,13 +2,50 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { MessageChannel, receiveMessageOnPort, SHARE_ENV, Worker } from 'node:worker_threads';
 import { createArtifactStore } from '../../adapters/runtime/artifact-store.mjs';
 import { resolveEffectiveRuntimePersistence, resolveRuntimeSqliteFile } from './runtime-persistence-service.mjs';
 import { POSTGRES_ARTIFACT_READ_BATCH_LIMIT, validateArtifactPath } from '../../adapters/runtime/postgres-artifact-command-lib.mjs';
 import { assertProjectArtifactStore } from '../../core/ports/project-artifact-store-port.mjs';
 
-// Keep synchronous workflow callers synchronous; the isolated PG worker resolves
-// credentials from the inherited environment, never from command arguments.
+const workerModule = new URL('./project-artifact-store-worker.mjs', import.meta.url);
+const workerOutputBytes = 32 * 1024 * 1024;
+const readActions = new Set(['get', 'get-many', 'list']);
+let postgresReadWorker;
+
+function runPostgresRead(input, timeout) {
+  const started = performance.now();
+  if (!postgresReadWorker) {
+    try {
+      const worker = new Worker(workerModule, { env: SHARE_ENV, execArgv: [], stdout: true, stderr: true });
+      const clear = () => { if (postgresReadWorker === worker) postgresReadWorker = undefined; };
+      worker.once('error', clear);
+      worker.once('exit', clear);
+      // Reading the worker's stdio would keep the caller's event loop alive.
+      // The response travels through the per-request port.
+      worker.unref();
+      postgresReadWorker = worker;
+    } catch { return { status: null }; }
+  }
+  const worker = postgresReadWorker;
+  const { port1, port2 } = new MessageChannel();
+  const ready = new Int32Array(new SharedArrayBuffer(4));
+  try {
+    worker.postMessage({ input, reply: port2, ready, maxBytes: workerOutputBytes }, [port2]);
+    const remaining = timeout - (performance.now() - started);
+    if (remaining > 0 && Atomics.wait(ready, 0, 0, remaining) !== 'timed-out') {
+      const { message } = receiveMessageOnPort(port1) ?? {};
+      if (message && performance.now() - started < timeout) return message;
+    }
+  } catch { /* a broken transport has no result */ }
+  finally { port1.close(); port2.close(); }
+  postgresReadWorker = undefined;
+  void worker.terminate().catch(() => {});
+  return { status: null };
+}
+
+// Each worker request opens a current transaction against the configured
+// backend. Explicit launch environments and mutations use the child process.
 export function createProjectArtifactStore(options = {}) {
   const targetRoot = path.resolve(options.targetRoot ?? '.');
   const resolution = resolveEffectiveRuntimePersistence({ ...options, targetRoot });
@@ -19,11 +56,14 @@ export function createProjectArtifactStore(options = {}) {
     if (options.readOnly && ['upsert', 'compare-and-swap', 'compare-and-delete', 'replace'].includes(action)) throw new Error('Artifact store is read-only');
     const remaining = options.deadlineMs === undefined ? 60000 : Math.min(60000, options.deadlineMs - Date.now());
     if (!Number.isSafeInteger(remaining) || remaining <= 0) throw new Error('ARTIFACT_DEADLINE_EXCEEDED');
-    const child = (options.workerRunner ?? spawnSync)(process.execPath, [fileURLToPath(new URL('./project-artifact-store-worker.mjs', import.meta.url))], {
-      input: JSON.stringify({ targetRoot, action, options: input }),
-      encoding: 'utf8', shell: false, windowsHide: true, timeout: remaining,
-      maxBuffer: 32 * 1024 * 1024, env: options.env ?? process.env,
-    });
+    const request = JSON.stringify({ targetRoot, action, options: input });
+    const useReader = readActions.has(action) && options.workerRunner == null
+      && (options.env == null || options.env === process.env) && !process.env.NODE_OPTIONS;
+    const child = useReader ? runPostgresRead(request, remaining)
+      : (options.workerRunner ?? spawnSync)(process.execPath, [fileURLToPath(workerModule)], {
+        input: request, encoding: 'utf8', shell: false, windowsHide: true, timeout: remaining,
+        maxBuffer: workerOutputBytes, env: options.env ?? process.env,
+      });
     if (action === 'get-many' && child.error?.code === 'ENOBUFS') throw new Error('ARTIFACT_POSTGRES_WORKER_OUTPUT_LIMIT');
     let response;
     try { response = JSON.parse(child.stdout); } catch { throw new Error('ARTIFACT_POSTGRES_WORKER_UNAVAILABLE'); }

@@ -196,6 +196,16 @@ export async function verifyProjectArtifactCommands() {
       'upsert', '--target', target, '--dry-run', '--json'], { encoding: 'utf8', timeout: 30000, windowsHide: true });
     assert.equal(child.status, 1); assert.match(child.stderr, /does not support --dry-run/);
     assert.equal(child.stdout, ''); assert.deepEqual(fs.readdirSync(target), []); count++;
+    const env=Object.fromEntries(Object.entries(process.env).filter(([name])=>!/^NODE_OPTIONS$|^AIDN_RUNTIME_PERSISTENCE_/i.test(name)));
+    const storeModule=new URL('../../src/application/runtime/project-artifact-store-service.mjs',import.meta.url);
+    const probe='import {createProjectArtifactStore} from '+JSON.stringify(storeModule.href)+';'+
+      'const reader=createProjectArtifactStore({backend:"postgres",targetRoot:process.argv[1],readOnly:true});'+
+      'try {reader.getArtifact("SPEC.md")} catch(error) {process.stdout.write(error.message)}';
+    const readerProcess=spawnSync(process.execPath,['--input-type=module','-e',probe,target],
+      {env,encoding:'utf8',timeout:10000,windowsHide:true});
+    assert.equal(readerProcess.status,0,readerProcess.error?.code);
+    assert.equal(readerProcess.stdout,'ARTIFACT_BACKEND_CHANGED');
+    assert.equal(readerProcess.stderr,'');assert.deepEqual(fs.readdirSync(target),[]);count++;
   } finally {
     assert.equal(path.dirname(path.resolve(target)), path.resolve(os.tmpdir())); fs.rmSync(target, { recursive: true, force: true });
   }

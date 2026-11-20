@@ -73,6 +73,12 @@ read-only transaction. Journal validation and signature checks still run for
 every referenced record. No batch result carries across authentication calls
 or effect boundaries.
 
+The default PostgreSQL artifact reader can reuse a Node worker within one
+runtime process. The worker resolves the current project, configured backend
+and credentials for each request and opens a fresh read-only transaction.
+The caller discards a timed-out reader and requests its termination. Writes
+and explicitly overridden worker environments use the subprocess transport.
+
 The synchronous PostgreSQL cycle validation subject selects its plan lineage
 and completed work from one authenticated history observation. Each selected
 journal still matches its accepted receipt, and native evidence is read and
