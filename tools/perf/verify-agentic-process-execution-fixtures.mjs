@@ -250,6 +250,34 @@ if (process.argv.includes("--standard-composed-preflight-only")) {
   if (!standardPreflight) throw Error("STANDARD_FIXTURE_PREFLIGHT_MODE_REQUIRED");
   console.log(JSON.stringify(standardPreflight)); process.exit(0);
 }
+const checkFlags = new Set([
+  "--host-resource-activity-only", "--drift-git-readonly-only", "--cycle-plan-select-native-only",
+  "--canonical-plan-work-only", "--drift-objective-mismatch-only", "--v2-only",
+  "--native-human-port-only", "--historical-diagnostic-only", "--native-human-turn-only",
+  "--checkpoint-only", "--large-checkpoint-only", "--journal-only",
+  "--journal-preview-only", "--owned-only", "--resume-only",
+  "--worker-only",
+  "--drift-git-only", "--drift-contract-only",
+  "--drift-finalize-contract-only", "--drift-published-rollback", "--drift-published-rollback-rediagnosis",
+]);
+const checkPrefixes = [
+  "--native-epoch-mode=", "--native-initial-epoch-mode=", "--dataflow-mode=",
+  "--drift-recovery-mode=", "--drift-finalize-mode=", "--drift-finalize-case=",
+  "--drift-completion-mode=", "--drift-mode=", "--canonical-resume-native-mode=",
+  "--standard-existing-open-work-mode=", "--standard-selected-root-mode=", "--standard-existing-complete-mode=",
+  "--standard-existing-open-mode=", "--canonical-plan-selection-mode=", "--canonical-plan-readiness-mode=",
+  "--canonical-plan-adoption-mode=", "--standard-spike-mode=", "--standard-mode-work-resume-mode=",
+  "--standard-mode-work-mode=", "--standard-composed-mode=", "--drift-worker-mode=",
+  "--cycle-plan-mode=", "--cycle-readiness-mode=", "--cycle-work-mode=",
+  "--cycle-close-finalize-mode=", "--cycle-close-record-mode=", "--cycle-closure-mode=",
+  "--cycle-audit-mode=", "--cycle-task-mode=", "--cycle-verification-mode=",
+  "--cycle-validation-mode=", "--drift-cr-mode=", "--drift-cycle-mode=",
+];
+if (!process.argv.slice(2).some(argument => checkFlags.has(argument)
+  || checkPrefixes.some(prefix => argument.startsWith(prefix) && argument.length > prefix.length))) {
+  throw Error("Select a focused execution fixture, for example --checkpoint-only or --standard-composed-mode=files");
+}
+
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agentic-execution-")), checks = [];
 const businessRoots = [];
 function retainComposedChild(controlRoot, label, child) {

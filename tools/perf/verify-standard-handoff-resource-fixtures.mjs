@@ -6,6 +6,9 @@ import { assertHandoffResourceObservation, assertHandoffResourceResult } from '.
 import { RECONCILIATION_DISCOVERY_DOMAINS } from '../../src/core/workflow/process-reconciliation-inventory.mjs';
 import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
 
+const windowsAdmission = process.argv.includes('--windows-admission');
+if (windowsAdmission && process.platform !== 'win32') throw Error('WINDOWS_HANDOFF_ADMISSION_REQUIRES_WINDOWS');
+
 const clone = value => structuredClone(value), signer = createOperationJournalSigner(() => Buffer.alloc(32, 117));
 const operationId = 'op_' + '1'.repeat(40), configuration = { instance_id: 'handoff-case', target_root: 'fixture-only' };
 const evidence = [{ ref: 'fixture:independent-discovery', sha256: H('controlled discovery, not actual OS/provider closure') }];
@@ -160,4 +163,4 @@ console.log(JSON.stringify({ status: 'PASS', checks, scope: 'CONTROLLED_READONLY
   packet_CAS_receipt_ordinary_handoff: 'NOT_PROVEN' }));
 
 const {verifyStandardHostResourceSourceFixtures}=await import('./standard-host-resource-source-fixture-lib.mjs');
-console.log(JSON.stringify({default_host_source:await verifyStandardHostResourceSourceFixtures()}));
+console.log(JSON.stringify({default_host_source:await verifyStandardHostResourceSourceFixtures({ focused: windowsAdmission })}));

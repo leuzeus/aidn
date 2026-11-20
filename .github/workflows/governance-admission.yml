@@ -119,30 +119,25 @@ jobs:
             console.log(`Governance classification: PASS (${route.lane})`);
           ' "${RUNNER_TEMP}/governance-route.json"
 
-  agentic:
-    name: Qualify Required Agentic Fixtures
-    needs: classify
-    if: ${{ needs.classify.result == 'success' && contains(fromJSON(needs.classify.outputs.families), 'runtime') }}
-    uses: ./.github/workflows/agentic-fixture-qualification.yml
-    with:
-      source: ${{ github.event.pull_request.head.sha || github.sha }}
-      context: ${{ needs.classify.outputs.context }}
-
   gates:
     name: Run Gate Family (${{ matrix.family }})
-    needs: [classify, agentic]
+    needs: classify
     if: ${{ !cancelled() && needs.classify.result == 'success' && needs.classify.outputs.family_count != '0' }}
     strategy:
       fail-fast: false
       matrix:
         family: ${{ fromJSON(needs.classify.outputs.families) }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.family == 'handoff' && 'windows-2025' || 'ubuntu-latest' }}
     steps:
       - name: Checkout Exact Candidate
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+        env:
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: "false"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -156,7 +151,7 @@ jobs:
         run: node tools/ci/fetch-branch-policy-sources.mjs
 
       - name: Install Locked Gate Dependencies
-        if: ${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' || matrix.family == 'runtime' }}
+        if: ${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' || matrix.family == 'runtime' || matrix.family == 'handoff' }}
         run: npm ci --include=dev --include=optional --ignore-scripts --no-audit --no-fund
 
       - name: Resolve Ephemeral PostgreSQL Runtime
@@ -164,31 +159,12 @@ jobs:
         run: node tools/ci/resolve-postgres-test-runtime.mjs
 
       - name: Run Selected Family Once
-        if: ${{ matrix.family != 'runtime' }}
         env:
           AIDN_BRANCH_POLICY_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           AIDN_BRANCH_POLICY_HEAD_REF: ${{ github.head_ref || github.ref_name }}
           AIDN_BRANCH_POLICY_BASE_REF: ${{ github.base_ref || 'dev' }}
           AIDN_BRANCH_POLICY_CONTAINS_REF: origin/${{ github.head_ref || github.ref_name }}
         run: node tools/verify/run-gate-family.mjs "${{ matrix.family }}" --context "${{ needs.classify.outputs.context }}" --admission
-
-      - name: Download Agentic Fixture Receipts
-        if: ${{ matrix.family == 'runtime' && needs.agentic.result == 'success' }}
-        uses: actions/download-artifact@v4
-        with:
-          pattern: aidn-agentic-segment-*
-          path: ${{ runner.temp }}/aidn-agentic-segments
-
-      - name: Run Runtime Family Once
-        if: ${{ matrix.family == 'runtime' }}
-        env:
-          AIDN_AGENTIC_CHAIN_RESULT: ${{ needs.agentic.result }}
-          AIDN_AGENTIC_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          AIDN_BRANCH_POLICY_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          AIDN_BRANCH_POLICY_HEAD_REF: ${{ github.head_ref || github.ref_name }}
-          AIDN_BRANCH_POLICY_BASE_REF: ${{ github.base_ref || 'dev' }}
-          AIDN_BRANCH_POLICY_CONTAINS_REF: origin/${{ github.head_ref || github.ref_name }}
-        run: node tools/ci/run-hosted-gate-family.mjs runtime "${{ needs.classify.outputs.context }}"
 
   admission:
     name: Governance Admission

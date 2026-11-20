@@ -18,9 +18,26 @@
     "docs",
     "codex",
     "runtime",
+    "handoff",
     "security",
     "release",
     "cleanliness"
+  ],
+  "on_demand_gates": [
+    "runtime-agent-worker-fixtures",
+    "runtime-agent-verification",
+    "runtime-agent-run-lifecycle",
+    "codex-integration-lifecycle",
+    "codex-context-completion",
+    "codex-context-coordination"
+  ],
+  "publication_gates": [
+    "codex-pack-topology",
+    "security-tracked-sensitivity",
+    "release-version",
+    "release-reproducibility",
+    "release-workflow-policy",
+    "cleanliness-gate-catalog"
   ],
   "governance_route_policy": {
     "schema_version": 1,
@@ -29,6 +46,7 @@
     "protected_branches": ["dev", "main"],
     "fast_families": ["cleanliness", "docs", "security"],
     "standard_invariant_families": ["cleanliness", "security"],
+    "assured_invariant_families": ["contracts", "effects", "governance", "security", "cleanliness"],
     "standard_fallback_families": [
       "contracts",
       "effects",
@@ -36,6 +54,7 @@
       "docs",
       "codex",
       "runtime",
+      "handoff",
       "security",
       "cleanliness"
     ],
@@ -75,6 +94,15 @@
         "tools/perf/**",
         "tests/fixtures/**"
       ],
+      "handoff": [
+        "src/**/standard-handoff*",
+        "src/adapters/runtime/standard-host-authority.mjs",
+        "src/adapters/runtime/standard-host-resource-source.mjs",
+        "src/**/native-allocation*",
+        "src/**/windows*",
+        "tools/**/*handoff*",
+        "tools/**/*windows*"
+      ],
       "security": [
         "src/**/security/**",
         "src/**/permission/**",
@@ -85,11 +113,14 @@
         "VERSION",
         "release/**",
         "tools/build-release.mjs",
+        ".github/workflows/release.yml",
         "tools/**/*release*"
       ],
       "cleanliness": [
         ".gitignore",
         ".gitattributes",
+        ".github/workflows/**",
+        "tools/ci/**",
         "package/catalogs/gates.v1.json",
         "tools/verify/**"
       ]
@@ -152,13 +183,34 @@
   },
   "gates": [
     {
-      "id": "runtime-agentic-process",
+      "id": "runtime-agentic-kernel",
       "family": "runtime",
-      "script": "perf:verify-agentic-process",
+      "script": "perf:verify-agentic-kernel",
       "job": "governance-admission/gates",
-      "surfaces": ["package/catalogs/agentic-process-fixtures.v1.json", "tools/perf/run-agentic-process-fixtures.mjs", "tools/verify/node-fixture-runner-lib.mjs", "src/core/workflow/agentic-process", "src/core/workflow/bpmn-process-compiler.mjs", "src/application/workflow/bpmn-process-service.mjs", "src/adapters/workflow/bpmn-xml.mjs", "src/application/runtime/agentic-process-service.mjs", "src/application/runtime/agentic-process-execution-composition.mjs", "src/adapters/agents/agentic-codex-session.mjs", "src/adapters/runtime/agentic-process-store.mjs", "BPMN profile compilation, synthetic replay, structured control, owned execution and constrained resource assignment"],
+      "surfaces": [
+        "Agentic process schemas, reducer, simulation and replay contracts"
+      ],
       "condition": "always",
-      "obligation": { "dev": "required", "main": "required", "release": "required" }
+      "obligation": {
+        "dev": "required",
+        "main": "required",
+        "release": "required"
+      }
+    },
+    {
+      "id": "handoff-windows-resource-source",
+      "family": "handoff",
+      "script": "perf:verify-windows-handoff-resource-source",
+      "job": "governance-admission/gates",
+      "surfaces": [
+        "STANDARD handoff resource observation and current Windows process ownership"
+      ],
+      "condition": "always",
+      "obligation": {
+        "dev": "required",
+        "main": "required",
+        "release": "required"
+      }
     },
     {
       "id": "contracts-workflow-compilation",
@@ -740,14 +792,6 @@
     }
   ],
   "workflow_inventory": [
-    {
-      "path": ".github/workflows/agentic-fixture-qualification.yml",
-      "classification": "gate"
-    },
-    {
-      "path": ".github/workflows/agentic-fixture-segment.yml",
-      "classification": "gate"
-    },
     {
       "path": ".github/workflows/governance-admission.yml",
       "classification": "gate"

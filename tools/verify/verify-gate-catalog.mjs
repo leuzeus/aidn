@@ -3,13 +3,13 @@ import fs from "node:fs";
 import codexIntegrationCases from "../../package/catalogs/codex-integration-fixtures.v1.json" with { type: "json" };
 import contextCompletionCases from "../../package/catalogs/context-completion-fixtures.v1.json" with { type: "json" };
 import contextCoordinationCases from "../../package/catalogs/context-coordination-fixtures.v1.json" with { type: "json" };
-import agenticProcessCases from "../../package/catalogs/agentic-process-fixtures.v1.json" with { type: "json" };
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { parseDocument } from "yaml";
 import {
   loadWorkflowSources,
   parseWorkflowStructure,
+  publicationVerificationCommand,
   validateGateAndWorkflowPolicy,
   validateWorkflowYamlSyntax,
 } from "./workflow-policy-lib.mjs";
@@ -20,11 +20,6 @@ import {
 import { runGovernanceRouteFixtureSuite } from "./verify-governance-route-fixtures.mjs";
 import { validateContextResiliencePolicy } from "./context-resilience-policy.mjs";
 import { resolvePostgresTestRuntime, preparePostgresTestRuntime } from "../ci/resolve-postgres-test-runtime.mjs";
-import { verifyHostedAgenticReceiptFixtures } from "./hosted-agentic-receipt-fixtures-lib.mjs";
-import {
-  expectedAgenticQualificationJob, expectedAgenticReceiptDownload, hostedAgenticWorkflowIssues,
-  hostedPublicationVerification, readHostedAgenticWorkflowGraph,
-} from "./hosted-agentic-workflow-policy-lib.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const catalogPath = path.join(repoRoot, "package", "catalogs", "gates.v1.json");
@@ -96,7 +91,6 @@ function candidateRejected({
   candidateCatalog = catalog,
   candidatePackageJson = packageJson,
   candidateWorkflowSources = workflowSources,
-  candidateAgenticFixtureManifest = agenticProcessCases,
   candidateCodexIntegrationFixtureManifest = codexIntegrationCases,
   candidateContextCompletionFixtureManifest = contextCompletionCases,
   candidateContextCoordinationFixtureManifest = contextCoordinationCases,
@@ -111,7 +105,6 @@ function candidateRejected({
     catalog: candidateCatalog,
     packageJson: candidatePackageJson,
     workflowModels: candidateWorkflowModels,
-    agenticFixtureManifest: candidateAgenticFixtureManifest,
     codexIntegrationFixtureManifest: candidateCodexIntegrationFixtureManifest,
     contextCompletionFixtureManifest: candidateContextCompletionFixtureManifest,
     contextCoordinationFixtureManifest: candidateContextCoordinationFixtureManifest,
@@ -193,8 +186,8 @@ for (const wrapper of [
   }
 }
 if (packageJson.scripts?.["verify:release"]
-  !== "node tools/verify/run-gate-family.mjs obligations") {
-  issues.push("verify:release must execute contextual catalog obligations");
+  !== "node tools/verify/run-gate-family.mjs publication") {
+  issues.push("verify:release must execute the catalog publication selection");
 }
 issues.push(...validateGateAndWorkflowPolicy({
   catalog,
@@ -410,8 +403,8 @@ const contextNegativeProbes = {
 };
 
 const commandCommentMutation = releaseText.replaceAll(
-  `run: ${hostedPublicationVerification}`,
-  `run: npm run perf:verify-release-version\n        # run: ${hostedPublicationVerification}`,
+  `run: ${publicationVerificationCommand}`,
+  `run: npm run perf:verify-release-version\n        # run: ${publicationVerificationCommand}`,
 );
 const missingJobMutation = releaseText.replace("  publish:\n", "  publish_removed:\n");
 const duplicateJobMutation = `${releaseText}\n  publish:\n    runs-on: ubuntu-latest\n    steps: []\n`;
@@ -442,11 +435,10 @@ const admissionText = fs.readFileSync(path.join(repoRoot, admissionPath), "utf8"
 const admissionRunnerCommand = "node tools/verify/run-gate-family.mjs "
   + "\"${{ matrix.family }}\" --context "
   + "\"${{ needs.classify.outputs.context }}\" --admission";
-const admissionRuntimeCommand = 'node tools/ci/run-hosted-gate-family.mjs runtime "${{ needs.classify.outputs.context }}"';
 const candidateSource = "${{ github.event.pull_request.head.sha || github.sha }}";
 const admissionMatrixCondition = "${{ !cancelled() && needs.classify.result == 'success' && needs.classify.outputs.family_count != '0' }}";
-const admissionAgenticCondition = "${{ needs.classify.result == 'success' && contains(fromJSON(needs.classify.outputs.families), 'runtime') }}";
-const admissionJobIds = Object.freeze(["classify", "agentic", "gates", "admission"]);
+const admissionJobIds = Object.freeze(["classify", "gates", "admission"]);
+const platformForFamily = "${{ matrix.family == 'handoff' && 'windows-2025' || 'ubuntu-latest' }}";
 
 function namedStep(job, name) {
   const matches = (job?.steps ?? []).filter((step) => step.name === name);
@@ -478,10 +470,6 @@ function evaluateGovernanceAdmissionExecutable(source) {
   const classify = model.jobs?.classify;
   const gates = model.jobs?.gates;
   const admission = model.jobs?.admission;
-  if (!isDeepStrictEqual(model.jobs?.agentic, expectedAgenticQualificationJob({ needs: "classify", source: candidateSource,
-    context: "${{ needs.classify.outputs.context }}", condition: admissionAgenticCondition }))) {
-    sourceIssues.push("admission must run the required hosted fixture chain for the selected runtime family");
-  }
   if (hasOwn(classify, "if") || hasOwn(classify, "continue-on-error")) {
     sourceIssues.push("admission classification job must be unconditional and blocking");
   }
@@ -502,7 +490,8 @@ function evaluateGovernanceAdmissionExecutable(source) {
     sourceIssues.push("admission must fail on classification integrity errors");
   }
   if (gates?.if !== admissionMatrixCondition
-    || !isDeepStrictEqual(gates?.needs, ["classify", "agentic"])
+    || gates?.needs !== "classify"
+    || gates?.["runs-on"] !== platformForFamily
     || gates?.strategy?.["fail-fast"] !== false
     || gates?.strategy?.matrix?.family
       !== "${{ fromJSON(needs.classify.outputs.families) }}") {
@@ -512,6 +501,13 @@ function evaluateGovernanceAdmissionExecutable(source) {
     sourceIssues.push("admission gate matrix must not declare continue-on-error");
   }
   const gateSteps = gates?.steps ?? [];
+  if (!isDeepStrictEqual(gateSteps[0], {
+    name: "Checkout Exact Candidate", uses: "actions/checkout@v4",
+    with: { ref: candidateSource, "fetch-depth": 0 },
+    env: { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "core.autocrlf", GIT_CONFIG_VALUE_0: "false" },
+  })) {
+    sourceIssues.push("admission runs the selected gates at the exact source with tracked line endings");
+  }
   const fetchStep = namedStep(gates, "Fetch Announced Remote Head");
   if (!fetchStep
     || String(fetchStep.run ?? "").trim() !== canonicalBranchFetchCommand
@@ -527,13 +523,11 @@ function evaluateGovernanceAdmissionExecutable(source) {
   const installIndex = gateSteps.indexOf(installStep);
   const runnerStep = namedStep(gates, "Run Selected Family Once");
   const runnerIndex = gateSteps.indexOf(runnerStep);
-  const runtimeStep = namedStep(gates, "Run Runtime Family Once");
-  const receiptStep = namedStep(gates, "Download Agentic Fixture Receipts");
   if (!installStep
     || String(installStep.run ?? "").trim()
       !== "npm ci --include=dev --include=optional --ignore-scripts --no-audit --no-fund"
     || installStep.if
-      !== "${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' || matrix.family == 'runtime' }}"
+      !== "${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' || matrix.family == 'runtime' || matrix.family == 'handoff' }}"
     || hasOwn(installStep, "continue-on-error")
     || installIndex < 0
     || runnerIndex < 0
@@ -556,8 +550,8 @@ function evaluateGovernanceAdmissionExecutable(source) {
     || String(source).split(admissionRunnerCommand).length - 1 !== 1) {
     sourceIssues.push("admission must execute each selected family through one canonical runner call");
   }
-  if (runnerStep?.if !== "${{ matrix.family != 'runtime' }}" || hasOwn(runnerStep, "continue-on-error")) {
-    sourceIssues.push("ordinary admission runner must execute only non-runtime families and remain blocking");
+  if (hasOwn(runnerStep, "if") || hasOwn(runnerStep, "continue-on-error") || gateSteps.length !== 6) {
+    sourceIssues.push("admission must run the blocking selected family without an exhaustive fixture prerequisite");
   }
   if (runnerStep?.env?.AIDN_BRANCH_POLICY_HEAD_REF !== "${{ github.head_ref || github.ref_name }}"
     || runnerStep?.env?.AIDN_BRANCH_POLICY_BASE_REF !== "${{ github.base_ref || 'dev' }}"
@@ -565,15 +559,6 @@ function evaluateGovernanceAdmissionExecutable(source) {
     || runnerStep?.env?.AIDN_BRANCH_POLICY_EXPECTED_SHA
       !== "${{ github.event.pull_request.head.sha || github.sha }}") {
     sourceIssues.push("admission must preserve exact candidate provenance for PR and branch dispatch");
-  }
-  if (gateSteps.length !== 8 || !isDeepStrictEqual(receiptStep, expectedAgenticReceiptDownload(
-    "${{ matrix.family == 'runtime' && needs.agentic.result == 'success' }}"))
-    || gateSteps.indexOf(receiptStep) <= postgresIndex || gateSteps.indexOf(runtimeStep) <= gateSteps.indexOf(receiptStep)
-    || !runtimeStep || runtimeStep.if !== "${{ matrix.family == 'runtime' }}" || hasOwn(runtimeStep, "continue-on-error")
-    || runtimeStep.run !== admissionRuntimeCommand || String(source).split(admissionRuntimeCommand).length - 1 !== 1
-    || !isDeepStrictEqual(runtimeStep.env, { ...runnerStep?.env, AIDN_AGENTIC_CHAIN_RESULT: "${{ needs.agentic.result }}",
-      AIDN_AGENTIC_SOURCE_SHA: candidateSource })) {
-    sourceIssues.push("runtime admission must consume the exact successful hosted fixture chain before the remaining gates");
   }
   const rollupStep = namedStep(admission, "Enforce Required Child Results");
   if (admission?.name !== "Governance Admission"
@@ -593,14 +578,6 @@ function evaluateGovernanceAdmissionExecutable(source) {
   return sourceIssues;
 }
 issues.push(...evaluateGovernanceAdmissionExecutable(admissionText));
-const hostedAgenticGraph = readHostedAgenticWorkflowGraph(repoRoot);
-issues.push(...hostedAgenticWorkflowIssues(hostedAgenticGraph));
-const hostedReceiptProbes = verifyHostedAgenticReceiptFixtures(repoRoot);
-function hostedGraphRejected(change) {
-  const candidate = structuredClone(hostedAgenticGraph);
-  change(candidate);
-  return hostedAgenticWorkflowIssues(candidate).length > 0;
-}
 const capturedFetchCalls = [];
 const fetchHelperResult = fetchBranchPolicySources({
   headRef: "codex/governance-probe",
@@ -678,7 +655,7 @@ const dispatchContainmentMissingMutation = admissionText.replace(
   "          AIDN_BRANCH_POLICY_CONTAINS_REF: origin/${{ github.head_ref }}",
 );
 const codexDependenciesMissingMutation = admissionText.replace(
-  "${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' || matrix.family == 'runtime' }}",
+  "${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' || matrix.family == 'runtime' || matrix.family == 'handoff' }}",
   "${{ matrix.family == 'cleanliness' || matrix.family == 'release' }}",
 );
 const admissionFetchContinueOnErrorMutation = mutateNamedStepProperty(
@@ -902,7 +879,6 @@ for (const [probe, passed] of Object.entries(postgresRuntimeProbes)) {
 
 const persistenceNegativeProbes = {};
 for (const [id, script] of [
-  ["runtime-agentic-process", "perf:verify-agentic-process"],
   ["runtime-agent-execution-postgres", "perf:verify-agent-execution-postgres"],
   ["runtime-agent-worker-fixtures", "perf:verify-agent-worker-fixtures"],
   ["runtime-agent-execution-scheduler", "perf:verify-agent-execution-scheduler-fixtures"],
@@ -941,7 +917,7 @@ for (const [name, candidate] of Object.entries({
   nonblocking_preflight: mutateNamedStepProperty(admissionText, "Resolve Ephemeral PostgreSQL Runtime", "continue-on-error", "true"),
   bypassed_preflight: admissionText.replace("run: node tools/ci/resolve-postgres-test-runtime.mjs", "run: node tools/ci/resolve-postgres-test-runtime.mjs || true"),
   preflight_before_install: admissionText.replace(postgresPreflightBlock, "").replace("      - name: Install Locked Gate Dependencies", `${postgresPreflightBlock}\n      - name: Install Locked Gate Dependencies`),
-  missing_runtime_dependencies: admissionText.replace(" || matrix.family == 'runtime' }}", " }}"),
+  missing_runtime_dependencies: admissionText.replace(" || matrix.family == 'runtime'", ""),
   omitted_optional_driver: admissionText.replace("--include=dev --include=optional", "--include=dev --omit=optional"),
   nonblocking_install: mutateNamedStepProperty(admissionText, "Install Locked Gate Dependencies", "continue-on-error", "true"),
 })) {
@@ -949,117 +925,6 @@ for (const [name, candidate] of Object.entries({
 }
 
 const negativeProbes = {
-  agentic_manifest_order_required: (() => {
-    const candidate = clone(agenticProcessCases); candidate.cases.reverse();
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  agentic_manifest_duplicate_rejected: (() => {
-    const candidate = clone(agenticProcessCases); candidate.cases.push(candidate.cases[0]);
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  agentic_manifest_argv_regrouping_rejected: (() => {
-    const candidate = clone(agenticProcessCases); candidate.cases[0] = [candidate.cases[0].join(" ")];
-    candidate.cases[1] = [candidate.cases[1][0] + " --ignored"];
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  agentic_ordinary_entry_omission_rejected: (() => {
-    const candidate = clone(agenticProcessCases); candidate.cases.pop();
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  filtered_native_checkpoint_gate_rejected: (() => {
-    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
-      .replace("node tools/perf/verify-agentic-process-execution-fixtures.mjs", "node tools/perf/verify-agentic-process-execution-fixtures.mjs --checkpoint-only");
-    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  filtered_native_v2_gate_rejected: (() => {
-    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
-      .replace("node tools/perf/verify-agentic-process-execution-fixtures.mjs", "node tools/perf/verify-agentic-process-execution-fixtures.mjs --v2-only");
-    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  standard_workflow_control_invocation_omission_rejected: (() => {
-    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
-      .replace("node tools/perf/verify-standard-workflow-control-fixtures.mjs && ", "");
-    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  standard_pr_review_content_control_invocation_omission_rejected: (() => {
-    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
-      .replace("node tools/perf/verify-standard-pr-review-control-fixtures.mjs && ", "");
-    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  standard_pr_triage_invocation_omission_rejected: (() => {
-    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
-      .replace("node tools/perf/verify-standard-pr-triage-fixtures.mjs && ", "");
-    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  standard_pr_correction_host_invocation_omission_rejected: (() => {
-    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
-      .replace("node tools/perf/verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=session_pr_correction_decide --standard-composed-scenario=correction && ", "");
-    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  standard_workflow_cycle_invocation_omission_rejected: (() => {
-    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
-      .replace("node tools/perf/verify-standard-workflow-cycle-fixtures.mjs && ", "");
-    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  standard_workflow_model_invocation_omission_rejected: (() => {
-    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
-      .replace("node tools/perf/verify-standard-workflow-model-fixtures.mjs && ", "");
-    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  standard_workflow_mode_invocation_omission_rejected: (() => {
-    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
-      .replace("node tools/perf/verify-standard-workflow-mode-fixtures.mjs && ", "");
-    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  native_owner_provenance_invocation_omission_rejected: (() => {
-    const candidate = { ...agenticProcessCases, cases: agenticProcessCases.cases.filter(args => args[0] !== "tools/perf/verify-native-dispatch-provenance-fixtures.mjs") };
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  workflow_record_storage_invocation_omission_rejected: (() => {
-    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
-      .replace(" && node tools/perf/verify-workflow-record-storage-fixtures.mjs", "");
-    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  standard_workflow_host_invocation_omission_rejected: (() => {
-    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
-      .replace("node tools/perf/verify-standard-workflow-host-fixtures.mjs && ", "");
-    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  standard_workflow_ports_invocation_omission_rejected: (() => {
-    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
-      .replace("node tools/perf/verify-standard-workflow-ports-fixtures.mjs && ", "");
-    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  operation_contract_invocation_omission_rejected: (() => {
-    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
-      .replace("node tools/perf/verify-process-operation-fixtures.mjs && ", "");
-    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  default_workflow_engine_invocation_omission_rejected: (() => {
-    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
-      .replace("node tools/perf/verify-workflow-engine-fixtures.mjs && ", "");
-    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
-  bpmn_profile_invocation_omission_rejected: (() => {
-    const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
-      .replace("node tools/perf/verify-bpmn-process-fixtures.mjs && ", "");
-    const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
-    return candidateRejected({ candidateAgenticFixtureManifest: candidate });
-  })(),
   agent_run_lifecycle_required: (() => {
     const candidate = clone(catalog);
     candidate.gates = candidate.gates.filter(gate => gate.id !== "runtime-agent-run-lifecycle");
@@ -1130,20 +995,11 @@ const negativeProbes = {
     evaluateGovernanceAdmissionExecutable(admissionRunnerDuplicateMutation).length > 0,
   admission_family_runner_blocking:
     evaluateGovernanceAdmissionExecutable(admissionRunnerContinueOnErrorMutation).length > 0,
-  hosted_agentic_segment_omission_rejected:
-    hostedGraphRejected(([chain]) => { delete chain.jobs.segment_2; }),
-  hosted_agentic_segment_reorder_rejected:
-    hostedGraphRejected(([chain]) => { chain.jobs.segment_3.needs = "segment_1"; }),
-  hosted_agentic_segment_source_substitution_rejected:
-    hostedGraphRejected(([chain]) => { chain.jobs.segment_3.with.source = "main"; }),
-  hosted_agentic_segment_platform_substitution_rejected:
-    hostedGraphRejected(([, leaf]) => { leaf.jobs.fixtures["runs-on"] = "ubuntu-latest"; }),
-  hosted_agentic_segment_nonblocking_rejected:
-    hostedGraphRejected(([, leaf]) => { leaf.jobs.fixtures.steps[4]["continue-on-error"] = true; }),
-  hosted_agentic_receipt_upload_skip_rejected:
-    hostedGraphRejected(([, leaf]) => { leaf.jobs.fixtures.steps[5].with["if-no-files-found"] = "ignore"; }),
-  hosted_agentic_admission_chain_bypass_rejected: evaluateGovernanceAdmissionExecutable(admissionText.replace(
-    "AIDN_AGENTIC_CHAIN_RESULT: ${{ needs.agentic.result }}", "AIDN_AGENTIC_CHAIN_RESULT: success",
+  exhaustive_chain_cannot_reenter_admission: evaluateGovernanceAdmissionExecutable(admissionText.replace(
+    "    needs: classify\n", "    needs: [classify, agentic]\n",
+  )).length > 0,
+  handoff_runner_platform_is_required: evaluateGovernanceAdmissionExecutable(admissionText.replace(
+    platformForFamily, "ubuntu-latest",
   )).length > 0,
   admission_gate_matrix_condition_required:
     evaluateGovernanceAdmissionExecutable(admissionGatesIfFalseMutation).length > 0,
@@ -1277,9 +1133,9 @@ const output = {
     steps: Object.values(workflow.jobs).flatMap((job) => job.steps ?? []).length,
   })),
   publication_obligations: {
-    selector: "obligations",
-    contexts: ["main", "release"],
-    critical_gates: ["codex-pack-topology", "security-tracked-sensitivity"],
+    selector: "publication",
+    context: "main",
+    required_gates: catalog.publication_gates,
   },
   governance_route: governanceRouteFixtures,
   performance_routing: {
@@ -1287,7 +1143,6 @@ const output = {
     manual_dispatch: true,
   },
   negative_probes: negativeProbes,
-  hosted_agentic_receipt_probes: hostedReceiptProbes,
   postgres_runtime_prerequisite_probes: postgresRuntimeProbes,
   context_resilience_positive_probes: contextPositiveProbes,
   issues,

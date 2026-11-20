@@ -120,7 +120,9 @@ export function runGovernanceRouteFixtureSuite(catalog = loadCatalog()) {
   const parsedChanges = parseGitNameStatusZ(
     "R100\0docs/PLAN_OLD.md\0src/application/query/new.mjs\0D\0docs/PLAN_GONE.md\0",
   );
-  const assuredRequired = fixtureRoutes.D.gate_selection.required;
+  const assuredRequired = unresolved.gate_selection.required;
+  const handoff = route(catalog, ["src/adapters/runtime/standard-host-resource-source.mjs"]);
+  const ordinaryRelease = route(catalog, [".github/workflows/release.yml"], { baseBranch: "main", headBranch: "release/v0.7.2" });
   const adverseChecks = {
     unknown_path_standard_conservative: unknown.lane === "STANDARD"
       && JSON.stringify(unknown.gate_selection.families)
@@ -148,30 +150,31 @@ export function runGovernanceRouteFixtureSuite(catalog = loadCatalog()) {
     rename_delete_parser: parsedChanges.length === 2
       && parsedChanges[0].previous_path === "docs/PLAN_OLD.md"
       && parsedChanges[1].status === "D",
-    assured_has_exact_required_obligations: assuredRequired.length === 60
-      && assuredRequired.includes("codex-agent-working-memory")
-      && assuredRequired.includes("runtime-artifact-efficiency"),
-    scoped_context_selection_required_once: assuredRequired.filter((id) => id === "codex-scoped-context-selection").length === 1,
-    workflow_shadow_required_once: assuredRequired.filter((id) => id === "contracts-workflow-shadow").length === 1,
-    workflow_compilation_required_once: assuredRequired.filter((id) => id === "contracts-workflow-compilation").length === 1,
-    agentic_process_required_once: assuredRequired.filter((id) => id === "runtime-agentic-process").length === 1,
-    agent_scheduler_required_once: assuredRequired.filter((id) => id === "runtime-agent-execution-scheduler").length === 1,
-    agent_verification_required_once: assuredRequired.filter((id) => id === "runtime-agent-verification").length === 1,
-    agent_git_integration_required_once: assuredRequired.filter((id) => id === "runtime-agent-git-integration").length === 1,
-    agent_run_lifecycle_required_once: assuredRequired.filter((id) => id === "runtime-agent-run-lifecycle").length === 1,
-    agent_worker_fixtures_required_once: assuredRequired.filter((id) => id === "runtime-agent-worker-fixtures").length === 1,
-    agent_execution_contracts_required_once: assuredRequired.filter((id) => id === "runtime-agent-execution-contracts").length === 1,
-    agent_execution_postgres_required_once: assuredRequired.filter((id) => id === "runtime-agent-execution-postgres").length === 1,
-    shared_coordination_concurrency_required_once: assuredRequired.filter((id) => id === "runtime-shared-coordination-concurrency").length === 1,
-    context_groups_required_once_without_manual_wrapper: ["admission", "completion", "coordination", "projection"]
-      .every((name) => assuredRequired.filter((gateId) => gateId === `codex-context-${name}`).length === 1)
-      && !assuredRequired.includes("codex-context-resilience"),
-    codex_integration_lifecycle_is_required: assuredRequired.some((gate) => (typeof gate === 'string' ? gate : gate.id) === 'codex-integration-lifecycle'),
-    no_gate_selected_twice: new Set(fixtureRoutes.D.gate_selection.all.map((gate) => gate.id)).size
-      === fixtureRoutes.D.gate_selection.all.length,
-    manual_postgres_smoke_deferred: fixtureRoutes.D.gate_selection.manual_deferred.length === 2
-      && fixtureRoutes.D.evidence_status.filter((item) => item.status === "UNAVAILABLE").length === 2,
-    emergency_never_reduces_assurance: fixtureRoutes.F.gate_selection.required.length === 60
+    assured_targeted_keeps_invariants: ["contracts", "effects", "governance", "security", "cleanliness", "runtime"]
+      .every(family => fixtureRoutes.D.gate_selection.families.includes(family))
+      && !fixtureRoutes.D.gate_selection.families.includes("handoff")
+      && !fixtureRoutes.D.gate_selection.families.includes("codex"),
+    unresolved_assured_selects_every_family: JSON.stringify(unresolved.gate_selection.families)
+      === JSON.stringify(catalog.required_families),
+    agentic_kernel_required_once: assuredRequired.filter(id => id === "runtime-agentic-kernel").length === 1,
+    agentic_exhaustive_and_long_gates_deferred: catalog.on_demand_gates.every(id => !assuredRequired.includes(id)
+      && unresolved.gate_selection.skipped.includes(id)
+      && unresolved.evidence_status.some(item => item.id === id && item.status === "SKIP")),
+    windows_handoff_required_only_for_relevant_or_unknown_changes: handoff.gate_selection.required.includes("handoff-windows-resource-source")
+      && !fixtureRoutes.D.gate_selection.required.includes("handoff-windows-resource-source"),
+    release_uses_its_own_selected_checks: ordinaryRelease.gate_selection.families.includes("release")
+      && !ordinaryRelease.gate_selection.families.includes("runtime")
+      && !ordinaryRelease.gate_selection.families.includes("handoff"),
+    runtime_postgres_and_context_short_checks_retain_obligation: [
+      "runtime-agent-execution-postgres", "runtime-agent-execution-contracts", "runtime-agent-execution-scheduler",
+      "runtime-shared-coordination-concurrency", "codex-context-admission", "codex-context-projection",
+    ].every(id => assuredRequired.filter(candidate => candidate === id).length === 1),
+    no_gate_selected_twice: new Set(unresolved.gate_selection.all.map(gate => gate.id)).size
+      === unresolved.gate_selection.all.length,
+    manual_postgres_smoke_deferred: unresolved.gate_selection.manual_deferred.length === 2
+      && unresolved.evidence_status.filter(item => item.status === "UNAVAILABLE").length === 2,
+    emergency_never_reduces_assurance: JSON.stringify(fixtureRoutes.F.gate_selection.required)
+      === JSON.stringify(route(catalog, ["VERSION"], { baseBranch: "main", headBranch: "release/v0.7.2" }).gate_selection.required)
       && fixtureRoutes.F.deferred_evidence.includes("observability:perf-kpi"),
     rollup_rejects_failed_child: evaluateGovernanceAdmission({
       classificationResult: "success",

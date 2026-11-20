@@ -222,9 +222,12 @@ export function runGateFamily({
   timeoutMs,
   maxBuffer = 30 * 1024 * 1024,
 }) {
+  const onDemand = new Set(catalog.on_demand_gates ?? []);
+  const publication = new Set(catalog.publication_gates ?? []);
   const selected = catalog.gates.filter(
     (gate) => (requested === "all"
         || requested === "obligations"
+        || (requested === "publication" && publication.has(gate.id))
         || gate.family === requested)
       && (!admission || gate.execution_scope !== "manual-only")
       && (!explicitGate || gate.id === explicitGate),
@@ -233,10 +236,15 @@ export function runGateFamily({
     throw new Error(`Unknown gate for ${requested}: ${explicitGate}`);
   }
 
+  if (requested === "publication" && (publication.size === 0 || selected.length !== publication.size
+    || selected.some(gate => onDemand.has(gate.id) || gate.obligation?.[context] !== "required"))) {
+    throw new Error("Invalid publication gate selection");
+  }
   const results = [];
   for (const gate of selected) {
     const started = Date.now();
-    const obligation = gate.obligation?.[context] ?? "required";
+    const deferred = admission && onDemand.has(gate.id);
+    const obligation = deferred ? "skip" : gate.obligation?.[context] ?? "required";
     if (obligation === "skip") {
       results.push({
         id: gate.id,
@@ -246,7 +254,7 @@ export function runGateFamily({
         obligation,
         condition: gate.condition,
         duration_ms: 0,
-        reason: `catalog obligation is skip for ${context}`,
+        reason: deferred ? "on-demand qualification outside admission" : `catalog obligation is skip for ${context}`,
       });
       continue;
     }
@@ -310,8 +318,7 @@ export function runGateFamily({
         // Its length is not an execution deadline. Explicit caller budgets
         // remain exact; ordinary single-command gates keep their default.
         timeoutMs: timeoutMs === undefined
-          ? ((gate.id === "runtime-agentic-process" && gate.script === "perf:verify-agentic-process")
-            || (gate.id === "codex-integration-lifecycle" && gate.script === "perf:verify-codex-integration")
+          ? ((gate.id === "codex-integration-lifecycle" && gate.script === "perf:verify-codex-integration")
             || (gate.id === "codex-context-completion" && gate.script === "perf:verify-context-completion")
              || (gate.id === "codex-context-coordination" && gate.script === "perf:verify-context-coordination")) ? null : 900000
           : timeoutMs,

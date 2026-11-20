@@ -95,56 +95,41 @@ The ordered manifest and its exact-command policy guard are changed together.
 The previous cases retain their relative order and the full nominal remains
 the final case. The dispatcher adds no aggregate or per-case wall-clock limit.
 
-## Ordered agentic fixture jobs on GitHub-hosted runners
+## Targeted checks for admission and publication
 
-The required agentic gate uses the same ordered manifest through the local
-`npm run perf:verify-agentic-process` dispatcher and in GitHub Actions. Hosted
-execution divides the manifest into successive jobs. Each job checks out the
-exact candidate, installs locked dependencies, resolves the test PostgreSQL
-runtime and dispatches its contiguous range with the existing fixture runner.
-The split addresses the hosted job duration limit. Each invocation keeps its
-original arguments and any explicit bound supplied by its own caller. Cases
-364–366 each run in their own Windows Server 2025 job because their published
-handoff exercises the real Windows resource observer. The other ranges run on
-Ubuntu. The Windows runner uses its provisioned PostgreSQL binaries from
-`PGBIN` unless `PG_BIN_DIR` is explicitly supplied. Checkout preserves the
-tracked line endings.
+Governance Admission resolves the exact Git diff, runs the selected families
+once and requires each selected job to pass. ASSURED keeps the contract,
+effect, governance, security and cleanliness checks and adds the families
+affected by the diff. An unresolved diff or unknown path in ASSURED selects
+every family. Pull requests to `main` also select release checks.
 
-The runtime family verifies all hosted receipts in manifest order. Each receipt
-binds its command observations to the exact commit, manifest, gate context,
-GitHub run and required operating system.
-The verifier rejects omissions, overlaps, reordering, mismatched arguments or
-operating systems, and failed or interrupted commands. Successful prerequisites
-can retain their receipts when GitHub reruns failed jobs in the same workflow
-run. Governance Admission still requires the runtime family and every other
-selected family.
+The agentic kernel runs with the runtime family. Changes that affect handoff
+resource observation select the handoff family on Windows Server 2025.
+`npm run perf:verify-windows-handoff-resource-source` runs its focused checks on
+Windows using real local process discovery, the publication owner and a Git
+index lock. It also checks the closed resource contracts with controlled inputs.
+The result covers resource observation and revocation before publication.
+A full handoff journey, Native inference and live GitHub are separate results.
 
-Run focused checks on the candidate commit while the pull request is in draft.
-For a failed fixture, use its exact arguments and required operating system.
-The published handoff FILES case is selected locally with
-`node tools/perf/verify-standard-handoff-operation-fixtures.mjs files` on
-Windows. Start the complete admission workflow when the candidate is ready for
-merge qualification. An infrastructure failure can resume at the affected job
-and its dependants on the same run after the successful prefix is verified.
-A changed commit needs its own admission evidence.
+The catalog lists slower checks that are omitted from required admission.
+Their route and family results show `SKIP`. Run a relevant individual command
+during diagnosis. For agentic execution fixtures, select one scoped case
+explicitly. The former 376-command manifest and its hosted jobs were retired
+in November 2026. The interrupted GitHub run retained 82 successful cases
+from its first two segments and no completion receipt for segment 3.
+See [the interrupted run](https://github.com/leuzeus/aidn/actions/runs/44722527838).
 
-The required manifest contains 376 commands. The general agentic fixture
-executes published existing open work, existing complete and selected root
-once each in FILES, DUAL and DB-only. The nine isolated duplicates were retired
-from the required manifest. Their original focused selectors remain available
-for diagnosis with `--retain-always`. Use
-`--standard-existing-open-work-mode=<mode>`,
-`--standard-existing-complete-mode=<mode>` or
-`--standard-selected-root-mode=<mode>` with
-`tools/perf/verify-agentic-process-execution-fixtures.mjs`.
+A suite that takes hours requires a one-off investigation with a question and
+a completion condition. Remove the suite and its trigger at the end of that
+investigation. Preserve its result and add a focused check for any recurring
+risk it identifies.
 
-Publication runs its own fixture jobs for the exact merged `main` commit after
-validating the publication source. It verifies that run's complete receipts
-before accepting the release obligations and creating a tag or release. Run
-`node tools/verify/verify-gate-catalog.mjs` and
-`node tools/verify/verify-release-workflow-policy.mjs` for the workflow and
-receipt-policy guards. Their receipt fixtures exercise the verifier with
-controlled observations. The hosted run supplies the actual fixture results.
+Publication uses `npm run verify:release -- --context main` after proving the
+exact merged source. It checks version, reproducibility, release policy,
+package topology, tracked-tree sensitivity and the gate catalog before
+building and checking the release artifacts. It does not repeat PR families.
+Measure the wall time from trigger to verdict and add elapsed runner time
+across jobs. Report Codex tokens only from recorded usage.
 
 ## Delivered root work from an owned OPEN plan candidate, 2026-11-12
 
@@ -563,7 +548,7 @@ The objective effect-fence fixture separates elapsed time from an actual denied
 or expired fixture-source grant. Full required gates, whole STANDARD, actual
 Native/provider/H, PostgreSQL and installed qualification remain separate.
 
-## Complete fixture supervision, 2026-11-11
+## Historical complete fixture supervision, 2026-11-11
 
 The `runtime-agentic-process` gate still executes the declared
 `perf:verify-agentic-process` npm script and its exact ordered manifest. Neither
@@ -1395,8 +1380,8 @@ one WAITING/event occurrence and rejects absent, ambiguous, deferred and operati
 waits. The production entry then prepares its existing signed control request.
 This component check does not authenticate or deliver an external review.
 
-The required `perf:verify-agentic-process` gate uses a shell-free Node dispatcher
-and the ordered argv cases in `package/catalogs/agentic-process-fixtures.v1.json`.
+The historical aggregate used a shell-free Node dispatcher and an ordered
+argv manifest. Its CI jobs and package command were retired on 2026-11-20.
 Its first 187 cases preserve the previous command exactly; six appended cases
 cover the dispatcher, host sources, combined authority and ordinary CLI in three
 storage modes. The independent private policy checks the complete argv/order,
@@ -2930,8 +2915,8 @@ own authenticated result. The benchmark-only instruction builder is
 `tools/perf/agentic-process-benchmark-protocol.mjs`; ordinary work and independent
 review policy are not replaced by a global cache.
 
-`npm run perf:verify-agentic-process` runs the required `runtime-agentic-process`
-gate without a Codex client, model, network or installed activation. It verifies
+The required `npm run perf:verify-agentic-kernel` runs without a Codex client,
+model, network or installed activation. It verifies
 versioned model/instance contracts, distinct participant/role/resource identities,
 compatible reuse, structured XOR/AND/OR, correlated event races and deduplication,
 bounded loop/multi-instance/call occurrences, rejection of unsupported semantics,
@@ -4095,7 +4080,12 @@ The documentation-reference verifier resolves active local Markdown links and
 literal `npm run` references against the tracked tree and `package.json`; its
 negative probes prove that a missing link and a missing script are rejected.
 
-Stable family wrappers are cataloged in `package/catalogs/gates.v1.json`: `verify:contracts`, `verify:governance`, `verify:runtime`, `verify:codex`, `verify:release`, and `verify:all`. The first four select their named family. `verify:release` executes every gate whose obligation is required or optional in the announced `main` or `release` context, including topology and tracked-tree sensitivity; it is not a release-family-only shortcut. Run `verify:all` only at a clean commit boundary so the cleanliness family is meaningful. Report `SKIP` separately from `PASS`.
+Stable family wrappers are cataloged in `package/catalogs/gates.v1.json`.
+`verify:handoff` runs on Windows. `verify:release` runs the catalog publication
+selection. To run a distinct check for diagnosis, use its individual
+`perf:verify-*` command. The local `verify:all` wrapper includes checks for
+multiple surfaces and requires Windows for the Windows handoff check.
+Run it only at a clean commit boundary. Report `SKIP` separately from `PASS`.
 
 The context-resilience checks use four required gates in the `codex` family:
 `codex-context-admission`, `codex-context-completion`,

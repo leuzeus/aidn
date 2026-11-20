@@ -116,13 +116,14 @@ function routeGateSelection(catalog, families, context) {
   const manual = familyGates
     .filter((gate) => gate.execution_scope === "manual-only")
     .map((gate) => gate.id);
+  const onDemand = new Set(catalog.on_demand_gates ?? []);
   const gates = familyGates
     .filter((gate) => gate.execution_scope !== "manual-only")
     .map((gate) => ({
       id: gate.id,
       family: gate.family,
       script: gate.script,
-      obligation: gate.obligation?.[context] ?? "required",
+      obligation: onDemand.has(gate.id) ? "skip" : gate.obligation?.[context] ?? "required",
     }));
   return {
     context,
@@ -156,6 +157,7 @@ export function validateGovernanceRoutePolicy(catalog) {
   for (const [field, families] of Object.entries({
     fast_families: policy.fast_families,
     standard_invariant_families: policy.standard_invariant_families,
+    assured_invariant_families: policy.assured_invariant_families,
     standard_fallback_families: policy.standard_fallback_families,
   })) {
     if (!Array.isArray(families) || families.length === 0) {
@@ -180,6 +182,11 @@ export function validateGovernanceRoutePolicy(catalog) {
     "security",
   ])) {
     issues.push("STANDARD invariant families must be exactly cleanliness and security");
+  }
+  if (JSON.stringify(policy.assured_invariant_families) !== JSON.stringify([
+    "contracts", "effects", "governance", "security", "cleanliness",
+  ])) {
+    issues.push("ASSURED must retain contract, effect, governance, security and cleanliness invariants");
   }
   const expectedFallback = (catalog.required_families ?? []).filter((family) => family !== "release");
   if (JSON.stringify(policy.standard_fallback_families) !== JSON.stringify(expectedFallback)) {
@@ -294,16 +301,18 @@ export function resolveGovernanceRoute({
     }
   }
 
+  const pathFamilies = unique(pathClassifications.flatMap((item) => item.families));
   let families = [];
   if (lane === "FAST") {
     families = policy.fast_families;
   } else if (lane === "STANDARD") {
-    const pathFamilies = unique(pathClassifications.flatMap((item) => item.families));
     families = unknownPaths.length > 0
       ? policy.standard_fallback_families
       : [...policy.standard_invariant_families, ...pathFamilies];
   } else if (lane === "ASSURED") {
-    families = catalog.required_families;
+    families = !diffResolved || unknownPaths.length > 0
+      ? catalog.required_families
+      : [...policy.assured_invariant_families, ...pathFamilies, ...(baseBranch === "main" ? ["release"] : [])];
   }
   families = orderedFamilies(unique(families), catalog.required_families);
   const context = baseBranch === "main" ? "release" : "dev";
@@ -316,9 +325,11 @@ export function resolveGovernanceRoute({
       : !diffResolved
         ? "DEGRADED_ASSURED"
         : "ADMITTED";
+  const onDemand = gateSelection.skipped.filter((gateId) => catalog.on_demand_gates?.includes(gateId));
   const deferredEvidence = [
     ...(emergency ? policy.emergency.deferred_evidence : []),
     ...gateSelection.manual_deferred.map((gateId) => `manual-live-smoke:${gateId}`),
+    ...onDemand.map((gateId) => `on-demand:${gateId}`),
   ];
   const evidenceStatus = [
     ...(emergency ? policy.emergency.deferred_evidence.map((id) => ({
@@ -326,6 +337,11 @@ export function resolveGovernanceRoute({
       status: "SKIP",
       reason: "non-blocking emergency observability evidence is deferred",
     })) : []),
+    ...onDemand.map((id) => ({
+      id,
+      status: "SKIP",
+      reason: "on-demand qualification outside pull-request admission",
+    })),
     ...gateSelection.manual_deferred.map((gateId) => ({
       id: gateId,
       status: "UNAVAILABLE",

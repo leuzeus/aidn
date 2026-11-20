@@ -21,7 +21,7 @@ const explicitContext = contextIndex >= 0 ? String(process.argv[contextIndex + 1
 const gateIndex = process.argv.indexOf("--gate");
 const explicitGate = gateIndex >= 0 ? String(process.argv[gateIndex + 1] ?? "") : "";
 const admission = process.argv.includes("--admission");
-const supportedSelectors = [...catalog.required_families, "all", "obligations"];
+const supportedSelectors = [...catalog.required_families, "all", "obligations", "publication"];
 
 if (!requested || !supportedSelectors.includes(requested)) {
   console.error(

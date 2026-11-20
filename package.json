@@ -73,7 +73,8 @@
     "pg": ">=8 <9"
   },
   "scripts": {
-    "perf:verify-agentic-process": "node tools/perf/run-agentic-process-fixtures.mjs",
+    "perf:verify-agentic-kernel": "node tools/perf/verify-agentic-process-fixtures.mjs",
+    "perf:verify-windows-handoff-resource-source": "node tools/perf/verify-standard-handoff-resource-fixtures.mjs --windows-admission",
     "perf:verify-workflow-transaction": "node tools/perf/verify-workflow-transaction-fixtures.mjs",
     "aidn": "node bin/aidn.mjs",
     "bootstrap": "node tools/bootstrap.mjs",
@@ -85,8 +86,9 @@
     "verify:docs": "node tools/verify/run-gate-family.mjs docs",
     "verify:codex": "node tools/verify/run-gate-family.mjs codex",
     "verify:runtime": "node tools/verify/run-gate-family.mjs runtime",
+    "verify:handoff": "node tools/verify/run-gate-family.mjs handoff",
     "verify:security": "node tools/verify/run-gate-family.mjs security",
-    "verify:release": "node tools/verify/run-gate-family.mjs obligations",
+    "verify:release": "node tools/verify/run-gate-family.mjs publication",
     "verify:cleanliness": "node tools/verify/run-gate-family.mjs cleanliness",
     "verify:all": "node tools/verify/run-gate-family.mjs all",
     "perf:verify-artifact-efficiency": "node tools/perf/verify-artifact-efficiency-fixtures.mjs",

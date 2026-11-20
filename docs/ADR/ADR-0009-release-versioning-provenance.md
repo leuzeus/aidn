@@ -43,6 +43,12 @@ manifests. Each distinct fixture scenario runs once in the required suite,
 with focused invocations available for diagnosis. A retry on the same run
 may retain successful receipts that match its exact source and manifest.
 
+2026-11-20: publication no longer depends on the retired exhaustive fixture
+chain. It proves the exact merged source and runs the catalog publication
+selection before building and validating the release artifacts. The merge PR
+runs the affected families and release checks. Tag and GitHub Release
+creation retain the existing exact-source and existing-tag refusal rules.
+
 ## Context
 
 AIDN ships as a package source repository with local release artifacts, manifests and checksums. The release surface is already validated by `build-release`, `npm pack --dry-run` and topology checks, but the source of version truth and the provenance of published artifacts still need an explicit architectural home.

@@ -10,7 +10,7 @@ import {shadowHash as H} from '../../src/core/workflow/shadow-json.mjs';
 import {removePathWithRetry} from './test-git-fixture-lib.mjs';
 import {randomUUID,createHash} from 'node:crypto';
 
-export async function verifyStandardHostResourceSourceFixtures(){
+export async function verifyStandardHostResourceSourceFixtures({focused=false}={}){
 const checks=[],check=(name,condition)=>{assert(condition,name);checks.push(name);console.log('PASS '+name);};
 if(process.platform!=='win32')return {status:'SKIP',reason:'actual Windows resource-source proof',checks};
 const flags={snapshot_only:true,complete_resource_closure:false,permits_effects:false,permits_handoff:false,written:false};
@@ -48,6 +48,15 @@ try{
  const cold=authority.createHandoffResourceSource({readInventory:()=>signer.seal(inventory),readNativeHistory:()=>structuredClone(native),...activityReaders});
  await assert.rejects(cold.verify({request,sourceRef:'standard-handoff',observation:rawObservation}),{code:'STANDARD_RESOURCE_SOURCE_CAPTURE_REQUIRED'});
  check('JSON or a journal MAC never replaces a private current resource capture',true);
+ await artifacts.withLocalEffectOwner(H('actual publisher owner'),()=>{artifacts.assertLocalEffectOwner(H('actual publisher owner'));observed.assertSourceCurrent();assert.throws(()=>observed.assertCurrent(),{code:'STANDARD_HANDOFF_RESOURCE_OWNER_UNRESOLVED'});return {effect_status:'no_effect'};});
+ assert.equal(artifacts.ownerPending(),false);check('current source stays valid inside the actual publication owner and the known no-effect owner releases',true);
+ const indexLock=path.join(dirs.project,'.git','index.lock');fs.writeFileSync(indexLock,'held');
+ try{assert.throws(()=>observed.assertSourceCurrent(),{code:'STANDARD_RESOURCE_SOURCE_NOT_CURRENT'});}finally{fs.unlinkSync(indexLock);}
+ observed.assertSourceCurrent();check('an actual Git index lock revokes closure until its exact absence is observed again',true);
+ if(focused){
+  passed=true;
+  return {status:'PASS',checks,actual_OS:'Windows',scope:'publication-owner-and-Git-index-lock',Native_clients:0,actual_provider_requests:0,complete_standard:false};
+ }
  const postReleaseSource=authority.createHandoffResourceSource({readInventory:()=>signer.seal(inventory),readNativeHistory:()=>structuredClone(native),...activityReaders});
  for(const sourceRef of ['standard-handoff-foreign','standard-handoff-post-release-foreign']){
   await assert.rejects(postReleaseSource.read({request,sourceRef}),{code:'STANDARD_RESOURCE_SOURCE_REQUEST_SCOPE_CHANGED'});
@@ -77,11 +86,6 @@ try{
   postObserved.assertSourceCurrent();assert.deepEqual(projectTree(),beforeRead);
   check('actual post-release consumer closes seven domains, retains UNKNOWN and refuses a publication capture substitution',true);
  }finally{operationActivity.active_dispatches=[];operationActivity.current_dispatch_id=null;}
- await artifacts.withLocalEffectOwner(H('actual publisher owner'),()=>{artifacts.assertLocalEffectOwner(H('actual publisher owner'));observed.assertSourceCurrent();assert.throws(()=>observed.assertCurrent(),{code:'STANDARD_HANDOFF_RESOURCE_OWNER_UNRESOLVED'});return {effect_status:'no_effect'};});
- assert.equal(artifacts.ownerPending(),false);check('current source stays valid inside the actual publication owner and the known no-effect owner releases',true);
- const indexLock=path.join(dirs.project,'.git','index.lock');fs.writeFileSync(indexLock,'held');
- try{assert.throws(()=>observed.assertSourceCurrent(),{code:'STANDARD_RESOURCE_SOURCE_NOT_CURRENT'});}finally{fs.unlinkSync(indexLock);}
- observed.assertSourceCurrent();check('an actual Git index lock revokes closure until its exact absence is observed again',true);
  authority.humanSource.read({sourceRef:'missing',question:{fixture:'closed synchronous history read'}});observed.assertSourceCurrent();
  check('completed signed-file reads do not masquerade as an open resource',true);
  const keyName=fs.readdirSync(dirs.authority).find(name=>name.endsWith('.key')),keyFile=path.join(dirs.authority,keyName),keyBefore=fs.readFileSync(keyFile);

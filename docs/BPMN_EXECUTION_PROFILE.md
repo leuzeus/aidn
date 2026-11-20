@@ -196,12 +196,9 @@ namespace parsing; it is not an XSD validator.
 
 ## Verification
 
-`npm run perf:verify-agentic-process` includes tracked compiler refusals,
-namespace handling, nested blocks, Boolean routing, source maps, contracts and
-BPMN → IR → reducer → simulation parity. The end-to-end fixture activates two
-parallel obligations, permits compatible reuse, refuses author self-review and
-completes with a separate eligible reviewer. The existing trusted-host/store and
-native-wire-double checks run in the same gate. No new model call is needed.
+Run `node tools/perf/verify-bpmn-process-fixtures.mjs` for the compiler profile.
+Run `npm run perf:verify-agentic-kernel` for the reducer and replay behavior
+of the compiled model.
 
 The example XML in `tests/fixtures/agentic-process/structured-delivery.bpmn` is
 a semantic test corpus without diagram coordinates. It has not been visually

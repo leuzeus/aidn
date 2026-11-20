@@ -33,7 +33,6 @@ function initializeRepository(repoRoot) {
     scripts: {
       "fixture:pass": "node fixture-pass.mjs",
       "fixture:dirty": "node fixture-dirty.mjs",
-      "perf:verify-agentic-process": "node fixture-pass.mjs",
       "perf:verify-codex-integration": "node fixture-pass.mjs",
       "perf:verify-context-completion": "node fixture-pass.mjs",
       "perf:verify-context-coordination": "node fixture-pass.mjs",
@@ -154,16 +153,8 @@ function main() {
     }
 
     const packageJson = JSON.parse(fs.readFileSync(path.join(tempRoot, "package.json"), "utf8"));
-    const aggregateGate = { id: "runtime-agentic-process", script: "perf:verify-agentic-process" };
-    const aggregate = runGateFamily({ repoRoot: tempRoot, catalog: makeCatalog(aggregateGate), packageJson,
-      requested: "synthetic", context: "dev", env: cleanEnvironment(), json: true });
-    assert(aggregate.ok, JSON.stringify(aggregate));
-    if (process.platform === "win32") {
-      assert(aggregate.results[0].verification_process.deadline_at === null, "manifest aggregate must have no invented execution deadline");
-      assert(aggregate.results[0].verification_process.cleanup.proof.active_processes === 0, "aggregate still proves owned Job closure");
-    }
     const budgets = [];
-    const compoundGates = [aggregateGate,
+    const compoundGates = [
       { id: "codex-integration-lifecycle", script: "perf:verify-codex-integration" },
       { id: "codex-context-completion", script: "perf:verify-context-completion" },
       { id: "codex-context-coordination", script: "perf:verify-context-coordination" }];
@@ -174,7 +165,33 @@ function main() {
         commandRunner(input) { budgets.push(input.timeoutMs); return successfulCommand(); } });
       assert(inspected.ok, "budget selection must not change ordinary gate accounting");
     }
-    assert(JSON.stringify(budgets) === JSON.stringify([null, 4321, null, 4321, null, 4321, null, 4321, 900000, 900000]), "only exact declared coordinator id/script pairs have no invented aggregate cap; explicit caller budgets remain exact");
+    assert(JSON.stringify(budgets) === JSON.stringify([null, 4321, null, 4321, null, 4321, 900000, 900000]), "only exact declared coordinator id/script pairs have no invented aggregate cap; explicit caller budgets remain exact");
+
+    const quickCatalog = makeCatalog({ id: "short-check" });
+    quickCatalog.gates.push({ ...quickCatalog.gates[0], id: "diagnostic-check" });
+    quickCatalog.on_demand_gates = ["diagnostic-check"];
+    quickCatalog.publication_gates = ["short-check"];
+    const calls = [];
+    const selection = { repoRoot: tempRoot, catalog: quickCatalog, packageJson, context: "dev",
+      env: cleanEnvironment(), json: true, commandRunner({ gate }) {
+        calls.push(gate.id);
+        return successfulCommand();
+      } };
+    const targeted = runGateFamily({ ...selection, requested: "synthetic", admission: true });
+    assert(targeted.ok);
+    assert.deepEqual(calls.splice(0), ["short-check"]);
+    assert.equal(targeted.results[1].status, "SKIP");
+    assert.match(targeted.results[1].reason, /on-demand/);
+    const diagnostic = runGateFamily({ ...selection, requested: "synthetic", explicitGate: "diagnostic-check" });
+    assert(diagnostic.ok);
+    assert.deepEqual(calls.splice(0), ["diagnostic-check"]);
+    const publication = runGateFamily({ ...selection, requested: "publication" });
+    assert(publication.ok);
+    assert.deepEqual(calls.splice(0), ["short-check"]);
+    for (const id of ["missing", "diagnostic-check"]) {
+      assert.throws(() => runGateFamily({ ...selection, catalog: { ...quickCatalog, publication_gates: [id] },
+        requested: "publication" }), /Invalid publication gate selection/);
+    }
 
     const cleanGate = runFixtureGate(tempRoot, { id: "clean-pass" });
     assert(cleanGate.ok, "clean synthetic gate should pass");

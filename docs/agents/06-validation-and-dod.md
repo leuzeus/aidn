@@ -27,10 +27,9 @@ A task is done only when:
 - pull-request governance emits one `governance-route.v1` artifact, executes
   each selected family at most once, and exposes the exact `Governance Admission`
   rollup required by branch protection
-- GitHub-hosted execution of the required agentic fixture manifest uses ordered,
-  blocking jobs. The runtime family and publication verify every receipt for
-  their own run, exact source and the operating system required by its segment
-  before accepting the complete manifest result.
+- pull-request admission applies the selected short checks and reports
+  omitted qualification as `SKIP`; publication checks the exact merged
+  source and catalog publication selection before build and tag
 - every failed gate retains a bounded, redacted exit code, signal, and
   stdout/stderr tail; named fixture assertions and cleanup results must survive
   through both direct output and the family summary
@@ -38,8 +37,8 @@ A task is done only when:
   preserves any explicit original execution deadline, and retains observed Job closure;
   dispatcher case evidence preserves exact argv/order and interrupted results
   separately from OS closure and business resource cleanup
-- the declared agentic, Codex integration, context-completion and context-coordination
-  fixture manifests and their dispatchers invent no aggregate or per-case wall-clock
+- the remaining Codex integration, context-completion and context-coordination
+  dispatchers invent no aggregate or per-case wall-clock
   deadline; each exact ordered command remains mandatory, cancellation, caller/supervisor death and
   observed Job closure remain required, while an explicit caller deadline is
   preserved without renewal and Native execution retains its own finite grant

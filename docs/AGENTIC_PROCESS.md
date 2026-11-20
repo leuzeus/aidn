@@ -510,9 +510,9 @@ pin their model, code bindings, SPEC and skill sources. The real-port startup
 fixtures consume this package asset. Their fixture human/grant capabilities do
 not establish the full standard model, native identity or mixed/native resume.
 
-Run `npm run perf:verify-agentic-process`. It exercises the real reducer,
-application service and durable artifact stores with portable fixtures. The
-execution suite calls the production composition with a fake native wire and
+Run `npm run perf:verify-agentic-kernel` for reducer, simulation and replay
+checks. For a concrete execution question, use a scoped selector on
+`tools/perf/verify-agentic-process-execution-fixtures.mjs`. These fixtures call the production composition with a fake native wire and
 fake outer controller; its host authorities, bindings and canonical store are
 real. SQLite runs against real temporary databases; PostgreSQL uses the real
 artifact adapter, SQL commands, reservation fence and CAS over an offline SQL

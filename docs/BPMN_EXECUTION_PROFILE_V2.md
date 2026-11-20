@@ -160,9 +160,9 @@ bounded at 256 entries. Reused definitions can map to several distinct IR nodes.
 
 The tracked example `tests/fixtures/agentic-process/extended-delivery.bpmn`
 combines the four constructs, nested/repeated procedures and independent review.
-`npm run perf:verify-agentic-process` includes positive and negative compiler
-fixtures, both event winners, stale/foreign events, loop continuation/wait/limit,
-empty/sequential/parallel collections, call expansion and recursion guards.
+Run `node tools/perf/verify-bpmn-process-fixtures.mjs` for the compiler profile.
+Run `npm run perf:verify-agentic-kernel` for the reducer and replay behavior
+of the compiled model.
 
 Canonical service fixtures run the complete XML-derived workflow in `files`,
 `dual` and `db-only` with trusted authority doubles and real temporary stores.

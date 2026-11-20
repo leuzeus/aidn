@@ -18,32 +18,29 @@ selected at most once on a pull request.
 | Effects | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | effect policy and no implicit write |
 | Governance | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | source of truth, metadata, completeness |
 | Docs | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | Markdown contracts and CLI inventory |
-| Codex | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | pack topology, installed-client integration/discovery, context diagnostics, admission, completion, coordination and projections |
+| Codex | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | pack topology, installed-client integration/discovery, context diagnostics, admission and projections |
 | Runtime | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | state modes, governance CLI, persistence and shared boundary |
+| Handoff | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | Current resource observation and publication fencing on Windows Server 2025 |
 | Security | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | full Git-tracked sensitivity scan plus package/surface boundary checks |
 | Release | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | version, reproducibility, topology, sensitivity, workflow policy |
 | Cleanliness | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | branch policy, gate catalog, clean local full run |
 
 The executable catalog is `package/catalogs/gates.v1.json`. Every entry declares family, script, job, surfaces, condition, obligations for `dev`, `main`, and release, and reports one of `PASS`, `FAIL`, or `SKIP`.
 
-The existing `runtime-agent-run-lifecycle` gate includes the opt-in workflow
-segment binding suite. PostgreSQL segment retention and public cancellation are
-covered by the existing required PostgreSQL fixture gate. No extra gate or
-duplicate invocation is added; native qualification remains separate.
+The catalog declares admission, on-demand checks and the publication
+selection. The runtime family keeps the focused agentic kernel and the
+ephemeral PostgreSQL checks. The handoff family exercises the actual Windows
+resource observer for relevant changes. The slower Codex integration, context
+completion and context coordination commands remain available individually
+for targeted diagnosis, along with the runtime worker, verification and
+lifecycle commands. Admission reports these commands as `SKIP`.
 
-The same catalog contains the adaptive lane and path policy. `FAST` is limited
-to recognized historical documentation. `STANDARD` selects the implicated
-families and falls back conservatively for unknown paths. `ASSURED` selects all
-required obligations declared in the catalog. The surface catalog can elevate a route but cannot
-grant a lower lane.
-
-Context resilience is split into four required gates within the same `codex`
-family: admission, completion, coordination, and projection. Each keeps the
-runner's 15 minute limit. The compatibility command
-`perf:verify-context-resilience` aggregates these groups for local use and is
-excluded from the admission catalog to prevent duplicate execution. The matrix
-still runs the selected family once and retains the same rollup. See
-[the context verification guide](./VERIFY_CONTEXT_RESILIENCE.md).
+`FAST` covers recognized historical documentation. `STANDARD` selects the
+families implicated by the changes alongside cleanliness and security.
+`ASSURED` adds contract, effect and governance invariants, the affected
+families, and release checks for changes targeting `main`. Unknown paths or
+unresolved provenance retain the conservative family fallback. The surface
+catalog can elevate a route.
 
 The tracked-tree sensitivity gate inspects every Git-tracked path and every tracked text file. Package topology independently applies the same policy to the npm tarball. Tracked documentation now uses neutral external-pilot labels and placeholder roots; because earlier commits contained pilot-specific names and local paths, a separate Git history cleanup may still be required before broader archival or publication.
 
@@ -58,7 +55,8 @@ The tracked-tree sensitivity gate inspects every Git-tracked path and every trac
 - `runtime-ops-live-smoke.yml` remains manual and reports PostgreSQL evidence
   separately from required pull-request gates.
 - `release.yml` runs only at the publication boundary on a push to `main` and
-  intentionally repeats the complete obligation set before tag or GitHub Release.
+  verifies the catalog publication selection and the exact build before tag
+  or GitHub Release.
 
 ## Navigation
 
