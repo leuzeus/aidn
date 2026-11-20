@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { createAgenticCodexRpc } from "../../src/adapters/agents/agentic-codex-rpc.mjs";
+import { loadStandardWorkflowAssets } from "../../src/application/runtime/standard-workflow-composition.mjs";
 import { nativeActivityAnswerSchema, nativeActivityTransportSchema, assertNativeActivityAnswer } from "../../src/core/workflow/native-activity-output.mjs";
 import { assertAgenticProcessModel, agenticPolicyPins, agenticProcessCapabilities } from "../../src/core/workflow/agentic-process-model.mjs";
 import { createAgenticProcess, inspectAgenticProcess, advanceAgenticProcess, assertAgenticProcessInstance } from "../../src/core/workflow/agentic-process.mjs";
@@ -526,6 +527,11 @@ try {
     assert.throws(() => completed(stopped, "root/flow-0"), /PROCESS_EVENT_ORDER_INVALID/);
   });
 
+  await check("published STANDARD loads against the executable operation bindings", () => {
+    const { catalog, model, source } = loadStandardWorkflowAssets();
+    assert.equal(catalog.revision, model.revision);
+    assert.equal(catalog.model.sha256, source.model_sha256);
+  });
   await check("Native response formats use typed closed shapes and preserve full host validation", () => {
     const contracts = [null, "standard-drift-report.v1", "standard-mode-work-report.v1", "standard-pr-triage-report.v1",
       "standard-cycle-plan-proposal.v1", "standard-cycle-prework-report.v1", "standard-cycle-work-report.v1",
