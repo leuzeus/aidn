@@ -37,6 +37,12 @@ build and artifact verification, tag creation and GitHub Release creation.
 system. The published handoff cases that use the Windows resource observer run
 on Windows in the same blocking sequence used for admission and publication.
 
+2026-11-19: focused verification is performed on the candidate during
+correction. Final admission and publication retain their complete ordered
+manifests. Each distinct fixture scenario runs once in the required suite,
+with focused invocations available for diagnosis. A retry on the same run
+may retain successful receipts that match its exact source and manifest.
+
 ## Context
 
 AIDN ships as a package source repository with local release artifacts, manifests and checksums. The release surface is already validated by `build-release`, `npm pack --dry-run` and topology checks, but the source of version truth and the provenance of published artifacts still need an explicit architectural home.

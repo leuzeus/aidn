@@ -4,9 +4,26 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import manifest from "../../package/catalogs/agentic-process-fixtures.v1.json" with { type: "json" };
+import requiredManifest from "../../package/catalogs/agentic-process-fixtures.v1.json" with { type: "json" };
 import { runNodeFixtureCases } from "../verify/node-fixture-runner-lib.mjs";
 import { verifyWindowsVerificationTree } from "./verification-windows-tree-fixture-lib.mjs";
+
+const generalFixture = "tools/perf/verify-agentic-process-execution-fixtures.mjs";
+const projectModes = ["files", "dual", "db-only"];
+const consolidatedSelectors = ["standard-existing-open-work", "standard-existing-complete", "standard-selected-root"];
+const formerIsolatedCases = consolidatedSelectors.flatMap(selector =>
+  projectModes.map(mode => [generalFixture, "--" + selector + "-mode=" + mode, "--retain-always"]));
+assert.equal(requiredManifest.cases.length, 376);
+assert.deepEqual(requiredManifest.cases[157], [generalFixture]);
+assert.equal(requiredManifest.cases.filter(args => args.length === 1 && args[0] === generalFixture).length, 1);
+assert(requiredManifest.cases.every(args =>
+  args[0] !== generalFixture || !consolidatedSelectors.some(selector => args.some(arg => arg.startsWith("--" + selector + "-mode=")))));
+console.log("PASS 376 mandatory commands cover the three consolidated scenarios in the single general fixture");
+
+// Restore the former offsets for the historical exact-command checks below.
+const manifest = { cases: [
+  ...requiredManifest.cases.slice(0, 210), ...formerIsolatedCases, ...requiredManifest.cases.slice(210),
+] };
 
 // Preserve the accepted febbb020/81b1783e prefix and six supplemental cases,
 // modulo the explicit 2026-11-11 age-regression selectors. The current
@@ -579,8 +596,8 @@ assert.deepEqual(manifest.cases.slice(375, 378), [
 console.log("PASS current382 preserves exact381 and requires physical handoff preparation on all three backends");
 
 if (process.argv.includes("--manifest-only")) {
-  console.log(JSON.stringify({ status: "PASS", checks: 28, scope: "frozen326/332/335/338/347/353/357/360/366/369/372/375 prefixes plus receipted continuation, canonical publication, common handoff receipts and captured publication recovery",
-    manifest_cases: manifest.cases.length, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
+  console.log(JSON.stringify({ status: "PASS", checks: 29, scope: "frozen326/332/335/338/347/353/357/360/366/369/372/375 prefixes plus receipted continuation, canonical publication, common handoff receipts and captured publication recovery",
+    manifest_cases: requiredManifest.cases.length, child_execution_protocol: "NOT_RUN", native: "NOT_RUN" }));
   process.exit(0);
 }
 

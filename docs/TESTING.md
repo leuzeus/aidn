@@ -104,7 +104,7 @@ exact candidate, installs locked dependencies, resolves the test PostgreSQL
 runtime and dispatches its contiguous range with the existing fixture runner.
 The split addresses the hosted job duration limit. Each invocation keeps its
 original arguments and any explicit bound supplied by its own caller. Cases
-373–375 each run in their own Windows Server 2025 job because their published
+364–366 each run in their own Windows Server 2025 job because their published
 handoff exercises the real Windows resource observer. The other ranges run on
 Ubuntu. The Windows runner uses its provisioned PostgreSQL binaries from
 `PGBIN` unless `PG_BIN_DIR` is explicitly supplied. Checkout preserves the
@@ -118,6 +118,25 @@ operating systems, and failed or interrupted commands. Successful prerequisites
 can retain their receipts when GitHub reruns failed jobs in the same workflow
 run. Governance Admission still requires the runtime family and every other
 selected family.
+
+Run focused checks on the candidate commit while the pull request is in draft.
+For a failed fixture, use its exact arguments and required operating system.
+The published handoff FILES case is selected locally with
+`node tools/perf/verify-standard-handoff-operation-fixtures.mjs files` on
+Windows. Start the complete admission workflow when the candidate is ready for
+merge qualification. An infrastructure failure can resume at the affected job
+and its dependants on the same run after the successful prefix is verified.
+A changed commit needs its own admission evidence.
+
+The required manifest contains 376 commands. The general agentic fixture
+executes published existing open work, existing complete and selected root
+once each in FILES, DUAL and DB-only. The nine isolated duplicates were retired
+from the required manifest. Their original focused selectors remain available
+for diagnosis with `--retain-always`. Use
+`--standard-existing-open-work-mode=<mode>`,
+`--standard-existing-complete-mode=<mode>` or
+`--standard-selected-root-mode=<mode>` with
+`tools/perf/verify-agentic-process-execution-fixtures.mjs`.
 
 Publication runs its own fixture jobs for the exact merged `main` commit after
 validating the publication source. It verifies that run's complete receipts
@@ -7642,9 +7661,8 @@ PASS. The ordered mandatory command manifest remains unchanged.
 
 The actual public before-effect Git recovery case is selected by
 `verify-standard-git-checkpoint-crash-recovery-fixtures.mjs --mode=files --cut=dispatch_reserved --checkpoint-worker-bound-ms=300000 --public-entry-service`.
-The required agentic manifest preserves the original 384 commands and appends
-this case, for a total of 385 mandatory commands. The exact governed list is updated
-with the same addition; no earlier command or order is removed or replaced.
+This case was originally appended as command 385. It remains the last command
+after the nine duplicated isolated invocations were retired.
 Two actual public controllers must retain one accepted blocked/no-effect result
 without Git mutation. A new ordinary action then requires a different intent
 and current grant, exactly one real Git commit, unchanged original capsule and

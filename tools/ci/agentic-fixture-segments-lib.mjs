@@ -3,11 +3,11 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-// Closing ordinals in the required manifest. The completed nominal at 304
-// runs in its own job. The public handoff cases at 373–375 need the Windows
+// Closing ordinals in the required manifest. The completed nominal at 295
+// runs in its own job. The public handoff cases at 364–366 need the Windows
 // resource observer. These divisions impose no deadline on a case.
 export const agenticSegmentEnds = Object.freeze([
-  44, 82, 103, 130, 160, 178, 218, 250, 278, 303, 304, 340, 372, 373, 374, 375, 378, 385,
+  44, 82, 103, 130, 160, 178, 210, 241, 269, 294, 295, 331, 363, 364, 365, 366, 369, 376,
 ]);
 export const agenticWindowsSegments = Object.freeze([14, 15, 16]);
 export const agenticSegmentArtifact = "aidn-agentic-segment-";

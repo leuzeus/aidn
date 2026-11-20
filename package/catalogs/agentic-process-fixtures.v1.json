@@ -1027,51 +1027,6 @@
       "--drift-cycle-published-selection"
     ],
     [
-      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
-      "--standard-existing-open-work-mode=files",
-      "--retain-always"
-    ],
-    [
-      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
-      "--standard-existing-open-work-mode=dual",
-      "--retain-always"
-    ],
-    [
-      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
-      "--standard-existing-open-work-mode=db-only",
-      "--retain-always"
-    ],
-    [
-      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
-      "--standard-existing-complete-mode=files",
-      "--retain-always"
-    ],
-    [
-      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
-      "--standard-existing-complete-mode=dual",
-      "--retain-always"
-    ],
-    [
-      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
-      "--standard-existing-complete-mode=db-only",
-      "--retain-always"
-    ],
-    [
-      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
-      "--standard-selected-root-mode=files",
-      "--retain-always"
-    ],
-    [
-      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
-      "--standard-selected-root-mode=dual",
-      "--retain-always"
-    ],
-    [
-      "tools/perf/verify-agentic-process-execution-fixtures.mjs",
-      "--standard-selected-root-mode=db-only",
-      "--retain-always"
-    ],
-    [
       "tools/perf/verify-standard-pr-review-reply-fixtures.mjs",
       "--case=normal"
     ],

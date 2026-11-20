@@ -17,7 +17,7 @@ export function verifyHostedAgenticReceiptFixtures(repoRoot) {
   assert.deepEqual(segments.flatMap(segment => segment.cases), manifest.cases);
   const windows = segments.filter(segment => segment.platform === "win32");
   const windowsProgram = "tools/perf/verify-standard-handoff-operation-fixtures.mjs";
-  assert.deepEqual(windows.map(({ first, last }) => [first, last]), [[373, 373], [374, 374], [375, 375]]);
+  assert.deepEqual(windows.map(({ first, last }) => [first, last]), [[364, 364], [365, 365], [366, 366]]);
   assert.deepEqual(windows.flatMap(segment => segment.cases), ["files", "dual", "db-only"].map(mode => [windowsProgram, mode]));
 
   const temp = fs.realpathSync.native(os.tmpdir());
