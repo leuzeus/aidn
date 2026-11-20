@@ -76,8 +76,12 @@ Local-only pilot corpus:
 
 Design the required checks for pull requests, merges, and deployments to give
 the developer a verdict they can act on within a few minutes of the trigger.
-Keep exhaustive suites that take hours available on demand for a specific risk.
 During debugging, run the failing scenario directly on the affected platform.
+
+Use a suite that takes hours only for a one-off investigation. Before running
+it, state the question it answers and when the investigation ends. At that
+point, retire the suite and remove any CI trigger for it, including manual
+triggers. Cover recurring risks with focused checks that finish in minutes.
 
 When choosing or changing required checks, compare elapsed time to the verdict
 and total runner minutes across all jobs. Even when runners are free, a slow
