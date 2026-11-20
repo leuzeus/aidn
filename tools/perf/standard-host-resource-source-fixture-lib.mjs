@@ -17,7 +17,8 @@ const flags={snapshot_only:true,complete_resource_closure:false,permits_effects:
 const nativeActivity={protocol:'standard-native-resource-activity.v1',active_runs:0,human_verification_ports:0,...flags};
 const operationActivity={protocol:'standard-operation-resource-activity.v1',current_dispatch_id:null,active_dispatches:[],...flags};
 const activityReaders={observeNativeActivity:()=>({...nativeActivity}),observeOperationActivity:()=>structuredClone(operationActivity)};
-const owned=fs.mkdtempSync(path.join(os.tmpdir(),'aidn-default-resource-source-')),dirs={};
+const fixtureTemp=fs.realpathSync.native(os.tmpdir());
+const owned=fs.mkdtempSync(path.join(fixtureTemp,'aidn-default-resource-source-')),dirs={};
 for(const name of ['project','control','review','native-home','authority']){dirs[name]=path.join(owned,name);fs.mkdirSync(dirs[name]);}
 const git=fs.realpathSync.native(execFileSync(path.join(process.env.SystemRoot,'System32/where.exe'),['git.exe'],{encoding:'utf8',windowsHide:true}).trim().split(/\r?\n/)[0]);
 execFileSync(git,['-C',dirs.project,'-c','init.templateDir=','init','--initial-branch=work'],{windowsHide:true,stdio:'pipe'});
@@ -165,7 +166,7 @@ try{
  assert.equal(providerFresh.result?.complete_resource_closure,true,JSON.stringify(providerSource.inspectLastObservation()));
  check('a fresh provider capture closes after confirmed command termination without replaying UNKNOWN',providerFresh.result.unknown_business_operations.join(',')==='op_'+'1'.repeat(40));
  passed=true;console.log(JSON.stringify({status:'PASS_ACTUAL_DEFAULT_SEVEN_DOMAIN_SOURCE_AND_OWN_PUBLICATION_OWNER',Native:0,actual_provider_requests:0,canonical_inventory:'CONTROLLED_FIXTURE',complete_standard:false}));
-}finally{if(worker&&worker.exitCode===null){worker.stdin.end('stop\n');await workerClosed;}if(passed){const real=fs.realpathSync(owned);assert.equal(path.dirname(real),fs.realpathSync(os.tmpdir()));assert(path.basename(real).startsWith('aidn-default-resource-source-'));assert.equal(removePathWithRetry(real).ok,true);console.log(JSON.stringify({owned_root:real,removed:true}));}}
+}finally{if(worker&&worker.exitCode===null){worker.stdin.end('stop\n');await workerClosed;}if(passed){const real=fs.realpathSync(owned);assert.equal(path.dirname(real),fixtureTemp);assert(path.basename(real).startsWith('aidn-default-resource-source-'));assert.equal(removePathWithRetry(real).ok,true);console.log(JSON.stringify({owned_root:real,removed:true}));}}
 
 return {status:'PASS',checks,actual_OS:'Windows',canonical_inventory:'CONTROLLED_FIXTURE',Native_clients:0,actual_provider_requests:0,complete_standard:false};
 
