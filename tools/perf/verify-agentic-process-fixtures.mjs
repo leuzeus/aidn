@@ -632,6 +632,7 @@ try {
       assert.deepEqual(shutdown, [pending ? "signal" : "eof"]);
     }
   });
+  await check("BPMN model projects validate scoped calls and target pins", () => import("./verify-bpmn-project-fixtures.mjs"));
   await check("ordinary STANDARD returns the retained Native failure after the execution cursor is fenced", async () => {
     await import("./verify-standard-native-failed-return-fixtures.mjs");
   });
