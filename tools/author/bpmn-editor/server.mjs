@@ -4,6 +4,7 @@ import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
+import { standardPropertyCatalog } from "./property-catalog.mjs";
 import { compileBpmnProject } from "../../../src/application/workflow/bpmn-project-service.mjs";
 import { compareBpmnModels, compareStandardBpmnProject } from "../../../src/application/workflow/standard-bpmn-project.mjs";
 import { loadStandardWorkflowAssets } from "../../../src/application/runtime/standard-workflow-composition.mjs";
@@ -52,7 +53,7 @@ async function readBody(req) {
   catch { refuse("BPMN_REQUEST_INVALID", 400); }
 }
 
-export async function serveBpmnEditor(directory, port = 0, baseline) {
+export async function serveBpmnEditor(directory, port = 0, baseline, { catalog } = {}) {
   const dir = await fs.realpath(path.resolve(directory));
   await fs.access(files.get("/modeler.js"));
   const project = await readProject(dir);
@@ -89,6 +90,8 @@ export async function serveBpmnEditor(directory, port = 0, baseline) {
         res.writeHead(200, { "Content-Type": mime[path.extname(file)] });
         return res.end(contents);
       }
+      if (req.method === "GET" && pathname === "/api/catalog")
+        return json(200, catalog ??= standardPropertyCatalog(assets ?? loadStandardWorkflowAssets()));
       if (req.method === "GET" && pathname === "/api/project") {
         const current = await readProject(dir);
         return json(200, { standard, models: current.manifest.models.map(row => ({ file: projectDiagramName(row), id: row.model_id, revision: row.revision })),

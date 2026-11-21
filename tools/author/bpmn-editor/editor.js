@@ -107,4 +107,26 @@ get("reload").onclick = () => action(async () => {
   const hasUnappliedCondition = selectedFlow && get("condition").value !== (selectedFlow.businessObject.conditionExpression?.body ?? "");
   if (discard(hasUnappliedCondition)) await reload();
 });
-action(reload);
+let propertyCatalog;
+function renderCatalog() {
+  const selected = propertyCatalog.operations.find(row => row.ref === get("catalog-operation").value);
+  const list = document.createElement("dl");
+  for (const [title, description] of [
+    ...selected.inputs.map(field => [field.name, "Entrée · " + (field.editable ? "modifiable" : "fixée par le contrat")]),
+    ...selected.outputs.map(field => [field.name, "Sortie · lecture seule"]),
+    ["Implémentation", selected.provenance.implementation_sha256]
+  ]) {
+    const term = document.createElement("dt"), value = document.createElement("dd");
+    term.textContent = title; value.textContent = description; list.append(term, value);
+  }
+  get("catalog-fields").replaceChildren(list);
+}
+async function loadCatalog() {
+  const response = await fetch("/api/catalog");
+  if (!response.ok) throw new Error((await response.json()).error);
+  propertyCatalog = await response.json();
+  options(get("catalog-operation"), propertyCatalog.operations.map(row => [row.ref, row.ref]));
+  if (propertyCatalog.operations.length) renderCatalog();
+}
+get("catalog-operation").onchange = renderCatalog;
+action(async () => { await reload(); await loadCatalog(); });
