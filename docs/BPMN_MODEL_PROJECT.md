@@ -21,3 +21,17 @@ flows carry branch identity and order. Conditions, defaults and message catches
 determine routing. A local call or repetition encloses its child. A pinned call
 uses a BPMN call activity. Task extensions bind activities and typed operations
 using the structured v2 profile. Changing the layout alone preserves model identity.
+
+## Export
+
+`exportBpmnProject(model, definitionsByDiagram)` in
+`src/core/workflow/bpmn-project-export.mjs` returns the manifest and diagram
+strings. Supply each diagram's pinned operation definitions keyed by its file
+name. The exporter emits a BPMNDI plane for the process and each subprocess.
+The published IR remains the comparison baseline for edited candidates.
+
+Use the source authoring command to create a new directory.
+
+```sh
+node tools/author/export-bpmn-project.mjs --model model.json --bindings definitions.json --out my-project
+```
