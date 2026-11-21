@@ -1,5 +1,6 @@
 const $ = id => document.getElementById(id);
 let prepared = null, pending = false, generation = 0;
+let latestRefreshId = 0;
 const json = value => JSON.stringify(value, null, 2);
 const node = (tag, text, className = "") => { const element = document.createElement(tag); element.textContent = text; element.className = className; return element; };
 const details = (title, value) => { const element = document.createElement("details"); element.append(node("summary", title), node("pre", json(value))); return element; };
@@ -53,11 +54,19 @@ function render(output) {
   $("live").append(view.live_run?.status ? runCard(view.live_run.status) : node("p", view.live_run ? "Statut de run indisponible." : "Aucun run demandé en direct.", "empty"));
 }
 $("refresh").onclick = async () => {
+  const refreshId = ++latestRefreshId;
   invalidate(); $("connection-state").textContent = "Lecture…";
   try { const query = {}; for (const [id, key] of [["instance", "instanceId"], ["workflow", "workflowId"], ["configuration", "configuration"], ["run", "run"]]) if ($(id).value.trim()) query[key] = $(id).value.trim();
     if (query.instanceId && $("engine").value) query.engine = $("engine").value;
-    const output = await call("inspect", query); render(output); $("connection-state").textContent = output.errors.length ? "Lecture refusée" : "État consulté · lecture seule";
-  } catch (error) { $("errors").textContent = error.message; $("connection-state").textContent = "Indisponible"; }
+    const output = await call("inspect", query);
+    if (refreshId !== latestRefreshId) return;
+    render(output);
+    $("connection-state").textContent = output.errors.length ? "Lecture refusée" : "État consulté · lecture seule";
+  } catch (error) {
+    if (refreshId !== latestRefreshId) return;
+    $("errors").textContent = error.message;
+    $("connection-state").textContent = "Indisponible";
+  }
 };
 function updateEngineSelector() {
   const engine = $("engine");

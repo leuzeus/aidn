@@ -40,8 +40,9 @@ function snapshot(folder) {
 }
 const put = (file, value) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(value)); };
 let checks = 0;
+const focusedGroups = ["engine-selector", "refresh-order"].filter(group => process.argv.includes(`--${group}-only`));
 async function check(name, action, group) {
-  if (process.argv.includes("--engine-selector-only") && group !== "engine-selector") return;
+  if (focusedGroups.length && !focusedGroups.includes(group)) return;
   await action(); checks++; console.log("PASS " + name);
 }
 
@@ -61,7 +62,7 @@ function loadDashboard(fetch) {
   return { get, html };
 }
 
-async function withAmbiguousDashboard(verify) {
+async function withAmbiguousDashboard(verify, fetchInspection = fetch) {
   const targetRoot = fs.mkdtempSync(path.join(root, "ambiguous-"));
   activateWorkflowConsoleFixture(targetRoot, path.join(root, "package"));
   const model = JSON.parse(fs.readFileSync(path.join(repo, "tests/fixtures/agentic-process/compatible-work-and-review.json")));
@@ -74,12 +75,60 @@ async function withAmbiguousDashboard(verify) {
     const { get, html } = loadDashboard((route, options) => {
       assert.equal(route, "/api/inspect");
       requests.push(JSON.parse(options.body));
-      return fetch(server.url + route, { ...options, headers: { ...options.headers, Origin: server.url } });
+      return fetchInspection(server.url + route, { ...options, headers: { ...options.headers, Origin: server.url } });
     });
     get("token").value = server.token;
     await verify({ get, html, requests });
     assert.equal(snapshot(targetRoot), before);
   } finally { server.close(); }
+}
+
+async function verifyRefreshOrder(failingEngine) {
+  const reply = new Map();
+  function holdInspection(url, options) {
+    const { engine } = JSON.parse(options.body);
+    return new Promise((resolve, reject) => {
+      reply.set(engine, () => {
+        if (engine === failingEngine) reject(new Error("Failed to read " + engine));
+        else resolve(fetch(url, options));
+      });
+    });
+  }
+  await withAmbiguousDashboard(async ({ get }) => {
+    get("instance").value = "same";
+    get("instance").listeners.input();
+    function refresh(engine) {
+      get("engine").value = engine;
+      get("engine").listeners.change();
+      return get("refresh").onclick();
+    }
+    const first = refresh("agentic");
+    const latest = refresh("legacy");
+    reply.get("legacy")();
+    await latest;
+
+    const cards = get("instances");
+    if (failingEngine === "legacy") {
+      assert.equal(get("errors").textContent, "Failed to read legacy");
+      assert.equal(get("connection-state").textContent, "Indisponible");
+      assert.equal(cards.children.length, 0);
+    } else {
+      assert.equal(get("errors").textContent, "");
+      assert.equal(get("connection-state").textContent, "État consulté · lecture seule");
+      assert.equal(cards.children.length, 1);
+      assert(cards.children[0].children.some(child => child.textContent?.includes("reviewed-correction · définition")));
+    }
+    const card = cards.children[0];
+    const raw = get("raw").textContent;
+    const error = get("errors").textContent;
+    const status = get("connection-state").textContent;
+    reply.get("agentic")();
+    await first;
+    assert.equal(get("errors").textContent, error);
+    assert.equal(get("connection-state").textContent, status);
+    assert(cards.children[0] === card, "older refresh changed the displayed card");
+    assert(get("raw").textContent === raw, "older refresh changed the inspection output");
+  }, holdInspection);
 }
 try {
   await check("STANDARD call actions retain exact entry and return through the service", verifyStandardWorkflowCallAction);
@@ -114,6 +163,9 @@ try {
     let invoked = false; const request = { operation: "decide", input: {} }; Object.defineProperty(request, "extra", { enumerable: true, get() { invoked = true; } });
     assert.throws(() => validateWorkflowConsoleRequest(request)); assert.equal(invoked, false);
   });
+  await check("an older successful refresh cannot replace the newer engine card", () => verifyRefreshOrder(null), "refresh-order");
+  await check("an older failed refresh cannot replace a newer successful read", () => verifyRefreshOrder("agentic"), "refresh-order");
+  await check("an older successful refresh cannot clear the newer read error", () => verifyRefreshOrder("legacy"), "refresh-order");
   await check("dashboard selects each engine for the same exact instance ID", () => withAmbiguousDashboard(async ({ get, html, requests }) => {
     const options = html.match(/<select\b[^>]*\bid="engine"[^>]*>([\s\S]*?)<\/select>/)[1];
     assert.deepEqual(Array.from(options.matchAll(/<option value="([^"]*)"/g), match => match[1]), ["", "agentic", "legacy"]);
