@@ -6,8 +6,13 @@ import { execFileSync } from "node:child_process";
 const fail = () => { throw Object.assign(Error("PROCESS_IDENTITY_UNAVAILABLE"), { code: "PROCESS_IDENTITY_UNAVAILABLE" }); };
 // A PID is only a lookup key. Never use PID absence as all-resource closure.
 // Creation identity is observed from this OS, without any authored verifier.
+let ownCreation;
 export function observeLocalProcess(pid) {
   if (!Number.isSafeInteger(pid) || pid <= 0) fail();
+  // A live process cannot change its kernel creation identity or reuse its own
+  // PID. Hostname remains a fresh observation. Every foreign PID is re-read.
+  if (pid === process.pid && ownCreation !== undefined)
+    return { platform: process.platform, host: os.hostname(), pid, creation: ownCreation };
   let creation;
   if (process.platform === "win32") {
     const executable = path.join(process.env.SystemRoot ?? "C:\\Windows", "System32/WindowsPowerShell/v1.0/powershell.exe");
@@ -26,6 +31,7 @@ export function observeLocalProcess(pid) {
       if (!/^[a-f0-9-]{36}:[0-9]+$/.test(creation)) fail();
     } catch (cause) { if (cause.code === "ENOENT") return null; fail(); }
   } else fail();
+  if (pid === process.pid) ownCreation = creation;
   return { platform: process.platform, host: os.hostname(), pid, creation };
 }
 

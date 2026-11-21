@@ -156,3 +156,12 @@ A package maintainer publishes the IR, catalog and workflow-package.v1 resource
 descriptor together. The installed host supplies the verifier. The descriptor
 addresses local data within the package root. Instances retain their original
 model and implementation pins across publication.
+
+A trusted operation provider installs handlers and typed bindings in the host
+registry. The registry publishes a descriptor for each installed binding with
+its provider revision, logical operation revision, binding digest and code
+digest. A model selects the exact binding by ID and digest. Resolution occurs
+before preparation and business dispatch. The host owns the journal, grants,
+effect checks and receipts. The STANDARD provider receives the business ports
+from this same composition. A change to any of its covered code requires a
+reviewed publication of the affected pins.

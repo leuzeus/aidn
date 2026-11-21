@@ -1,3 +1,5 @@
+import { createOperationProviderRegistry } from "../workflow/operation-provider-registry.mjs";
+import { createStandardOperationProvider } from "./standard-operation-provider.mjs";
 import { createStandardDriftRoute } from "./standard-drift-route.mjs";
 import { assertObjectiveReview } from "../../core/workflow/standard-drift-objective-review.mjs";
 import { createStandardSpikeConversion } from "./standard-spike-conversion.mjs";
@@ -10,7 +12,7 @@ import { createStandardPostMergeCompletion, postMergeProjectScope } from "./stan
 import { createStandardPrIncidentEvidence } from "./standard-pr-incident-evidence.mjs";
 import { createStandardPrIncidentTracking } from "./standard-pr-incident-tracking.mjs";
 import { prIncidentRecordOperation, prIncidentResolveOperation } from "../../core/workflow/standard-pr-incident-tracking.mjs";
-import { prIncidentCloseOperation } from "../../core/workflow/standard-pr-incident-close.mjs";
+
 import { createStandardPrIncidentClose } from "./standard-pr-incident-close.mjs";
 import { createStandardHandoffOperation } from "./standard-handoff-operation.mjs";
 import { createStandardHandoffContinuation, createStandardHandoffBeforeEffectContinuation } from "./standard-handoff-continuation.mjs";
@@ -25,17 +27,17 @@ import { postMergeCompleteOperation } from "../../core/workflow/standard-pr-post
 import { createStandardPostMergeDecision } from "./standard-session-pr-post-merge-decision.mjs";
 import { alignedPostMergeSubject, assertPostMergeRecoveryPlan, postMergeDecisionMaxAgeMs, postMergeDecisionOperation,
   postMergeRecoveryOutput, postMergeRecoveryPlanVersion, postMergeRecoveryResult } from "../../core/workflow/standard-pr-post-merge-decision.mjs";
-import { postMergeAlignmentOperation, postMergeFetchOperation, postMergeMeasureOperation } from "../../core/workflow/standard-pr-post-merge-fetch.mjs";
-import { mergeExecuteOperation, postMergeWaitOperation } from "../../core/workflow/standard-pr-merge-execute.mjs";
+import { postMergeFetchOperation } from "../../core/workflow/standard-pr-post-merge-fetch.mjs";
+import { mergeExecuteOperation } from "../../core/workflow/standard-pr-merge-execute.mjs";
 import { createStandardPrMergeConsent } from "./standard-session-pr-merge-consent.mjs";
-import { checksOperation, mergeConsentOperation } from "../../core/workflow/standard-pr-merge-consent.mjs";
+import { mergeConsentOperation } from "../../core/workflow/standard-pr-merge-consent.mjs";
 import { createStandardPrReviewResolution } from "./standard-session-pr-review-resolution.mjs";
 import { resolutionExceptionOperation } from "../../core/workflow/standard-pr-resolution-exception.mjs";
 import { createStandardPrReviewReply } from "./standard-session-pr-review-reply.mjs";
 import { createStandardPrReviewEffectsVerification } from "./standard-session-pr-review-effects.mjs";
 import { createStandardExternalMergeDisposition } from "./standard-session-pr-external-merge.mjs";
 import { createPretriageMergeControl, createPretriageMergeSource } from "./standard-session-pr-pretriage-merge.mjs";
-import { externalMergeControlRef, externalMergeEventKey, externalMergeDisposition, externalMergeObservationVersion } from "../../core/workflow/standard-pr-external-merge.mjs";
+import { externalMergeControlRef, externalMergeEventKey, externalMergeDisposition } from "../../core/workflow/standard-pr-external-merge.mjs";
 import { recoveryCycleSelection, assertRecoveryCycleSubject } from "../../core/workflow/standard-drift-recovery-cycle-selection.mjs";
 import { cycleEntryChoiceOperation } from "../../core/workflow/standard-cycle-entry-choice.mjs";
 import { createStandardCycleEntryChoiceRecord } from "./standard-cycle-entry-choice-record.mjs";
@@ -98,7 +100,7 @@ import { createStandardNativeAllocationReconciliation } from "./standard-native-
 import { createStandardNativeOwnerDisposition } from "./standard-native-owner-disposition.mjs";
 import path from "node:path";
 import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
-import { createStandardWorkflowOperations, standardWorkflowOperationBindings } from "./standard-workflow-operations.mjs";
+import { createStandardWorkflowOperations } from "./standard-workflow-operations.mjs";
 import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.mjs";
 import { createStandardDriftFinalization } from "./standard-drift-finalization.mjs";
 import { createStandardDriftRecovery } from "./standard-drift-recovery.mjs";
@@ -108,8 +110,8 @@ import { createStandardDriftCycle } from "./standard-drift-cycle.mjs";
 import { createStandardCyclePlanRecord } from "./standard-cycle-plan-record.mjs";
 import { createStandardCanonicalPlanAdoption } from "./standard-canonical-plan-adoption.mjs";
 import { createStandardCanonicalCycleResume, createStandardOwnedCanonicalCycleResume } from "./standard-canonical-cycle-resume.mjs";
-import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation, canonicalCycleResumeAdmissionOperations, ownedCanonicalCycleResumeAdmitOperation } from "../../core/workflow/standard-canonical-cycle-resume.mjs";
-import { cyclePlanSourceSelection, cycleExecutionSourceSelectOperation } from "../../core/workflow/standard-cycle-source-selection.mjs";
+import { canonicalCycleResumeAdmissionOperations, ownedCanonicalCycleResumeAdmitOperation } from "../../core/workflow/standard-canonical-cycle-resume.mjs";
+import { cyclePlanSourceSelection } from "../../core/workflow/standard-cycle-source-selection.mjs";
 import { ownedCanonicalResumeEntry } from "../../core/workflow/standard-owned-cycle-resume.mjs";
 import { createStandardCycleImplementation } from "./standard-cycle-implementation.mjs";
 import { createStandardCycleValidation } from "./standard-cycle-validation.mjs";
@@ -964,10 +966,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const ownedResumeAdmission = processAuthority ? createStandardOwnedCanonicalCycleResume({ targetRoot, scope: operations.observeScope,
     readEntry: readAcceptedOwnedEntry, readContext: () => processAuthority.observeCycleVerificationContext(),
     readCurrent: id => current(id).record }) : null;
-  const bindings = new Map(standardWorkflowOperationBindings().map(value => [value.id, value]));
   function assertCurrentBindings() {
     for (const component of processModels(model)) for (const node of component.nodes.filter(node => node.kind === "operation"))
-      if (!bindings.has(node.binding_ref) || component.operation_pins[node.binding_ref] !== shadowHash(bindings.get(node.binding_ref))) fail("STANDARD_HOST_BINDING_CHANGED");
+      providers.resolve(node.binding_ref, component.operation_pins[node.binding_ref]);
   }
   const signer = createOperationJournalSigner(readSigningKey), generation = randomUUID();
   const initialExecution = readWorkflowProjectExecutionAuthority({ targetRoot }), initial = initialExecution.project;
@@ -1061,7 +1062,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         || shadowHash(preview.input) !== shadowHash(preview.prepared.plan.input)) fail("STANDARD_HOST_PREVIEW_INVALID");
     }
     assertStandardResolvedPreview(preview, model);
-    if (shadowHash(bindings.get(preview.binding.id)) !== shadowHash(preview.binding)) fail("STANDARD_HOST_BINDING_CHANGED");
+    providers.resolve(preview.binding.id, shadowHash(preview.binding));
     return preview;
   }
   function retained(id) {
@@ -1529,6 +1530,28 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     return { operation_id: record.operation_id, intent_sha256: shadowHash(record.intent),
       disposition_receipt_sha256: shadowHash(result.receipt) };
   }
+  const providers = createOperationProviderRegistry([createStandardOperationProvider({
+    baselinePromotion, baselinePromotionCheckpoint, baselinePromotionHook, canonicalPlanAdoption,
+    canonicalResumeAdmission, changeRequest, checkpointCompletion, checksMayObserveMerge,
+    closureReview, current, cycleCloseHook, cycleCloseRecord, cycleEntryChoiceActivation,
+    cycleEntryChoiceCheckpoint, cycleEntryChoiceContext, cycleEntryChoiceRecord,
+    cycleEntryFocusCheckpoint, cycleEntrySelectedCheckpoint, cycleEntrySelectedFocus,
+    cycleImplementation, cyclePlanRecord, cycleTaskAdvance, cycleValidation, cycleVerification,
+    decisionInput, driftFinalization, driftRoute, evaluateAudit, evaluateAuditSelection,
+    evaluateValidation, externalDisposition, fail, handoffGitCheckpoint, handoffPreparation,
+    handoffPublication, handoffResourceObservation, mergeObservationInput, now, objectiveCompletion,
+    operations, ownedResumeAdmission, postMerge, postMergeDecision, prCorrectionCheckpoint,
+    prCorrectionCycle, prCorrectionReopen, prCorrectionReview, prIncidentClose, prTriage,
+    predecessorFor, pretriageRoute, processAuthority, promotionReview, recovery, recoveryCycle,
+    recoveryCycleSubject, recoveryDecision, retained, reviewEffects, rollback, selectCompletedClose,
+    selectCyclePlan, sessionBranchIntegration, sessionCloseCheckpoint, sessionCloseHook,
+    sessionCloseRecord, sessionClosureReview, sessionDeliveryCheckpoint, sessionGitCheckpoint,
+    sessionPrAdmission, sessionPrCheckpoint, sessionPrConsent, sessionPrEffects, sessionPrMerge,
+    sessionPrMergeEffect, sessionPrOpen, sessionPrPremerge, sessionPrRecord, sessionPrRedeliveryPush,
+    sessionPrReply, sessionPrResolution, sessionPrReview, sessionPrReviewContent,
+    sessionPrReviewReceiver, sessionPrUpdatePush, sessionPrecloseCheckpoint, sessionPush, snapshot,
+    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent,
+  })]);
   const operationHost = {
     initialize(input) {
       if (input.facts && Object.keys(input.facts).length) fail("STANDARD_HOST_AUTHENTICATED_FACTS_REQUIRED");
@@ -1679,114 +1702,14 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const state = current(instanceId);
       if (state.record.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");
       const occurrence = state.cursor.occurrences.find(row => row.occurrence_id === occurrenceId);
-      const node = occurrence && processFrameNode(model, occurrence), binding = bindings.get(node?.binding_ref);
+      const node = occurrence && processFrameNode(model, occurrence);
+      const operation = node?.kind === "operation" && providers.resolve(node.binding_ref, processFrameModel(model, occurrence).operation_pins[node.binding_ref]);
+      const binding = operation?.binding;
       if (!binding || !(occurrence.status === "READY" || occurrence.status === "WAITING" && ["blocked", "deferred"].includes(occurrence.operation?.receipt?.outcome))) fail("PROCESS_OPERATION_ORDER_INVALID");
       const resolved = resolveStandardProcessInput({ instance: state.record, occurrenceId, input, readOperation: id => retained(id).record });
       input = resolved.input;
       assertStandardOperationInput(binding.id, input);
-      const prepared = binding.id === "baseline_promotion_checkpoint" ? await baselinePromotionCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PROMOTION_CHECKPOINT_AUTHORITY_REQUIRED")
-        : binding.id === "cycle_terminal_checkpoint" ? await terminalCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_TERMINAL_CHECKPOINT_AUTHORITY_REQUIRED")
-        : binding.id === "session_git_checkpoint" ? await sessionGitCheckpoint.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
-        : binding.id === "spike_conversion_admit" ? await spike.admit(state.record, input)
-        : binding.id === "spike_conversion_decision" ? await spike.prepareDecision(state.record, input, { analysisContinuation: binding.output_contract === "standard-spike-decision-output.v2" })
-        : binding.id === "spike_cycle_initialize" ? await spike.prepareInitialize(state.record, input)
-        : binding.id === "spike_conversion_finalize" ? await spike.prepareFinalize(state.record, input)
-        : binding.id === "spike_experiment_admit" ? await spike.experimentAdmission(state.record, input)
-        : binding.id === "spike_experiment_execution_admit" ? await spike.experimentExecutionAdmission(state.record, input)
-        : binding.id === "cycle_plan_select" ? await selectCyclePlan(state.record)
-        : binding.id === cycleExecutionSourceSelectOperation ? await processAuthority?.selectCycleExecutionSource?.(state.record, input) ?? fail("STANDARD_CYCLE_EXECUTION_SOURCE_AUTHORITY_REQUIRED")
-        : binding.id === "cycle_plan_adopt" ? await canonicalPlanAdoption?.(state.record, input) ?? fail("STANDARD_CANONICAL_PLAN_AUTHORITY_UNAVAILABLE")
-        : binding.id === canonicalCycleResumeAdmitOperation ? await canonicalResumeAdmission?.(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CANONICAL_RESUME_AUTHORITY_REQUIRED")
-        : binding.id === ownedCanonicalCycleResumeAdmitOperation ? await ownedResumeAdmission?.(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_OWNED_RESUME_AUTHORITY_REQUIRED")
-        : binding.id === canonicalCycleResumeObserveOperation ? await processAuthority?.observeCanonicalResumeProduct?.(state.record, input) ?? fail("STANDARD_CANONICAL_RESUME_PRODUCT_AUTHORITY_REQUIRED")
-        : binding.id === "mode_work_preflight" ? await processAuthority?.preflightModeWork(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
-        : binding.id === "mode_work_observe" ? await processAuthority?.observeModeWork(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
-        : binding.id === "mode_work_continue_decision" ? await processAuthority?.prepareModeWorkContinuation(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
-        : binding.id === "mode_work_evaluate" ? await processAuthority?.evaluateModeWork(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
-        : binding.id === "drift_followup_select" ? await driftRoute?.select(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
-        : binding.id === "drift_report_evaluate" ? await processAuthority?.evaluateDriftReport(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
-        : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
-        : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
-        : binding.id === "drift_recovery_rollback_apply" ? await rollback?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
-        : binding.id === "session_close_finalize" ? await sessionCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED")
-        : binding.id === "session_pr_checkpoint" ? await sessionPrCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED")
-        : binding.id === "session_pr_redelivery_push" ? await sessionPrRedeliveryPush?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_REDELIVERY_AUTHORITY_REQUIRED")
-        : binding.id === "session_pr_update_push" ? await sessionPrUpdatePush?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED")
-        : binding.id === "session_pr_triage_select" ? await prTriage?.select(state.record, input) ?? fail("STANDARD_PR_TRIAGE_AUTHORITY_REQUIRED")
-        : binding.id === "session_pr_triage_evaluate" ? await prTriage?.evaluate(state.record, input) ?? fail("STANDARD_PR_TRIAGE_AUTHORITY_REQUIRED")
-        : binding.id === "session_pr_correction_cycle_initialize" ? await prCorrectionCycle?.prepare(state.record, input) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
-        : binding.id === "session_pr_correction_decision" ? await prCorrectionReview?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
-        : binding.id === "session_pr_correction_checkpoint" ? await prCorrectionCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
-        : binding.id === "session_pr_correction_reopen" ? await prCorrectionReopen?.prepare(state.record, input) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
-        : binding.id === "session_pr_review_reply_select" ? sessionPrReply.prepareSelection(state.record, input)
-        : binding.id === "session_pr_review_resolution_select" ? sessionPrResolution.prepareSelection(state.record, input)
-        : binding.id === resolutionExceptionOperation ? await sessionPrResolution.prepareException(state.record, input)
-        : binding.id === "handoff_summary_prepare" ? await handoffPreparation.prepareSummary(state.record, input, operationJournalId(state.record, occurrenceId))
-        : binding.id === "handoff_git_checkpoint" ? await handoffGitCheckpoint.prepare(state.record, { summary_operation_id: input.summary_operation_id }, operationJournalId(state.record, occurrenceId))
-        : binding.id === "handoff_prepare" ? await handoffPreparation.prepareCheckpoint(state.record, input, operationJournalId(state.record, occurrenceId))
-        : binding.id === "handoff_admit" ? { can_apply: true }
-        : binding.id === handoffResourceOperation ? handoffResourceObservation.prepare(state.record, input, { signal })
-        : binding.id === handoffPublicationOperation ? await handoffPublication.prepare(state.record, input, occurrenceId, { signal })
-        : binding.id === prIncidentCloseOperation ? await prIncidentClose.prepare(state.record, input)
-        : reviewEffects.has(binding.id) ? await reviewEffects.get(binding.id).prepare(state.record, input, operationJournalId(state.record, occurrenceId))
-        : binding.id === "session_pr_review_effects_verify" ? sessionPrEffects.prepare(state.record, input)
-        : binding.id === "session_pr_premerge_observe" ? sessionPrPremerge.prepare(state.record, input)
-        : [postMergeAlignmentOperation, postMergeMeasureOperation].includes(binding.id) ? postMerge.prepareAlignment(state.record, input)
-        : binding.id === postMergeDecisionOperation ? await postMergeDecision.prepare(state.record, input, predecessorFor(occurrence))
-        : binding.id === postMergeWaitOperation ? { can_apply: true }
-        : binding.id === "session_pr_review_event_route" ? pretriageRoute(state, occurrenceId)
-        : binding.id === "session_pr_merge_basis" ? externalDisposition.prepareBasis(state, input, occurrenceId)
-        : binding.id === externalMergeDisposition ? externalDisposition.prepare(state.record, input, occurrenceId)
-        : binding.id === checksOperation ? (checksMayObserveMerge(input)
-          ? sessionPrPremerge.prepare(state.record, mergeObservationInput(input)) : { can_apply: true })
-        : binding.id === mergeConsentOperation ? await sessionPrConsent.prepare(state.record, input, { legacy: binding.output_contract === "standard-pr-merge-consent-output.v1" })
-        : binding.id === "session_pr_merge_observe" ? sessionPrMerge.prepare(state.record, input)
-        : binding.id === "session_pr_review_receive" ? await sessionPrReviewReceiver?.prepare(state.record, input) ?? fail("STANDARD_PR_RECEIVE_AUTHORITY_REQUIRED")
-        : binding.id === "session_pr_review_content_observe" ? await sessionPrReviewContent?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED")
-        : binding.id === "session_pr_review_observe" ? await sessionPrReview?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED")
-        : binding.id === "session_pr_record" ? await sessionPrRecord?.prepare(state.record, input) ?? fail("STANDARD_PR_RECORD_AUTHORITY_REQUIRED")
-        : binding.id === "session_pr_open" ? await sessionPrOpen?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_PR_OPEN_TRANSPORT_REQUIRED")
-        : binding.id === "session_push" ? await sessionPush?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_PUSH_TRANSPORT_REQUIRED")
-        : binding.id === "session_pr_admit" ? await sessionPrAdmission?.prepare(state.record, input) ?? fail("STANDARD_SESSION_PR_AUTHORITY_REQUIRED")
-        : binding.id === "session_branch_integration_decision" ? await sessionBranchIntegration?.prepareDecision(state.record, input) ?? fail("STANDARD_SESSION_INTEGRATION_AUTHORITY_REQUIRED")
-        : binding.id === "session_branch_integrate" ? await sessionBranchIntegration?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_INTEGRATION_AUTHORITY_REQUIRED")
-        : binding.id === "session_delivery_checkpoint" ? await sessionDeliveryCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_DELIVERY_AUTHORITY_REQUIRED")
-        : binding.id === "session_preclose_checkpoint" ? await sessionPrecloseCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_PRECLOSE_CHECKPOINT_AUTHORITY_REQUIRED")
-        : binding.id === "session_close_checkpoint" ? await sessionCloseCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CHECKPOINT_AUTHORITY_REQUIRED")
-        : binding.id === "session_close_record" ? await sessionCloseRecord?.prepare(state.record, input) ?? fail("STANDARD_SESSION_CLOSE_AUTHORITY_REQUIRED")
-        : binding.id === "session_closure_decision" ? await sessionClosureReview?.prepare(state.record, input) ?? fail("STANDARD_SESSION_CLOSURE_AUTHORITY_REQUIRED")
-        : binding.id === "baseline_promotion_decision" ? await promotionReview?.prepare(state.record, input) ?? fail("STANDARD_PROMOTION_REVIEW_AUTHORITY_REQUIRED")
-        : binding.id === "baseline_promotion_finalize" ? await baselinePromotionHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PROMOTION_HOOK_AUTHORITY_REQUIRED")
-        : binding.id === "baseline_promotion_record" ? await baselinePromotion?.prepare(state.record, input) ?? fail("STANDARD_PROMOTION_AUTHORITY_REQUIRED")
-        : binding.id === "cycle_close_completed_select" ? selectCompletedClose(state.record)
-        : binding.id === "cycle_close_finalize" ? await cycleCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CYCLE_CLOSE_HOOK_AUTHORITY_REQUIRED")
-        : binding.id === "cycle_close_record" ? await cycleCloseRecord?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_CLOSE_AUTHORITY_REQUIRED")
-        : binding.id === "cycle_closure_decision" ? await closureReview?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CLOSURE_AUDIT_AUTHORITY_REQUIRED")
-        : binding.id === "drift_completion_select" ? await driftRoute?.completion(state.record) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
-        : binding.id === "drift_completion_decision" ? await recovery?.prepareRenewal(state.record, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
-        : binding.id === cycleEntryChoiceOperation ? await cycleEntryChoiceContext.prepare(state.record, input)
-        : binding.id === cycleEntryChoiceRecordOperation ? await cycleEntryChoiceRecord.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
-        : binding.id === cycleEntryChoiceCheckpointOperation ? await cycleEntryChoiceCheckpoint.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
-        : binding.id === cycleEntryChoiceActivationOperation ? await cycleEntryChoiceActivation.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
-        : binding.id === cycleEntrySelectedCheckpointOperation ? await cycleEntrySelectedCheckpoint.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
-        : binding.id === cycleEntrySelectedFocusOperation ? await cycleEntrySelectedFocus.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
-        : binding.id === cycleEntryFocusCheckpointOperation ? await cycleEntryFocusCheckpoint.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
-        : binding.id === recoveryCycleSelection ? { can_apply: true, subject: await recoveryCycleSubject(state.record, input) }
-        : binding.id === "drift_recovery_decision" ? await recovery?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
-        : binding.id === "drift_recovery_record" ? await (async () => { const body = { ...await recoveryDecision(state.record, input), prepared_at_ms: now() };
-          return { ...body, can_apply: true, plan_sha256: shadowHash(body) }; })()
-        : binding.id === "drift_check_finalize" ? await driftFinalization?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
-        : binding.id === "session_initialize" ? await operations.prepareSession(input)
-        : binding.id === "session_mode_apply" ? await operations.prepareMode(decisionInput(state.record, input))
-        : binding.id === "session_start_finalize" ? await operations.prepareStart(input, { readObjectiveCompletion: processAuthority ? () => objectiveCompletion.read(state.record) : null })
-        : binding.id === "cycle_context_refresh" ? await operations.prepareCycleContext(input)
-        : binding.id === "cycle_initialize" ? await operations.prepareCycle(input)
-        : binding.id === "cycle_checkpoint_finalize" ? await operations.prepareCycleCheckpoint(input, { readObjectiveCompletion: checkpointCompletion(state.record, input) })
-        : binding.id === "cycle_plan_record" ? await cyclePlanRecord?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_PLAN_AUTHORITY_UNAVAILABLE")
-        : binding.id === "cycle_implementation_enter" ? await cycleImplementation?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_READINESS_AUTHORITY_UNAVAILABLE")
-        : binding.id === "cycle_validation_execute" ? await cycleValidation?.prepare(state.record, input) ?? fail("STANDARD_VALIDATION_AUTHORITY_UNAVAILABLE")
-        : binding.id === "cycle_verification_enter" ? await cycleVerification?.prepare(state.record, input) ?? fail("STANDARD_VERIFICATION_AUTHORITY_UNAVAILABLE")
-        : binding.id === "cycle_task_advance" ? await cycleTaskAdvance?.prepare(state.record, input) ?? fail("STANDARD_TASK_PROGRESS_AUTHORITY_UNAVAILABLE") : null;
+      const prepared = await operation.prepare({ binding, state, occurrenceId, occurrence, input, signal });
       return signer.seal({ contract_version: "standard-operation-preview.v1", instance_id: instanceId, instance_sha256: expectedSha256,
         scope_id: state.record.scope_id, model_sha256: state.record.model_sha256, occurrence_id: occurrenceId, binding,
         input: ["session_initialize", "cycle_initialize"].includes(binding.id) ? prepared?.plan?.input ?? input : input,
@@ -1891,214 +1814,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       try {
         if (current(record.intent.instance_id).record.instance_sha256 !== state.record.instance_sha256)
           throw Object.assign(new Error("STANDARD_HOST_PROCESS_CHANGED"), { code: "STANDARD_HOST_PROCESS_CHANGED", effect_status: "no_effect" });
-        if (record.intent.binding_ref === handoffResourceOperation) output = resourceCapture.output;
-        else if (record.intent.binding_ref === "handoff_summary_prepare" || record.intent.binding_ref === "handoff_prepare") {
-          const apply = record.intent.binding_ref === "handoff_summary_prepare" ? handoffPreparation.applySummary : handoffPreparation.applyCheckpoint;
-          output = await apply(state.record, record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256, signal,
-            assertAuthorized: () => verifyGrant(record, signal), assertCurrent: () => { if (current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256) fail("STANDARD_HANDOFF_PREPARATION_PROCESS_CHANGED"); } });
-        }
-        else if (record.intent.binding_ref === "handoff_git_checkpoint") output = await handoffGitCheckpoint.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
-        else if (record.intent.binding_ref === "handoff_admit") output = await handoffPreparation.inspectAdmission(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "context_reload") output = await operations.reload(record.preview.input);
-        else if (record.intent.binding_ref === "session_admit") output = await operations.admitSession(record.preview.input);
-        else if (record.intent.binding_ref === "session_entry_admit") output = await operations.admitSessionEntry(record.preview.input);
-        else if (record.intent.binding_ref === "cycle_entry_observe") output = await operations.observeCycleEntry(record.preview.input);
-        else if (record.intent.binding_ref === "cycle_entry_admit") output = await operations.admitCycleEntry(record.preview.input);
-        else if (record.intent.binding_ref === cycleEntryChoiceRecordOperation) output = await cycleEntryChoiceRecord.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
-        else if (record.intent.binding_ref === cycleEntryChoiceCheckpointOperation) output = await cycleEntryChoiceCheckpoint.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
-        else if (record.intent.binding_ref === cycleEntryChoiceActivationOperation) output = await cycleEntryChoiceActivation.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
-        else if (record.intent.binding_ref === cycleEntrySelectedCheckpointOperation) output = await cycleEntrySelectedCheckpoint.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
-        else if (record.intent.binding_ref === cycleEntrySelectedFocusOperation) output = await cycleEntrySelectedFocus.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
-        else if (record.intent.binding_ref === cycleEntryFocusCheckpointOperation) output = await cycleEntryFocusCheckpoint.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal) });
-        else if (record.intent.binding_ref === "session_close_admit") output = await operations.admitSessionClose(record.preview.input);
-        else if (record.intent.binding_ref === "session_close_record") output = await sessionCloseRecord.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "session_pr_checkpoint") output = await sessionPrCheckpoint.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "session_pr_redelivery_push") output = await sessionPrRedeliveryPush.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "session_pr_update_push") output = await sessionPrUpdatePush.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "session_pr_record") output = await sessionPrRecord.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "session_pr_open") output = await sessionPrOpen.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "session_push") output = await sessionPush.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "session_pr_admit") output = await sessionPrAdmission.observe(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "session_pr_triage_select") output = await prTriage.select(state.record, record.preview.input, { signal });
-        else if (record.intent.binding_ref === "session_pr_triage_evaluate") output = await prTriage.evaluate(state.record, record.preview.input, { signal });
-        else if (record.intent.binding_ref === "session_pr_correction_cycle_initialize") output = await prCorrectionCycle.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal), signal });
-        else if (record.intent.binding_ref === "session_pr_correction_checkpoint") output = await prCorrectionCheckpoint.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record), signal });
-        else if (record.intent.binding_ref === "session_pr_correction_reopen") output = await prCorrectionReopen.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal), signal });
-        else if (record.intent.binding_ref === "session_pr_review_reply_select") output = await sessionPrReply.select(state.record, record.preview.input,
-          record.preview.prepared, { signal });
-        else if (record.intent.binding_ref === "session_pr_review_resolution_select") output = await sessionPrResolution.select(state.record, record.preview.input,
-          record.preview.prepared, { signal });
-        else if (record.intent.binding_ref === handoffPublicationOperation) output = await handoffPublication.apply(state.record, record.preview.input, record.preview.prepared,
-          { operationId: id, signal, assertAuthorized: () => verifyGrant(record, signal), assertAuthorizedCurrent: () => verifyGrantCurrent(record, signal) });
-        else if (record.intent.binding_ref === prIncidentCloseOperation) output = await prIncidentClose.apply(state.record, record.preview.input,
-          record.preview.prepared, { operationId: id, assertAuthorized: async () => {
-            await verifyGrant(record, signal);
-            if (current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256
-              || shadowHash(retained(id).record) !== shadowHash(claimed))
-              throw Object.assign(Error("STANDARD_PR_INCIDENT_CLOSE_OWNER_CHANGED"), { code: "STANDARD_PR_INCIDENT_CLOSE_OWNER_CHANGED", effect_status: "no_effect" });
-          } });
-        else if (reviewEffects.has(record.intent.binding_ref)) output = await reviewEffects.get(record.intent.binding_ref).apply(state.record, record.preview.input,
-          record.preview.prepared, { signal, operationId: id, assertAuthorized: async () => {
-            await verifyGrant(record, signal);
-            if (current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256
-              || shadowHash(retained(id).record) !== shadowHash(claimed)
-              || shadowHash(snapshot()) !== shadowHash(record.preview.snapshot))
-              throw Object.assign(Error("STANDARD_PR_REVIEW_EFFECT_OWNER_CHANGED"), { code: "STANDARD_PR_REVIEW_EFFECT_OWNER_CHANGED", effect_status: "no_effect" });
-          } });
-        else if (record.intent.binding_ref === "session_pr_review_effects_verify") output = await sessionPrEffects.observe(state.record, record.preview.input,
-          { signal, sourceSha256: record.preview.prepared.source_sha256, outputContract: record.preview.binding.output_contract });
-        else if (record.intent.binding_ref === "session_pr_review_event_route") {
-          const selected = pretriageRoute(state, record.intent.occurrence_id);
-          if (shadowHash(selected) !== shadowHash(record.preview.prepared)) fail("STANDARD_PR_REVIEW_WAIT_CHANGED");
-          output = { contract_version: "standard-pr-review-event-route-output.v1", operation_ref: record.intent.binding_ref,
-            outcome: "completed", effect_status: "no_effect", facts: { session_pr_pretriage_external: selected.external },
-            observations: {}, evidence_refs: [] };
-        }
-        else if (record.intent.binding_ref === "session_pr_merge_basis") {
-          const selected = externalDisposition.prepareBasis(state, record.preview.input, record.intent.occurrence_id);
-          if (shadowHash(selected) !== shadowHash(record.preview.prepared)) fail("STANDARD_PR_MERGE_BASIS_CHANGED");
-          output = { contract_version: "standard-pr-merge-basis-output.v2", operation_ref: "session_pr_merge_basis",
-            outcome: "completed", effect_status: "no_effect", facts: { session_pr_incident_tracking_required: selected.incident_tracking_required }, evidence_refs: [],
-            observations: { merge_operation_id: selected.merge_operation_id } };
-        }
-        else if (record.intent.binding_ref === "session_pr_premerge_observe") output = await sessionPrPremerge.observe(state.record, record.preview.input,
-          { signal, sourceSha256: record.preview.prepared.source_sha256,
-            externalOperation: record.preview.input.contract_version === "standard-session-pr-merge-observe-input.v2"
-              ? record.intent.binding_ref : undefined });
-        else if (record.intent.binding_ref === checksOperation) {
-          const input = record.preview.input;
-          const observed = checksMayObserveMerge(input) ? await sessionPrPremerge.observe(state.record, mergeObservationInput(input),
-            { signal, sourceSha256: record.preview.prepared.source_sha256, externalOperation: checksOperation }) : null;
-          if (observed?.contract_version === externalMergeObservationVersion) output = observed;
-          else if (observed && observed.outcome !== "completed") output = assertStandardOperationOutput({
-            contract_version: "standard-pr-checks-accept-output.v1", operation_ref: checksOperation,
-            outcome: observed.outcome, effect_status: "no_effect", facts: {}, evidence_refs: [],
-            observations: { reason_code: observed.observations.reason_code },
-          });
-          else output = await sessionPrConsent.acceptChecks(state.record, input, signal);
-        }
-        else if ([postMergeAlignmentOperation, postMergeMeasureOperation].includes(record.intent.binding_ref)) output = await postMerge.observeAlignment(
-          state.record, record.preview.input, record.preview.prepared, { signal, operation: record.intent.binding_ref });
-        else if (record.intent.binding_ref === postMergeWaitOperation) output = sessionPrMergeEffect.waitForSync(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "session_pr_merge_observe") output = await sessionPrMerge.observe(state.record, record.preview.input,
-          { signal, sourceSha256: record.preview.prepared.source_sha256 });
-        else if (record.intent.binding_ref === "session_pr_review_receive") output = await sessionPrReviewReceiver.observe(state.record, record.preview.input, { signal });
-        else if (record.intent.binding_ref === "session_pr_review_content_observe") output = await sessionPrReviewContent.observe(state.record, record.preview.input, { signal });
-        else if (record.intent.binding_ref === "session_pr_review_observe") output = await sessionPrReview.observe(state.record, record.preview.input, { signal });
-        else if (record.intent.binding_ref === "session_branch_integrate") output = await sessionBranchIntegration.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "session_delivery_checkpoint") output = await sessionDeliveryCheckpoint.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "session_preclose_checkpoint") output = await sessionPrecloseCheckpoint.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "session_close_checkpoint") output = await sessionCloseCheckpoint.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "session_close_finalize") output = await sessionCloseHook.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "cycle_admit") output = await operations.admitCycle(record.preview.input);
-        else if (record.intent.binding_ref === "branch_cycle_audit") output = await operations.auditCycle(record.preview.input);
-        else if (record.intent.binding_ref === "drift_completion_select") output = await driftRoute?.completion(state.record) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");
-        else if (record.intent.binding_ref === "cycle_close_completed_select") output = selectCompletedClose(state.record);
-        else if (record.intent.binding_ref === "drift_followup_select") output = await driftRoute?.select(state.record, record.preview.input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");
-        else if (record.intent.binding_ref === "drift_report_evaluate") output = await processAuthority?.evaluateDriftReport(state.record, record.preview.input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");
-        else if (record.intent.binding_ref === "cycle_prework_select") output = await processAuthority?.selectCyclePrework(state.record, record.preview.input) ?? fail("STANDARD_PREWORK_AUTHORITY_UNAVAILABLE");
-        else if (record.intent.binding_ref === "cycle_prework_evaluate") output = await processAuthority?.evaluateCyclePrework(state.record, record.preview.input) ?? fail("STANDARD_PREWORK_AUTHORITY_UNAVAILABLE");
-        else if (record.intent.binding_ref === "cycle_plan_evaluate") output = await processAuthority?.evaluateCyclePlan(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_PLAN_AUTHORITY_UNAVAILABLE");
-        else if (record.intent.binding_ref === "cycle_readiness_evaluate") output = await processAuthority?.evaluateCycleReadiness(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_READINESS_AUTHORITY_UNAVAILABLE");
-        else if (record.intent.binding_ref === "cycle_work_evaluate") output = await processAuthority?.evaluateCycleWork(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_WORK_AUTHORITY_UNAVAILABLE");
-        else if (record.intent.binding_ref === "cycle_validation_evaluate") output = (await evaluateValidation(state.record, record.preview.input)).output;
-        else if (record.intent.binding_ref === "cycle_audit_evaluate") output = await evaluateAudit(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "spike_conversion_admit") output = await spike.admit(state.record, record.preview.input, { analysisContinuation: record.preview.binding.revision >= 2 });
-        else if (record.intent.binding_ref === "spike_conversion_select") output = await spike.selectConversion(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "spike_experiment_admit") output = await spike.experimentAdmission(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "spike_experiment_execution_admit") output = await spike.experimentExecutionAdmission(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "cycle_plan_select") output = await selectCyclePlan(state.record);
-        else if (record.intent.binding_ref === cycleExecutionSourceSelectOperation) output = await processAuthority?.selectCycleExecutionSource?.(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_EXECUTION_SOURCE_AUTHORITY_REQUIRED");
-        else if (record.intent.binding_ref === "cycle_plan_adopt") output = await canonicalPlanAdoption?.(state.record, record.preview.input) ?? fail("STANDARD_CANONICAL_PLAN_AUTHORITY_UNAVAILABLE");
-        else if (record.intent.binding_ref === canonicalCycleResumeAdmitOperation) output = await canonicalResumeAdmission?.(state.record, record.preview.input, record.operation_id) ?? fail("STANDARD_CANONICAL_RESUME_AUTHORITY_REQUIRED");
-        else if (record.intent.binding_ref === ownedCanonicalCycleResumeAdmitOperation) output = await ownedResumeAdmission?.(state.record, record.preview.input, record.operation_id) ?? fail("STANDARD_OWNED_RESUME_AUTHORITY_REQUIRED");
-        else if (record.intent.binding_ref === canonicalCycleResumeObserveOperation) output = await processAuthority?.observeCanonicalResumeProduct?.(state.record, record.preview.input) ?? fail("STANDARD_CANONICAL_RESUME_PRODUCT_AUTHORITY_REQUIRED");
-        else if (record.intent.binding_ref === "spike_cycle_initialize") output = await spike.initialize(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "spike_conversion_finalize") output = await spike.finalize(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "mode_work_preflight") output = await processAuthority.preflightModeWork(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "mode_work_observe") output = await processAuthority.observeModeWork(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "mode_work_evaluate") output = await processAuthority.evaluateModeWork(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "cycle_audit_select") output = await evaluateAuditSelection(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "cycle_task_select") output = await processAuthority.evaluateCycleTaskSelection(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "cycle_task_work_evaluate") output = await processAuthority.evaluateCycleTaskWork(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "drift_change_request_record") output = await changeRequest.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (!record.preview.prepared?.can_apply) output = { contract_version: record.preview.binding.output_contract, operation_ref: record.intent.binding_ref,
-          outcome: "blocked", effect_status: "no_effect", facts: {}, observations: record.preview.prepared ?? {}, evidence_refs: [] };
-        else if (["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(record.intent.binding_ref)) output = await recoveryCycle.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "drift_recovery_rollback_apply") output = await rollback.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "drift_check_finalize") output = await driftFinalization.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "drift_recovery_record") {
-          try {
-            const selected = await recoveryDecision(state.record, record.preview.input);
-            if (shadowHash(selected.review) !== shadowHash(record.preview.prepared.review) || selected.choice !== record.preview.prepared.choice) fail("STANDARD_RECOVERY_DECISION_CHANGED");
-          } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
-          output = await recovery.apply(state.record, record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        }
-        else if (record.intent.binding_ref === "session_initialize") output = await operations.initializeSession(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
-        else if (record.intent.binding_ref === "session_mode_apply") {
-          if (shadowHash(decisionInput(state.record, record.preview.input)) !== shadowHash(record.preview.prepared.plan.input)) fail("STANDARD_MODE_DECISION_CHANGED");
-          output = await operations.applyMode(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
-        } else if (record.intent.binding_ref === "baseline_promotion_checkpoint") output = await baselinePromotionCheckpoint.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "cycle_terminal_checkpoint") output = await terminalCheckpoint.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "session_git_checkpoint") output = await sessionGitCheckpoint.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "cycle_context_refresh") output = await operations.refreshCycleContext(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
-        else if (record.intent.binding_ref === "cycle_initialize") output = await operations.initializeCycle(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
-        else if (record.intent.binding_ref === "baseline_promotion_finalize") output = await baselinePromotionHook.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "baseline_promotion_record") output = await baselinePromotion.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "cycle_close_finalize") output = await cycleCloseHook.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "cycle_close_record") output = await cycleCloseRecord.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "cycle_plan_record") output = await cyclePlanRecord.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "cycle_implementation_enter") output = await cycleImplementation.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "cycle_validation_execute") output = await cycleValidation.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "cycle_verification_enter") output = await cycleVerification.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "cycle_task_advance") output = await cycleTaskAdvance.apply(state.record, record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
-        else if (record.intent.binding_ref === "cycle_checkpoint_finalize") output = await operations.finalizeCycleCheckpoint(record.preview.prepared,
-          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record),
-            readObjectiveCompletion: checkpointCompletion(state.record, record.preview.input),
-            assertCurrent: () => { if (current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256) fail("STANDARD_CYCLE_CHECKPOINT_PROCESS_CHANGED"); } });
-        else output = await operations.finalizeStart(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256,
-          readObjectiveCompletion: processAuthority ? () => objectiveCompletion.read(state.record) : null, assertAuthorized: () => verifyGrant(record),
-          assertCurrent: () => { if (current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256) fail("STANDARD_START_PROCESS_CHANGED"); } });
+        output = await providers.resolve(record.intent.binding_ref, record.intent.binding_sha256)
+          .dispatch({ record, state, resourceCapture, claimed, id, signal });
         if (record.preview.binding.effect_class === "read-only" && shadowHash(snapshot()) !== shadowHash(record.preview.snapshot))
           throw Object.assign(new Error("STANDARD_HOST_PRECONDITIONS_CHANGED"), { effect_status: "no_effect" });
       } catch (cause) {
