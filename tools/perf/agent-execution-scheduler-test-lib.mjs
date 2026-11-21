@@ -15,15 +15,42 @@ export const fixtureEvidence = { ref: "evidence/supervision.json", sha256: sha("
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 export const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+function schedulerGitExecutable(options) {
+  if (process.platform !== "win32") return "git";
+  const run = (executable, args) => spawnSync(executable, args, options);
+  function directoryOf(executable) {
+    const location = run(executable, ["--exec-path"]);
+    if (location.status !== 0 || !path.isAbsolute(location.stdout.trim())) return null;
+    return fs.realpathSync.native(location.stdout.trim());
+  }
+  try {
+    const directory = directoryOf("git");
+    if (!directory) return "git";
+    const candidate = path.join(directory, "git.exe");
+    if (!fs.statSync(candidate).isFile()) return "git";
+    const original = run("git", ["version", "--build-options"]);
+    const direct = run(candidate, ["version", "--build-options"]);
+    if (original.status === 0 && original.stdout.split("\n")[0].includes(".windows.")
+      && direct.status === 0 && direct.stdout === original.stdout && directoryOf(candidate) === directory) return candidate;
+  } catch (error) {
+    // This optional binary may be missing, inaccessible or removed mid-probe.
+    if (!error.code) throw error;
+  }
+  return "git";
+}
+
 export function createSchedulerFixture({ realGit = false, concurrency = 2, tasks = null, verification = null, plan: suppliedPlan = null, failure = {}, clock, barrier = realGit, runId = "run.fixture" } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-scheduler-")), token = randomUUID();
   fs.writeFileSync(path.join(root, "owner"), token, { flag: "wx" });
   const repositoryRoot = path.join(root, "repository"), resourcesRoot = path.join(root, "resources");
   const processes = new Set(), children = [], operations = [], evidence = new Map();
   let baseSha = "1".repeat(40), serial = 0, live = 0, maxLive = 0;
-  function gitCommand(args) {
-    const result = spawnSync("git", ["-C", repositoryRoot, ...args], { encoding: "utf8", windowsHide: true, timeout: 10000,
-      env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null" } });
+  const gitOptions = { cwd: root, encoding: "utf8", windowsHide: true, timeout: 10000,
+    env: { ...Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^GIT_/i.test(name))),
+      GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null" } };
+  const gitExecutable = realGit ? schedulerGitExecutable(gitOptions) : "git";
+  function gitCommand(args, executable = gitExecutable) {
+    const result = spawnSync(executable, ["-C", repositoryRoot, ...args], gitOptions);
     if (result.status !== 0) throw new Error(`FIXTURE_GIT_FAILED:${result.stderr.slice(0, 400)}`);
     return result.stdout.trim();
   }
@@ -34,6 +61,11 @@ export function createSchedulerFixture({ realGit = false, concurrency = 2, tasks
     gitCommand(["add", "seed.txt"]);
     gitCommand(["-c", "user.name=AIDN fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "fixture base"]);
     baseSha = gitCommand(["rev-parse", "HEAD"]);
+    if (gitExecutable !== "git") {
+      const refs = ["rev-parse", "--path-format=absolute", "--git-common-dir", "--show-object-format", "--verify", "--end-of-options", "HEAD^{commit}"];
+      if (gitCommand(refs, "git") !== gitCommand(refs)
+        || gitCommand(["symbolic-ref", "HEAD"], "git") !== gitCommand(["symbolic-ref", "HEAD"])) fail("FIXTURE_GIT_IDENTITY_MISMATCH");
+    }
   }
   const taskSpecs = tasks ?? [
     { task_id: "a", depends_on: [] }, { task_id: "b", depends_on: [] }, { task_id: "c", depends_on: ["a", "b"] },
@@ -171,7 +203,7 @@ export function createSchedulerFixture({ realGit = false, concurrency = 2, tasks
       gitHead = prepared.result_sha; return { status, observed_sha: gitHead, evidence: [fixtureEvidence] }; },
     async inspectIntegration() { return { repository_identity_sha256: repositoryIdentity, ref, head_sha: gitHead }; },
   };
-  const git = realGit ? createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, integrationRef: ref,
+  const git = realGit ? createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, integrationRef: ref, gitExecutable,
     verifyTermination: async ({ binding, termination }) => ({ confirmed: termination?.confirmed === true, attempt_id: binding.attempt_id }) }) : fakeGit;
   const waiting = [];
   async function nativeFixtureWork(request, callbacks, signal) {
@@ -247,5 +279,5 @@ export function createSchedulerFixture({ realGit = false, concurrency = 2, tasks
     if (path.dirname(resolved) !== temp || !path.basename(resolved).startsWith("aidn-scheduler-") || fs.readFileSync(path.join(root, "owner"), "utf8") !== token) fail("FIXTURE_CLEANUP_REFUSED");
     fs.rmSync(resolved, { recursive: true }); if (fs.existsSync(resolved)) fail("FIXTURE_CLEANUP_FAILED");
   }
-  return { root, state, store, git, fakeGit, plan, options, callbacks, operations, children, create, cleanup, evidence, gitCommand, get maxLive() { return maxLive; } };
+  return { root, state, store, git, fakeGit, plan, options, callbacks, operations, children, create, cleanup, evidence, gitCommand, gitExecutable, get maxLive() { return maxLive; } };
 }
