@@ -10,6 +10,7 @@ import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import { createAgenticProcessService } from "../../src/application/runtime/agentic-process-service.mjs";
+import { compileBpmnProcess } from "../../src/application/workflow/bpmn-process-service.mjs";
 import { createAgenticProcessStore } from "../../src/adapters/runtime/agentic-process-store.mjs";
 import { createArtifactStore } from "../../src/adapters/runtime/artifact-store.mjs";
 import { evaluateAgentReuse, fingerprintAgentReuse } from "../../src/core/agents/agent-reuse-policy.mjs";
@@ -232,6 +233,17 @@ try {
     assert.equal(inspectAgenticProcess(accepted).occurrences.find(row => row.occurrence_id === inspectAgenticProcess(accepted).ready[0]).node_id, "review-yes");
     const simulation = simulateAgenticProcess({ instanceId: "fixture", model: eventModel(), policyPins: {}, scopeId: "scope-1", events: accepted.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, accepted.instance_sha256);
+  });
+  await check("default BPMN compilation routes a bound delivery to the approved XML task", () => {
+    const xml = fs.readFileSync(new URL("../../tests/fixtures/agentic-process/extended-delivery.bpmn", import.meta.url), "utf8");
+    const { roles, policies } = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agentic-process/compatible-work-and-review.json", import.meta.url)));
+    const compiled = compileBpmnProcess({ xml, modelId: "delivery", revision: 1, participantId: "delivery", roles, policies, processRef: "ExtendedDelivery" });
+    const state = initial(compiled.model), value = delivery(state);
+    assert.throws(() => advanceAgenticProcess(state, { event_id: "raw", kind: "message", occurrence_id: value.occurrence_id,
+      correlation_id: value.correlation_id, event_key: value.event_key }), /PROCESS_AUTHENTICATED_CONTROL_REQUIRED/);
+    const cursor = inspectAgenticProcess(control(state, value));
+    const approved = compiled.source_map.find(row => row.bpmn_id === "ApprovedWork").ir_node_id;
+    assert.deepEqual(cursor.occurrences.filter(row => cursor.ready.includes(row.occurrence_id)).map(row => row.node_id), [approved]);
   });
   await check("a provider event cannot authorize two different waiting occurrences", () => {
     const m = model({ id: "sequence", kind: "sequence", participant_ref: "project", children: ["first", "second"] },

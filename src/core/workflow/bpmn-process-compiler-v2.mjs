@@ -18,7 +18,8 @@ export function compileExtendedBpmnProcessTree(input) {
   if (checkShadowJson(input)) fail("BPMN_BINDINGS_INVALID");
   const { root, sourceSha256, modelId, revision, participantId, roles, policies, processRef } = input;
   if (!root || root.uri !== BPMN_NS || root.name !== "definitions") fail("BPMN_DEFINITIONS_REQUIRED");
-  const typed = input.targetModel === "agentic-process-model.v2";
+  const { targetModel = "agentic-process-model.v2" } = input;
+  const typed = targetModel === "agentic-process-model.v2";
   const pins = typed ? indexBpmnOperationBindings(input.operationBindings) : null;
   const semantic = structuredClone(root);
   semantic.children = semantic.children.filter(c => !(c.uri === "http://www.omg.org/spec/BPMN/20100524/DI" && c.name === "BPMNDiagram"));
@@ -183,7 +184,7 @@ export function compileExtendedBpmnProcessTree(input) {
       sourceMap.push({ bpmn_id: catchId, ir_node_id: node.id });
     }
     if (typed) {
-      model.contract_version = input.targetModel;
+      model.contract_version = targetModel;
       model.operation_pins = Object.fromEntries(model.nodes.filter(n => n.kind === "operation").map(n => [n.binding_ref, pins.get(n.binding_ref)]));
       if (processKey === selected && Object.hasOwn(input, "dataBindings"))
         model.data_bindings = compileBpmnDataBindings(input.dataBindings, sourceMap, model.nodes);
