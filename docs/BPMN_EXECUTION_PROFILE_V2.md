@@ -20,7 +20,9 @@ exact XML ID. In a single-process document it can be omitted. It is unavailable
 in v1. Unknown profiles and invalid selectors refuse.
 
 The closed `bpmn-process-compilation.v1` envelope accepts either profile; its
-shape is unchanged. Both produce `agentic-process-model.v1` and use the same
+shape is unchanged. By default both produce `agentic-process-model.v1`. With the v2 XML profile,
+`targetModel: "agentic-process-model.v2"` selects the typed model and the
+`bpmn-process-compilation.v2` envelope. Both versions use the same
 reducer, simulation, policy pins and trusted execution authorities. V1's original
 model hash and source map are pinned by a compatibility fixture. Existing
 instances are not reinterpreted. Selecting the normal agentic engine does not
