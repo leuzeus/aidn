@@ -1,4 +1,6 @@
 import { compileBpmnProject } from "./bpmn-project-service.mjs";
+import { editorCompileOptions } from "./workflow-property-catalog.mjs";
+import { assertOperationReliability, noOperationReliability } from "../../core/workflow/operation-reliability.mjs";
 import { exportBpmnProject } from "../../core/workflow/bpmn-project-export.mjs";
 import { projectDiagramName, projectProcessId } from "../../core/workflow/bpmn-project-diagram.mjs";
 import { processId } from "../../core/workflow/agentic-process-model.mjs";
@@ -19,8 +21,9 @@ export function createWorkflowProject({ id }) {
   return exportBpmnProject(emptyModel(id));
 }
 
-export function duplicateWorkflowProject(project, id) {
-  compileBpmnProject(project);
+export function duplicateWorkflowProject(project, id, catalog) {
+  const options = editorCompileOptions(catalog);
+  compileBpmnProject(project, options);
   if (!safeId(id) || project.manifest.models.some(row => row.model_id === id)) fail("WORKFLOW_AUTHOR_ID_INVALID", id);
   const result = structuredClone(project);
   delete result.manifest.catalog_sha256;
@@ -31,7 +34,7 @@ export function duplicateWorkflowProject(project, id) {
   const xml = result.diagrams[oldFile].replaceAll('"' + before + '"', '"' + after + '"');
   delete result.diagrams[oldFile];
   result.diagrams[projectDiagramName(root)] = xml;
-  compileBpmnProject(result);
+  compileBpmnProject(result, options);
   return result;
 }
 
@@ -82,7 +85,8 @@ function mapping(model, id, fields) {
 }
 
 export function updateWorkflowProject(project, edit, catalog) {
-  const originalRoot = compileBpmnProject(project).model;
+  const options = editorCompileOptions(catalog);
+  const originalRoot = compileBpmnProject(project, options).model;
   const originalModels = new Map(processModels(originalRoot).map(m => [projectDiagramName(m), m]));
   const root = structuredClone(originalRoot);
   const models = processModels(root), targetModel = edit.model_id ?? root.model_id;
@@ -109,6 +113,11 @@ export function updateWorkflowProject(project, edit, catalog) {
     const op = catalog.operations.find(row => row.ref === ref);
     if (!op) fail("WORKFLOW_AUTHOR_OPERATION_UNKNOWN", edit.evaluator_ref ?? ref);
     node = { ...node, kind: "operation", binding_ref: op.binding.id };
+    const reliability = Object.hasOwn(edit, "reliability") ? edit.reliability : existing?.reliability;
+    if (reliability != null) {
+      assertOperationReliability(reliability, op.reliability ?? noOperationReliability);
+      node.reliability = structuredClone(reliability);
+    }
     const file = projectDiagramName(model);
     const listed = definitions.get(file) ?? [];
     const prior = listed.find(row => row.id === op.binding.id);
@@ -193,6 +202,6 @@ export function updateWorkflowProject(project, edit, catalog) {
     result.diagrams[name] = shadowHash(diagramSemantics(originalModels.get(name))) === shadowHash(diagramSemantics(updated)) ?
       before : carryLayout(before, result.diagrams[name]);
   }
-  compileBpmnProject(result);
+  compileBpmnProject(result, options);
   return result;
 }

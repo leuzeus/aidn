@@ -1,5 +1,6 @@
 import { createWorkflowProject, updateWorkflowProject } from "./workflow-project-edit.mjs";
 import { compileBpmnProject } from "./bpmn-project-service.mjs";
+import { editorCompileOptions } from "./workflow-property-catalog.mjs";
 import { checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 
 function invalid() {
@@ -29,6 +30,6 @@ export function buildWorkflowProject(definition, catalog) {
     }
   }
   append(definition.steps, "root", definition.id);
-  compileBpmnProject(project);
+  compileBpmnProject(project, editorCompileOptions(catalog));
   return project;
 }

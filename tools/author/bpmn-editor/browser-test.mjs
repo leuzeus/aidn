@@ -181,6 +181,34 @@ try {
   assert.deepEqual(committed.manifest, candidate.manifest);
   assert.deepEqual(committed.diagrams, candidate.diagrams);
   console.log("PASS creating, mapping, evaluating, routing, calling, saving and duplicating an authored workflow; a competing save refuses");
+  await page.reload();
+  await page.waitForFunction(() => !document.querySelector("#compare").disabled);
+  await page.getByText("Éditer les étapes", { exact: true }).click();
+  await page.locator("#step-id").fill("reload_context");
+  await page.locator("#step-id").press("Tab");
+  await page.locator("#step-operation").selectOption("context_reload@1");
+  await page.locator("#step-retries").fill("2"); await page.locator("#step-timeout").fill("500");
+  const editResponse = page.waitForResponse(r => r.url().includes("/api/edit?"));
+  await page.getByRole("button", { name: "Appliquer à l’étape" }).click();
+  assert.equal((await editResponse).status(), 200);
+  const saveResponse = page.waitForResponse(r => r.url().includes("/api/save?"));
+  await page.locator("#save").click(); assert.equal((await saveResponse).status(), 200);
+  await page.reload();
+  await page.waitForFunction(() => !document.querySelector("#compare").disabled);
+  await page.getByText("Éditer les étapes", { exact: true }).click();
+  await page.locator("#step-id").fill("reload_context"); await page.locator("#step-id").press("Tab");
+  assert.equal(await page.locator("#step-retries").inputValue(), "2"); assert.equal(await page.locator("#step-timeout").inputValue(), "500");
+  await page.locator("#step-operation").selectOption("cycle_validation_evaluate@2");
+  assert.equal(await page.locator("#step-retries").count(), 0); assert.equal(await page.locator("#step-timeout").count(), 0);
+  const latest = await (await fetch(origin + "/api/project?project=copy-review")).json();
+  assert.deepEqual(latest.model.nodes.find(node => node.id === "reload_context").reliability,
+    { contract_version: "operation-reliability.v1", max_retries: 2, wait_timeout_ms: 500 });
+  const forged = await fetch(origin + "/api/edit?project=copy-review", { method: "POST",
+    headers: { Origin: origin, "Content-Type": "application/json" }, body: JSON.stringify({ base_project_sha256: latest.project_sha256,
+      edit: { id: "quality", kind: "evaluation", evaluator_ref: "cycle_validation@1",
+        reliability: { contract_version: "operation-reliability.v1", max_retries: 1 } } }) });
+  assert.equal((await forged.json()).error, "PROCESS_OPERATION_RETRY_UNSUPPORTED");
+  console.log("PASS installed capability controls, persisted deadline and retry budget, unsupported provider refusal");
   const sequence = (id, children) => ({ id, kind: "sequence", children, participant_ref: "project" });
   const customModel = { contract_version: "agentic-process-model.v2", model_id: "local-review", revision: 1,
     participants: [{ id: "project" }], roles: [], policies: [], operation_pins: {}, entry: "review",

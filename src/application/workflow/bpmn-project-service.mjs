@@ -6,7 +6,10 @@ import { compileProjectDiagram, projectDiagramName, projectProcessId } from "../
 import { indexBpmnOperationBindings } from "../../core/workflow/bpmn-operation-bindings.mjs";
 import { checkShadowJson, freezeShadow, shadowHash } from "../../core/workflow/shadow-json.mjs";
 
-export function compileBpmnProject({ manifest, diagrams }) {
+import { assertOperationReliability, noOperationReliability } from "../../core/workflow/operation-reliability.mjs";
+import { installedStandardOperationReliability } from "./installed-operation-reliability.mjs";
+
+export function compileBpmnProject({ manifest, diagrams }, { resolveReliability = installedStandardOperationReliability } = {}) {
   if (checkShadowJson(manifest)) fail("BPMN_PROJECT_MANIFEST_INVALID");
   const project = manifest?.contract_version === "workflow-project.v1";
   if (!exactKeys(manifest, ["contract_version", "models", ...(project ? ["project_revision"] : [])], ["catalog_sha256"])
@@ -34,6 +37,11 @@ export function compileBpmnProject({ manifest, diagrams }) {
       const pins = indexBpmnOperationBindings(row.operation_bindings);
       const { model, source_map } = compileProjectDiagram(readProjectBpmnXml(diagrams[projectDiagramName(row)]), row, targets, pins);
       if (Object.hasOwn(row, "role_profile")) applyWorkflowRoleProfile(model, row.role_profile);
+      for (const node of model.nodes) if (node.reliability) {
+        const binding = row.operation_bindings.find(operation => operation.id === node.binding_ref);
+        try { assertOperationReliability(node.reliability, resolveReliability(binding) ?? noOperationReliability); }
+        catch (error) { error.element_id = "N_" + node.id; throw error; }
+      }
       if (pins.size !== Object.keys(model.operation_pins).length) fail("BPMN_OPERATION_BINDINGS_UNUSED");
       if (row.model_sha256 && shadowHash(model) !== row.model_sha256) fail("PROCESS_CALL_TARGET_CHANGED");
       source_maps.push({ model_id: row.model_id, revision: row.revision, source_map });

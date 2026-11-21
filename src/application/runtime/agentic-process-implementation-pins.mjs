@@ -230,6 +230,8 @@ const files = [
   "src/core/contracts/workflow-definition/standard-drift-output.v1.schema.json", "scaffold/codex/aidn-drift-check/SKILL.md",
   "src/application/runtime/standard-workflow-operation-host.mjs", "src/application/runtime/standard-workflow-operations.mjs",
   "src/application/runtime/standard-operation-provider.mjs", "src/application/workflow/operation-provider-registry.mjs",
+  "src/application/workflow/installed-operation-reliability.mjs", "src/core/workflow/operation-reliability.mjs",
+  "src/core/contracts/workflow-definition/operation-reliability.v1.schema.json",
   "src/application/workflow/workflow-package.mjs", "package/catalogs/standard.workflow-package.json",
   "src/core/contracts/workflow-definition/workflow-package.v1.schema.json",
   "src/application/runtime/standard-cycle-entry-admission.mjs",

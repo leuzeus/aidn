@@ -132,6 +132,28 @@ facts. Binding identity, effect class, executor and implementation digest are
 read-only. An embedding host can supply its own catalog when starting the
 editor. The catalog is a projection of installed definitions and package data.
 
+## Operation reliability
+
+An editable project can record a retry budget or a wait deadline on a
+provider-supported operation. The editor displays **max retries** and **wait
+timeout in milliseconds** only where the installed provider declares them.
+`max_retries` counts successors after the initial attempt. A wait-only policy
+allows one attempt. The compiler and host check the binding pin and provider
+capabilities. Installed STANDARD provider revision 2 declares both settings for
+`context_reload@1` and `session_entry_admit@1`. A timeout produces
+`PROCESS_OPERATION_WAIT_EXPIRED` when new
+work is attempted. Both the saved project and the compiled model retain the
+policy. See [the runtime decision](ADR/ADR-0025-standard-workflow-runtime-binding.md).
+
+Run `node tools/perf/verify-workflow-reliability.mjs` for the Windows fixture
+covering an expired wait, process restart, concurrent duplicate dispatch and
+reconciliation of a synthetic authenticated unknown result.
+
+Hosts with additional installed providers can pass their property catalog to the
+JavaScript builder and its compiler options to the portable export and import
+functions. The receiving host checks each exact binding against its own
+capabilities before accepting an authored retry or deadline.
+
 ## Local graphical editor
 
 From a source checkout, install the editor's pinned dependencies once and open
@@ -156,15 +178,20 @@ Confirming reloads the saved diagram. Restoring the original text before
 reloading avoids the prompt when the diagram has no other unsaved edits.
 A changed project digest refuses a stale save, including changes to a sibling diagram.
 
-Open **CrÃ©er ou dupliquer un workflow** to reserve a new local workflow by ID.
+Open **CrÃƒÂ©er ou dupliquer un workflow** to reserve a new local workflow by ID.
 Each created workflow opens at a separate bookmarkable URL and has its own local
-reference model. Under **Ã‰diter les Ã©tapes**, choose a parent sequence and enter
+reference model. Under **Ãƒâ€°diter les ÃƒÂ©tapes**, choose a parent sequence and enter
 a new step ID, or select an existing ID to edit its properties. Operation inputs
 accept literals, workflow parameters and scoped outputs. Selecting an evaluator
 requires a corresponding installed operation. A conditional split creates two
 sequences for its branches. Calls target a local model and validate its parameter
-mapping. **Appliquer Ã  lâ€™Ã©tape** previews the compiled result; **Enregistrer**
+mapping. **Appliquer ÃƒÂ  lÃ¢â‚¬â„¢ÃƒÂ©tape** previews the compiled result; **Enregistrer**
 commits the working project.
+
+The step form offers a retry count only for installed, idempotent operation
+bindings and a wait deadline only when the provider supports one. Clearing
+both fields removes the authored policy. These settings are checked against
+the exact binding digest again on save and execution.
 
 New workflows live under `.aidn-workflows/<id>` in the opened directory.
 A coordinated save stages a complete manifest and diagrams under

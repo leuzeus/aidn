@@ -12,9 +12,12 @@ const provider = createStandardOperationProvider({ reviewEffects: new Map(), ope
 const registry = createOperationProviderRegistry([provider]);
 const bindings = standardWorkflowOperationBindings();
 assert.equal(registry.descriptors.length, bindings.length);
+assert.ok(registry.descriptors.every(row => row.provider_id === "aidn-standard" && row.provider_revision === 2));
 for (const binding of bindings) {
   const installed = registry.resolve(binding.id, shadowHash(binding));
   assert.deepEqual(installed.binding, binding);
+  const observer = ["context_reload", "session_entry_admit"].includes(binding.id);
+  assert.deepEqual(installed.reliability, { idempotent: observer, wait_deadline: observer });
   assert.equal(registry.descriptors.find(row => row.operation_id === binding.id).implementation_sha256, binding.implementation_sha256);
 }
 const binding = bindings.find(row => row.id === "context_reload");

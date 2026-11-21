@@ -1,4 +1,5 @@
 import { assertProcessOperationBinding } from "../../core/workflow/process-operation-contracts.mjs";
+import { noOperationReliability } from "../../core/workflow/operation-reliability.mjs";
 import { freezeShadow, shadowHash } from "../../core/workflow/shadow-json.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
@@ -22,7 +23,12 @@ export function createOperationProviderRegistry(providers) {
       const key = binding.id + ":" + pin;
       if (byPin.has(key) || typeof operation.prepare !== "function" || typeof operation.dispatch !== "function")
         fail("PROCESS_OPERATION_PROVIDER_INVALID");
-      byPin.set(key, Object.freeze({ binding, prepare: operation.prepare, dispatch: operation.dispatch }));
+      const reliability = operation.reliability ?? noOperationReliability;
+      if (typeof reliability.idempotent !== "boolean" || typeof reliability.wait_deadline !== "boolean" ||
+          Object.keys(reliability).some(field => !["idempotent", "wait_deadline"].includes(field)))
+        fail("PROCESS_OPERATION_PROVIDER_INVALID");
+      byPin.set(key, Object.freeze({ binding, reliability: Object.freeze({ ...reliability }),
+        prepare: operation.prepare, dispatch: operation.dispatch }));
       descriptions.push({ provider_id: provider.id, provider_revision: provider.revision, operation_id: binding.id,
         operation_revision: binding.revision, binding_sha256: pin, implementation_sha256: binding.implementation_sha256 });
     }

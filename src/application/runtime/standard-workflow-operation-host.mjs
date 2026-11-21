@@ -1,4 +1,5 @@
 import { createOperationProviderRegistry } from "../workflow/operation-provider-registry.mjs";
+import { assertOperationReliability, assertRetryBudget, assertWaitDeadline } from "../../core/workflow/operation-reliability.mjs";
 import { createStandardOperationProvider } from "./standard-operation-provider.mjs";
 import { createStandardDriftRoute } from "./standard-drift-route.mjs";
 import { assertObjectiveReview } from "../../core/workflow/standard-drift-objective-review.mjs";
@@ -968,8 +969,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readEntry: readAcceptedOwnedEntry, readContext: () => processAuthority.observeCycleVerificationContext(),
     readCurrent: id => current(id).record }) : null;
   function assertCurrentBindings() {
-    for (const component of processModels(model)) for (const node of component.nodes.filter(node => node.kind === "operation"))
-      providers.resolve(node.binding_ref, component.operation_pins[node.binding_ref]);
+    for (const component of processModels(model)) for (const node of component.nodes.filter(node => node.kind === "operation")) {
+      const operation = providers.resolve(node.binding_ref, component.operation_pins[node.binding_ref]);
+      if (node.reliability) assertOperationReliability(node.reliability, operation.reliability);
+    }
   }
   const signer = createOperationJournalSigner(readSigningKey), generation = randomUUID();
   const initialExecution = readWorkflowProjectExecutionAuthority({ targetRoot }), initial = initialExecution.project;
@@ -1149,7 +1152,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     prepare({ instance, occurrence }) {
       const record = retained(operationJournalId(instance, occurrence.occurrence_id)).record;
       if (record.phase !== "staged" || record.intent.instance_sha256 !== instance.instance_sha256) fail("PROCESS_OPERATION_INTENT_BINDING_CHANGED");
-      return { binding: record.preview.binding, intent: record.intent };
+      const node = processFrameNode(model, occurrence);
+      if (!node.reliability) return { binding: record.preview.binding, intent: record.intent };
+      const first = instance.events.find(event => event.kind === "operation_intent" && event.occurrence_id === occurrence.occurrence_id);
+      const original = first ? retained(first.intent.operation_id).record : record;
+      return { binding: record.preview.binding, intent: record.intent,
+        reliability: providers.resolve(node.binding_ref, record.intent.binding_sha256).reliability,
+        wait_started_at_ms: original.preview.prepared_at_ms };
     },
     async verifyIntent({ intent, binding, instance, signal }) {
       scope(instance); const record = retained(intent.operation_id).record; await verifyGrant(record, signal);
@@ -1218,7 +1227,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return { outcome: "verified", authority_id: delivery.authority_id, delivery_sha256: shadowHash(delivery) };
     },
   } : undefined;
-  service = createAgenticProcessService({ store, readAuthority, operationAuthority: authority, controlAuthority, authorityTimeoutMs: 5000 });
+  service = createAgenticProcessService({ store, readAuthority, operationAuthority: authority, controlAuthority, now, authorityTimeoutMs: 5000 });
   const current = id => {
     const value = service.inspect(id);
     if (processAuthority) {
@@ -1428,6 +1437,18 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     const { subject } = record.preview.prepared;
     if (shadowHash(await recoveryCycleSubject(instance, record.preview.input, signal)) !== shadowHash(subject)) fail("STANDARD_RECOVERY_CYCLE_SELECTION_STALE");
   }
+  function checkOperationWindow(state, occurrenceId, starting, preparedAt) {
+    const frame = state.cursor.occurrences.find(row => row.occurrence_id === occurrenceId);
+    const policy = frame && processFrameNode(model, frame)?.reliability;
+    if (!policy) return;
+    if (frame.operation?.receipt?.effect_status === "unknown") fail("PROCESS_OPERATION_RECONCILIATION_REQUIRED");
+    const attempts = state.record.events.filter(event => event.kind === "operation_intent" && event.occurrence_id === occurrenceId);
+    if (starting) assertRetryBudget(policy, attempts.length);
+    if (policy.wait_timeout_ms !== undefined && (attempts.length || preparedAt !== undefined)) {
+      const origin = attempts.length ? retained(attempts[0].intent.operation_id).record.preview.prepared_at_ms : preparedAt;
+      assertWaitDeadline(policy, origin, now());
+    }
+  }
   async function commitIntent(id, { write = false } = {}) {
     if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
     const record = retained(id).record, state = current(record.intent.instance_id);
@@ -1438,6 +1459,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     }
     if (record.phase !== "staged" || state.record.instance_sha256 !== record.intent.instance_sha256
       || shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
+    checkOperationWindow(state, record.intent.occurrence_id, true, record.preview.prepared_at_ms);
     return service.prepareOperation({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256,
       occurrenceId: record.intent.occurrence_id, eventId: "intent_" + id.slice(3), write: true });
   }
@@ -1706,6 +1728,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const node = occurrence && processFrameNode(model, occurrence);
       const operation = node?.kind === "operation" && providers.resolve(node.binding_ref, processFrameModel(model, occurrence).operation_pins[node.binding_ref]);
       const binding = operation?.binding;
+      if (node?.reliability) checkOperationWindow(state, occurrenceId, true);
       if (!binding || !(occurrence.status === "READY" || occurrence.status === "WAITING" && ["blocked", "deferred"].includes(occurrence.operation?.receipt?.outcome))) fail("PROCESS_OPERATION_ORDER_INVALID");
       const resolved = resolveStandardProcessInput({ instance: state.record, occurrenceId, input, readOperation: id => retained(id).record });
       input = resolved.input;
@@ -1757,6 +1780,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (model.data_bindings && shadowHash(resolveStandardProcessInput({ instance: state.record, occurrenceId: preview.occurrence_id,
         readOperation: id => retained(id).record }).input_resolution) !== shadowHash(preview.input_resolution)) fail("PROCESS_RESOLVED_INPUT_CHANGED");
       const grant = await grantFor(preview), id = operationJournalId(state.record, preview.occurrence_id);
+      checkOperationWindow(state, preview.occurrence_id, true, preview.prepared_at_ms);
       const intent = { contract_version: "process-operation-intent.v1", operation_id: id, binding_ref: preview.binding.id, binding_sha256: shadowHash(preview.binding),
         input_sha256: shadowHash(preview.input), preconditions_sha256: shadowHash({ snapshot: preview.snapshot, prepared: preview.prepared }),
         authorization_sha256: grant === null ? null : shadowHash(grant), authority_id: "standard_operation_host", scope_id: preview.scope_id,
@@ -1809,6 +1833,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           || shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       }
       const { authentication, key_id, ...body } = record;
+      checkOperationWindow(state, record.intent.occurrence_id, false, record.preview.prepared_at_ms);
       const claimed = persist({ ...body, phase: "dispatching", revision: record.revision + 1, owner: { generation, pid: process.pid } }, before.content_sha256);
       const output = await disposition.run(claimed, async () => {
       let output;
