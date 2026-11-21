@@ -48,6 +48,7 @@
     "scaffold/",
     "scripts/",
     "tools/",
+    "!tools/author/bpmn-editor/**",
     "!tools/verify/qualify-context-local-clm.mjs",
     "!tools/verify/context-local-pilot-lib.mjs",
     "!tools/verify/context-local-runner.py",
