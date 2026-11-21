@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
+import { exportStandardBpmnProject } from "../../src/application/workflow/standard-bpmn-project.mjs";
 import { exportBpmnProject } from "../../src/core/workflow/bpmn-project-export.mjs";
 
 export async function writeNewBpmnProject(destination, project) {
@@ -26,10 +27,10 @@ export async function writeNewBpmnProject(destination, project) {
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
-  const { values } = parseArgs({ options: { model: { type: "string" }, bindings: { type: "string" }, out: { type: "string" } } });
-  if (!values.model || !values.out) throw new Error("Usage: node tools/author/export-bpmn-project.mjs --model model.json [--bindings definitions.json] --out new-directory");
+  const { values } = parseArgs({ options: { standard: { type: "boolean" }, model: { type: "string" }, bindings: { type: "string" }, out: { type: "string" } } });
+  if (!values.out || Boolean(values.model) === Boolean(values.standard) || (values.standard && values.bindings)) throw new Error("Usage: node tools/author/export-bpmn-project.mjs (--standard | --model model.json [--bindings definitions.json]) --out new-directory");
   const read = async file => JSON.parse(await fs.readFile(file, "utf8"));
-  const project = exportBpmnProject(await read(values.model), values.bindings ? await read(values.bindings) : {});
+  const project = values.standard ? exportStandardBpmnProject() : exportBpmnProject(await read(values.model), values.bindings ? await read(values.bindings) : {});
   await writeNewBpmnProject(values.out, project);
   console.log(`Exported ${project.manifest.models.length} BPMN models to ${path.resolve(values.out)}`);
 }

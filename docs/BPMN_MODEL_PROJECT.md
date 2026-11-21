@@ -35,3 +35,15 @@ Use the source authoring command to create a new directory.
 ```sh
 node tools/author/export-bpmn-project.mjs --model model.json --bindings definitions.json --out my-project
 ```
+
+## Published STANDARD
+
+Run `node tools/author/export-bpmn-project.mjs --standard --out my-standard` to
+export a working copy from the authoritative package catalog. The manifest pins
+the catalog digest, which covers operation definitions, activity output contracts,
+rules and skill-source hashes. The existing asset loader verifies the published
+model, implementation bindings, specification and skills before export.
+`compareStandardBpmnProject` recompiles the working copy and reports the changed
+IR paths against the published revision. A matching model is checked with the
+catalog verifier. Project XML accepts up to 1 MiB, 16,384 elements and 48 levels
+per file, with an 8 MiB aggregate diagram limit.
