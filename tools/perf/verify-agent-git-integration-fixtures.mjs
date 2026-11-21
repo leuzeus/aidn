@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { createHash, randomUUID } from "node:crypto";
@@ -17,6 +17,7 @@ const ref = "refs/heads/codex/fixture-integration";
 const author = { name: "AIDN Fixture", email: "fixture@example.invalid", timestamp: "2026-01-01T00:00:00Z" };
 const hash = value => createHash("sha256").update(value).digest("hex");
 let checks = 0, ordinal = 0, cleanup = false;
+const inspectionOnly = process.argv.includes("--inspection-only");
 const test = async (name, body) => { await body(); checks++; process.stdout.write(`PASS ${name}\n`); };
 const git = (root, args, options = {}) => {
   const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^GIT_/i.test(name)));
@@ -48,7 +49,7 @@ async function rejectChange(mutator, scope, code, instance = port) {
   const state = await worker(base, instance); await mutator(state.binding.cwd);
   await assert.rejects(instance.captureTaskChanges({ ...state, termination: {}, scope }), error => error.code === code);
 }
-try {
+async function verifyIntegration() {
   fs.mkdirSync(repo); git(repo, ["init", "--initial-branch=dev"]);
   fs.mkdirSync(path.join(repo, "src")); fs.mkdirSync(path.join(repo, "protected"));
   for (const file of ["a.txt", "b.txt", "conflict.txt"]) fs.writeFileSync(path.join(repo, "src", file), "base\n");
@@ -97,6 +98,44 @@ try {
     assert.deepEqual(applied.evidence, resumed.evidence);
     await assert.rejects(port.initializeIntegration({ baseSha: base }), error => error.code === "AGENT_GIT_REF_DIVERGED");
   });
+  await test("fresh integration inspection requires one actual parent for each commit", async () => {
+    const merge = git(repo, ["commit-tree", first.tree_sha, "-p", base, "-p", first.source_sha, "-m", "fixture merge"]);
+    for (const change of [{ source_sha: base }, { result_sha: merge }]) {
+      await assert.rejects(port.inspectIntegration({ ...first, ...change }, { phase: "prepared" }),
+        { code: "AGENT_GIT_SINGLE_PARENT_REQUIRED" });
+    }
+    const duplicate = await port.inspectIntegration({ source_sha: first.source_sha, result_sha: first.source_sha }, { phase: "head" });
+    assert.equal(duplicate.source_parent_sha, base);
+    assert.equal(duplicate.result_parent_sha, base);
+    await assert.rejects(port.inspectIntegration(first, { phase: "applied", signal: AbortSignal.abort() }),
+      { code: "AGENT_GIT_COMMAND_CANCELLED" });
+  });
+  await test("an inspection sees a ref moved during configuration validation", async () => {
+    let moved = false;
+    const observer = factory({ spawnProcess(executable, args, options) {
+      if (args.includes("config") && !moved) {
+        git(repo, ["update-ref", ref, base, first.result_sha]);
+        moved = true;
+      }
+      return spawn(executable, args, options);
+    } });
+    try {
+      assert.equal((await observer.inspectIntegration({}, { phase: "head" })).head_sha, base);
+      assert.equal(moved, true);
+    } finally {
+      if (moved) git(repo, ["update-ref", ref, first.result_sha, base]);
+    }
+  });
+  await test("an integration cannot use a missing parent or tree", async () => {
+    for (const oid of [base, first.tree_sha]) {
+      const object = path.join(repo, ".git", "objects", oid.slice(0, 2), oid.slice(2));
+      const retained = path.join(temp, "retained-" + oid);
+      fs.renameSync(object, retained);
+      try {
+        await assert.rejects(port.inspectIntegration(first, { phase: "applied" }), { code: "AGENT_GIT_COMMAND_FAILED" });
+      } finally { fs.renameSync(retained, object); }
+    }
+  });
   await test("prepared evidence exact bytes cannot be replaced by equivalent JSON", async () => {
     const proof = first.evidence[0], file = path.join(resources, proof.ref), original = fs.readFileSync(file);
     try {
@@ -105,6 +144,7 @@ try {
     } finally { fs.writeFileSync(file, original); }
     await factory().inspectIntegration(first, { phase: "prepared" });
   });
+  if (inspectionOnly) return;
   await test("second independent source integrates atop first; dependent reads both real results", async () => {
     second = await port.prepareIntegration({ integrationId: "integration.b", sourceSha: b.commit.source_sha, expectedParent: first.result_sha, commitIdentity: author });
     await port.compareAndSwapIntegration({ prepared: second });
@@ -198,8 +238,7 @@ try {
       if (!argv.includes("update-ref")) {
         setImmediate(() => {
           let text = "", status = 0;
-          if (argv.includes("--git-common-dir")) text = path.join(repo, ".git");
-          else if (argv.includes("--show-object-format")) text = "sha1";
+          if (argv.includes("--show-object-format")) text = path.join(repo, ".git") + "\nsha1";
           else if (argv.includes(`${base}^{commit}`)) text = base;
           else if (argv.includes(`${isolatedRef}^{commit}`)) status = 128;
           else assert(argv.includes("config"), "unexpected fixture Git invocation");
@@ -458,10 +497,14 @@ try {
     }
   });
   assert.equal(git(repo, ["rev-parse", "dev"]), base);
+}
+try {
+  await verifyIntegration();
 } finally {
   const resolved = fs.realpathSync.native(temp), parent = fs.realpathSync.native(os.tmpdir());
   assert.equal(path.dirname(resolved).toLowerCase(), parent.toLowerCase());
   assert.equal(fs.readFileSync(path.join(resolved, "owner"), "utf8"), nonce);
   fs.rmSync(resolved, { recursive: true, force: true }); cleanup = !fs.existsSync(resolved);
 }
-assert(cleanup); process.stdout.write(JSON.stringify({ status: "PASS", checks, cleanup: "PASS", postgres: "NOT_RUN", native_codex: "NOT_RUN" }) + "\n");
+assert(cleanup); process.stdout.write(JSON.stringify({ status: "PASS", checks, cleanup: "PASS", postgres: "NOT_RUN", native_codex: "NOT_RUN",
+  ...(inspectionOnly ? { selection: "integration-inspection", qualification: "partial" } : {}) }) + "\n");
