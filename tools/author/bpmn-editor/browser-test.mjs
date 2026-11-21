@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { chromium } from "playwright";
 import { authorReferenceWorkflow } from "./workflow-authoring-browser.mjs";
+import { verifyBuilderParity } from "./verify-builder-parity.mjs";
 import { compileBpmnProject } from "../../../src/application/workflow/bpmn-project-service.mjs";
 import { serveBpmnEditor } from "./server.mjs";
 import { writeNewBpmnProject } from "../export-bpmn-project.mjs";
@@ -156,6 +157,7 @@ try {
   console.log("PASS a graphical condition edit yields a precise persisted diff; an invalid condition identifies the model and flow");
 
   const authored = await authorReferenceWorkflow(page, origin);
+  verifyBuilderParity(authored, await (await fetch(origin + "/api/catalog")).json());
   const { model: created } = compileBpmnProject(authored.project);
   assert.equal(created.nodes.find(n => n.id === "quality").binding_ref, "cycle_validation_evaluate");
   assert.deepEqual(created.data_bindings.inputs.find(r => r.node_id === "quality").fields.validation_operation_id,

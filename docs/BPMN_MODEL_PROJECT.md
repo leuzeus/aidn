@@ -31,6 +31,31 @@ auditor role. The diagram task names the business role id. Each affected activit
 policy must require every permission of that business role. The compiled IR
 retains the resolved native role, action and effective activity policy.
 
+## Declarative JavaScript authoring
+
+Import `buildWorkflowProject` from `src/application/workflow/workflow-builder.mjs`.
+Pass the same property catalog that the local graphical editor uses. The result
+contains `manifest` and `diagrams` and is compiled with `compileBpmnProject()`
+before it is returned.
+
+```js
+const project = buildWorkflowProject({
+  id: "delivery",
+  steps: [{
+    kind: "xor", id: "route", condition: "ready",
+    then: [{ kind: "call", id: "review", target: "review_work", body: [] }],
+    otherwise: []
+  }]
+}, catalog);
+```
+
+Steps run in array order. An operation takes an `operation_ref` with its revision
+and accepts v4 input mappings in `fields`. An activity takes a `role_ref` and
+`policy_ref`. An evaluation selects a catalog `evaluator_ref`. A call with a
+`body` authors nodes in its local target. A later call to that target can omit
+the body. Child edits and bindings go through the editor's validation and local
+call pinning. Project creation and compilation operate in memory.
+
 ## Export
 
 `exportBpmnProject(model, definitionsByDiagram)` in
