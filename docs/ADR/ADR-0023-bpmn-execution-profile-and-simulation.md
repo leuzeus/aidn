@@ -140,3 +140,11 @@ bindings and policies. The catalog and its published IR remain authoritative.
 Graph edits produce a candidate for comparison and review in a pull request.
 The source authoring tools have no workflow execution or publication authority.
 See [BPMN model projects](../BPMN_MODEL_PROJECT.md).
+
+The round-trip guarantee is semantic. Exporting a published IR with its pinned
+bindings and compiling the unmodified project reproduces the model and its SHA-256.
+BPMNDI layout belongs to the authoring project. Moving a shape preserves the
+semantic digest. Editing a gateway fact changes the corresponding branch in the IR.
+Third-party editors can participate when they preserve the required AIDN extensions.
+Removing a task binding must produce a compilation diagnostic naming the model and
+BPMN element. The published baseline remains available for comparison.
