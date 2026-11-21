@@ -1649,7 +1649,7 @@ async function runSuite({ connectionString, version, root }) {
       // verification here is an explicit double; real Ed25519 is tested above.
       const fixtureRun=createSchedulerFixture({realGit:true,verification:verificationPolicy});
       try {
-        const cleanupGit=createLocalAgentGitIntegration({repositoryRoot:path.join(fixtureRun.root,"repository"),resourcesRoot:path.join(fixtureRun.root,"resources"),
+        const cleanupGit=createLocalAgentGitIntegration({repositoryRoot:path.join(fixtureRun.root,"repository"),resourcesRoot:path.join(fixtureRun.root,"resources"),gitExecutable:fixtureRun.gitExecutable,
           integrationRef:"refs/heads/codex/integration-fixture",verifyTermination:async({binding,termination})=>({confirmed:termination?.confirmed===true,attempt_id:binding.attempt_id}),
           verifyCleanupTermination:async()=>({confirmed:fixtureRun.children.length===3 && fixtureRun.children.every(child=>child.ended!==null)})});
         const context=await seed({planInput:fixtureRun.plan,runIdOverride:fixtureRun.options.runId,options:{
@@ -1674,6 +1674,7 @@ async function runSuite({ connectionString, version, root }) {
           };
         }});
         observe({kind:"scheduler",boundary:"start",run_id:context.runId,limits:context.plan.limits,
+          git_executable: fixtureRun.gitExecutable === "git" ? "path" : "verified-git-for-windows",
           tasks:context.plan.tasks.map(({task_id,max_duration_ms,depends_on})=>({task_id,max_duration_ms,depends_on}))});
         const schedulerStarted=performance.now();
         const result=await fixtureRun.create({store:observedStore}).run(fixtureRun.options);
