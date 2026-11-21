@@ -1,0 +1,15 @@
+{
+  "name": "aidn-local-bpmn-editor",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node browser-test.mjs"
+  },
+  "dependencies": {
+    "bpmn-js": "18.13.1"
+  },
+  "devDependencies": {
+    "playwright": "1.58.2"
+  }
+}

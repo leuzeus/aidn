@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Atelier BPMN · AIDN</title>
+<link rel="stylesheet" href="/assets/diagram-js.css"><link rel="stylesheet" href="/assets/bpmn-js.css">
+<link rel="stylesheet" href="/assets/bpmn-font/css/bpmn.css"><link rel="stylesheet" href="/editor.css">
+<script defer src="/modeler.js"></script><script defer src="/editor.js"></script>
+</head>
+<body>
+<header><h1>Atelier BPMN</h1><div class="commands"><button id="compare">Comparer au STANDARD</button>
+<button id="save">Enregistrer</button><button id="reload">Recharger</button></div></header>
+<nav aria-label="Diagramme"><label>Modèle <select id="model"></select></label><label>Bloc <select id="scope"></select></label></nav>
+<main><section id="canvas" aria-label="Diagramme BPMN"></section>
+<aside><form id="condition-form" hidden><label>Condition du flux <input id="condition" required></label><button>Appliquer</button></form>
+<h2>Comparaison</h2><p id="status" role="status">Ouverture du projet…</p><ol id="diff"></ol></aside></main>
+</body></html>
