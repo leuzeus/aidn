@@ -149,6 +149,8 @@ const files = [
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
 function implementation() {
   const refs = [
+    new URL("standard-operation-provider.mjs", import.meta.url),
+    new URL("../workflow/operation-provider-registry.mjs", import.meta.url),
     new URL("../workflow/workflow-package.mjs", import.meta.url),
     new URL("../../../package/catalogs/standard.workflow-package.json", import.meta.url),
     new URL("../../core/contracts/workflow-definition/workflow-package.v1.schema.json", import.meta.url),
