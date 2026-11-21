@@ -8,6 +8,7 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 const files = [
   "src/application/workflow/workflow-evaluations.mjs", "package/catalogs/workflow-evaluations.v1.json",
   "src/core/gating/gating-policy.mjs",
+  "package/catalogs/standard-role-profile.v1.json", "package/catalogs/standard-role-transitions.v1.json",
   "src/core/contracts/workflow-definition/evaluation-definition.v1.schema.json",
   "src/core/contracts/workflow-definition/evaluation-result.v1.schema.json",
   "src/application/runtime/standard-handoff-continuation.mjs",

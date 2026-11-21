@@ -51,6 +51,7 @@
               "type": "object"
             }
           },
+          "role_profile": { "type": "object" },
           "roles": {
             "type": "array",
             "items": {

@@ -1,78 +1,22 @@
-export const AGENT_ROLES = Object.freeze([
-  "coordinator",
-  "executor",
-  "auditor",
-  "repair",
-]);
+import definition from "../../../package/catalogs/standard-role-profile.v1.json" with { type: "json" };
+import { freezeShadow } from "../workflow/shadow-json.mjs";
 
-export const AGENT_ACTIONS = Object.freeze([
-  "reanchor",
-  "implement",
-  "audit",
-  "analyze",
-  "repair",
-  "relay",
-  "close",
-  "coordinate",
-]);
+export const standardRoleProfile = freezeShadow(definition);
+export const AGENT_ROLES = Object.freeze(definition.roles.map(role => role.id));
+const actionOf = ref => ref.split("@")[0];
+export const AGENT_ACTIONS = Object.freeze(definition.capabilities.map(actionOf));
+const capabilities = new Map(definition.roles.map(role => [role.id, Object.freeze(role.capabilities.map(actionOf))]));
 
-const ROLE_ALIASES = Object.freeze({
-  implementer: "executor",
-  analyst: "auditor",
-  review: "auditor",
-  reviewer: "auditor",
-});
-
-const ACTION_ALIASES = Object.freeze({
-  analyse: "analyze",
-  review: "audit",
-  fix: "repair",
-});
-
-const ROLE_CAPABILITIES = Object.freeze({
-  coordinator: Object.freeze(["reanchor", "relay", "close", "coordinate"]),
-  executor: Object.freeze(["implement", "relay"]),
-  auditor: Object.freeze(["audit", "analyze", "relay"]),
-  repair: Object.freeze(["repair", "relay"]),
-});
-
-export function normalizeAgentRole(value) {
-  const normalized = String(value ?? "").trim().toLowerCase();
-  if (!normalized) {
-    return "";
-  }
-  return ROLE_ALIASES[normalized] ?? normalized;
+function normalized(value, aliases) {
+  const id = String(value ?? "").trim().toLowerCase();
+  return Object.hasOwn(aliases, id) ? aliases[id] : id;
 }
-
-export function normalizeAgentAction(value) {
-  const normalized = String(value ?? "").trim().toLowerCase();
-  if (!normalized) {
-    return "";
-  }
-  return ACTION_ALIASES[normalized] ?? normalized;
-}
-
-export function isKnownAgentRole(value) {
-  return AGENT_ROLES.includes(normalizeAgentRole(value));
-}
-
-export function isKnownAgentAction(value) {
-  return AGENT_ACTIONS.includes(normalizeAgentAction(value));
-}
-
-export function getAgentRoleCapabilities(role) {
-  const normalized = normalizeAgentRole(role);
-  return ROLE_CAPABILITIES[normalized] ?? [];
-}
-
-export function canAgentRolePerform(role, action) {
-  const normalizedRole = normalizeAgentRole(role);
-  const normalizedAction = normalizeAgentAction(action);
-  if (!isKnownAgentRole(normalizedRole) || !isKnownAgentAction(normalizedAction)) {
-    return false;
-  }
-  return getAgentRoleCapabilities(normalizedRole).includes(normalizedAction);
-}
+export const normalizeAgentRole = value => normalized(value, definition.role_aliases);
+export const normalizeAgentAction = value => normalized(value, definition.capability_aliases);
+export const isKnownAgentRole = value => AGENT_ROLES.includes(normalizeAgentRole(value));
+export const isKnownAgentAction = value => AGENT_ACTIONS.includes(normalizeAgentAction(value));
+export const getAgentRoleCapabilities = role => capabilities.get(normalizeAgentRole(role)) ?? [];
+export const canAgentRolePerform = (role, action) => getAgentRoleCapabilities(role).includes(normalizeAgentAction(action));
 
 export function buildAgentProfile({
   id = "unknown",
