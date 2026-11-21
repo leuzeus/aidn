@@ -148,7 +148,11 @@ const files = [
   "standard-session-pr-merge-observe.mjs", "standard-session-pr-review-source.mjs", "standard-session-pr-review-effects.mjs", "standard-workflow-human-decisions.mjs", "standard-workflow-control-inbox.mjs", "standard-session-pr-review-control-source.mjs",
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
 function implementation() {
-  const refs = [new URL("../../adapters/runtime/local-git-adapter.mjs", import.meta.url),
+  const refs = [
+    new URL("../workflow/workflow-package.mjs", import.meta.url),
+    new URL("../../../package/catalogs/standard.workflow-package.json", import.meta.url),
+    new URL("../../core/contracts/workflow-definition/workflow-package.v1.schema.json", import.meta.url),
+    new URL("../../adapters/runtime/local-git-adapter.mjs", import.meta.url),
     new URL("../install/project-activation-service.mjs", import.meta.url),
     new URL("standard-session-pr-redelivery-authority.mjs", import.meta.url),
     ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-session-pr-redelivery-push-${kind}.v1.schema.json`, import.meta.url)), new URL("standard-pr-correction-review.mjs", import.meta.url), new URL("standard-pr-correction-cycle.mjs", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-pr-correction-cycle-input.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-pr-correction-cycle-plan.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-pr-correction-cycle-output.v1.schema.json", import.meta.url), new URL("../../core/workflow/standard-pr-correction-decision.mjs", import.meta.url),

@@ -114,7 +114,7 @@ export function exportBpmnProject(model, definitionsByDiagram = {}) {
   assertAgenticProcessModel(model);
   if (model.contract_version !== "agentic-process-model.v2" || checkShadowJson(definitionsByDiagram))
     fail("BPMN_PROJECT_EXPORT_INVALID");
-  const manifest = { contract_version: "bpmn-model-project.v1", models: [] }, diagrams = {};
+  const manifest = { contract_version: "workflow-project.v1", project_revision: 1, models: [] }, diagrams = {};
   for (const [i, current] of processModels(model).entries()) {
     const file = projectDiagramName(current);
     const definitions = Object.hasOwn(definitionsByDiagram, file) ? definitionsByDiagram[file] : [];

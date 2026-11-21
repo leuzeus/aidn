@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/workflow-package.v1",
+  "x-aidn-contract-version": "workflow-package.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "catalog",
+    "model",
+    "specification",
+    "skills"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "workflow-package.v1"
+    },
+    "catalog": {
+      "type": "string",
+      "maxLength": 256,
+      "pattern": "^(?:[A-Za-z0-9_-]+(?:[.][A-Za-z0-9_-]+)*/)*[A-Za-z0-9_-]+(?:[.][A-Za-z0-9_-]+)*$"
+    },
+    "model": {
+      "type": "string",
+      "maxLength": 256,
+      "pattern": "^(?:[A-Za-z0-9_-]+(?:[.][A-Za-z0-9_-]+)*/)*[A-Za-z0-9_-]+(?:[.][A-Za-z0-9_-]+)*$"
+    },
+    "specification": {
+      "type": "string",
+      "maxLength": 256,
+      "pattern": "^(?:[A-Za-z0-9_-]+(?:[.][A-Za-z0-9_-]+)*/)*[A-Za-z0-9_-]+(?:[.][A-Za-z0-9_-]+)*$"
+    },
+    "skills": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "string",
+        "maxLength": 256,
+        "pattern": "^(?:[A-Za-z0-9_-]+(?:[.][A-Za-z0-9_-]+)*/)*[A-Za-z0-9_-]+(?:[.][A-Za-z0-9_-]+)*$"
+      }
+    }
+  }
+}
