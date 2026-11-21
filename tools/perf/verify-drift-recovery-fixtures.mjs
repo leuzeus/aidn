@@ -80,6 +80,8 @@ function humanFixture(operationId = id, withDelta = false, reviewPlan = plan, bi
   const record = { operation_id: operationId, intent: { binding_ref: binding, instance_id: "fixture", scope_id: "fixture", occurrence_id: "root/decide" },
     preview: { prepared: { plan: p } }, results: [] };
   const question = human.question(record);
+  assert.deepEqual(human.describeQuestion(record).options, question.choices);
+  assert.equal(human.describeQuestion(record).source_question_sha256, shadowHash(question));
   const claim = choice => ({ contract_version: "human-drift-recovery-decision.v1", source_kind: "human", authority_id: "fixture_user", source_event_id: "event_" + choice,
     subject_sha256: H, question_sha256: shadowHash(question), choice, evidence_refs: [{ ref: "fixture:operator", sha256: H }] });
   return { human, record, question, claim, sources, records, inbox };

@@ -266,6 +266,9 @@ new URL("standard-cycle-implementation.mjs", import.meta.url), new URL("../../co
     .map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)));
   refs.push(...[
     "../workflow/workflow-evaluations.mjs", "../../../package/catalogs/workflow-evaluations.v1.json",
+    "../workflow/standard-human-decision-profiles.mjs", "../../core/workflow/human-decision.mjs",
+    "../../core/contracts/workflow-definition/human-decision-question.v1.schema.json",
+    "../../core/contracts/workflow-definition/human-decision-response.v1.schema.json",
     "../../core/contracts/workflow-definition/evaluation-definition.v1.schema.json",
     "../../core/contracts/workflow-definition/evaluation-result.v1.schema.json",
     "../../core/agents/agent-role-model.mjs", "../../core/agents/agent-reuse-policy.mjs",

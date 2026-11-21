@@ -1,9 +1,10 @@
-import { assertSpikeQuestion, assertHumanSpikeDecision, observeHumanSpikeDecision, assertSpikeDecisionOutput } from "../../core/workflow/standard-spike-decision.mjs";
+import { assertSpikeQuestion, observeHumanSpikeDecision, assertSpikeDecisionOutput } from "../../core/workflow/standard-spike-decision.mjs";
+import { describeStandardHumanQuestion, usesWorkflowHumanDecision, verifyStandardHumanDecision } from "../workflow/standard-human-decision-profiles.mjs";
 import { assertPrCorrectionQuestion, assertHumanPrCorrectionDecision, observeHumanPrCorrectionDecision, assertPrCorrectionDecisionOutput } from "../../core/workflow/standard-pr-correction-decision.mjs";
 import { assertSessionClosureQuestion, assertHumanSessionClosureDecision, observeHumanSessionClosureDecision, assertSessionClosureDecisionOutput } from "../../core/workflow/standard-session-closure-decision.mjs";
 import { assertBaselinePromotionQuestion, assertHumanBaselinePromotionDecision, observeHumanBaselinePromotionDecision } from "../../core/workflow/standard-baseline-promotion-decision.mjs";
 import { assertCycleClosureQuestion, assertHumanCycleClosureDecision, observeHumanCycleClosureDecision } from "../../core/workflow/standard-cycle-closure-decision.mjs";
-import { assertHumanModeDecision, assertModeQuestion, assertRecoveryQuestion, assertHumanRecoveryDecision, decisionInboxId } from "../../core/workflow/process-decision-inbox.mjs";
+import { assertModeQuestion, assertRecoveryQuestion, decisionInboxId } from "../../core/workflow/process-decision-inbox.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { assertModeWorkQuestion, assertHumanModeWorkDecision, observeHumanModeWorkDecision, assertModeWorkDecisionOutput } from "../../core/workflow/standard-mode-work-continuation.mjs";
 import { postMergeDecisionOperation, postMergeQuestionVersion, postMergeDecisionQuestion, assertHumanPostMergeDecision, postMergeDecisionOutput } from "../../core/workflow/standard-pr-post-merge-decision.mjs";
@@ -99,9 +100,14 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     } finally { clearTimeout(timer); combined.removeEventListener("abort", onAbort); stop.abort(); }
   }
   async function verify(claim, sourceRef, request, signal, historical = false, expectedGrant) {
+    if (usesWorkflowHumanDecision(request)) {
+      const result = await verifyStandardHumanDecision(request, claim, validated =>
+        bounded("verify", { source: validated, sourceRef, question: request, historical }, signal));
+      return result.proof;
+    }
     if (request.contract_version === cycleEntryChoiceQuestionVersion) assertHumanCycleEntryChoice(claim, request);
     else if ([recoveryCycleQuestionVersion, "standard-drift-recovery-cycle-question.v1"].includes(request.contract_version)) assertHumanRecoveryCycleSelection(claim, request);
-    else if (["standard-spike-question.v1", "standard-spike-question.v2"].includes(request.contract_version)) assertHumanSpikeDecision(claim, request);
+
     else if (["standard-mode-work-question.v1", "standard-mode-work-question.v2"].includes(request.contract_version)) assertHumanModeWorkDecision(claim, request);
     else if ([externalMergeQuestionVersion, externalMergePretriageQuestionVersion].includes(request.contract_version)) assertHumanExternalMergeDisposition(claim, request);
     else if (request.contract_version === postMergeQuestionVersion) assertHumanPostMergeDecision(claim, request);
@@ -112,7 +118,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     else if (request.contract_version === "standard-session-closure-question.v1") assertHumanSessionClosureDecision(claim, request);
     else if (request.contract_version === "standard-baseline-promotion-question.v1") assertHumanBaselinePromotionDecision(claim, request);
     else if (request.contract_version === "standard-cycle-closure-question.v1") assertHumanCycleClosureDecision(claim, request);
-    else if (["standard-drift-recovery-question.v1", "standard-drift-recovery-question.v2"].includes(request.contract_version)) assertHumanRecoveryDecision(claim, request); else assertHumanModeDecision(claim);
+    else fail("WORKFLOW_DECISION_PROFILE_UNKNOWN");
     if (claim.question_sha256 !== shadowHash(request)) fail("PROCESS_HUMAN_QUESTION_CHANGED");
     if (!request.choices.includes(claim.choice)) fail("PROCESS_HUMAN_CHOICE_NOT_OFFERED");
     const proof = await bounded("verify", { source: claim, sourceRef, question: request, historical }, signal);
@@ -135,6 +141,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     return retained;
   }
   return Object.freeze({ question, captured,
+    describeQuestion: record => describeStandardHumanQuestion(question(record)),
     verifyReserved: (record, capture, signal) => verify(capture.source, capture.source_ref, question(record), signal, false, capture.grant_sha256),
     readSource(ref) {
       const match = /^aidn:decision-source\/(decision_[a-f0-9]{40})$/.exec(ref);

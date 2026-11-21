@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
+import { verifyStandardHumanDecision } from "../../src/application/workflow/standard-human-decision-profiles.mjs";
 import { execFileSync } from "node:child_process";
 import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
 import { createStandardWorkflowOperations } from "../../src/application/runtime/standard-workflow-operations.mjs";
@@ -34,6 +35,12 @@ const source = choice => ({ contract_version: "human-spike-decision.v1", source_
   question_sha256: shadowHash(question), subject_sha256: shadowHash(review), choice, selection: choice === "convert-to-spike" ? selection : null, rationale: "Explicit fixture choice", evidence_refs: [ref] });
 for (const choice of spikeConversionChoices) {
   const decision = source(choice), observed = observeHumanSpikeDecision({ question, decision });
+  const authenticate = original => ({ authority_id: original.authority_id, outcome: "verified", source_sha256: shadowHash(original) });
+  const normalized = await verifyStandardHumanDecision(question, decision, authenticate);
+  assert.equal(normalized.response.choice, choice);
+  assert.deepEqual(normalized.response.evidence_refs, decision.evidence_refs);
+  await assert.rejects(verifyStandardHumanDecision(question, decision, () => null), { code: "PROCESS_HUMAN_NOT_AUTHENTICATED" });
+  await assert.rejects(verifyStandardHumanDecision(question, { ...decision, subject_sha256: H }, authenticate), { code: "PROCESS_HUMAN_QUESTION_CHANGED" });
   const output = assertSpikeDecisionOutput({ contract_version: "standard-spike-decision-output.v1", operation_ref: "spike_conversion_decision", ...observed,
     observations: { ...observed.observations, inbox_id: decisionInboxId(decision), source_ref: "fixture:selected" }, evidence_refs: [ref] });
   assertStandardOperationOutput(output);
