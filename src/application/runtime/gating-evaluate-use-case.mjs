@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { deriveGatingAction } from "../../core/gating/gating-policy.mjs";
+import { evaluateWorkflow } from "../workflow/workflow-evaluations.mjs";
 import {
   deriveGatingLevels,
   detectGatingSignals,
@@ -250,7 +250,7 @@ export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir, c
     levels.level3.required = true;
     levels.level3.reason = "blocking_l1_reason";
   }
-  const decision = deriveGatingAction(levels);
+  const decision = evaluateWorkflow("gating@1", { levels }).details;
 
   const result = {
     ts: new Date().toISOString(),

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -11,6 +12,17 @@ import {
   buildWorkflowHookSummary,
 } from "../../src/core/workflow/workflow-output-factory.mjs";
 import { deriveGatingAction } from "../../src/core/gating/gating-policy.mjs";
+import { evaluateWorkflow } from "../../src/application/workflow/workflow-evaluations.mjs";
+
+for (const [level2, level3] of [[false, false], [true, false], [true, true]]) {
+  const levels = { level2: { required: level2 }, level3: { required: level3, reason: "blocking_l1_reason" } };
+  const decision = deriveGatingAction(levels);
+  const result = evaluateWorkflow("gating@1", { levels });
+  assert.deepEqual(result.details, decision);
+  assert.equal(result.verdict, decision.result);
+  assert.deepEqual(result.reason_codes, decision.reason_code ? [decision.reason_code] : []);
+}
+assert.throws(() => evaluateWorkflow("gating@2", {}), /WORKFLOW_EVALUATOR_UNKNOWN/);
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {

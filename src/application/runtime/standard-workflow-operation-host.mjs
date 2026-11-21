@@ -117,7 +117,7 @@ import { createStandardCycleImplementation } from "./standard-cycle-implementati
 import { createStandardCycleValidation } from "./standard-cycle-validation.mjs";
 import { createStandardCycleTaskAdvance } from "./standard-cycle-task-advance.mjs";
 import { createStandardCycleVerification } from "./standard-cycle-verification.mjs";
-import { evaluateStandardCycleValidation } from "../../core/workflow/standard-cycle-verification.mjs";
+import { evaluateWorkflow } from "../workflow/workflow-evaluations.mjs";
 import { readWorkflowProjectExecutionAuthority } from "./workflow-instance-composition.mjs";
 import { createAgenticProcessService } from "./agentic-process-service.mjs";
 import { createAgenticProcessStore } from "../../adapters/runtime/agentic-process-store.mjs";
@@ -205,7 +205,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readWork: (instance, input, options) => processAuthority.readCycleWorkEvaluation(instance, input, options), readCurrent: id => current(id).record }, { boundaryFactory: validationBoundaryFactory }) : null;
   async function evaluateValidation(instance, input, options = {}) {
     const source = await processAuthority.readCycleValidationExecution(instance, input, options), evidence = await cycleValidation.readResult(source);
-    return { output: evaluateStandardCycleValidation({ source, evidence, validationOperationId: input.validation_operation_id }), source, evidence };
+    const result = evaluateWorkflow("cycle_validation@1", { source, evidence, validationOperationId: input.validation_operation_id });
+    return { output: result.details, source, evidence };
   }
   async function auditSource(instance, input) {
     const bridge = await processAuthority.readCycleVerificationExecution(instance, input), source = bridge.source;
@@ -213,10 +214,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     // Recompute machine coverage against the same signed original subject hash.
     // Its owned VERIFYING metadata transition is authenticated separately above;
     // this historical hash is never presented as the current context authority.
-    const original = evaluateStandardCycleValidation({ source: { ...source,
+    const original = evaluateWorkflow("cycle_validation@1", { source: { ...source,
       progress_operation_id: bridge.evaluation.record.preview.input.progress_operation_id ?? null,
       context: { cycle_path: bridge.context.cycle_path }, context_sha256: bridge.evaluation.output.observations.context_sha256 },
-      evidence, validationOperationId: source.record.operation_id });
+      evidence, validationOperationId: source.record.operation_id }).details;
     if (shadowHash(original) !== shadowHash(bridge.evaluation.output) || original.facts.cycle_work_complete !== true) fail("STANDARD_AUDIT_MACHINE_EVIDENCE_STALE");
     const validation = { contract_version: "standard-cycle-audit-machine-evidence.v1", validation_operation_id: source.record.operation_id,
       evaluation_operation_id: bridge.evaluation.record.operation_id, work_complete: original.facts.cycle_work_complete,

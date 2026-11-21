@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/evaluation-definition.v1",
+  "x-aidn-contract-version": "evaluation-definition.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "id",
+    "revision",
+    "input_contract",
+    "output_contract",
+    "fact_keys"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "evaluation-definition.v1"
+    },
+    "operation_ref": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}@[1-9][0-9]*$" },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "input_contract": {
+      "type": "string",
+      "minLength": 1
+    },
+    "output_contract": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fact_keys": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

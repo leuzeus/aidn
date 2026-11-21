@@ -1,0 +1,39 @@
+[
+  {
+    "contract_version": "evaluation-definition.v1",
+    "id": "gating",
+    "revision": 1,
+    "input_contract": "gating-levels",
+    "output_contract": "gating-action",
+    "fact_keys": [
+      "gate_ok",
+      "gate_warn",
+      "gate_stop"
+    ]
+  },
+  {
+    "contract_version": "evaluation-definition.v1",
+    "id": "cycle_validation",
+    "operation_ref": "cycle_validation_evaluate@2",
+    "revision": 1,
+    "input_contract": "authenticated-cycle-validation",
+    "output_contract": "standard-cycle-verification-output.v1",
+    "fact_keys": [
+      "cycle_work_complete",
+      "cycle_checks_passed",
+      "cycle_validation_evidence_fresh"
+    ]
+  },
+  {
+    "contract_version": "evaluation-definition.v1",
+    "id": "agent_reuse",
+    "revision": 1,
+    "input_contract": "authenticated-agent-observation",
+    "output_contract": "agent-reuse-decision.v1",
+    "fact_keys": [
+      "agent_reuse",
+      "agent_separate",
+      "agent_wait"
+    ]
+  }
+]
