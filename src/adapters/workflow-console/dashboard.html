@@ -3,7 +3,17 @@
 <body><header><a class="brand" href="/">AIDN<span>WORKFLOW CONSOLE</span></a><span class="local">LOCAL · OPT-IN</span></header>
 <main><section class="intro"><p class="eyebrow">PARCOURS & PREUVES</p><h1>Comprendre avant d’agir.</h1><p>Consultez les révisions canoniques, les étapes et les résultats. Chaque action commence par son aperçu exact.</p></section>
 <section class="connection"><label>Jeton de cette session<input id="token" type="password" autocomplete="off" placeholder="Jeton affiché par la commande --serve"></label><button id="refresh">Actualiser</button><span id="connection-state" role="status">Non connecté</span></section>
-<section class="filters"><label>Instance exacte<input id="instance" placeholder="Toutes les instances"></label><label>Workflow exact<input id="workflow" placeholder="Toutes les sélections"></label><label>Configuration du run<input id="configuration" placeholder="Optionnel · chemin absolu"></label><label>Run en direct<input id="run" placeholder="Avec sa configuration"></label></section>
+<section class="filters">
+  <label>Instance exacte<input id="instance" placeholder="Toutes les instances"></label>
+  <label>Moteur de l’instance<select id="engine" disabled>
+    <option value="">Non précisé</option>
+    <option value="agentic">Agentique</option>
+    <option value="legacy">Historique</option>
+  </select></label>
+  <label>Workflow exact<input id="workflow" placeholder="Toutes les sélections"></label>
+  <label>Configuration du run<input id="configuration" placeholder="Optionnel · chemin absolu"></label>
+  <label>Run en direct<input id="run" placeholder="Avec sa configuration"></label>
+</section>
 <p id="errors" class="error" role="alert"></p><div id="summary" class="summary"></div>
 <div class="columns"><section><h2>Parcours</h2><div id="instances" class="stack"><p class="empty">Connectez-vous pour lire l’état canonique.</p></div></section><section><h2>Catalogue & révisions</h2><div id="catalog" class="stack"></div><h2>Disponibilité & limites</h2><div id="limits" class="stack"></div></section></div>
 <section id="live-section"><h2>Run observé en direct</h2><p>Une exécution terminée ne prouve pas l’acceptation, l’intégration, la validation ou le nettoyage.</p><div id="live"></div></section>

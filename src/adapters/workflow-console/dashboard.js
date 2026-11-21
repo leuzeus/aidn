@@ -55,10 +55,19 @@ function render(output) {
 $("refresh").onclick = async () => {
   invalidate(); $("connection-state").textContent = "Lecture…";
   try { const query = {}; for (const [id, key] of [["instance", "instanceId"], ["workflow", "workflowId"], ["configuration", "configuration"], ["run", "run"]]) if ($(id).value.trim()) query[key] = $(id).value.trim();
+    if (query.instanceId && $("engine").value) query.engine = $("engine").value;
     const output = await call("inspect", query); render(output); $("connection-state").textContent = output.errors.length ? "Lecture refusée" : "État consulté · lecture seule";
   } catch (error) { $("errors").textContent = error.message; $("connection-state").textContent = "Indisponible"; }
 };
-for (const id of ["request", "token", "instance", "workflow", "configuration", "run"]) $(id).addEventListener("input", invalidate);
+function updateEngineSelector() {
+  const engine = $("engine");
+  engine.disabled = !$("instance").value.trim();
+  if (engine.disabled) engine.value = "";
+}
+updateEngineSelector();
+$("instance").addEventListener("input", () => { updateEngineSelector(); invalidate(); });
+$("engine").addEventListener("change", invalidate);
+for (const id of ["request", "token", "workflow", "configuration", "run"]) $(id).addEventListener("input", invalidate);
 $("preview").onclick = async () => {
   if (pending) return; invalidate(); pending = true;
   const observed = { generation, text: $("request").value, token: $("token").value };

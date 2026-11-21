@@ -11,6 +11,7 @@ import { activateWorkflowConsoleFixture } from "./workflow-console-fixture-lib.m
 import { createArtifactStore } from "../../src/adapters/runtime/artifact-store.mjs";
 import { createWorkflowInstanceStore } from "../../src/adapters/runtime/workflow-instance-store.mjs";
 import { createWorkflowInstanceService } from "../../src/application/runtime/workflow-instance-service.mjs";
+import { createProjectWorkflowInstanceService, createLegacyProjectWorkflowInstanceService } from "../../src/application/runtime/workflow-instance-composition.mjs";
 import { createProjectWorkflowConsole } from "../../src/application/runtime/workflow-console-composition.mjs";
 import { createWorkflowConsoleService, validateWorkflowConsoleRequest } from "../../src/application/runtime/workflow-console-service.mjs";
 import { runWorkflowConsoleCli, parseWorkflowConsoleArguments } from "../runtime/workflow-console-cli.mjs";
@@ -39,7 +40,47 @@ function snapshot(folder) {
 }
 const put = (file, value) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(value)); };
 let checks = 0;
-async function check(name, action) { await action(); checks++; console.log("PASS " + name); }
+async function check(name, action, group) {
+  if (process.argv.includes("--engine-selector-only") && group !== "engine-selector") return;
+  await action(); checks++; console.log("PASS " + name);
+}
+
+function loadDashboard(fetch) {
+  const html = fs.readFileSync(path.join(repo, "src/adapters/workflow-console/dashboard.html"), "utf8");
+  const createElement = () => ({
+    value: "", checked: false, disabled: false, children: [], listeners: {},
+    addEventListener(name, handler) { this.listeners[name] = handler; },
+    append(...children) { this.children.push(...children); },
+    replaceChildren() { this.children = []; },
+  });
+  const elements = new Map(Array.from(html.matchAll(/\bid="([^"]+)"/g), ([, id]) => [id, createElement()]));
+  const get = id => elements.get(id);
+  vm.runInNewContext(fs.readFileSync(path.join(repo, "src/adapters/workflow-console/dashboard.js"), "utf8"), {
+    document: { createElement, getElementById: get }, fetch,
+  });
+  return { get, html };
+}
+
+async function withAmbiguousDashboard(verify) {
+  const targetRoot = fs.mkdtempSync(path.join(root, "ambiguous-"));
+  activateWorkflowConsoleFixture(targetRoot, path.join(root, "package"));
+  const model = JSON.parse(fs.readFileSync(path.join(repo, "tests/fixtures/agentic-process/compatible-work-and-review.json")));
+  createProjectWorkflowInstanceService({ targetRoot }).initialize({ instanceId: "same", model, write: true });
+  createLegacyProjectWorkflowInstanceService({ targetRoot }).initialize({ instanceId: "same", definition, context, write: true });
+  const before = snapshot(targetRoot);
+  const server = await startWorkflowDashboard({ targetRoot });
+  try {
+    const requests = [];
+    const { get, html } = loadDashboard((route, options) => {
+      assert.equal(route, "/api/inspect");
+      requests.push(JSON.parse(options.body));
+      return fetch(server.url + route, { ...options, headers: { ...options.headers, Origin: server.url } });
+    });
+    get("token").value = server.token;
+    await verify({ get, html, requests });
+    assert.equal(snapshot(targetRoot), before);
+  } finally { server.close(); }
+}
 try {
   await check("STANDARD call actions retain exact entry and return through the service", verifyStandardWorkflowCallAction);
   await check("STANDARD console retains the exact timed action and browser consent subject", verifyStandardConsoleExactAction);
@@ -73,19 +114,50 @@ try {
     let invoked = false; const request = { operation: "decide", input: {} }; Object.defineProperty(request, "extra", { enumerable: true, get() { invoked = true; } });
     assert.throws(() => validateWorkflowConsoleRequest(request)); assert.equal(invoked, false);
   });
-  await check("an in-flight browser preview cannot restore an invalidated approval", async () => {
-    const elements = new Map(), get = id => {
-      if (!elements.has(id)) elements.set(id, { value: "", checked: false, disabled: false, listeners: {}, addEventListener(name, handler) { this.listeners[name] = handler; } });
-      return elements.get(id);
-    };
+  await check("dashboard selects each engine for the same exact instance ID", () => withAmbiguousDashboard(async ({ get, html, requests }) => {
+    const options = html.match(/<select\b[^>]*\bid="engine"[^>]*>([\s\S]*?)<\/select>/)[1];
+    assert.deepEqual(Array.from(options.matchAll(/<option value="([^"]*)"/g), match => match[1]), ["", "agentic", "legacy"]);
+    assert.equal(get("engine").disabled, true);
+    get("instance").value = " same "; get("instance").listeners.input();
+    assert.equal(get("engine").disabled, false);
+    for (const engine of ["agentic", "legacy"]) {
+      get("engine").value = engine; get("engine").listeners.change();
+      await get("refresh").onclick();
+      assert.deepEqual(requests.at(-1), { instanceId: "same", engine });
+      const output = contracted("inspect", JSON.parse(get("raw").textContent));
+      assert.deepEqual(output.errors, []);
+      assert.deepEqual(output.view.instances.map(row => [row.instance_id, row.engine]), [["same", engine]]);
+      const cards = get("instances").children;
+      assert.equal(cards.length, 1);
+      assert(cards[0].children.some(child => child.textContent === output.view.instances[0].instance_sha256));
+    }
+  }), "engine-selector");
+  await check("dashboard omits an unspecified engine and preserves the catalog and ambiguity verdict", () => withAmbiguousDashboard(async ({ get, requests }) => {
+    get("instance").value = "same"; get("instance").listeners.input();
+    await get("refresh").onclick();
+    assert.deepEqual(requests.at(-1), { instanceId: "same" });
+    assert.equal(get("errors").textContent, "WORKFLOW_ENGINE_AMBIGUOUS");
+    get("engine").value = "legacy"; get("engine").listeners.change();
+    get("instance").value = "  "; get("instance").listeners.input();
+    assert.equal(get("engine").disabled, true); assert.equal(get("engine").value, "");
+    await get("refresh").onclick();
+    assert.deepEqual(requests.at(-1), {});
+    assert.equal(get("errors").textContent, "");
+    assert.deepEqual(JSON.parse(get("raw").textContent).view.instances.map(row => row.engine).sort(), ["agentic", "legacy"]);
+  }), "engine-selector");
+  await check("dashboard selector edits invalidate approved and in-flight previews", async () => {
     let respond; const requests = [];
-    vm.runInNewContext(fs.readFileSync(path.join(repo, "src/adapters/workflow-console/dashboard.js"), "utf8"), {
-      document: { getElementById: get }, fetch: (_url, options) => { requests.push(JSON.parse(options.body)); return new Promise(resolve => { respond = value => resolve({ ok: true, json: async () => value }); }); },
+    const { get } = loadDashboard((_url, options) => {
+      requests.push(JSON.parse(options.body));
+      return new Promise(resolve => { respond = value => resolve({ ok: true, json: async () => value }); });
     });
     const request = { operation: "decide", input: { instanceId: "sample", outcome: "rejected" } };
     get("request").value = JSON.stringify(request); get("token").value = "fixture";
-    for (const changed of ["request", "token", "instance"]) {
-      const pendingPreview = get("preview").onclick(); get(changed).listeners.input();
+    get("instance").value = "sample"; get("instance").listeners.input();
+    for (const changed of ["request", "token", "instance", "engine"]) {
+      const pendingPreview = get("preview").onclick();
+      if (changed === "engine") { get(changed).value = "agentic"; get(changed).listeners.change(); }
+      else get(changed).listeners.input();
       // Even an edit reverted to its original value invalidates the pending result.
       respond({ can_apply: true, action_sha256: "a".repeat(64), action: { effects: ["canonical_workflow_checkpoint"] } }); await pendingPreview;
       get("approve").checked = true; get("approve").onchange(); assert.equal(get("apply").disabled, true);
@@ -94,9 +166,15 @@ try {
     const preview = get("preview").onclick(); get("approve").checked = true;
     respond({ can_apply: true, action_sha256: "b".repeat(64), action: { effects: ["canonical_workflow_checkpoint"] } }); await preview;
     assert.equal(get("approve").checked, false); get("approve").checked = true; get("approve").onchange(); assert.equal(get("apply").disabled, false);
+    get("engine").value = "legacy"; get("engine").listeners.change();
+    assert.equal(get("approve").checked, false); assert.equal(get("apply").disabled, true);
+    const before = requests.length; await get("apply").onclick(); assert.equal(requests.length, before);
+    const fresh = get("preview").onclick();
+    respond({ can_apply: true, action_sha256: "b".repeat(64), action: { effects: ["canonical_workflow_checkpoint"] } }); await fresh;
+    get("approve").checked = true; get("approve").onchange();
     const application = get("apply").onclick(); assert.deepEqual(requests.at(-1).request, request); assert.equal(requests.at(-1).expectPlan, "b".repeat(64));
     respond({ written: true }); await application; assert.equal(get("apply").disabled, true);
-  });
+  }, "engine-selector");
   for (const mode of ["files", "dual", "db-only"]) await check("CLI and dashboard share observations, exact preview and guarded actions: " + mode, async () => {
     const target = path.join(root, mode); activateWorkflowConsoleFixture(target, path.join(root, "package"));
     put(path.join(target, ".aidn/config.json"), { runtime: { stateMode: mode } });
