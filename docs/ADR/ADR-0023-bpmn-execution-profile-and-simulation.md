@@ -100,6 +100,15 @@ preserving the existing byte/hash, storage-budget and review-boundary checks.
 Filesystem failures stop execution with bounded diagnostics and cleanup; they
 do not weaken the review permissions or trigger an automatic model retry.
 
+## Portable authoring snapshots
+
+The workflow-transfer.v1 index belongs to a transferred copy of an authored
+project. The exporting checkout captures BPMNDI bytes, manifest and model
+digests, versioned operation references and the local schema/catalog closure.
+Receiving an offline copy requires validating every dependency and recompiling
+the project. The authoring baseline and runtime provider pins retain their
+respective ownership. Explicit duplication creates a fresh root identity.
+
 ## Normal BPMN path and measured native exchanges
 
 The user's adoption decision supersedes the earlier opt-in/default-v1 choice:

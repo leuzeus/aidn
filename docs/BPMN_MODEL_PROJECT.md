@@ -70,6 +70,47 @@ Use the source authoring command to create a new directory.
 node tools/author/export-bpmn-project.mjs --model model.json --bindings definitions.json --out my-project
 ```
 
+## Portable transfer
+
+Export the current saved editor project into a new directory.
+
+```sh
+node tools/author/transfer-workflow.mjs --project ./working --out ./delivery
+```
+
+Use `--standard --out ./delivery` for the installed STANDARD baseline. Copy
+the entire directory to the target machine, then check it offline with the
+corresponding AIDN compiler.
+
+```sh
+node tools/author/transfer-workflow.mjs --import ./delivery
+node tools/author/transfer-workflow.mjs --import ./delivery --out ./copy
+node tools/author/transfer-workflow.mjs --import ./delivery --duplicate-as delivery-next --out ./next
+```
+
+Import alone reads the directory and prints the model identity. A copy keeps
+the manifest, diagrams including BPMNDI layout, and local call pins. Duplication
+requests a new root identity through the graphical editor's duplication service.
+Each destination must be new. Transfer snapshots are self-contained. After
+editing a working project, export it again to record its new digests.
+
+The root holds the project manifest and its BPMN files. The
+`workflow-transfer.v1` index records their hashes, the compiled model identity,
+the revision and digest of every operation binding per model, and the required
+local schema and catalog files. Schema closure covers model and data-binding
+contracts, operation input/output contracts and catalog activity output contracts.
+An importing author can inspect all these data offline. Provider implementations
+and runtime authority come from the destination host.
+
+For a custom workflow, pass `--dependencies assets.json` at export. The object
+contains `schemas` keyed by contract ID and `catalogs` rows of the form
+`{id, revision, document}`. Each catalog document must declare its identity and
+revision. A project carrying a published catalog pin requires that exact catalog.
+Built-in schemas resolve from the exporting installation. Import resolves every
+dependency from the snapshot and identifies the file or contract when verification
+fails. The transfer index provides consistency checks; publication and trust stay
+with the package owner.
+
 ## Published STANDARD
 
 Run `node tools/author/export-bpmn-project.mjs --standard --out my-standard` to
@@ -115,14 +156,14 @@ Confirming reloads the saved diagram. Restoring the original text before
 reloading avoids the prompt when the diagram has no other unsaved edits.
 A changed project digest refuses a stale save, including changes to a sibling diagram.
 
-Open **Créer ou dupliquer un workflow** to reserve a new local workflow by ID.
+Open **CrÃ©er ou dupliquer un workflow** to reserve a new local workflow by ID.
 Each created workflow opens at a separate bookmarkable URL and has its own local
-reference model. Under **Éditer les étapes**, choose a parent sequence and enter
+reference model. Under **Ã‰diter les Ã©tapes**, choose a parent sequence and enter
 a new step ID, or select an existing ID to edit its properties. Operation inputs
 accept literals, workflow parameters and scoped outputs. Selecting an evaluator
 requires a corresponding installed operation. A conditional split creates two
 sequences for its branches. Calls target a local model and validate its parameter
-mapping. **Appliquer à l’étape** previews the compiled result; **Enregistrer**
+mapping. **Appliquer Ã  lâ€™Ã©tape** previews the compiled result; **Enregistrer**
 commits the working project.
 
 New workflows live under `.aidn-workflows/<id>` in the opened directory.
@@ -139,3 +180,5 @@ exported from another IR v2 model, supply its authoritative JSON with
 `--baseline model.json` on server startup. To run the browser scenarios,
 use `npm test --prefix tools/author/bpmn-editor` with the matching Playwright
 Chromium installed, or set `BPMN_BROWSER_PATH` to a local Chromium executable.
+
+Projects with an authored role profile carry its schema and the versioned host capability and transition catalogs used to compile it. Import checks that these catalogs match their installed revisions.
