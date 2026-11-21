@@ -2909,18 +2909,21 @@ The same compiler suite also pins v1 compatibility and challenges the
 [default v2 XML mappings](BPMN_EXECUTION_PROFILE_V2.md): message correlation scopes,
 post-test loop polarity and explicit limit failures, fixed item identities,
 repeated/nested calls, recursion and expansion limits. The canonical service
-suite executes the combined v2 model in files/dual/db-only with real temporary
-stores and authority doubles, then compares the exact journal cursor/hash with
-synthetic simulation. Native execution, live PostgreSQL, graphical import and
+suite executes the structured diagram with the default IR v2 target and the
+extended diagram with raw host events on explicit IR v1. Both run in
+files/dual/db-only and compare the retained cursor and hash with simulation.
+The operation fixtures route a bound IR v2 delivery to the extended diagram's
+approved task. Native execution, live PostgreSQL, graphical import and
 installed-package qualification remain NOT_RUN.
 
-The production-composition suite also executes the combined v2 XML model with
-an explicitly pinned host scenario: a correlated message, two loop iterations,
+The production-composition suite also executes the combined v2 XML model on
+IR v1 with a pinned host scenario: a correlated message, two loop iterations,
 multi-instance calls and independent review, with ten accepted native-wire-double
-results. It checks no polling during waits, exact result-triggered facts,
+results. Run this case with `node tools/perf/verify-agentic-process-execution-fixtures.mjs --bpmn-control-only`.
+It checks no polling during waits, exact result-triggered facts,
 scenario mutation refusal and forbidden assignment inputs. Real provider tokens
 remain a separate benchmark. `tools/perf/benchmark-bpmn-process.mjs` compares a
-frozen baseline reducer and the candidate over the same ten-result event log,
+frozen baseline reducer and the candidate over the same IR v1 ten-result event log,
 counterbalances CPU samples, and reports XML compilation separately from IR
 parsing. Its synthetic CPU stage has no model calls and cannot establish native
 token savings.

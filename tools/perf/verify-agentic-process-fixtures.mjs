@@ -25,7 +25,8 @@ import { verifyProcessDataFixtures } from "./process-data-fixture-lib.mjs";
 
 const example = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agentic-process/compatible-work-and-review.json", import.meta.url)));
 const extendedXml = fs.readFileSync(new URL("../../tests/fixtures/agentic-process/extended-delivery.bpmn", import.meta.url), "utf8");
-const extendedModel = (xml = extendedXml) => compileBpmnProcess({ xml, profile: "aidn-bpmn-structured.v2", processRef: "ExtendedDelivery",
+// These XML event and loop fixtures replay historical raw message/facts journals.
+const extendedModel = (xml = extendedXml) => compileBpmnProcess({ xml, profile: "aidn-bpmn-structured.v2", targetModel: "agentic-process-model.v1", processRef: "ExtendedDelivery",
   modelId: "extended-delivery", revision: 1, participantId: "delivery", roles: example.roles, policies: example.policies }).model;
 const H = "a".repeat(64), OTHER = "b".repeat(64), NOW = Date.now();
 const cases = []; let serial = 0;

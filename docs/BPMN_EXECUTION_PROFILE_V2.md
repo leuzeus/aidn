@@ -19,16 +19,13 @@ document contains multiple processes, `processRef` must select the entry by its
 exact XML ID. In a single-process document it can be omitted. It is unavailable
 in v1. Unknown profiles and invalid selectors refuse.
 
-The closed `bpmn-process-compilation.v1` envelope accepts either profile; its
-shape is unchanged. By default both produce `agentic-process-model.v1`. With the v2 XML profile,
-`targetModel: "agentic-process-model.v2"` selects the typed model and the
-`bpmn-process-compilation.v2` envelope. Both versions use the same
-reducer, simulation, policy pins and trusted execution authorities. V1's original
-model hash and source map are pinned by a compatibility fixture. Existing
-instances are not reinterpreted. Selecting the normal agentic engine does not
-authorize writes or native calls; execution still requires pinned inputs and
-explicit host authorization. Historical sequential workflow records retain
-their versioned reader rather than being silently converted into agentic models.
+With the v2 XML profile, omitting `targetModel` produces an
+`agentic-process-model.v2` in a `bpmn-process-compilation.v2` envelope.
+Use `targetModel: "agentic-process-model.v1"` for consumers that require the
+historical model and its v1 envelope. The v1 XML profile always produces IR v1.
+Compatibility fixtures pin the historical model hashes and source maps.
+Both targets use the same reducer and simulation. Existing instances replay
+their pinned model. Writes and native calls still require host authorization.
 
 Composed workflows use the [BPMN model project format](BPMN_MODEL_PROJECT.md).
 
@@ -82,8 +79,10 @@ unique within each race. The paths after the catches must form a structured
 block converging at an exclusive merge. Empty branch bodies refuse.
 
 At runtime the gateway occurrence waits without allocating an executor. The
-trusted host delivers the existing `message` event with exact occurrence,
-`correlation_id` and `event_key`. One winner remains after replay; late losing
+trusted host authenticates a `process-control-event.v1` delivery bound to the
+instance, occurrence, `correlation_id` and `event_key`. The IR v2 reducer
+accepts it as a `control` event. Consumers that supply raw `message` events
+must request IR v1. One winner remains after replay; late losing
 signals and foreign correlations refuse. Catches and the merge map to the event
 IR node in `source_map`; catches create no extra activity occurrence.
 
@@ -179,8 +178,9 @@ Run `node tools/perf/verify-bpmn-process-fixtures.mjs` for the compiler profile.
 Run `npm run perf:verify-agentic-kernel` for the reducer and replay behavior
 of the compiled model.
 
-Canonical service fixtures run the complete XML-derived workflow in `files`,
-`dual` and `db-only` with trusted authority doubles and real temporary stores.
+Canonical service fixtures run the extended XML workflow with raw host events
+and an explicit IR v1 target in `files`, `dual` and `db-only`, using trusted
+authority doubles and real temporary stores.
 Their retained journal produces exactly the same final cursor and instance hash
 through simulation. Native host/identity, live PostgreSQL, graphical editor
 import and installed-package qualification remain separate and are NOT_RUN.

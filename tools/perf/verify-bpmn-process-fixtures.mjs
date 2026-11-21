@@ -43,7 +43,8 @@ check("BPMN compilation is deterministic, immutable, source mapped and schema va
 });
 check("BPMN defaults to V2 on the agentic IR path and preserves explicit V1 compatibility", () => {
   const v1 = compile(), v2 = compile(xml, { profile: "aidn-bpmn-structured.v2" });
-  assert.deepEqual(v1.model, v2.model); assert.deepEqual(v1.source_map, v2.source_map);
+  assert.deepEqual(v2.model, { ...v1.model, contract_version: "agentic-process-model.v2", operation_pins: {} });
+  assert.deepEqual(v1.source_map, v2.source_map);
   assert.equal(v1.profile, "aidn-bpmn-structured.v1"); assert.equal(v2.profile, "aidn-bpmn-structured.v2");
   assert.deepEqual(agenticProcessCapabilities().bpmn_xml_profiles, [v1.profile, v2.profile]);
   assert.equal(agenticProcessCapabilities().bpmn_xml_profile, v2.profile);
@@ -58,26 +59,35 @@ check("BPMN defaults to V2 on the agentic IR path and preserves explicit V1 comp
   assert.deepEqual(compiled, extended());
   const kinds = compiled.model.nodes.map(n => n.kind);
   for (const kind of ["activity", "sequence", "event", "loop", "multi_instance", "call"]) assert.equal(kinds.includes(kind), true);
-  const schema = JSON.parse(fs.readFileSync(new URL("../../src/core/contracts/workflow-definition/bpmn-process-compilation.v1.schema.json", import.meta.url)));
+  const schema = JSON.parse(fs.readFileSync(new URL("../../src/core/contracts/workflow-definition/bpmn-process-compilation.v2.schema.json", import.meta.url)));
   assert.deepEqual(validateJsonSchema(compiled, schema, "$", { contractKind: "workflow-definition" }), []);
   assert.equal(compiled.source_map.filter(row => row.bpmn_id === "InspectItem").length, 2);
   assert.equal(new Set(compiled.model.nodes.map(n => n.id)).size, compiled.model.nodes.length);
 });
-check("The default target retains the exact historical compilation", () => {
-  assert.deepEqual(extended(), extended(extendedXml, { targetModel: "agentic-process-model.v1" }));
+check("Explicit IR v1 preserves historical model hashes and source maps", () => {
+  const legacy = extended(extendedXml, { targetModel: "agentic-process-model.v1" });
+  assert.equal(legacy.contract_version, "bpmn-process-compilation.v1");
+  assert.equal(legacy.model.contract_version, "agentic-process-model.v1");
+  assert.equal(legacy.model_sha256, "7cd62cecdd6a877599aa5e390bd525f52cfb209e7f3590e80a148649f33e5c93");
+  assert.equal(shadowHash(legacy.source_map), "7dbd8b936f65471235ea4a86200cdcfd4cd34dcd0f495f200fff474695d99a4e");
+  assert.deepEqual(compile(), compile(xml, { targetModel: "agentic-process-model.v1" }));
   assert.equal(compile().model_sha256, "caa608f501c5b9543be005610ede3cca58e4aad774c11d7487cf664a495882b9");
 });
-check("The explicit typed target validates and starts in the same reducer", () => {
-  const result = extended(extendedXml, { targetModel: "agentic-process-model.v2" });
+check("The default IR v2 matches the explicit target and starts in the shared reducer", () => {
+  const result = extended();
+  const legacy = extended(extendedXml, { targetModel: "agentic-process-model.v1" });
+  assert.deepEqual(result, extended(extendedXml, { targetModel: "agentic-process-model.v2" }));
   assert.equal(result.contract_version, "bpmn-process-compilation.v2");
-  assert.deepEqual(result.model, { ...extended().model, contract_version: "agentic-process-model.v2", operation_pins: {} });
+  assert.deepEqual(result.model, { ...legacy.model, contract_version: "agentic-process-model.v2", operation_pins: {} });
   assertAgenticProcessModel(result.model);
   assert.equal(result.model_sha256, shadowHash(result.model));
-  assert.deepEqual(cursor(result).ready, cursor(extended()).ready);
+  assert.deepEqual(cursor(result).ready, cursor(legacy).ready);
 });
 check("Unsupported profile and target pairs refuse", () => {
   for (const targetModel of [null, "agentic-process-model.v3", "agentic-process-model.v2"])
     assert.throws(() => compile(xml, { targetModel }), /BPMN_TARGET_UNSUPPORTED/);
+  for (const targetModel of [null, "agentic-process-model.v3"])
+    refusesExtended(extendedXml, "BPMN_TARGET_UNSUPPORTED", { targetModel });
 });
 const typedBinding = { contract_version: "process-operation-binding.v1", id: "inspect", revision: 1,
   executor_kind: "deterministic", effect_class: "read-only", skill_id: null, input_contract: "inspection-input.v1",
@@ -86,7 +96,7 @@ const typedXml = xml.replace('<aidn:execution roleRef="review" policyRef="review
   `<aidn:operation bindingRef="inspect" sha256="${shadowHash(typedBinding)}"/>`);
 const typedInput = { contract_version: "process-data-bindings.v4", parameter_keys: [],
   inputs: [{ node_id: "Review", fields: { occurrence: { source: "occurrence_id", node_id: "Analyze" } } }] };
-const typed = (overrides = {}) => compile(typedXml, { profile: "aidn-bpmn-structured.v2", targetModel: "agentic-process-model.v2",
+const typed = (overrides = {}) => compileBpmnProcess({ xml: typedXml, modelId: "delivery", revision: 1, participantId: "delivery", roles, policies,
   operationBindings: [typedBinding], dataBindings: typedInput, ...overrides });
 check("A BPMN operation consumes an earlier activity with exact IR pins and policies", () => {
   const reference = structuredClone(compile().model);
@@ -96,6 +106,8 @@ check("A BPMN operation consumes an earlier activity with exact IR pins and poli
     kind: "operation", id: "n_6", participant_ref: "delivery", binding_ref: "inspect" };
   assert.deepEqual(typed().model, reference);
   assert.equal(typed().model_sha256, shadowHash(reference));
+  assert.deepEqual(typed(), typed({ targetModel: "agentic-process-model.v2" }));
+  assert.throws(() => typed({ targetModel: "agentic-process-model.v1" }), /BPMN_TARGET_UNSUPPORTED/);
 });
 check("Missing and changed operation definitions refuse at the task", () => {
   for (const [definitions, code] of [[[], "BPMN_OPERATION_BINDING_MISSING"],

@@ -128,6 +128,12 @@ authoring profile for that common engine, not the scope of its default adoption.
 
 ## Editable projects for composed IR v2
 
+New compilations with the v2 XML profile default to `agentic-process-model.v2`,
+so a diagram can use typed operations and data bindings without a target override.
+Callers that replay raw control scenarios or compare historical model hashes
+select `targetModel: "agentic-process-model.v1"`. The v1 XML profile keeps IR v1
+as its only target. Existing instances replay their pinned model.
+
 A versioned project manifest and one editable BPMN diagram per model support
 the published STANDARD composition. Pinned targets retain their interfaces,
 bindings and policies. The catalog and its published IR remain authoritative.
