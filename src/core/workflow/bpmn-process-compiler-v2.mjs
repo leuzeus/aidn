@@ -4,6 +4,7 @@ import { compileBpmnProcessTree } from "./bpmn-process-compiler.mjs";
 import { readBpmnActivity } from "./bpmn-activity-profile.mjs";
 import { checkShadowJson, freezeShadow, shadowHash } from "./shadow-json.mjs";
 import schema from "../contracts/workflow-definition/bpmn-process-compilation.v1.schema.json" with { type: "json" };
+import schemaV2 from "../contracts/workflow-definition/bpmn-process-compilation.v2.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 
 const tasks = ["task", "serviceTask", "userTask", "callActivity"];
@@ -178,9 +179,11 @@ export function compileExtendedBpmnProcessTree(input) {
       }
       sourceMap.push({ bpmn_id: catchId, ir_node_id: node.id });
     }
+    const typed = input.targetModel === "agentic-process-model.v2";
+    if (typed) Object.assign(model, { contract_version: input.targetModel, operation_pins: {} });
     assertAgenticProcessModel(model);
-    const result = { ...skeleton, profile: BPMN_EXTENDED_EXECUTION_PROFILE, model, model_sha256: shadowHash(model), source_map: sourceMap };
-    if (validateJsonSchema(result, schema, "$", { contractKind: "workflow-definition" }).length) fail("BPMN_COMPILATION_INVALID");
+    const result = { ...skeleton, contract_version: typed ? "bpmn-process-compilation.v2" : skeleton.contract_version, profile: BPMN_EXTENDED_EXECUTION_PROFILE, model, model_sha256: shadowHash(model), source_map: sourceMap };
+    if (validateJsonSchema(result, typed ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length) fail("BPMN_COMPILATION_INVALID");
     active.delete(processKey); return result;
   }
   const compiled = compileProcess(selected);

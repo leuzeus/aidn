@@ -63,6 +63,22 @@ check("BPMN defaults to V2 on the agentic IR path and preserves explicit V1 comp
   assert.equal(compiled.source_map.filter(row => row.bpmn_id === "InspectItem").length, 2);
   assert.equal(new Set(compiled.model.nodes.map(n => n.id)).size, compiled.model.nodes.length);
 });
+check("The default target retains the exact historical compilation", () => {
+  assert.deepEqual(extended(), extended(extendedXml, { targetModel: "agentic-process-model.v1" }));
+  assert.equal(compile().model_sha256, "caa608f501c5b9543be005610ede3cca58e4aad774c11d7487cf664a495882b9");
+});
+check("The explicit typed target validates and starts in the same reducer", () => {
+  const result = extended(extendedXml, { targetModel: "agentic-process-model.v2" });
+  assert.equal(result.contract_version, "bpmn-process-compilation.v2");
+  assert.deepEqual(result.model, { ...extended().model, contract_version: "agentic-process-model.v2", operation_pins: {} });
+  assertAgenticProcessModel(result.model);
+  assert.equal(result.model_sha256, shadowHash(result.model));
+  assert.deepEqual(cursor(result).ready, cursor(extended()).ready);
+});
+check("Unsupported profile and target pairs refuse", () => {
+  for (const targetModel of [null, "agentic-process-model.v3", "agentic-process-model.v2"])
+    assert.throws(() => compile(xml, { targetModel }), /BPMN_TARGET_UNSUPPORTED/);
+});
 check("V2 rejects event semantics unavailable in the reducer and invalid original declarations", () => {
   refusesExtended(extendedXml.replace('instantiate="false"', 'instantiate="true"'), "BPMN_EVENT_GATEWAY_UNSUPPORTED");
   refusesExtended(extendedXml.replace('eventGatewayType="Exclusive"', 'eventGatewayType="Parallel"'), "BPMN_EVENT_GATEWAY_UNSUPPORTED");
