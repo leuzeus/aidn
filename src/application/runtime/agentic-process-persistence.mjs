@@ -4,9 +4,9 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { processFail as fail } from "../../core/workflow/agentic-process-model.mjs";
 import { readActivation } from "../install/project-activation-service.mjs";
 
-function selection(targetRoot, env, onGitHead) {
+function selection(targetRoot, env) {
   const selected = resolveEffectiveRuntimePersistence({ targetRoot, env });
-  const activation = readActivation({ targetRoot, onGitHead });
+  const activation = readActivation({ targetRoot });
   if (!activation.active || activation.state !== "active") fail("PROCESS_EXECUTION_PERSISTENCE_AUTHORITY_UNAVAILABLE");
   const globalRuntime = activation.receipt?.global_runtime ?? null;
   const reference = selected.backend === "postgres" ? selected.connectionRef : null;
@@ -23,8 +23,8 @@ export function agenticProcessPersistence({ targetRoot, env = process.env }) {
 // One fresh activation read may describe both project and persistence authority
 // in the same synchronous observation. No caller-supplied activation is accepted,
 // and no observation survives into a later admission or effect boundary.
-export function observeAgenticProcessPersistence({ targetRoot, env = process.env, onGitHead }) {
-  const { selected, activation, reference, binding } = selection(targetRoot, env, onGitHead);
+export function observeAgenticProcessPersistence({ targetRoot, env = process.env }) {
+  const { selected, activation, reference, binding } = selection(targetRoot, env);
   if (!["sqlite", "postgres"].includes(selected.backend)) fail("PROCESS_EXECUTION_PERSISTENCE_UNSUPPORTED");
   if (selected.backend === "postgres" && !/^env:[A-Za-z_][A-Za-z0-9_]*$/.test(reference ?? "")) fail("PROCESS_EXECUTION_PERSISTENCE_REFERENCE_REQUIRED");
   return { activation, persistence: { backend: selected.backend, binding_sha256: shadowHash(binding) } };

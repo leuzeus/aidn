@@ -715,9 +715,8 @@ introduced; existing source-of-truth, metadata and authorization policies remain
 
 ## Synchronous reads for local operation scope and ownership
 
-When STANDARD requests activation and Git HEAD together, one fresh Git
-invocation supplies the worktree root, Git directories, symbolic branch
-and commit. The kernel creation identity of the running process is immutable
+STANDARD reads its current Git HEAD after checking activation and reading
+the canonical current-state document. The kernel creation identity of the running process is immutable
 for its lifetime. Its hostname and every foreign PID observation remain
 current at the point of use.
 

@@ -473,14 +473,12 @@ export function createStandardWorkflowOperations({ targetRoot, now = Date.now })
   function observeScope(execution = false) {
     if (implementation() !== loadedImplementation) fail("STANDARD_IMPLEMENTATION_CHANGED");
     if (Object.keys(process.env).some(key => /^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|CONFIG(?:_.*)?)$/i.test(key))) fail("STANDARD_GIT_ENV_SCOPE_CONFLICT");
-    let gitHead;
-    const target = { targetRoot: root, onGitHead: value => { gitHead = value; } };
-    const authority = execution ? readWorkflowProjectExecutionAuthority(target) : null;
-    const project = authority?.project ?? readWorkflowProjectAuthority(target), persistence = artifacts.describe();
+    const authority = execution ? readWorkflowProjectExecutionAuthority({ targetRoot: root }) : null;
+    const project = authority?.project ?? readWorkflowProjectAuthority({ targetRoot: root }), persistence = artifacts.describe();
     // Do this before existing helpers: a missing canonical state must never
     // trigger their historical visible-file compatibility fallback.
     artifacts.read("CURRENT-STATE.md", { required: true });
-    return { context: { project, persistence, ...(gitHead ?? readStandardGitHead(git)) }, authority };
+    return { context: { project, persistence, ...readStandardGitHead(git) }, authority };
   }
   const scope = () => observeScope().context;
   async function admission(mode = "UNKNOWN") {

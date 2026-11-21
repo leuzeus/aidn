@@ -103,7 +103,7 @@ export function createActivationGitEnvironment(env = process.env) {
   return result;
 }
 
-export function resolveActivationTarget({ targetRoot = process.cwd(), beforeObserve, onGitHead } = {}) {
+export function resolveActivationTarget({ targetRoot = process.cwd(), beforeObserve } = {}) {
   const input = physicalDirectory(targetRoot, true, beforeObserve);
   let markerRoot = input;
   while (!fs.existsSync(path.join(markerRoot, ".git"))) {
@@ -117,26 +117,17 @@ export function resolveActivationTarget({ targetRoot = process.cwd(), beforeObse
     safeAbsolute(marker, { directory: stat.isDirectory(), mustExist: true, beforeObserve });
     // A caller's Git environment must never redirect project authorization.
     const env = createActivationGitEnvironment();
-    const args = ["-C", markerRoot, "rev-parse", "--path-format=absolute", "--show-toplevel", "--absolute-git-dir", "--git-common-dir"];
-    if (onGitHead) args.push("HEAD", "--symbolic-full-name", "HEAD");
-    const result = spawnSync("git", args, {
+    const result = spawnSync("git", ["-C", markerRoot, "rev-parse", "--path-format=absolute", "--show-toplevel", "--absolute-git-dir", "--git-common-dir"], {
       env, encoding: "utf8", timeout: 10000, windowsHide: true, maxBuffer: 1024 * 1024,
     });
     if (result.error || result.signal || result.status !== 0) fail("ACTIVATION_GIT_RESOLUTION_FAILED");
     const lines = result.stdout.trim().split(/\r?\n/);
-    const directories = lines.slice(0, 3);
-    if (lines.length !== (onGitHead ? 5 : 3) || directories.some(line => !path.isAbsolute(line))) fail("ACTIVATION_GIT_RESOLUTION_FAILED");
-    [root, gitDir, commonDir] = directories.map(line => physicalDirectory(line, false, beforeObserve));
+    if (lines.length !== 3 || lines.some((line) => !path.isAbsolute(line))) fail("ACTIVATION_GIT_RESOLUTION_FAILED");
+    [root, gitDir, commonDir] = lines.map((line) => physicalDirectory(line, false, beforeObserve));
     if (identityPath(root) !== identityPath(physicalDirectory(markerRoot, false, beforeObserve))) fail("ACTIVATION_GIT_ROOT_MISMATCH");
     if (identityPath(gitDir) !== identityPath(commonDir)) {
       const backlink = readBytes(path.join(gitDir, "gitdir"), undefined, beforeObserve);
       if (!backlink || identityPath(path.resolve(backlink.toString("utf8").trim())) !== identityPath(marker)) fail("ACTIVATION_WORKTREE_BACKLINK_MISMATCH");
-    }
-    if (onGitHead) {
-      const [, , , head, ref] = lines;
-      if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(head) || (ref !== "HEAD" && !ref.startsWith("refs/heads/")))
-        fail("ACTIVATION_GIT_RESOLUTION_FAILED");
-      onGitHead({ head, branch: ref === "HEAD" ? "" : ref.slice("refs/heads/".length) });
     }
   }
   const scope = commonDir ? "repository" : "local";
@@ -255,12 +246,12 @@ function validateReceipt(identity, { globalRecoveryPlanId, beforeObserve } = {})
   return receipt;
 }
 
-export function readActivation({ targetRoot = process.cwd(), beforeObserve, onGitHead } = {}) {
+export function readActivation({ targetRoot = process.cwd(), beforeObserve } = {}) {
   let identity = null, authorization = null, receipt = null;
   const errors = [];
   let state = "degraded";
   try {
-    identity = resolveActivationTarget({ targetRoot, beforeObserve, onGitHead });
+    identity = resolveActivationTarget({ targetRoot, beforeObserve });
     authorization = readAuthority(identity, beforeObserve).document;
     if (authorization?.status === "revoked") return { state: "revoked", active: false, identity, authorization, receipt, errors };
     if (readBytes(localPath(identity.target_root, ".aidn/install/global-migration.json", beforeObserve)) !== null) fail("ACTIVATION_GLOBAL_MIGRATION_PENDING");
