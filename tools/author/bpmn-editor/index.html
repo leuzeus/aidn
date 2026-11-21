@@ -5,7 +5,7 @@
 <title>Atelier BPMN · AIDN</title>
 <link rel="stylesheet" href="/assets/diagram-js.css"><link rel="stylesheet" href="/assets/bpmn-js.css">
 <link rel="stylesheet" href="/assets/bpmn-font/css/bpmn.css"><link rel="stylesheet" href="/editor.css">
-<script defer src="/modeler.js"></script><script defer src="/editor.js"></script>
+<script defer src="/modeler.js"></script><script defer src="/authoring.js"></script><script defer src="/editor.js"></script>
 </head>
 <body>
 <header><h1>Atelier BPMN</h1><div class="commands"><button id="compare">Comparer au STANDARD</button>
@@ -13,6 +13,16 @@
 <nav aria-label="Diagramme"><label>Modèle <select id="model"></select></label><label>Bloc <select id="scope"></select></label></nav>
 <main><section id="canvas" aria-label="Diagramme BPMN"></section>
 <aside><form id="condition-form" hidden><label>Condition du flux <input id="condition" required></label><button>Appliquer</button></form>
+<section id="author-panel">
+<details><summary>Créer ou dupliquer un workflow</summary>
+<form id="workspace-form"><label>Identifiant du workflow <input id="workspace-id" required pattern="[a-z][a-z0-9_\-]{0,63}"></label>
+<button value="create">Créer</button> <button value="duplicate">Dupliquer</button></form></details>
+<details><summary>Éditer les étapes</summary>
+<form id="step-form"><label>Type <select id="step-kind"><option value="operation">Opération</option><option value="activity">Activité de rôle</option>
+<option value="evaluation">Évaluation</option><option value="xor">Décision XOR</option><option value="call">Appel local</option></select></label>
+<label>Séquence parente <select id="step-parent"></select></label>
+<label>Identifiant de l’étape <input id="step-id" list="node-ids" required></label><datalist id="node-ids"></datalist>
+<div id="step-properties"></div><button>Appliquer à l’étape</button></form></details></section>
 <details id="catalog-panel"><summary>Catalogue de propriétés</summary>
 <label>Opération <select id="catalog-operation"></select></label><div id="catalog-fields"></div></details>
 <h2>Comparaison</h2><p id="status" role="status">Ouverture du projet…</p><ol id="diff"></ol></aside></main>
