@@ -1,0 +1,19 @@
+{
+  "contract_version": "workflow-package.v1",
+  "catalog": "package/catalogs/standard-workflow.v1.json",
+  "model": "package/catalogs/process-models/aidn-standard.v1.json",
+  "specification": "docs/SPEC.md",
+  "skills": [
+    "scaffold/codex/aidn-convert-to-spike/SKILL.md",
+    "scaffold/codex/aidn-drift-check/SKILL.md",
+    "scaffold/codex/aidn-context-reload/SKILL.md",
+    "scaffold/codex/aidn-start-session/SKILL.md",
+    "scaffold/codex/aidn-cycle-create/SKILL.md",
+    "scaffold/codex/aidn-branch-cycle-audit/SKILL.md",
+    "scaffold/codex/aidn-cycle-close/SKILL.md",
+    "scaffold/codex/aidn-promote-baseline/SKILL.md",
+    "scaffold/codex/aidn-close-session/SKILL.md",
+    "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+    "scaffold/codex/aidn-handoff-close/SKILL.md"
+  ]
+}

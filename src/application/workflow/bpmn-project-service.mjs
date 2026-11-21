@@ -6,8 +6,11 @@ import { indexBpmnOperationBindings } from "../../core/workflow/bpmn-operation-b
 import { checkShadowJson, freezeShadow, shadowHash } from "../../core/workflow/shadow-json.mjs";
 
 export function compileBpmnProject({ manifest, diagrams }) {
-  if (checkShadowJson(manifest) || !exactKeys(manifest, ["contract_version", "models"], ["catalog_sha256"])
-    || manifest.contract_version !== "bpmn-model-project.v1" || !Array.isArray(manifest.models)
+  if (checkShadowJson(manifest)) fail("BPMN_PROJECT_MANIFEST_INVALID");
+  const project = manifest?.contract_version === "workflow-project.v1";
+  if (!exactKeys(manifest, ["contract_version", "models", ...(project ? ["project_revision"] : [])], ["catalog_sha256"])
+    || (project ? !Number.isSafeInteger(manifest.project_revision) || manifest.project_revision < 1 : manifest.contract_version !== "bpmn-model-project.v1")
+    || !Array.isArray(manifest.models)
     || !manifest.models.length || manifest.models.length > 33 || (Object.hasOwn(manifest, "catalog_sha256") && !/^[a-f0-9]{64}$/.test(manifest.catalog_sha256))) fail("BPMN_PROJECT_MANIFEST_INVALID");
   const rows = structuredClone(manifest.models);
   const targets = new Map();
