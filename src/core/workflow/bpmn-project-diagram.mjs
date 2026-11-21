@@ -81,7 +81,12 @@ export function compileProjectDiagram(root, row, targets, pins) {
       const body = readScope(element, node.kind, depth + 1);
       const extra = element.children.filter(c => decorations.includes(c.name));
       if (["loop", "multi_instance"].includes(node.kind)) {
-        const synthetic = { ...element, name: "callActivity", attributes: [], children: extra };
+        const repetitionElements = structuredClone(extra);
+        for (const repeat of repetitionElements) for (const child of repeat.children) {
+          if (["loopCondition", "loopCardinality"].includes(child.name)) child.attributes = child.attributes.filter(a =>
+            !(a.uri === xsi && a.name === "type" && /^(?:\w+:)?tFormalExpression$/.test(a.value)));
+        }
+        const synthetic = { ...element, name: "callActivity", attributes: [], children: repetitionElements };
         const { repetition } = readBpmnActivity(synthetic);
         if (repetition?.kind !== node.kind) fail("BPMN_REPETITION_INVALID", id(element));
         Object.assign(node, repetition);
