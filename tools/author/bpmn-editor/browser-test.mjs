@@ -89,14 +89,27 @@ try {
   });
   await page.mouse.click(point.x, point.y);
   const condition = page.getByLabel("Condition du flux");
-  await condition.fill("edited_review_condition"); await page.getByText("Appliquer", {exact:true}).click();
-  const dismissed = page.waitForEvent("dialog").then(async dialog => {
-    const type = dialog.type();
-    await dialog.dismiss();
-    return type;
-  });
-  await page.locator("#reload").click();
-  assert.equal(await dismissed, "confirm");
+  async function clickReload(accept) {
+    const dialogs = [];
+    const onDialog = async dialog => {
+      dialogs.push(dialog.type());
+      if (accept) await dialog.accept();
+      else await dialog.dismiss();
+    };
+    page.on("dialog", onDialog);
+    try {
+      await page.locator("#reload").click();
+      await page.waitForFunction(() => !document.querySelector("#reload").disabled);
+      return dialogs;
+    } finally { page.off("dialog", onDialog); }
+  }
+  await condition.fill("edited_review_condition");
+  assert.deepEqual(await clickReload(false), ["confirm"]);
+  assert.equal(await scope.inputValue(), "N_" + gateway.id);
+  assert.equal(await condition.inputValue(), "edited_review_condition");
+  assert.equal(await page.locator("#save").isDisabled(), true);
+  await page.getByText("Appliquer", {exact:true}).click();
+  assert.deepEqual(await clickReload(false), ["confirm"]);
   assert.equal(await scope.inputValue(), "N_" + gateway.id);
   assert.equal(await visual.isVisible(), true);
   assert.equal(await page.locator("#save").isEnabled(), true);
@@ -105,6 +118,7 @@ try {
   assert.equal(result.count, 1, JSON.stringify(result));
   assert.equal(result.differences[0].node_id, gateway.id);
   assert.equal(result.differences[0].after, "edited_review_condition");
+  console.log("PASS dismissing reload retains the unapplied condition on its flow for later application and saving");
   console.log("PASS cancelling reload keeps the visible block and its unsaved condition available to save");
   const saved = await fs.readFile(path.join(dir, root), "utf8");
   await page.locator("#reload").click();
@@ -113,6 +127,24 @@ try {
   assert.equal(await visual.isVisible(), true);
   console.log("PASS reload restores the selected block and displays its flow on the canvas");
   await page.mouse.click(point.x, point.y);
+  const diskCondition = await condition.inputValue();
+  assert.equal(diskCondition, "edited_review_condition");
+  await condition.fill("");
+  assert.deepEqual(await clickReload(true), ["confirm"]);
+  assert.equal(await scope.inputValue(), "N_" + gateway.id);
+  await page.mouse.click(point.x, point.y);
+  assert.equal(await condition.inputValue(), diskCondition);
+  assert.equal(await fs.readFile(path.join(dir, root), "utf8"), saved);
+  console.log("PASS confirming reload discards an unapplied condition and restores its on-disk value");
+
+  await condition.fill("temporary_condition");
+  await condition.fill(diskCondition);
+  assert.deepEqual(await clickReload(true), []);
+  assert.equal(await condition.isHidden(), true);
+  await page.mouse.click(point.x, point.y);
+  assert.equal(await condition.inputValue(), diskCondition);
+  console.log("PASS restoring the applied text on a clean diagram reloads without a prompt");
+
   await condition.fill("invalid fact"); await page.getByText("Appliquer", {exact:true}).click();
   const refusal = await compare(true);
   assert.deepEqual([refusal.error, refusal.model_id, refusal.element_id], ["BPMN_CONDITION_INVALID", assets.model.model_id, bpmnId(flow)]);
@@ -129,10 +161,10 @@ try {
   const genericDir = path.join(workspace, "custom-project");
   await writeNewBpmnProject(genericDir, generic);
   await assert.rejects(serveBpmnEditor(genericDir), { code: "BPMN_PROJECT_BASELINE_REQUIRED" });
+  const customPage = await browser.newPage();
   const custom = await serveBpmnEditor(genericDir, 0, customModel);
   try {
     const url = "http://127.0.0.1:" + custom.address().port;
-    const customPage = await browser.newPage();
     await customPage.goto(url);
     const blocks = customPage.locator("#scope");
     await blocks.selectOption("N_details");
@@ -150,7 +182,10 @@ try {
     assert.equal(await blocks.inputValue(), "P_local-review_1");
     assert.equal(await customPage.locator('.djs-shape[data-element-id="N_review"]').isVisible(), true);
     console.log("PASS reload displays the process root when the selected block was removed on disk");
-  } finally { await new Promise(resolve => custom.close(resolve)); }
+  } finally {
+    await customPage.close();
+    await new Promise(resolve => custom.close(resolve));
+  }
 } finally {
   await browser?.close();
   if (server) await new Promise(resolve => server.close(resolve));

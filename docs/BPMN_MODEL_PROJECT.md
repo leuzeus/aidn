@@ -66,7 +66,10 @@ conditional sequence flow, edit **Condition du flux**, then choose **Appliquer**
 **Enregistrer** writes the selected diagram after compilation. **Recharger**
 reopens the files on disk and returns to the same block if it still exists in
 the same model. If the block was removed, the editor opens the process root.
-Cancelling the reload keeps the current block and its unsaved edits.
+If the condition field differs from the applied condition, **Recharger** asks
+for confirmation. Cancelling keeps the block, selected flow and typed text.
+Confirming reloads the saved diagram. Restoring the original text before
+reloading avoids the prompt when the diagram has no other unsaved edits.
 A changed file digest refuses a stale save.
 
 The editor serves the installed bpmn-js bundle, styles and font locally.
