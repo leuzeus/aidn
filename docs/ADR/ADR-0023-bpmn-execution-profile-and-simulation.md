@@ -141,6 +141,12 @@ Graph edits produce a candidate for comparison and review in a pull request.
 The source authoring tools have no workflow execution or publication authority.
 See [BPMN model projects](../BPMN_MODEL_PROJECT.md).
 
+The local graphical editor previews changes through the shared project compiler.
+Multi-file edits publish a complete immutable project directory through one
+atomic generation-pointer replacement. Concurrent editors compare the same
+whole-project digest under a project-specific writer lock. A fork selects a
+new root identity and retains the call targets and their pinned definitions.
+
 The round-trip guarantee is semantic. Exporting a published IR with its pinned
 bindings and compiling the unmodified project reproduces the model and its SHA-256.
 BPMNDI layout belongs to the authoring project. Moving a shape preserves the

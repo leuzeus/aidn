@@ -3,6 +3,8 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { chromium } from "playwright";
+import { authorReferenceWorkflow } from "./workflow-authoring-browser.mjs";
+import { compileBpmnProject } from "../../../src/application/workflow/bpmn-project-service.mjs";
 import { serveBpmnEditor } from "./server.mjs";
 import { writeNewBpmnProject } from "../export-bpmn-project.mjs";
 import { exportStandardBpmnProject, compareStandardBpmnProject } from "../../../src/application/workflow/standard-bpmn-project.mjs";
@@ -153,6 +155,30 @@ try {
   assert.deepEqual(errors, []); assert.deepEqual(external, []);
   console.log("PASS a graphical condition edit yields a precise persisted diff; an invalid condition identifies the model and flow");
 
+  const authored = await authorReferenceWorkflow(page, origin);
+  const { model: created } = compileBpmnProject(authored.project);
+  assert.equal(created.nodes.find(n => n.id === "quality").binding_ref, "cycle_validation_evaluate");
+  assert.deepEqual(created.data_bindings.inputs.find(r => r.node_id === "quality").fields.validation_operation_id,
+    { source: "parameter", key: "validation_id", path: [] });
+  assert.equal(created.nodes.find(n => n.id === "review").role_ref, "mode_analyst");
+  assert.equal(created.nodes.find(n => n.id === "route").branches[0].condition, "cycle_checks_passed");
+  assert.equal(created.nodes.find(n => n.id === "rework").target.model_sha256, created.call_targets[0].model_sha256);
+  await page.getByText("Créer ou dupliquer un workflow", { exact: true }).click();
+  await page.locator("#workspace-id").fill("copy-review");
+  await Promise.all([page.waitForURL("**/?project=copy-review"), page.getByRole("button", { name: "Dupliquer", exact: true }).click()]);
+  const copy = await (await fetch(origin + "/api/project?project=copy-review")).json();
+  assert.equal(copy.model.model_id, "copy-review");
+  assert.deepEqual(copy.model.nodes, created.nodes);
+  const candidate = { manifest: copy.manifest, diagrams: copy.diagrams };
+  candidate.manifest.project_revision++;
+  const writes = await Promise.all([1, 2].map(() => fetch(origin + "/api/save?project=copy-review", {
+    method: "POST", headers: { Origin: origin, "Content-Type": "application/json" },
+    body: JSON.stringify({ project: candidate, base_project_sha256: copy.project_sha256 }) })));
+  assert.deepEqual(writes.map(row => row.status).sort(), [200, 409]);
+  const committed = await (await fetch(origin + "/api/project?project=copy-review")).json();
+  assert.deepEqual(committed.manifest, candidate.manifest);
+  assert.deepEqual(committed.diagrams, candidate.diagrams);
+  console.log("PASS creating, mapping, evaluating, routing, calling, saving and duplicating an authored workflow; a competing save refuses");
   const sequence = (id, children) => ({ id, kind: "sequence", children, participant_ref: "project" });
   const customModel = { contract_version: "agentic-process-model.v2", model_id: "local-review", revision: 1,
     participants: [{ id: "project" }], roles: [], policies: [], operation_pins: {}, entry: "review",

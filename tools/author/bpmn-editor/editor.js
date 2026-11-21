@@ -1,6 +1,9 @@
 "use strict";
 const get = id => document.getElementById(id);
 const modeler = new BpmnJS({ container: "#canvas" });
+const workspaceKey = new URLSearchParams(location.search).get("project");
+const api = route => "/api/" + route + (workspaceKey ? "?project=" + encodeURIComponent(workspaceKey) : "");
+let projectDraft = false;
 let project, file, dirty = false, busy = false, importing = false, selectedFlow;
 function status(text, error = false) {
   get("status").textContent = text;
@@ -9,7 +12,8 @@ function status(text, error = false) {
 }
 function controls() {
   for (const id of ["model", "scope", "compare", "reload"]) get(id).disabled = busy || !project;
-  get("save").disabled = busy || !dirty;
+  get("save").disabled = busy || !(dirty || projectDraft);
+  get("author-panel").inert = busy;
   get("canvas").inert = busy;
   get("condition-form").inert = busy;
 }
@@ -42,13 +46,14 @@ async function openDiagram(name, scopeId) {
   } finally { importing = false; }
 }
 async function reload() {
-  const response = await fetch("/api/project");
+  const response = await fetch(api("project"));
   if (!response.ok) throw new Error((await response.json()).error);
-  project = await response.json();
+  project = await response.json(); projectDraft = false;
   get("compare").textContent = project.standard ? "Comparer au STANDARD" : "Comparer à la référence";
   options(get("model"), project.models.map(m => [m.file, m.id + " · r" + m.revision]));
   if (Object.hasOwn(project.diagrams, file)) await openDiagram(file, get("scope").value);
   else await openDiagram(project.models[0].file);
+  if (propertyCatalog) renderAuthor();
 }
 function discard(hasUnappliedCondition = false) {
   if (hasUnappliedCondition) return window.confirm("Recharger et abandonner les modifications, y compris la condition non appliquée ?");
@@ -57,7 +62,7 @@ function discard(hasUnappliedCondition = false) {
 get("model").onchange = () => action(async () => {
   const next = get("model").value;
   get("model").value = file;
-  if (discard()) await openDiagram(next);
+  if (discard()) { await openDiagram(next); renderAuthor(); }
 });
 get("scope").onchange = () => action(async () => {
   const canvas = modeler.get("canvas");
@@ -83,14 +88,15 @@ modeler.on("commandStack.changed", () => {
   if (importing || !file) return;
   dirty = true; status("Modifications à comparer."); controls();
 });
-window.addEventListener("beforeunload", event => { if (dirty) { event.preventDefault(); event.returnValue = ""; } });
+window.addEventListener("beforeunload", event => { if (dirty || projectDraft) { event.preventDefault(); event.returnValue = ""; } });
 async function compare(save) {
   const { xml } = await modeler.saveXML({ format: true });
-  const response = await fetch("/api/" + (save ? "save" : "compare"), { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ file, xml, base_sha256: project.hashes[file] }) });
+  const response = await fetch(api(save ? "save" : "compare"), { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ file, xml, base_sha256: project.hashes[file], base_project_sha256: project.project_sha256,
+      ...(projectDraft ? { project: { manifest: project.manifest, diagrams: project.diagrams } } : {}) }) });
   const result = await response.json();
   if (!response.ok) throw Object.assign(new Error(result.error), result);
-  if (save) { project.diagrams[file] = xml; project.hashes[file] = result.file_sha256; dirty = false; }
+  if (save) { project.diagrams[file] = xml; project.hashes[file] = result.file_sha256; project.project_sha256 = result.project_sha256; dirty = false; projectDraft = false; }
   const reference = project.standard ? "le STANDARD publié" : "le modèle de référence";
   status((save ? "Enregistré. " : "") + (result.count
     ? result.count + (result.count === 1 ? " différence avec " : " différences avec ") + reference + "."
@@ -105,6 +111,7 @@ get("compare").onclick = () => action(() => compare(false));
 get("save").onclick = () => action(() => compare(true));
 get("reload").onclick = () => action(async () => {
   const hasUnappliedCondition = selectedFlow && get("condition").value !== (selectedFlow.businessObject.conditionExpression?.body ?? "");
+  if (projectDraft && !hasUnappliedCondition && !dirty && !window.confirm("Abandonner les modifications du projet ?")) return;
   if (discard(hasUnappliedCondition)) await reload();
 });
 let propertyCatalog;
@@ -129,4 +136,4 @@ async function loadCatalog() {
   if (propertyCatalog.operations.length) renderCatalog();
 }
 get("catalog-operation").onchange = renderCatalog;
-action(async () => { await reload(); await loadCatalog(); });
+action(async () => { await reload(); await loadCatalog(); renderAuthor(); });
