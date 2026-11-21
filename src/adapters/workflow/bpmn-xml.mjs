@@ -4,7 +4,16 @@ import { bpmnFail } from "../../core/workflow/bpmn-profile.mjs";
 // XML syntax and namespace handling only. Profile/graph semantics live in core.
 // No DTD, custom entities, external resolution, script evaluation or XSD claim.
 export function readBpmnXml(xml) {
-  if (typeof xml !== "string" || Buffer.byteLength(xml, "utf8") > 262144) bpmnFail("BPMN_XML_LIMIT");
+  return parseXml(xml, { bytes: 262144, elements: 4096, depth: 24 });
+}
+
+// Project files include a separate DI plane for each structured subprocess.
+export function readProjectBpmnXml(xml) {
+  return parseXml(xml, { bytes: 1048576, elements: 16384, depth: 48 });
+}
+
+function parseXml(xml, limits) {
+  if (typeof xml !== "string" || Buffer.byteLength(xml, "utf8") > limits.bytes) bpmnFail("BPMN_XML_LIMIT");
   const parser = sax.parser(true, { xmlns: true, strictEntities: true });
   const stack = []; let root = null, count = 0;
   let attributeNames = new Set();
@@ -17,7 +26,7 @@ export function readBpmnXml(xml) {
   parser.ondoctype = parser.onsgmldeclaration = () => bpmnFail("BPMN_XML_DECLARATION_UNSUPPORTED");
   parser.onprocessinginstruction = ({ name }) => { if (name !== "xml") bpmnFail("BPMN_XML_DECLARATION_UNSUPPORTED"); };
   parser.onopentag = tag => {
-    if (++count > 4096 || stack.length >= 24) bpmnFail("BPMN_XML_LIMIT");
+    if (++count > limits.elements || stack.length >= limits.depth) bpmnFail("BPMN_XML_LIMIT");
     const attributes = Object.values(tag.attributes).filter(a => a.uri !== "http://www.w3.org/2000/xmlns/")
       .map(a => ({ name: a.local, uri: a.uri, value: a.value }));
     const node = { name: tag.local, uri: tag.uri, attributes, children: [], text: "" };

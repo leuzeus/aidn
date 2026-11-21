@@ -1,4 +1,4 @@
-import { readBpmnXml } from "../../adapters/workflow/bpmn-xml.mjs";
+import { readProjectBpmnXml } from "../../adapters/workflow/bpmn-xml.mjs";
 import { assertAgenticProcessModel, exactKeys, processId } from "../../core/workflow/agentic-process-model.mjs";
 import { bpmnFail as fail } from "../../core/workflow/bpmn-profile.mjs";
 import { compileProjectDiagram, projectDiagramName, projectProcessId } from "../../core/workflow/bpmn-project-diagram.mjs";
@@ -6,9 +6,9 @@ import { indexBpmnOperationBindings } from "../../core/workflow/bpmn-operation-b
 import { checkShadowJson, freezeShadow, shadowHash } from "../../core/workflow/shadow-json.mjs";
 
 export function compileBpmnProject({ manifest, diagrams }) {
-  if (checkShadowJson(manifest) || !exactKeys(manifest, ["contract_version", "models"])
+  if (checkShadowJson(manifest) || !exactKeys(manifest, ["contract_version", "models"], ["catalog_sha256"])
     || manifest.contract_version !== "bpmn-model-project.v1" || !Array.isArray(manifest.models)
-    || !manifest.models.length || manifest.models.length > 32) fail("BPMN_PROJECT_MANIFEST_INVALID");
+    || !manifest.models.length || manifest.models.length > 33 || (Object.hasOwn(manifest, "catalog_sha256") && !/^[a-f0-9]{64}$/.test(manifest.catalog_sha256))) fail("BPMN_PROJECT_MANIFEST_INVALID");
   const rows = structuredClone(manifest.models);
   const targets = new Map();
   for (const [i, row] of rows.entries()) {
@@ -20,11 +20,15 @@ export function compileBpmnProject({ manifest, diagrams }) {
   }
   if (!exactKeys(diagrams, rows.map(projectDiagramName)) || ![Object.prototype, null].includes(Object.getPrototypeOf(diagrams))
     || Object.values(Object.getOwnPropertyDescriptors(diagrams)).some(d => !("value" in d))) fail("BPMN_PROJECT_FILES_INVALID");
+  let total = 0;
+  for (const xml of Object.values(diagrams)) {
+    if (typeof xml !== "string" || (total += Buffer.byteLength(xml, "utf8")) > 8 * 1024 * 1024) fail("BPMN_PROJECT_LIMIT");
+  }
   const source_maps = [], models = [];
   for (const row of rows) {
     try {
       const pins = indexBpmnOperationBindings(row.operation_bindings);
-      const { model, source_map } = compileProjectDiagram(readBpmnXml(diagrams[projectDiagramName(row)]), row, targets, pins);
+      const { model, source_map } = compileProjectDiagram(readProjectBpmnXml(diagrams[projectDiagramName(row)]), row, targets, pins);
       if (pins.size !== Object.keys(model.operation_pins).length) fail("BPMN_OPERATION_BINDINGS_UNUSED");
       if (row.model_sha256 && shadowHash(model) !== row.model_sha256) fail("PROCESS_CALL_TARGET_CHANGED");
       source_maps.push({ model_id: row.model_id, revision: row.revision, source_map });

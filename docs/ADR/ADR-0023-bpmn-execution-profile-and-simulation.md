@@ -1,4 +1,4 @@
-# ADR-0023 — BPMN profile compilation and shared-reducer simulation
+# ADR-0023 â€” BPMN profile compilation and shared-reducer simulation
 
 ## Status
 
@@ -125,3 +125,12 @@ v0.19.1 package/dependency archive.
 [ADR-0024](ADR-0024-default-agentic-workflow-engine.md) generalizes the default
 selection to all new workflows, including direct JSON models. BPMN v2 is an
 authoring profile for that common engine, not the scope of its default adoption.
+
+## Editable projects for composed IR v2
+
+A versioned project manifest and one editable BPMN diagram per model support
+the published STANDARD composition. Pinned targets retain their interfaces,
+bindings and policies. The catalog and its published IR remain authoritative.
+Graph edits produce a candidate for comparison and review in a pull request.
+The source authoring tools have no workflow execution or publication authority.
+See [BPMN model projects](../BPMN_MODEL_PROJECT.md).
