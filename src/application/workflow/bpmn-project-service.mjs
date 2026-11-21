@@ -1,4 +1,5 @@
 import { readProjectBpmnXml } from "../../adapters/workflow/bpmn-xml.mjs";
+import { applyWorkflowRoleProfile } from "../../core/agents/workflow-role-profile.mjs";
 import { assertAgenticProcessModel, exactKeys, processId } from "../../core/workflow/agentic-process-model.mjs";
 import { bpmnFail as fail } from "../../core/workflow/bpmn-profile.mjs";
 import { compileProjectDiagram, projectDiagramName, projectProcessId } from "../../core/workflow/bpmn-project-diagram.mjs";
@@ -16,7 +17,7 @@ export function compileBpmnProject({ manifest, diagrams }) {
   const targets = new Map();
   for (const [i, row] of rows.entries()) {
     if (!exactKeys(row, ["model_id", "revision", "participants", "roles", "policies", "operation_bindings",
-      ...(i ? ["model_sha256"] : [])], ["data_bindings", "call_interface"]) || !processId(row.model_id)
+      ...(i ? ["model_sha256"] : [])], ["data_bindings", "call_interface", ...(project ? ["role_profile"] : [])]) || !processId(row.model_id)
       || !Number.isSafeInteger(row.revision) || row.revision < 1 || (i && !/^[a-f0-9]{64}$/.test(row.model_sha256))
       || targets.has(projectProcessId(row))) fail("BPMN_PROJECT_MANIFEST_INVALID");
     targets.set(projectProcessId(row), row);
@@ -32,6 +33,7 @@ export function compileBpmnProject({ manifest, diagrams }) {
     try {
       const pins = indexBpmnOperationBindings(row.operation_bindings);
       const { model, source_map } = compileProjectDiagram(readProjectBpmnXml(diagrams[projectDiagramName(row)]), row, targets, pins);
+      if (Object.hasOwn(row, "role_profile")) applyWorkflowRoleProfile(model, row.role_profile);
       if (pins.size !== Object.keys(model.operation_pins).length) fail("BPMN_OPERATION_BINDINGS_UNUSED");
       if (row.model_sha256 && shadowHash(model) !== row.model_sha256) fail("PROCESS_CALL_TARGET_CHANGED");
       source_maps.push({ model_id: row.model_id, revision: row.revision, source_map });

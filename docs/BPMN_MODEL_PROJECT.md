@@ -22,6 +22,15 @@ determine routing. A local call or repetition encloses its child. A pinned call
 uses a BPMN call activity. Task extensions bind activities and typed operations
 using the structured v2 profile. Changing the layout alone preserves model identity.
 
+## Business roles
+
+A workflow-project.v1 model row can include a role_profile using role-profile.v1.
+Then each row of roles supplies the IR role id, profile_role, capability_ref and
+skills. For example, a business analyst can reference analyze@1 on the host's
+auditor role. The diagram task names the business role id. Each affected activity
+policy must require every permission of that business role. The compiled IR
+retains the resolved native role, action and effective activity policy.
+
 ## Export
 
 `exportBpmnProject(model, definitionsByDiagram)` in

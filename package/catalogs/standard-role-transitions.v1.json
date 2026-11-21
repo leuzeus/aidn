@@ -1,0 +1,77 @@
+{
+  "id": "standard-transitions",
+  "revision": 1,
+  "modes": {
+    "THINKING": {
+      "coordinator": [
+        "coordinator",
+        "executor",
+        "auditor",
+        "repair"
+      ],
+      "executor": [
+        "coordinator",
+        "executor",
+        "auditor",
+        "repair"
+      ],
+      "auditor": [
+        "coordinator",
+        "executor",
+        "auditor",
+        "repair"
+      ],
+      "repair": [
+        "coordinator",
+        "auditor",
+        "repair"
+      ]
+    },
+    "EXPLORING": {
+      "coordinator": [
+        "coordinator",
+        "auditor",
+        "executor",
+        "repair"
+      ],
+      "executor": [
+        "coordinator",
+        "auditor",
+        "repair"
+      ],
+      "auditor": [
+        "coordinator",
+        "executor",
+        "repair"
+      ],
+      "repair": [
+        "coordinator",
+        "auditor",
+        "repair"
+      ]
+    },
+    "COMMITTING": {
+      "coordinator": [
+        "coordinator",
+        "auditor",
+        "executor",
+        "repair"
+      ],
+      "executor": [
+        "coordinator",
+        "auditor",
+        "repair"
+      ],
+      "auditor": [
+        "coordinator",
+        "executor",
+        "repair"
+      ],
+      "repair": [
+        "coordinator",
+        "auditor",
+        "repair"
+      ]
+    }
+  }
+}
