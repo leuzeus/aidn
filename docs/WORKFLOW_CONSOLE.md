@@ -56,7 +56,9 @@ If both engines retain that ID, choose **Agentique** or **Historique** and
 refresh. Clearing the ID also clears the engine. Changing the engine invalidates
 any action preview awaiting confirmation. If you click **Actualiser** again while
 a read is in progress, only the latest click can update the displayed results,
-errors and connection status.
+errors and connection status. If that request fails, the dashboard clears the
+previous results and their JSON. The error and the selected filters stay visible
+so you can retry with **Actualiser**.
 
 The interface first displays observations. The advanced action editor accepts
 the same request JSON as the CLI and shows the exact preview. Editing a request

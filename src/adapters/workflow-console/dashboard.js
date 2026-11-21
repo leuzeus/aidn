@@ -17,9 +17,13 @@ async function call(endpoint, body) {
   const result = await response.json(); if (!response.ok) throw new Error((result.errors ?? [response.status]).join(" · ")); return result;
 }
 function invalidate() { generation++; prepared = null; $("approve").checked = false; $("sync").checked = false; $("apply").disabled = true; }
-function render(output) {
-  $("raw").textContent = json(output); $("errors").textContent = output.errors.join(" · ");
+function clearInspection() {
+  $("raw").textContent = "";
   for (const id of ["summary", "instances", "catalog", "limits", "live"]) $(id).replaceChildren();
+}
+function render(output) {
+  clearInspection();
+  $("raw").textContent = json(output); $("errors").textContent = output.errors.join(" · ");
   if (!output.view) return;
   const view = output.view;
   for (const [value, label] of [[view.instances.length, "Instances observées"], [view.selections.length, "Workflows sélectionnés"], [view.instances.filter(row => row.blockers.length).length, "Instances avec blocages"]]) {
@@ -64,6 +68,7 @@ $("refresh").onclick = async () => {
     $("connection-state").textContent = output.errors.length ? "Lecture refusée" : "État consulté · lecture seule";
   } catch (error) {
     if (refreshId !== latestRefreshId) return;
+    clearInspection();
     $("errors").textContent = error.message;
     $("connection-state").textContent = "Indisponible";
   }
