@@ -16,7 +16,14 @@ async function call(endpoint, body) {
   const response = await fetch("/api/" + endpoint, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + $("token").value.trim() }, body: json(body) });
   const result = await response.json(); if (!response.ok) throw new Error((result.errors ?? [response.status]).join(" · ")); return result;
 }
-function invalidate() { generation++; prepared = null; $("approve").checked = false; $("sync").checked = false; $("apply").disabled = true; }
+function invalidate() {
+  generation++;
+  prepared = null;
+  $("preview-output").textContent = "Aucun aperçu préparé.";
+  $("approve").checked = false;
+  $("sync").checked = false;
+  $("apply").disabled = true;
+}
 function clearInspection() {
   $("raw").textContent = "";
   for (const id of ["summary", "instances", "catalog", "limits", "live"]) $(id).replaceChildren();
@@ -88,13 +95,18 @@ for (const id of ["request", "token", "workflow", "configuration", "run"]) $(id)
 $("preview").onclick = async () => {
   if (pending) return; invalidate(); pending = true;
   const observed = { generation, text: $("request").value, token: $("token").value };
-  try { const request = JSON.parse(observed.text); const output = await call("action", { request }); $("preview-output").textContent = json(output);
+  const isCurrent = () => generation === observed.generation && $("request").value === observed.text && $("token").value === observed.token;
+  try {
+    const request = JSON.parse(observed.text);
+    const output = await call("action", { request });
+    if (!isCurrent()) return;
+    $("preview-output").textContent = json(output);
     $("approve").checked = false; $("sync").checked = false;
-    prepared = output.can_apply && generation === observed.generation && observed.text === $("request").value && observed.token === $("token").value
+    prepared = output.can_apply
       ? { request: output.action?.request ?? request, output, text: observed.text, token: observed.token } : null;
-  }
-  catch (error) { $("preview-output").textContent = error.message; }
-  finally { pending = false; }
+  } catch (error) {
+    if (isCurrent()) $("preview-output").textContent = error.message;
+  } finally { pending = false; }
 };
 const needsSync = selected => selected.output.action.effects.includes("explicit_shared_sync");
 function allowApply() { $("apply").disabled = pending || !prepared || !$("approve").checked || needsSync(prepared) && !$("sync").checked; }
