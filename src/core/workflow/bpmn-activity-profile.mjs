@@ -1,4 +1,5 @@
 import { AIDN_BPMN_NS, bpmnAttribute as attr, bpmnId as id, assertBpmnShape as shape, bpmnFail as fail } from "./bpmn-profile.mjs";
+import { resolveBpmnOperation } from "./bpmn-operation-bindings.mjs";
 import { processId } from "./agentic-process-model.mjs";
 
 function extension(node, name, attributes) {
@@ -9,17 +10,22 @@ const integer = (text, minimum) => typeof text === "string" && /^(0|[1-9][0-9]*)
 
 // Closed mappings to the existing activity/call and repetition nodes. Loop
 // polarity and failure limits are explicit; no generated facts or expressions.
-export function readBpmnActivity(node) {
+export function readBpmnActivity(node, operationPins) {
   const call = node.name === "callActivity";
   shape(node, ["id", "name", ...(call ? ["calledElement"] : [])], ["incoming", "outgoing", "extensionElements", "standardLoopCharacteristics", "multiInstanceLoopCharacteristics"]);
   const containers = node.children.filter(c => c.name === "extensionElements");
   if (containers.length > 1 || (!call && containers.length !== 1)) fail("BPMN_EXECUTION_BINDING_REQUIRED", id(node));
   const extensions = containers[0]?.children ?? [];
   if (containers.some(c => c.attributes.length || c.text.trim()) || new Set(extensions.map(e => e.name)).size !== extensions.length
-    || extensions.some(e => e.uri !== AIDN_BPMN_NS || !["execution", "iterationLimit", "collection"].includes(e.name))) fail("BPMN_EXECUTION_BINDING_INVALID", id(node));
+    || extensions.some(e => e.uri !== AIDN_BPMN_NS || !["execution", "iterationLimit", "collection", ...(operationPins ? ["operation"] : [])].includes(e.name))) fail("BPMN_EXECUTION_BINDING_INVALID", id(node));
   const execution = extensions.find(e => e.name === "execution");
-  if (call ? !!execution : !execution) fail("BPMN_EXECUTION_BINDING_INVALID", id(node));
+  const operation = extensions.find(e => e.name === "operation");
+  if (call ? execution || operation : Boolean(execution) === Boolean(operation)) fail("BPMN_EXECUTION_BINDING_INVALID", id(node));
   let binding = null;
+  if (operation) {
+    extension(operation, "operation", ["bindingRef", "sha256"]);
+    binding = resolveBpmnOperation(operationPins, attr(operation, "bindingRef"), attr(operation, "sha256"), id(node));
+  }
   if (execution) {
     extension(execution, "execution", ["roleRef", "policyRef"]);
     if (!processId(attr(execution, "roleRef")) || !processId(attr(execution, "policyRef"))) fail("BPMN_EXECUTION_BINDING_INVALID", id(node));

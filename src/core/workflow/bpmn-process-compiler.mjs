@@ -17,7 +17,7 @@ function shape(node, attributes, children, text = false) {
 
 // Compile only a lossless, explicit single-process profile. A successful return
 // has passed the existing executable IR validator; it grants no host authority.
-export function compileBpmnProcessTree({ root, sourceSha256, modelId, revision, participantId, roles, policies }) {
+export function buildBpmnProcessTree({ root, sourceSha256, modelId, revision, participantId, roles, policies }, resolvedTasks = new Map()) {
   if (checkShadowJson({ root, sourceSha256, modelId, revision, participantId, roles, policies }) || !/^[a-f0-9]{64}$/.test(sourceSha256)
     || !processId(modelId) || !processId(participantId)) fail("BPMN_BINDINGS_INVALID");
   if (root.uri !== BPMN_NS || root.name !== "definitions") fail("BPMN_DEFINITIONS_REQUIRED");
@@ -59,7 +59,8 @@ export function compileBpmnProcessTree({ root, sourceSha256, modelId, revision, 
   const bindings = new Map();
   for (const node of vertices) {
     const isTask = tasks.includes(node.name), isGate = Object.hasOwn(gatewayKinds, node.name);
-    if (isTask) {
+    if (resolvedTasks.has(id(node))) bindings.set(id(node), resolvedTasks.get(id(node)));
+    else if (isTask) {
       shape(node, ["id", "name"], ["incoming", "outgoing", "extensionElements"]);
       const extensions = node.children.filter(c => c.name === "extensionElements");
       if (extensions.length !== 1) fail("BPMN_EXECUTION_BINDING_REQUIRED", id(node));
@@ -155,9 +156,14 @@ export function compileBpmnProcessTree({ root, sourceSha256, modelId, revision, 
   if (visited.size !== vertices.length) fail("BPMN_UNREACHABLE_ELEMENT");
   const model = { contract_version: "agentic-process-model.v1", model_id: modelId, revision,
     participants: [{ id: participantId }], roles: structuredClone(roles), policies: structuredClone(policies), nodes, entry };
+  return { model, source_map: sourceMap };
+}
+
+export function compileBpmnProcessTree(input) {
+  const { model, source_map } = buildBpmnProcessTree(input);
   assertAgenticProcessModel(model);
   const compilation = { contract_version: "bpmn-process-compilation.v1", profile: BPMN_EXECUTION_PROFILE,
-    source_sha256: sourceSha256, model_sha256: shadowHash(model), model, source_map: sourceMap };
+    source_sha256: input.sourceSha256, model_sha256: shadowHash(model), model, source_map };
   if (validateJsonSchema(compilation, schema, "$", { contractKind: "workflow-definition" }).length) fail("BPMN_COMPILATION_INVALID");
   return freezeShadow(compilation);
 }

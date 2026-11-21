@@ -1,6 +1,7 @@
 import { BPMN_NS, AIDN_BPMN_NS, BPMN_EXTENDED_EXECUTION_PROFILE, bpmnAttribute as attr, bpmnId as id, assertBpmnShape as shape, bpmnFail as fail } from "./bpmn-profile.mjs";
 import { assertAgenticProcessModel, processId } from "./agentic-process-model.mjs";
-import { compileBpmnProcessTree } from "./bpmn-process-compiler.mjs";
+import { indexBpmnOperationBindings, compileBpmnDataBindings } from "./bpmn-operation-bindings.mjs";
+import { buildBpmnProcessTree } from "./bpmn-process-compiler.mjs";
 import { readBpmnActivity } from "./bpmn-activity-profile.mjs";
 import { checkShadowJson, freezeShadow, shadowHash } from "./shadow-json.mjs";
 import schema from "../contracts/workflow-definition/bpmn-process-compilation.v1.schema.json" with { type: "json" };
@@ -10,8 +11,6 @@ import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 const tasks = ["task", "serviceTask", "userTask", "callActivity"];
 const xmlNode = (name, attributes = {}, children = [], text = "") => ({ name, uri: BPMN_NS,
   attributes: Object.entries(attributes).map(([name, value]) => ({ name, uri: "", value })), children, text });
-const execution = binding => ({ name: "execution", uri: AIDN_BPMN_NS, attributes: [
-  { name: "roleRef", uri: "", value: binding.role_ref }, { name: "policyRef", uri: "", value: binding.policy_ref }], children: [], text: "" });
 
 // V2 lowers new constructs to the V1 structured graph checker, then replaces
 // validated placeholders with existing IR primitives. No alternate reducer.
@@ -19,6 +18,8 @@ export function compileExtendedBpmnProcessTree(input) {
   if (checkShadowJson(input)) fail("BPMN_BINDINGS_INVALID");
   const { root, sourceSha256, modelId, revision, participantId, roles, policies, processRef } = input;
   if (!root || root.uri !== BPMN_NS || root.name !== "definitions") fail("BPMN_DEFINITIONS_REQUIRED");
+  const typed = input.targetModel === "agentic-process-model.v2";
+  const pins = typed ? indexBpmnOperationBindings(input.operationBindings) : null;
   const semantic = structuredClone(root);
   semantic.children = semantic.children.filter(c => !(c.uri === "http://www.omg.org/spec/BPMN/20100524/DI" && c.name === "BPMNDiagram"));
   shape(semantic, ["id", "targetNamespace", "exporter", "exporterVersion"], ["process", "message"]);
@@ -74,7 +75,7 @@ export function compileExtendedBpmnProcessTree(input) {
     }
     const activities = new Map(), called = new Map(), eventKeys = new Map(), catchOwners = new Map(), removedFlows = new Map();
     for (const node of vertices.filter(n => tasks.includes(n.name))) {
-      const spec = readBpmnActivity(node); activities.set(id(node), spec);
+      const spec = readBpmnActivity(node, pins); activities.set(id(node), spec);
       if (node.name === "callActivity") {
         if (!processes.has(spec.calledElement)) fail("BPMN_CALL_REFERENCE_INVALID", id(node));
         called.set(id(node), compileProcess(spec.calledElement));
@@ -106,13 +107,15 @@ export function compileExtendedBpmnProcessTree(input) {
     }
     for (const catcher of vertices.filter(n => n.name === "intermediateCatchEvent")) if (!catchOwners.has(id(catcher))) fail("BPMN_EVENT_CATCH_SCOPE_UNSUPPORTED", id(catcher));
     // The graph checker still owns scopes, postdominators, reachability and joins.
+    const resolvedTasks = new Map();
     const normalized = structuredClone(process);
     normalized.children = process.children.filter(n => !catchOwners.has(id(n)) && !removedFlows.has(id(n))).map(node => {
       const copy = structuredClone(node), spec = activities.get(id(node));
       if (spec) {
-        const binding = spec.binding ?? called.get(id(node)).model.nodes.find(n => n.kind === "activity");
+        const binding = spec.binding ?? { kind: "call" };
+        resolvedTasks.set(id(node), binding);
         copy.name = "task"; copy.attributes = copy.attributes.filter(a => ["id", "name"].includes(a.name));
-        copy.children = [...copy.children.filter(c => ["incoming", "outgoing"].includes(c.name)), xmlNode("extensionElements", {}, [execution(binding)])];
+        copy.children = copy.children.filter(c => ["incoming", "outgoing"].includes(c.name));
       }
       if (copy.name === "sequenceFlow" && eventKeys.has(id(copy))) {
         const catcher = byId.get(attr(copy, "targetRef"));
@@ -143,7 +146,7 @@ export function compileExtendedBpmnProcessTree(input) {
       const original = process.children.find(n => id(n) === id(laneSet)).children.find(n => id(n) === id(lane));
       lane.children = structuredClone(original.children.filter(ref => !catchOwners.has(ref.text.trim())));
     }
-    const skeleton = compileBpmnProcessTree({ root: { ...semantic, children: [normalized] }, sourceSha256, modelId, revision, participantId, roles, policies });
+    const skeleton = buildBpmnProcessTree({ root: { ...semantic, children: [normalized] }, sourceSha256, modelId, revision, participantId, roles, policies }, resolvedTasks);
     const model = structuredClone(skeleton.model), sourceMap = structuredClone(skeleton.source_map);
     function append(sourceId, node) {
       if (model.nodes.length >= 128) fail("BPMN_EXPANSION_LIMIT", sourceId);
@@ -179,10 +182,14 @@ export function compileExtendedBpmnProcessTree(input) {
       }
       sourceMap.push({ bpmn_id: catchId, ir_node_id: node.id });
     }
-    const typed = input.targetModel === "agentic-process-model.v2";
-    if (typed) Object.assign(model, { contract_version: input.targetModel, operation_pins: {} });
+    if (typed) {
+      model.contract_version = input.targetModel;
+      model.operation_pins = Object.fromEntries(model.nodes.filter(n => n.kind === "operation").map(n => [n.binding_ref, pins.get(n.binding_ref)]));
+      if (processKey === selected && Object.hasOwn(input, "dataBindings"))
+        model.data_bindings = compileBpmnDataBindings(input.dataBindings, sourceMap, model.nodes);
+    }
     assertAgenticProcessModel(model);
-    const result = { ...skeleton, contract_version: typed ? "bpmn-process-compilation.v2" : skeleton.contract_version, profile: BPMN_EXTENDED_EXECUTION_PROFILE, model, model_sha256: shadowHash(model), source_map: sourceMap };
+    const result = { source_sha256: sourceSha256, contract_version: typed ? "bpmn-process-compilation.v2" : "bpmn-process-compilation.v1", profile: BPMN_EXTENDED_EXECUTION_PROFILE, model, model_sha256: shadowHash(model), source_map: sourceMap };
     if (validateJsonSchema(result, typed ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length) fail("BPMN_COMPILATION_INVALID");
     active.delete(processKey); return result;
   }

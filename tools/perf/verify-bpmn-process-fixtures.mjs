@@ -79,6 +79,34 @@ check("Unsupported profile and target pairs refuse", () => {
   for (const targetModel of [null, "agentic-process-model.v3", "agentic-process-model.v2"])
     assert.throws(() => compile(xml, { targetModel }), /BPMN_TARGET_UNSUPPORTED/);
 });
+const typedBinding = { contract_version: "process-operation-binding.v1", id: "inspect", revision: 1,
+  executor_kind: "deterministic", effect_class: "read-only", skill_id: null, input_contract: "inspection-input.v1",
+  output_contract: "inspection-output.v1", rule_refs: ["SPEC-R01"], allowed_modes: ["THINKING"], implementation_sha256: "1".repeat(64) };
+const typedXml = xml.replace('<aidn:execution roleRef="review" policyRef="review"/>',
+  `<aidn:operation bindingRef="inspect" sha256="${shadowHash(typedBinding)}"/>`);
+const typedInput = { contract_version: "process-data-bindings.v4", parameter_keys: [],
+  inputs: [{ node_id: "Review", fields: { occurrence: { source: "occurrence_id", node_id: "Analyze" } } }] };
+const typed = (overrides = {}) => compile(typedXml, { profile: "aidn-bpmn-structured.v2", targetModel: "agentic-process-model.v2",
+  operationBindings: [typedBinding], dataBindings: typedInput, ...overrides });
+check("A BPMN operation consumes an earlier activity with exact IR pins and policies", () => {
+  const reference = structuredClone(compile().model);
+  Object.assign(reference, { contract_version: "agentic-process-model.v2", operation_pins: { inspect: shadowHash(typedBinding) },
+    data_bindings: { ...typedInput, inputs: [{ node_id: "n_6", fields: { occurrence: { source: "occurrence_id", node_id: "n_1" } } }] } });
+  reference.nodes[reference.nodes.findIndex(node => node.id === "n_6")] = {
+    kind: "operation", id: "n_6", participant_ref: "delivery", binding_ref: "inspect" };
+  assert.deepEqual(typed().model, reference);
+  assert.equal(typed().model_sha256, shadowHash(reference));
+});
+check("Missing and changed operation definitions refuse at the task", () => {
+  for (const [definitions, code] of [[[], "BPMN_OPERATION_BINDING_MISSING"],
+    [[{ ...typedBinding, revision: 2 }], "BPMN_OPERATION_BINDING_CHANGED"]])
+    assert.throws(() => typed({ operationBindings: definitions }), e => e.code === code && e.element_id === "Review");
+});
+check("An operation output field cannot read an activity as its producing operation", () => {
+  const dataBindings = structuredClone(typedInput);
+  dataBindings.inputs[0].fields.occurrence = { source: "operation_output", node_id: "Analyze", path: ["id"] };
+  assert.throws(() => typed({ dataBindings }), /PROCESS_INPUT_SOURCE_INVALID/);
+});
 check("V2 rejects event semantics unavailable in the reducer and invalid original declarations", () => {
   refusesExtended(extendedXml.replace('instantiate="false"', 'instantiate="true"'), "BPMN_EVENT_GATEWAY_UNSUPPORTED");
   refusesExtended(extendedXml.replace('eventGatewayType="Exclusive"', 'eventGatewayType="Parallel"'), "BPMN_EVENT_GATEWAY_UNSUPPORTED");
