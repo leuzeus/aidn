@@ -16,17 +16,17 @@ import { agenticPolicyPins, assertAgenticProcessModel } from "../../core/workflo
 import { agenticProcessPersistence, observeAgenticProcessPersistence } from "./agentic-process-persistence.mjs";
 import { resolveWorkflowEngine } from "../../core/workflow/workflow-engine-policy.mjs";
 
-export function readWorkflowProjectAuthority({ targetRoot }) {
+export function readWorkflowProjectAuthority({ targetRoot, onGitHead }) {
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
-  return projectAuthority(root, readActivation({ targetRoot: root }));
+  return projectAuthority(root, readActivation({ targetRoot: root, onGitHead }));
 }
 
 // Activation is obtained here, never supplied by a workflow/configuration.
 // Sharing its complete fresh observation avoids reading every installed asset
 // twice solely to derive two descriptions of the same synchronous boundary.
-export function readWorkflowProjectExecutionAuthority({ targetRoot, env = process.env }) {
+export function readWorkflowProjectExecutionAuthority({ targetRoot, env = process.env, onGitHead }) {
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
-  const { activation, persistence } = observeAgenticProcessPersistence({ targetRoot: root, env });
+  const { activation, persistence } = observeAgenticProcessPersistence({ targetRoot: root, env, onGitHead });
   return { project: projectAuthority(root, activation), persistence };
 }
 

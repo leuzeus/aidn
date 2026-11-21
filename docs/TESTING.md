@@ -1020,6 +1020,16 @@ loaders must separately verify explicitly authored implementation pins. A
 selected-case result is not the full suite verdict. Diagnostic preloaders and
 their failed measurements remain distinct from uninstrumented qualification.
 
+The Windows DUAL writer case `artifact-disposition-recorded` exercises
+activation, Git scope, process creation identity and the artifact fence. When
+the host requires both activation and HEAD, Git supplies the physical
+repository, current commit and branch in the same fresh invocation. The Git
+head fixture covers branch changes, detached and unborn HEAD. The owner
+fixture checks a live process's immutable creation identity and freshly
+checks the termination of other processes. The project artifact fixture
+compares grouped SQLite rows, checks a metadata-only conflict from a second
+connection and verifies required and optional document handling in FILES.
+
 ## Original return disposition and real crash boundaries
 
 `node tools/perf/verify-standard-operation-disposition-fixtures.mjs files`
