@@ -51,6 +51,11 @@ Host/Origin/token and rejects cross-origin API calls. Stop the listener with
 Ctrl+C. An already admitted run uses its normal status/cancel lifecycle;
 closing the dashboard is not proof of process termination or cleanup.
 
+Enter an instance ID in **Instance exacte** to enable **Moteur de l’instance**.
+If both engines retain that ID, choose **Agentique** or **Historique** and
+refresh. Clearing the ID also clears the engine. Changing the engine invalidates
+any action preview awaiting confirmation.
+
 The interface first displays observations. The advanced action editor accepts
 the same request JSON as the CLI and shows the exact preview. Editing a request
 invalidates its approval. Applying requires explicit confirmation; run commands
