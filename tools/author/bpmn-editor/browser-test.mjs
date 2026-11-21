@@ -9,6 +9,8 @@ import { exportStandardBpmnProject, compareStandardBpmnProject } from "../../../
 import { loadStandardWorkflowAssets } from "../../../src/application/runtime/standard-workflow-composition.mjs";
 import { readProjectBpmnXml } from "../../../src/adapters/workflow/bpmn-xml.mjs";
 import { bpmnId } from "../../../src/core/workflow/bpmn-profile.mjs";
+import { exportBpmnProject } from "../../../src/core/workflow/bpmn-project-export.mjs";
+import { shadowHash } from "../../../src/core/workflow/shadow-json.mjs";
 import { projectDiagramName } from "../../../src/core/workflow/bpmn-project-diagram.mjs";
 
 const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "aidn-bpmn-browser-"));
@@ -88,14 +90,28 @@ try {
   await page.mouse.click(point.x, point.y);
   const condition = page.getByLabel("Condition du flux");
   await condition.fill("edited_review_condition"); await page.getByText("Appliquer", {exact:true}).click();
+  const dismissed = page.waitForEvent("dialog").then(async dialog => {
+    const type = dialog.type();
+    await dialog.dismiss();
+    return type;
+  });
+  await page.locator("#reload").click();
+  assert.equal(await dismissed, "confirm");
+  assert.equal(await scope.inputValue(), "N_" + gateway.id);
+  assert.equal(await visual.isVisible(), true);
+  assert.equal(await page.locator("#save").isEnabled(), true);
+  assert.equal(await fs.readFile(path.join(dir, root), "utf8"), savedLayout);
   const result = await compare(true);
   assert.equal(result.count, 1, JSON.stringify(result));
   assert.equal(result.differences[0].node_id, gateway.id);
   assert.equal(result.differences[0].after, "edited_review_condition");
+  console.log("PASS cancelling reload keeps the visible block and its unsaved condition available to save");
   const saved = await fs.readFile(path.join(dir, root), "utf8");
   await page.locator("#reload").click();
   assert.deepEqual((await compare()).differences, result.differences);
-  await scope.selectOption("N_" + gateway.id);
+  assert.equal(await scope.inputValue(), "N_" + gateway.id);
+  assert.equal(await visual.isVisible(), true);
+  console.log("PASS reload restores the selected block and displays its flow on the canvas");
   await page.mouse.click(point.x, point.y);
   await condition.fill("invalid fact"); await page.getByText("Appliquer", {exact:true}).click();
   const refusal = await compare(true);
@@ -103,20 +119,38 @@ try {
   assert.equal(await fs.readFile(path.join(dir, root), "utf8"), saved);
   assert.equal((await fetch(origin + "/api/save", { method: "POST", headers: { Origin: "https://other.invalid", "Content-Type": "application/json" }, body: "{}" })).status, 403);
   assert.deepEqual(errors, []); assert.deepEqual(external, []);
-  const generic = structuredClone(exported);
-  delete generic.manifest.catalog_sha256;
+  console.log("PASS a graphical condition edit yields a precise persisted diff; an invalid condition identifies the model and flow");
+
+  const sequence = (id, children) => ({ id, kind: "sequence", children, participant_ref: "project" });
+  const customModel = { contract_version: "agentic-process-model.v2", model_id: "local-review", revision: 1,
+    participants: [{ id: "project" }], roles: [], policies: [], operation_pins: {}, entry: "review",
+    nodes: [sequence("review", ["details"]), sequence("details", [])] };
+  const generic = exportBpmnProject(customModel), customFile = projectDiagramName(customModel);
   const genericDir = path.join(workspace, "custom-project");
   await writeNewBpmnProject(genericDir, generic);
   await assert.rejects(serveBpmnEditor(genericDir), { code: "BPMN_PROJECT_BASELINE_REQUIRED" });
-  const custom = await serveBpmnEditor(genericDir, 0, assets.model);
+  const custom = await serveBpmnEditor(genericDir, 0, customModel);
   try {
     const url = "http://127.0.0.1:" + custom.address().port;
+    const customPage = await browser.newPage();
+    await customPage.goto(url);
+    const blocks = customPage.locator("#scope");
+    await blocks.selectOption("N_details");
     const initial = await (await fetch(url + "/api/project")).json();
     const response = await fetch(url + "/api/compare", { method: "POST", headers: { Origin: url, "Content-Type": "application/json" },
-      body: JSON.stringify({ file: root, xml: initial.diagrams[root], base_sha256: initial.hashes[root] }) });
-    assert.equal((await response.json()).candidate_sha256, assets.source.model_sha256);
+      body: JSON.stringify({ file: customFile, xml: initial.diagrams[customFile], base_sha256: initial.hashes[customFile] }) });
+    assert.equal((await response.json()).candidate_sha256, shadowHash(customModel));
+
+    const withoutBlock = { ...customModel, nodes: [sequence("review", [])] };
+    await fs.writeFile(path.join(genericDir, customFile), exportBpmnProject(withoutBlock).diagrams[customFile], "utf8");
+    await customPage.locator("#reload").click();
+    await customPage.waitForFunction(() => !document.querySelector("#compare").disabled);
+    assert.equal(await customPage.locator("#model").inputValue(), customFile);
+    assert.equal(await blocks.locator('option[value="N_details"]').count(), 0);
+    assert.equal(await blocks.inputValue(), "P_local-review_1");
+    assert.equal(await customPage.locator('.djs-shape[data-element-id="N_review"]').isVisible(), true);
+    console.log("PASS reload displays the process root when the selected block was removed on disk");
   } finally { await new Promise(resolve => custom.close(resolve)); }
-  console.log("PASS a graphical condition edit yields a precise persisted diff; an invalid condition identifies the model and flow");
 } finally {
   await browser?.close();
   if (server) await new Promise(resolve => server.close(resolve));

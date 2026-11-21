@@ -64,11 +64,14 @@ under **Bloc**. Move a shape to edit the layout. In a routing block, select a
 conditional sequence flow, edit **Condition du flux**, then choose **Appliquer**.
 **Comparer** recompiles the working copy against the published model.
 **Enregistrer** writes the selected diagram after compilation. **Recharger**
-reopens the files on disk. A changed file digest refuses a stale save.
+reopens the files on disk and returns to the same block if it still exists in
+the same model. If the block was removed, the editor opens the process root.
+Cancelling the reload keeps the current block and its unsaved edits.
+A changed file digest refuses a stale save.
 
 The editor serves the installed bpmn-js bundle, styles and font locally.
 With the npm packages cached, `npm ci --offline` also works. For a project
 exported from another IR v2 model, supply its authoritative JSON with
-`--baseline model.json` on server startup. To run the three browser scenarios,
+`--baseline model.json` on server startup. To run the browser scenarios,
 use `npm test --prefix tools/author/bpmn-editor` with the matching Playwright
 Chromium installed, or set `BPMN_BROWSER_PATH` to a local Chromium executable.
