@@ -635,6 +635,7 @@ try {
   });
   await check("Published STANDARD survives the BPMN project round trip", () => import("./verify-standard-bpmn-project.mjs"));
   await check("BPMN model projects validate scoped calls and target pins", () => import("./verify-bpmn-project-fixtures.mjs"));
+  await check("Portable project copies preserve the offline schema and catalog closure", () => import("./verify-portable-workflow-project.mjs"));
   await check("ordinary STANDARD returns the retained Native failure after the execution cursor is fenced", async () => {
     await import("./verify-standard-native-failed-return-fixtures.mjs");
   });
