@@ -23,14 +23,21 @@ async function action(work) {
 function options(control, items) {
   control.replaceChildren(...items.map(([value, label]) => new Option(label, value)));
 }
-async function openDiagram(name) {
+function findScope(canvas, id) {
+  return canvas.getRootElements().find(root => root.businessObject.id === id);
+}
+async function openDiagram(name, scopeId) {
   importing = true;
   try {
     const { warnings } = await modeler.importXML(project.diagrams[name]);
     file = name; dirty = false;
     get("model").value = name;
     options(get("scope"), modeler.getDefinitions().diagrams.map(d => [d.plane.bpmnElement.id, d.plane.bpmnElement.name ?? d.plane.bpmnElement.id]));
-    modeler.get("canvas").zoom("fit-viewport");
+    const canvas = modeler.get("canvas");
+    const root = findScope(canvas, scopeId) ?? canvas.getRootElement();
+    canvas.setRootElement(root);
+    get("scope").value = root.businessObject.id;
+    canvas.zoom("fit-viewport");
     status(warnings.length ? warnings.map(w => w.message).join("\n") : "Diagramme ouvert.", warnings.length > 0);
   } finally { importing = false; }
 }
@@ -40,7 +47,8 @@ async function reload() {
   project = await response.json();
   get("compare").textContent = project.standard ? "Comparer au STANDARD" : "Comparer à la référence";
   options(get("model"), project.models.map(m => [m.file, m.id + " · r" + m.revision]));
-  await openDiagram(project.diagrams[file] ? file : project.models[0].file);
+  if (Object.hasOwn(project.diagrams, file)) await openDiagram(file, get("scope").value);
+  else await openDiagram(project.models[0].file);
 }
 function discard() {
   return !dirty || window.confirm("Abandonner les modifications du diagramme ouvert ?");
@@ -52,7 +60,7 @@ get("model").onchange = () => action(async () => {
 });
 get("scope").onchange = () => action(async () => {
   const canvas = modeler.get("canvas");
-  const root = canvas.getRootElements().find(r => r.businessObject.id === get("scope").value);
+  const root = findScope(canvas, get("scope").value);
   if (!root) throw new Error("Bloc introuvable");
   canvas.setRootElement(root);
   canvas.zoom("fit-viewport");
