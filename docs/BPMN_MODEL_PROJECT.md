@@ -149,6 +149,11 @@ Run `node tools/perf/verify-workflow-reliability.mjs` for the Windows fixture
 covering an expired wait, process restart, concurrent duplicate dispatch and
 reconciliation of a synthetic authenticated unknown result.
 
+Hosts with additional installed providers can pass their property catalog to the
+JavaScript builder and its compiler options to the portable export and import
+functions. The receiving host checks each exact binding against its own
+capabilities before accepting an authored retry or deadline.
+
 ## Local graphical editor
 
 From a source checkout, install the editor's pinned dependencies once and open
@@ -173,14 +178,14 @@ Confirming reloads the saved diagram. Restoring the original text before
 reloading avoids the prompt when the diagram has no other unsaved edits.
 A changed project digest refuses a stale save, including changes to a sibling diagram.
 
-Open **CrÃ©er ou dupliquer un workflow** to reserve a new local workflow by ID.
+Open **CrÃƒÂ©er ou dupliquer un workflow** to reserve a new local workflow by ID.
 Each created workflow opens at a separate bookmarkable URL and has its own local
-reference model. Under **Ã‰diter les Ã©tapes**, choose a parent sequence and enter
+reference model. Under **Ãƒâ€°diter les ÃƒÂ©tapes**, choose a parent sequence and enter
 a new step ID, or select an existing ID to edit its properties. Operation inputs
 accept literals, workflow parameters and scoped outputs. Selecting an evaluator
 requires a corresponding installed operation. A conditional split creates two
 sequences for its branches. Calls target a local model and validate its parameter
-mapping. **Appliquer Ã  lâ€™Ã©tape** previews the compiled result; **Enregistrer**
+mapping. **Appliquer ÃƒÂ  lÃ¢â‚¬â„¢ÃƒÂ©tape** previews the compiled result; **Enregistrer**
 commits the working project.
 
 The step form offers a retry count only for installed, idempotent operation

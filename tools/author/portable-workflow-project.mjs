@@ -109,8 +109,8 @@ function bindingRefs(project) {
   })));
 }
 
-export async function exportPortableWorkflowProject(destination, project, { schemas = {}, catalogs = [] } = {}) {
-  const compiled = compileBpmnProject(project);
+export async function exportPortableWorkflowProject(destination, project, { schemas = {}, catalogs = [] } = {}, compileOptions) {
+  const compiled = compileBpmnProject(project, compileOptions);
   catalogs = [...catalogs];
   for (const document of requiredRoleCatalogs(project)) {
     if (!catalogs.some(row => row.id === document.id && row.revision === document.revision))
@@ -175,7 +175,7 @@ export async function exportPortableWorkflowProject(destination, project, { sche
   return lock;
 }
 
-export async function importPortableWorkflowProject(directory) {
+export async function importPortableWorkflowProject(directory, compileOptions) {
   const root = await fs.realpath(path.resolve(directory)), bytes = { total: 0 };
   const lock = parse(await readLocal(root, "workflow-transfer.json", bytes), "workflow-transfer.json");
   if (validateJsonSchema(lock, transferSchema, "$", { contractKind: "workflow-definition" }).length)
@@ -194,7 +194,7 @@ export async function importPortableWorkflowProject(directory) {
   if (!exactKeys(lock.diagrams, diagramFiles)) fail("WORKFLOW_PORTABLE_DIAGRAM_INDEX_CHANGED", "diagrams");
   for (const file of diagramFiles) diagrams[file] = decoder.decode(await verified(file, lock.diagrams[file]));
   const project = { manifest, diagrams };
-  const compilation = compileBpmnProject(project);
+  const compilation = compileBpmnProject(project, compileOptions);
   if (compilation.model_sha256 !== lock.model_sha256) fail("WORKFLOW_PORTABLE_MODEL_CHANGED", compilation.model.model_id);
   if (shadowHash(bindingRefs(project)) !== shadowHash(lock.bindings)) fail("WORKFLOW_PORTABLE_BINDINGS_CHANGED", "bindings");
   const catalogs = [];
