@@ -23,7 +23,10 @@ function clearInspection() {
 }
 function render(output) {
   clearInspection();
-  $("raw").textContent = json(output); $("errors").textContent = output.errors.join(" · ");
+  $("raw").textContent = json(output);
+  $("errors").textContent = output.errors.map(code => code === "WORKFLOW_ENGINE_AMBIGUOUS"
+    ? "Cet identifiant existe dans les deux moteurs. Choisissez Agentique ou Historique, puis cliquez sur Actualiser."
+    : code).join(" · ");
   if (!output.view) return;
   const view = output.view;
   for (const [value, label] of [[view.instances.length, "Instances observées"], [view.selections.length, "Workflows sélectionnés"], [view.instances.filter(row => row.blockers.length).length, "Instances avec blocages"]]) {
