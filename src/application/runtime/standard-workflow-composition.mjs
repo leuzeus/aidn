@@ -1,25 +1,17 @@
-import fs from "node:fs";
 import { createStandardWorkflowMixedHost } from "./standard-workflow-mixed-composition.mjs";
 import { createStandardWorkflowOperationHost } from "./standard-workflow-operation-host.mjs";
 import { standardWorkflowOperationBindings } from "./standard-workflow-operations.mjs";
 import { verifyStandardWorkflowComponentAssets } from "../../core/workflow/standard-workflow-model-catalog.mjs";
-import { freezeShadow } from "../../core/workflow/shadow-json.mjs";
+import { loadWorkflowPackage } from "../workflow/workflow-package.mjs";
+import descriptor from "../../../package/catalogs/standard.workflow-package.json" with { type: "json" };
 
-export const STANDARD_WORKFLOW_CATALOG_PATH = "package/catalogs/standard-workflow.v1.json";
-export const STANDARD_WORKFLOW_MODEL_PATH = "package/catalogs/process-models/aidn-standard.v1.json";
+export const STANDARD_WORKFLOW_CATALOG_PATH = descriptor.catalog;
+export const STANDARD_WORKFLOW_MODEL_PATH = descriptor.model;
 const root = new URL("../../../", import.meta.url);
-const read = path => fs.readFileSync(new URL(path, root));
-const skillIds = ["convert-to-spike", "drift-check", "context-reload", "start-session", "cycle-create", "branch-cycle-audit", "cycle-close", "promote-baseline", "close-session", "pr-orchestrate", "handoff-close"];
 
-// The published model remains partial. The explicit ordinary STANDARD entry
-// uses this loader; default engine selection alone never selects this model.
 export function loadStandardWorkflowAssets() {
-  const catalog = JSON.parse(read(STANDARD_WORKFLOW_CATALOG_PATH)), model = JSON.parse(read(STANDARD_WORKFLOW_MODEL_PATH));
-  const skills = Object.fromEntries(skillIds.map(id => {
-    const path = `scaffold/codex/aidn-${id}/SKILL.md`; return [path, read(path)];
-  }));
-  const source = verifyStandardWorkflowComponentAssets({ catalog, model, skills, specification: read("docs/SPEC.md"), bindings: standardWorkflowOperationBindings() });
-  return freezeShadow({ catalog, model, source });
+  return loadWorkflowPackage(root, descriptor, assets =>
+    verifyStandardWorkflowComponentAssets({ ...assets, bindings: standardWorkflowOperationBindings() }));
 }
 
 export function createStandardWorkflowHost(options) {

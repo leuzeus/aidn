@@ -284,9 +284,14 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
     return allowFailure ? result : buffer ? result.stdout : result.stdout.trimEnd();
   }
   async function repository(signal) {
-    const root = safePath(repoPath), common = safePath(await git(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"], { signal }));
-    const objectFormat = await git(root, ["rev-parse", "--show-object-format"], { signal });
+    const root = safePath(repoPath);
+    const location = await git(root, ["rev-parse", "--path-format=absolute", "--git-common-dir", "--show-object-format"], { signal });
+    // Split from the end so a newline in the directory is still part of its path.
+    const separator = location.lastIndexOf("\n");
+    requireProof(separator >= 0, "AGENT_GIT_OBJECT_FORMAT_UNSUPPORTED");
+    const objectFormat = location.slice(separator + 1);
     requireProof(["sha1", "sha256"].includes(objectFormat), "AGENT_GIT_OBJECT_FORMAT_UNSUPPORTED");
+    const common = safePath(location.slice(0, separator));
     // Reject external conversion/merge programs, even when inherited by includes.
     const config = await git(root, ["config", "--null", "--list"], { signal });
     for (const line of config.split("\0")) {
@@ -296,18 +301,29 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
     const identity = { common_dir: common, object_format: objectFormat };
     return { root, ...identity, repository_identity_sha256: fingerprint(identity) };
   }
-  async function head(root, ref = "HEAD", nullable = false) {
-    const result = await git(root, ["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`], { allowFailure: nullable });
+  async function head(root, ref = "HEAD", nullable = false, signal) {
+    const result = await git(root, ["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`], { allowFailure: nullable, signal });
     if (nullable && result.status !== 0) {
       requireProof(!result.error && result.status === 128, "AGENT_GIT_REF_READ_FAILED"); return null;
     }
     const value = nullable ? result.stdout.trim() : result;
     requireProof(sha(value), "AGENT_GIT_SHA_INVALID"); return value;
   }
-  async function parents(root, commit) {
+  async function parents(root, commit, signal) {
     requireProof(sha(commit), "AGENT_GIT_SHA_INVALID");
-    const fields = (await git(root, ["rev-list", "--parents", "-n", "1", commit])).split(" ");
+    const fields = (await git(root, ["rev-list", "--parents", "-n", "1", commit], { signal })).split(" ");
     requireProof(fields[0] === commit && fields.length === 2, "AGENT_GIT_SINGLE_PARENT_REQUIRED"); return fields[1];
+  }
+  async function integrationHeadAndTree(root, result, signal) {
+    const ref = `${integrationRef}^{commit}`;
+    const lines = (await git(root, ["cat-file", "--batch-check"], { signal,
+      input: `${ref}\n${result}^{tree}\n` })).split("\n");
+    const [commit, commitType] = lines[0].split(" ");
+    const [tree, treeType] = (lines[1] ?? "").split(" ");
+    const missingHead = lines[0] === ref + " missing";
+    requireProof(lines.length === 2 && (missingHead || sha(commit) && commitType === "commit"), "AGENT_GIT_REF_READ_FAILED");
+    requireProof(sha(tree) && treeType === "tree", "AGENT_GIT_COMMAND_FAILED");
+    return { head: missingHead ? null : commit, tree };
   }
   function ensureResources(identity) {
     safePath(resourcePath, { missing: true });
@@ -318,13 +334,22 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
     if (!fs.existsSync(hookDir)) fs.mkdirSync(hookDir);
     requireProof(fs.readdirSync(safePath(hookDir)).length === 0, "AGENT_GIT_UNEXPECTED_HOOK");
   }
+  async function worktreeGitDir(root, identity) {
+    const args = ["rev-parse", "--path-format=absolute"];
+    const locations = (await git(root, [...args, "--git-common-dir", "--absolute-git-dir"])).split("\n");
+    // The two arbitrary paths may themselves contain newlines on POSIX.
+    const [common, gitDir] = locations.length === 2 ? locations : [
+      await git(root, [...args, "--git-common-dir"]), await git(root, [...args, "--absolute-git-dir"]),
+    ];
+    requireProof(key(safePath(common)) === key(identity.common_dir), "AGENT_GIT_REPOSITORY_MISMATCH");
+    return safePath(gitDir);
+  }
   async function bindingState(binding) {
     requireProof(binding && [binding.run_id, binding.task_id, binding.attempt_id].every(id) && sha(binding.input_sha), "AGENT_GIT_BINDING_INVALID");
     const identity = await repository(), root = safePath(binding.cwd);
     requireProof(inside(resourcePath, root) && binding.repository_identity_sha256 === identity.repository_identity_sha256, "AGENT_GIT_REPOSITORY_MISMATCH");
-    requireProof(key(safePath(await git(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"]))) === key(identity.common_dir), "AGENT_GIT_REPOSITORY_MISMATCH");
+    const gitDir = await worktreeGitDir(root, identity);
     requireProof(await git(root, ["symbolic-ref", "--quiet", "--short", "HEAD"]) === binding.branch && await head(root) === binding.input_sha, "AGENT_GIT_WORKER_HEAD_CHANGED");
-    const gitDir = safePath(await git(root, ["rev-parse", "--absolute-git-dir"]));
     const controls = {};
     for (const file of [path.join(root, ".git"), path.join(gitDir, "HEAD"), path.join(gitDir, "index"), path.join(identity.common_dir, "config")]) {
       controls[file] = fs.existsSync(file) ? fileState(file) : null;
@@ -357,8 +382,7 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
   async function verificationState(cwd) {
     const identity = await repository(), physical = safePath(cwd);
     requireProof(inside(resourcePath, physical), "AGENT_GIT_REPOSITORY_MISMATCH");
-    requireProof(key(safePath(await git(physical, ["rev-parse", "--path-format=absolute", "--git-common-dir"]))) === key(identity.common_dir), "AGENT_GIT_REPOSITORY_MISMATCH");
-    const gitDir = safePath(await git(physical, ["rev-parse", "--absolute-git-dir"])), controls = {};
+    const gitDir = await worktreeGitDir(physical, identity), controls = {};
     for (const file of [path.join(physical, ".git"), path.join(gitDir, "HEAD"), path.join(gitDir, "index"), path.join(identity.common_dir, "config")]) controls[file] = fileState(file);
     const branch = await git(physical, ["symbolic-ref", "--quiet", "HEAD"], { allowFailure: true });
     requireProof(!branch.error && [0, 1].includes(branch.status), "AGENT_GIT_HEAD_OBSERVATION_FAILED");
@@ -1120,26 +1144,31 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
       return { ...prepared, evidence: [evidence] };
     },
     async inspectIntegration(input = {}, options = {}) {
-      const identity = await repository();
+      const { signal } = options;
+      const identity = await repository(signal);
       if (input.repository_identity_sha256 !== undefined) requireProof(input.repository_identity_sha256 === identity.repository_identity_sha256, "AGENT_GIT_REPOSITORY_MISMATCH");
       if (input.ref !== undefined) requireProof(input.ref === integrationRef, "AGENT_GIT_REF_MISMATCH");
-      const phase = options.phase ?? input.phase ?? "head", current = await head(identity.root, integrationRef, true);
-      const sourceParent = input.source_sha ? await parents(identity.root, input.source_sha) : null;
-      const resultParent = input.result_sha ? await parents(identity.root, input.result_sha) : null;
-      requireProof(phase === "head" || sourceParent !== null && resultParent === input.parent_sha, "AGENT_GIT_INTEGRATION_PARENT_MISMATCH");
+      const phase = options.phase ?? input.phase ?? "head";
+      const sourceParent = input.source_sha ? await parents(identity.root, input.source_sha, signal) : null;
+      const resultParent = input.result_sha === input.source_sha ? sourceParent
+        : input.result_sha ? await parents(identity.root, input.result_sha, signal) : null;
+      requireProof(phase === "head" || sourceParent !== null && resultParent !== null && resultParent === input.parent_sha, "AGENT_GIT_INTEGRATION_PARENT_MISMATCH");
+      let current;
       if (phase !== "head") {
         const file = safePath(path.join(resourcePath, `prepared-${input.result_sha}.json`)); fileState(file);
         const bytes = fs.readFileSync(file), evidence = input.evidence?.find(value => value.ref === path.basename(file));
         requireProof(evidence && evidence.sha256 === hash(bytes) && evidence.bytes === bytes.length, "AGENT_GIT_PREPARED_PROOF_MISMATCH");
         const recorded = JSON.parse(bytes);
+        const objects = await integrationHeadAndTree(identity.root, input.result_sha, signal);
+        current = objects.head;
         requireProof(["ref", "parent_sha", "source_sha", "result_sha", "repository_identity_sha256"].every(name => recorded[name] === input[name])
-          && recorded.source_parent_sha === sourceParent && await git(identity.root, ["rev-parse", `${input.result_sha}^{tree}`]) === recorded.tree_sha,
+          && recorded.source_parent_sha === sourceParent && objects.tree === recorded.tree_sha,
         "AGENT_GIT_PREPARED_PROOF_MISMATCH");
         if (input.intent_sha256) {
           requireProof(recorded.intent_sha256 === input.intent_sha256 && same(recorded.prepared_by, input.prepared_by), "AGENT_GIT_PREPARED_PROOF_MISMATCH");
           if (input.intent) localPrepared(recorded, evidence, checkIntent(input.intent, input.intent_sha256), input.intent_sha256);
         }
-      }
+      } else current = await head(identity.root, integrationRef, true, signal);
       return { ok: true, repository_identity_sha256: identity.repository_identity_sha256, ref: integrationRef, head_sha: current,
         source_parent_sha: sourceParent, result_parent_sha: resultParent };
     },

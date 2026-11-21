@@ -148,3 +148,11 @@ semantic digest. Editing a gateway fact changes the corresponding branch in the 
 Third-party editors can participate when they preserve the required AIDN extensions.
 Removing a task binding must produce a compilation diagnostic naming the model and
 BPMN element. The published baseline remains available for comparison.
+
+The workflow author owns the diagrams and workflow-project.v1 manifest. Its
+positive project_revision versions the editable files independently of the
+compiled model's identity. The compiler also reads bpmn-model-project.v1.
+A package maintainer publishes the IR, catalog and workflow-package.v1 resource
+descriptor together. The installed host supplies the verifier. The descriptor
+addresses local data within the package root. Instances retain their original
+model and implementation pins across publication.

@@ -1459,6 +1459,25 @@ a diagnosis of a previously expired run. A functional verdict and owned-cluster
 cleanup remain separate. The required default still executes the full suite;
 existing explicit partial selectors keep their partial qualification labels.
 
+On Windows, reproduce the PostgreSQL and Git integration case with
+`node tools/perf/verify-agent-execution-postgres-fixtures.mjs --scheduler-integration`.
+It migrates a private cluster, runs the two overlapping workers and their
+dependent task, and verifies cluster cleanup. The Git inspector reads the common
+directory and object format together, checks the repository configuration and
+traverses each requested commit's parents. For prepared and applied changes a
+single `cat-file --batch-check` then resolves the current integration ref and
+verifies the result tree's object type. Run
+`node tools/perf/verify-agent-git-integration-fixtures.mjs --inspection-only`
+for missing objects, root and merge commits, repeated IDs, concurrent ref
+movement and cancellation.
+
+In a Git for Windows installation, this fixture can invoke the distribution's
+Git executable directly. It discovers the executable through the installed
+launcher's `--exec-path`, compares the reported build and installation directory,
+and checks that both commands resolve the same repository, object format, HEAD
+and branch before starting the scheduler. The scheduler trace records which
+executable it used. Other installations use the ordinary `git` command.
+
 `node tools/perf/verify-workflow-execution-authority-fixtures.mjs` checks that a
 combined synchronous project/persistence observation matches the separate
 descriptions and reads one full activation receipt. A later call reads again;

@@ -1,6 +1,6 @@
 # BPMN model projects
 
-A local authoring project contains `manifest.json` (`bpmn-model-project.v1`) and one
+A local authoring project contains `manifest.json` (`workflow-project.v1`) and one
 `<model_id>.<revision>.bpmn` file per model. The first manifest row is the root.
 Subsequent rows are the root's ordered call targets. Each row supplies its identity,
 participants, roles, policies, operation definitions and optional data bindings and

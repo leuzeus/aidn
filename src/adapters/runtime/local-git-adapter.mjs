@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { assertVcsAdapter } from "../../core/ports/vcs-adapter-port.mjs";
 
 function runGitString(targetRoot, args) {
@@ -12,6 +12,29 @@ function runGitString(targetRoot, args) {
   } catch {
     return "";
   }
+}
+
+function hasGitFile(worktreeRoot) {
+  try {
+    return fs.lstatSync(path.join(worktreeRoot, ".git")).isFile();
+  } catch {
+    return false;
+  }
+}
+
+export function readLocalWorkspaceGit(targetRoot) {
+  const result = spawnSync("git", ["-C", targetRoot, "rev-parse", "--path-format=absolute",
+    "--show-toplevel", "--absolute-git-dir", "--git-common-dir", "--is-inside-work-tree",
+    "--verify", "--quiet", "HEAD"], { encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "ignore"] });
+  // --verify --quiet exits 1 for an unborn HEAD, after emitting the four checkout fields.
+  if (result.error || result.signal || ![0, 1].includes(result.status)) return null;
+  const lines = result.stdout.trimEnd().split(/\r?\n/);
+  if (lines.length !== (result.status === 0 ? 5 : 4)) return null;
+  const [worktreeRoot, gitDir, gitCommonDir, inside, headCommit = "unknown"] = lines;
+  if (![worktreeRoot, gitDir, gitCommonDir].every(value => path.isAbsolute(value))
+      || inside !== "true" || (result.status === 0 && !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(headCommit))) return null;
+  return { worktreeRoot, repoRoot: worktreeRoot, gitDir, gitCommonDir, linkedWorktree: hasGitFile(worktreeRoot),
+    headCommit, insideWorkTree: true };
 }
 
 export function createLocalGitAdapter() {
@@ -68,14 +91,7 @@ export function createLocalGitAdapter() {
     },
     isLinkedWorktree(targetRoot) {
       const repoRoot = runGitString(targetRoot, ["rev-parse", "--show-toplevel"]);
-      if (!repoRoot) {
-        return false;
-      }
-      try {
-        return fs.lstatSync(path.join(repoRoot, ".git")).isFile();
-      } catch {
-        return false;
-      }
+      return repoRoot ? hasGitFile(repoRoot) : false;
     },
     getUpstreamBranch(targetRoot, ref = "HEAD", { fullName = false } = {}) {
       try {
