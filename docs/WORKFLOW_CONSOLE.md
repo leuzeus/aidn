@@ -54,7 +54,9 @@ closing the dashboard is not proof of process termination or cleanup.
 Enter an instance ID in **Instance exacte** to enable **Moteur de l’instance**.
 If both engines retain that ID, choose **Agentique** or **Historique** and
 refresh. Clearing the ID also clears the engine. Changing the engine invalidates
-any action preview awaiting confirmation.
+any action preview awaiting confirmation. If you click **Actualiser** again while
+a read is in progress, only the latest click can update the displayed results,
+errors and connection status.
 
 The interface first displays observations. The advanced action editor accepts
 the same request JSON as the CLI and shows the exact preview. Editing a request
