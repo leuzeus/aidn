@@ -6,15 +6,15 @@ workflow; BPMN compilation is one authoring route. See
 [the default-engine decision](ADR/ADR-0024-default-agentic-workflow-engine.md).
 The default compiler is now the [v2 profile](BPMN_EXECUTION_PROFILE_V2.md), which additionally compiles
 correlated message races, post-test guarded loops, fixed multi-instance
-collections and same-participant local procedure calls into the existing IR.
+collections and same-participant local procedure calls into IR v2 by default.
 This document retains v1 compatibility syntax, selected with explicit
-`profile: "aidn-bpmn-structured.v1"`. Both profiles execute the same agentic IR;
-there is no second XML execution engine or implicit native startup.
+`profile: "aidn-bpmn-structured.v1"`. This profile targets IR v1. Both IR
+versions execute through the same reducer.
 
 ## Architecture
 
 BPMN is the modeling and interchange language. `agentic-process-model.v1` is
-the canonical executable representation (IR). `agentic-process-instance.v1`
+the executable representation for this profile. `agentic-process-instance.v1`
 retains the pinned model, policies and ordered event history. Compilation is
 explicit and in memory; neither loading XML nor simulating grants execution.
 
@@ -138,6 +138,7 @@ import { agenticPolicyPins } from "./src/core/workflow/agentic-process-model.mjs
 import { simulateAgenticProcess } from "./src/core/workflow/agentic-process-simulation.mjs";
 
 const compiled = compileBpmnProcess({
+  profile: "aidn-bpmn-structured.v1",
   xml, modelId: "delivery", revision: 1, participantId: "delivery", roles, policies,
 });
 const report = simulateAgenticProcess({
@@ -180,10 +181,9 @@ Editing XML never reinterprets an existing instance. Simulation output is
 synthetic reference evidence, not canonical execution or release proof. No new
 store, table, durable concept or migration is introduced.
 
-The research report's proposed `agentic-process-model.v2` is unnecessary for
-this first lossless subset: v1 already expresses its semantics. Future profile
-versions can add XML mappings for existing event/loop/multi-instance/call nodes;
-the default [v2 profile](BPMN_EXECUTION_PROFILE_V2.md) implements those mappings.
+IR v1 expresses the full subset described here. The default
+[v2 profile](BPMN_EXECUTION_PROFILE_V2.md) adds XML mappings for events,
+loops, multi-instance activities and calls, and supports typed operations on IR v2.
 Executable participant collaboration and durable boundary/timer semantics need
 their own message/authority, correlation, clock, cancellation and persistence
 contracts before they can be advertised. Neither is approximated with AND.

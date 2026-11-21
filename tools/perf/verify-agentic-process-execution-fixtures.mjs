@@ -256,7 +256,7 @@ const checkFlags = new Set([
   "--native-human-port-only", "--historical-diagnostic-only", "--native-human-turn-only",
   "--checkpoint-only", "--large-checkpoint-only", "--journal-only",
   "--journal-preview-only", "--owned-only", "--resume-only",
-  "--worker-only",
+  "--worker-only", "--bpmn-control-only",
   "--drift-git-only", "--drift-contract-only",
   "--drift-finalize-contract-only", "--drift-published-rollback", "--drift-published-rollback-rediagnosis",
 ]);
@@ -293,6 +293,7 @@ let serial = 0, completed = false;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
 async function check(name, callback) { if (process.argv.includes("--host-resource-activity-only") && !name.startsWith("host resource activity:") && name !== "worker mixed private v2 authority stops at an operation boundary without native startup") return; if (process.argv.includes("--drift-git-readonly-only") && !name.startsWith("drift controlled Git ")) return; if (selectedCanonicalResumeNativeMode && !name.startsWith(`canonical resume native ${selectedCanonicalResumeNativeMode}:`)) return; if (selectedStandardExistingOpenWorkMode && !name.startsWith(`standard existing open work ${selectedStandardExistingOpenWorkMode}:`)) return; if (selectedPublishedChoiceMode && !name.startsWith(`standard selected root ${selectedPublishedChoiceMode}:`)) return; if (selectedStandardExistingCompleteMode && !name.startsWith(`standard existing complete ${selectedStandardExistingCompleteMode}:`)) return; if (selectedStandardExistingOpenMode && !name.startsWith(`standard existing open ${selectedStandardExistingOpenMode}:`)) return; if (process.argv.includes("--cycle-plan-select-native-only") && !name.startsWith("cycle plan selection native files:")) return; if (selectedCanonicalPlanSelectionMode && !name.startsWith(`cycle plan selection ${selectedCanonicalPlanSelectionMode}:`)) return; if (process.argv.includes("--canonical-plan-work-only") && !name.startsWith("canonical plan work files:")) return; if (selectedCanonicalPlanReadinessMode && !name.startsWith(`cycle plan readiness ${selectedCanonicalPlanReadinessMode}:`)) return; if (selectedCanonicalPlanAdoptionMode && !name.startsWith(`cycle plan adoption ${selectedCanonicalPlanAdoptionMode}:`)) return; if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
   if (process.argv.includes("--native-human-port-only") && !name.startsWith("native human port:")) return;
+  if (process.argv.includes("--bpmn-control-only") && !name.startsWith("explicit pinned host scenario drives XML")) return;
   if (process.argv.includes("--historical-diagnostic-only") && !name.startsWith("historical diagnostic:")) return;
   if (process.argv.includes("--native-human-turn-only") && !name.startsWith("worker private before-turn")) return;
   if (publishedRollbackCase && !name.startsWith("drift published rollback:")) return;
@@ -3426,7 +3427,7 @@ if (process.argv[2] === "--mixed-continue") {
     example.policies[0].allowed_permissions.push("write:product");
     const model = compileBpmnProcess({ xml: fs.readFileSync(new URL("../../tests/fixtures/agentic-process/extended-delivery.bpmn", import.meta.url), "utf8"),
       modelId: "native-control-fixture", revision: 1, participantId: "delivery", roles: example.roles, policies: example.policies,
-      processRef: "ExtendedDelivery" }).model;
+      processRef: "ExtendedDelivery", targetModel: "agentic-process-model.v1" }).model;
     const modelPath = put(f.base, "extended-model.json", JSON.stringify(model));
     f.configuration.model = { path: modelPath, sha256: sha(fs.readFileSync(modelPath)) };
     f.configuration.instructions = Object.fromEntries(model.nodes.filter(n => n.kind === "activity").map(n => [n.id, n.policy_ref === "review" ? "Review without correcting the work." : "Change value to 2."]));

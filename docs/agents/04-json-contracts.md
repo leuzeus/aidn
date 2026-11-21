@@ -534,9 +534,9 @@ validates its nested executable model with the existing IR schema/guard;
 simulation validates each replayed instance/event before exposing its cursor.
 Source maps are derived, traces synthetic, and neither envelope grants writes
 or creates a public CLI case. See [the BPMN profile](../BPMN_EXECUTION_PROFILE.md).
-The default v2 XML compiler uses the same
-compilation envelope. Explicit v1 remains compatible; existing model/instance/event
-contracts and required execution authorities retain their versions and meaning.
+The v2 XML profile defaults to `bpmn-process-compilation.v2` with a nested
+`agentic-process-model.v2`. Selecting an IR v1 target or the v1 XML profile
+returns the historical model in a `bpmn-process-compilation.v1` envelope.
 The optional internal `agentic-process-control-scenario.v1` file uses a closed
 root/step schema and semantic control-event guard. It is a pinned operational
 input to the owned composition, not a public CLI output, executor credential or

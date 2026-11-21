@@ -17,11 +17,12 @@ export function compileBpmnProcess(input) {
   if (!BPMN_EXECUTION_PROFILES.includes(profile) || (profile === BPMN_EXECUTION_PROFILE && Object.hasOwn(bindings, "processRef"))) bpmnFail("BPMN_PROFILE_UNSUPPORTED");
   if (Object.hasOwn(bindings, "processRef") && (typeof bindings.processRef !== "string" || !/^[A-Za-z_][A-Za-z0-9_.-]{0,127}$/.test(bindings.processRef))) bpmnFail("BPMN_BINDINGS_INVALID");
   const { profile: selectedProfile, ...options } = bindings;
-  const target = Object.hasOwn(options, "targetModel") ? options.targetModel : "agentic-process-model.v1";
-  if (!["agentic-process-model.v1", "agentic-process-model.v2"].includes(target)
-    || (target === "agentic-process-model.v2" && profile !== BPMN_EXTENDED_EXECUTION_PROFILE)) bpmnFail("BPMN_TARGET_UNSUPPORTED");
-  if (target !== "agentic-process-model.v2" && ["operationBindings", "dataBindings"].some(key => Object.hasOwn(options, key))) bpmnFail("BPMN_TARGET_UNSUPPORTED");
+  const extended = profile === BPMN_EXTENDED_EXECUTION_PROFILE;
+  const { targetModel } = options;
+  const supportedTargets = extended ? ["agentic-process-model.v1", "agentic-process-model.v2"] : ["agentic-process-model.v1"];
+  if (Object.hasOwn(options, "targetModel") && !supportedTargets.includes(targetModel)) bpmnFail("BPMN_TARGET_UNSUPPORTED");
+  if ((!extended || targetModel === "agentic-process-model.v1") && ["operationBindings", "dataBindings"].some(key => Object.hasOwn(options, key))) bpmnFail("BPMN_TARGET_UNSUPPORTED");
   const root = readBpmnXml(xml);
-  const compile = profile === BPMN_EXTENDED_EXECUTION_PROFILE ? compileExtendedBpmnProcessTree : compileBpmnProcessTree;
+  const compile = extended ? compileExtendedBpmnProcessTree : compileBpmnProcessTree;
   return compile({ root, sourceSha256: createHash("sha256").update(xml, "utf8").digest("hex"), ...options });
 }
