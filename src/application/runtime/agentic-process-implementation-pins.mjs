@@ -82,6 +82,7 @@ const files = [
   ...["input", "plan", "output"].map(kind =>
     `src/core/contracts/workflow-definition/standard-pr-post-merge-fast-forward-${kind}.v1.schema.json`),
   "src/adapters/runtime/local-git-adapter.mjs",
+  "src/application/runtime/workspace-resolution-service.mjs",
   "src/application/runtime/standard-session-pr-external-merge.mjs",
   "src/application/runtime/standard-session-pr-pretriage-merge.mjs",
   "src/core/workflow/standard-pr-external-merge.mjs",

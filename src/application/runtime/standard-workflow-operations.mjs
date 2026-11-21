@@ -153,6 +153,7 @@ function implementation() {
     new URL("../../../package/catalogs/standard.workflow-package.json", import.meta.url),
     new URL("../../core/contracts/workflow-definition/workflow-package.v1.schema.json", import.meta.url),
     new URL("../../adapters/runtime/local-git-adapter.mjs", import.meta.url),
+    new URL("./workspace-resolution-service.mjs", import.meta.url),
     new URL("../install/project-activation-service.mjs", import.meta.url),
     new URL("standard-session-pr-redelivery-authority.mjs", import.meta.url),
     ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-session-pr-redelivery-push-${kind}.v1.schema.json`, import.meta.url)), new URL("standard-pr-correction-review.mjs", import.meta.url), new URL("standard-pr-correction-cycle.mjs", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-pr-correction-cycle-input.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-pr-correction-cycle-plan.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-pr-correction-cycle-output.v1.schema.json", import.meta.url), new URL("../../core/workflow/standard-pr-correction-decision.mjs", import.meta.url),
