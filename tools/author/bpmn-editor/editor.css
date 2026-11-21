@@ -13,5 +13,9 @@ main { min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) minmax
 aside { overflow: auto; padding: 1rem; border-left: 1px solid #c6d1cd; }
 #condition-form { margin-bottom: 1.5rem; } input { margin: .4rem 0; width: 100%; }
 ol { padding-left: 1.2rem; } li { overflow-wrap: anywhere; margin: .7rem 0; }
+details { margin: 1rem 0; }
+details label { display: block; }
+aside select { max-width: 100%; }
+dd { margin: 0 0 .6rem; font-size: .9em; color: #405b54; overflow-wrap: anywhere; }
 #status[data-error] { color: #892b1d; }
 @media(max-width: 740px) { header,nav { flex-wrap: wrap; gap: .5rem; } main { grid-template-columns: 1fr; grid-template-rows: 1fr minmax(5rem,20%); } aside { border-top: 1px solid #c6d1cd; } }

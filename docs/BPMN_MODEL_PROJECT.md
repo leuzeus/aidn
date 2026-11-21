@@ -57,6 +57,15 @@ IR paths against the published revision. A matching model is checked with the
 catalog verifier. Project XML accepts up to 1 MiB, 16,384 elements and 48 levels
 per file, with an 8 MiB aggregate diagram limit.
 
+## Property catalog
+
+The editor derives field names, types, constants and required inputs from the
+schemas associated with each installed operation. Its property catalog also
+lists the available activity kinds, roles, policies, evaluators and routing
+facts. Binding identity, effect class, executor and implementation digest are
+read-only. An embedding host can supply its own catalog when starting the
+editor. The catalog is a projection of installed definitions and package data.
+
 ## Local graphical editor
 
 From a source checkout, install the editor's pinned dependencies once and open
