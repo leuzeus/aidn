@@ -256,7 +256,7 @@ function verifyGenericWorkflowGates() {
   });
   assert(checks.branch_kind_known.pass === false, "generic gates should expose branch kind drift");
   assert(blockingReasons.some((item) => item.includes("branch kind is unknown")), "generic gates should require branch kind when policy does");
-  assert(blockingReasons.some((item) => item.includes("dor_state is not READY")), "generic gates should enforce DoR");
+  assert(!blockingReasons.some((item) => item.includes("dor_state is not READY")), "promotion validates a completed target instead of re-entering implementation DoR");
   assert(blockingReasons.some((item) => item.includes("usage matrix is not complete")), "generic gates should enforce usage matrix");
   assert(blockingReasons.some((item) => item.includes("cycle branch mismatch")), "generic gates should surface branch mismatch");
   assert(warnings.some((item) => item.includes("first_plan_step differs")), "generic gates should warn on plan step drift");

@@ -1,0 +1,61 @@
+{
+  "contract_version": "aidn-qualification-note.v1",
+  "scope": "candidate-correction-checkpoint-host-IR-binding",
+  "status": "PASS_TARGETED",
+  "complete_standard_workflow": false,
+  "model": {
+    "revision": 68,
+    "nodes": 107,
+    "operation_occurrences": 65,
+    "referenced_bindings": 55,
+    "registered_bindings": 63,
+    "native_activities": 9,
+    "direct_files": 356,
+    "semantic_sha256": "512fe6ae83536795c2393ff72dfeb323552d8ee4edc6677827917210caec2a4b",
+    "catalog_sha256": "2194290076173b89db90c0723af3866db230a44005694e0730c299ce1068bb27",
+    "native_implementation_sha256": "2a3fd5d183196ec0833da609602d9d717950f89264c3cadc5ea81bf955742171"
+  },
+  "PASS": {
+    "checkpoint_files": 9,
+    "checkpoint_dual": 7,
+    "checkpoint_db_only": 7,
+    "offline_source_composition": 28,
+    "synthetic_preflight": 18,
+    "generic_signed_host_regression": 20,
+    "gate_catalog": true,
+    "doc_references": true,
+    "targeted_syntax": true,
+    "diff_check": true
+  },
+  "FAIL_remaining": [],
+  "SKIP": [],
+  "NOT_RUN": [
+    "complete authenticated producer-to-canonical-reopen-to-checkpoint execution",
+    "ordinary correction cycle continuity/admission/frozen plan/readiness/IMPLEMENTING",
+    "physical product correction and new-HEAD validation/delivery",
+    "real native/provider/human",
+    "full runtime and Governance Admission",
+    "exact installed archive"
+  ],
+  "boundaries": {
+    "component_source_authentication_native_provider_event": "DOUBLED",
+    "generic_host": "ACTUAL_HMAC_journal_stores_grants_receipts_new_Node_processes_not_correction_route",
+    "preflight": "SYNTHETIC_common_IR_reducer_no_authorization_or_effect",
+    "long_driver_assertions": "ADDED_NOT_REACHED_BY_A_NEW_LONG_TRIAL",
+    "acknowledgement_loss": "second_commit_refused_reconciliation_still_required",
+    "unknown_or_foreign_commit": "owner_retained_no_retry",
+    "new_native_authorization_epoch": "NOT_IMPLEMENTED",
+    "expired_plan_deterministic_reprepare": "NOT_IMPLEMENTED_retain_prior_refusal_and_authorities_no_implicit_TTL_raise_or_model_call",
+    "ordinary_entry_changed": false,
+    "existing_trials": "unchanged_not_resumed_reauthorized_or_cleaned"
+  },
+  "cleanup": {
+    "checkpoint_owned_roots": 8,
+    "completed": true,
+    "independent_process_inventory": "NOT_CAPTURED"
+  },
+  "resolved_intermediate_failure": {
+    "composition_test": "explicit expected operation count updated from 64 to 65 for the added checkpoint; ordered route and closed inputs also asserted"
+  },
+  "architecture": "ADR-0025 aligned with bounded metadata-HEAD bridge; no new public CLI contract, table, governed concept or widened product admission"
+}

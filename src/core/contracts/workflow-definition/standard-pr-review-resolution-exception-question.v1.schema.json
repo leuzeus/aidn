@@ -1,0 +1,158 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-review-resolution-exception-question.v1",
+  "x-aidn-contract-version": "standard-pr-review-resolution-exception-question.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_id",
+    "instance_id",
+    "scope_id",
+    "occurrence_id",
+    "intent_sha256",
+    "choices",
+    "selection_operation_id",
+    "expires_at_ms",
+    "subject"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-pr-review-resolution-exception-question.v1"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "instance_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "occurrence_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "intent_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "choices": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "enum": [
+          "accept_resolution_exception",
+          "refused",
+          "deferred",
+          "cancelled"
+        ]
+      }
+    },
+    "selection_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "expires_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "triage_operation_id",
+        "update_operation_id",
+        "source_sha256",
+        "repository_id",
+        "pull_request_id",
+        "pull_request_number",
+        "head_oid",
+        "base_oid",
+        "head_ref",
+        "base_ref",
+        "unresolved_thread_ids",
+        "thread_observation_sha256",
+        "review_evidence_sha256",
+        "reply_proof_sha256",
+        "actor_id"
+      ],
+      "properties": {
+        "triage_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "update_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "repository_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+        },
+        "pull_request_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+        },
+        "pull_request_number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "head_oid": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "base_oid": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "head_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "base_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "unresolved_thread_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 31,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+          }
+        },
+        "thread_observation_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "review_evidence_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "reply_proof_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "actor_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+        }
+      }
+    }
+  }
+}

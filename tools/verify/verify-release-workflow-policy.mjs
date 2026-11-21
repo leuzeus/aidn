@@ -1,17 +1,21 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { parseDocument } from "yaml";
 import {
   classifyPublicationSource,
   provePublicationSource,
 } from "../ci/prove-publication-source.mjs";
+import { publicationVerificationCommand } from "./workflow-policy-lib.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const workflowPath = ".github/workflows/release.yml";
 const workflow = fs.readFileSync(path.join(repoRoot, workflowPath), "utf8");
 const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
 const publicationProofCommand = "node tools/ci/prove-publication-source.mjs";
+const exactMainTrigger = "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}";
+const exactMainSource = "${{ github.sha }}";
 const refusalScript = `VERSION="$(cat VERSION)"
 TAG="v\${VERSION}"
 if git ls-remote --exit-code --tags origin "refs/tags/\${TAG}" >/dev/null 2>&1; then
@@ -116,13 +120,14 @@ function evaluateWorkflow(candidate) {
   if (!sameSet(model?.on?.push?.branches, ["main"]) || model?.on?.push?.tags != null) {
     issues.push("release publication must trigger only on pushes to main");
   }
-  const verifyJob = model?.jobs?.verify;
   const publishJob = model?.jobs?.publish;
-  if (verifyJob != null) {
-    issues.push("release pull-request verification must be owned by Governance Admission");
+  if (!sameSet(Object.keys(model.jobs ?? {}), ["publish"]) || hasOwn(publishJob, "needs")
+    || !isDeepStrictEqual(publishJob?.permissions, { contents: "write", "pull-requests": "read" })
+    || !isDeepStrictEqual(publishJob?.steps?.[0], { uses: "actions/checkout@v4", with: { ref: exactMainSource, "fetch-depth": 0 } })
+    || !isDeepStrictEqual(publishJob?.steps?.[1], { uses: "actions/setup-node@v4", with: { "node-version": "22.13" } })) {
+    issues.push("release publication must check out the exact source and run without an exhaustive fixture dependency");
   }
-  if (publishJob?.if
-    !== "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}") {
+  if (publishJob?.if !== exactMainTrigger) {
     issues.push("release publish job must be restricted to pushes on refs/heads/main");
   }
   if (hasOwn(publishJob, "continue-on-error")) {
@@ -142,29 +147,26 @@ function evaluateWorkflow(candidate) {
     "Verify Version, Provenance, Topology, And Sensitivity",
   );
   if (!publicationVerificationStep
-    || !exactRun(publicationVerificationStep, "npm run verify:release")) {
-    issues.push("release publication must run only the complete verify:release aggregate");
+    || !exactRun(publicationVerificationStep, publicationVerificationCommand)
+    || !isDeepStrictEqual(publicationVerificationStep.env, {
+      AIDN_BRANCH_POLICY_EXPECTED_SHA: exactMainSource, AIDN_BRANCH_POLICY_CONTAINS_REF: "origin/main",
+    })) {
+    issues.push("release publication must verify the targeted catalog selection on the exact source");
   }
   requireBlockingStep(
     publicationVerificationStep,
-    "release publication verify:release step",
+    "release publication obligation verification step",
     issues,
   );
   const installStep = namedStep(publishJob, "Install Locked Gate Dependencies");
-  const postgresStep = namedStep(publishJob, "Resolve Ephemeral PostgreSQL Runtime");
   if (!installStep || !exactRun(installStep, "npm ci --include=dev --include=optional --ignore-scripts --no-audit --no-fund")) {
-    issues.push("release verification requires locked dev and optional PostgreSQL dependencies");
-  }
-  if (!postgresStep || !exactRun(postgresStep, "node tools/ci/resolve-postgres-test-runtime.mjs")) {
-    issues.push("release verification requires the canonical PostgreSQL preflight");
+    issues.push("release verification requires locked dependencies");
   }
   requireBlockingStep(installStep, "release locked dependency installation", issues);
-  requireBlockingStep(postgresStep, "release PostgreSQL preflight", issues);
   const steps = publishJob?.steps ?? [];
-  if (steps.indexOf(postgresStep) <= steps.indexOf(installStep)
-    || steps.indexOf(postgresStep) >= steps.indexOf(publicationVerificationStep)
-    || hasOwn(postgresStep, "env") || hasOwn(publicationVerificationStep?.env, "PG_BIN_DIR")) {
-    issues.push("release PostgreSQL preflight must follow installation and provide the verified runtime to verification");
+  if (steps.indexOf(proofStep) <= steps.indexOf(installStep)
+    || steps.indexOf(publicationVerificationStep) <= steps.indexOf(proofStep)) {
+    issues.push("release verification must follow locked installation and the exact publication-source proof");
   }
   const buildStep = namedStep(publishJob, "Build Exact Main Commit");
   if (!buildStep
@@ -190,6 +192,10 @@ function evaluateWorkflow(candidate) {
     issues.push("annotated-tag and GitHub Release creation must match the canonical script");
   }
   requireBlockingStep(createStep, "tag and GitHub Release creation step", issues);
+  const publicationSteps = [publicationVerificationStep, refusalStep, buildStep, artifactStep, createStep];
+  if (steps.length !== 9 || publicationSteps.some((step, index) => steps.indexOf(step) !== index + 4)) {
+    issues.push("publication checks must precede the clean build, artifact verification, tag and release");
+  }
   const activeRuns = [
     ...(Array.isArray(publishJob?.steps) ? publishJob.steps : []),
   ].map((step) => String(step?.run ?? "")).join("\n");
@@ -417,8 +423,8 @@ async function evaluateHelperBehavior() {
 const helperBehavior = await evaluateHelperBehavior();
 const issues = [...evaluateWorkflow(workflow), ...helperBehavior.issues];
 if (packageJson.scripts?.["verify:release"]
-  !== "node tools/verify/run-gate-family.mjs obligations") {
-  issues.push("verify:release must execute every contextual catalog obligation");
+  !== "node tools/verify/run-gate-family.mjs publication") {
+  issues.push("verify:release must execute the catalog publication selection");
 }
 
 function candidateRejected(candidate) {
@@ -426,12 +432,7 @@ function candidateRejected(candidate) {
 }
 
 const negativeProbes = {
-  postgres_dependency_omission_rejected: evaluateWorkflow(workflow.replace("--include=dev --include=optional", "--include=dev --omit=optional")).length > 0,
-  postgres_preflight_omission_rejected: evaluateWorkflow(workflow.replace("node tools/ci/resolve-postgres-test-runtime.mjs", "node --version")).length > 0,
-  postgres_preflight_disabled_rejected: evaluateWorkflow(mutateNamedStepProperty(workflow, "Resolve Ephemeral PostgreSQL Runtime", "if", "false")).length > 0,
-  postgres_preflight_nonblocking_rejected: evaluateWorkflow(mutateNamedStepProperty(workflow, "Resolve Ephemeral PostgreSQL Runtime", "continue-on-error", "true")).length > 0,
-  postgres_preflight_bypass_rejected: evaluateWorkflow(workflow.replace("node tools/ci/resolve-postgres-test-runtime.mjs", "node tools/ci/resolve-postgres-test-runtime.mjs || true")).length > 0,
-  postgres_preflight_order_rejected: evaluateWorkflow(workflow.replace("      - name: Resolve Ephemeral PostgreSQL Runtime\n        run: node tools/ci/resolve-postgres-test-runtime.mjs\n", "").replace("      - name: Install Locked Gate Dependencies", "      - name: Resolve Ephemeral PostgreSQL Runtime\n        run: node tools/ci/resolve-postgres-test-runtime.mjs\n\n      - name: Install Locked Gate Dependencies")).length > 0,
+  optional_dependency_omission_rejected: evaluateWorkflow(workflow.replace("--include=dev --include=optional", "--include=dev --omit=optional")).length > 0,
   dormant_publication_helper_rejected: candidateRejected(workflow.replace(
     `        run: ${publicationProofCommand}`,
     "        run: |\n"
@@ -472,6 +473,12 @@ const negativeProbes = {
       "true",
     ),
   ),
+  publication_exhaustive_dependency_rejected: candidateRejected(mutateNamedJobProperty(
+    workflow, "publish", "needs", "agentic",
+  )),
+  publication_source_binding_substitution_rejected: candidateRejected(workflow.replace(
+    "AIDN_BRANCH_POLICY_EXPECTED_SHA: ${{ github.sha }}", "AIDN_BRANCH_POLICY_EXPECTED_SHA: main",
+  )),
   tag_release_refusal_if_false_rejected: candidateRejected(mutateNamedStepProperty(
     workflow,
     "Refuse Existing Tag Or Release",

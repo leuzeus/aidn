@@ -1,0 +1,141 @@
+{
+  "contract_version": "qualification-standard-promotion-checkpoint.v1",
+  "date": "2026-11-03",
+  "status": "COMPONENTS_AND_FROZEN_COMPOSED_FILES_PASS",
+  "complete_standard_workflow": false,
+  "model": {
+    "revision": 18,
+    "sha256": "f477f03ac9b149e183083f9460831486f1b149dde00bc7a2eda8ddb2954f05a2",
+    "nodes": 74,
+    "operation_occurrences": 42,
+    "registered_bindings": 41,
+    "referenced_binding_ids": 34
+  },
+  "component_source_snapshot": "1f02de95d4b30884d6f66e7ac734c662978b22e6",
+  "source_materiality": "production-application-and-model-unchanged-across-component-cases-fixture-fault-controls-added-later-package-test-command-pins-refreshed-separately",
+  "contracts": "PASS_6",
+  "components": [
+    {
+      "mode": "files",
+      "checks": 5,
+      "status": "PASS",
+      "git": "actual-local-port",
+      "reload": "actual",
+      "final_hook": "actual",
+      "cycle_branch_retained": true
+    },
+    {
+      "mode": "dual",
+      "checks": 5,
+      "status": "PASS",
+      "git": "actual-local-port",
+      "reload": "actual",
+      "final_hook": "actual",
+      "cycle_branch_retained": true
+    },
+    {
+      "mode": "db-only",
+      "checks": 5,
+      "status": "PASS",
+      "git": "actual-local-port",
+      "reload": "actual",
+      "final_hook": "actual",
+      "cycle_branch_retained": true
+    }
+  ],
+  "faults": [
+    {
+      "fault": "grant_after_git",
+      "status": "PASS",
+      "checks": 5,
+      "outcome": "reconciliation_required",
+      "effect_status": "unknown",
+      "facts": "empty",
+      "owner": "retained",
+      "cache": "unchanged",
+      "final_hook": "NOT_RUN"
+    },
+    {
+      "fault": "foreign_parent",
+      "status": "PASS",
+      "checks": 5,
+      "new_checkpoint_effect": "none",
+      "final_hook": "NOT_RUN"
+    },
+    {
+      "fault": "foreign_path",
+      "status": "PASS",
+      "checks": 5,
+      "new_checkpoint_effect": "none",
+      "final_hook": "NOT_RUN"
+    }
+  ],
+  "failed_attempts": [
+    {
+      "case": "grant_after_git-first-oracle",
+      "class": "fixture-oracle",
+      "runtime_unknown_empty_facts_and_owner_checks": "passed-before-assertion-failure",
+      "expected_wrong": "baseline_promotion_status: pending",
+      "actual": "baseline_promotion_status: checkpoint_pending",
+      "production_fix_required": false,
+      "retained": true
+    }
+  ],
+  "common_process_host": "PASS_FROZEN_COMPOSED_FILES",
+  "real_model_calls": 0,
+  "native": "NOT_RUN",
+  "installed_archive": "NOT_RUN",
+  "live_postgresql": "NOT_RUN",
+  "composed_qualification": {
+    "status": "PASS",
+    "source_snapshot": "c18320d10991ca3b8c843abc71b46f7d48d7aa2b",
+    "command": "node tools/perf/verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=component_complete --retain-on-failure",
+    "native_implementation_sha256": "baf2f0864d1a7393f984033c3f77eab9eac75f7bdf35dde1d5d550d80302a009",
+    "catalog_sha256": "f66ba073290c36f1d4c4287803569d49cda0e315fbcf8443586bc8e9519384f0",
+    "final_instance_sha256": "7ad18503cd15bf50996e3da97216a0bd0f90425b4f2aef0ac3b0fae036208e1f",
+    "events": 100,
+    "operation_records": 43,
+    "completed_operation_records": 42,
+    "deferred_operation_records": 1,
+    "fake_native_started_parent": 5,
+    "fake_native_started_child": 2,
+    "real_model_calls": 0,
+    "missing_human_source": "WAIT_NO_MUTATION_NO_ALLOCATION",
+    "explicit_closure_deferral": "PRESERVED_NOT_SUCCESS",
+    "cold_continuation": true,
+    "prior_operation_journals_preserved": true,
+    "prior_event_prefix_preserved": true,
+    "original_authorization_and_budget_preserved": true,
+    "all_fake_native_allocations_closed": true,
+    "actual_ports": [
+      "session and cycle application ports",
+      "product checkpoint and verification",
+      "cycle terminal record checkpoint reload and final hook",
+      "promotion decision record checkpoint R05 and final hook"
+    ],
+    "checkpoint_fact_does_not_imply_promotion_completion": true,
+    "simulation_trace_mode": "streamed-bounded-rows",
+    "simulation_steps": 101,
+    "replay_exact": true,
+    "workflow_status": "COMPLETED",
+    "component_completed": true,
+    "full_standard_workflow": false,
+    "human_effect_and_native_wire_authority": "FIXTURE",
+    "actual_node_verifier": true,
+    "parent_and_child_exit": 0,
+    "cleanup": "TERMINAL_COMPLETE",
+    "production_code_and_assets_unchanged_after_frozen_snapshot": true
+  },
+  "remaining": [
+    "unknown-effect-reconciliation",
+    "long-wait-native-reauthorization",
+    "session-and-PR-tail",
+    "other-modes-existing-session-cycle-and-incidents",
+    "ordinary-standard-selection",
+    "public-CLI-streaming",
+    "native-and-exact-archive-A1-A10"
+  ],
+  "aggregate_suite": "NOT_RUN",
+  "merge_readiness": "NOT_CLAIMED",
+  "component_authority": "fixture-human-and-completed-closure"
+}

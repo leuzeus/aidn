@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-handoff-prepare-input.v1",
+  "x-aidn-contract-version": "standard-handoff-prepare-input.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "summary_operation_id",
+    "git_operation_id"
+  ],
+  "properties": {
+    "summary_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "git_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    }
+  }
+}

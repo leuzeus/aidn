@@ -46,8 +46,9 @@ function git(repoRoot, argv, options = {}) {
   return execFileSync("git", argv, {
     cwd: repoRoot,
     encoding: options.encoding,
-    maxBuffer: 30 * 1024 * 1024,
-    stdio: ["ignore", "pipe", "pipe"],
+    maxBuffer: options.maxBuffer ?? 30 * 1024 * 1024,
+    input: options.input,
+    stdio: [options.input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
   });
 }
 
@@ -83,14 +84,45 @@ function packagePathIncluded(relativePath, packageJson) {
 }
 
 function listPackageFiles(repoRoot, commit, packageJson) {
-  const raw = git(repoRoot, ["ls-tree", "-r", "-z", "--name-only", commit]);
-  return raw.toString("utf8").split("\0").filter(Boolean)
-    .filter((relativePath) => packagePathIncluded(relativePath, packageJson))
-    .sort((a, b) => a.localeCompare(b))
-    .map((relativePath) => ({
-      relativePath,
-      content: git(repoRoot, ["show", `${commit}:${relativePath}`]),
-    }));
+  // Pin blob identities and sizes at the selected commit before reading payloads.
+  const raw = git(repoRoot, ["ls-tree", "-r", "-l", "-z", "--full-tree", commit]);
+  const entries = raw.toString("utf8").split("\0").filter(Boolean).map(row => {
+    const separator = row.indexOf("\t");
+    if (separator < 0) throw new Error("release Git tree entry is malformed");
+    const [mode, type, oid, sizeText] = row.slice(0, separator).trim().split(/\s+/u);
+    return { relativePath: row.slice(separator + 1), mode, type, oid, size: Number(sizeText) };
+  }).filter(entry => packagePathIncluded(entry.relativePath, packageJson))
+    .sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+  if (!entries.length) return [];
+  for (const entry of entries) {
+    if (entry.type !== "blob" || !/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u.test(entry.oid)
+        || !Number.isSafeInteger(entry.size) || entry.size < 0 || entry.size > 30 * 1024 * 1024) {
+      throw new Error("release Git package entry is not a supported bounded blob");
+    }
+  }
+  // One binary batch avoids one Git process per file. Its bound is the exact
+  // framed size; each payload retains the former per-command 30 MiB limit.
+  const maxBuffer = entries.reduce((sum, entry) => sum + entry.oid.length
+    + " blob ".length + String(entry.size).length + 2 + entry.size, 0);
+  if (!Number.isSafeInteger(maxBuffer)) throw new Error("release Git batch size is invalid");
+  const batch = git(repoRoot, ["cat-file", "--batch"], {
+    input: entries.map(entry => entry.oid).join("\n") + "\n", maxBuffer,
+  });
+  let offset = 0;
+  const files = entries.map(entry => {
+    const end = batch.indexOf(10, offset);
+    const expected = entry.oid + " blob " + entry.size;
+    if (end < 0 || batch.toString("ascii", offset, end) !== expected) {
+      throw new Error("release Git batch blob header does not match the pinned tree");
+    }
+    const start = end + 1, next = start + entry.size;
+    if (next >= batch.length || batch[next] !== 10) throw new Error("release Git batch blob is truncated");
+    const content = batch.subarray(start, next);
+    offset = next + 1;
+    return { relativePath: entry.relativePath, content };
+  });
+  if (offset !== batch.length) throw new Error("release Git batch contains unexpected trailing data");
+  return files;
 }
 
 function createCrc32Table() {

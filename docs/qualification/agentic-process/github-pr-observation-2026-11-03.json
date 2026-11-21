@@ -1,0 +1,108 @@
+{
+  "proof_class": "read-only-GitHub-review-observation-adapter",
+  "status": "PASS",
+  "source_base": "0e01ea1",
+  "source_sha256": {
+    "src/adapters/git-provider/github-workflow-adapter.mjs": "4357b54afa76d20e0cc48740af9b1f7e11ca7027179062a513752ce68b7ad777",
+    "src/core/contracts/workflow-definition/github-pr-observation-request.v1.schema.json": "3bd682cad66a132171affc481e6180b928d03c33d243bdaaadf76d7383db5a8b",
+    "src/core/contracts/workflow-definition/github-pr-observation-output.v1.schema.json": "404ac69c6affdd1d7bcfbfdf83dc5b8a889cf25f3e7d443433b91f3b53549868"
+  },
+  "scope": "Fixed read-only GraphQL queries through host-pinned GitHub CLI; actual repository/PR identity and expected head checked; complete bounded thread/comment pagination; final PR metadata/head rechecked. No atomic multi-request snapshot is claimed.",
+  "private_contracts": "Closed request and observation; observer metadata is not human approval, merge authorization or a self-authenticated result.",
+  "source_of_truth": "GitHub is authoritative for the observed remote state; session PR fields remain local workflow metadata. Ephemeral observation is not a new persisted canonical object; future authenticated delivery belongs to the existing process_control_inbox.",
+  "fixture_validation": {
+    "status": "PASS",
+    "cases": 18,
+    "transport": "fixture runner, actual adapter and schema validators",
+    "constraints": [
+      "Nested pagination",
+      "Outdated unresolved thread retained",
+      "Deleted authors/null diff anchors",
+      "Stable content digest across polling/page order",
+      "Partial errors/auth failures",
+      "Identity/head drift",
+      "No truncation/duplicate cursor",
+      "Unicode full bodies",
+      "Closed without merge",
+      "Global deadline",
+      "Host executable pin",
+      "No authored GraphQL/module/authorization"
+    ]
+  },
+  "actual_network": {
+    "status": "PASS",
+    "client": "GitHub CLI2.86.0",
+    "executable_sha256": "e76a7ca5b2ce7e57d111668525a84a3ee5b7053eeab40a5c4d61408b941a9b4a",
+    "operations": "Authenticated read queries only; no remote mutation",
+    "cases": [
+      {
+        "usage": "source repository merged PR",
+        "threads": 0,
+        "comments": 0,
+        "requests": 2,
+        "scope": "Repository/PR/head and complete empty thread collection"
+      },
+      {
+        "usage": "non-primary public repository merged PR",
+        "threads": 1,
+        "comments": 2,
+        "requests": 2,
+        "resolved": 1,
+        "scope": "Real nonempty thread and comment parsing; no live pagination fixture claim"
+      }
+    ]
+  },
+  "sources": [
+    "https://cli.github.com/manual/gh_api",
+    "https://docs.github.com/en/graphql/reference/pulls"
+  ],
+  "required_gate": "runtime-agentic-process, existing single script; one explicit fixture addition and immutable expected command updated, no old check removed",
+  "native": "NOT_RUN",
+  "installed_archive": "NOT_RUN",
+  "standard_ir_binding": "NOT_IMPLEMENTED",
+  "durable_external_delivery": "NOT_IMPLEMENTED",
+  "merge_authorization": "NOT_PROVIDED",
+  "full_standard_model": "NOT_COMPLETE",
+  "updated_at": "2026-11-03T07:10:21.731892+00:00",
+  "validation": {
+    "published_models": {
+      "status": "PASS",
+      "cases": 22,
+      "revisions": "59/57 unchanged"
+    },
+    "gate_catalog": {
+      "status": "PASS",
+      "gates": 63
+    },
+    "pack_topology": {
+      "status": "PASS",
+      "handle": 68463,
+      "source_clients": 5,
+      "cleanup": "PASS",
+      "scope": "Source/scaffold topology, not exact installed archive workflow"
+    },
+    "source_of_truth": {
+      "status": "PASS",
+      "policies": 35
+    },
+    "metadata": {
+      "status": "PASS",
+      "policies": 37
+    },
+    "governance_coverage": {
+      "status": "PASS",
+      "concepts": 38,
+      "scope": "Policy coverage only"
+    },
+    "docs": {
+      "status": "PASS",
+      "local_links": 389
+    },
+    "markdown_contract": {
+      "status": "PASS"
+    },
+    "diff_check": {
+      "status": "PASS"
+    }
+  }
+}

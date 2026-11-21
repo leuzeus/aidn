@@ -106,17 +106,17 @@ The release workflow has two mutually exclusive paths:
 
 1. A pull request from exact `release/v${VERSION}` or
    `hotfix/v${VERSION}` to `main` receives an `ASSURED` Governance Admission,
-   which executes every required obligation once and does not publish.
+   which executes each selected required check once. Publication follows the merge.
 2. A push to `main` publishes only when GitHub associates `GITHUB_SHA` with
    exactly one merged PR targeting `main`, that PR's `merge_commit_sha` equals
    `GITHUB_SHA`, and its source is exactly `release/v${VERSION}` or
    `hotfix/v${VERSION}`.
 
-`verify:release` executes the complete obligation set for the announced release
-or main context. This includes the release family plus required contract,
-effects, governance, documentation, Codex/runtime, security, topology, and
-cleanliness gates. The workflow must not replace this aggregate with a partial
-list that merely has a release-oriented job name.
+The `verify:release` command executes the catalog publication selection for the
+exact merged source. It checks version, reproducibility, package topology,
+tracked sensitivity and release and catalog policy before building and
+verifying the artifacts. The release PR takes the affected admission families
+and the release checks to review.
 
 The publish job refuses:
 

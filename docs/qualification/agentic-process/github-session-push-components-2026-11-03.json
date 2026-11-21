@@ -1,0 +1,117 @@
+{
+  "observed_at_utc": "2026-11-03T23:16:57.988Z",
+  "code_commit": "5d72ebf0732e83300430b29f45cc9dadb06e42b1",
+  "model_revision": 47,
+  "model_sha256": "ff7248241278b893980432bc6f2af2bfbc46d0992840f407df720f892280e3f1",
+  "catalog_sha256": "c4f367369d3cdca80980db50f460af8a6e0e5217f29b7f5aa9aff92048322b15",
+  "implementation_pin": "965a8a083cb7eecda799e6deefb8f5bc51709f4955ff18a2159445c2d86d4ca8",
+  "pinned_files": 314,
+  "verdict": {
+    "status": "PASS",
+    "checks": 13,
+    "git_local_ancestry_lease_remote_and_application": "ACTUAL",
+    "http_and_https_transports": "DOUBLED",
+    "authenticated_actor_repository_responses": "FIXTURE",
+    "admission_source": "INJECTED_FIXTURE",
+    "real_github_network": "NOT_RUN",
+    "full_standard_chain": "NOT_RUN",
+    "native": "NOT_RUN",
+    "installed_archive": "NOT_RUN",
+    "ended_at_utc": "2026-11-03T23:14:55.9638952Z",
+    "exit_code": 0,
+    "cleanup_completed": true,
+    "log_sha256": "e988bc2205ccb1d6361b33cd7fb3baec4358a5063345ebe2b6d8c184558570d4"
+  },
+  "focused_checks": [
+    {
+      "name": "composition",
+      "ended_at_utc": "2026-11-03T23:12:06.9237974Z",
+      "exit_code": 0,
+      "log_sha256": "6981dde7fa6aab7802f90dbb25224a04b8796707c77dea2eae8bfb5506e632f3"
+    },
+    {
+      "name": "startup",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-03T23:12:08.7580122Z",
+      "log_sha256": "9f52503dc7311d43ad318235db96e70969140e921b7f2353052a3e412ee8cb45"
+    },
+    {
+      "name": "source-policy",
+      "ended_at_utc": "2026-11-03T23:12:06.5376904Z",
+      "exit_code": 0,
+      "log_sha256": "cdd1801dd522cd04d6e7cbbdd3a147eab849fb16bd84ebdbb0b29c179d77fb0b"
+    },
+    {
+      "name": "metadata-policy",
+      "ended_at_utc": "2026-11-03T23:12:06.2743666Z",
+      "exit_code": 0,
+      "log_sha256": "20f91e673b54a3c6c03cd6c501fc87662d03056569f5412afa690a4b0d7077c2"
+    },
+    {
+      "name": "gate-catalog",
+      "ended_at_utc": "2026-11-03T23:12:07.9601699Z",
+      "exit_code": 0,
+      "log_sha256": "ac7853b13bffb9bff58c486d4cbb8b2d3f939248cefd43e6158e25d833bd4c3a"
+    },
+    {
+      "name": "governance-completeness",
+      "ended_at_utc": "2026-11-03T23:15:30.9447052Z",
+      "exit_code": 0,
+      "log_sha256": "4b72ef36a5b45421504370cb25a87694ca1d82b76c1a6f2cb4a560fb16c2722e"
+    }
+  ],
+  "documentation_references": {
+    "status": "PASS",
+    "exit_code": 0,
+    "log_sha256": "3fd32b97ed9592d9dc9a5aeacffcf59ed06bb5572bc48f93d40fb02325a77d01"
+  },
+  "preparation_schema": {
+    "definition": "PASS",
+    "negative_cases": 3,
+    "invalid_extra_token_or_version_or_oid": "REJECTED",
+    "mutations": 0,
+    "observed": "direct pure check in this chat"
+  },
+  "semantics": {
+    "profile": "github-https-git.v1",
+    "identity": "host-pinned Git/gh executable and repository/actor; authenticated identity and push permission queried with the same credential used by Git",
+    "credential_handling": "child environment only; no token in args, manifest, plan, receipt or diagnostic",
+    "transport_isolation": "preview outside any checkout; explicitly granted isolated bare Git transport with an alternate object store; no checkout transport config",
+    "preparation": "closed manifest; deterministic host/branch/head identity; exact cleanup after confirmation; unknown retains preparation and blocks the same head",
+    "remote_effect": "actual Git force-with-lease and transfer against a bare remote through HTTPS transport doubles",
+    "application": "actual session push application with injected upstream admission",
+    "reconciliation": "general recovery remains unimplemented; no uncertain retry"
+  },
+  "prior_trials": [
+    {
+      "trial": "v1",
+      "status": "PASS",
+      "checks": 11,
+      "limitation": "prior draft used checkout Git transport configuration; superseded by isolated v3, not the production qualification"
+    },
+    {
+      "trial": "v2",
+      "status": "FAIL",
+      "exit_code": 1,
+      "cause": "fixture source authoring string replacement produced a syntax error; module load failed before fixture/effect execution"
+    },
+    {
+      "trial": "v3",
+      "status": "PASS",
+      "checks": 13,
+      "scope": "isolated final transport component"
+    }
+  ],
+  "not_run": {
+    "actual_github_network": true,
+    "actual_provider_identity": true,
+    "full_signed_standard_chain": true,
+    "model47_composition": true,
+    "native_real": true,
+    "installed_archive": true,
+    "full_runtime_family": true,
+    "governance_admission_rollup": true
+  },
+  "complete_standard_workflow": false,
+  "model46": "active separate snapshot72fd5b8, not a verdict for this code"
+}

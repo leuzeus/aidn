@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import codexIntegrationCases from "../../package/catalogs/codex-integration-fixtures.v1.json" with { type: "json" };
 import path from "node:path";
 import { parseDocument } from "yaml";
 import { validateContextResiliencePolicy } from "./context-resilience-policy.mjs";
@@ -10,6 +11,7 @@ const DEPENDENCY_BEARING_GATE_COMMANDS = new Set([
 ]);
 
 const REQUIRED_OBLIGATIONS = Object.freeze({
+  "codex-integration-lifecycle": ["dev", "main", "release"],
   "contracts-json": ["dev", "main", "release"],
   "contracts-surface-catalog": ["dev", "main", "release"],
   "effects-policy": ["dev", "main", "release"],
@@ -22,7 +24,6 @@ const REQUIRED_OBLIGATIONS = Object.freeze({
   "codex-pack-topology": ["dev", "main", "release"],
   "runtime-db-runtime-cli": ["dev", "main", "release"],
   "runtime-agent-execution-contracts": ["dev", "main", "release"],
-  "runtime-agentic-process": ["dev", "main", "release"],
   "runtime-agent-execution-postgres": ["dev", "main", "release"],
   "runtime-agent-worker-fixtures": ["dev", "main", "release"],
   "runtime-agent-execution-scheduler": ["dev", "main", "release"],
@@ -41,11 +42,11 @@ const REQUIRED_OBLIGATIONS = Object.freeze({
 });
 
 const REQUIRED_GATE_SCRIPTS = Object.freeze({
+  "codex-integration-lifecycle": "perf:verify-codex-integration",
   "contracts-json": "perf:verify-cli-output-contracts",
   "effects-policy": "perf:verify-cli-effect-policy",
   "runtime-db-runtime-cli": "perf:verify-db-runtime-cli",
   "runtime-agent-execution-contracts": "perf:verify-agent-execution-contracts",
-  "runtime-agentic-process": "perf:verify-agentic-process",
   "runtime-agent-execution-postgres": "perf:verify-agent-execution-postgres",
   "runtime-agent-worker-fixtures": "perf:verify-agent-worker-fixtures",
   "runtime-agent-execution-scheduler": "perf:verify-agent-execution-scheduler-fixtures",
@@ -65,8 +66,8 @@ const REQUIRED_GATE_SCRIPTS = Object.freeze({
 });
 
 const REQUIRED_GATE_CONDITIONS = Object.freeze({
+  "codex-integration-lifecycle": "always",
   "runtime-agent-execution-contracts": "always",
-  "runtime-agentic-process": "always",
   "runtime-agent-execution-postgres": "always",
   "runtime-agent-worker-fixtures": "always",
   "runtime-agent-execution-scheduler": "always",
@@ -79,9 +80,11 @@ const REQUIRED_GATE_CONDITIONS = Object.freeze({
   "cleanliness-worktree": "git-repository",
 });
 
+// Independent historical lifecycle command authority; do not derive it from the manifest.
+const CODEX_INTEGRATION_COMMAND = "node tools/perf/verify-global-management-fixtures.mjs && node tools/perf/verify-global-recovery-fixtures.mjs && node tools/perf/verify-global-runtime-store-fixtures.mjs && node tools/perf/verify-global-package-fixtures.mjs && node tools/perf/verify-global-hook-connector-fixtures.mjs && node tools/perf/verify-global-migration-inventory-fixtures.mjs && node tools/perf/verify-global-project-compatibility-fixtures.mjs && node tools/perf/verify-multi-project-setup-fixtures.mjs && node tools/perf/verify-release-package-download-fixtures.mjs && node tools/perf/verify-windows-project-setup-fixtures.mjs && node tools/perf/verify-native-write-admission-fixtures.mjs && node tools/perf/verify-codex-assets-fixtures.mjs && node tools/perf/verify-project-activation-fixtures.mjs && node tools/perf/verify-codex-native-integration-fixtures.mjs && node tools/perf/verify-codex-context-store-fixtures.mjs && node tools/perf/verify-bootstrap-lifecycle-fixtures.mjs && node tools/perf/verify-bootstrap-plan-fixtures.mjs && node tools/perf/verify-codex-legacy-skill-repair-fixtures.mjs && node tools/perf/verify-installation-recovery-fixtures.mjs && node tools/perf/verify-installation-fault-boundaries-fixtures.mjs && node tools/perf/verify-codex-skill-namespace-fixtures.mjs && node tools/perf/verify-global-skills-migration-fixtures.mjs && node tools/perf/verify-cli-activation-fixtures.mjs && node tools/perf/verify-installation-persistence-policy-fixtures.mjs && node tools/perf/verify-global-skills-transaction-fixtures.mjs && node tools/perf/verify-activation-lifecycle-fixtures.mjs && node tools/perf/verify-client-adoption-install-fixtures.mjs && node tools/perf/verify-agent-views-fixtures.mjs && node tools/perf/verify-grouped-workflow-fixtures.mjs && node tools/perf/verify-task-context-profile-fixtures.mjs && node tools/perf/verify-ordered-closure-fixtures.mjs";
+
 const GOVERNED_RUNTIME_COMMANDS = Object.freeze({
   "runtime-agent-execution-contracts": "node tools/perf/verify-agent-execution-contracts-fixtures.mjs",
-  "runtime-agentic-process": "node tools/perf/verify-agentic-process-fixtures.mjs && node tools/perf/verify-agentic-process-execution-fixtures.mjs",
   "runtime-agent-execution-postgres": "node tools/perf/verify-agent-execution-postgres-fixtures.mjs",
   "runtime-agent-worker-fixtures": "node tools/perf/verify-codex-task-executor-fixtures.mjs && node tools/perf/verify-delegated-agent-admission-fixtures.mjs && node tools/perf/verify-agent-native-qualification-fixtures.mjs",
   "runtime-agent-execution-scheduler": "node tools/perf/verify-agent-execution-scheduler-fixtures.mjs",
@@ -112,6 +115,8 @@ function referencesRuntimeCoverage(scripts, name, protectedScript, commands, vis
   ));
 }
 
+export const publicationVerificationCommand = "npm run verify:release -- --context main";
+
 const REQUIRED_WORKFLOW_POLICY = Object.freeze({
   ".github/workflows/governance-admission.yml": {
     triggers: {
@@ -129,7 +134,7 @@ const REQUIRED_WORKFLOW_POLICY = Object.freeze({
       push: ["main"],
     },
     jobs: {
-      publish: ["verify:release", "perf:verify-release-artifacts"],
+      publish: { commands: ["verify:release", "perf:verify-release-artifacts"], requiredRuns: [publicationVerificationCommand] },
     },
   },
   ".github/workflows/runtime-ops-live-smoke.yml": {
@@ -384,8 +389,11 @@ export function validateGateAndWorkflowPolicy({
   catalog,
   packageJson,
   workflowModels,
+  codexIntegrationFixtureManifest = codexIntegrationCases,
+  contextCompletionFixtureManifest,
+  contextCoordinationFixtureManifest,
 }) {
-  const issues = validateContextResiliencePolicy({ catalog, packageJson });
+  const issues = validateContextResiliencePolicy({ catalog, packageJson, contextCompletionFixtureManifest, contextCoordinationFixtureManifest });
   const gates = Array.isArray(catalog?.gates) ? catalog.gates : [];
   const gateById = new Map();
   const gateByScript = new Map();
@@ -400,6 +408,36 @@ export function validateGateAndWorkflowPolicy({
       );
     } else {
       gateByScript.set(gate.script, gate);
+    }
+  }
+  const expectedPublication = ["codex-pack-topology", "security-tracked-sensitivity",
+    "release-version", "release-reproducibility", "release-workflow-policy", "cleanliness-gate-catalog"];
+  const deferred = catalog.on_demand_gates;
+  const publication = catalog.publication_gates;
+  const mandatoryAdmission = ["runtime-agentic-kernel", "handoff-windows-resource-source",
+    "runtime-agent-execution-postgres", "runtime-agent-execution-contracts"];
+  if (!Array.isArray(deferred) || new Set(deferred).size !== deferred.length
+    || deferred.some(id => !gateById.has(id))
+    || [...mandatoryAdmission, ...expectedPublication].some(id => deferred.includes(id))) {
+    issues.push("on-demand gate selection must retain required admission checks and reference known, unique gates");
+  }
+  if (!Array.isArray(publication) || publication.length !== expectedPublication.length
+    || !sameStringSet(publication, expectedPublication) || publication.some(id =>
+      gateById.get(id)?.execution_scope === "manual-only" || gateById.get(id)?.obligation?.main !== "required")) {
+    issues.push("publication must select the required version, provenance, topology, sensitivity and policy gates");
+  }
+  for (const [id, family, script, command] of [
+    ["runtime-agentic-kernel", "runtime", "perf:verify-agentic-kernel", "node tools/perf/verify-agentic-process-fixtures.mjs"],
+    ["handoff-windows-resource-source", "handoff", "perf:verify-windows-handoff-resource-source",
+      "node tools/perf/verify-standard-handoff-resource-fixtures.mjs --windows-admission"],
+  ]) {
+    const gate = gateById.get(id);
+    const scripts = packageJson?.scripts ?? {};
+    if (gate?.family !== family || gate.condition !== "always" || gate.job !== "governance-admission/gates"
+      || gate.execution_scope === "manual-only" || gate.script !== script
+      || ["dev", "release", "main"].some(context => gate.obligation?.[context] !== "required")
+      || scripts[script] !== command || scripts[`pre${script}`] || scripts[`post${script}`]) {
+      issues.push(`${id}: exact focused admission check is required`);
     }
   }
   for (const [gateId, contexts] of Object.entries(REQUIRED_OBLIGATIONS)) {
@@ -437,12 +475,43 @@ export function validateGateAndWorkflowPolicy({
     if (gates.filter((candidate) => candidate.script === script).length !== 1) {
       issues.push(`${gateId}: script must be selected exactly once`);
     }
-    if (scripts[script] !== command || scripts[`pre${script}`] != null || scripts[`post${script}`] != null) {
+    if (scripts[script] !== command
+      || scripts[`pre${script}`] != null || scripts[`post${script}`] != null) {
       issues.push(`${gateId}: immutable fixture command`);
     }
     for (const candidate of gates) {
       if (candidate.id === gateId && candidate.script === script) continue;
       if (referencesRuntimeCoverage(scripts, candidate.script, script, command.split(" && "))) {
+        issues.push(`${gateId}: coverage must not repeat through another gate`);
+      }
+    }
+  }
+
+  {
+    const gateId = "codex-integration-lifecycle", script = "perf:verify-codex-integration";
+    const gate = gateById.get(gateId), scripts = packageJson?.scripts ?? {};
+    const manifest = codexIntegrationFixtureManifest;
+    const valid = manifest?.contract_version === "codex-integration-fixtures.v1"
+      && Object.keys(manifest).sort().join(",") === "cases,contract_version"
+      && Array.isArray(manifest.cases)
+      && manifest.cases.every(args => Array.isArray(args) && args.length
+        && args.every(arg => typeof arg === "string" && arg && !arg.includes("\0")))
+      && JSON.stringify(manifest.cases) === JSON.stringify(CODEX_INTEGRATION_COMMAND.split(" && ").map(row => row.split(" ").slice(1)));
+    if (!valid || scripts[script] !== "node tools/perf/run-codex-integration-fixtures.mjs"
+        || scripts[`pre${script}`] != null || scripts[`post${script}`] != null) {
+      issues.push(`${gateId}: immutable fixture command`);
+    }
+    if (gate && (gate.family !== "codex" || gate.job !== "governance-admission/gates"
+        || ![undefined, "admission"].includes(gate.execution_scope))) {
+      issues.push(`${gateId}: immutable Codex admission placement`);
+    }
+    if (gates.filter(candidate => candidate.script === script).length !== 1) {
+      issues.push(`${gateId}: script must be selected exactly once`);
+    }
+    for (const candidate of gates) {
+      if (candidate.id === gateId && candidate.script === script) continue;
+      if (referencesRuntimeCoverage(scripts, candidate.script, script,
+          [...CODEX_INTEGRATION_COMMAND.split(" && "), "node tools/perf/run-codex-integration-fixtures.mjs"])) {
         issues.push(`${gateId}: coverage must not repeat through another gate`);
       }
     }
@@ -494,6 +563,11 @@ export function validateGateAndWorkflowPolicy({
           issues.push(`${workflowPath}/${job}: missing semantic npm command ${command}`);
         }
       }
+      for (const command of (jobPolicy.requiredRuns ?? [])) {
+        if ((model.jobs[job].steps ?? []).filter(step => step.run === command).length !== 1) {
+          issues.push(`${workflowPath}/${job}: missing or duplicated exact command ${command}`);
+        }
+      }
       const expectedSteps = Array.isArray(jobPolicy) ? null : jobPolicy.steps;
       if (!expectedSteps) {
         continue;
@@ -541,12 +615,6 @@ export function validateGateAndWorkflowPolicy({
             `${model.path}/${jobName}: ${dependencyBearingCommand} must follow `
             + `locked dev dependency installation`,
           );
-        }
-        if (dependencyBearingCommand === "verify:release") {
-          const postgresIndex = steps.findIndex((candidate) => candidate.run === "node tools/ci/resolve-postgres-test-runtime.mjs");
-          if (postgresIndex <= installIndex || postgresIndex >= stepIndex) {
-            issues.push(`${model.path}/${jobName}: verify:release requires PostgreSQL preflight after locked dependencies`);
-          }
         }
       }
     }

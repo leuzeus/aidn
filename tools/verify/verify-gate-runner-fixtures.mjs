@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import assertStrict from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -33,6 +34,9 @@ function initializeRepository(repoRoot) {
     scripts: {
       "fixture:pass": "node fixture-pass.mjs",
       "fixture:dirty": "node fixture-dirty.mjs",
+      "perf:verify-codex-integration": "node fixture-pass.mjs",
+      "perf:verify-context-completion": "node fixture-pass.mjs",
+      "perf:verify-context-coordination": "node fixture-pass.mjs",
     },
   }, null, 2), "utf8");
   fs.writeFileSync(path.join(repoRoot, "tracked.txt"), "tracked baseline\n", "utf8");
@@ -139,6 +143,56 @@ function main() {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-gate-runner-"));
     initializeRepository(tempRoot);
     assertClean(tempRoot, "fixture repository should start clean");
+
+    const actualCommand = runGateFamily({ repoRoot: tempRoot, catalog: makeCatalog({ id: "actual-command" }),
+      packageJson: JSON.parse(fs.readFileSync(path.join(tempRoot, "package.json"), "utf8")),
+      requested: "synthetic", context: "dev", env: cleanEnvironment(), json: true });
+    assert(actualCommand.ok, JSON.stringify(actualCommand));
+    if (process.platform === "win32") {
+      assert(actualCommand.results[0].verification_process.cleanup.state === "confirmed", "Windows actual npm gate must prove full owned Job closure");
+      assert(actualCommand.results[0].verification_process.cleanup.proof.active_processes === 0, "no descendants after successful actual npm gate");
+    }
+
+    const packageJson = JSON.parse(fs.readFileSync(path.join(tempRoot, "package.json"), "utf8"));
+    const budgets = [];
+    const compoundGates = [
+      { id: "codex-integration-lifecycle", script: "perf:verify-codex-integration" },
+      { id: "codex-context-completion", script: "perf:verify-context-completion" },
+      { id: "codex-context-coordination", script: "perf:verify-context-coordination" }];
+    for (const [gate, options] of [...compoundGates.flatMap(gate => [[gate, {}], [gate, { timeoutMs: 4321 }]]),
+      [{ id: "single-command" }, {}], [{ id: "codex-integration-lifecycle" }, {}]]) {
+      const inspected = runGateFamily({ repoRoot: tempRoot, catalog: makeCatalog(gate), packageJson,
+        requested: "synthetic", context: "dev", env: cleanEnvironment(), json: true, ...options,
+        commandRunner(input) { budgets.push(input.timeoutMs); return successfulCommand(); } });
+      assert(inspected.ok, "budget selection must not change ordinary gate accounting");
+    }
+    assert(JSON.stringify(budgets) === JSON.stringify([null, 4321, null, 4321, null, 4321, 900000, 900000]), "only exact declared coordinator id/script pairs have no invented aggregate cap; explicit caller budgets remain exact");
+
+    const quickCatalog = makeCatalog({ id: "short-check" });
+    quickCatalog.gates.push({ ...quickCatalog.gates[0], id: "diagnostic-check" });
+    quickCatalog.on_demand_gates = ["diagnostic-check"];
+    quickCatalog.publication_gates = ["short-check"];
+    const calls = [];
+    const selection = { repoRoot: tempRoot, catalog: quickCatalog, packageJson, context: "dev",
+      env: cleanEnvironment(), json: true, commandRunner({ gate }) {
+        calls.push(gate.id);
+        return successfulCommand();
+      } };
+    const targeted = runGateFamily({ ...selection, requested: "synthetic", admission: true });
+    assert(targeted.ok);
+    assertStrict.deepEqual(calls.splice(0), ["short-check"]);
+    assertStrict.equal(targeted.results[1].status, "SKIP");
+    assertStrict.match(targeted.results[1].reason, /on-demand/);
+    const diagnostic = runGateFamily({ ...selection, requested: "synthetic", explicitGate: "diagnostic-check" });
+    assert(diagnostic.ok);
+    assertStrict.deepEqual(calls.splice(0), ["diagnostic-check"]);
+    const publication = runGateFamily({ ...selection, requested: "publication" });
+    assert(publication.ok);
+    assertStrict.deepEqual(calls.splice(0), ["short-check"]);
+    for (const id of ["missing", "diagnostic-check"]) {
+      assertStrict.throws(() => runGateFamily({ ...selection, catalog: { ...quickCatalog, publication_gates: [id] },
+        requested: "publication" }), /Invalid publication gate selection/);
+    }
 
     const cleanGate = runFixtureGate(tempRoot, { id: "clean-pass" });
     assert(cleanGate.ok, "clean synthetic gate should pass");
@@ -401,6 +455,8 @@ function main() {
         cleanliness_script_executed_clean_and_dirty: true,
         failed_command_exit_signal_tails_preserved: true,
         signalled_command_error_code_preserved: true,
+        declared_manifest_has_no_default_aggregate_deadline: true,
+        explicit_caller_budget_preserved: true,
       },
       final_repository_clean: true,
     };

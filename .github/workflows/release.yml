@@ -26,9 +26,6 @@ jobs:
       - name: Install Locked Gate Dependencies
         run: npm ci --include=dev --include=optional --ignore-scripts --no-audit --no-fund
 
-      - name: Resolve Ephemeral PostgreSQL Runtime
-        run: node tools/ci/resolve-postgres-test-runtime.mjs
-
       - name: Prove Main And Merged Publication PR
         id: publication_source
         env:
@@ -39,7 +36,7 @@ jobs:
         env:
           AIDN_BRANCH_POLICY_EXPECTED_SHA: ${{ github.sha }}
           AIDN_BRANCH_POLICY_CONTAINS_REF: origin/main
-        run: npm run verify:release
+        run: npm run verify:release -- --context main
 
       - name: Refuse Existing Tag Or Release
         id: version

@@ -6,6 +6,7 @@ import { withEphemeralPostgres } from './agent-execution-postgres-test-lib.mjs';
 import { resolvePostgresTestRuntime } from '../ci/resolve-postgres-test-runtime.mjs';
 import { artifactQueryFixturePayload } from './verify-artifact-query-fixtures.mjs';
 import { createPostgresRuntimeArtifactStore } from '../../src/adapters/runtime/postgres-runtime-artifact-store.mjs';
+import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
 import { getPostgresRuntimeRelationalSchemaFile } from '../../src/application/runtime/postgres-runtime-persistence-contract-service.mjs';
 import { queryProjectArtifacts } from '../../src/application/runtime/artifact-query-service.mjs';
 import { readRuntimeSnapshot } from '../../src/application/runtime/runtime-snapshot-service.mjs';
@@ -29,6 +30,12 @@ await withEphemeralPostgres(async({connectionString})=>{
     await store.writeIndexProjection({payload:{...payload,schema_version:1,target_root:target,audit_root:'docs/audit',
       structure_profile:{kind:'modern',recommended_required_artifacts:[],notes:[]},cycles:[],sessions:[]}});
     const before=JSON.stringify((await client.query('SELECT to_jsonb(a) AS row FROM aidn_runtime.artifacts a ORDER BY path')).rows);
+    const reader=createProjectArtifactStore({targetRoot:target,readOnly:true});
+    const statusPath='cycles/C101-example/status.md';
+    const paths=[statusPath,'absent.md'];
+    const observed=reader.getArtifacts(paths);
+    assert.equal(observed[0].sha256,payload.artifacts[3].sha256);
+    assert.equal(observed[1],null);checks++;
     const result=await queryProjectArtifacts({targetRoot:target,params:{schema_version:1}});
     assert.equal(result.status,'ok',JSON.stringify(result.errors));assert.equal(result.source_backend,'postgres');checks++;
     assert.equal(JSON.stringify((await client.query('SELECT to_jsonb(a) AS row FROM aidn_runtime.artifacts a ORDER BY path')).rows),before);checks++;
@@ -45,6 +52,22 @@ await withEphemeralPostgres(async({connectionString})=>{
     assert(queries.some(q=>q.includes('REPEATABLE READ READ ONLY')));assert(!queries.some(q=>/^\s*(INSERT|UPDATE|CREATE|DELETE)/i.test(q)));checks++;
     const fresh=await queryProjectArtifacts({targetRoot:target,params:{schema_version:1}});
     assert.equal(fresh.status,'ok');assert.equal(fresh.fields.find(f=>f.id==='cycle_status.state').value,'VERIFYING');checks++;
+    assert.notEqual(reader.getArtifact(statusPath).sha256,observed[0].sha256);checks++;
+    delete process.env.AIDN_QUERY_PRIVATE_PG;
+    try {
+      assert.throws(()=>reader.getArtifact(statusPath),/ARTIFACT_POSTGRES_CONNECTION_UNAVAILABLE/);
+      checks++;
+    }
+    finally { process.env.AIDN_QUERY_PRIVATE_PG=connectionString; }
+    await client.query('BEGIN');
+    try {
+      await client.query('LOCK TABLE aidn_runtime.artifacts IN ACCESS EXCLUSIVE MODE');
+      const bounded=createProjectArtifactStore({targetRoot:target,readOnly:true,deadlineMs:Date.now()+300});
+      assert.throws(()=>bounded.getArtifact(statusPath),/ARTIFACT_POSTGRES_WORKER_UNAVAILABLE/);checks++;
+    } finally { await client.query('ROLLBACK'); }
+    assert.match(reader.getArtifact(statusPath).content,/state: VERIFYING/);
+    reader.close();
+    checks++;
     const refused=await queryProjectArtifacts({targetRoot:target,params:{schema_version:1,expected_revision:result.source_revision}});
     assert.equal(refused.status,'blocked');assert(refused.errors.some(e=>e.code==='ARTIFACT_QUERY_REVISION_CHANGED'));checks++;
   }finally{

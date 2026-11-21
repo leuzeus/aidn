@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-external-merge-disposition-output.v1",
+  "x-aidn-contract-version": "standard-pr-external-merge-disposition-output.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-pr-external-merge-disposition-output.v1"
+    },
+    "operation_ref": {
+      "const": "session_pr_external_merge_disposition"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "rejected",
+        "deferred",
+        "cancelled"
+      ]
+    },
+    "effect_status": {
+      "const": "no_effect"
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {}
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "question_sha256",
+        "subject_sha256",
+        "source_sha256",
+        "choice",
+        "inbox_id",
+        "source_ref",
+        "expires_at_ms",
+        "severity"
+      ],
+      "properties": {
+        "question_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "subject_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "choice": {
+          "enum": [
+            "acknowledge_external_merge_for_r09",
+            "refused",
+            "deferred",
+            "cancelled"
+          ]
+        },
+        "inbox_id": {
+          "type": "string",
+          "pattern": "^decision_[a-f0-9]{40}$"
+        },
+        "source_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "expires_at_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "severity": {
+          "enum": [
+            "L1_LOW",
+            "L2_MEDIUM",
+            "L3_HIGH",
+            "L4_CRITICAL"
+          ]
+        }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      },
+      "minItems": 2
+    }
+  }
+}

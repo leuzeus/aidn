@@ -1,0 +1,210 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/native-allocation-assessment.v1",
+  "x-aidn-contract-version": "native-allocation-assessment.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "instance_id",
+    "instance_sha256",
+    "configuration_sha256",
+    "inventory_sha256",
+    "observed_at_ms",
+    "journal_id",
+    "journal_sha256",
+    "allocation_sha256",
+    "generation",
+    "allocation_phase",
+    "initial_instance_sha256",
+    "dispatch_id",
+    "dispatch_sha256",
+    "checkpoint",
+    "return_binding",
+    "assignment_status",
+    "native_accounting_known",
+    "lease_statuses",
+    "business_effect",
+    "complete_resource_closure",
+    "permits_effects",
+    "permits_resume",
+    "permits_native_renewal",
+    "permits_owner_retirement",
+    "written",
+    "key_id",
+    "authentication"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "native-allocation-assessment.v1"
+    },
+    "instance_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "instance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "configuration_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "inventory_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "observed_at_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "journal_id": {
+      "type": "string",
+      "pattern": "^native_[a-f0-9]{40}$"
+    },
+    "journal_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "allocation_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "generation": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "allocation_phase": {
+      "enum": [
+        "reserved",
+        "failed",
+        "unresolved"
+      ]
+    },
+    "initial_instance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "dispatch_id": {
+      "type": "string",
+      "pattern": "^native_dispatch_[a-f0-9]{40}$"
+    },
+    "dispatch_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "checkpoint": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "sha256",
+        "state_sha256",
+        "instance_sha256",
+        "closure_sha256",
+        "parent_closed",
+        "responses_observed",
+        "resources",
+        "results",
+        "os_tree_confirmed"
+      ],
+      "properties": {
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "state_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "instance_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "closure_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "parent_closed": {
+          "type": "boolean"
+        },
+        "responses_observed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "resources": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "results": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "os_tree_confirmed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "return_binding": {
+      "enum": [
+        "matched",
+        "not_proven"
+      ]
+    },
+    "assignment_status": {
+      "enum": [
+        "no_assignment",
+        "unknown"
+      ]
+    },
+    "native_accounting_known": {
+      "type": "boolean"
+    },
+    "lease_statuses": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "enum": [
+          "held",
+          "released"
+        ]
+      }
+    },
+    "business_effect": {
+      "const": "unknown"
+    },
+    "complete_resource_closure": {
+      "const": false
+    },
+    "permits_effects": {
+      "const": false
+    },
+    "permits_resume": {
+      "const": false
+    },
+    "permits_native_renewal": {
+      "const": false
+    },
+    "permits_owner_retirement": {
+      "const": false
+    },
+    "written": {
+      "const": false
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authentication": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

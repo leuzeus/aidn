@@ -122,18 +122,22 @@ jobs:
   gates:
     name: Run Gate Family (${{ matrix.family }})
     needs: classify
-    if: ${{ needs.classify.result == 'success' && needs.classify.outputs.family_count != '0' }}
+    if: ${{ !cancelled() && needs.classify.result == 'success' && needs.classify.outputs.family_count != '0' }}
     strategy:
       fail-fast: false
       matrix:
         family: ${{ fromJSON(needs.classify.outputs.families) }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.family == 'handoff' && 'windows-2025' || 'ubuntu-latest' }}
     steps:
       - name: Checkout Exact Candidate
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+        env:
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: "false"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -147,7 +151,7 @@ jobs:
         run: node tools/ci/fetch-branch-policy-sources.mjs
 
       - name: Install Locked Gate Dependencies
-        if: ${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' || matrix.family == 'runtime' }}
+        if: ${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' || matrix.family == 'runtime' || matrix.family == 'handoff' }}
         run: npm ci --include=dev --include=optional --ignore-scripts --no-audit --no-fund
 
       - name: Resolve Ephemeral PostgreSQL Runtime

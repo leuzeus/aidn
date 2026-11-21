@@ -27,9 +27,21 @@ A task is done only when:
 - pull-request governance emits one `governance-route.v1` artifact, executes
   each selected family at most once, and exposes the exact `Governance Admission`
   rollup required by branch protection
+- pull-request admission applies the selected short checks and reports
+  omitted qualification as `SKIP`; publication checks the exact merged
+  source and catalog publication selection before build and tag
 - every failed gate retains a bounded, redacted exit code, signal, and
   stdout/stderr tail; named fixture assertions and cleanup results must survive
   through both direct output and the family summary
+- Windows family execution confines the owned command tree before resume,
+  preserves any explicit original execution deadline, and retains observed Job closure;
+  dispatcher case evidence preserves exact argv/order and interrupted results
+  separately from OS closure and business resource cleanup
+- the remaining Codex integration, context-completion and context-coordination
+  dispatchers invent no aggregate or per-case wall-clock
+  deadline; each exact ordered command remains mandatory, cancellation, caller/supervisor death and
+  observed Job closure remain required, while an explicit caller deadline is
+  preserved without renewal and Native execution retains its own finite grant
 - required gate preconditions fail diagnostically when unavailable; they are not reported as `SKIP`
 - manual-only PostgreSQL smoke evidence remains outside pull-request admission
   and is reported separately as `PASS`, `SKIP`, or `UNAVAILABLE`

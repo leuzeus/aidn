@@ -1,0 +1,14 @@
+{
+  "contract_version": "context-completion-fixtures.v1",
+  "cases": [
+    [
+      "tools/perf/verify-promote-baseline-admission-fixtures.mjs"
+    ],
+    [
+      "tools/perf/verify-cycle-close-completion-fixtures.mjs"
+    ],
+    [
+      "tools/perf/verify-pr-orchestrate-admission-fixtures.mjs"
+    ]
+  ]
+}

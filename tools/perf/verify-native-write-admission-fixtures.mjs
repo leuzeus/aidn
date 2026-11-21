@@ -34,6 +34,25 @@ try {
   write("docs/audit/cycles/C101-feature-alpha/plan.md", '# Plan\n## Tasks\n1. implement alpha\n\n## Native write scope\n```json\n'+JSON.stringify({version:1,tasks:[{task:"implement alpha",intent:"implementation",paths:[{path:"src/example.mjs",operations:["add","update","delete"]}]}]})+'\n```\n');
   const allowed = await admit(add("src/example.mjs"));
   assert.equal(allowed.ok, true, JSON.stringify(allowed.write_decision));
+  // Isolate mode: preserve the admitted session, cycle branch, IMPLEMENTING,
+  // READY and exact implementation task/scope, changing only CURRENT-STATE.mode.
+  const admittedCurrentFile = path.join(root, "docs/audit/CURRENT-STATE.md");
+  const admittedCurrent = fs.readFileSync(admittedCurrentFile, "utf8");
+  const admittedStatus = fs.readFileSync(path.join(root, "docs/audit/cycles/C101-feature-alpha/status.md"), "utf8");
+  const admittedPlan = fs.readFileSync(path.join(root, "docs/audit/cycles/C101-feature-alpha/plan.md"), "utf8");
+  fs.writeFileSync(admittedCurrentFile, admittedCurrent.replace("mode: COMMITTING", "mode: THINKING"));
+  const thinkingOnly = await admit(add("src/example.mjs"));
+  assert.equal(thinkingOnly.context.mode, "THINKING");
+  assert.equal(thinkingOnly.context.cycle_state, "IMPLEMENTING");
+  assert.equal(thinkingOnly.context.dor_state, "READY");
+  assert.deepEqual(thinkingOnly.write_decision.operations, [{ operation: "add", path: "src/example.mjs", classification: "product" }]);
+  assert.equal(thinkingOnly.write_decision.outcome, "deny");
+  assert.deepEqual(thinkingOnly.write_decision.reasons.map(row => row.code), ["MODE_EXCLUDES_IMPLEMENTATION"]);
+  assert.equal(fs.readFileSync(path.join(root, "docs/audit/cycles/C101-feature-alpha/status.md"), "utf8"), admittedStatus);
+  assert.equal(fs.readFileSync(path.join(root, "docs/audit/cycles/C101-feature-alpha/plan.md"), "utf8"), admittedPlan);
+  fs.writeFileSync(admittedCurrentFile, admittedCurrent);
+  assert.equal((await admit(add("src/example.mjs"))).write_decision.outcome, "allow");
+  assertions.push("thinking-only-mode-denial-with-ready-admitted-cycle-and-committing-control");
   assert.equal((await admit(add("src/other.mjs"))).ok, false);
   assert.equal((await admit(add("docs/SPEC.md"))).ok, false, "normative docs are not planning notes");
   assert.equal((await admit(add("AGENTS.md"))).ok, false, "installed authorities require maintenance");
@@ -152,4 +171,8 @@ try {
   }
   assertions.push("dual-db-only-canonical-plan-over-visible-projection");
   console.log(JSON.stringify({ok:true, proof_class:"fixture", assertions}, null, 2));
-} finally { removePathWithRetry(root); }
+} finally {
+  if (process.argv.includes("--retain-always")) {
+    console.error("Native admission fixture retained: " + root);
+  } else removePathWithRetry(root);
+}

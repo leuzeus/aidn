@@ -11,14 +11,16 @@ const failure = (reason, state = "not_started") => ({ outcome: state === "unknow
   reason_code: reason, termination_state: state, exit_code: null, signal: null, runner: null,
   termination_proof: null, bytes: { stdout: 0, stderr: 0 } });
 const positive = (value, max) => Number.isSafeInteger(value) && value > 0 && value <= max;
-function absolutePhysical(file, directory) {
+function absolutePhysical(file, directory, allowHardLinks = false) {
   if (!path.isAbsolute(file ?? "") || file.includes("\0")) return false;
   const info = fs.lstatSync(file);
-  return !info.isSymbolicLink() && (directory ? info.isDirectory() : info.isFile() && info.nlink === 1)
+  return !info.isSymbolicLink() && (directory ? info.isDirectory() : info.isFile() && info.nlink >= 1 && (allowHardLinks || info.nlink === 1))
     && fs.realpathSync.native(file).toLowerCase() === path.resolve(file).toLowerCase();
 }
 
-export function createWindowsProcessTreeController({ helperPath, helperSha256, helperSourceSha256, candidateSha256 } = {}) {
+export function createWindowsProcessTreeController({ helperPath, helperSha256, helperSourceSha256, candidateSha256, allowNoDeadline = false, helperScopeRoot = null, allowExecutableHardLinks = false } = {}) {
+  if (typeof allowNoDeadline !== "boolean") throw new TypeError("PROCESS_DEADLINE_POLICY_INVALID");
+  if (typeof allowExecutableHardLinks !== "boolean") throw new TypeError("PROCESS_EXECUTABLE_POLICY_INVALID");
   const hashes = Object.freeze({ helper_sha256: helperSha256, source_sha256: helperSourceSha256, candidate_sha256: candidateSha256 });
   async function checkAvailability({ cwd, signal, executable, executableSha256 } = {}) {
     if (signal?.aborted) return { available: false, reason_code: "PROCESS_CHECK_CANCELLED" };
@@ -26,11 +28,12 @@ export function createWindowsProcessTreeController({ helperPath, helperSha256, h
     try {
       if (![helperSha256, helperSourceSha256, candidateSha256].every((value) => hashPattern.test(value ?? ""))
         || !absolutePhysical(helperPath, false) || !absolutePhysical(cwd, true)
+        || helperScopeRoot !== null && !absolutePhysical(helperScopeRoot, true)
         || hashFile(helperPath) !== helperSha256 || hashFile(SOURCE) !== helperSourceSha256) {
         return { available: false, reason_code: "PROCESS_HELPER_BINDING_INVALID" };
       }
       if (executable !== undefined && (!hashPattern.test(executableSha256 ?? "")
-        || !absolutePhysical(executable, false) || hashFile(executable) !== executableSha256)) {
+        || !absolutePhysical(executable, false, allowExecutableHardLinks) || hashFile(executable) !== executableSha256)) {
         return { available: false, reason_code: "PROCESS_EXECUTABLE_BINDING_INVALID" };
       }
       return { available: true, platform: "win32", method: "windows-job-object", ...hashes };
@@ -40,6 +43,10 @@ export function createWindowsProcessTreeController({ helperPath, helperSha256, h
     const { runnerId, executable, executableSha256, args, cwd, env, stdin, jobName,
       maxDurationMs, maxOutputBytes = 16 * 1024 * 1024, maxPendingBytes = 1024 * 1024,
       stopTimeoutMs = 5000 } = request ?? {};
+    // Verification aggregation can supervise completion/cancellation without a
+    // wall-clock cap. Native construction never opts in and still requires the
+    // finite duration supplied by its authenticated execution request.
+    const supervisionOnly = allowNoDeadline && maxDurationMs === null;
     if (signal?.aborted) return { ...failure("PROCESS_CANCELLED_BEFORE_START"), outcome: "cancelled" };
     if (timeoutSignal !== undefined && !(timeoutSignal instanceof AbortSignal)) return failure("PROCESS_REQUEST_INVALID");
     if (timeoutSignal?.aborted) return { ...failure("PROCESS_TIMEOUT_BEFORE_START"), outcome: "timed_out" };
@@ -51,11 +58,12 @@ export function createWindowsProcessTreeController({ helperPath, helperSha256, h
       || Object.entries(env).some(([key, value]) => !key || /[=\0]/u.test(key) || typeof value !== "string" || value.includes("\0"))
       || new Set(Object.keys(env).map((key) => key.toLowerCase())).size !== Object.keys(env).length
       || !(typeof stdin === "string" || Buffer.isBuffer(stdin)) || Buffer.byteLength(stdin) > 262144
-      || !positive(maxDurationMs, 86400000) || !positive(stopTimeoutMs, 30000)
+      || !supervisionOnly && !positive(maxDurationMs, 86400000) || !positive(stopTimeoutMs, 30000)
       || !positive(maxOutputBytes, 1024 * 1024 * 1024) || !positive(maxPendingBytes, 16 * 1024 * 1024)) return failure("PROCESS_REQUEST_INVALID");
     const payload = JSON.stringify({ protocol: PROTOCOL, runner_id: runnerId, executable, executable_sha256: executableSha256,
       args, cwd, env, stdin_base64: Buffer.from(stdin).toString("base64"), max_duration_ms: maxDurationMs,
-      max_output_bytes: maxOutputBytes, stop_timeout_ms: stopTimeoutMs, ...(jobName === undefined ? {} : { job_name: jobName }) });
+      max_output_bytes: maxOutputBytes, stop_timeout_ms: stopTimeoutMs, ...(supervisionOnly ? { supervision_only: true } : {}),
+      ...(jobName === undefined ? {} : { job_name: jobName }) });
     if (Buffer.byteLength(payload) > 1024 * 1024) return failure("PROCESS_REQUEST_INVALID");
     const availability = await checkAvailability({ cwd, signal, executable, executableSha256 });
     if (timeoutSignal?.aborted) {
@@ -66,7 +74,10 @@ export function createWindowsProcessTreeController({ helperPath, helperSha256, h
     // The helper inherits only OS bootstrap variables; worker environment travels in the bounded private pipe.
     const helperEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(SystemRoot|WINDIR|TEMP|TMP)$/iu.test(key)));
     let child;
-    try { child = spawn(helperPath, [], { cwd, env: helperEnv, shell: false, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] }); }
+    // A constructor-owned path marker lets an independent observer discover this
+    // helper and its descendants. It grants no authority and changes no protocol.
+    const helperArgs = helperScopeRoot === null ? [] : ["--aidn-resource-root", helperScopeRoot];
+    try { child = spawn(helperPath, helperArgs, { cwd, env: helperEnv, shell: false, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] }); }
     catch { return failure("PROCESS_HELPER_SPAWN_FAILED"); }
     const bytes = { stdout: 0, stderr: 0 }, digests = { stdout: createHash("sha256"), stderr: createHash("sha256") };
     let terminal = null, runner = null, nextSequence = 1, pending = 0, buffer = Buffer.alloc(0), stopped = null;
@@ -149,7 +160,7 @@ export function createWindowsProcessTreeController({ helperPath, helperSha256, h
     const abort = () => requestStop("PROCESS_CANCELLED"); signal?.addEventListener("abort", abort, { once: true });
     const timeoutAbort = () => requestStop("PROCESS_TIMEOUT"); timeoutSignal?.addEventListener("abort", timeoutAbort, { once: true });
     // An observed timeout can only shorten the fixed request deadline.
-    const timeout = setTimeout(timeoutAbort, maxDurationMs);
+    const timeout = supervisionOnly ? null : setTimeout(timeoutAbort, maxDurationMs);
     const exit = await new Promise((resolve) => {
       child.once("error", () => { helperError = true; });
       child.once("close", (code, exitSignal) => { closed = true; resolve({ code, signal: exitSignal }); });

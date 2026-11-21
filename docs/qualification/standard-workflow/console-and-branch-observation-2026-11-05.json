@@ -1,0 +1,86 @@
+{
+  "recorded_utc": "2026-11-05T10:52:24.904728+00:00",
+  "source": "SOURCE56",
+  "proof_class": "offline-components-and-candidate-source",
+  "complete_standard_workflow": false,
+  "whole_plan_complete": false,
+  "cases": [
+    {
+      "case": "public-console-standard-entry",
+      "head": "f9899b414969c820e6f3d4a46887caf1564f5828",
+      "status": "PASS",
+      "source_unchanged": true,
+      "calls": 14,
+      "storage": "files",
+      "operation": "context_reload",
+      "checks": [
+        "separate host-key preparation and initialization",
+        "exact cold timed action preservation",
+        "absent prepared action refusal",
+        "unknown closed-schema property refusal",
+        "modified signed plan refusal",
+        "actual completed/no_effect operation receipt",
+        "stale CAS refusal",
+        "same-reducer replay and simulation without repeated effects"
+      ],
+      "native": "NOT_RUN",
+      "genuine_human": "NOT_RUN",
+      "installed": "NOT_RUN",
+      "full_console_suite": "NOT_RUN",
+      "all_public_contracts": "NOT_RUN"
+    },
+    {
+      "case": "composition-after-branch-observation-batching",
+      "head": "4635836ba90a2f612d4ac2470087e83266b1ee3b",
+      "status": "PASS",
+      "source_unchanged": true,
+      "checks": 33,
+      "model_revision": 134,
+      "model_sha256": "ad9c9d39e18a9f7e4e150d081f91d9affe24311f2b33f71310d35f4da7b3acc9",
+      "application_ports": "NOT_RUN",
+      "native": "NOT_RUN",
+      "full_required_agentic_gate": "NOT_RUN"
+    },
+    {
+      "case": "objective-mismatch-reproduction",
+      "head": "35f8ca2a",
+      "status": "NOT_RUN",
+      "planned_projects": 2,
+      "canonical_objectives": [
+        "Learn through an explicitly admitted bounded SPIKE",
+        "Determine whether a bounded prototype is useful"
+      ],
+      "expected_diagnostic": "clean-report finalization refuses objective_delta and recovery preparation requires confirmed drift; question availability unproved",
+      "full_r05_resolution": false
+    },
+    {
+      "case": "branch-integration-port-after-batching",
+      "head": "4635836ba90a2f612d4ac2470087e83266b1ee3b",
+      "status": "NOT_RUN",
+      "preflight": [
+        "syntax PASS",
+        "diff-check PASS",
+        "component binding refresh no-op PASS"
+      ],
+      "scope": "source/target/HEAD and lock/reflog path lookup batching; fresh authorization, CAS, physical and semantic observations retained",
+      "original_source55_required_gate": "FAIL; 193 required / 12 started / 11 exit0 / one interrupted individual UNKNOWN / 181 not started",
+      "original_193_argv_changed": false
+    },
+    {
+      "case": "real-postgres-required-gate",
+      "head": "f9899b414969c820e6f3d4a46887caf1564f5828",
+      "status": "PENDING_AT_RECORD",
+      "original_limits_ms": {
+        "run": 120000,
+        "task": 60000
+      },
+      "first_scheduler_scenario": "completed within original run deadline; entire suite and cleanup not yet terminal",
+      "qualification_scope": "new private PostgreSQL cluster; foreign OS identities compared separately; no general resource-closure inference"
+    }
+  ],
+  "limitations": [
+    "No ancestor result transfers to the newer model or source.",
+    "The pending record is immutable; later terminal results require separate dated evidence.",
+    "The whole L1-L8/A1-A10 plan, R05 resolution, required 193-case coverage, genuine actors and exact installed archive qualification remain open."
+  ]
+}

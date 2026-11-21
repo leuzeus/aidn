@@ -1,0 +1,280 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "session_id",
+    "session_path",
+    "cycle_id",
+    "cycle_path",
+    "source_branch",
+    "target_branch",
+    "delivery_operation_id",
+    "delivery_output_sha256",
+    "closure_operation_id",
+    "closure_output_sha256",
+    "material_sha256",
+    "documents",
+    "git",
+    "delivery_head"
+  ],
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 7,
+      "pattern": "^S[0-9]{3,6}$"
+    },
+    "session_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^sessions/S[0-9]{3,6}\\.md$"
+    },
+    "cycle_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 7,
+      "pattern": "^C[0-9]{3,6}$"
+    },
+    "cycle_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^cycles/[^/]+/status\\.md$"
+    },
+    "source_branch": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "target_branch": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "delivery_operation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 43,
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "delivery_output_sha256": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "closure_operation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 43,
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "closure_output_sha256": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "material_sha256": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "documents": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256",
+          "metadata_sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "sha256": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "metadata_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_branch",
+        "target_branch",
+        "source_ref",
+        "target_ref",
+        "source_head",
+        "target_head",
+        "current_ref",
+        "head",
+        "index_sha256",
+        "clean",
+        "lock_present",
+        "filter_context_sha256",
+        "source_lock_present",
+        "source_symbolic",
+        "target_symbolic",
+        "head_reflog",
+        "target_reflog",
+        "fast_forward",
+        "target_checked_out_elsewhere",
+        "worktree_bindings_sha256"
+      ],
+      "properties": {
+        "source_branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "target_branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "source_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^refs/heads/"
+        },
+        "target_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^refs/heads/"
+        },
+        "source_head": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "target_head": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "current_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^refs/heads/"
+        },
+        "head": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "index_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "clean": {
+          "type": "boolean"
+        },
+        "lock_present": {
+          "type": "boolean"
+        },
+        "filter_context_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_lock_present": {
+          "type": "boolean"
+        },
+        "source_symbolic": {
+          "type": "boolean"
+        },
+        "target_symbolic": {
+          "type": "boolean"
+        },
+        "head_reflog": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "byte_length",
+            "sha256"
+          ],
+          "properties": {
+            "byte_length": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sha256": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        "target_reflog": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "byte_length",
+            "sha256"
+          ],
+          "properties": {
+            "byte_length": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sha256": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        "fast_forward": {
+          "type": "boolean"
+        },
+        "target_checked_out_elsewhere": {
+          "type": "boolean"
+        },
+        "worktree_bindings_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "delivery_head": {
+      "type": "string",
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-session-branch-integration-review.v1",
+  "x-aidn-contract-version": "standard-session-branch-integration-review.v1"
+}

@@ -236,6 +236,7 @@ function deriveSharedPlanningCandidate({
   sqlitePayload = null,
   sqliteRuntimeHeads = null,
   dbSource = "sqlite",
+  readArtifact = resolveAuditArtifactText,
 }) {
   const sharedPlanningState = sharedPlanningRead?.planning_state ?? null;
   if (sharedPlanningRead?.ok === true && sharedPlanningState) {
@@ -315,7 +316,7 @@ function deriveSharedPlanningCandidate({
       backlog_logical_path: "none",
     };
   }
-  const backlogResolution = resolveAuditArtifactText({
+  const backlogResolution = readArtifact({
     targetRoot,
     candidatePath: normalizedBacklog,
     dbBacked,
@@ -404,11 +405,25 @@ export async function projectHandoffPacket({
   write = false,
   syncRelay = false,
   resumeAgent = "",
+  canonicalReader = null,
+  nextAgentRole = null,
+  nextAgentAction = null,
+  updatedAt,
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const workspace = resolveWorkspaceContext({
     targetRoot: absoluteTargetRoot,
   });
+  // Internal canonical projection is preparation-only. The existing public
+  // CLI supplies no reader capability and retains its historical behavior.
+  if (canonicalReader && (write || syncRelay || resumeAgent
+    || fs.realpathSync(canonicalReader.root) !== fs.realpathSync(absoluteTargetRoot)
+    || ["describe", "parseMap", "resolveAuditArtifactText", "resolveSessionArtifact", "resolveCycleStatusArtifact", "resolveCyclePlanArtifact"].some(key => typeof canonicalReader[key] !== "function")))
+    throw Error("Canonical handoff projection requires a fixed read-only artifact capability");
+  const readers = canonicalReader ?? { resolveAuditArtifactText, resolveSessionArtifact, resolveCycleStatusArtifact, resolveCyclePlanArtifact };
+  const parseMap = canonicalReader?.parseMap ?? parseSimpleMap;
+  const requestedNext = nextAgentRole === null && nextAgentAction === null ? null : { role: nextAgentRole, action: nextAgentAction };
+  if (requestedNext && !canAgentRolePerform(requestedNext.role, requestedNext.action)) throw Error("Invalid explicit handoff routing");
   const sharedCoordinationResolution = sharedCoordination ?? await resolveSharedCoordinationStore({
     targetRoot: absoluteTargetRoot,
     workspace,
@@ -419,7 +434,10 @@ export async function projectHandoffPacket({
     workspace,
   });
   const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
-  const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
+  const canonicalBinding = canonicalReader?.describe();
+  const { effectiveStateMode, dbBackedMode } = canonicalBinding
+    ? { effectiveStateMode: canonicalBinding.state_mode, dbBackedMode: canonicalBinding.database }
+    : resolveDbBackedMode(absoluteTargetRoot);
   const sqliteFallback = dbBackedMode ? await loadDbIndexPayloadSafe(absoluteTargetRoot, sharedStateOptions) : {
     exists: false,
     sqliteFile: "",
@@ -428,11 +446,12 @@ export async function projectHandoffPacket({
     warning: "",
   };
   const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
-  const preferDb = dbBackedMode && (effectiveStateMode === "db-only" || dbSource === "postgres");
+  const preferDb = canonicalReader ? dbBackedMode : dbBackedMode && (effectiveStateMode === "db-only" || dbSource === "postgres");
+  if (canonicalBinding?.database && dbSource !== canonicalBinding.backend) throw Error("Canonical handoff backend binding changed");
   if (preferDb && (!sqliteFallback.exists || sqliteFallback.warning)) {
     throw new Error("canonical runtime backend is unavailable for handoff projection");
   }
-  const currentStateResolution = resolveAuditArtifactText({
+  const currentStateResolution = readers.resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: currentStateFile,
     preferDb,
@@ -441,7 +460,7 @@ export async function projectHandoffPacket({
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
     dbSource,
   });
-  const runtimeStateResolution = resolveAuditArtifactText({
+  const runtimeStateResolution = readers.resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: runtimeStateFile,
     preferDb,
@@ -452,12 +471,12 @@ export async function projectHandoffPacket({
   });
   const currentStateText = currentStateResolution.text;
   const runtimeStateText = runtimeStateResolution.text;
-  const currentMap = parseSimpleMap(currentStateText);
-  const runtimeMap = parseSimpleMap(runtimeStateText);
+  const currentMap = parseMap(currentStateText);
+  const runtimeMap = parseMap(runtimeStateText);
 
   const activeSession = normalizeScalar(currentMap.get("active_session") ?? "none") || "none";
   const activeCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
-  const sessionResolution = resolveSessionArtifact({
+  const sessionResolution = readers.resolveSessionArtifact({
     targetRoot: absoluteTargetRoot,
     auditRoot,
     sessionId: activeSession,
@@ -466,7 +485,7 @@ export async function projectHandoffPacket({
     sqlitePayload: sqliteFallback.payload,
     dbSource,
   });
-  const cycleStatusResolution = resolveCycleStatusArtifact({
+  const cycleStatusResolution = readers.resolveCycleStatusArtifact({
     targetRoot: absoluteTargetRoot,
     auditRoot,
     cycleId: activeCycle,
@@ -475,7 +494,7 @@ export async function projectHandoffPacket({
     sqlitePayload: sqliteFallback.payload,
     dbSource,
   });
-  const planResolution = resolveCyclePlanArtifact({
+  const planResolution = readers.resolveCyclePlanArtifact({
     targetRoot: absoluteTargetRoot,
     cycleStatusResolution,
     cycleId: activeCycle,
@@ -485,13 +504,13 @@ export async function projectHandoffPacket({
     dbSource,
   });
   const consistency = currentStateResolution.source === "file"
-    ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot })
+    ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot, currentFields: canonicalReader ? currentMap : null })
     : buildVirtualCurrentStateConsistency({
       targetRoot: absoluteTargetRoot,
-      currentStateResolution,
+      currentStateResolution: canonicalReader ? { ...currentStateResolution, text: [...currentMap].map(([key, value]) => `${key}: ${value}`).join("\n") } : currentStateResolution,
       activeCycle,
       activeSession,
-      cycleStatusResolution,
+      cycleStatusResolution: canonicalReader && cycleStatusResolution ? { ...cycleStatusResolution, text: [...parseMap(cycleStatusResolution.text)].map(([key, value]) => `${key}: ${value}`).join("\n") } : cycleStatusResolution,
     });
   const repairStatus = normalizeScalar(runtimeMap.get("repair_layer_status") ?? "unknown") || "unknown";
   const repairPrimaryReason = normalizeScalar(runtimeMap.get("repair_primary_reason") ?? runtimeMap.get("repair_layer_advice") ?? "unknown") || "unknown";
@@ -524,7 +543,7 @@ export async function projectHandoffPacket({
   const backlogNextStep = normalizeScalar(sharedPlanningContext.backlog_next_step) || "unknown";
   const planningArbitrationStatus = normalizeScalar(sharedPlanningContext.planning_arbitration_status) || "none";
   const handoffStatus = deriveHandoffStatus({ consistency, runtimeMap, currentMap });
-  const nextRouting = deriveNextAgentRouting({
+  const nextRouting = requestedNext ?? deriveNextAgentRouting({
     handoffStatus,
     mode,
     repairStatus: repairRoutingHint,
@@ -580,8 +599,11 @@ export async function projectHandoffPacket({
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
     dbSource,
+    readArtifact: readers.resolveAuditArtifactText,
   });
   const packet = prepareHandoffPacketProjection({
+    updatedAt,
+    requestedNext,
     workspace,
     sharedRuntimeValidation,
     repairHints: WORKFLOW_REPAIR_HINT,

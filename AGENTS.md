@@ -72,6 +72,23 @@ Local-only pilot corpus:
 - distinguish tracked fixture checks from local-only pilot checks
 - report `SKIP` separately from `PASS`
 
+### CI feedback time and cost
+
+Design the required checks for pull requests, merges, and deployments to give
+the developer a verdict they can act on within a few minutes of the trigger.
+During debugging, run the failing scenario directly on the affected platform.
+
+Use a suite that takes hours only for a one-off investigation. Before running
+it, state the question it answers and when the investigation ends. At that
+point, retire the suite and remove any CI trigger for it, including manual
+triggers. Cover recurring risks with focused checks that finish in minutes.
+
+When choosing or changing required checks, compare elapsed time to the verdict
+and total runner minutes across all jobs. Even when runners are free, a slow
+verdict interrupts programming, and repeated status checks, log reviews, and
+context reloads consume Codex tokens. Use recorded token usage if available.
+Elapsed CI time alone cannot establish a token count.
+
 ## Task Routing Matrix
 
 | Task type | Must read |

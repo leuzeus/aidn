@@ -1,5 +1,27 @@
 # ADR-0010 - Adaptive Repository Governance
 
+## Verification supervision amendment, 2026-11-11
+
+The complete agentic fixture corpus has no implicit aggregate execution
+deadline, including at the npm gate wrapper. Its dispatcher also invents no
+per-case wall-clock deadline. The former900000ms default is removed for this
+aggregation because it accumulated unrelated fixture durations and interrupted
+otherwise valid work. It is not replaced by a larger deadline or a renewal
+requirement. Explicit caller deadlines remain fixed and are still enforced.
+
+Windows verification keeps atomic Job assignment before resume, cancellation,
+exact retained caller identity, supervisor pipe ownership, output bounds and
+observed process-tree closure. A private explicit verification construction may
+supervise completion and cancellation with a null deadline. Default Native
+construction cannot select that behavior: it still requires its authenticated
+finite execution duration. The original Native grants and resource accounting
+are unchanged. Other single-command verification defaults are not assessed by
+this amendment.
+
+At the time of this amendment, exact manifest coverage remained required. Removing the
+orchestration cutoff grants no business effect and upgrades no old failure,
+UNKNOWN outcome or component proof into full-corpus acceptance.
+
 ## Status
 
 Accepted
@@ -14,6 +36,18 @@ Accepted
 final rollup. Branch protection on `dev` and `main` requires exactly
 `Governance Admission`; the temporary compatibility check names used during the
 live migration have been removed.
+
+2026-11-18: the required agentic fixture gate can span ordered GitHub-hosted
+jobs so that execution does not depend on a single job's six-hour capacity.
+The runtime family verifies complete ordered receipts tied to the exact source,
+manifest and workflow run. A missing or unsuccessful job or receipt blocks the
+family and the same `Governance Admission` rollup.
+
+2026-11-20: focused admission supersedes the blocking hosted agentic chain.
+The 376-command manifest and concurrent workflow entry were retired. The gate
+catalog records on-demand checks, which admission reports as skipped. Multi-hour
+suites are temporary investigations with a question and a completion condition.
+Remove their triggers and suite when the investigation ends.
 
 ## Context
 
@@ -52,8 +86,10 @@ Delivery lanes are ordered and upward-only:
   invariants and the families implicated by the changed paths.
 - `ASSURED` applies to `main`, public surfaces, authority, contracts, effects,
   persistence, migrations, shared coordination, security, permissions, CI,
-  release, and other critical paths. It selects every currently required
-  obligation in the executable catalog.
+  release, and other critical paths. It selects the contract, effect,
+  governance, security and cleanliness invariants alongside the affected
+  families. Main-target changes also select release checks. Missing provenance
+  or unknown ASSURED paths select every family.
 - `EMERGENCY` is an overlay for an exact `hotfix/vX.Y.Z` pull request to `main`.
   It retains `ASSURED` gates, permits only non-blocking observability evidence to
   be deferred, expires when the pull request closes, rolls back by revert or
@@ -71,10 +107,8 @@ The change is activated in two steps:
 2. a single admission workflow executes each selected family once and exposes
    the final `Governance Admission` rollup.
 
-For `ASSURED`, every required obligation executes exactly once on the pull
-request. Publication from a push to `main` keeps its own complete verification
-before tagging or creating a GitHub Release; that repetition at the publication
-boundary is intentional.
+Every selected required check executes once on the pull request. Publication
+applies its own catalog selection to the exact merged source before tagging.
 
 The package-source repository does not adopt complete installed-client
 dogfooding in its root. `scaffold/*` remains source, `tests/fixtures/*` remains

@@ -1,0 +1,51 @@
+{
+  "recorded_at_utc": "2026-11-04T04:54:46.623Z",
+  "parent_commit": "e00339b5a1bc740b67061ac98ace5b569a13b32e",
+  "prior_evidence": "pr-correction-host-binding-2026-11-03.json",
+  "change": "Fix acknowledgement-only captured-body assertion for the distinct valid-finding fixture driver; runtime implementation, IR and budgets unchanged",
+  "pass": [
+    {
+      "command": "node tools/perf/verify-standard-workflow-host-fixtures.mjs",
+      "checks": 20,
+      "exit_code": 0,
+      "started_at_utc": "2026-11-04T04:43:51.2236954Z",
+      "ended_at_utc": "2026-11-04T04:52:56.4581531Z",
+      "stdout_sha256": "ba53c9fe6f366a5e7a988c3aa4de1a1caf74f43602d0f743e496d4207a0d0317",
+      "stderr_sha256": "e0dac25d18b8f4fc3e9e87a28028b1f72a875a8d9c79172e49c49084bfa890ad"
+    },
+    {
+      "command": "node --check tools/perf/verify-agentic-process-execution-fixtures.mjs",
+      "exit_code": 0
+    }
+  ],
+  "generic_host_boundary": "Actual signed host/intent/grant/receipt, canonical ports and new Node processes; human authorization capability doubled. It does not exercise the correction branch.",
+  "new_trial": {
+    "source_commit": "e00339b5a1bc740b67061ac98ace5b569a13b32e",
+    "status_at_recording": "RUNNING; terminal unobserved",
+    "scenario": "composed-correction.v2.json",
+    "max_responses": 9,
+    "original_authorized_at_ms": 1793767954670,
+    "original_deadline_ms": 1793778754670,
+    "configuration_sha256": "eb89097a269d69d6599e75b2ad1de2e759f3fb39083646ec9c220bfa5433b508",
+    "limitation": "Its frozen driver still expects the acknowledgement body. That assertion must fail if reached; another refusal could occur first. No terminal cause or composed correction success observed.",
+    "stop": "A preauthorization-stop guard found the original authorization had appeared and refused before Stop-Process; no termination executed",
+    "renewed": false,
+    "relaunched": false,
+    "source_modified": false,
+    "cleanup": "NOT_DONE",
+    "general_extinction": "NOT_PROVEN"
+  },
+  "corrected_driver_boundary": "Syntax checked only; captured-body assertion and complete correction-host route still require actual execution from this successor source. No trial on the corrected source was launched in this tranche.",
+  "full_standard_workflow": false,
+  "ordinary_entry_changed": false,
+  "skip": [],
+  "not_run": [
+    "complete corrected-driver host composition",
+    "full runtime family",
+    "Governance Admission",
+    "real native/human/provider",
+    "clean live PostgreSQL",
+    "exact installed archive"
+  ],
+  "remaining_scope": "Entire L1-L8/A1-A10 plan unchanged; after host composition, admitted new cycle, frozen plan, readiness/IMPLEMENTING branch, physical correction/new-HEAD verification/reclosure/causal delivery, responses/resolutions/fresh loops/explicit merge consent/sync, unknown reconciliation and authorized renewal only after proven resource closure remain outstanding"
+}

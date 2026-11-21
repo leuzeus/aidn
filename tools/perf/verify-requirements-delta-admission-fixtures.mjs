@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture, prepareWorkflowDocumentsFixture } from "./test-activation-fixture-lib.mjs";
 
 const CASES = [
   {
@@ -84,13 +85,15 @@ function runJson(script, scriptArgs, env = {}) {
 
 function runCase(tmpRoot, testCase) {
   const sourceTarget = path.resolve(process.cwd(), testCase.fixture);
-  const targetRoot = copyFixtureToTmp(sourceTarget, tmpRoot, `tmp-req-delta-${testCase.id}`);
+  const targetRoot = copyFixtureToTmp(sourceTarget, tmpRoot, `tmp-req-delta-${testCase.id}`, { filter: source => isActivationFixtureSource(sourceTarget, source, { freshContext: true, freshCoordination: true }) });
   if (typeof testCase.mutate === "function") {
     testCase.mutate(targetRoot);
   }
   initGitRepo(targetRoot, {
     workingBranch: testCase.workingBranch,
   });
+  prepareWorkflowDocumentsFixture(targetRoot);
+  prepareActivationFixture(targetRoot);
 
   const hook = runJson("tools/perf/requirements-delta-hook.mjs", [
     "--target",
@@ -128,6 +131,7 @@ function runCase(tmpRoot, testCase) {
       codex_action: codex?.action ?? null,
       codex_result: codex?.result ?? null,
       codex_ok: codex?.ok ?? null,
+      ...(!String(codex?.action ?? "") ? { codex_diagnostic: JSON.stringify(codex).slice(0, 4000) } : {}),
     },
     pass: Object.values(checks).every((value) => value === true),
   };

@@ -220,6 +220,7 @@ const CODEX_COMMANDS = freezeDeep([
 ]);
 
 const RUNTIME_COMMANDS = freezeDeep([
+  publicCommand("runtime", "workflow-run", "tools/runtime/workflow-run.mjs", ["runtime-workflow-run.v1.schema.json"]),
   ...["workflow-inspect", "workflow-action", "workflow-dashboard"].map(name => publicCommand("runtime", name,
     "tools/runtime/workflow-console-cli.mjs", [`runtime-${name}.v1.schema.json`], [name])),
   publicCommand("runtime", "artifact-fetch", "tools/runtime/artifact-fetch.mjs", ["runtime-artifact-fetch.v1.schema.json"]),

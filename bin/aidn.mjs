@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { activationOptionArgs, classifyCliActivation, resolveInternalCliEffectClass } from "../src/core/cli/activation-policy.mjs";
 import { resolveCliEffectClass } from "../src/core/cli/effect-policy.mjs";
 import { readActivation } from "../src/application/install/project-activation-service.mjs";
@@ -102,7 +102,7 @@ function checkActivation(descriptor, args) {
   return false;
 }
 
-function runDescriptor(descriptor, args) {
+async function runDescriptor(descriptor, args) {
   if (descriptor.dispatch_kind === "builtin") {
     if (descriptor.group === "root" && descriptor.name === "help") {
       printUsage();
@@ -129,6 +129,23 @@ function runDescriptor(descriptor, args) {
     console.error(`ERROR: script not found: ${absolutePath}`);
     process.exit(1);
   }
+  // The common workflow clients observe their configured process scope. Keep
+  // their CLI adapter in this observer process, so a waiting launcher does not
+  // become a separately live target-marked task. Registry routing and effect
+  // admission still select the exact implementation and forwarded arguments.
+  const workflowClient = descriptor.group === "runtime"
+    && ["tools/runtime/workflow-run.mjs", "tools/runtime/workflow-console-cli.mjs"].includes(descriptor.implementation);
+  if (workflowClient) {
+    const adapter = await import(pathToFileURL(absolutePath).href);
+    const cliArgs = [...descriptor.fixed_args, ...forwardedArgs];
+    const runClient = descriptor.implementation === "tools/runtime/workflow-run.mjs";
+    const result = runClient
+      ? await adapter.runWorkflowRunCli(cliArgs)
+      : await adapter.runWorkflowConsoleCli(cliArgs[0], cliArgs.slice(1));
+    process.stdout.write(JSON.stringify(result, null, runClient ? undefined : 2) + "\n");
+    process.exitCode = result.errors.length ? 1 : 0;
+    return;
+  }
   const result = spawnSync(
     process.execPath,
     [absolutePath, ...descriptor.fixed_args, ...forwardedArgs],
@@ -145,7 +162,7 @@ function runDescriptor(descriptor, args) {
   process.exit(result.status ?? 1);
 }
 
-function main() {
+async function main() {
   const registry = validateCommandRegistryDescriptors();
   if (!registry.ok) {
     console.error(`ERROR: invalid command registry: ${registry.issues.join("; ")}`);
@@ -161,7 +178,7 @@ function main() {
 
   const direct = getDirectCommandDescriptor(command);
   if (direct) {
-    runDescriptor(direct, argv.slice(1));
+    await runDescriptor(direct, argv.slice(1));
     return;
   }
 
@@ -176,7 +193,7 @@ function main() {
       console.error(`ERROR: Unknown ${command} subcommand: ${subcommand}`);
       process.exit(1);
     }
-    runDescriptor(descriptor, argv.slice(2));
+    await runDescriptor(descriptor, argv.slice(2));
     return;
   }
 
@@ -185,4 +202,4 @@ function main() {
   process.exit(1);
 }
 
-main();
+await main();

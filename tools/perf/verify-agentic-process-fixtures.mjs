@@ -3,6 +3,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { createHash } from "node:crypto";
+import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
+import { createAgenticCodexRpc } from "../../src/adapters/agents/agentic-codex-rpc.mjs";
+import { loadStandardWorkflowAssets } from "../../src/application/runtime/standard-workflow-composition.mjs";
+import { nativeActivityAnswerSchema, nativeActivityTransportSchema, assertNativeActivityAnswer } from "../../src/core/workflow/native-activity-output.mjs";
 import { assertAgenticProcessModel, agenticPolicyPins, agenticProcessCapabilities } from "../../src/core/workflow/agentic-process-model.mjs";
 import { createAgenticProcess, inspectAgenticProcess, advanceAgenticProcess, assertAgenticProcessInstance } from "../../src/core/workflow/agentic-process.mjs";
 import { createAgenticProcessService } from "../../src/application/runtime/agentic-process-service.mjs";
@@ -11,10 +17,16 @@ import { createAgenticProcessStore } from "../../src/adapters/runtime/agentic-pr
 import { evaluateAgentReuse, fingerprintAgentReuse } from "../../src/core/agents/agent-reuse-policy.mjs";
 import { AGENT_ROLES, buildAgentProfile, canAgentRolePerform } from "../../src/core/agents/agent-role-model.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
-import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
+import { validateJsonSchema, validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import { createArtifactStore } from "../../src/adapters/runtime/artifact-store.mjs";
+import { compileBpmnProcess } from "../../src/application/workflow/bpmn-process-service.mjs";
+import { simulateAgenticProcess, iterateAgenticProcessSimulation } from "../../src/core/workflow/agentic-process-simulation.mjs";
+import { verifyProcessDataFixtures } from "./process-data-fixture-lib.mjs";
 
 const example = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agentic-process/compatible-work-and-review.json", import.meta.url)));
+const extendedXml = fs.readFileSync(new URL("../../tests/fixtures/agentic-process/extended-delivery.bpmn", import.meta.url), "utf8");
+const extendedModel = (xml = extendedXml) => compileBpmnProcess({ xml, profile: "aidn-bpmn-structured.v2", processRef: "ExtendedDelivery",
+  modelId: "extended-delivery", revision: 1, participantId: "delivery", roles: example.roles, policies: example.policies }).model;
 const H = "a".repeat(64), OTHER = "b".repeat(64), NOW = Date.now();
 const cases = []; let serial = 0;
 async function check(name, run) { await run(); cases.push(name); console.log("PASS " + name); }
@@ -44,10 +56,16 @@ function assigned(state, occurrence = inspect(state).ready[0], resource = execut
 function resultFor(frame, outcome = "completed") { return { result_id: "result-" + ++serial, request_sha256: fingerprintAgentReuse(frame.assignment.request),
   execution_id: frame.assignment.decision.execution_id, revision: frame.assignment.request.revision, artifact_sha256: frame.assignment.request.artifact_sha256,
   criteria_sha256: frame.assignment.request.criteria_sha256, outcome, evidence_refs: [{ ref: "fixture/result", sha256: H }] }; }
-function completed(state, occurrence = inspect(state).ready[0], outcome = "completed") {
-  const active = assigned(state, occurrence), frame = inspect(active).occurrences.find(row => row.occurrence_id === occurrence);
+function completed(state, occurrence = inspect(state).ready[0], outcome = "completed", resource = executor()) {
+  const active = assigned(state, occurrence, resource), frame = inspect(active).occurrences.find(row => row.occurrence_id === occurrence);
   return advanceAgenticProcess(active, event({ kind: "result", occurrence_id: occurrence, result: resultFor(frame, outcome) }));
 }
+function signalExtended(state, key = "approved") {
+  const frame = inspect(state).occurrences.find(row => row.wait_reason === "event");
+  return advanceAgenticProcess(state, event({ kind: "message", occurrence_id: frame.occurrence_id, correlation_id: frame.correlation_id, event_key: key }));
+}
+const simulationOf = state => simulateAgenticProcess({ instanceId: state.instance_id, model: state.model, policyPins: state.policy_pins,
+  scopeId: state.scope_id, facts: state.initial_facts, events: state.events });
 function gateway(kind, size = 2) { return model({ id: "gate", kind, participant_ref: "delivery", branches: Array.from({ length: size }, (_, index) => ({ flow_id: "flow-" + index,
   node_id: "task-" + index, ...(["xor", "or"].includes(kind) ? { condition: "condition-" + index } : kind === "event" ? { event_key: "message-" + index } : {}) })) },
   Array.from({ length: size }, (_, index) => leaf("task-" + index))); }
@@ -165,6 +183,145 @@ await check("R10: missing or altered required policy cannot be hidden by import/
   assert.throws(() => createAgenticProcess({ instanceId: "fixture", model: changed, policyPins: pins, scopeId: "scope-1" }), /PROCESS_REQUIRED_POLICY_CHANGED/);
   changed.policies = []; assert.throws(() => assertAgenticProcessModel(changed), /PROCESS_MODEL_INVALID/);
 });
+await check("BPMN to IR to execution and simulation: parallel readiness, author reuse and independent review", () => {
+  const xml = fs.readFileSync(new URL("../../tests/fixtures/agentic-process/structured-delivery.bpmn", import.meta.url), "utf8");
+  const compilation = compileBpmnProcess({ xml, modelId: "delivery", revision: 1, participantId: "delivery", roles: example.roles, policies: example.policies });
+  let state = completed(initial(compilation.model));
+  assert.equal(inspect(state).ready.length, 2);
+  state = completed(state); assert.equal(inspect(state).ready.length, 1);
+  state = completed(state); assert.equal(inspect(state).ready.length, 1);
+  assert.throws(() => assigned(state), /PROCESS_ASSIGNMENT_NOT_ADMISSIBLE/);
+  state = completed(state, inspect(state).ready[0], "completed", executor("reviewer"));
+  assert.equal(inspect(state).status, "COMPLETED");
+  const input = { instanceId: "fixture", model: compilation.model, policyPins: agenticPolicyPins(compilation.model), scopeId: "scope-1", facts: {}, events: state.events };
+  const simulation = simulateAgenticProcess(input);
+  assert.equal(simulation.evidence_kind, "synthetic"); assert.equal(simulation.write_authorization, false);
+  assert.equal(simulation.trace.length, state.events.length + 1);
+  assert.deepEqual(simulation.trace.at(-1).cursor, inspect(state));
+  assert.equal(simulation.trace.at(-1).instance_sha256, state.instance_sha256);
+  assert.deepEqual(simulation, simulateAgenticProcess(input));
+  assert.equal(Object.isFrozen(simulation.trace), true);
+  const assignments = simulation.trace.at(-1).cursor.occurrences.filter(row => row.assignment).map(row => row.assignment.decision.execution_id);
+  assert.equal(new Set(assignments).size, 2);
+});
+await check("streaming simulation preserves aggregate rows and immutable synthetic snapshots", () => {
+  const state = completed(initial()), input = { instanceId: state.instance_id, model: state.model, policyPins: state.policy_pins,
+    scopeId: state.scope_id, facts: state.initial_facts, events: state.events };
+  const aggregate = simulateAgenticProcess(input), rows = [...iterateAgenticProcessSimulation(input)];
+  assert.deepEqual(rows, aggregate.trace); assert.equal(rows.at(-1).instance_sha256, state.instance_sha256);
+  assert.ok(rows.every(row => Object.isFrozen(row) && Object.isFrozen(row.cursor)));
+  assert.equal(aggregate.evidence_kind, "synthetic"); assert.equal(aggregate.write_authorization, false);
+});
+await check("streaming simulation handles bounded long traces without lifting the aggregate limit", () => {
+  const groups = Array.from({ length: 16 }, (_, group) => ({ id: "group-" + group, kind: "and", participant_ref: "delivery",
+    branches: Array.from({ length: 6 }, (_, child) => ({ flow_id: "child-" + child, node_id: `work-${group}-${child}` })) }));
+  const m = model({ id: "all", kind: "and", participant_ref: "delivery", branches: groups.map(row => ({ flow_id: row.id, node_id: row.id })) },
+    groups.flatMap((row, group) => [row, ...Array.from({ length: 6 }, (_, child) => leaf(`work-${group}-${child}`))]));
+  const state = assigned(initial(m)), input = { instanceId: state.instance_id, model: m, policyPins: state.policy_pins, scopeId: state.scope_id,
+    facts: state.initial_facts, events: Array.from({ length: 512 }, () => structuredClone(state.events[0])) };
+  assert.throws(() => simulateAgenticProcess(input), /PROCESS_SIMULATION_TRACE_LIMIT/);
+  let count = 0, bytes = 0, last;
+  for (const row of iterateAgenticProcessSimulation(input)) {
+    assert.equal(row.step, count++); bytes += Buffer.byteLength(JSON.stringify(row)); last = row;
+  }
+  assert.equal(count, 513); assert.ok(bytes > 4 * 1024 * 1024); assert.equal(last.instance_sha256, state.instance_sha256);
+  assert.equal(last.cursor.status, "RUNNING");
+});
+await check("streaming simulation snapshots caller input before yielding", () => {
+  const state = completed(initial()), input = { instanceId: state.instance_id, model: structuredClone(state.model), policyPins: structuredClone(state.policy_pins),
+    scopeId: state.scope_id, facts: {}, events: structuredClone(state.events) };
+  const iterator = iterateAgenticProcessSimulation(input); assert.equal(iterator.next().value.step, 0);
+  input.events.length = 0; input.model.model_id = "changed-after-start"; input.facts.favorable = true;
+  const remaining = [...iterator]; assert.equal(remaining.length, state.events.length);
+  assert.equal(remaining.at(-1).instance_sha256, state.instance_sha256); assert.equal(Object.isFrozen(input), false);
+});
+await check("streaming simulation keeps input and event guards and permits early disposal", () => {
+  const state = initial(), input = { instanceId: state.instance_id, model: state.model, policyPins: state.policy_pins, scopeId: state.scope_id, events: [] };
+  assert.throws(() => iterateAgenticProcessSimulation({ ...input, execute: true }).next(), /PROCESS_SIMULATION_INPUT_INVALID/);
+  assert.throws(() => iterateAgenticProcessSimulation({ ...input, events: Array.from({ length: 513 }, () => ({})) }).next(), /PROCESS_SIMULATION_INPUT_INVALID/);
+  const bad = iterateAgenticProcessSimulation({ ...input, events: [{ kind: "unknown", event_id: "bad" }] });
+  assert.equal(bad.next().value.step, 0); assert.throws(() => bad.next());
+  const stopped = iterateAgenticProcessSimulation(input); assert.equal(stopped.next().value.instance_sha256, state.instance_sha256);
+  assert.equal(stopped.return().done, true); assert.equal(stopped.next().done, true);
+});
+await check("simulation preserves waits, races, failures, duplicate idempotence and malformed-event refusals", () => {
+  const simulate = state => simulateAgenticProcess({ instanceId: state.instance_id, model: state.model, policyPins: state.policy_pins,
+    scopeId: state.scope_id, facts: state.initial_facts, events: state.events });
+  for (const m of [gateway("event"), gateway("xor"), gateway("or")]) {
+    const state = initial(m); assert.deepEqual(simulate(state).trace.at(-1).cursor, inspect(state));
+  }
+  let race = initial(gateway("event"));
+  race = advanceAgenticProcess(race, event({ kind: "message", occurrence_id: "root", correlation_id: "fixture:root", event_key: "message-1" }));
+  race = completed(race, inspect(race).ready[0], "failed");
+  assert.equal(simulate(race).trace.at(-1).cursor.first_failure, "PROCESS_ACTIVITY_FAILED");
+  const input = { instanceId: race.instance_id, model: race.model, policyPins: race.policy_pins, scopeId: race.scope_id, events: [race.events[0], race.events[0]] };
+  const duplicated = simulateAgenticProcess(input); assert.equal(duplicated.trace[1].instance_sha256, duplicated.trace[2].instance_sha256);
+  assert.throws(() => simulateAgenticProcess({ ...input, events: [race.events[0], { ...race.events[0], event_key: "message-0" }] }), /PROCESS_EVENT_ID_CONFLICT/);
+  assert.throws(() => simulateAgenticProcess({ ...input, events: Array(513).fill(race.events[0]) }), /PROCESS_SIMULATION_INPUT_INVALID/);
+  const schema = JSON.parse(fs.readFileSync(new URL("../../src/core/contracts/workflow-definition/agentic-process-simulation.v1.schema.json", import.meta.url)));
+  // Public contract validation remains separate; these are internal workflow envelopes.
+  assert.deepEqual(validateJsonSchema(simulate(race), schema, "$", { contractKind: "workflow-definition" }), []);
+});
+await check("V2 XML event race waits, correlates one winner, disables alternatives and rejects late signals", () => {
+  const state = initial(extendedModel()); const frame = inspect(state).occurrences.find(row => row.wait_reason === "event");
+  assert.equal(inspect(state).ready.length, 0);
+  assert.throws(() => advanceAgenticProcess(state, event({ kind: "message", occurrence_id: frame.occurrence_id,
+    correlation_id: "foreign", event_key: "approved" })), /PROCESS_EVENT_CORRELATION_INVALID/);
+  for (const key of ["approved", "reconsider"]) {
+    const winner = signalExtended(state, key), cursor = inspect(winner);
+    assert.equal(cursor.ready.length, 1);
+    assert.equal(cursor.occurrences.find(row => row.occurrence_id === frame.occurrence_id).skipped_flows.length, 1);
+    assert.throws(() => advanceAgenticProcess(winner, event({ kind: "message", occurrence_id: frame.occurrence_id,
+      correlation_id: frame.correlation_id, event_key: key === "approved" ? "reconsider" : "approved" })), /PROCESS_EVENT_CORRELATION_INVALID/);
+    assert.deepEqual(simulationOf(winner).trace.at(-1).cursor, cursor);
+  }
+});
+await check("V2 XML loop executes body first, waits for missing fact, repeats and fails at its explicit guard", () => {
+  let state = completed(signalExtended(initial(extendedModel()))); // winner completes; loop body is READY
+  assert.equal(inspect(state).ready[0].endsWith("iteration-1"), true);
+  const firstLoop = completed(state);
+  assert.equal(inspect(firstLoop).ready.length, 0);
+  assert.equal(inspect(firstLoop).occurrences.some(row => row.wait_reason === "routing_fact"), true);
+  state = advanceAgenticProcess(firstLoop, event({ kind: "facts", facts: { refinement_done: false } }));
+  assert.equal(inspect(state).ready[0].endsWith("iteration-2"), true);
+  const exhausted = completed(state);
+  assert.equal(inspect(exhausted).first_failure, "PROCESS_LOOP_LIMIT");
+  assert.equal(simulationOf(exhausted).trace.at(-1).cursor.status, "FAILED");
+  const stop = advanceAgenticProcess(state, event({ kind: "facts", facts: { refinement_done: true } }));
+  const finished = completed(stop);
+  assert.equal(inspect(finished).first_failure, null); assert.equal(inspect(finished).ready.length, 2);
+  assert.deepEqual(simulationOf(finished).trace.at(-1).cursor, inspect(finished));
+});
+await check("V2 XML multi-instance and nested calls retain distinct scopes, ordering, failure and empty success", () => {
+  for (const sequential of [false, true]) {
+    const m = extendedModel(sequential ? extendedXml.replace('isSequential="false"', 'isSequential="true"') : extendedXml);
+    let state = completed(completed(signalExtended(initial(m, { refinement_done: true }))));
+    assert.equal(inspect(state).ready.length, sequential ? 1 : 2);
+    assert.equal(inspect(state).ready.every(ref => ref.includes("item-") && ref.endsWith("/call/0/call")), true);
+    const failed = completed(state, inspect(state).ready[0], "failed");
+    assert.equal(inspect(failed).first_failure, "PROCESS_ACTIVITY_FAILED");
+    assert.deepEqual(simulationOf(failed).trace.at(-1).cursor, inspect(failed));
+    if (!sequential) {
+      state = completed(state, inspect(state).ready[1]);
+      assert.equal(inspect(state).ready.some(ref => ref.includes("item-0")), true);
+    }
+    const ids = new Set(); let bound = 0;
+    while (inspect(state).ready.length && bound++ < 10) {
+      const ready = inspect(state).ready[0]; ids.add(ready);
+      const frame = inspect(state).occurrences.find(row => row.occurrence_id === ready), node = m.nodes.find(n => n.id === frame.node_id);
+      state = completed(state, ready, "completed", executor(node.policy_ref === "review" ? "reviewer" : "author"));
+    }
+    assert.equal(inspect(state).status, "COMPLETED");
+    assert.equal([...ids].some(ref => ref.includes("/item-1/")), true);
+    assert.equal(inspect(state).occurrences.filter(row => m.nodes.find(n => n.id === row.node_id).kind === "call").length, 6);
+    const simulation = simulationOf(state); assert.deepEqual(simulation.trace.at(-1).cursor, inspect(state));
+    assert.equal(simulation.trace.at(-1).instance_sha256, state.instance_sha256);
+  }
+  const emptyModel = extendedModel(extendedXml.replace('items="first second"', 'items=""').replace('>2</bpmn:loopCardinality>', '>0</bpmn:loopCardinality>'));
+  const empty = completed(completed(signalExtended(initial(emptyModel, { refinement_done: true }))));
+  assert.equal(inspect(empty).occurrences.some(row => row.occurrence_id.includes("item-")), false);
+  assert.equal(inspect(empty).ready[0].includes("/call/"), true); // ordinary FollowUp, after empty Batch
+});
 await check("R12: call procedure creates a scoped occurrence, never independent identity", () => {
   const state = assigned(initial(model({ id: "call", kind: "call", participant_ref: "delivery", child: "task" }, [leaf("task")])));
   assert.equal(inspect(state).occurrences.at(-1).assignment.decision.agent_id, "author");
@@ -195,6 +352,63 @@ function composition(m = model(), { stateMode = "files", resultTimeoutMs = 1000 
   return { service, store, state, targetRoot, initialize: (write = true) => service.initialize({ instanceId: "fixture", model: m, write }) };
 }
 try {
+  await verifyProcessDataFixtures(check);
+  for (const stateMode of ["files", "dual", "db-only"]) await check("V2 XML event/loop/collection/calls use canonical authorities and deterministic simulation: " + stateMode, async () => {
+    const m = extendedModel(), c = composition(m, { stateMode });
+    assert.equal(c.initialize(false).written, false);
+    let current = c.initialize();
+    const wait = current.cursor.occurrences.find(row => row.wait_reason === "event");
+    current = c.service.signal({ instanceId: "fixture", expectedSha256: current.record.instance_sha256, write: true,
+      event: event({ kind: "message", occurrence_id: wait.occurrence_id, correlation_id: wait.correlation_id, event_key: "approved" }) });
+    current = c.service.signal({ instanceId: "fixture", expectedSha256: current.record.instance_sha256, write: true,
+      event: event({ kind: "facts", facts: { refinement_done: true } }) });
+    let step = 0;
+    while (current.cursor.ready.length && step < 12) {
+      const occurrenceId = current.cursor.ready[0], frame = current.cursor.occurrences.find(row => row.occurrence_id === occurrenceId);
+      const node = m.nodes.find(row => row.id === frame.node_id);
+      if (node.policy_ref === "review") {
+        c.state.binding.reviewed_contributors = [{ agent_id: "author", lineage_id: "lineage-author" }];
+        const refusal = await c.service.assign({ instanceId: "fixture", expectedSha256: current.record.instance_sha256, occurrenceId, eventId: "self-review" });
+        assert.equal(refusal.decision.decision, "wait"); c.state.resource = executor("reviewer");
+      }
+      const assignment = await c.service.assign({ instanceId: "fixture", expectedSha256: current.record.instance_sha256,
+        occurrenceId, eventId: `assign-${step}`, write: true });
+      c.state.result = resultFor(assignment.cursor.occurrences.find(row => row.occurrence_id === occurrenceId));
+      current = await c.service.accept({ instanceId: "fixture", expectedSha256: assignment.record.instance_sha256, occurrenceId,
+        eventId: `accept-${step++}`, resultId: c.state.result.result_id, write: true });
+    }
+    assert.equal(step, 9); assert.equal(current.cursor.status, "COMPLETED");
+    const retained = createAgenticProcessStore({ targetRoot: c.targetRoot, stateMode }).read("fixture").record;
+    const simulation = simulationOf(retained);
+    assert.equal(simulation.trace.at(-1).instance_sha256, current.record.instance_sha256);
+    assert.deepEqual(simulation.trace.at(-1).cursor, current.cursor);
+  });
+  for (const stateMode of ["files", "dual", "db-only"]) await check("compiled BPMN uses canonical service authorities and simulation parity: " + stateMode, async () => {
+    const xml = fs.readFileSync(new URL("../../tests/fixtures/agentic-process/structured-delivery.bpmn", import.meta.url), "utf8");
+    const { model: m } = compileBpmnProcess({ xml, modelId: "delivery", revision: 1, participantId: "delivery", roles: example.roles, policies: example.policies });
+    const c = composition(m, { stateMode });
+    assert.equal(c.initialize(false).written, false);
+    let current = c.initialize(); let step = 0;
+    while (current.cursor.ready.length && step < 5) {
+      const occurrenceId = current.cursor.ready[0], frame = current.cursor.occurrences.find(row => row.occurrence_id === occurrenceId);
+      const node = m.nodes.find(row => row.id === frame.node_id);
+      if (node.policy_ref === "review") {
+        c.state.binding.reviewed_contributors = [{ agent_id: "author", lineage_id: "lineage-author" }];
+        const refusal = await c.service.assign({ instanceId: "fixture", expectedSha256: current.record.instance_sha256, occurrenceId, eventId: "self-review" });
+        assert.equal(refusal.decision.decision, "wait"); c.state.resource = executor("reviewer");
+      }
+      const assignedState = await c.service.assign({ instanceId: "fixture", expectedSha256: current.record.instance_sha256, occurrenceId, eventId: `assign-${step}`, write: true });
+      c.state.result = resultFor(assignedState.cursor.occurrences.find(row => row.occurrence_id === occurrenceId));
+      current = await c.service.accept({ instanceId: "fixture", expectedSha256: assignedState.record.instance_sha256, occurrenceId,
+        eventId: `accept-${step++}`, resultId: c.state.result.result_id, write: true });
+    }
+    assert.equal(current.cursor.status, "COMPLETED");
+    const record = c.store.read("fixture").record;
+    const simulated = simulateAgenticProcess({ instanceId: record.instance_id, model: record.model, policyPins: record.policy_pins,
+      scopeId: record.scope_id, facts: record.initial_facts, events: record.events });
+    assert.deepEqual(simulated.trace.at(-1).cursor, current.cursor);
+    assert.equal(simulated.trace.at(-1).instance_sha256, record.instance_sha256);
+  });
   await check("required skill snapshot cannot be weakened while authority observation is pending", async () => {
     const request = requestFor(initial(), "root"), requiredSkills = ["tests"];
     const result = await decideAgentReuse({ request, requiredSkills, adapters: [adapter], now: () => NOW,
@@ -311,6 +525,115 @@ try {
     const state = initial(gateway("and")), cancel = event({ kind: "cancel" }), stopped = advanceAgenticProcess(state, cancel);
     assert.equal(inspect(stopped).status, "CANCELLED");
     assert.throws(() => completed(stopped, "root/flow-0"), /PROCESS_EVENT_ORDER_INVALID/);
+  });
+
+  await check("published STANDARD loads against the executable operation bindings", () => {
+    const { catalog, model, source } = loadStandardWorkflowAssets();
+    assert.equal(catalog.revision, model.revision);
+    assert.equal(catalog.model.sha256, source.model_sha256);
+  });
+  await check("Native response formats use typed closed shapes and preserve full host validation", () => {
+    const contracts = [null, "standard-drift-report.v1", "standard-mode-work-report.v1", "standard-pr-triage-report.v1",
+      "standard-cycle-plan-proposal.v1", "standard-cycle-prework-report.v1", "standard-cycle-work-report.v1",
+      "standard-cycle-task-work-report.v1", "standard-cycle-audit-report.v1"];
+    const context = "c".repeat(64);
+    const keywords = new Set(["type", "const", "enum", "anyOf", "properties", "required", "additionalProperties", "items"]);
+    function checkWire(schema) {
+      assert(Object.keys(schema).every(key => keywords.has(key)));
+      if (schema.anyOf) {
+        schema.anyOf.forEach(checkWire);
+        return;
+      }
+      assert(Object.hasOwn(schema, "type"));
+      if (schema.properties) {
+        assert.equal(schema.additionalProperties, false);
+        assert.deepEqual([...schema.required].sort(), Object.keys(schema.properties).sort());
+        Object.values(schema.properties).forEach(checkWire);
+      }
+      if (schema.items) checkWire(schema.items);
+    }
+    for (const contract of contracts) {
+      const wire = nativeActivityTransportSchema(contract, contract ? context : null);
+      assert.equal(wire.type, "object");
+      checkWire(wire);
+    }
+    const contract = "standard-drift-report.v1";
+    const full = nativeActivityAnswerSchema(contract, context).properties.report.anyOf[1];
+    const wire = nativeActivityTransportSchema(contract, context).properties.report.anyOf[1];
+    assert.deepEqual(wire.properties.context_sha256, { type: "string", const: context });
+    assert.deepEqual(wire.properties.contract_version, { type: "string", const: contract });
+    assert.deepEqual(wire.properties.drift_level, { type: "string", enum: ["none", "mild", "severe"] });
+    assert.equal(full.properties.rationale.minLength, 1);
+    assert.equal(full.properties.evidence_refs.minItems, 1);
+    const answer = { outcome: "completed", summary: "Scoped diagnostic.", report: { contract_version: contract, context_sha256: context,
+      original_objective: "Neutral objective.", current_objective: "Neutral objective.", drift_level: "none", objective_changed: false,
+      changes: [], keep: [], discard: [], split_recommendation: { new_cycle: false, new_branch: false, change_request_required: false, impact: "none" },
+      recommendation: "continue", rationale: "No deviation observed.", evidence_refs: [{ ref: "fixture:report", sha256: "a".repeat(64) }] } };
+    assertNativeActivityAnswer(answer, contract, context);
+    assert.throws(() => assertNativeActivityAnswer({ ...answer, report: { ...answer.report, rationale: "" } }, contract, context), /PROCESS_SESSION_ANSWER_INVALID/);
+    assert.throws(() => assertNativeActivityAnswer({ ...answer, report: { ...answer.report, evidence_refs: [] } }, contract, context), /PROCESS_SESSION_ANSWER_INVALID/);
+  });
+  await check("Native transport retains bounded turn failure metadata without private content", async () => {
+    const child = new EventEmitter();
+    child.stdin = new PassThrough(); child.stdout = new PassThrough(); child.stderr = new PassThrough();
+    child.kill = () => { queueMicrotask(() => child.emit("close", 0, null)); return true; };
+    const diagnostics = [], notifications = [];
+    const sha256 = value => createHash("sha256").update(value).digest("hex");
+    const rpc = createAgenticCodexRpc({ executable: process.execPath, sha256: sha256(fs.readFileSync(process.execPath)),
+      args: [], cwd: temp, env: {}, deadline: Date.now() + 10000, spawnProcess: () => child,
+      onNotification: message => notifications.push(message), diagnostic: record => diagnostics.push(record) });
+    const privateText = "private fixture content";
+    const samples = [
+      ["failed", { responseStreamDisconnected: { httpStatusCode: 503, privateText } },
+        { turn_status: "failed", codex_error_info: "responseStreamDisconnected", upstream_http_status: 503 }],
+      ["interrupted", "unauthorized", { turn_status: "interrupted", codex_error_info: "unauthorized", upstream_http_status: null }],
+      ["failed", privateText, { turn_status: "failed", codex_error_info: "unrecognized", upstream_http_status: null }],
+      ["failed", { httpConnectionFailed: { httpStatusCode: privateText } },
+        { turn_status: "failed", codex_error_info: "httpConnectionFailed", upstream_http_status: null }],
+      ["failed", { unauthorized: { httpStatusCode: 401 } },
+        { turn_status: "failed", codex_error_info: "unrecognized", upstream_http_status: null }],
+      ["failed", { activeTurnNotSteerable: { turnKind: "review", httpStatusCode: 599 } },
+        { turn_status: "failed", codex_error_info: "activeTurnNotSteerable", upstream_http_status: null }],
+      ["failed", null, { turn_status: "failed", codex_error_info: null, upstream_http_status: null }],
+      ["failed", "other", { turn_status: "failed", codex_error_info: "other", upstream_http_status: null,
+        reported_provider_error_code: "invalid_json_schema" }, JSON.stringify({ error: { code: "invalid_json_schema", message: privateText } })],
+      ["failed", "other", { turn_status: "failed", codex_error_info: "other", upstream_http_status: null },
+        JSON.stringify({ error: { code: privateText, message: privateText } })],
+      ["failed", "other", { turn_status: "failed", codex_error_info: "other", upstream_http_status: null },
+        JSON.stringify({ error: { code: "invalid_json_schema", message: privateText.repeat(4096) } })],
+      ["completed", null, {}],
+    ];
+    try {
+      for (const [status, codexErrorInfo, expected, message = privateText] of samples) {
+        const notification = { method: "turn/completed", params: { turn: { id: privateText, status,
+          error: { codexErrorInfo, message, additionalDetails: privateText } } } };
+        const frame = Buffer.from(JSON.stringify(notification));
+        child.stdout.write(Buffer.concat([frame, Buffer.from("\n")]));
+        await rpc.flush();
+        assert.deepEqual(diagnostics.at(-1), { type: "turn/completed", id: null, bytes: frame.length, sha256: sha256(frame), ...expected });
+        assert.deepEqual(notifications.at(-1), notification);
+      }
+    } finally { assert.equal((await rpc.close()).closed, true); }
+  });
+  await check("Native RPC closes settled stdio by EOF and still terminates a pending transport", async () => {
+    const executableSha256 = createHash("sha256").update(fs.readFileSync(process.execPath)).digest("hex");
+    for (const pending of [false, true]) {
+      const child = new EventEmitter(), shutdown = [];
+      child.stdin = new PassThrough(); child.stdout = new PassThrough(); child.stderr = new PassThrough();
+      child.stdin.once("finish", () => { shutdown.push("eof"); child.emit("close", 0, null); });
+      child.kill = () => { shutdown.push("signal"); queueMicrotask(() => child.emit("close", null, "SIGTERM")); return true; };
+      const rpc = createAgenticCodexRpc({ executable: process.execPath, sha256: executableSha256, args: [],
+        cwd: temp, env: {}, deadline: Date.now() + 10000, spawnProcess: () => child });
+      const rejected = pending ? assert.rejects(rpc.request("thread/read", {}), { code: "PROCESS_RPC_STOPPED" }) : null;
+      const closing = rpc.close({ graceful: true });
+      assert.equal(rpc.close(), closing);
+      assert.equal((await closing).closed, true);
+      await rejected;
+      assert.deepEqual(shutdown, [pending ? "signal" : "eof"]);
+    }
+  });
+  await check("ordinary STANDARD returns the retained Native failure after the execution cursor is fenced", async () => {
+    await import("./verify-standard-native-failed-return-fixtures.mjs");
   });
 } finally {
   const resolvedTemp = fs.realpathSync(temp), tempParent = fs.realpathSync(os.tmpdir());

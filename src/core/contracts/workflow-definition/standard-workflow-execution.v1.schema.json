@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-workflow-execution.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "execution", "parameters"],
+  "properties": {
+    "contract_version": { "const": "standard-workflow-execution.v1" },
+    "parameters": { "type": "object" },
+    "validation_profile": {
+      "type": "object", "additionalProperties": false, "required": ["path", "sha256"],
+      "properties": { "path": { "type": "string" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } }
+    },
+    "execution": {
+      "type": "object", "additionalProperties": false,
+      "required": ["instance_id", "target_root", "product_root", "control_root", "review_root", "product_files", "criteria", "authorities", "native", "controller"],
+      "properties": {
+        "instance_id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,95}$" },
+        "target_root": { "type": "string" }, "product_root": { "type": "string" },
+        "control_root": { "type": "string" }, "review_root": { "type": "string" },
+        "product_files": { "type": "array", "items": { "type": "string" }, "minItems": 1, "maxItems": 128 },
+        "criteria": { "type": "object" }, "authorities": { "type": "object" },
+        "native": { "type": "object" }, "controller": { "type": "object" }, "instructions": { "type": "object" }
+      }
+    }
+  }
+}

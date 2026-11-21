@@ -1,0 +1,108 @@
+{
+  "observed_at_utc": "2026-11-03T20:58:44.244Z",
+  "source_base": "7ff5afd",
+  "model": {
+    "revision": 39,
+    "sha256": "41dc3bc2bffa5f0b700a6360ae102a3bf9d87787607de969890905214574971c",
+    "catalog_sha256": "91c6fc6885b8ed27eadec2e41632fd230d33927b53a11cd6a854e493a84c65b9",
+    "nodes": 88,
+    "operations": 54,
+    "referenced_bindings": 44,
+    "registered_bindings": 51,
+    "native_activities": 8,
+    "complete_standard_workflow": false
+  },
+  "implementation": {
+    "sha256": "e3e5fec4573505505a4aa75470ad1346eac33d61efab3726bd2972e355a4f26e",
+    "files": 284
+  },
+  "source_files": [
+    {
+      "path": "src/application/runtime/standard-session-pr-admission.mjs",
+      "sha256": "8d99038a01989002eb2c28aff6312ead49e3c3535ff521f7f1e95936ebde6a87"
+    },
+    {
+      "path": "src/application/runtime/pr-orchestrate-admit-use-case.mjs",
+      "sha256": "94ac9d69ca653df5150b06a4ae60eb2e48a7a1cc8df106fc953a40d2f308e13c"
+    },
+    {
+      "path": "src/core/contracts/workflow-definition/standard-session-pr-admission-input.v1.schema.json",
+      "sha256": "e41b23c9fcf6d92f78aba9121bb70b4049b583e47e0c6ec972003908caf9add3"
+    },
+    {
+      "path": "src/core/contracts/workflow-definition/standard-session-pr-admission-output.v1.schema.json",
+      "sha256": "c9f22f280f5656534a7b487f55d5dc8b990ffcf1ba1d9926f10065341d36fe20"
+    }
+  ],
+  "components": [
+    {
+      "mode": "files",
+      "status": "PASS",
+      "checks": 5,
+      "exit_code": 0,
+      "log_sha256": "f844cabfa62d500f6737abb358fa7d90200aa928e055906ff16064ed4bc026c6",
+      "cleanup": "completed before exit",
+      "fixture_variant": "predecessor fixture executed the same commit path for existing physical postimages; final selector only makes commit conditional"
+    },
+    {
+      "mode": "dual",
+      "status": "PASS",
+      "checks": 5,
+      "exit_code": 0,
+      "log_sha256": "b976aa38bb570e3c29941a7a0b26b28b7700291e90076fd658196cc365b8ffdf",
+      "cleanup": "completed before exit",
+      "fixture_variant": "predecessor fixture executed the same commit path for existing physical postimages; final selector only makes commit conditional"
+    },
+    {
+      "mode": "db-only",
+      "status": "PASS",
+      "checks": 5,
+      "exit_code": 0,
+      "log_sha256": "80138acdfd0c843ff830d134bc1f1befb4b9edcb23e65911f81d5476092dae57",
+      "cleanup": "completed before exit",
+      "fixture_variant": "final conditional commit: actual equal-HEAD integration with no physical postimage"
+    }
+  ],
+  "fixture_sha256": "35ece9bc612b50b08dcfd5a1e8012c2318c4f124ed8cb0405c85200ddc4e519b",
+  "earlier_attempt": {
+    "mode": "db-only",
+    "status": "FAIL",
+    "exit_code": 1,
+    "log_sha256": "6fa5d14722734238d49b9f03b17544096b24571e2f7178c67eb872c148871e8c",
+    "cause": "fixture requested a commit with no physical postimage",
+    "actual_PR_admission": "NOT_REACHED",
+    "actual_Git_integration": "NOT_REACHED",
+    "cleanup": "completed"
+  },
+  "proof": {
+    "actual": [
+      "canonical stores",
+      "Git integration transaction",
+      "reload use case",
+      "PR admission use case"
+    ],
+    "injected": [
+      "accepted human consent",
+      "accepted closure/delivery authority"
+    ],
+    "read_only": "all project file bytes compared before/after; executable clean-filter marker absent; no cache write",
+    "remote_effects": 0,
+    "model_calls": 0,
+    "public_cli_flags": "UNCHANGED",
+    "legacy_admission_default_adapter": "UNCHANGED"
+  },
+  "static": {
+    "composition": 19,
+    "startup": 22,
+    "source_policy": 35,
+    "metadata_policy": 37,
+    "gate_catalog": "PASS",
+    "governance_completeness": "PASS"
+  },
+  "composed_current": "NOT_RUN",
+  "earlier_model37": "RUNNING on frozen source; cannot qualify this model",
+  "full_runtime_family": "NOT_RUN",
+  "PR_admission_rollup": "NOT_RUN",
+  "native": "NOT_RUN",
+  "installed_archive": "NOT_RUN"
+}

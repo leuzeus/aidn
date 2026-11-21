@@ -1,0 +1,308 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import { createFreshStandardWorkflowFixture } from './standard-workflow-fixture-lib.mjs';
+import { createStandardWorkflowOperations } from '../../src/application/runtime/standard-workflow-operations.mjs';
+import { createStandardWorkflowArtifacts } from '../../src/application/runtime/standard-workflow-artifacts.mjs';
+import { createStandardPrCorrectionReopen } from '../../src/application/runtime/standard-pr-correction-reopen.mjs';
+import { createLocalWorkflowGitCheckpoint } from '../../src/adapters/runtime/local-workflow-git-checkpoint.mjs';
+import { renderPrCorrectionReopen, prCorrectionReopenPaths } from '../../src/core/workflow/standard-pr-correction-reopen.mjs';
+import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-schema-validator.mjs';
+import { preWriteAdmit } from '../runtime/pre-write-admit.mjs';
+import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
+import { artifactContentHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
+import { assertStandardOperationInput, assertStandardOperationOutput, assertStandardPrCorrectionPlan } from '../../src/core/workflow/standard-operation-contracts.mjs';
+import { agenticProcessImplementationPins } from '../../src/application/runtime/agentic-process-implementation-pins.mjs';
+import { createPrCorrectionReopenFixture } from './standard-pr-correction-fixture-lib.mjs';
+import { verifyReopenDisposition } from './verify-standard-pr-correction-reopen-disposition-fixtures.mjs';
+import { createStandardOperationDisposition } from '../../src/application/runtime/standard-operation-disposition.mjs';
+import { createOperationJournalSigner } from '../../src/core/workflow/process-operation-journal.mjs';
+import { createProcessDispatchRecordStore } from '../../src/adapters/runtime/process-dispatch-record-store.mjs';
+import { inspectInterruptedReopenLock, retireInterruptedReopenLock } from '../../src/application/runtime/local-artifact-owner-retirement.mjs';
+const fixture = selectedMode => createPrCorrectionReopenFixture(selectedMode, owned);
+const H = 'a'.repeat(64), op = 'op_' + '1'.repeat(40), owned = [], temporary = fs.realpathSync(os.tmpdir());
+const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files';
+const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
+const set = (text, key, value) => {
+  const re = new RegExp('^([ \\t]*-?[ \\t]*)' + key + ':[^\\r\\n]*$', 'gm');
+  return re.test(text) ? text.replace(re, (_all, prefix) => prefix + key + ': ' + value) : text.replace(/^(# [^\n]*\n)/, '$1\n' + key + ': ' + value + '\n');
+};
+let checks = 0;
+const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + name); };
+
+const fixtureSigner = createOperationJournalSigner(() => Buffer.alloc(32, 68));
+function reopenDisposition(root, artifacts, readOperation) {
+  return createStandardOperationDisposition({ targetRoot: root, stateMode: 'files', signer: fixtureSigner, artifacts,
+    readAuthority: () => ({ fixture: 'reopen-observer' }), readOperation,
+    readContext: () => ({ head: git(root, 'rev-parse', 'HEAD'), documents: prCorrectionReopenPaths('S001').map(name => artifacts.read(name).sha256) }),
+  });
+}
+function acquireRetirement(root, record, expectedLockSha256, file, predecessorFile = null) {
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot: root }), fence = artifacts.resourceFence();
+  const { record: dispatch } = createProcessDispatchRecordStore({ targetRoot: root, stateMode: 'files' }).read(record.operation_id);
+  fixtureSigner.verify(record); fixtureSigner.verify(dispatch);
+  assert.equal(dispatch.output_sha256, record.results[0].receipt.output_sha256);
+  assert.equal(dispatch.preview_sha256, shadowHash(record.preview));
+  const [intention] = dispatch.local_owner_intentions, [originalLease] = dispatch.leases;
+  assert.equal(originalLease.status, 'held');
+  const subject = { operation_id: record.operation_id, journal_sha256: shadowHash(record),
+    dispatch_sha256: shadowHash(dispatch), lock_sha256: expectedLockSha256, root_sha256: shadowHash(artifacts.root) };
+  const prior = predecessorFile && JSON.parse(fs.readFileSync(predecessorFile, 'utf8'));
+  if (prior) { fixtureSigner.verify(prior); assert.deepEqual(prior.subject, subject); }
+  const before = fence.read(), priorLease = prior ? prior.transfer.record : originalLease.resource_fence;
+  assert.deepEqual(before.record, priorLease);
+  const transfer = fence.prepareAcquire({ expectedSha256: before.content_sha256 });
+  const reservation = fixtureSigner.seal({ fixture: 'cold-retirement-intent', subject, transfer });
+  fs.writeFileSync(file, JSON.stringify(reservation), { flag: 'wx', flush: true });
+  let allowed = true;
+  const assertPermit = () => {
+    if (!allowed) throw Object.assign(Error('fixture permit revoked'), { code: 'FIXTURE_RETIREMENT_DENIED' });
+    const retained = JSON.parse(fs.readFileSync(file, 'utf8')); fixtureSigner.verify(retained);
+    assert.deepEqual(retained, reservation);
+  };
+  assertPermit();
+  const dispositionLease = fence.acquire({ prepared: transfer, expectedSha256: transfer.previous_sha256, dispositionLease: priorLease });
+  const args = { targetRoot: artifacts.root, operationId: record.operation_id, intention, originalLease, fence, dispositionLease, expectedLockSha256, assertPermit, write: true };
+  return { fence, args, revoke: () => { allowed = false; } };
+}
+
+if (process.argv[2] === '--retirement-owner-worker') {
+  const { root, record, lockSha256, reservation, predecessor, retire } = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
+  const { args, fence } = acquireRetirement(root, record, lockSha256, reservation, predecessor);
+  const witness = retire ? retireInterruptedReopenLock(args) : inspectInterruptedReopenLock(args.targetRoot, args.operationId, args.intention, args.originalLease);
+  // Exit at the requested boundary with the acquired fence still held.
+  console.log(JSON.stringify({ retired: witness.retired, pid: process.pid, lock_sha256: lockSha256, fence_sha256: fence.read().content_sha256 }));
+} else if (process.argv[2] === '--post-effect-grant-worker') {
+  const { root, plan, instance } = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
+  let grants = 0;
+  const source = plan.plan.source, sourceHash = shadowHash(source);
+  const writer = createStandardPrCorrectionReopen({ targetRoot: root, readCurrent: () => instance,
+    authority: { readSource: async () => source, verifySource: async () => ({ origin_source_sha256: sourceHash }) } });
+  const binding = 'session_pr_correction_reopen';
+  const record = fixtureSigner.seal({ operation_id: op, phase: 'dispatching', preview: fixtureSigner.seal({ prepared: plan }),
+    intent: { binding_ref: binding, instance_id: instance.instance_id, scope_id: 'fixture', model_sha256: H },
+    owner: { pid: process.pid, generation: 'fixture-cold-owner' }, results: [] });
+  const disposition = reopenDisposition(root, artifacts, () => ({ record }));
+  const result = await disposition.run(record, () => writer.apply(instance, plan, { write: true, expectPlan: plan.plan_sha256,
+    assertAuthorized() { if (++grants === 8) throw Object.assign(Error('fixture permission lost after canonical postimages'), { code: 'FIXTURE_POST_EFFECT_GRANT_LOST', effect_status: 'no_effect' }); } }));
+  assert.equal(result.effect_status, 'unknown');
+  const receipted = fixtureSigner.seal({ ...record, phase: 'receipted', results: [{ output: result, receipt: {
+    effect_status: 'unknown', outcome: 'reconciliation_required', output_sha256: shadowHash(result),
+  } }] });
+  process.stdout.write(JSON.stringify(receipted));
+} else try {
+  await test('three private schemas validate with supported keywords', () => {
+    for (const kind of ['input', 'plan', 'output']) assert.deepEqual(validateJsonSchemaDefinition(JSON.parse(fs.readFileSync(new URL('../../src/core/contracts/workflow-definition/standard-pr-correction-reopen-' + kind + '.v1.schema.json', import.meta.url))), '#', { contractKind: 'workflow-definition' }), []);
+  });
+  await test('registered input and direct byte pins include every correction authority, writer, renderer and contract', () => {
+    const paths = ['src/application/runtime/local-artifact-owner-retirement.mjs', 'src/application/runtime/standard-pr-correction-authority.mjs', 'src/application/runtime/standard-pr-correction-reopen.mjs',
+      'src/core/workflow/standard-pr-correction-reopen.mjs', ...['input', 'plan', 'output'].map(kind => 'src/core/contracts/workflow-definition/standard-pr-correction-reopen-' + kind + '.v1.schema.json')];
+    const pins = agenticProcessImplementationPins(), read = fs.readFileSync;
+    for (const name of paths) {
+      assert.equal(pins.files.filter(row => row.path === name).length, 1, name);
+      try {
+        fs.readFileSync = (file, ...args) => String(file).endsWith('/' + name) ? Buffer.concat([read(file, ...args), Buffer.from('\n')]) : read(file, ...args);
+        assert.notEqual(agenticProcessImplementationPins().sha256, pins.sha256, name);
+      } finally { fs.readFileSync = read; }
+    }
+    assert.deepEqual(agenticProcessImplementationPins(), pins);
+    assertStandardOperationInput('session_pr_correction_reopen', { contract_version: 'standard-pr-correction-reopen-input.v1', triage_operation_id: op });
+    assert.throws(() => assertStandardOperationInput('session_pr_correction_reopen', { contract_version: 'standard-pr-correction-reopen-input.v1', triage_operation_id: op, payload: {} }));
+  });
+  const f = await fixture(mode), rows = () => f.names.map(name => f.artifacts.read(name, { required: true }));
+  const original = rows(), bytes = original.map(row => row.sha256), product = fs.readFileSync(path.join(f.root, 'docs/audit/CURRENT-STATE.md'));
+  let prepared;
+  await test('read-only preparation binds exact canonical preimages, source and Git without writes', async () => {
+    prepared = await f.port.prepare(f.instance, f.input); assert.equal(prepared.can_apply, true);
+    assertStandardPrCorrectionPlan(prepared.plan);
+    assert.throws(() => assertStandardPrCorrectionPlan({ ...prepared.plan, source_sha256: H }));
+    assert.deepEqual(rows().map(row => row.sha256), bytes); assert.equal(f.artifacts.ownerPending(), false);
+    await assert.rejects(f.port.apply(f.instance, prepared, { write: true, expectPlan: H, assertAuthorized() {} }));
+    const forged = structuredClone(prepared); forged.plan.changes[0].text_chunks.push('\nUnreviewed data\n');
+    forged.plan.changes[0].after_sha256 = artifactContentHash(forged.plan.changes[0].text_chunks.join(''));
+    forged.plan_sha256 = shadowHash(forged.plan);
+    await assert.rejects(f.port.apply(f.instance, forged, { write: true, expectPlan: forged.plan_sha256, assertAuthorized() {} }), { code: 'STANDARD_PR_CORRECTION_PREVIEW_CHANGED' });
+    assert.deepEqual(rows().map(row => row.sha256), bytes);
+  });
+  await test('lost external freshness refuses before any canonical transition', async () => {
+    f.state.externalChanged = true;
+    const result = await f.port.apply(f.instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() {} });
+    assert.equal(result.outcome, 'blocked'); assert.deepEqual(result.facts, {}); assert.equal(f.artifacts.ownerPending(), false);
+    assert.deepEqual(rows().map(row => row.sha256), bytes); f.state.externalChanged = false;
+  });
+  await test('canonical reopening preserves closure bodies, leaves no cycle and grants no product admission', async () => {
+    const result = await f.port.apply(f.instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() {} });
+    assert.equal(result.outcome, 'completed', JSON.stringify(result)); assert.equal(result.effect_status, 'confirmed');
+    assertStandardOperationOutput(result);
+    assert.throws(() => assertStandardOperationOutput({ ...result, effect_status: 'no_effect' }));
+    assert.deepEqual(result.facts, { session_pr_correction_context_open: true, session_pr_correction_cycle_required: true });
+    const session = rows()[0].content;
+    assert.match(session, /^state: OPEN$/m); assert.match(session, /^session_closure_status: correction_pending$/m);
+    assert.match(session, /"prior":"closure report retained verbatim"/); assert.match(session, /"prior":"completion retained verbatim"/);
+    assert.ok(!/^## Process session closure\s*$/m.test(session)); assert.match(rows()[1].content, /^active_cycle: none$/m);
+    assert.equal(git(f.root, 'rev-parse', 'HEAD'), f.head); assert.equal(f.artifacts.ownerPending(), false);
+    for (const row of result.observations.postimages) { assert.equal(f.artifacts.read(row.path).sha256, row.sha256); assert.equal(f.artifacts.metadataHash(row.path), row.metadata_sha256); }
+    const native = await preWriteAdmit({ targetRoot: f.root, skill: 'start-session', nativeRequest: { tool_name: 'apply_patch', cwd: f.root,
+      tool_input: { command: '*** Begin Patch\n*** Add File: app.mjs\n+export const value = 2;\n*** End Patch' } } });
+    assert.equal(native.write_decision.outcome, 'deny');
+    assert.ok(native.write_decision.reasons.some(row => ['ACTIVE_CYCLE_REQUIRED', 'PHASE_EXCLUDES_IMPLEMENTATION'].includes(row.code)));
+    assert.equal(fs.existsSync(path.join(f.root, 'app.mjs')), false);
+    if (mode === 'db-only') assert.deepEqual(fs.readFileSync(path.join(f.root, 'docs/audit/CURRENT-STATE.md')), product);
+    await assert.rejects(f.port.prepare(f.instance, f.input));
+  });
+  await test('renderer refuses no correction, an already active owner and a broken closure history', () => {
+    assert.throws(() => renderPrCorrectionReopen({ source: { ...f.source, corrections: [] }, documents: original, preparedAt: Date.now() }));
+    assert.throws(() => renderPrCorrectionReopen({ source: f.source, documents: rows(), preparedAt: Date.now() }));
+    const broken = structuredClone(original); broken[0].content = broken[0].content.replace('## Process session closure completion', '## Missing completion');
+    broken[0].sha256 = artifactContentHash(broken[0].content);
+    assert.throws(() => renderPrCorrectionReopen({ source: f.source, documents: broken, preparedAt: Date.now() }), { code: 'STANDARD_PR_CORRECTION_CLOSURE_HISTORY_REQUIRED' });
+  });
+  if (mode === 'files') await test('reopened snapshot cannot be hidden in the ordinary session checkpoint or bypass new-cycle admission', async () => {
+    const checkpoint = createLocalWorkflowGitCheckpoint({ targetRoot: f.root }), before = checkpoint.inspect();
+    assert.ok(before.changes.some(row => row.path === 'docs/audit/snapshots/context-snapshot.md'));
+    const ordinary = new Set(['docs/audit/CURRENT-STATE.md', 'docs/audit/RUNTIME-STATE.md', 'docs/audit/sessions/S001.md']);
+    const plan = { operation_id: 'op_' + '2'.repeat(40), plan_sha256: H, prepared_at_ms: Date.now(), observed: before,
+      files: before.changes.filter(row => ordinary.has(row.path)).map(row => ({ path: row.path,
+        sha256: f.artifacts.read(row.path.slice('docs/audit/'.length), { required: true }).sha256 })) };
+    await assert.rejects(checkpoint.commit(plan, { assertAuthorized() {} }), { code: 'WORKFLOW_GIT_FOREIGN_CHANGES', effect_status: 'no_effect' });
+    const admitted = await f.ops.admitCycle();
+    assert.equal(admitted.outcome, 'blocked', JSON.stringify(admitted)); assert.deepEqual(admitted.facts, {});
+    assert.equal(git(f.root, 'rev-parse', 'HEAD'), f.head);
+    assert.deepEqual(checkpoint.inspect().changes, before.changes);
+    assert.match(f.artifacts.read('CURRENT-STATE.md', { required: true }).content, /^active_cycle: none$/m);
+  });
+  if (mode === 'files') await test('authority lost after the first CAS retains unknown state and owner without retry', async () => {
+    const partial = await fixture('files'), p = await partial.port.prepare(partial.instance, partial.input); let grants = 0;
+    const result = await partial.port.apply(partial.instance, p, { write: true, expectPlan: p.plan_sha256,
+      assertAuthorized() { if (++grants >= 4) throw Error('grant lost'); } });
+    assert.equal(result.outcome, 'reconciliation_required'); assert.equal(result.effect_status, 'unknown'); assert.deepEqual(result.facts, {});
+    assert.deepEqual(result.observations.committed.map(row => row.path), [partial.names[0]]);
+    assert.equal(partial.artifacts.ownerPending(), true); assert.equal((await partial.port.prepare(partial.instance, partial.input)).can_apply, false);
+  });
+  if (mode === 'files') await test('reopening with three postimages and lost permission is observable without repeating writes', async () => {
+    const stopped = await fixture('files');
+    const exclusion = '/docs/audit/workflows/dispatch-records/';
+    const scaffold = fs.readFileSync(new URL('../../scaffold/root/.gitignore.append', import.meta.url), 'utf8');
+    assert.ok(scaffold.split(/\r?\n/).includes(exclusion));
+    fs.appendFileSync(path.join(stopped.root, '.git/info/exclude'), '\n' + exclusion + '\n');
+    assert.equal(git(stopped.root, 'check-ignore', '--', exclusion.slice(1) + op + '.json'), exclusion.slice(1) + op + '.json');
+    const observer = stopped.port;
+    const plan = await observer.prepare(stopped.instance, stopped.input);
+    const control = fs.mkdtempSync(path.join(temporary, 'aidn-reopen-fixture-control-'));
+    const fixtureFile = path.join(control, 'reopen-observer-fixture.json');
+    let record;
+    try {
+      fs.writeFileSync(fixtureFile, JSON.stringify({ root: stopped.root, plan, instance: stopped.instance }), { flag: 'wx' });
+      assert.equal(git(stopped.root, 'status', '--porcelain'), '');
+      record = JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--post-effect-grant-worker', fixtureFile],
+        { encoding: 'utf8', timeout: 180000, windowsHide: true, maxBuffer: 1048576 }));
+    } finally {
+      if (fs.existsSync(fixtureFile)) fs.unlinkSync(fixtureFile);
+      fs.rmdirSync(control);
+    }
+    const result = record.results[0].output;
+    assert.equal(result.effect_status, 'unknown');
+    assert.equal(result.observations.reason_code, 'FIXTURE_POST_EFFECT_GRANT_LOST');
+    assert.equal(result.observations.committed.length, 3);
+    const file = name => path.join(stopped.root, 'docs/audit', name);
+    const witness = () => stopped.names.map(name => fs.readFileSync(file(name)));
+    const before = witness();
+    const disposition = reopenDisposition(stopped.root, stopped.artifacts);
+    const owner = disposition.observeInterruptedReopen(record);
+    const assertOwner = () => assert.deepEqual(disposition.observeInterruptedReopen(record), owner);
+    const observe = (output = result, options = {}) => observer.observeInterrupted(stopped.instance, plan, output, { assertOwner, ...options });
+    await assert.rejects(observe({ ...result, outcome: 'completed', effect_status: 'confirmed' }),
+      { code: 'STANDARD_PR_CORRECTION_INTERRUPTED_RESULT_REQUIRED' });
+    await assert.rejects(observe({ ...result, observations: { ...result.observations, committed: result.observations.committed.slice(0, 2) } }),
+      { code: 'STANDARD_PR_CORRECTION_POSTIMAGES_INCOMPLETE' });
+    await assert.rejects(observe(result, { assertOwner() { throw Object.assign(Error('owner differs'), { code: 'FIXTURE_OWNER_CHANGED' }); } }),
+      { code: 'FIXTURE_OWNER_CHANGED' });
+    const foreign = file(stopped.names[1]);
+    try {
+      fs.appendFileSync(foreign, '\nForeign write\n');
+      await assert.rejects(observe(), { code: 'PROCESS_INTERRUPTED_REOPEN_CONTEXT_CHANGED' });
+      await assert.rejects(observe(result, { assertOwner() {} }), { code: 'STANDARD_PR_CORRECTION_DOCUMENT_CHANGED' });
+    } finally { fs.writeFileSync(foreign, before[1]); }
+    stopped.state.externalChanged = true;
+    await assert.rejects(observe(), { code: 'STANDARD_PR_CORRECTION_PROVIDER_CHANGED' });
+    stopped.state.externalChanged = false;
+    const observed = await observe();
+    assert.deepEqual(observed.postimages, result.observations.committed);
+    assert.equal(observed.plan_sha256, plan.plan_sha256);
+    assert.deepEqual(witness(), before);
+    assert.equal(stopped.artifacts.ownerPending(), true);
+    // Synthetic legacy output shape, not a replacement for the signed current
+    // grant-loss record and not proof of historical-instance recovery.
+    const originalResult = JSON.stringify(record.results[0]);
+    const legacy = await observe({ ...result, observations: { ...result.observations, reason_code: 'STANDARD_PLAN_EXPIRED' } });
+    assert.deepEqual(legacy.postimages, result.observations.committed);
+    assert.equal(legacy.confirmation.effect_status, 'confirmed');
+    assert.equal(JSON.stringify(record.results[0]), originalResult);
+    assert.deepEqual(witness(), before); assert.equal(stopped.artifacts.ownerPending(), true);
+    const lock = path.join(stopped.root, '.aidn/runtime/standard-workflow/effects.lock');
+    const originalLock = fs.readFileSync(lock);
+    const dispatchPath = path.join(stopped.root, 'docs/audit/workflows/dispatch-records', op + '.json');
+    const originalDispatch = fs.readFileSync(dispatchPath), originalReceipt = shadowHash(record.results[0]);
+    const reservations = fs.mkdtempSync(path.join(temporary, 'aidn-reopen-retirement-'));
+    const files = ['after-transfer.json', 'after-retirement.json', 'retry.json'].map(name => path.join(reservations, name));
+    const invoke = (reservation, predecessor, retire) => {
+      const input = path.join(reservations, 'input-' + path.basename(reservation));
+      fs.writeFileSync(input, JSON.stringify({ root: stopped.root, record, lockSha256: owner.lock_sha256, reservation, predecessor, retire }), { flag: 'wx' });
+      return JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--retirement-owner-worker', input],
+        { encoding: 'utf8', timeout: 30000, windowsHide: true, maxBuffer: 1048576 }));
+    };
+    const transferred = invoke(files[0], null, false);
+    assert.equal(transferred.retired, false);
+    assert.deepEqual(fs.readFileSync(lock), originalLock);
+    assert.equal(stopped.artifacts.resourceFence().read().content_sha256, transferred.fence_sha256);
+    const archived = invoke(files[1], files[0], true);
+    assert.notEqual(archived.pid, transferred.pid);
+    assert.equal(archived.retired, true);
+    assert.equal(fs.existsSync(lock), false);
+    assert.equal(stopped.artifacts.resourceFence().read().content_sha256, archived.fence_sha256);
+    assert.equal(stopped.artifacts.ownerPending(), true);
+    const retry = acquireRetirement(stopped.root, record, owner.lock_sha256, files[2], files[1]);
+    const archivedWitness = inspectInterruptedReopenLock(retry.args.targetRoot, op, retry.args.intention, retry.args.originalLease, { allowRetired: true });
+    assert.equal(archivedWitness.retired, true);
+    const relative = path.relative(stopped.root, archivedWitness.path).replaceAll('\\', '/');
+    assert.equal(git(stopped.root, 'check-ignore', '--', relative), relative);
+    assert.deepEqual(fs.readFileSync(archivedWitness.path), originalLock);
+    assert.throws(() => retireInterruptedReopenLock({ ...retry.args, write: false }), { code: 'PROCESS_INTERRUPTED_REOPEN_RETIREMENT_REQUIRED' });
+    assert.equal(retireInterruptedReopenLock(retry.args).retired, true);
+    fs.writeFileSync(lock, originalLock, { flag: 'wx' });
+    assert.throws(() => retireInterruptedReopenLock(retry.args), { code: 'PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED' });
+    fs.unlinkSync(lock);
+    assert.throws(() => inspectInterruptedReopenLock(retry.args.targetRoot, op, retry.args.intention, retry.args.originalLease),
+      { code: 'PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED' });
+    const parked = archivedWitness.path + '.fixture-parked';
+    fs.renameSync(archivedWitness.path, parked);
+    fs.writeFileSync(lock, originalLock, { flag: 'wx' });
+    try {
+      assert.throws(() => inspectInterruptedReopenLock(retry.args.targetRoot, op, retry.args.intention, retry.args.originalLease),
+        { code: 'PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED' });
+    } finally {
+      fs.unlinkSync(lock);
+      fs.renameSync(parked, archivedWitness.path);
+    }
+    retry.revoke();
+    assert.throws(() => retireInterruptedReopenLock(retry.args), { code: 'FIXTURE_RETIREMENT_DENIED' });
+    retry.fence.release(retry.args.dispositionLease);
+    assert.equal(stopped.artifacts.ownerPending(), false);
+    assert.deepEqual(witness(), before);
+    assert.deepEqual(fs.readFileSync(dispatchPath), originalDispatch);
+    assert.equal(shadowHash(record.results[0]), originalReceipt);
+    console.log(JSON.stringify({ retirement: 'PASS', transfer_worker_pid: transferred.pid, archive_worker_pid: archived.pid,
+      archive_sha256: archivedWitness.sha256, original_dispatch_preserved: true, original_result: 'unknown', application_consent: 'FIXTURE',
+      application_receipt: 'NOT_RUN', retained_fixture_intents: reservations }));
+  });
+  if (mode === 'files') await test('cold disposition preserves UNKNOWN and accepts one confirmation under a current separate grant', verifyReopenDisposition);
+  console.log(JSON.stringify({ status: 'PASS', checks, mode, canonical_cas_projection_git_admission: 'ACTUAL', accepted_triage_and_external_source: 'DOUBLED',
+    source_factory: 'SEPARATE_SUITE', host_ir_binding: 'NOT_EXERCISED_BY_THIS_SUITE', native_corrections: 'NOT_RUN', full_standard: false, installed_archive: 'NOT_RUN' }));
+} finally {
+  for (const root of owned.reverse()) { const real = fs.realpathSync(root); assert.equal(path.dirname(real), temporary); assert.ok(path.basename(real).startsWith('aidn-standard-fresh-')); fs.rmSync(real, { recursive: true, force: true }); }
+  console.log(JSON.stringify({ fixture_cleanup: 'completed', independent_process_inventory: 'NOT_CAPTURED' }));
+}

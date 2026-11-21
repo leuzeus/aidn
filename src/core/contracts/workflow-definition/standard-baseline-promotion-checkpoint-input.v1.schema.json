@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-baseline-promotion-checkpoint-input.v1",
+  "x-aidn-contract-version": "standard-baseline-promotion-checkpoint-input.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "record_operation_id",
+    "closure_operation_id",
+    "terminal_checkpoint_operation_id"
+  ],
+  "properties": {
+    "record_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "closure_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "terminal_checkpoint_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    }
+  }
+}

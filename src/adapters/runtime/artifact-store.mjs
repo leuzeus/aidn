@@ -1,7 +1,8 @@
+import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifact-parser-lib.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { assertArtifactCompareSwap } from "../../core/workflow/artifact-compare-swap.mjs";
+import { assertArtifactCompareDelete, assertArtifactCompareDeleteRequest, assertArtifactCompareSwap } from "../../core/workflow/artifact-compare-swap.mjs";
 import { prepareLockedArtifactReplacement } from '../../lib/workflow/artifact-replacement-lib.mjs';
 import {
   cleanupOrphanArtifactBlobs,
@@ -218,6 +219,9 @@ function createMissingReadOnlyArtifactStore(sqliteFile) {
     upsertArtifact() {
       throw new Error("Artifact store is read-only");
     },
+    compareAndDeleteArtifact() {
+      throw new Error("Artifact store is read-only");
+    },
     getArtifact() {
       return null;
     },
@@ -330,10 +334,32 @@ export function createArtifactStore(options = {}) {
       updated_at = excluded.updated_at;
   `);
 
+  const sessionFields = ["branch_name", "state", "owner", "parent_session", "branch_kind", "cycle_branch", "intermediate_branch",
+    "integration_target_cycle", "carry_over_pending", "started_at", "ended_at", "source_artifact_path", "source_confidence", "source_mode", "updated_at"];
+  const upsertSessionStmt = readOnly ? null : db.prepare(`INSERT INTO sessions (session_id, ${sessionFields.join(", ")})
+    VALUES (${Array(sessionFields.length + 1).fill("?").join(", ")}) ON CONFLICT(session_id) DO UPDATE SET
+    ${sessionFields.map(field => `${field} = excluded.${field}`).join(", ")}`);
+
   const store = {
     sqlite_file: sqliteFile,
     read_only: readOnly,
     exists: true,
+    compareAndDeleteArtifact(request) {
+      if (readOnly) throw new Error('Artifact store is read-only');
+      assertArtifactCompareDeleteRequest(request);
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        assertArtifactCompareDelete(request, store.getArtifact(request?.path));
+        if (db.prepare('SELECT 1 FROM runtime_heads WHERE artifact_path=? OR artifact_id IN (SELECT artifact_id FROM artifacts WHERE path=?) LIMIT 1').get(request.path, request.path))
+          throw new Error('ARTIFACT_DELETE_PROTECTED');
+        db.prepare('DELETE FROM artifact_blobs WHERE artifact_id IN (SELECT artifact_id FROM artifacts WHERE path=?)').run(request.path);
+        const removed = db.prepare('DELETE FROM artifacts WHERE path=?').run(request.path);
+        if (Number(removed.changes) !== 1) throw new Error('ARTIFACT_REVISION_CONFLICT');
+        db.exec('COMMIT');
+        return { path: request.path, deleted: true, sha256: request.expectedSha256,
+          metadata_sha256: request.expectedMetadataSha256 };
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    },
     replaceArtifact(request) {
       if (readOnly) throw new Error('Artifact store is read-only');
       db.exec('BEGIN IMMEDIATE');
@@ -362,6 +388,8 @@ export function createArtifactStore(options = {}) {
       if (!artifact.path) {
         throw new Error("Artifact path is required");
       }
+      const sessionId = artifact.path.match(/^sessions\/(S\d+)(?:[-_.][^/]*)?\.md$/i)?.[1]?.toUpperCase();
+      if (sessionId && artifact.session_id && artifact.session_id !== sessionId) throw new Error("ARTIFACT_IDENTITY_CONFLICT");
       upsertStmt.run(
         artifact.path,
         artifact.kind,
@@ -402,6 +430,17 @@ export function createArtifactStore(options = {}) {
           meta.continuity_decision_by ?? null,
           artifact.updated_at,
         );
+      }
+      if (sessionId && artifact.content_format === "utf8" && typeof artifact.content === "string") {
+        // Match the existing PostgreSQL session projection in the same CAS
+        // transaction. Admission remains read-only and never repairs old rows.
+        const fields = parseFrontMatterLike(artifact.content);
+        const context = analyzeStructuredArtifact(artifact.content, { classification: { kind: "session" } }).derived_session_context;
+        const values = { branch_name: context.session_branch || fields.branch || null, state: fields.state || fields.mode || context.mode || null, owner: sessionId,
+          ...Object.fromEntries(["parent_session", "branch_kind", "cycle_branch", "intermediate_branch", "carry_over_pending", "started_at", "ended_at"].map(key => [key, fields[key] || null])),
+          integration_target_cycle: context.primary_focus_cycle || context.integration_target_cycle || null,
+          source_artifact_path: artifact.path, source_confidence: 1, source_mode: "explicit", updated_at: artifact.updated_at };
+        upsertSessionStmt.run(sessionId, ...sessionFields.map(field => values[field] ?? null));
       }
       return mapArtifactRow(getStmt.get(artifact.path));
     },

@@ -19,7 +19,7 @@ function parseArgs(argv) {
     indexFile: ".aidn/runtime/index/workflow-index.sqlite",
     indexBackend: "auto",
     thresholdFiles: 3,
-    thresholdMinutes: 45,
+    thresholdMinutes: null,
     mode: "COMMITTING",
     runId: "",
     reloadDecision: "",
@@ -67,6 +67,7 @@ function parseArgs(argv) {
         throw new Error("--threshold-minutes must be an integer");
       }
       args.thresholdMinutes = Number(raw);
+      if (!Number.isSafeInteger(args.thresholdMinutes)) throw new Error("--threshold-minutes must be a safe nonnegative integer");
     } else if (token === "--mode") {
       args.mode = String(argv[i + 1] ?? "").toUpperCase();
       i += 1;

@@ -1,0 +1,686 @@
+{
+  "format": "aidn-focused-component-qualification.v1",
+  "observed_utc": "2026-11-04T17:47:37.388530+00:00",
+  "scope": "Post-await canonical metadata fences; source-only ordinary correction work/cycle-closure connection; bounded structural capacity.",
+  "rows": [
+    {
+      "group": "initializer_metadata",
+      "source_commit": "5640d1f47ac167ececfd6c0c8e61eeab17452d51",
+      "script": "tools/perf/verify-standard-pr-correction-cycle-ports-fixtures.mjs",
+      "arguments": [
+        "--mode=db-only",
+        "--late-metadata=authorization"
+      ],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2137,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "late_metadata_boundary": "authorization",
+          "reached": true,
+          "content_sha256": "3c6cc18ccbd71dfcaa0486af45493e894c348fa9444b46dbe06b117517a3898c",
+          "before_metadata_sha256": "c31dbbfcf3afbb9719bc4c7be69e704a2876fcd2f8c993d316bee12e87bd9dd9",
+          "after_metadata_sha256": "27a36efbcded994d1c41b84d81154b57665d0e2120c269671f4216d5b28a8e0a",
+          "outcome": "reconciliation_required",
+          "effect_status": "unknown",
+          "owner_retained": true,
+          "retry": "NOT_RUN"
+        },
+        {
+          "status": "PASS",
+          "checks": 5,
+          "mode": "db-only",
+          "canonical_cas_git": "ACTUAL",
+          "accepted_source_provider_human_authority": "FIXTURE_DOUBLES",
+          "production_dispatcher": "NOT_RUN",
+          "ordinary_plan_dor_implementation": "NOT_RUN",
+          "genuine_human": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN",
+          "full_standard_workflow": false
+        }
+      ]
+    },
+    {
+      "group": "initializer_metadata",
+      "source_commit": "5640d1f47ac167ececfd6c0c8e61eeab17452d51",
+      "script": "tools/perf/verify-standard-pr-correction-cycle-ports-fixtures.mjs",
+      "arguments": [
+        "--mode=db-only"
+      ],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2137,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "status": "PASS",
+          "checks": 5,
+          "mode": "db-only",
+          "canonical_cas_git": "ACTUAL",
+          "accepted_source_provider_human_authority": "FIXTURE_DOUBLES",
+          "production_dispatcher": "NOT_RUN",
+          "ordinary_plan_dor_implementation": "NOT_RUN",
+          "genuine_human": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN",
+          "full_standard_workflow": false
+        }
+      ]
+    },
+    {
+      "group": "initializer_metadata",
+      "source_commit": "5640d1f47ac167ececfd6c0c8e61eeab17452d51",
+      "script": "tools/perf/verify-standard-pr-correction-cycle-ports-fixtures.mjs",
+      "arguments": [
+        "--mode=db-only",
+        "--late-metadata=provider"
+      ],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2137,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "late_metadata_boundary": "provider",
+          "reached": true,
+          "content_sha256": "a7c938adddb6240b3e3fd0b57fe5e4e195127ed0f799034e337a23d354dd6f65",
+          "before_metadata_sha256": "6696377eb03350172e1c9229f3d6917357111d9ddf8f72bbec89cf7203f2e093",
+          "after_metadata_sha256": "be27aac1b3eb6c0b32ca03360405d83ffc189f11f5dcece5d628a4a366465ca0",
+          "outcome": "reconciliation_required",
+          "effect_status": "unknown",
+          "owner_retained": true,
+          "retry": "NOT_RUN"
+        },
+        {
+          "status": "PASS",
+          "checks": 5,
+          "mode": "db-only",
+          "canonical_cas_git": "ACTUAL",
+          "accepted_source_provider_human_authority": "FIXTURE_DOUBLES",
+          "production_dispatcher": "NOT_RUN",
+          "ordinary_plan_dor_implementation": "NOT_RUN",
+          "genuine_human": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN",
+          "full_standard_workflow": false
+        }
+      ]
+    },
+    {
+      "group": "initializer_metadata",
+      "source_commit": "5640d1f47ac167ececfd6c0c8e61eeab17452d51",
+      "script": "tools/perf/verify-standard-pr-correction-cycle-ports-fixtures.mjs",
+      "arguments": [
+        "--mode=dual",
+        "--late-metadata=authorization"
+      ],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2137,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "late_metadata_boundary": "authorization",
+          "reached": true,
+          "content_sha256": "81d082cd7b6def62fa4354558645070ad5664b82fcb8ceeaa3b71606da3b7473",
+          "before_metadata_sha256": "b230c270e647a60a93472150995c1fdbc49fbb16511ca41b9c4bc86608066b9f",
+          "after_metadata_sha256": "c6cca15ba6eca90e83550d24364aa69fcaada9fe07dfdbb54ca240654a18987e",
+          "outcome": "reconciliation_required",
+          "effect_status": "unknown",
+          "owner_retained": true,
+          "retry": "NOT_RUN"
+        },
+        {
+          "status": "PASS",
+          "checks": 5,
+          "mode": "dual",
+          "canonical_cas_git": "ACTUAL",
+          "accepted_source_provider_human_authority": "FIXTURE_DOUBLES",
+          "production_dispatcher": "NOT_RUN",
+          "ordinary_plan_dor_implementation": "NOT_RUN",
+          "genuine_human": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN",
+          "full_standard_workflow": false
+        }
+      ]
+    },
+    {
+      "group": "initializer_metadata",
+      "source_commit": "5640d1f47ac167ececfd6c0c8e61eeab17452d51",
+      "script": "tools/perf/verify-standard-pr-correction-cycle-ports-fixtures.mjs",
+      "arguments": [
+        "--mode=dual"
+      ],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2137,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "status": "PASS",
+          "checks": 5,
+          "mode": "dual",
+          "canonical_cas_git": "ACTUAL",
+          "accepted_source_provider_human_authority": "FIXTURE_DOUBLES",
+          "production_dispatcher": "NOT_RUN",
+          "ordinary_plan_dor_implementation": "NOT_RUN",
+          "genuine_human": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN",
+          "full_standard_workflow": false
+        }
+      ]
+    },
+    {
+      "group": "initializer_metadata",
+      "source_commit": "5640d1f47ac167ececfd6c0c8e61eeab17452d51",
+      "script": "tools/perf/verify-standard-pr-correction-cycle-ports-fixtures.mjs",
+      "arguments": [
+        "--mode=dual",
+        "--late-metadata=provider"
+      ],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2137,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "late_metadata_boundary": "provider",
+          "reached": true,
+          "content_sha256": "2e08939f0852e45520d1486f361815b600e7a8f4a60f4cf5dc99965a924961f8",
+          "before_metadata_sha256": "cf9c06ba2c490b2403c90696493cbc0262caf367cad18f37ceef71cba83caf70",
+          "after_metadata_sha256": "500c6da34528c2d9fd9cefbb7f785e0b74ee9625e027587479994108461247d2",
+          "outcome": "reconciliation_required",
+          "effect_status": "unknown",
+          "owner_retained": true,
+          "retry": "NOT_RUN"
+        },
+        {
+          "status": "PASS",
+          "checks": 5,
+          "mode": "dual",
+          "canonical_cas_git": "ACTUAL",
+          "accepted_source_provider_human_authority": "FIXTURE_DOUBLES",
+          "production_dispatcher": "NOT_RUN",
+          "ordinary_plan_dor_implementation": "NOT_RUN",
+          "genuine_human": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN",
+          "full_standard_workflow": false
+        }
+      ]
+    },
+    {
+      "group": "initializer_metadata",
+      "source_commit": "5640d1f47ac167ececfd6c0c8e61eeab17452d51",
+      "script": "tools/perf/verify-standard-pr-correction-cycle-ports-fixtures.mjs",
+      "arguments": [
+        "--mode=files"
+      ],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2137,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "status": "PASS",
+          "checks": 5,
+          "mode": "files",
+          "canonical_cas_git": "ACTUAL",
+          "accepted_source_provider_human_authority": "FIXTURE_DOUBLES",
+          "production_dispatcher": "NOT_RUN",
+          "ordinary_plan_dor_implementation": "NOT_RUN",
+          "genuine_human": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN",
+          "full_standard_workflow": false
+        }
+      ]
+    },
+    {
+      "group": "correction_work_source",
+      "source_commit": "078c6c4a1f6a8c2880c32e6c1aa5781c126fadc9",
+      "script": "tools/perf/verify-process-model-capacity-fixtures.mjs",
+      "arguments": [],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2138,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "status": "PASS",
+          "checks": 2,
+          "evidence": "bounded-structural-model-capacity",
+          "native_calls": 0
+        }
+      ]
+    },
+    {
+      "group": "correction_work_source",
+      "source_commit": "078c6c4a1f6a8c2880c32e6c1aa5781c126fadc9",
+      "script": "tools/perf/verify-standard-workflow-composition-fixtures.mjs",
+      "arguments": [],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2138,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "status": "PASS",
+          "checks": 30,
+          "scope": "offline-source-composition",
+          "application_ports": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN",
+          "full_standard_workflow": "NOT_COMPLETE"
+        }
+      ]
+    },
+    {
+      "group": "correction_work_source",
+      "source_commit": "078c6c4a1f6a8c2880c32e6c1aa5781c126fadc9",
+      "script": "tools/perf/verify-standard-process-binding-input-fixtures.mjs",
+      "arguments": [],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2138,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "status": "PASS",
+          "checks": 3,
+          "published_input_boundaries": 64,
+          "reducer_and_input_resolver": "ACTUAL",
+          "prior_operation_receipts": "SYNTHETIC_PURE_FIXTURE",
+          "service_git_provider": "NOT_CONSTRUCTED",
+          "historical_read_repair": false,
+          "full_standard_composition": "NOT_RUN"
+        }
+      ]
+    },
+    {
+      "group": "correction_work_source",
+      "source_commit": "078c6c4a1f6a8c2880c32e6c1aa5781c126fadc9",
+      "script": "tools/perf/verify-standard-workflow-model-fixtures.mjs",
+      "arguments": [],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2138,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "status": "PASS",
+          "checks": 22,
+          "evidence": "published-startup-component-and-authority-validation",
+          "full_standard_workflow": "NOT_YET_DELIVERED",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN"
+        }
+      ]
+    },
+    {
+      "group": "correction_work_source",
+      "source_commit": "078c6c4a1f6a8c2880c32e6c1aa5781c126fadc9",
+      "script": "tools/perf/verify-process-operation-fixtures.mjs",
+      "arguments": [],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2138,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "status": "PASS",
+          "checks": 6,
+          "proof_class": "pure-reducer",
+          "native_calls": 0,
+          "public_effects": 0
+        },
+        {
+          "status": "PASS",
+          "checks": 2,
+          "evidence": "bounded-structural-model-capacity",
+          "native_calls": 0
+        },
+        {
+          "status": "PASS",
+          "checks": 27,
+          "proof": "offline-contracts-reducer-service",
+          "native_calls": 0,
+          "standard_workflow_integration": "NOT_YET_DELIVERED"
+        }
+      ]
+    },
+    {
+      "group": "final_context_and_regression",
+      "source_commit": "72c64de964d5a3b3cb21e3f6d16ae1e50090f2d9",
+      "script": "tools/perf/verify-standard-cycle-context-metadata-fixtures.mjs",
+      "arguments": [
+        "--mode=files"
+      ],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2139,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "status": "PASS",
+          "mode": "files",
+          "reached_post_cas_wait": true,
+          "output": {
+            "contract_version": "standard-cycle-output.v1",
+            "operation_ref": "cycle_context_refresh",
+            "outcome": "completed",
+            "effect_status": "confirmed",
+            "observations": {
+              "digest_sha256": "0582b28be966b88cb33ab3059575d8ff87ac657359ee801f8986122ad66bb6b8",
+              "consistency": {
+                "ts": "2026-11-04T17:45:28.814Z",
+                "target_root": "C:\\Users\\leuz9\\AppData\\Local\\Temp\\aidn-standard-fresh-eBOVWI",
+                "audit_root": "C:\\Users\\leuz9\\AppData\\Local\\Temp\\aidn-standard-fresh-eBOVWI\\docs\\audit",
+                "missing_files": [],
+                "current_state": {
+                  "active_session": "S001",
+                  "session_branch": "S001-correction",
+                  "branch_kind": "session",
+                  "mode": "COMMITTING",
+                  "active_cycle": "none",
+                  "cycle_branch": "none",
+                  "dor_state": "unknown",
+                  "first_plan_step": "unknown"
+                },
+                "snapshot": {
+                  "active_cycles": [],
+                  "active_session": "none",
+                  "active_cycle": "none"
+                },
+                "checks": {
+                  "updated_at_parseable": {
+                    "pass": true,
+                    "details": "2026-11-04T17:45:16.200Z"
+                  },
+                  "session_branch_consistent": {
+                    "pass": true,
+                    "details": "active_session=S001 session_branch=S001-correction"
+                  },
+                  "cycle_branch_consistent": {
+                    "pass": true,
+                    "details": "active_cycle=none cycle_branch=none"
+                  },
+                  "branch_kind_known_when_active": {
+                    "pass": true,
+                    "details": "branch_kind=session"
+                  },
+                  "committing_requires_cycle": {
+                    "pass": false,
+                    "details": "mode=COMMITTING active_cycle=none"
+                  },
+                  "committing_requires_dor": {
+                    "pass": false,
+                    "details": "mode=COMMITTING dor_state=unknown"
+                  },
+                  "committing_requires_first_plan_step": {
+                    "pass": false,
+                    "details": "mode=COMMITTING first_plan_step=unknown"
+                  },
+                  "active_session_file_exists": {
+                    "pass": true,
+                    "details": "C:\\Users\\leuz9\\AppData\\Local\\Temp\\aidn-standard-fresh-eBOVWI\\docs\\audit\\sessions\\S001.md"
+                  },
+                  "session_branch_matches_session_file": {
+                    "pass": true,
+                    "details": "session.session_branch=S001-correction current_state.session_branch=S001-correction"
+                  },
+                  "branch_kind_matches_session_file": {
+                    "pass": true,
+                    "details": "session.branch_kind=session current_state.branch_kind=session"
+                  },
+                  "mode_matches_session_file": {
+                    "pass": true,
+                    "details": "session.mode=COMMITTING current_state.mode=COMMITTING"
+                  },
+                  "cycle_branch_matches_session_file": {
+                    "pass": true,
+                    "details": "session.cycle_branch=none current_state.cycle_branch=none"
+                  },
+                  "active_cycle_matches_session_tracking": {
+                    "pass": true,
+                    "details": "session.integration_target_cycle=none session.integration_target_cycles=none session.attached_cycles=none current_state.active_cycle=none"
+                  },
+                  "active_cycle_status_exists": {
+                    "pass": true,
+                    "details": "cycle none not found"
+                  },
+                  "cycle_branch_matches_status": {
+                    "pass": true,
+                    "details": "status.branch_name=missing current_state.cycle_branch=none"
+                  },
+                  "dor_state_matches_status": {
+                    "pass": true,
+                    "details": "status.dor_state=missing current_state.dor_state=unknown"
+                  },
+                  "session_owner_matches_status": {
+                    "pass": true,
+                    "details": "status.session_owner=missing current_state.active_session=S001"
+                  },
+                  "updated_at_not_older_than_status": {
+                    "pass": true,
+                    "details": "current_state.updated_at=2026-11-04T17:45:16.200Z status.last_updated=missing"
+                  },
+                  "updated_at_not_older_than_dor_check": {
+                    "pass": true,
+                    "details": "current_state.updated_at=2026-11-04T17:45:16.200Z status.dor_last_check=missing"
+                  },
+                  "snapshot_session_aligned": {
+                    "pass": false,
+                    "details": "snapshot.active_session=none current_state.active_session=S001"
+                  },
+                  "snapshot_cycle_aligned": {
+                    "pass": true,
+                    "details": "snapshot.active_cycle=none snapshot.active_cycles=none current_state.active_cycle=none"
+                  }
+                },
+                "pass": false
+              },
+              "projection": {
+                "requested": false
+              },
+              "repair_layer_status": "unknown",
+              "current_state_freshness": "unknown"
+            },
+            "facts": {
+              "cycle_context_refreshed": true
+            },
+            "evidence_refs": [
+              {
+                "ref": "docs/audit/RUNTIME-STATE.md",
+                "sha256": "9397f8dd2da7de3649a41ee2c5e73b6a3e7329d84520c70d12c592330a42a473"
+              }
+            ]
+          },
+          "actual_canonical_cas": true,
+          "retry": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN"
+        }
+      ]
+    },
+    {
+      "group": "final_context_and_regression",
+      "source_commit": "72c64de964d5a3b3cb21e3f6d16ae1e50090f2d9",
+      "script": "tools/perf/verify-standard-cycle-context-metadata-fixtures.mjs",
+      "arguments": [
+        "--mode=dual"
+      ],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2139,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "status": "PASS",
+          "mode": "dual",
+          "reached_post_cas_wait": true,
+          "output": {
+            "contract_version": "standard-cycle-output.v1",
+            "operation_ref": "cycle_context_refresh",
+            "outcome": "reconciliation_required",
+            "effect_status": "unknown",
+            "observations": {
+              "reason_code": "STANDARD_CYCLE_METADATA_UNCONFIRMED"
+            },
+            "facts": {},
+            "evidence_refs": []
+          },
+          "actual_canonical_cas": true,
+          "retry": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN"
+        }
+      ]
+    },
+    {
+      "group": "final_context_and_regression",
+      "source_commit": "72c64de964d5a3b3cb21e3f6d16ae1e50090f2d9",
+      "script": "tools/perf/verify-standard-cycle-context-metadata-fixtures.mjs",
+      "arguments": [
+        "--mode=db-only"
+      ],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2139,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "status": "PASS",
+          "mode": "db-only",
+          "reached_post_cas_wait": true,
+          "output": {
+            "contract_version": "standard-cycle-output.v1",
+            "operation_ref": "cycle_context_refresh",
+            "outcome": "reconciliation_required",
+            "effect_status": "unknown",
+            "observations": {
+              "reason_code": "STANDARD_CYCLE_METADATA_UNCONFIRMED"
+            },
+            "facts": {},
+            "evidence_refs": []
+          },
+          "actual_canonical_cas": true,
+          "retry": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN"
+        }
+      ]
+    },
+    {
+      "group": "final_context_and_regression",
+      "source_commit": "72c64de964d5a3b3cb21e3f6d16ae1e50090f2d9",
+      "script": "tools/perf/verify-process-model-capacity-fixtures.mjs",
+      "arguments": [],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2139,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "status": "PASS",
+          "checks": 3,
+          "evidence": "bounded-structural-model-capacity-and-complete-control-only-replay",
+          "native_calls": 0,
+          "business_journey": "NOT_RUN"
+        }
+      ]
+    },
+    {
+      "group": "final_context_and_regression",
+      "source_commit": "72c64de964d5a3b3cb21e3f6d16ae1e50090f2d9",
+      "script": "tools/perf/verify-process-operation-fixtures.mjs",
+      "arguments": [],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2139,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "status": "PASS",
+          "checks": 6,
+          "proof_class": "pure-reducer",
+          "native_calls": 0,
+          "public_effects": 0
+        },
+        {
+          "status": "PASS",
+          "checks": 3,
+          "evidence": "bounded-structural-model-capacity-and-complete-control-only-replay",
+          "native_calls": 0,
+          "business_journey": "NOT_RUN"
+        },
+        {
+          "status": "PASS",
+          "checks": 27,
+          "proof": "offline-contracts-reducer-service",
+          "native_calls": 0,
+          "standard_workflow_integration": "NOT_YET_DELIVERED"
+        }
+      ]
+    },
+    {
+      "group": "final_context_and_regression",
+      "source_commit": "72c64de964d5a3b3cb21e3f6d16ae1e50090f2d9",
+      "script": "tools/perf/verify-agentic-process-fixtures.mjs",
+      "arguments": [],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2139,
+      "source_before_after_equal": true,
+      "observed_results": [
+        {
+          "status": "PASS",
+          "checks": 52,
+          "native_execution": "NOT_RUN",
+          "message_review": "UNSUPPORTED",
+          "arbitrary_bpmn": "UNSUPPORTED"
+        }
+      ]
+    },
+    {
+      "group": "final_context_and_regression",
+      "source_commit": "72c64de964d5a3b3cb21e3f6d16ae1e50090f2d9",
+      "script": "tools/verify/verify-doc-references.mjs",
+      "arguments": [],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2139,
+      "source_before_after_equal": true,
+      "observed_results": []
+    },
+    {
+      "group": "final_context_and_regression",
+      "source_commit": "72c64de964d5a3b3cb21e3f6d16ae1e50090f2d9",
+      "script": "tools/verify/verify-release-workflow-policy.mjs",
+      "arguments": [],
+      "status": "PASS",
+      "exit_code": 0,
+      "source_files": 2139,
+      "source_before_after_equal": true,
+      "observed_results": []
+    }
+  ],
+  "terminal_metadata_archive_sha256": "030d158b8ebcdb2ad825dd771dc5140fd71108750adab7363eb193d40052f9f5",
+  "proof_limits": {
+    "initializer_and_context": "Actual CAS/Git/SQLite/source-installed fixtures. Human, accepted source and provider capabilities remain doubled.",
+    "correction_work_route": "Source composition and input resolver only. New native planning, frozen-plan/readiness/IMPLEMENTING and physical work/validation/reclosure journey NOT_RUN.",
+    "capacity": "v1 128/v2 256, first extra node refused; v2 control-only 256-node completion/cold replay/simulation; zero model calls, no business journey.",
+    "production_dispatcher_unknown_chain": "NOT_RUN",
+    "session_reclosure_history_and_causal_redelivery": "NOT_IMPLEMENTED",
+    "genuine_human_provider_native_os": "NOT_RUN",
+    "configured_postgres": "NOT_RUN",
+    "exact_installed_archive": "NOT_RUN",
+    "full_runtime_family": "NOT_RUN",
+    "governance_admission": "NOT_RUN",
+    "complete_standard_workflow": false
+  }
+}

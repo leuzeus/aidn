@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-workflow-call-result.v1",
+  "x-aidn-contract-version": "standard-workflow-call-result.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "action_kind",
+    "process_status",
+    "workflow_completed",
+    "operation_outcome",
+    "effect_status",
+    "written",
+    "native_started",
+    "details"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-workflow-call-result.v1"
+    },
+    "action_kind": {
+      "const": "call"
+    },
+    "process_status": {
+      "enum": [
+        "RUNNING",
+        "WAITING",
+        "COMPLETED",
+        "FAILED",
+        "CANCELLED"
+      ]
+    },
+    "workflow_completed": {
+      "type": "boolean"
+    },
+    "operation_outcome": {
+      "const": null
+    },
+    "effect_status": {
+      "const": null
+    },
+    "written": {
+      "type": "boolean"
+    },
+    "native_started": {
+      "const": false
+    },
+    "details": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "transition",
+        "occurrence_id",
+        "event_id",
+        "result_sha256",
+        "instance_id",
+        "model_sha256",
+        "projection"
+      ],
+      "properties": {
+        "transition": {
+          "enum": [
+            "call_entry",
+            "call_return"
+          ]
+        },
+        "occurrence_id": {
+          "type": "string",
+          "pattern": "^root(?:/[a-z0-9_-]+)*$",
+          "maxLength": 256
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^call_[0-9]+$"
+        },
+        "result_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "instance_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "model_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "projection": {
+          "enum": [
+            null,
+            "canonical",
+            "not_requested",
+            "materialized",
+            "reconciliation_required"
+          ]
+        }
+      }
+    }
+  }
+}

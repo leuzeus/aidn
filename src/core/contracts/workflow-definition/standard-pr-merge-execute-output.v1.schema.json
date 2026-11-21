@@ -1,0 +1,315 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-merge-execute-output.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-pr-merge-execute-output.v1"
+    },
+    "operation_ref": {
+      "const": "session_pr_merge_execute"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "blocked",
+        "reconciliation_required"
+      ]
+    },
+    "effect_status": {
+      "enum": [
+        "no_effect",
+        "confirmed",
+        "unknown"
+      ]
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {}
+    },
+    "observations": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reason_code"
+          ],
+          "properties": {
+            "reason_code": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "merge"
+          ],
+          "properties": {
+            "merge": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation_id",
+                "plan_sha256",
+                "consent_receipt_sha256",
+                "checks_receipt_sha256",
+                "method",
+                "confirmation",
+                "provider"
+              ],
+              "properties": {
+                "operation_id": {
+                  "type": "string",
+                  "pattern": "^op_[a-f0-9]{40}$"
+                },
+                "plan_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "consent_receipt_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "checks_receipt_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "method": {
+                  "const": "MERGE"
+                },
+                "confirmation": {
+                  "enum": [
+                    "acknowledged",
+                    "observed"
+                  ]
+                },
+                "provider": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "contract_version",
+                    "repository",
+                    "pull_request",
+                    "observed_from",
+                    "observed_until"
+                  ],
+                  "properties": {
+                    "contract_version": {
+                      "const": "github-pr-merge-observation.v2"
+                    },
+                    "repository": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "node_id",
+                        "owner",
+                        "name"
+                      ],
+                      "properties": {
+                        "node_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256
+                        },
+                        "owner": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256
+                        }
+                      }
+                    },
+                    "pull_request": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "node_id",
+                        "number",
+                        "head_repository_id",
+                        "head_ref",
+                        "head_oid",
+                        "base_ref",
+                        "observed_base_tip_oid",
+                        "state",
+                        "is_draft",
+                        "merged",
+                        "merged_at",
+                        "merge_oid",
+                        "merge_parent_oids",
+                        "merged_by",
+                        "commit_body_sha256"
+                      ],
+                      "properties": {
+                        "node_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256
+                        },
+                        "number": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "head_repository_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256
+                        },
+                        "head_ref": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256
+                        },
+                        "head_oid": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{40}$"
+                        },
+                        "base_ref": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256
+                        },
+                        "observed_base_tip_oid": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{40}$"
+                        },
+                        "state": {
+                          "enum": [
+                            "OPEN",
+                            "CLOSED",
+                            "MERGED"
+                          ]
+                        },
+                        "is_draft": {
+                          "type": "boolean"
+                        },
+                        "merged": {
+                          "type": "boolean"
+                        },
+                        "merged_at": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "merge_oid": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{40}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "merge_parent_oids": {
+                          "type": "array",
+                          "maxItems": 2,
+                          "items": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{40}$"
+                          }
+                        },
+                        "merged_by": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "node_id",
+                                "login"
+                              ],
+                              "properties": {
+                                "node_id": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+                                },
+                                "login": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,99}$"
+                                }
+                              }
+                            },
+                            {
+                              "const": null
+                            }
+                          ]
+                        },
+                        "commit_body_sha256": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            {
+                              "const": null
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "observed_from": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "observed_until": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "pattern": "^github:pr-merge/[A-Za-z0-9_=-]{1,256}$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

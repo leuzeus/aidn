@@ -1,4 +1,6 @@
 import path from "node:path";
+import { resolveEffectiveRuntimePersistence } from "./runtime-persistence-service.mjs";
+import { readCanonicalBaselinePromotionContext } from "./promote-baseline-context-service.mjs";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
 import { classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { toCycleSummary } from "../../lib/workflow/branch-mapping-lib.mjs";
@@ -82,7 +84,8 @@ function traceabilityLooksComplete(text) {
   return /\|\s*REQ\s*\|/i.test(normalized) && /\|\s*TEST\s*\|/i.test(normalized) && /REQ-\d+/i.test(normalized);
 }
 
-function resolveTargetCycle(currentState, cycles) {
+function resolveTargetCycle(currentState, cycles, cycleId) {
+  if (cycleId != null) return cycles.find(row => row.cycle_id === cycleId) ?? null;
   const activeCycleId = String(currentState.active_cycle ?? "none").toUpperCase();
   if (activeCycleId && activeCycleId !== "NONE") {
     return cycles.find((cycle) => cycle.cycle_id === activeCycleId) ?? null;
@@ -94,21 +97,28 @@ function resolveTargetCycle(currentState, cycles) {
   return null;
 }
 
-export function runPromoteBaselineAdmitUseCase({ targetRoot, mode = "COMMITTING" }) {
+export async function runPromoteBaselineAdmitUseCase({ targetRoot, mode = "COMMITTING", cycleId = null, persistenceOptions = {} }) {
   const gitAdapter = createLocalGitAdapter();
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const currentState = readCurrentState(absoluteTargetRoot);
-  const auditRoot = currentState.audit_root;
+  const auditRoot = path.join(absoluteTargetRoot, "docs/audit");
+  const canonical = dbBackedMode || resolveEffectiveRuntimePersistence({ targetRoot: absoluteTargetRoot }).backend === "postgres";
+  let currentState = { active_session: "none", active_cycle: "none" }, cycles = [], canonicalError = false;
+  if (canonical) {
+    try { const context = await readCanonicalBaselinePromotionContext({ targetRoot: absoluteTargetRoot, auditRoot, persistenceOptions });
+      currentState = context.currentState; cycles = context.cycles;
+    } catch { canonicalError = true; }
+  } else { currentState = readCurrentState(absoluteTargetRoot); cycles = listCycleStatuses(auditRoot); }
   const sourceBranch = readSourceBranch(absoluteTargetRoot);
   const branch = gitAdapter.getCurrentBranch(absoluteTargetRoot);
   const branchKind = classifyAidnBranch(branch, {
     sourceBranch,
     includeSource: true,
   });
-  const cycles = listCycleStatuses(auditRoot);
+
   const doneCycles = cycles.filter((cycle) => String(cycle.state ?? "").toUpperCase() === "DONE");
-  const targetCycle = resolveTargetCycle(currentState, cycles);
+  const selectedId = cycleId == null ? null : String(cycleId).toUpperCase();
+  const targetCycle = resolveTargetCycle(currentState, cycles, selectedId);
 
   const base = {
     branch,
@@ -123,8 +133,13 @@ export function runPromoteBaselineAdmitUseCase({ targetRoot, mode = "COMMITTING"
     candidate_cycles: doneCycles.map((cycle) => toCycleSummary(cycle)),
   };
 
+  if (canonicalError) return makeResult(base, { action: "blocked_validation_incomplete", reason_code: "PROMOTE_BASELINE_CANONICAL_RUNTIME_INVALID",
+    blocking_reasons: ["Canonical promotion context is unavailable, ambiguous or inconsistent; diagnose without falling back to Markdown."],
+    recommended_next_action: "Restore and verify the configured canonical backend before promotion." });
+  if (selectedId !== null && !/^C[0-9]{3,6}$/.test(selectedId)) return makeResult(base, { action: "blocked_missing_target_cycle", reason_code: "PROMOTE_BASELINE_TARGET_CYCLE_INVALID",
+    required_user_choice: ["select_target_cycle"], blocking_reasons: ["The explicit target cycle identity is invalid."] });
   if (!targetCycle) {
-    if (doneCycles.length > 1) {
+    if (!selectedId && doneCycles.length > 1) {
       return makeResult(base, {
         action: "choose_cycle",
         reason_code: "PROMOTE_BASELINE_MULTIPLE_DONE_CYCLES",
@@ -157,11 +172,11 @@ export function runPromoteBaselineAdmitUseCase({ targetRoot, mode = "COMMITTING"
     });
   }
 
-  const cycleDir = findCycleDirectory(auditRoot, targetCycle.cycle_id);
+  const cycleDir = canonical ? null : findCycleDirectory(auditRoot, targetCycle.cycle_id);
   const traceabilityPath = cycleDir ? path.join(cycleDir, "traceability.md") : "";
   const gapReportPath = cycleDir ? path.join(cycleDir, "gap-report.md") : "";
-  const traceabilityText = readTextIfExists(traceabilityPath);
-  const gapReportText = readTextIfExists(gapReportPath);
+  const traceabilityText = canonical ? targetCycle.traceability_text : readTextIfExists(traceabilityPath);
+  const gapReportText = canonical ? targetCycle.gap_report_text : readTextIfExists(gapReportPath);
   const openGapCount = parseGapReportOpenCount(gapReportText);
   const validationSummary = {
     traceability_present: Boolean(traceabilityText),

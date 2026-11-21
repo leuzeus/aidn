@@ -734,7 +734,7 @@ export function printHumanReloadResult(result, cacheFile) {
   console.log(`Cache file: ${cacheFile}`);
 }
 
-export async function runReloadCheckUseCase({ args, targetRoot, completionCycleId = null }) {
+export async function runReloadCheckUseCase({ args, targetRoot, completionCycleId = null, assertEffectAuthorized = null }) {
   const gitAdapter = createLocalGitAdapter();
   if (!args.stateModeExplicit && !String(process.env.AIDN_STATE_MODE ?? "").trim()) {
     const config = readAidnProjectConfig(targetRoot);
@@ -781,6 +781,10 @@ export async function runReloadCheckUseCase({ args, targetRoot, completionCycleI
   };
 
   if (args.writeCache && outcome.decision !== "stop") {
+    // Collection may await a canonical snapshot. Recheck the host's private
+    // authority after that observation, immediately before the cache effect.
+    // Read-only callers and ordinary CLI arguments provide no capability.
+    if (assertEffectAuthorized !== null) await assertEffectAuthorized();
     writeRuntimeJsonFile(args.cache, currentState);
     result.cache_written = true;
   } else {

@@ -7069,6 +7069,71 @@
       "migration": ""
     },
     {
+      "id": "command:aidn runtime workflow-run",
+      "kind": "command",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "Runtime CLI maintainer",
+      "source": "src/core/cli/command-registry.mjs",
+      "entrypoint": "aidn runtime workflow-run",
+      "implementation": "tools/runtime/workflow-run.mjs",
+      "effects": {
+        "surface": "aidn runtime workflow-run",
+        "default": "preview",
+        "global_rules": [
+          {
+            "id": "help",
+            "when_args": [
+              "--help"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "short-help",
+            "when_args": [
+              "-h"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "dry-run",
+            "when_args": [
+              "--dry-run"
+            ],
+            "effect_class": "preview"
+          },
+          {
+            "id": "json",
+            "when_args": [
+              "--json"
+            ],
+            "role": "format-only"
+          }
+        ],
+        "variants": [
+          {
+            "id": "runtime-workflow-run/variant-1",
+            "when_args": [
+              "--execute"
+            ],
+            "unless_args": [],
+            "effect_class": "executor",
+            "policy": "runtime-workflow-run/variant-1"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/workflow-run.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "command:aidn setup",
       "kind": "command",
       "status": "active",
@@ -8922,6 +8987,27 @@
       "source": "src/core/contracts/cli-output/runtime-workflow-inspect.v1.schema.json",
       "entrypoint": "aidn runtime workflow-inspect --json",
       "implementation": "src/core/contracts/cli-output/runtime-workflow-inspect.v1.schema.json",
+      "effects": "machine-readable public output",
+      "consumer": "automation and contract fixtures",
+      "docs": "docs/agents/04-json-contracts.md",
+      "proof": {
+        "class": "fixture",
+        "target": "tools/perf/verify-cli-output-contracts-fixtures.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "contract:runtime-workflow-run.v1.schema.json",
+      "kind": "contract",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI contract maintainer",
+      "source": "src/core/contracts/cli-output/runtime-workflow-run.v1.schema.json",
+      "entrypoint": "aidn runtime workflow-run --json",
+      "implementation": "src/core/contracts/cli-output/runtime-workflow-run.v1.schema.json",
       "effects": "machine-readable public output",
       "consumer": "automation and contract fixtures",
       "docs": "docs/agents/04-json-contracts.md",

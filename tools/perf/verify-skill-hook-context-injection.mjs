@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { getPublicSkillName } from "../../src/core/skills/skill-policy.mjs";
 
 const SKILLS = [
   { name: "context-reload", mode: "<THINKING|EXPLORING|COMMITTING>" },
@@ -49,7 +50,7 @@ function printUsage() {
 }
 
 function checkSkill(root, spec) {
-  const file = path.resolve(process.cwd(), root, spec.name, "SKILL.md");
+  const file = path.resolve(process.cwd(), root, getPublicSkillName(spec.name), "SKILL.md");
   if (!fs.existsSync(file)) {
     return {
       skill: spec.name,
@@ -61,12 +62,17 @@ function checkSkill(root, spec) {
     };
   }
   const text = fs.readFileSync(file, "utf8");
-  const requiredPatterns = [
+  const requiredPatterns = spec.name === "context-reload" ? [
+    "aidn runtime pre-write-admit --target . --skill context-reload --json",
+    "Do not run run-json-hook or hydrate-context as part of this read-only skill in their ordinary forms",
+    "This admission is not write authorization.",
+  ] : [
     `npx aidn codex run-json-hook --skill ${spec.name} --mode ${spec.mode} --target . --json`,
     ".aidn/runtime/context/codex-context.json",
   ];
   const forbiddenPatterns = [
     `npx aidn perf skill-hook --skill ${spec.name} --target . --mode ${spec.mode} --json`,
+    ...(spec.name === "context-reload" ? ["npx aidn codex run-json-hook --skill context-reload"] : []),
   ];
   const missingPatterns = requiredPatterns.filter((pattern) => !text.includes(pattern));
   const presentForbidden = forbiddenPatterns.filter((pattern) => text.includes(pattern));

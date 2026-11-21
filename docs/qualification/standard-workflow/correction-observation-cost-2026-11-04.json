@@ -1,0 +1,98 @@
+{
+  "status": "TARGETED_PHYSICAL_BINDING_PASS_FULL_PORT_MATRIX_PENDING",
+  "date": "2026-11-04",
+  "lane": "ASSURED",
+  "baseline": {
+    "source_head": "0d51c49780440de2799cfd1b7af97bd2c8f5b750",
+    "mode": "files",
+    "outcome": "completed",
+    "effect_status": "confirmed",
+    "postimages": 3,
+    "owner_pending": false,
+    "prepared_age_ms": 26374,
+    "apply_ms": 261001.263,
+    "final_age_ms": 287377,
+    "ttl_ms": 300000,
+    "commands": {
+      "fixture": 61,
+      "prepare": 70,
+      "apply": 744
+    },
+    "subprocess_ms": {
+      "fixture": 26073.4,
+      "prepare": 23917.1,
+      "apply": 251512.3
+    }
+  },
+  "implementation": [
+    "Retain one checkpoint capability per authenticated session scope; every existing inspect boundary remains fresh.",
+    "Retain the local push integration capability; each observation rechecks effective filters rather than accepting a newly constructed context.",
+    "Read an equal source/target ref once inside one synchronous inspection; do not reuse observations across calls or awaits."
+  ],
+  "validation": {
+    "composition": {
+      "source_head": "1f34af3dbb88ce87be63b61a360c3cbe5544012b",
+      "status": "PASS",
+      "checks": 32
+    },
+    "physical_binding": {
+      "source_head": "1f34af3dbb88ce87be63b61a360c3cbe5544012b",
+      "status": "PASS",
+      "checks": 3
+    },
+    "corrected_positive_ports": "RUNNING",
+    "full_files_dual_db_only": "NOT_RUN",
+    "governance_admission": "NOT_RUN"
+  },
+  "scope": {
+    "source_kind": "frozen-source diagnostic using real application and Git ports",
+    "accepted_sources": "authenticated synthetic fixture",
+    "provider": "fixture",
+    "production_dispatcher": "NOT_RUN",
+    "genuine_human_native_provider_os": "NOT_RUN",
+    "postgres": "NOT_RUN",
+    "installed_archive": "NOT_RUN",
+    "entire_L1_L8_A1_A10": "INCOMPLETE"
+  },
+  "limits": [
+    "One baseline run under current machine load is descriptive, not a causal performance estimate.",
+    "The baseline completed; it does not locate expiration in an older immutable failed case.",
+    "TTL, grants, plans, budgets and existing effects are unchanged.",
+    "Frozen baseline and composed acknowledgement-loss runs retain their exact source; future source is separately qualified."
+  ],
+  "retained_binding_counterexample": {
+    "candidate_head": "2c3171deb0d090cf39882f376139866ad3e4ce56",
+    "scope": "independent disposable Git diagnostic, not workflow qualification",
+    "observation": "A redirected gitfile retained the old index hash while fresh construction observed a distinct index; cached identity stayed unchanged.",
+    "resolution": "Each retained port re-resolves and compares its original physical gitdir/index binding before inspection. Changed bindings refuse; they are never silently adopted.",
+    "codes": [
+      "WORKFLOW_GIT_REPOSITORY_BINDING_CHANGED",
+      "WORKFLOW_BRANCH_REPOSITORY_BINDING_CHANGED"
+    ],
+    "validation": {
+      "source_head": "1f34af3dbb88ce87be63b61a360c3cbe5544012b",
+      "status": "PASS",
+      "checks": 3,
+      "scope": "disposable physical Git binding only"
+    }
+  },
+  "candidate_timing": {
+    "source_head": "2c3171deb0d090cf39882f376139866ad3e4ce56",
+    "outcome": "completed",
+    "effect_status": "confirmed",
+    "prepared_age_ms": 30557,
+    "apply_ms": 244906.3267,
+    "final_age_ms": 275466,
+    "apply_commands": 518,
+    "total_subprocess_commands": 639,
+    "qualification_limit": "The retained-binding counterexample excludes this candidate from readiness; it is not the corrected source."
+  },
+  "chronology": {
+    "acknowledgement_loss_source": "0d51c49780440de2799cfd1b7af97bd2c8f5b750",
+    "started_utc": "2026-11-04T19:25:50.232287Z",
+    "before_launch": "The same source real-port preflight had printed successful three postimages and cold-prepared actual metadata checkpoint; its parent and negative matrix remained active. The independent final FILES redelivery component also passed seven checks before launch.",
+    "scope": "No full terminal preflight PASS was available at launch; the synthetic 19-check preflight alone is not real-port evidence. Cache changes on a later source do not affect this run.",
+    "budget_ms": 7200000,
+    "restart": false
+  }
+}

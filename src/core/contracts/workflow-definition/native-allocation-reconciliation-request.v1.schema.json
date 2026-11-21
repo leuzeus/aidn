@@ -1,0 +1,277 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/native-allocation-reconciliation-request.v1",
+  "x-aidn-contract-version": "native-allocation-reconciliation-request.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "request_id",
+    "profile",
+    "journal_id",
+    "instance_id",
+    "scope_id",
+    "model_sha256",
+    "configuration_sha256",
+    "instance_sha256",
+    "physical_root_sha256",
+    "inventory_sha256",
+    "journal_sha256",
+    "allocations_sha256",
+    "generation",
+    "allocation_sha256",
+    "dispatch_id",
+    "dispatch_sha256",
+    "checkpoint_sha256",
+    "checkpoint_state_sha256",
+    "closure_sha256",
+    "owner_retirement_receipt_sha256",
+    "minimum_consumption",
+    "resources",
+    "prepared_at_ms",
+    "key_id",
+    "authentication"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "native-allocation-reconciliation-request.v1"
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9-]{36}$"
+    },
+    "profile": {
+      "const": "no_assignment"
+    },
+    "journal_id": {
+      "type": "string",
+      "pattern": "^native_[a-f0-9]{40}$"
+    },
+    "instance_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "model_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "configuration_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "instance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "physical_root_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "inventory_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "journal_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "allocations_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "generation": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 32
+    },
+    "allocation_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "dispatch_id": {
+      "type": "string",
+      "pattern": "^native_dispatch_[a-f0-9]{40}$"
+    },
+    "dispatch_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "checkpoint_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "checkpoint_state_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "closure_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "owner_retirement_receipt_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "minimum_consumption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "responses_observed",
+        "response_sha256",
+        "storage_debit_bytes",
+        "native_usage_sha256"
+      ],
+      "properties": {
+        "responses_observed": {
+          "const": 0
+        },
+        "response_sha256": {
+          "type": "array",
+          "maxItems": 0,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "storage_debit_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "native_usage_sha256": {
+          "type": "null"
+        }
+      }
+    },
+    "resources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 160,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "generation",
+              "owner_id",
+              "closure_sha256",
+              "checkpoint_sha256"
+            ],
+            "properties": {
+              "kind": {
+                "const": "allocation"
+              },
+              "generation": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 32
+              },
+              "owner_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "closure_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "checkpoint_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "execution_id",
+              "agent_id",
+              "lineage_id",
+              "session_id",
+              "adapter_id"
+            ],
+            "properties": {
+              "kind": {
+                "const": "native_session"
+              },
+              "execution_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "agent_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "lineage_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "session_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "adapter_id": {
+                "const": "codex-agentic-session"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "instance_id",
+              "scope_id",
+              "configuration_sha256"
+            ],
+            "properties": {
+              "kind": {
+                "const": "native_scope"
+              },
+              "instance_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "scope_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "configuration_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authentication": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

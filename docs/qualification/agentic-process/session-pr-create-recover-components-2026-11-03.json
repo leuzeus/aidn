@@ -1,0 +1,96 @@
+{
+  "observed_at_utc": "2026-11-03T22:01:11.255851+00:00",
+  "source_commit": "204c884dc5c5e27abe29c3ef9a3fbbc133327354",
+  "model_revision": 42,
+  "model_sha256": "867cc56f6c7174b6771d3799f51602fea3ed4af7cbbefa27d0633bf234d63c82",
+  "implementation_pin": "f8d5b07907a935f69e179205f2d01238af75c7deef2f9aee5c3f4b5d8ffcd233",
+  "provider_components": {
+    "verdict": "PASS",
+    "summary": {
+      "status": "PASS",
+      "checks": 15,
+      "transport": "DOUBLED_GH_REST",
+      "business_adapter": "ACTUAL",
+      "real_github": "NOT_RUN",
+      "standard_host": "NOT_RUN",
+      "native": "NOT_RUN",
+      "installed_archive": "NOT_RUN"
+    },
+    "cleanup_completed": true,
+    "log_sha256": "c7ab563675d883953d41731f54f2866831d7795b9e433193c1fcf15fdc1cfa96"
+  },
+  "application_components": [
+    {
+      "mode": "files",
+      "verdict": "PASS",
+      "ended_at_utc": "2026-11-03T21:56:37.9944180Z",
+      "exit_code": 0,
+      "summary": {
+        "status": "PASS",
+        "checks": 6,
+        "state_mode": "files",
+        "application_owner_github_adapter": "ACTUAL",
+        "remote_refs": "ACTUAL_LOCAL_BARE_GIT",
+        "accepted_push_admission_sources": "INJECTED_FIXTURE",
+        "http": "DOUBLED_REST",
+        "full_standard_composition": "NOT_RUN",
+        "real_github": "NOT_RUN",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "log_sha256": "6e4a39a631590730480cace78a8ad6b5641f47ec712dfb7813de6ebde6c9d30b",
+      "cleanup_completed": true
+    },
+    {
+      "mode": "dual",
+      "verdict": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-03T21:56:36.9819696Z",
+      "summary": {
+        "status": "PASS",
+        "checks": 6,
+        "state_mode": "dual",
+        "application_owner_github_adapter": "ACTUAL",
+        "remote_refs": "ACTUAL_LOCAL_BARE_GIT",
+        "accepted_push_admission_sources": "INJECTED_FIXTURE",
+        "http": "DOUBLED_REST",
+        "full_standard_composition": "NOT_RUN",
+        "real_github": "NOT_RUN",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "log_sha256": "b71dd6f6ecb34694715786a7a19edd53819231c4152eb954ef25bc58c0135941",
+      "cleanup_completed": true
+    },
+    {
+      "mode": "db-only",
+      "verdict": "PASS",
+      "ended_at_utc": "2026-11-03T21:56:38.8513082Z",
+      "exit_code": 0,
+      "summary": {
+        "status": "PASS",
+        "checks": 6,
+        "state_mode": "db-only",
+        "application_owner_github_adapter": "ACTUAL",
+        "remote_refs": "ACTUAL_LOCAL_BARE_GIT",
+        "accepted_push_admission_sources": "INJECTED_FIXTURE",
+        "http": "DOUBLED_REST",
+        "full_standard_composition": "NOT_RUN",
+        "real_github": "NOT_RUN",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "log_sha256": "3d5817bc5249e7b30e39e41d9570b8f628c3d3c79e6ec0b5bbae61acd18e7464",
+      "cleanup_completed": true
+    }
+  ],
+  "proof_boundary": "actual application/owner and pinned GitHub adapter; accepted push/admission/current-instance sources injected; REST doubled against actual local bare Git refs; no full signed-chain execution for model42 yet",
+  "composed_model42": "NOT_RUN; distinct from active model37/39/41 sources",
+  "agentic_aggregate_gate": "RUNNING on frozen source93958bf/model41; does not qualify the new PR adapter",
+  "full_runtime_family": "NOT_RUN",
+  "canonical_pr_lifecycle_write": "NOT_YET_CONNECTED; PR link currently retained in authenticated process operation output; the skill-required session/current-state update and its governed checkpoint/push remain required",
+  "real_github": "NOT_RUN",
+  "native_real": "NOT_RUN",
+  "installed_archive": "NOT_RUN",
+  "full_standard_workflow": false
+}

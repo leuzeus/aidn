@@ -163,7 +163,7 @@ async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const admission = runRequirementsDeltaAdmitUseCase({
+    const admission = await runRequirementsDeltaAdmitUseCase({
       targetRoot,
       mode: args.mode,
     });

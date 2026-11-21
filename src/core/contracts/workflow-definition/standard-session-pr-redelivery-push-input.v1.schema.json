@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-session-pr-redelivery-push-input.v1",
+  "x-aidn-contract-version": "standard-session-pr-redelivery-push-input.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "integration_operation_id",
+    "cycle_operation_id"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-session-pr-redelivery-push-input.v1"
+    },
+    "integration_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "cycle_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    }
+  }
+}

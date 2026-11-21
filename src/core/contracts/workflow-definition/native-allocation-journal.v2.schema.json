@@ -1,0 +1,157 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/native-allocation-journal.v2",
+  "x-aidn-contract-version": "native-allocation-journal.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "journal_id",
+    "instance_id",
+    "scope_id",
+    "model_sha256",
+    "revision",
+    "allocations",
+    "key_id",
+    "authentication",
+    "initial_authorization",
+    "epochs",
+    "origin_journal"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "native-allocation-journal.v2"
+    },
+    "journal_id": {
+      "type": "string",
+      "pattern": "^native_[a-f0-9]{40}$"
+    },
+    "instance_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "model_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 96
+    },
+    "allocations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "object"
+      }
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authentication": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "initial_authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approved",
+        "model_allowed",
+        "configuration_sha256",
+        "authorized_at_ms",
+        "global_deadline_ms",
+        "workflow_deadline_ms",
+        "max_turn_ms",
+        "max_responses",
+        "max_bytes"
+      ],
+      "properties": {
+        "approved": {
+          "const": true
+        },
+        "model_allowed": {
+          "const": true
+        },
+        "configuration_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "authorized_at_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "global_deadline_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "workflow_deadline_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "max_turn_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2700000
+        },
+        "max_responses": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 1048576,
+          "maximum": 471859200
+        }
+      }
+    },
+    "epochs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 31,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "epoch",
+          "start_generation",
+          "request",
+          "grant"
+        ],
+        "properties": {
+          "epoch": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 32
+          },
+          "start_generation": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 32
+          },
+          "request": {
+            "type": "object"
+          },
+          "grant": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "origin_journal": {
+      "type": "object"
+    }
+  }
+}

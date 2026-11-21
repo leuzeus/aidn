@@ -1,0 +1,173 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-session-closure-decision-output.v1"
+    },
+    "operation_ref": {
+      "const": "session_closure_decision"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "rejected",
+        "deferred",
+        "cancelled"
+      ]
+    },
+    "effect_status": {
+      "const": "no_effect"
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "session_closure_requested": {
+          "const": true
+        },
+        "session_close_completed": {
+          "const": false
+        }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "question_sha256",
+        "choice",
+        "session_report",
+        "review_sha256",
+        "source_sha256",
+        "inbox_id",
+        "source_ref"
+      ],
+      "properties": {
+        "question_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "choice": {
+          "enum": [
+            "close",
+            "refused",
+            "deferred",
+            "cancelled"
+          ]
+        },
+        "session_report": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "summary",
+                "open_loops",
+                "blockers",
+                "next_entry_point"
+              ],
+              "properties": {
+                "summary": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048,
+                  "pattern": "^[^\\r\\n\\u0000-\\u001f]+$"
+                },
+                "open_loops": {
+                  "type": "array",
+                  "maxItems": 32,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024,
+                    "pattern": "^[^\\r\\n\\u0000-\\u001f]+$"
+                  }
+                },
+                "blockers": {
+                  "type": "array",
+                  "maxItems": 32,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024,
+                    "pattern": "^[^\\r\\n\\u0000-\\u001f]+$"
+                  }
+                },
+                "next_entry_point": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048,
+                  "pattern": "^[^\\r\\n\\u0000-\\u001f]+$"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "review_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "inbox_id": {
+          "type": "string",
+          "pattern": "^decision_[a-f0-9]{40}$"
+        },
+        "source_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "sha256": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-session-closure-decision-output.v1",
+  "x-aidn-contract-version": "standard-session-closure-decision-output.v1"
+}

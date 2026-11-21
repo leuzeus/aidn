@@ -1,0 +1,196 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-entry-observation-output.v1",
+  "x-aidn-contract-version": "standard-cycle-entry-observation-output.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-entry-observation-output.v1"
+    },
+    "operation_ref": {
+      "const": "cycle_entry_observe"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "blocked"
+      ]
+    },
+    "effect_status": {
+      "const": "no_effect"
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cycle_entry_fresh_context": {
+          "type": "boolean"
+        },
+        "cycle_entry_owned_context": {
+          "type": "boolean"
+        },
+        "cycle_entry_choice_required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "reason_code",
+        "scope_sha256",
+        "inventory_sha256",
+        "selected_cycle",
+        "canonical",
+        "implementation_authorized",
+        "creation_authorized"
+      ],
+      "properties": {
+        "action": {
+          "enum": [
+            "prepare_creation",
+            "owned_cycle",
+            "choose_cycle",
+            "blocked"
+          ]
+        },
+        "reason_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 96
+        },
+        "scope_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "inventory_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "implementation_authorized": {
+          "const": false
+        },
+        "selected_cycle": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "cycle_id",
+            "cycle_path",
+            "branch",
+            "state",
+            "dor_state",
+            "scope_frozen"
+          ],
+          "properties": {
+            "cycle_id": {
+              "type": "string",
+              "pattern": "^C[0-9]{3,6}$"
+            },
+            "cycle_path": {
+              "type": "string",
+              "pattern": "^cycles/C[0-9]{3,6}-[a-z]+-[A-Za-z0-9._-]+$",
+              "maxLength": 192
+            },
+            "branch": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 192
+            },
+            "state": {
+              "enum": [
+                "OPEN",
+                "IMPLEMENTING",
+                "VERIFYING"
+              ]
+            },
+            "dor_state": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "scope_frozen": {
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        },
+        "canonical": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "sha256",
+              "metadata_sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "metadata_sha256": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        },
+        "creation_authorized": {
+          "const": false
+        }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 272
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

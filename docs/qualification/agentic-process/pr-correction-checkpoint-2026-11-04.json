@@ -1,0 +1,70 @@
+{
+  "contract_version": "aidn-qualification-note.v1",
+  "scope": "internal-correction-checkpoint-component",
+  "status": "PASS",
+  "complete_standard_workflow": false,
+  "checks": {
+    "files": 8,
+    "dual": 6,
+    "db-only": 6,
+    "source_authority": 14,
+    "reopen_files": 8,
+    "offline_source_composition": 28
+  },
+  "actual": [
+    "canonical CAS reopening preparation",
+    "canonical metadata and physical projection readers",
+    "local Git objects/ref/index and exact parent/path/blob proof",
+    "fresh Node process applying retained exact plan",
+    "ordinary native product admission denial"
+  ],
+  "doubled": [
+    "accepted operation authentication capability",
+    "native triage producer",
+    "provider and event authority"
+  ],
+  "negative_cases": [
+    "untrusted receipt",
+    "changed accepted postimage",
+    "foreign dirty product",
+    "expired preview",
+    "provider loss before effect",
+    "lost acknowledgement does not repeat commit",
+    "authority loss after Git retains unknown owner",
+    "foreign commit after Git cannot inherit continuation"
+  ],
+  "cleanup": {
+    "checkpoint_owned_roots": 8,
+    "completed": true,
+    "independent_process_inventory": "NOT_CAPTURED"
+  },
+  "not_run": [
+    "checkpoint host/IR binding",
+    "ordinary correction cycle admission and frozen plan",
+    "physical product correction",
+    "complete authenticated producer-to-writer execution",
+    "real native/provider/human",
+    "full runtime and Governance Admission",
+    "exact installed archive"
+  ],
+  "prior_incomplete_attempt": {
+    "cause": "STANDARD_IMPLEMENTATION_CHANGED after in-flight fingerprint-file line-ending normalization",
+    "qualified": false,
+    "replaced_by_stable_source_runs": true
+  },
+  "distinct_failure_diagnostic": {
+    "trial": "65-budget9",
+    "original_source": "1a84bc01e6ad4d5dafb5725260983ec5a6fcdf01",
+    "record_and_preview_HMAC": "verified read-only with original source and fixture key",
+    "record_sha256": "cd42bb999c7918e5207ba804120dba9a84230f2fede116221af6c7f9b228e77a",
+    "record_bytes": 70212,
+    "prepared_at_utc": "2026-11-04T05:20:59.741Z",
+    "preview_at_utc": "2026-11-04T05:23:06.835Z",
+    "preview_preparation_elapsed_ms": 127094,
+    "retained_result": "blocked/no_effect/STANDARD_PLAN_EXPIRED",
+    "precise_effect_clock": "NOT_RETAINED",
+    "cause_of_cost": "NOT_ESTABLISHED",
+    "other_trial_causes": "NOT_INFERRED",
+    "retry_or_authorization_change": false
+  }
+}

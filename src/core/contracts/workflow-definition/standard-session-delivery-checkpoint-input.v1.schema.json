@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "x-aidn-contract-version": "standard-session-delivery-checkpoint-input.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "finalization_operation_id"
+  ],
+  "properties": {
+    "finalization_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    }
+  },
+  "$id": "aidn://contracts/workflow-definition/standard-session-delivery-checkpoint-input.v1"
+}

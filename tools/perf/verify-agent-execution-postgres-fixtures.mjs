@@ -29,12 +29,19 @@ import { fingerprintAgentExecutionValue, normalizeAgentExecutionPlan } from "../
 import { buildNextAidnProjectConfig } from "../../src/application/install/project-config-service.mjs";
 import { writeAidnProjectConfig } from "../../src/lib/config/aidn-config-lib.mjs";
 import { writeSharedRuntimeLocator } from "../../src/lib/config/shared-runtime-locator-config-lib.mjs";
+import { verificationEvidenceDirectory } from "../verify/owned-verification-process-lib.mjs";
 
 const fixture = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agent-execution/contracts/complete-chain.json", import.meta.url), "utf8"));
 const childFile = fileURLToPath(new URL("./agent-execution-postgres-child.mjs", import.meta.url));
 const children = new Set();
 const clusterRoots = new Set();
 const checks = [];
+const observationDirectory = verificationEvidenceDirectory(path.resolve(import.meta.dirname, "../.."), process.env.AIDN_VERIFICATION_EVIDENCE_ROOT);
+const observationFile = path.join(observationDirectory, "postgres-fixture.jsonl");
+let observationSequence = 0;
+const observe = value => fs.appendFileSync(observationFile, JSON.stringify({ sequence: ++observationSequence,
+  at: new Date().toISOString(), ...value }) + "\n");
+process.stderr.write(`PostgreSQL fixture evidence: ${observationDirectory}\n`);
 const selectedArguments=process.argv.slice(2);
 if(selectedArguments.length && (selectedArguments.length!==1 || !["--lifecycle-fences", "--reconciliation"].includes(selectedArguments[0])))throw new Error("POSTGRES_FIXTURE_OPTION_INVALID");
 const reconciliationOnly = selectedArguments[0] === "--reconciliation";
@@ -62,10 +69,11 @@ let currentCheck = "preconditions";
 const gitInspectionTimings=[];
 const timedGitInspector=inspect=>async(input,options)=>{
   const started=performance.now(), timing={phase:options.phase,outcome:"pending",elapsed_ms:null};
+  observe({ kind:"git", boundary:"start", phase:options.phase });
   gitInspectionTimings.push(timing);if(gitInspectionTimings.length>8)gitInspectionTimings.shift();
   try {const value=await inspect(input,options);timing.outcome="completed";return value;}
   catch(error){timing.outcome="failed";throw error;}
-  finally {timing.elapsed_ms=Math.round(performance.now()-started);}
+  finally {timing.elapsed_ms=Math.round(performance.now()-started);observe({kind:"git",boundary:"end",...timing});}
 };
 let serial = 0;
 const id = prefix => `${prefix}.${++serial}`;
@@ -74,7 +82,10 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const check = async (name, operation) => {
   if(focused && (reconciliationOnly ? !["two-process migration applies v3 through v6 once and preserves v2 data", "never-started reconciliation preserves its type, proof and absent result across reconnect"].includes(name) : !lifecycleChecks.has(name))){skipped.push(name);return;}
   currentCheck = name;
-  await operation();
+  const started = performance.now(); observe({ kind: "check", boundary: "start", name });
+  try { await operation(); }
+  catch (error) { observe({ kind: "check", boundary: "throw", name, elapsed_ms: performance.now() - started, error_code: error.code ?? "FIXTURE_FAILURE" }); throw error; }
+  observe({ kind: "check", boundary: "end", name, elapsed_ms: performance.now() - started });
   checks.push(name);
   process.stdout.write(`PASS ${name}\n`);
 };
@@ -1640,7 +1651,26 @@ async function runSuite({ connectionString, version, root }) {
         }});
         const repository=await fixtureRun.git.inspectIntegration({}, {phase:"head"});
         gitStates.set(context.runId,{identity:repository.repository_identity_sha256});
-        const result=await fixtureRun.create({store:context.store}).run(fixtureRun.options);
+        // Observe the real store calls without changing their arguments,
+        // receiver, order, result, errors or the frozen run/attempt deadlines.
+        let callSequence=0;
+        const observedStore=new Proxy(context.store,{get(target,property){
+          const method=Reflect.get(target,property);if(typeof method!=="function")return method;
+          return async(...args)=>{const call=++callSequence,started=performance.now();
+            observe({kind:"scheduler-store",boundary:"start",call,method:String(property)});
+            try{const value=await method.apply(target,args);
+              observe({kind:"scheduler-store",boundary:"end",call,method:String(property),elapsed_ms:performance.now()-started,
+                run_status:value?.run?.lifecycle_status??null,server_now:value?.server_now??null,
+                run_started_at:value?.run_started_at??null,run_deadline_at:value?.run_deadline_at??null});return value;
+            }catch(error){observe({kind:"scheduler-store",boundary:"throw",call,method:String(property),elapsed_ms:performance.now()-started,error_code:error.code??"STORE_FAILURE"});throw error;}
+          };
+        }});
+        observe({kind:"scheduler",boundary:"start",run_id:context.runId,limits:context.plan.limits,
+          tasks:context.plan.tasks.map(({task_id,max_duration_ms,depends_on})=>({task_id,max_duration_ms,depends_on}))});
+        const schedulerStarted=performance.now();
+        const result=await fixtureRun.create({store:observedStore}).run(fixtureRun.options);
+        observe({kind:"scheduler",boundary:"end",run_id:context.runId,elapsed_ms:performance.now()-schedulerStarted,
+          status:result.status,reason_code:result.reason_code??null,children:fixtureRun.children});
         assert.equal(result.status,"completed",result.reason_code);
         const snapshot=await context.store.getRun({runId:context.runId});
         assert.equal(snapshot.run.lifecycle_status,"completed"); assert.equal(snapshot.integrations.length,3); assert.equal(snapshot.acceptances.length,3);

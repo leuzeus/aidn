@@ -3,6 +3,19 @@
 This directory contains BPMN 2.0 XML files intended for import into `bpmn.io`.
 They are aligned with the current runtime baseline, not just the original target vision.
 
+These operating views remain distinct from the executable
+[BPMN profile](../BPMN_EXECUTION_PROFILE.md). That explicit compiler accepts a
+bounded structured subset with role/policy extensions and produces the existing
+IR. It does not automatically make the diagrams in this directory executable.
+Simulation and execution share the existing occurrence reducer; resource
+assignment remains a separate trusted host concern.
+The default [v2 XML mappings](../BPMN_EXECUTION_PROFILE_V2.md) additionally cover
+message races, guarded post-test loops, fixed collections and local calls. The
+operating views here are not automatically converted or qualified for v2.
+New executable BPMN models use the delivered structured agentic reducer through
+this default path. Explicit v1 is compiler compatibility on that same reducer,
+not selection of the historical sequential execution engine.
+
 Execution uses the user-level engine; each project retains its activation,
 configuration, extensions and canonical data. Native hook review is separate.
 Installation, explicit project migration, global update/rollback and CI/worktree

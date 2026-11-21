@@ -39,11 +39,14 @@ Use this page as the first stop when you need to navigate the repository docs.
 - [ADR-0013 global user runtime](./ADR/ADR-0013-global-user-runtime.md)
 - [Global architecture diagram](./diagrams/01-global-system-architecture.md)
 - [BPMN views](./bpmn/README.md)
+- [BPMN execution profile and shared-reducer simulation](./BPMN_EXECUTION_PROFILE.md)
+- [BPMN v2: events, loops, multi-instance and local calls](./BPMN_EXECUTION_PROFILE_V2.md)
 
 ## Runtime And Operations
 
 - [Workflow console and guarded actions](./WORKFLOW_CONSOLE.md)
 - [Participants, roles, gateways and constrained assignment](./AGENTIC_PROCESS.md)
+- [Remaining standard workflow IR integration, operation ports and durable resume](./PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md)
 - [Shared runtime migration guide](./MIGRATION_SHARED_RUNTIME_POSTGRESQL.md)
 - [Runtime persistence migration guide](./MIGRATION_RUNTIME_PERSISTENCE_POSTGRESQL.md)
 - [Troubleshooting](./TROUBLESHOOTING.md)

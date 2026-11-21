@@ -1,0 +1,162 @@
+{
+  "observed_at_utc": "2026-11-04T01:00:34.373Z",
+  "source_commit": "4a15540c5bdf4be9f2e95e02081c0ffca4ded239",
+  "lane": "ASSURED",
+  "model": {
+    "revision": 53,
+    "sha256": "a948b00bbe78f47b360669ae42b1b80901d24bb7b8711dc4339c9e72f5d1e992",
+    "catalog_sha256": "825dae57318a4aabf4869898e78e0a75992050242473e2499b27d94429f48a5e",
+    "runtime_pin": "a34ab72f57dea475909478f894014c61e4219fc551eaa5aa173fdb5b0fcef0a1",
+    "direct_pinned_files": 330,
+    "nodes": 95,
+    "operations": 60,
+    "startup_revision": 111,
+    "cycle_revision": 109
+  },
+  "normalization": {
+    "observed_at_utc": "2026-11-04T00:53:46.207689+00:00",
+    "source_before": "48106fab31aba4c37ce4f9cbe305d66730338c66",
+    "files": [
+      {
+        "path": "src/core/contracts/workflow-definition/github-review-evidence.v2.schema.json",
+        "before_sha256": "a17f99d23b83994d5719fa8eba761fd6036ca5f6fef6a9fb402f8ce7ebbbfc61",
+        "after_sha256": "445302b9c9c7f17b5cbc80982394bee8c88c970902207f67ed7aee497b218c28",
+        "parsed_json_exactly_equal": true
+      },
+      {
+        "path": "src/core/contracts/workflow-definition/github-pr-observation-request.v2.schema.json",
+        "before_sha256": "0d1d432c94da2c5ebb65b57ca81553341812c7bedf6504cb8cfe38aa96329ab2",
+        "after_sha256": "f0ff03b34ad69eb7e4f1da4b3aad38a7bf36d62c4410bdc150899a6ac7b1c472",
+        "parsed_json_exactly_equal": true
+      },
+      {
+        "path": "src/core/contracts/workflow-definition/github-pr-observation-output.v2.schema.json",
+        "before_sha256": "6aa66cbbf703c102b832fd03cb491df2b1899baae505aa1df53ea21bf94f6c30",
+        "after_sha256": "10771e1baf876b5a07feca30949c1ee26e7e37eb8a7ae421e57e73eeb5b3b7d6",
+        "parsed_json_exactly_equal": true
+      },
+      {
+        "path": "src/core/contracts/workflow-definition/standard-session-pr-review-content-output.v1.schema.json",
+        "before_sha256": "5e0246abae45abdc5927be746b737a014259841870fd4401aa9f75d9336c24ec",
+        "after_sha256": "6b13562dbc4e16a6c107eaf09c2c68094b22298827ce656c456995a70eac1d08",
+        "parsed_json_exactly_equal": true
+      }
+    ],
+    "scope": "only CRLF to LF; exact JSON data preserved; new implementation and model pins required"
+  },
+  "results": [
+    {
+      "command": "node tools/perf/verify-standard-session-pr-review-fixtures.mjs --mode=files --content",
+      "checks": 10,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:58:38.2373171Z",
+      "log": {
+        "file": "review-content-lf-files-20261103.log",
+        "bytes": 1221,
+        "sha256": "0549c92d52a3a5c12118d191b6d00e69c4271559b10cd6ff5115cce22976eba0"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-standard-session-pr-review-fixtures.mjs --mode=dual --content",
+      "checks": 10,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:58:39.0545362Z",
+      "log": {
+        "file": "review-content-lf-dual-20261103.log",
+        "bytes": 1391,
+        "sha256": "4f7460bbb231da9b53248797db381e76c0c4f0898149af8b5afb1fd1a8c7def3"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-standard-session-pr-review-fixtures.mjs --mode=db-only --content",
+      "checks": 10,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:58:10.6657683Z",
+      "log": {
+        "file": "review-content-lf-db-only-20261103.log",
+        "bytes": 1394,
+        "sha256": "d4d5fff9251983d41223ff4e3f27f9fab6e9e63ef591107183b77679d3aa09e7"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-github-review-content-fixtures.mjs",
+      "checks": 12,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:54:22.6085050Z",
+      "log": {
+        "file": "review-content-lf-reader-20261103.log",
+        "bytes": 1176,
+        "sha256": "77068c7cfc0c1de676ad03718bd26d0cab18d754a382d8adeaafd0c566cf4bcf"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-standard-workflow-composition-fixtures.mjs",
+      "checks": 25,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:54:17.6264160Z",
+      "log": {
+        "file": "review-content-lf-composition-20261103.log",
+        "bytes": 2354,
+        "sha256": "61e58c714f6c5f2b8eaa4c2e6d304c85cfa825b015b73b71b2cdb2523ee2c328"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-standard-workflow-model-fixtures.mjs",
+      "checks": 22,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:54:18.0174933Z",
+      "log": {
+        "file": "review-content-lf-models-20261103.log",
+        "bytes": 1724,
+        "sha256": "9f52503dc7311d43ad318235db96e70969140e921b7f2353052a3e412ee8cb45"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-standard-process-binding-input-fixtures.mjs",
+      "checks": 3,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:54:16.8891744Z",
+      "log": {
+        "file": "review-content-lf-inputs-20261103.log",
+        "bytes": 577,
+        "sha256": "846fcd23f8441519d7e9b2f57e8c1070b8eb7e917495dbfecbcbb010483e7c02"
+      }
+    },
+    {
+      "command": "source-of-truth, metadata, governance-completeness, gate-catalog, doc-references",
+      "checks": null,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:56:41.5106204Z",
+      "log": {
+        "file": "review-content-lf-policies-20261103.log",
+        "bytes": 18002,
+        "sha256": "f23c869dd3c214a555e08cecf576e861a33961d9333cef5995f59246d47f8a78"
+      }
+    }
+  ],
+  "fixture_cleanup": "all three application modes confirmed two owned roots removed; reader confirmed fixture_removed true",
+  "proof": "actual canonical CAS/Git/bare and application ports, fixture accepted-history/provider/grant identities",
+  "replay_simulation": "actual content output on common reducer with synthetic boundary intent/receipt, no provider re-execution; not full signed standard IR composition",
+  "checks_not_repeated_here": "async10, historical readers14/18 and operation contracts27 retain their own model52/source48106fa evidence, not new model53 verdicts",
+  "claims": {
+    "complete_standard_workflow": false,
+    "composed_model53": "NOT_RUN",
+    "durable_pr_wait": "NOT_RUN",
+    "triage": "NOT_RUN",
+    "live_provider": "NOT_RUN",
+    "native_human_provider": "NOT_RUN",
+    "postgresql": "NOT_RUN",
+    "installed_archive": "NOT_RUN",
+    "full_runtime_family": "NOT_RUN",
+    "governance_admission_rollup": "NOT_RUN"
+  },
+  "skips": []
+}

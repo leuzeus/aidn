@@ -1,0 +1,58 @@
+{
+  "date": "2026-11-04",
+  "scope": "explicit expired no-effect preparation on the fixed operation host",
+  "delivery_lane": "ASSURED",
+  "status": "OFFLINE_COMPONENT_PASS",
+  "source_parent": "a447a674c29ba4ea38633d30904efa6bd947aa8d",
+  "behavior": {
+    "eligible_predecessor": "accepted authenticated deterministic blocked/no_effect/STANDARD_PLAN_EXPIRED with actual plan age over 300000ms",
+    "preparation": "read-only same-input same-occurrence current-authority business preview",
+    "successor": "separate explicit stage, fresh grant and operation identity bound to the accepted predecessor history",
+    "history": "original preview, grant, intent, receipt, output and accepted events retained unchanged",
+    "mixed_host": "method forwarded; step returns operation_reprepare_required for this expired refusal instead of automatically staging a replacement",
+    "ttl_or_native_budget_change": false,
+    "ordinary_entry_change": false,
+    "complete_standard_workflow": false
+  },
+  "validation": {
+    "PASS": {
+      "dedicated_component_checks": 15,
+      "generic_signed_host_checks_including_dedicated": 35,
+      "actual_published_standard_json_files_prefix_checks": 10,
+      "source_composition_checks": 28,
+      "model_loader_checks": 22,
+      "operation_contract_checks": 27,
+      "synthetic_preflight_checks": 18,
+      "modes": ["files", "dual", "db-only"],
+      "source_fingerprint_unchanged_during_each_runtime_suite": true
+    },
+    "retained_failed_attempts": [
+      {
+        "attempt": "initial dedicated suite",
+        "exit_code": 1,
+        "passed_before_failure": 3,
+        "failure": "fixture expected configuration {} to force rejection, but configuration defaults can remain valid",
+        "source_fingerprint_unchanged": true,
+        "correction": "exercise an actual configured storage-authority change, and separately a live effect owner and conflicting Git branch"
+      }
+    ],
+    "SKIP": [],
+    "NOT_RUN": [
+      "positive mixed-host expiry wait/reprepare composition",
+      "expired continuation of every other business operation",
+      "full runtime family and Governance Admission",
+      "genuine native/provider/human identity qualification",
+      "live PostgreSQL and exact installed archive"
+    ]
+  },
+  "proof_boundaries": {
+    "actual": ["session initialization and admission", "local Git", "file and SQLite canonical stores", "HMAC journals", "new Node preparation and staging", "same reducer replay and simulation"],
+    "fixture": ["authorization capability", "injected clock"],
+    "native_model_calls": 0,
+    "preparation_authorization_calls": 0,
+    "preparation_checkout_files_unchanged": true,
+    "published_prefix": "revision-71 standard JSON and actual data bindings, real refusal acceptance and explicit cold reprepare, deferred/THINKING decisions and exact replay; source-installed files fixture, zero native model",
+    "excluded": ["unaccepted refusal", "unreceipted dispatch", "retained effect owner", "unknown or confirmed effect", "changed subject", "stale process revision"]
+  },
+  "remaining_plan": "All unqualified L1-L8/A1-A10 requirements remain active, including general unknown reconciliation, native epochs, admitted correction cycles, physical correction/revalidation/delivery, review/merge/sync and ordinary/installed/native qualification. The separate frozen revision-70 receipt-loss trial retains its original source and authority."
+}

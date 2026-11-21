@@ -1,0 +1,155 @@
+{
+  "contract_version": "qualification-standard-composition.v1",
+  "date": "2026-11-03",
+  "status": "PASS_PARTIAL_COMPOSITION_AND_STARTUP_PREFIX",
+  "source_snapshot": "3c7c8bd7c40bae64157ccb3804dfd3d9dd5130ba",
+  "base_commit": "fac271bf3eb92e7405b2fe876f1641089808b78c",
+  "delivery_lane": "ASSURED",
+  "model": {
+    "path": "package/catalogs/process-models/aidn-standard.v1.json",
+    "sha256": "200edaacb710a9fdfc713eeef71ea41c5a94865459819b7b762986f5595a3fc5",
+    "model_id": "aidn-standard",
+    "revision": 3
+  },
+  "catalog_sha256": "c7461e5209301b206360d1d2f4a7b57ab94cf13eb2150f243e387c18ac765142",
+  "partial_components": {
+    "startup_revision": 66,
+    "cycle_revision": 64,
+    "refresh": "explicit-source-authoring-only"
+  },
+  "source_composition": {
+    "nodes": 49,
+    "operation_occurrences": 31,
+    "unique_fixed_bindings": 29,
+    "native_activities": 3,
+    "complete_standard_workflow": false
+  },
+  "offline": [
+    {
+      "command": "node tools/perf/verify-process-empty-sequence-fixtures.mjs",
+      "status": "PASS",
+      "checks": 5
+    },
+    {
+      "command": "node tools/perf/verify-standard-workflow-composition-fixtures.mjs",
+      "status": "PASS",
+      "checks": 14
+    },
+    {
+      "command": "node tools/perf/verify-standard-workflow-model-fixtures.mjs",
+      "status": "PASS",
+      "checks": 22
+    },
+    {
+      "command": "node tools/perf/verify-process-operation-fixtures.mjs",
+      "status": "PASS",
+      "checks": 27,
+      "historical_v1": "preserved"
+    }
+  ],
+  "source_installed_prefix": [
+    {
+      "command": "node tools/perf/verify-standard-workflow-composition-prefix-fixtures.mjs --mode=files",
+      "status": "PASS",
+      "checks": 9,
+      "accepted_business_bindings": 6,
+      "deferred_decisions": 1,
+      "model_calls": 0,
+      "human_authority": "fixture-source-adapter",
+      "result_authentication": "signed-journal-and-new-process-acceptance",
+      "effects_deduplicated": true,
+      "replay_and_simulation": "same-model-same-reducer-and-instance-hash",
+      "scope": "startup-prefix-to-THINKING-handoff-only",
+      "installation": "current-source-installer-with-Codex-discovery-stub",
+      "archive_and_native": "NOT_RUN"
+    },
+    {
+      "command": "node tools/perf/verify-standard-workflow-composition-prefix-fixtures.mjs --mode=dual",
+      "status": "PASS",
+      "checks": 9,
+      "accepted_business_bindings": 6,
+      "deferred_decisions": 1,
+      "model_calls": 0,
+      "human_authority": "fixture-source-adapter",
+      "result_authentication": "signed-journal-and-new-process-acceptance",
+      "effects_deduplicated": true,
+      "replay_and_simulation": "same-model-same-reducer-and-instance-hash",
+      "scope": "startup-prefix-to-THINKING-handoff-only",
+      "installation": "current-source-installer-with-Codex-discovery-stub",
+      "archive_and_native": "NOT_RUN"
+    },
+    {
+      "command": "node tools/perf/verify-standard-workflow-composition-prefix-fixtures.mjs --mode=db-only",
+      "status": "PASS",
+      "checks": 9,
+      "accepted_business_bindings": 6,
+      "deferred_decisions": 1,
+      "model_calls": 0,
+      "human_authority": "fixture-source-adapter",
+      "result_authentication": "signed-journal-and-new-process-acceptance",
+      "effects_deduplicated": true,
+      "replay_and_simulation": "same-model-same-reducer-and-instance-hash",
+      "scope": "startup-prefix-to-THINKING-handoff-only",
+      "installation": "current-source-installer-with-Codex-discovery-stub",
+      "archive_and_native": "NOT_RUN"
+    }
+  ],
+  "additional_gates": [
+    {
+      "command": "node tools/verify/verify-gate-catalog.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node tools/perf/verify-source-of-truth-policy.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node tools/perf/verify-metadata-policy.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node tools/perf/verify-governance-completeness.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node tools/verify/verify-doc-references.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node tools/perf/verify-markdown-contract-conformance-fixtures.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node tools/perf/verify-pack-topology-fixtures.mjs",
+      "status": "PASS"
+    }
+  ],
+  "committing_cycle_route": "NOT_RUN",
+  "full_standard_model": "NOT_COMPLETE",
+  "ordinary_entrypoints": "NOT_INTEGRATED",
+  "general_native_resume": "NOT_QUALIFIED",
+  "native": "NOT_RUN",
+  "installed_archive": "NOT_RUN",
+  "aggregate_agentic_gate": "NOT_RUN",
+  "merge_readiness": "NOT_CLAIMED",
+  "remaining_activities": [
+    "existing_session_resume",
+    "thinking_work",
+    "exploring_work_and_spike_conversion",
+    "cycle_choice_and_carryover",
+    "startup_and_work_drift_routes",
+    "incidents_and_recovery",
+    "session_close",
+    "pr_review_and_merge",
+    "post_merge_sync",
+    "full_mixed_resume"
+  ],
+  "next_business_proof": "Use the same published JSON and common cursor on a disposable COMMITTING project, integrate R05 at the actual checkpoints, then exercise work, validation, closure and promotion without external business preconditions. Complete the remaining modes and tail before ordinary selection and final qualification.",
+  "supplemental_source_ports": {
+    "command": "node tools/perf/verify-standard-workflow-ports-fixtures.mjs",
+    "status": "PASS",
+    "checks": 14,
+    "runtime_unchanged_from_source_snapshot": true
+  },
+  "retained_snapshot_ref": "refs/aidn/qualification/standard-composition-prefix-20261103"
+}

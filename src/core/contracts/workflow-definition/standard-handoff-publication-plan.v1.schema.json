@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-handoff-publication-plan.v1",
+  "x-aidn-contract-version": "standard-handoff-publication-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "input",
+    "prepared_at_ms",
+    "context",
+    "projection",
+    "canonical_sources",
+    "resource_request",
+    "resource_material_sha256",
+    "unknown_business_operations",
+    "path",
+    "before_sha256",
+    "before_metadata_sha256",
+    "after_sha256",
+    "content"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-handoff-publication-plan.v1"
+    },
+    "operation_ref": {
+      "const": "handoff_packet_publish"
+    },
+    "input": {
+      "type": "object"
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "context": {
+      "type": "object"
+    },
+    "projection": {
+      "type": "object"
+    },
+    "canonical_sources": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256",
+          "metadata_sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 192
+          },
+          "sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "metadata_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "resource_request": {
+      "type": "object"
+    },
+    "resource_material_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "unknown_business_operations": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "string",
+        "pattern": "^op_[a-f0-9]{40}$"
+      }
+    },
+    "path": {
+      "const": "HANDOFF-PACKET.md"
+    },
+    "before_sha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "before_metadata_sha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "after_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "content": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1048576
+    }
+  }
+}

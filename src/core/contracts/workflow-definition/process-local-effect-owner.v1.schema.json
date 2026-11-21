@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/process-local-effect-owner.v1",
+  "x-aidn-contract-version": "process-local-effect-owner.v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "token", "pid", "scope_sha256", "plan_sha256", "created_at"],
+  "properties": {
+    "contract_version": { "const": "process-local-effect-owner.v1" },
+    "token": { "type": "string", "pattern": "^[a-f0-9-]{36}$" },
+    "pid": { "type": "integer", "minimum": 1 },
+    "scope_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "plan_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "created_at": { "type": "string", "minLength": 20, "maxLength": 32 }
+  }
+}

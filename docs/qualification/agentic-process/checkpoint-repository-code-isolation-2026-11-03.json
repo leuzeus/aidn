@@ -1,0 +1,40 @@
+{
+  "observed_at_utc": "2026-11-03T20:13:33.033Z",
+  "proof": "offline-real-git-checkpoint-port",
+  "source_base": "5014f0639a3fd452be4b07e7166168c2426ef06f",
+  "source_sha256": {
+    "adapter": "b9875c7ee945604dc9a029ff00f219f9e8e58228075a680ca6092dcac0f46fe6",
+    "fixture": "7f8393becb5caa42bad561026a1090a3b5fe32d9167e089c984ebf62a4b7b88d"
+  },
+  "regression_before": {
+    "status": "FAIL",
+    "exit_code": 1,
+    "assertion": "reference-transaction hook marker present after checkpoint",
+    "previous_checks_passed": 13,
+    "log_sha256": "5fd9e50c56ac0f752ca8ea5f6fbd3194bc8b7eedeff3458c3df29cb875cf78b1",
+    "cleanup": "completed by finally before exit"
+  },
+  "after": {
+    "status": "PASS",
+    "checks": 18,
+    "exit_code": 0,
+    "ended_at_utc": "2026-11-03T20:13:02.0780087Z",
+    "log_sha256": "bed7c38816111ce630b818422cf6074e6bf4eb7b3d29a62af0fd39f4ca476323",
+    "cleanup": "all owned temporary roots removed before exit"
+  },
+  "published_model": {
+    "revision": 34,
+    "complete_standard_workflow": false,
+    "qualification": "static only; current composed NOT_RUN"
+  },
+  "earlier_composed_sources": {
+    "revisions": [
+      29,
+      32,
+      33
+    ],
+    "relationship": "frozen earlier sources; results cannot be reassigned to this adapter"
+  },
+  "native": "NOT_RUN",
+  "installed_archive": "NOT_RUN"
+}

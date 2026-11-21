@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-drift-rollback-output.v1",
+  "x-aidn-contract-version": "standard-drift-rollback-output.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "observations",
+    "facts",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-drift-rollback-output.v1"
+    },
+    "operation_ref": {
+      "const": "drift_recovery_rollback_apply"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "blocked",
+        "reconciliation_required"
+      ]
+    },
+    "effect_status": {
+      "enum": [
+        "confirmed",
+        "no_effect",
+        "unknown"
+      ]
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "recovery_record_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$",
+          "maxLength": 43
+        },
+        "before_context_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "maxLength": 64
+        },
+        "after_context_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "maxLength": 64
+        },
+        "changed_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "maxItems": 15
+        },
+        "reason_code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]+$",
+          "maxLength": 256
+        },
+        "can_apply": {
+          "const": false
+        }
+      }
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "drift_recovery_rollback_applied": {
+          "const": true
+        },
+        "drift_check_completed": {
+          "const": false
+        }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "maxLength": 64
+          }
+        }
+      }
+    }
+  }
+}

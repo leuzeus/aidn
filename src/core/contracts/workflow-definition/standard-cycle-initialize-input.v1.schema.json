@@ -1,0 +1,61 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "session_id",
+    "cycle_id",
+    "cycle_type",
+    "title",
+    "objective",
+    "continuity_rule",
+    "base_branch"
+  ],
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{3,6}$"
+    },
+    "cycle_id": {
+      "type": "string",
+      "pattern": "^C[0-9]{3,6}$"
+    },
+    "cycle_type": {
+      "enum": [
+        "feature",
+        "spike",
+        "refactor",
+        "structural",
+        "migration",
+        "security",
+        "perf",
+        "integration",
+        "compat",
+        "corrective",
+        "hotfix"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 15,
+      "maxLength": 512,
+      "pattern": "^[^\\r\\n\\u0000]+$"
+    },
+    "continuity_rule": {
+      "enum": [
+        "R1_STRICT_CHAIN",
+        "R2_SESSION_BASE_WITH_IMPORT"
+      ]
+    },
+    "base_branch": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9/_-]{0,127}$"
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-initialize-input.v1",
+  "x-aidn-contract-version": "standard-cycle-initialize-input.v1"
+}

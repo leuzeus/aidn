@@ -1,0 +1,110 @@
+{
+  "date": "2026-11-04",
+  "status": "PARTIAL_IMPLEMENTATION_WITH_FOCUSED_REGRESSION_PROOFS",
+  "lane": "ASSURED",
+  "scope": "package source, pure replay and disposable fixture corpora",
+  "behavior": [
+    "Reuse exact canonical event bytes within one replay when verifying historical operation/control fingerprints.",
+    "Return the already validated cursor from inspection instead of replaying a second time.",
+    "Preserve schema, hash format, every validation and historical v1/v2 readers; no external state, grant or authorization cache."
+  ],
+  "validation": {
+    "PASS": {
+      "prefix-hashing": 6,
+      "operation-contracts-reducer-service": 27,
+      "agentic-v1-v2": 52,
+      "bpmn": 14,
+      "empty-sequence": 5,
+      "operation-host": 38,
+      "startup-model": 22,
+      "standard-composition": 28,
+      "synthetic-preflight": 18
+    },
+    "SKIP": [],
+    "initial_failure": {
+      "run": "source20-reducer-validation-20261104",
+      "exit_code": 1,
+      "failed_command": "operation-host",
+      "child_diagnostics": "NOT_RETAINED due Windows launcher output inheritance",
+      "cause": "UNCONFIRMED; do not infer same cause as launcher diagnostics defect",
+      "source_unchanged": true
+    },
+    "initial_prefix_fixture_failure": {
+      "checks_before_failure": 3,
+      "cause": "Fixture attempted to mutate a receipt frozen by inspection; exact first source and logs retained.",
+      "corrected": "Replace events on mutable outer instance before tampering."
+    },
+    "successful_run_source_unchanged": true,
+    "current_core_and_catalog_bytes_match_successful_suite": true
+  },
+  "profile": {
+    "proof_class": "local-pure-reducer-descriptive-profile",
+    "events": 136,
+    "input_sha256": "82b9c44f4b37a96fd9e45c5487ebfe6dabb4db889da0386e3d468d613c8224b1",
+    "cursor_sha256": "b60a5748d088b7c6c24a0d066db701da6e422d1331bf88b7b6fb7098772d7d17",
+    "arithmetic_median_before_ms": 153.732,
+    "arithmetic_median_after_ms": 25.4995,
+    "raw_upper_median_before_ms": 156.837,
+    "raw_upper_median_after_ms": 26.913,
+    "limitations": [
+      "fixed before then after order",
+      "one excluded warmup; visible JIT gradient",
+      "seven calls per source",
+      "not standard host end-to-end",
+      "no causal native or financial quality/productivity claim"
+    ],
+    "source_snapshots": {
+      "before": "9eb0e2ad70241fc0f4778891bf5464bfaa943b98940d4fd7999f782013567550",
+      "after": "d62d09ab9cd0403b56df6e69f2173c9b4caf58bb2069ae76c0bb68d4fe00c408"
+    },
+    "snapshot_limit": "Measured after source precedes applying the same prefix-byte reuse to control events. Exact measured source bytes retained separately; final current-core replay is independently checked."
+  },
+  "historical_snapshot_replay": {
+    "status": "PASS",
+    "proof_class": "snapshot-only-pure-reducer",
+    "events": 136,
+    "rows": 137,
+    "exact_replay": true,
+    "exact_streamed_simulation": true,
+    "input_sha256": "82b9c44f4b37a96fd9e45c5487ebfe6dabb4db889da0386e3d468d613c8224b1",
+    "cursor_sha256": "b60a5748d088b7c6c24a0d066db701da6e422d1331bf88b7b6fb7098772d7d17",
+    "current_core_sha256": "2d1bf64f40e9c2295572a9d88c0e90f336f836f38eef4aa5a56e61ce482b1a9a",
+    "historical_project_or_control_accessed": false,
+    "native_calls": 0,
+    "resource_extinction_proven": false,
+    "unknown_recovery_executed": false
+  },
+  "historical_native_comparison": {
+    "status": "EXISTING_DELIVERABLE_RETAINED",
+    "report": "bpmn-v2-controlled-2026-11-01.md",
+    "source": "4501cbd3f26e654529557080feaa0b94e9f5520f",
+    "order": [
+      "IR",
+      "XML",
+      "XML",
+      "IR"
+    ],
+    "responses_per_case": 12,
+    "root_audit": "12 retained evidence hashes and cumulative thread counters verified",
+    "limit": "Historical controlled corpus, two cases per arm; not current standard workflow acceptance or a general causal gain."
+  },
+  "new_unknown_driver": {
+    "status": "PREPARED_NOT_RUN",
+    "fault": "actual local-owner unlink completed, acknowledgement lost; real dispatcher produces unknown",
+    "unknown_or_completed_receipt_authored_by_fixture": false,
+    "syntax_only": true
+  },
+  "architecture_decision_change": false,
+  "new_information_concept": false,
+  "new_persistence_surface": false,
+  "ordinary_selection_changed": false,
+  "complete_standard_workflow": false,
+  "NOT_RUN": [
+    "New composed dispatcher-unknown recovery case",
+    "Full runtime family and Governance Admission",
+    "Retained-owner authenticated resource closure",
+    "Expired-original-authority recovery",
+    "Positive DB-only checkpoint reconciliation",
+    "Current standard actual native/provider/human/PostgreSQL/exact installed archive acceptance"
+  ]
+}

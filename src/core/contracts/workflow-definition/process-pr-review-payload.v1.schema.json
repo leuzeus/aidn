@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/process-pr-review-payload.v1",
+  "x-aidn-contract-version": "process-pr-review-payload.v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "event", "observation"],
+  "properties": {
+    "contract_version": { "const": "process-pr-review-payload.v1" },
+    "event": { "type": "object" },
+    "observation": { "type": "object" }
+  }
+}

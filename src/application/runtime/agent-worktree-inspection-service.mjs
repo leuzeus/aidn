@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 import { readActivation, createActivationGitEnvironment } from "../install/project-activation-service.mjs";
 import { inventoryRuntime, checkedHostPath } from "../install/global-runtime-store.mjs";
 import { fingerprintAgentExecutionValue } from "../../core/agents/agent-execution-contracts.mjs";
+import { resolveFileStatDevice } from "../../lib/fs/exact-file-identity.mjs";
 
 const hash = value => createHash("sha256").update(value).digest("hex");
 const samePath = (a, b) => process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b;
@@ -24,29 +25,34 @@ export function inspectAgentWorktreeLocalPointers(targetRoot, { expectedPackageR
   }
   function stat(input) {
     const file = local(input), parsed = path.parse(file); let cursor = parsed.root, found = null;
+    const options = { bigint: true };
     for (const part of file.slice(parsed.root.length).split(path.sep).filter(Boolean)) {
       cursor = path.join(cursor, part);
-      try { found = fs.lstatSync(cursor); } catch (error) { if (error.code === "ENOENT") return null; throw error; }
-      if (found.isSymbolicLink() || !found.isDirectory() && (!found.isFile() || found.nlink !== 1)) fail("DELEGATED_LOCAL_POINTER_ALIAS");
+      try { found = fs.lstatSync(cursor, options); } catch (error) { if (error.code === "ENOENT") return null; throw error; }
+      if (found.isSymbolicLink() || !found.isDirectory() && (!found.isFile() || found.nlink !== 1n)) fail("DELEGATED_LOCAL_POINTER_ALIAS");
       if (cursor !== file && !found.isDirectory()) fail("DELEGATED_LOCAL_POINTER_INVALID");
     }
-    if (!found) found = fs.lstatSync(file);
+    if (!found) found = fs.lstatSync(file, options);
     if (!samePath(fs.realpathSync.native(file), file)) fail("DELEGATED_LOCAL_POINTER_ALIAS");
     return found;
   }
   function bytes(input, maximum = limit) {
-    const file = local(input), before = stat(file);
-    if (!before) { files.set(file, { path: file, sha256: null, bytes: 0 }); return null; }
-    if (!before.isFile() || before.size > maximum) fail("DELEGATED_LOCAL_POINTER_INVALID");
+    const file = local(input), observed = stat(file);
+    if (!observed) { files.set(file, { path: file, sha256: null, bytes: 0 }); return null; }
+    if (!observed.isFile() || observed.size > maximum) fail("DELEGATED_LOCAL_POINTER_INVALID");
+    const changed = () => fail("DELEGATED_LOCAL_POINTER_CHANGED");
+    const before = resolveFileStatDevice(file, observed, changed);
     const fd = fs.openSync(file, "r");
     try {
-      const opened = fs.fstatSync(fd); if (opened.dev !== before.dev || opened.ino !== before.ino) fail("DELEGATED_LOCAL_POINTER_CHANGED");
-      const content = Buffer.alloc(before.size); let offset = 0;
+      const opened = fs.fstatSync(fd, { bigint: true });
+      if (opened.dev !== before.dev || opened.ino !== before.ino) changed();
+      const content = Buffer.alloc(Number(before.size)); let offset = 0;
       while (offset < content.length) { const count = fs.readSync(fd, content, offset, content.length - offset, null); if (!count) fail("DELEGATED_LOCAL_POINTER_CHANGED"); offset += count; }
       if (fs.readSync(fd, Buffer.alloc(1), 0, 1, null)) fail("DELEGATED_LOCAL_POINTER_CHANGED");
-      const after = fs.fstatSync(fd), final = stat(file);
+      const current = stat(file);
+      const after = fs.fstatSync(fd, { bigint: true }), final = current && resolveFileStatDevice(file, current, changed);
       if (!final || [after, final].some(row => row.dev !== before.dev || row.ino !== before.ino || row.size !== before.size
-        || row.mtimeMs !== before.mtimeMs || row.ctimeMs !== before.ctimeMs)) fail("DELEGATED_LOCAL_POINTER_CHANGED");
+        || row.mtimeNs !== before.mtimeNs || row.ctimeNs !== before.ctimeNs)) changed();
       files.set(file, { path: file, sha256: hash(content), bytes: content.length }); return content;
     } finally { fs.closeSync(fd); }
   }

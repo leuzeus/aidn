@@ -501,6 +501,16 @@ setup refresh on the `codex sandbox` path even when sandbox state exists. V1
 therefore retains `SANDBOX_EXISTING_ONLY_UNSUPPORTED` before any native process.
 Neither setup completion nor a local attestation overrides that refusal.
 
+The reviewed source commit is `0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807`.
+Its historical app executable (`8f0554ed...`) and public Windows x64 release
+executable (`21f6fb0b...`) are separate exact artifacts in the qualification
+candidate registry. The public release tag points to that commit; its published
+digest and OpenAI Authenticode signature establish artifact identity, not a
+reproducible-build assertion or native confinement. V1/V2 refusals apply to both.
+V3/V4 still require native evidence bound to the selected executable, package,
+profile and helpers. A newer SDK model client does not inherit this eligibility.
+See the [official release](https://github.com/openai/codex/releases/tag/rust-v0.158.0-alpha.2.1).
+
 V2 is a separate explicit contract, not a relaxation of a v1 proof:
 
 - Select `codex-native-profile-policy.v2` and `backend.provisioning: codex-managed`

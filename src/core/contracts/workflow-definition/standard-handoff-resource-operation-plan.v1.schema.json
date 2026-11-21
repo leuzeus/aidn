@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "publication_operation_id",
+    "publication_output_sha256",
+    "packet_sha256",
+    "packet_metadata_sha256",
+    "packet_path"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-handoff-resource-operation-plan.v1"
+    },
+    "publication_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "publication_output_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "packet_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "packet_metadata_sha256": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      ]
+    },
+    "packet_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    }
+  },
+  "$id": "aidn://contracts/workflow-definition/standard-handoff-resource-operation-plan.v1",
+  "x-aidn-contract-version": "standard-handoff-resource-operation-plan.v1"
+}

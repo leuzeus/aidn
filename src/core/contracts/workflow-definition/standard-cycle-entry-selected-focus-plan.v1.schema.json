@@ -1,0 +1,322 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-entry-selected-focus-plan.v1",
+  "x-aidn-contract-version": "standard-cycle-entry-selected-focus-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "operation_id",
+    "input",
+    "prepared_at_ms",
+    "source_sha256",
+    "scope_sha256",
+    "backend_binding_sha256",
+    "inventory_sha256",
+    "session_id",
+    "selected_cycle_id",
+    "selected_cycle_path",
+    "selected_state",
+    "selected_branch",
+    "selected_branch_head",
+    "deferred_cycles",
+    "carry_over_pending",
+    "documents",
+    "changes",
+    "phase_route",
+    "dor_state",
+    "scope_frozen",
+    "git_observed"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-entry-selected-focus-plan.v1"
+    },
+    "operation_ref": {
+      "const": "cycle_entry_selected_focus"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "checkpoint_operation_id"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "standard-cycle-entry-selected-focus-input.v1"
+        },
+        "checkpoint_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        }
+      }
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "scope_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "backend_binding_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "inventory_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{3,6}$"
+    },
+    "selected_cycle_id": {
+      "type": "string",
+      "pattern": "^C[0-9]{3,6}$"
+    },
+    "selected_cycle_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^[^\\\\\\u0000]+$"
+    },
+    "selected_state": {
+      "enum": [
+        "OPEN",
+        "IMPLEMENTING",
+        "VERIFYING"
+      ]
+    },
+    "selected_branch": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9/_-]{0,127}$"
+    },
+    "selected_branch_head": {
+      "type": "string",
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    },
+    "deferred_cycles": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "string",
+        "pattern": "^C[0-9]{3,6}$"
+      }
+    },
+    "carry_over_pending": {
+      "type": "boolean"
+    },
+    "documents": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 384,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256",
+          "metadata_sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^[^\\\\\\u0000]+$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "metadata_sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "changes": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 131,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "before_sha256",
+          "before_metadata_sha256",
+          "text_chunks",
+          "after_sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^[^\\\\\\u0000]+$"
+          },
+          "before_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "before_metadata_sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text_chunks": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 128,
+            "items": {
+              "type": "string",
+              "maxLength": 8192
+            }
+          },
+          "after_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "phase_route": {
+      "enum": [
+        "plan_adoption",
+        "implementation_resume",
+        "verification_resume"
+      ]
+    },
+    "dor_state": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "scope_frozen": {
+      "enum": [
+        "true",
+        "false"
+      ]
+    },
+    "git_observed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "branch",
+        "ref",
+        "head",
+        "index_sha256",
+        "index_clean",
+        "lock_present",
+        "changes",
+        "identity",
+        "signing"
+      ],
+      "properties": {
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "ref": {
+          "type": "string",
+          "pattern": "^refs/heads/[^\\r\\n]+$"
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "index_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "index_clean": {
+          "type": "boolean"
+        },
+        "lock_present": {
+          "type": "boolean"
+        },
+        "changes": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "status",
+              "path"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 2
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              }
+            }
+          }
+        },
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "email"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "email": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          }
+        },
+        "signing": {
+          "type": "boolean"
+        },
+        "filter_context_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  }
+}

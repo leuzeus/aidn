@@ -1,0 +1,117 @@
+{
+  "contract_version": "qualification-record.v1",
+  "recorded_at": "2026-11-03T19:47:25.430Z",
+  "source_snapshot": "484f65b9e895e13e3571a2b139a2fcb72c2003a8",
+  "source_ref": "refs/aidn/qualification/session-delivery-checkpoint-20261103",
+  "model_revision": 33,
+  "model_sha256": "c248c60101125cfcfe1c686a638af85ae6309554bac61da08b93349bbaea060f",
+  "catalog_sha256": "5b2f9f65ca28867e22027b48e34845178b941375c99b2d9781e1dc15951fdb42",
+  "implementation_pin": "9a2fba61d3e5c5150577020f3300b7e0c674560000db5aa9022989ee6db85bb0",
+  "implementation_members": 265,
+  "proof_class": "offline-real-start-close-hooks-CAS-SQLite-Git-with-injected-decision-and-R05-authority",
+  "component_cases": [
+    {
+      "mode": "files",
+      "fault": null,
+      "result": "PASS",
+      "checks": 20,
+      "exit_code": 0,
+      "cleanup": "completed after final JSON and before zero process exit",
+      "log": {
+        "name": "standard-delivery-files-20261103.result.txt",
+        "sha256": "97b439af9a2947f1e054626cf8806028059019e9b19138a0a28bee3ce9dd096a"
+      }
+    },
+    {
+      "mode": "dual",
+      "fault": null,
+      "result": "PASS",
+      "checks": 20,
+      "exit_code": 0,
+      "cleanup": "completed after final JSON and before zero process exit",
+      "log": {
+        "name": "standard-delivery-dual-20261103.result.txt",
+        "sha256": "8e501e3b92ee03341dfea60ce4ef12fe5f55cf29e29184743b42716606881c81"
+      }
+    },
+    {
+      "mode": "db-only",
+      "fault": null,
+      "result": "PASS",
+      "checks": 20,
+      "exit_code": 0,
+      "cleanup": "completed after final JSON and before zero process exit",
+      "log": {
+        "name": "standard-delivery-db-only-20261103.result.txt",
+        "sha256": "25274b585564e7933efda7db9c3bdc8e1b24d7dac8a8c9635a442c4774595aa4"
+      }
+    },
+    {
+      "mode": "files",
+      "fault": "grant-after-git",
+      "result": "PASS",
+      "checks": 20,
+      "exit_code": 0,
+      "cleanup": "completed after final JSON and before zero process exit",
+      "log": {
+        "name": "standard-delivery-lost-grant-20261103.result.txt",
+        "sha256": "190edfc33614a535efb1082bfd6e6dd0ee6be5e218a76034cacb9047ea3e0d48"
+      }
+    }
+  ],
+  "coverage_overlap": "Each case includes the original 16 R07 assertions plus 4 delivery assertions. Counts are not independent A1-A10 criteria.",
+  "gates": [
+    {
+      "name": "source-policy",
+      "result": "PASS",
+      "log_sha256": "0bcb91534cb81a505febf0f3d28843e70cc54286e5c0a1e5491d103a7d86e921"
+    },
+    {
+      "name": "metadata-policy",
+      "result": "PASS",
+      "log_sha256": "cd6df66f20411384d3217c93e87fe10b140f45d46179a093ce05ec0c80deaec8"
+    },
+    {
+      "name": "governance",
+      "result": "PASS",
+      "log_sha256": "f7f2f55a238f0821085d81e9a25ec5d6c5ad4eae1f2f2783389b7f86c25be8ee"
+    },
+    {
+      "name": "startup",
+      "result": "PASS",
+      "log_sha256": "9f52503dc7311d43ad318235db96e70969140e921b7f2353052a3e412ee8cb45"
+    },
+    {
+      "name": "gate-catalog",
+      "result": "PASS",
+      "log_sha256": "ac7853b13bffb9bff58c486d4cbb8b2d3f939248cefd43e6158e25d833bd4c3a"
+    },
+    {
+      "name": "model",
+      "result": "PASS",
+      "log_sha256": "f7a0494b2e2b581cdec683432532ced4e4150f07c5234d23d309c99bbe48f4fe"
+    },
+    {
+      "name": "docs",
+      "result": "PASS",
+      "log_sha256": "71cc5e6dfa3e9e27d8493cb18dc6f35a20826134250d3f1f60352b6ea0f25b15"
+    }
+  ],
+  "postconditions": [
+    "The actual final close hook precedes final CAS and this delivery checkpoint.",
+    "Exactly session/snapshot/current final postimages are eligible; foreign paths refuse.",
+    "Canonical CLOSED bytes and metadata, close event history and reload cache remain unchanged.",
+    "No hook is repeated and no cache refresh, branch integration, PR or remote success is claimed.",
+    "DB-only with no physical changes completes with no_effect and preserves HEAD.",
+    "Lost grant after physical Git commit retains unknown owner and emits empty facts."
+  ],
+  "host_authority": "Implemented but not qualified by this injected-source component fixture",
+  "composed_model": {
+    "revision33": "NOT_RUN",
+    "revision32": "IN_PROGRESS on 9c9f221; not extended to revision33"
+  },
+  "native": "NOT_RUN",
+  "exact_installed_archive": "NOT_RUN",
+  "ordinary_standard_selection": "UNCHANGED",
+  "complete_standard_workflow": false
+}

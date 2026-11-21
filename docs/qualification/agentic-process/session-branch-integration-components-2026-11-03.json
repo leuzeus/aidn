@@ -1,0 +1,146 @@
+{
+  "observed_at_utc": "2026-11-03T20:39:59.759Z",
+  "source_base": "638f182234a01b9447026fc8643fbb301c7c0598",
+  "source_files": [
+    {
+      "path": "src/application/runtime/standard-session-branch-integration.mjs",
+      "sha256": "16f8281d9df1cbbfb789c3062c28329afbba04ff5e1fc5dc5098963a39ad9513"
+    },
+    {
+      "path": "src/application/runtime/standard-session-branch-integration-authority.mjs",
+      "sha256": "433e4e576e88348d9968afd99f7e299aec9e8610cd9223338c30362dc9f30eea"
+    },
+    {
+      "path": "src/application/runtime/standard-workflow-human-decisions.mjs",
+      "sha256": "9d39dad55550299b14e5dfe8b9d593726ba53fdaf331ca685e8c0028ca9ccd6d"
+    },
+    {
+      "path": "src/application/runtime/standard-workflow-operation-host.mjs",
+      "sha256": "ec6e0d41ef3f2d184e44b5b389ffa8b963138dee3d48d15d61a8db4f7649970f"
+    },
+    {
+      "path": "src/core/workflow/standard-session-branch-integration-decision.mjs",
+      "sha256": "f9c24c4b0ce9e3ffedbc3bf19011d7e6436633eca6455c2f9ac4f03db28bca86"
+    },
+    {
+      "path": "src/core/contracts/workflow-definition/human-session-branch-integration-decision.v1.schema.json",
+      "sha256": "b5432ae827f0affbdb72d8733fc32c5234bbdfc5fe649123e827af54bced9d88"
+    },
+    {
+      "path": "src/core/contracts/workflow-definition/process-decision-inbox.v6.schema.json",
+      "sha256": "d51154b3ad2c8684807667f332c1f8e8478db6a15d881a67af0083dcb4b6d5b7"
+    },
+    {
+      "path": "src/core/contracts/workflow-definition/standard-session-branch-integrate-input.v1.schema.json",
+      "sha256": "aa83726e8716025eb4cc14374d8db55ee910c24a308389790374c6ba6526b9f6"
+    },
+    {
+      "path": "src/core/contracts/workflow-definition/standard-session-branch-integrate-output.v1.schema.json",
+      "sha256": "06431f5148960f3effc622f3976db223e61bfc35f930d048c8b6e795c4f90e3d"
+    },
+    {
+      "path": "src/core/contracts/workflow-definition/standard-session-branch-integrate-plan.v1.schema.json",
+      "sha256": "a08f19637e9afa5498a4050601cd4078f4917114bba67ce03597a1086549b6fe"
+    },
+    {
+      "path": "src/core/contracts/workflow-definition/standard-session-branch-integration-decision-output.v1.schema.json",
+      "sha256": "d0952db4c1c5894c67575eda8697969450f17cb71069b1c6291bbd84cd4a78b0"
+    },
+    {
+      "path": "src/core/contracts/workflow-definition/standard-session-branch-integration-question.v1.schema.json",
+      "sha256": "d2227ebc4f48d05257ec348b86550899818007490d28cc17f25d1cdf1272cecc"
+    },
+    {
+      "path": "src/core/contracts/workflow-definition/standard-session-branch-integration-review-input.v1.schema.json",
+      "sha256": "d6c1aab3c41ae00541f5a266ac4330d7663420a53ec1fb47411fe1b0d5802b29"
+    },
+    {
+      "path": "src/core/contracts/workflow-definition/standard-session-branch-integration-review-plan.v1.schema.json",
+      "sha256": "71bc5e6e92c7852d511976a5dde203b1c742b6f4f3cd84eeea8d24345a721b39"
+    },
+    {
+      "path": "src/core/contracts/workflow-definition/standard-session-branch-integration-review.v1.schema.json",
+      "sha256": "63eaa4d1a686b975728cc71eff54bab86851e635cfabd31e5edad696d2588dd8"
+    }
+  ],
+  "model": {
+    "revision": 37,
+    "sha256": "8833c65b3e3b32ce02b83b562538052c7dd9a130aba78684b09a4fa869996f3f",
+    "catalog_sha256": "3bbe01323b76df7a545dc34f0107f4cf2a6ca844a849f373b1d6f4763d17ac9c",
+    "nodes": 87,
+    "operations": 53,
+    "bindings": 43,
+    "registered_bindings": 50,
+    "activities": 8,
+    "complete_standard_workflow": false
+  },
+  "implementation": {
+    "sha256": "a0a3dc488ac4db40cf7f1f4d6692fd7a1434da6884f6a848a40c9191f95eb6b3",
+    "files": 280
+  },
+  "components": {
+    "human": {
+      "status": "PASS",
+      "checks": 11,
+      "exit_code": 0,
+      "fixture_sha256": "2fafd756645c62c838b704c54731555cfba844860885adffeb9f25e0dc3db27d",
+      "log_sha256": "7e1bfb591757dd7230b1a65ddb0818c8d24113c439e2176c7a63377376ba6738",
+      "cleanup": "completed before exit",
+      "boundary": "actual canonical inbox stores files/dual/db-only and HMAC; fixture human verifier; no Git integration"
+    },
+    "authority": {
+      "status": "PASS",
+      "checks": 7,
+      "fixture_sha256": "94468017e798d57c8244adcf7ad018e52bb1907ebef2f752664d68a5670139a7",
+      "boundary": "actual canonical files and event bytes; accepted-journal/R07 capabilities injected; no actual hook execution or Git integration"
+    },
+    "application": {
+      "status": "PASS",
+      "checks": 6,
+      "exit_code": 0,
+      "fixture_sha256": "ad252c5ba7c6b95e1691167232ccf3d9f5145777e045206663b929f59047ed05",
+      "log_sha256": "1f961c8ed501bbd4407f76b4593dd16d63ade2e48231bf56279aa5795299b541",
+      "cleanup": "completed before exit",
+      "boundary": "actual application owner and Git transaction; accepted human/closure capabilities injected"
+    }
+  },
+  "earlier_attempts": [
+    {
+      "status": "FAIL",
+      "exit_code": 1,
+      "log_sha256": "8249dd5bb703132f5d677d6e1547e9c8aa396035bf15a588c42763d31705a4c0",
+      "operation_executed": "actual Git integration; output subsequently remained reconciliation_required",
+      "diagnostic": "initial fixture assertion omitted reason; superseded by bounded reason capture"
+    },
+    {
+      "status": "FAIL",
+      "exit_code": 1,
+      "log_sha256": "4239d99b5d7a5b0534dd0935982e72851cc1971e0bd1a8e7fcdd78f1d8094b44",
+      "reason": "STANDARD_SESSION_INTEGRATION_OUTPUT_INVALID",
+      "cause": "inherited checkpoint-specific oneOf required wrong fact and two evidence references",
+      "effects_retried": false,
+      "cleanup": "fixture finally completed; retained unknown owner was asserted only in later successful case"
+    }
+  ],
+  "static": {
+    "startup": 22,
+    "composition": 18,
+    "contracts_reducer_service": 27,
+    "source_policy": 35,
+    "metadata_policy": 37,
+    "governance_completeness": "PASS",
+    "gate_catalog": "PASS"
+  },
+  "scope": {
+    "single_retained_done_cycle": true,
+    "more_attached_cycles": "REFUSED",
+    "refused_deferred_cancelled": "DISTINCT",
+    "historical_inbox_versions": "v1-v5 preserved without conversion",
+    "ordinary_standard_selection": "UNCHANGED",
+    "branch_context_reanchor": "NOT_IMPLEMENTED",
+    "PR_push_review_merge_sync": "NOT_IMPLEMENTED",
+    "composed_current": "NOT_RUN",
+    "native": "NOT_RUN",
+    "installed_archive": "NOT_RUN"
+  }
+}

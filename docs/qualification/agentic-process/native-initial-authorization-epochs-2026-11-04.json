@@ -1,0 +1,66 @@
+{
+  "format": "aidn-native-initial-authorization-qualification.v1",
+  "date": "2026-11-04",
+  "source_commit": "a7f06a93844d53950ccd00f95d1ad57409232821",
+  "status": "PASS_BOUNDED_OFFLINE_FIXTURE",
+  "proof_class": "offline-production-composition-with-fake-native-wire",
+  "command": "node tools/perf/verify-agentic-process-execution-fixtures.mjs --native-initial-epoch-mode=<mode> --retain-on-failure --retain-always",
+  "modes": [
+    {
+      "mode": "files",
+      "scenario_groups": 2,
+      "exit_code": 0,
+      "source_unchanged": true,
+      "archive_payloads": 2435,
+      "archive_sha256": "f66da1a7eae9694de912ed81616dc02d35d2e68f1594123230dc5929c5206d0c"
+    },
+    {
+      "mode": "dual",
+      "scenario_groups": 1,
+      "exit_code": 0,
+      "source_unchanged": true,
+      "archive_payloads": 2203,
+      "archive_sha256": "e599cd3338de0ad9fb9fbbeb051f619328a72f1677026abc185d0d5daa6b48c1"
+    },
+    {
+      "mode": "db-only",
+      "scenario_groups": 1,
+      "exit_code": 0,
+      "source_unchanged": true,
+      "archive_payloads": 2201,
+      "archive_sha256": "abfb9703ea1232880a50356d51b29eae7e38fc9a1dbcefe0e6d20f934f3742c8"
+    }
+  ],
+  "observed": [
+    "Active unused initial authorization refuses epoch preparation; an expired authorization still refuses native execution before allocation.",
+    "Preparation binds the exact original authorization, empty journal/allocations, current instance/product/configuration and native scope without creating an allocation.",
+    "Missing or unverified sources, empty closure inventory, active resources and denied approval refuse activation.",
+    "Explicit authenticated activation creates a v3 journal with null original journal, retained original authorization and signed request/grant history; no v1 origin is fabricated.",
+    "Repeated activation observes the retained grant without another source verification or native launch.",
+    "Generation one requires the exact latest grant, retains the original authorization and passes actual worker admission and canonical-store validation.",
+    "Cold Node readers and the common IR simulation reproduce the retained journal/checkpoint and final instance.",
+    "The FILES mixed host crosses its actual first native boundary with the new grant and preserves all prior deterministic operation events."
+  ],
+  "preserved_failures": {
+    "first_three_mode_attempts": "FAIL: fixture expected AUTHORIZATION_EXPIRED; the existing owned port reports PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED. Exact sources and raw archives retained separately.",
+    "correction": "Fixture assertion only, commit a7f06a93; the existing refusal code and product behavior were preserved.",
+    "external_memory_smoke": "First invocation omitted required process parameters and failed before the component. A distinct corrected memory-only smoke passed; it is not canonical-store qualification."
+  },
+  "historical_epoch_regression": {
+    "source_commit": "00bedb1e",
+    "scenario_groups": 2,
+    "exit_code": 0,
+    "source_unchanged": true,
+    "archive_sha256": "aede2cb480208e90628c03a3b0d5e41e3b32cfeecab0673250c450244c74dd4b"
+  },
+  "model_calls": 0,
+  "approval_and_resource_discovery": "FIXTURE_DOUBLES",
+  "native_transport_and_process_control": "FIXTURE_DOUBLES",
+  "unused_initial_epoch_supersession": "MEMORY_COMPONENT_ONLY; real-store qualification remains separate",
+  "genuine_native_human_provider_and_os_closure": "NOT_RUN",
+  "configured_postgresql": "NOT_RUN",
+  "full_runtime_and_governance_admission": "NOT_RUN",
+  "installed_archive": "NOT_RUN",
+  "ordinary_entry": "UNCHANGED",
+  "complete_standard_workflow": false
+}

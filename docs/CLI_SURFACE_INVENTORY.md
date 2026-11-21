@@ -327,7 +327,144 @@ finalization; `--verify` retains its read-only verification behavior.
 - `aidn runtime shared-coordination-projects --json`
 - `aidn runtime agent-run --configuration <file> --plan <file> --json`
 - `aidn runtime workflow-inspect --target <root> --json`
+- `aidn runtime workflow-run --target <root> --configuration <file> --json`
+  - Defaults to the structured agentic engine for every new workflow. Execution
+    requires `--execute --authorization <file> --expect-plan <sha256>` for
+    Native execution; STANDARD resource and deterministic actions use the exact
+    action boundary below. JSON and preview start no native client. `--engine legacy` explicitly selects the
+    sequential compatibility lifecycle and retains its plan/shared-sync admission.
+    An explicit `standard-workflow-execution.v1` configuration selects the
+    published STANDARD catalog/model and the common mixed host. Its `execution`
+    supplies project/native pins and roots; the host supplies the model, skills,
+    typed activity outputs and implementation pins. Save the returned `preview`
+    object and apply it with `--action-file <file> --execute --expect-plan <sha256>`.
+    Each invocation admits one exact action. A Native allocation that returns a
+    failed result with a matching authenticated journal and confirmed process
+    tree closure keeps the first failure in `result.details.first_failure`.
+    `result.process_status` reflects the authenticated cursor,
+    `result.workflow_completed` is false, and recovery remains a separate action.
+    Native resource actions use
+    `standard-workflow-native-action.v1`: `native_owner_retire`,
+    `native_allocation_reconcile`, and `native_authorization_epoch`. A failed
+    no-assignment allocation first offers physical-owner retirement, then
+    independently sourced accounting reconciliation. For admitted accepted work,
+    action/result v2 adds the explicit `admitted_post_assignment` profile and
+    closed owner/accounting v2 preparations through the same flags and source
+    boundary. Unknown or unadmitted work remains refused. Before a later allocation,
+    a distinct finite epoch remains mandatory. These actions start no worker
+    and return their versioned Native result, with no completed-workflow
+    claim. A missing `source_ref` leaves application unavailable. Supply the
+    exact prepared request to the independent issuer, fill only its logical
+    source reference in the saved action, then preview with `--action-file`
+    again and use the resulting digest for explicit execution. The host still
+    authenticates the source and the original/current private subject; a JSON
+    reference grants no permission. CLI and console resubmit the same prepared
+    action, including after an owned Native postimage lost acknowledgement.
+    A pinned call entry or return
+    previews as `standard-workflow-call-action.v1`. The saved action binds the
+    instance, model, authority context, occurrence, event and predicted hash.
+    Explicit application records one canonical call transition and reports
+    `standard-workflow-call-result.v1`. It uses no native authorization or
+    business operation. A missing durable key first offers
+    a separate `prepare_host` action; initialization follows with the real key
+    identity. `AIDN_STANDARD_HOST_HOME` is an existing external protected host
+    directory, never a request-selected authority. Decisions use
+    `--decision-source <ref>`. Control delivery uses `--control-source <ref>`.
+    At a published initial or corrective review wait, `aidn:external-merge`
+    selects a protected, read-only merge observation. Exact action-file
+    execution with the same selector reserves and delivers the external
+    observation. The incident disposition and R09 effects have separate
+    authorization. The published L2 external-merge continuation also selects
+    incident record before R09 and resolve/trace/cleanup after its accepted
+    completion; each write uses its own exact action-file authorization.
+    Ordinary and L1 merges skip incident writes. An open PR waits, and a closure without merge is reported
+    separately.
+    An interrupted corrective Git checkpoint uses the existing `dispatch`
+    action. Its preview freshly reads the signed original-process observation;
+    active or unresolved producers remain read-only waits. After observed
+    absence, exact action-file execution invokes the existing commit witness
+    observer under current operation permission and accepts its confirmation.
+    It preserves prior UNKNOWN results and never repeats the Git commit. A
+    confirmation already retained before acceptance is accepted without another
+    result append. A staged checkpoint still takes its ordinary first dispatch.
+    With no source selector, a recoverable R09 question previews a
+    `question_recovery` action. Apply the saved action with the same exact
+    `--action-file --execute --expect-plan` boundary. The action records the
+    disposition of the previous intent. The next preview either prepares a
+    new question or continues through the verified alignment and completion
+    operations.
+    For an interrupted corrective reopening with an original UNKNOWN receipt
+    and all three exact postimages,
+    STANDARD can preview an `operation_disposition` action. Applying its exact
+    action file records one confirmed receipt and preserves the original
+    UNKNOWN. The next preview is a separate `operation_disposition_accept`
+    action bound to that receipt and current journal. Apply that exact action
+    to advance the reducer to the corrective checkpoint. Each action needs
+    its own explicit execution and current protected authority.
+    For a known partial cleanup of an L2 external-merge incident, the same
+    `operation_disposition` action finishes only the remaining trace and temporary
+    tracker writes from the original closure plan. It preserves the original
+    UNKNOWN and every later captured result. Current permission and the exact
+    expected business state are required; foreign changes or unresolved ownership
+    keep reconciliation pending. A captured result can be adopted after an
+    interruption without repeating business writes. The next explicit
+    `operation_disposition_accept` action accepts that retained result separately.
+    A returned UNKNOWN packet publication uses the separate closed v3
+    one-packet disposition. Under current exact-action permission and a proved
+    terminated producer, it finishes only a pending HANDOFF-PACKET projection;
+    it never repeats the canonical packet CAS. DB-only creates no visible
+    export. The original UNKNOWN and captured confirmation stay separate.
+    A fresh authorized adoption can append the captured receipt after a crash
+    without invoking the business port again. Acceptance remains a separate
+    exact action. Preview retires no owner and starts no Native client.
+    An unreturned publisher at its exact canonical postimage uses the closed v4
+    disposition. The original running capsule stays unchanged; the current
+    confirmation is the first returned result and repeats no packet CAS.
+    A terminated unreturned publisher whose exact packet beforeimage and metadata
+    remain unchanged uses the closed v5 disposition. Its current confirmation is
+    blocked/no-effect. The separate acceptance leaves publication incomplete.
+    Publishing then requires a fresh operation intention and current permission.
+    Both profiles preserve the original absent return and Native accounting.
+    If a process stopped after acceptance and left its exact authenticated
+    acceptance control lease held, the same explicit acceptance action can retire
+    that control with current permission, including after the operation completed.
+    It preserves the accepted history and business data. Unknown business ownership
+    or an unrelated lease does not authorize retirement.
+    `--replay` and `--simulate` observe retained model/events without writes or
+    Native allocation. The console run action forwards these same selectors.
+    Custom native-only v1/v2 graphs keep their owned runner; raw v2 control facts
+    remain refused. Historical instances are not converted. Source wiring is
+    partial. An optional protected host manifest binds GitHub push, PR opening,
+    review reads, inline replies and thread resolution as specified in ADR-0025. Exact initialization checks
+    the configured identity. For either PR review wait, a reviewer pinned in
+    the protected manifest enables `--control-source` with the opaque GitHub
+    review node ID. Delivery requires the authenticated review and signed
+    context. Replay and simulation perform no GitHub or credential I/O.
 - `aidn runtime workflow-action --target <root> --request <file> --json`
+  - A STANDARD run preview returns `action.request` with its closed
+    `input.preparedAction`. Save this returned request and resubmit it with
+    `--execute --expect-plan <outer action_sha256>`. The browser retains the same
+    request under its explicit approval. The original operation or call plan is preserved;
+    current authority, freshness and CAS are still checked. A retained R08
+    reply, resolution or merge dispatch uses the same explicit action to record the
+    postimage through read-only provider recovery. An absent postimage keeps
+    the occurrence waiting.
+    For an R08 resolution exception, `--decision-source` selects an authenticated
+    human source for the exact question and documented rationale. Applying the
+    reviewed action records a typed no-effect receipt. The receipt covers only
+    the unresolved thread gate and leaves checks and merge consent separate.
+    A protected GitHub manifest can pin required checks to its target ref.
+    STANDARD records a read-only check receipt on the exact HEAD. A separate
+    `--decision-source` selects a signed merge decision for the current
+    question. Approval is time-limited. A protected host that opts in with
+    `merge_method: "MERGE"` can prepare the separate exact merge action.
+    Applying that action requires its reviewed digest and host grant. A
+    confirmed or exactly recovered merge enables a distinct authorized R09
+    fetch on the local source branch. The next read-only observation
+    measures current divergence. Divergence stays pending. An aligned
+    observation leaves the workflow waiting for final local reconciliation.
+    A prepared action and
+    `actionFile` cannot be combined. JSON alone grants no effect.
 - `aidn runtime workflow-dashboard --target <root> --json`
 - `aidn runtime agent-run-status --configuration <file> --run <id> --json`
 - `aidn runtime agent-run-resume --configuration <file> --run <id> --json`
@@ -590,6 +727,15 @@ The wrapper skips post-hook DB synchronization on closure warning/refusal with
 reason `cycle_close_not_completed`; it must not replace the canonical evidence
 that prevented completion with local projections.
 
+The `promote-baseline` admission reads focus, cycle identity, status, usage matrix,
+traceability and gaps from one canonical snapshot in dual/db-only or configured
+PostgreSQL mode. Missing, ambiguous or inconsistent canonical data returns
+`PROMOTE_BASELINE_CANONICAL_RUNTIME_INVALID`; a local projection cannot supply
+missing evidence. A refused promotion skips post-hook DB synchronization with
+reason `baseline_promotion_not_completed`, including an explicitly requested
+sync and the public skill-name alias. An explicit false hook verdict also
+prevents import when an older nested payload still carries an admission result. Admission alone neither updates baseline artifacts nor proves promotion.
+
 The final `close-session` hook reads current state, session close decisions and
 cycle ownership from one canonical snapshot in db-backed or configured
 PostgreSQL mode. Stale bootstrap projections cannot satisfy admission. On the
@@ -708,6 +854,9 @@ These are currently implemented as package scripts, tools, or internal wrappers,
     observations from one selected nested gate, including checkpoint and workflow
     wrappers. Missing repair evidence remains unknown: a null diagnostic is not
     evidence that the repair layer is clean.
+  - the requirements-delta hook awaits canonical continuity for active anchors,
+    ownership and CR impact. Unavailable or ambiguous DB-backed continuity stops
+    admission; visible projections cannot supply a fallback approval.
 - `aidn runtime local-daemon` (public, experimental)
   - experimental opt-in local daemon prototype
   - `--start`, `--status`, and `--stop` use a worktree-local endpoint file under `.aidn/runtime/daemon/`
@@ -746,6 +895,13 @@ gate invocations do not record drift completion; `--no-emit-event` remains
 observational. This stays within the internal perf surface and does not change
 stable public JSON contracts or grant write admission.
 
+Internal `gating-evaluate` and `branch-cycle-audit-hook` have no default elapsed
+R05 threshold. Their optional `--threshold-minutes <integer>` selects an explicit
+safe nonnegative caller policy; missing proof and material drift remain signals.
+STANDARD checkpoints, closure and promotion do not supply an implicit45-minute
+policy. Accepted objective evidence still requires its current authenticated
+subject, exact physical witnesses and independent effect authorization.
+
 `bootstrap --authorize|--revoke` uses `codex-integration` scope and previews by default; application requires `--write --expect-plan PLAN_ID`. A revoked project stays revoked through repair, resume and rollback. Diagnostic and pre-write admission outputs include compact activation state before backend access. Native Codex trust is separate.
 
 Nominal bootstrap or upgrade accepts `--expect-plan PLAN_ID` from its matching preview. `--persistence-policy verify-only` checks existing backend compatibility without requesting migration, adoption or import; `adopt` retains declared installation effects. `--verify` remains the read-only verification option.
@@ -772,3 +928,17 @@ preparation, then the existing bootstrap preview/apply/diagnose and persistence
 status commands. It has human-readable output, no public JSON contract.
 `-PersistUserConnection` is an explicit optional Windows user-environment write;
 native Codex trust is never changed. See [the setup guide](WINDOWS_PROJECT_SETUP.md).
+
+For `runtime pre-write-admit --skill promote-baseline`, the selected DONE cycle
+is checked by that canonical admission and exposed as the
+`checks.baseline_promotion_target` diagnostic. The cycle need not remain active,
+and promotion does not re-enter implementation DoR. Runtime freshness, repair,
+activation and source-of-truth gates remain. Missing or ambiguous targets still
+block; the internal host selection argument adds no CLI flag and changes no
+focus. The public output keeps its extensible v1 contract and read-only effect.
+
+For `runtime pre-write-admit --skill cycle-create` on the configured source
+branch, a STANDARD PR opening record requires the origin instance's accepted
+R09 completion. The check verifies the source HEAD against the protected
+remote and can use that measurement when the origin tracking ref is stale.
+It uses the existing upstream diagnostic and performs no fetch or ref update.

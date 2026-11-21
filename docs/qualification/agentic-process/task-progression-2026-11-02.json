@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "evidence_kind": "standard-task-progression",
+  "status": "PASS",
+  "date": "2026-11-02",
+  "proof_class": "offline-production-composition-with-fake-native-wire",
+  "base_commit": "d2975de8e095e90888b7622be58725e0616dc436",
+  "code": {
+    "operations_implementation_sha256": "f38f47a14d8fa4976365d1ac294fa4d0dae67790c6588288de3235d88985872c",
+    "native_composition_sha256": "6a06cacfc8a5a66e5f2797b6f1822890656712a3ea5c6b4c52c021baf0182689"
+  },
+  "published_component_revisions": {
+    "startup": 54,
+    "cycle_create": 52
+  },
+  "application_cases": {
+    "files": "PASS",
+    "db-only": "PASS",
+    "partial": "PASS",
+    "projection": "PASS",
+    "unchanged": "PASS"
+  },
+  "actual_ports": [
+    "activation and lifecycle admissions",
+    "canonical files and SQLite CAS",
+    "signed source and operation/native journals",
+    "IR data bindings and task scope",
+    "controlled Node checks and physical proof reader",
+    "durable step and retained dispatcher",
+    "common reducer replay and simulation"
+  ],
+  "fixture_capabilities": [
+    "native RPC and outer process controller",
+    "operator authorization",
+    "validation execution boundary"
+  ],
+  "checks": {
+    "task_contract": 9,
+    "validation": 11,
+    "common_reducer": 48,
+    "operation_contracts": 27,
+    "published_models": 22,
+    "standard_ports": 14,
+    "private_schema_definitions": 7,
+    "source_policy": 35,
+    "metadata_policy": 37,
+    "complete_concepts": 38,
+    "package_topology_fresh_clients": 5,
+    "package_required_task_assets": 9,
+    "operation_bindings": 30,
+    "sensitivity_tracked_files": 1771,
+    "governance_route": "ASSURED",
+    "gate_catalog": 63,
+    "doc_references": "PASS",
+    "markdown": "PASS"
+  },
+  "local_fixture_prerequisite": {
+    "description": "historical canonical SQLite corpus prepared locally; not a clean-checkout reproduction claim",
+    "sha256": "d340195fa4144ecb1cfbe7f63271a83c4b2eba4cca58162c85e964d33d970a12"
+  },
+  "native_model_calls": 0,
+  "native_provider": "NOT_RUN",
+  "native_execution_boundary": "NOT_RUN",
+  "installed_exact_archive": "NOT_RUN",
+  "full_standard_workflow": "NOT_YET_DELIVERED",
+  "ordinary_standard_entry": "NOT_YET_DELIVERED",
+  "monolithic_suite": "NOT_RUN",
+  "full_pr_admission": "NOT_RUN",
+  "outcomes": {
+    "files": "two tasks, cold Node advance, retained dispatch, VERIFYING, exact simulation",
+    "db-only": "two tasks, canonical progress and VERIFYING without implicit projection, exact simulation",
+    "unchanged": "explicit unchanged second report, final planned checks still required and passed, exact simulation",
+    "partial": "only first canonical plan write retained; unknown effects, empty success facts, owner retained, no repeated effect",
+    "projection": "three canonical writes retained; required projection unconfirmed, unknown effects, owner retained, no repeated effect"
+  }
+}

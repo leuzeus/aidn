@@ -7,6 +7,25 @@ metadata:
 
 # Promote Baseline Skill
 
+## STANDARD instance entry
+
+At a top-level user invocation with an explicitly selected
+`standard-workflow-execution.v1` configuration, use
+`aidn runtime workflow-run --target . --configuration <file> --json` to observe
+that same durable instance. Save its returned `preview` object. Apply only an
+explicitly authorized exact action with `--action-file <file> --execute
+--expect-plan <sha256>`. A human wait requires a fresh authenticated source;
+use `--decision-source <ref>` to prepare its delivery. Preserve typed wait,
+refusal, defer, cancellation and reconciliation outcomes. Continue through this
+entry instead of independently executing the manual orchestration below.
+
+This applies only to the top-level entry. A host-assigned Native activity or
+leaf completion hook must never recursively invoke `workflow-run`. Keep
+`codex workflow-step` in its admission/context/coordination role. Missing
+authority, configuration or capabilities do not authorize a manual fallback.
+The existing steps below remain the explicit compatibility route when STANDARD
+has not been selected. Source scaffolds require separate installed qualification.
+
 ## Project Activation
 
 Before loading workflow context or running the steps below, run `aidn runtime pre-write-admit --target . --skill promote-baseline --json`. Continue only when `activation.active` is `true` and `admission_status` is `admitted` or `admitted_with_warnings`.
@@ -93,3 +112,13 @@ Output:
 - New baseline version
 - Next entry point
 
+
+## Completed target and active focus
+
+Promotion validates a selected DONE cycle, which may already have been removed
+from active focus by closure. Pre-write admission checks that target through
+the canonical promotion admission; it does not reactivate it or require a new
+implementation DoR. Inspect `checks.baseline_promotion_target` when selection,
+traceability, gaps or usage evidence blocks. Missing or ambiguous targets remain
+blocked; runtime freshness, repair, activation and source-of-truth checks still
+apply. An internal host selection is not write authorization.

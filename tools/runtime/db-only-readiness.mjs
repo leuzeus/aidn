@@ -31,6 +31,10 @@ const DB_FIRST_MARKERS = [
   // Canonical artifact port resolves SQLite/PostgreSQL without visible-file
   // fallback; console fixtures exercise both transports and DB-only reads.
   "createProjectArtifactStore(",
+  // STANDARD checkpoints and hooks use this same backend-resolved canonical
+  // port, including the inspected cycle checkpoint's injected artifact port.
+  "createStandardWorkflowArtifacts(",
+  "createStandardCycleCheckpoint({ artifacts,",
   // Structured process records use the same backend-resolved artifact CAS
   // through their typed adapter. Local file reads in the composition inspect
   // product/evidence bytes and optional projection size, not canonical state.

@@ -1,0 +1,141 @@
+{
+  "observed_at_utc": "2026-11-04T00:42:35.712Z",
+  "source_commit": "05bea1b6527904fd041eb289ea58eb2fa438c7ac",
+  "lane": "ASSURED",
+  "model": {
+    "revision": 51,
+    "sha256": "207e93d525d76c5a3467c33de84830b8cf477701ba41f06a2e8018bab0f1b74c",
+    "catalog_sha256": "1223ec30b21cba2e0100715f274aa6d96687d324ccafdf92b9d5158f5ae8a894",
+    "nodes": 95,
+    "operations": 60,
+    "startup_revision": 109,
+    "cycle_revision": 107,
+    "runtime_pin": "aef228a4bf2addd38af0b6c8045613465febaf1aca3015cbd4775e1316823fc5",
+    "direct_pinned_files": 326
+  },
+  "results": [
+    {
+      "command": "node tools/perf/verify-github-observation-async-fixtures.mjs",
+      "checks": 10,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:32:04.1718013Z",
+      "log": {
+        "file": "review-async-async-20261103.log",
+        "bytes": 1163,
+        "sha256": "091c423907c0d26542471afdece8ef6007b19b8e39b8271f3e3ef6f19ce2b80d"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-standard-workflow-control-fixtures.mjs",
+      "checks": 27,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:41:05.3993580Z",
+      "log": {
+        "file": "review-async-control-20261103.log",
+        "bytes": 3159,
+        "sha256": "97974456a5eb46f85f3c08b66cc625bc29d882988d045f07af72884e623e7387"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-standard-workflow-model-fixtures.mjs",
+      "checks": 22,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:31:56.5995770Z",
+      "log": {
+        "file": "review-async-models-20261103.log",
+        "bytes": 1724,
+        "sha256": "9f52503dc7311d43ad318235db96e70969140e921b7f2353052a3e412ee8cb45"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-standard-workflow-composition-fixtures.mjs",
+      "checks": 25,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:31:55.8026563Z",
+      "log": {
+        "file": "review-async-composition-20261103.log",
+        "bytes": 2354,
+        "sha256": "61e58c714f6c5f2b8eaa4c2e6d304c85cfa825b015b73b71b2cdb2523ee2c328"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-process-operation-fixtures.mjs",
+      "checks": 27,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:32:01.4432923Z",
+      "log": {
+        "file": "review-async-contracts-20261103.log",
+        "bytes": 2545,
+        "sha256": "62af483902b2a628daa7f4d55bf8e34f35199221829afaa1f95b4a66614545a7"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-standard-process-binding-input-fixtures.mjs",
+      "checks": 3,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:36:04.6224127Z",
+      "log": {
+        "file": "review-async-inputs-20261103.log",
+        "bytes": 577,
+        "sha256": "846fcd23f8441519d7e9b2f57e8c1070b8eb7e917495dbfecbcbb010483e7c02"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-agentic-process-execution-fixtures.mjs --owned-only",
+      "checks": 17,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:41:53.7775339Z",
+      "log": {
+        "file": "review-async-owned-20261103.log",
+        "bytes": 3240,
+        "sha256": "a058c1942c92bdeb9cabcd7a98e0efaf7d506b253e3e15785825ecb9b0694a88"
+      }
+    }
+  ],
+  "additional_checks": {
+    "historical_review_reader": {
+      "status": "PASS",
+      "checks": 14
+    },
+    "historical_thread_reader": {
+      "status": "PASS",
+      "checks": 18
+    },
+    "source_of_truth": {
+      "status": "PASS",
+      "policies": 35
+    },
+    "metadata": {
+      "status": "PASS",
+      "policies": 37
+    },
+    "gate_catalog": "PASS",
+    "doc_references": "PASS",
+    "published_input_boundaries": 43
+  },
+  "transport": "actual asynchronous direct subprocess I/O; Node subprocesses are real, GitHub responses and source authorities are fixture capabilities",
+  "cleanup": "async suite reports fixture_removed true; control and owned suites complete their finally blocks with code0; no general native process-tree closure claim",
+  "model_calls": 0,
+  "claims": {
+    "durable_generic_control_resume": "PASS files/dual/db-only; existing signed control envelope and common reducer",
+    "durable_pr_specific_events": "NOT_RUN",
+    "complete_review_content": "NOT_IMPLEMENTED in source05bea1b",
+    "full_runtime_family": "NOT_RUN",
+    "governance_admission_rollup": "NOT_RUN",
+    "composed_model51": "NOT_RUN",
+    "live_github": "NOT_RUN",
+    "native_human_provider": "NOT_RUN",
+    "postgresql": "NOT_RUN",
+    "installed_archive": "NOT_RUN",
+    "complete_standard_workflow": false
+  },
+  "skips": [],
+  "route": "classifier ASSURED/ADMITTED only; not the Governance Admission rollup"
+}

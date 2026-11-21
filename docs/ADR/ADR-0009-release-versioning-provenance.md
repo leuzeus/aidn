@@ -27,6 +27,28 @@ byte from artifact identity while preserving the ustar payload. Qualification
 reports record Node/zlib/platform versions; byte parity across different
 compression implementations requires measured evidence.
 
+2026-11-18: publication proves the exact merged source before running the
+ordered hosted agentic fixture jobs. The publish job rechecks its publication
+source and verifies the complete manifest receipts from the same workflow run
+before executing the remaining release obligations. This precedes exact-source
+build and artifact verification, tag creation and GitHub Release creation.
+
+2026-11-19: hosted agentic receipts bind each segment to its required operating
+system. The published handoff cases that use the Windows resource observer run
+on Windows in the same blocking sequence used for admission and publication.
+
+2026-11-19: focused verification is performed on the candidate during
+correction. Final admission and publication retain their complete ordered
+manifests. Each distinct fixture scenario runs once in the required suite,
+with focused invocations available for diagnosis. A retry on the same run
+may retain successful receipts that match its exact source and manifest.
+
+2026-11-20: publication no longer depends on the retired exhaustive fixture
+chain. It proves the exact merged source and runs the catalog publication
+selection before building and validating the release artifacts. The merge PR
+runs the affected families and release checks. Tag and GitHub Release
+creation retain the existing exact-source and existing-tag refusal rules.
+
 ## Context
 
 AIDN ships as a package source repository with local release artifacts, manifests and checksums. The release surface is already validated by `build-release`, `npm pack --dry-run` and topology checks, but the source of version truth and the provenance of published artifacts still need an explicit architectural home.

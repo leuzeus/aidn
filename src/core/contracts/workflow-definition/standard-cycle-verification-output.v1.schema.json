@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-verification-output.v1",
+  "x-aidn-contract-version": "standard-cycle-verification-output.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-verification-output.v1"
+    },
+    "operation_ref": {
+      "enum": [
+        "cycle_validation_evaluate",
+        "cycle_verification_enter"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "blocked",
+        "deferred",
+        "rejected",
+        "cancelled",
+        "failed",
+        "reconciliation_required"
+      ]
+    },
+    "effect_status": {
+      "enum": [
+        "no_effect",
+        "confirmed",
+        "unknown"
+      ]
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cycle_validation_evidence_fresh": {
+          "type": "boolean"
+        },
+        "cycle_work_complete": {
+          "type": "boolean"
+        },
+        "cycle_checks_passed": {
+          "type": "boolean"
+        },
+        "cycle_verification_started": {
+          "type": "boolean"
+        }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 24,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

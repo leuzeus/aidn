@@ -2,7 +2,9 @@
 
 The experimental workflow console shares its read model and action service
 between the CLI and a local browser dashboard. It requires no dashboard install
-or PostgreSQL for human-only workflows. Default AIDN execution is unchanged.
+or PostgreSQL for human-only workflows. New workflows default to the structured
+agentic engine, including models authored directly as JSON. The catalog reads
+both agentic and historical sequential records through their own contracts.
 
 ## Inspect before acting
 
@@ -16,12 +18,18 @@ The output includes canonical selections/revisions, instance steps/transitions,
 human evidence, retained run observations, current authorization blockers and
 limits. Exact selectors must exist. The default catalog is bounded to 256 file
 records per family or the first 10,000 canonical DB artifacts; truncation is
-explicit and exact selectors remain available. Reads resolve the configured
+explicit and exact selectors remain available.
+An ID retained in both formats requires `--instance <id> --engine agentic|legacy`
+for an exact read. Reads resolve the configured
 backend on each request, never fall back to stale visible DB projections, and
 do not initialize a missing database. The view is a per-record observation.
 
 A source repository without installed activation can inspect its empty catalog
 and reference registry; it cannot create a client instance by implication.
+Agentic progress is read with `--instance <id>` from its canonical occurrences
+and journal. The `--configuration ... --run ...` live supervisor selector is the
+sequential compatibility surface; a canonical cursor alone does not prove native
+process liveness.
 An unsupported handler remains a blocker. A historical run checkpoint is not a
 live observation. Supply the run configuration and ID for current status.
 Completed execution, accepted attempts, integration, final validation and
@@ -46,7 +54,9 @@ closing the dashboard is not proof of process termination or cleanup.
 The interface first displays observations. The advanced action editor accepts
 the same request JSON as the CLI and shows the exact preview. Editing a request
 invalidates its approval. Applying requires explicit confirmation; run commands
-also require explicit shared synchronization consent. After a lost response,
+using the sequential lifecycle also require explicit shared synchronization
+consent. Ordinary agentic execution retains its local owned-host admission.
+After a lost response,
 inspect canonical state before taking any further action.
 
 ## Common action contract
@@ -64,16 +74,19 @@ be committed under the old hash. `--json` never authorizes an effect.
 
 | Operation | Input fields | Application |
 | --- | --- | --- |
-| `initialize` | `instanceId`, `definition`, `context` | `--write`; current project activation required |
+| `initialize` | `instanceId`, `model`, optional `facts` | Default agentic; `--write` and current project activation required |
+| `initialize` (compatibility) | `engine: "legacy"`, `instanceId`, `definition`, `context` | Explicit sequential creation; `--write` |
+| `signal` | `instanceId`, `expectedSha256`, `event` | Agentic facts/message/cancel only; `--write`; never supplies an assignment or authenticated result |
 | `decide` | `instanceId`, `expectedSha256`, `outcome`, `evidence` | `--write`; typed human decision/evidence |
 | `prepare-segment` | `instanceId`, `expectedSha256`, `configurationPath`, `planPath` | `--write`; checkpoint intent before run preview |
 | `reconcile` | `instanceId`, `expectedSha256` | `--write`; observes existing run, never dispatches |
 | `propose` | `definition`, `explanation`, optional `baseInstanceId` | Preview only |
 | `activate` | proposal fields plus `expectedPreviewSha256`, `review` | `--write`; exact candidate review required |
-| `initialize-selected` | `workflowId`, `instanceId`, `expectedSelectionSha256` | `--write`; existing instances stay pinned |
-| `run` | `command`, `configuration`, `plan` for start or `run` for other commands | Existing supervisor admission and explicit shared sync |
+| `initialize-selected` | `engine: "legacy"`, `workflowId`, `instanceId`, `expectedSelectionSha256` | Explicit sequential compatibility; `--write`; existing instances stay pinned |
+| `run` | `configuration`, `authorization`, optional `command: "workflow-run"` | Default agentic; `--execute` and exact preview; owned runner validates authorization and budgets |
+| `run` (compatibility) | Explicit old `command`, `configuration`, `plan` for start or `run` for other commands | Existing supervisor admission and explicit shared sync |
 
-Run command values are `agent-run`, `agent-run-resume`, `agent-run-cancel` and
+Sequential compatibility command values are `agent-run`, `agent-run-resume`, `agent-run-cancel` and
 `agent-run-cleanup`. Start/resume/cancel use `--execute --expect-plan <hash>
 --sync-relay`; cleanup uses `--write --expect-plan <hash> --sync-relay`. Here the
 hash is the console's complete action hash; the service forwards the nested

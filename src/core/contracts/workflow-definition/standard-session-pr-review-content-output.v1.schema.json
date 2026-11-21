@@ -1,0 +1,915 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-session-pr-review-content-output.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-session-pr-review-content-output.v1"
+    },
+    "operation_ref": {
+      "const": "session_pr_review_content_observe"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "blocked"
+      ]
+    },
+    "effect_status": {
+      "const": "no_effect"
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "session_pr_review_evidence_available": {
+          "const": true
+        },
+        "session_pr_triage_required": {
+          "const": true
+        }
+      }
+    },
+    "observations": {
+      "type": "object"
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "outcome": {
+          "const": "completed"
+        },
+        "facts": {
+          "required": [
+            "session_pr_review_evidence_available",
+            "session_pr_triage_required"
+          ]
+        },
+        "observations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "update_operation_id",
+            "session_id",
+            "head_oid",
+            "base_oid",
+            "source_sha256",
+            "evidence",
+            "threads",
+            "acceptance",
+            "merge_authorization"
+          ],
+          "properties": {
+            "update_operation_id": {
+              "type": "string",
+              "pattern": "^op_[a-f0-9]{40}$"
+            },
+            "session_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "head_oid": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            },
+            "base_oid": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            },
+            "source_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "evidence": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "contract_version",
+                "repository",
+                "pull_request",
+                "reviews",
+                "checks",
+                "rollup_state",
+                "observed_from",
+                "observed_until",
+                "requests",
+                "consistency",
+                "evidence_sha256"
+              ],
+              "properties": {
+                "contract_version": {
+                  "const": "github-review-evidence.v2"
+                },
+                "repository": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "host",
+                    "owner",
+                    "name",
+                    "node_id"
+                  ],
+                  "properties": {
+                    "host": {
+                      "const": "github.com"
+                    },
+                    "owner": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 39
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "node_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    }
+                  }
+                },
+                "pull_request": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "node_id",
+                    "number",
+                    "head_oid",
+                    "base_oid",
+                    "head_ref",
+                    "base_ref",
+                    "state",
+                    "is_draft",
+                    "updated_at"
+                  ],
+                  "properties": {
+                    "node_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    },
+                    "number": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 2147483647
+                    },
+                    "head_oid": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{40}$"
+                    },
+                    "base_oid": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{40}$"
+                    },
+                    "head_ref": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 255
+                    },
+                    "base_ref": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 255
+                    },
+                    "state": {
+                      "enum": [
+                        "OPEN",
+                        "CLOSED",
+                        "MERGED"
+                      ]
+                    },
+                    "is_draft": {
+                      "type": "boolean"
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                },
+                "reviews": {
+                  "type": "array",
+                  "maxItems": 500,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "node_id",
+                      "state",
+                      "submitted_at",
+                      "updated_at",
+                      "author",
+                      "commit_oid",
+                      "body_chunks",
+                      "body_sha256"
+                    ],
+                    "properties": {
+                      "node_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      },
+                      "state": {
+                        "enum": [
+                          "APPROVED",
+                          "CHANGES_REQUESTED",
+                          "COMMENTED",
+                          "DISMISSED",
+                          "PENDING"
+                        ]
+                      },
+                      "submitted_at": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "author": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "node_id",
+                              "login",
+                              "type"
+                            ],
+                            "properties": {
+                              "node_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 256
+                              },
+                              "login": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "type": {
+                                "enum": [
+                                  "User",
+                                  "Bot",
+                                  "Organization"
+                                ]
+                              }
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "commit_oid": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{40}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "body_chunks": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "items": {
+                          "type": "string",
+                          "maxLength": 8192
+                        }
+                      },
+                      "body_sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      }
+                    }
+                  }
+                },
+                "checks": {
+                  "type": "array",
+                  "maxItems": 500,
+                  "items": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "node_id",
+                          "kind",
+                          "name",
+                          "status",
+                          "conclusion",
+                          "started_at",
+                          "completed_at",
+                          "suite_id",
+                          "app",
+                          "commit_oid"
+                        ],
+                        "properties": {
+                          "node_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 256
+                          },
+                          "kind": {
+                            "const": "CheckRun"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1024
+                          },
+                          "status": {
+                            "enum": [
+                              "COMPLETED",
+                              "IN_PROGRESS",
+                              "PENDING",
+                              "QUEUED",
+                              "REQUESTED",
+                              "WAITING"
+                            ]
+                          },
+                          "conclusion": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "ACTION_REQUIRED",
+                                  "CANCELLED",
+                                  "FAILURE",
+                                  "NEUTRAL",
+                                  "SKIPPED",
+                                  "STALE",
+                                  "STARTUP_FAILURE",
+                                  "SUCCESS",
+                                  "TIMED_OUT"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "started_at": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "completed_at": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "suite_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 256
+                          },
+                          "app": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "node_id",
+                                  "slug"
+                                ],
+                                "properties": {
+                                  "node_id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 256
+                                  },
+                                  "slug": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "commit_oid": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{40}$"
+                          }
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "node_id",
+                          "kind",
+                          "name",
+                          "state",
+                          "created_at",
+                          "updated_at",
+                          "creator",
+                          "commit_oid"
+                        ],
+                        "properties": {
+                          "node_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 256
+                          },
+                          "kind": {
+                            "const": "StatusContext"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1024
+                          },
+                          "state": {
+                            "enum": [
+                              "ERROR",
+                              "EXPECTED",
+                              "FAILURE",
+                              "PENDING",
+                              "SUCCESS"
+                            ]
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "creator": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "node_id",
+                                  "login",
+                                  "type"
+                                ],
+                                "properties": {
+                                  "node_id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 256
+                                  },
+                                  "login": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "type": {
+                                    "enum": [
+                                      "User",
+                                      "Bot",
+                                      "Organization"
+                                    ]
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "commit_oid": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{40}$"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                "rollup_state": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "ERROR",
+                        "EXPECTED",
+                        "FAILURE",
+                        "PENDING",
+                        "SUCCESS"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "observed_from": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "observed_until": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "requests": {
+                  "type": "integer",
+                  "minimum": 4,
+                  "maximum": 48
+                },
+                "consistency": {
+                  "const": "two-complete-identical-collections"
+                },
+                "evidence_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            },
+            "threads": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "contract_version",
+                "repository",
+                "pull_request",
+                "threads",
+                "observed_from",
+                "observed_until",
+                "pagination",
+                "consistency",
+                "observation_sha256"
+              ],
+              "properties": {
+                "contract_version": {
+                  "const": "github-pr-observation.v2"
+                },
+                "repository": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "host",
+                    "owner",
+                    "name",
+                    "node_id"
+                  ],
+                  "properties": {
+                    "host": {
+                      "const": "github.com"
+                    },
+                    "owner": {
+                      "type": "string",
+                      "maxLength": 39,
+                      "minLength": 1
+                    },
+                    "name": {
+                      "type": "string",
+                      "maxLength": 100,
+                      "minLength": 1
+                    },
+                    "node_id": {
+                      "type": "string",
+                      "maxLength": 256,
+                      "minLength": 1
+                    }
+                  }
+                },
+                "pull_request": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "node_id",
+                    "number",
+                    "head_oid",
+                    "head_ref",
+                    "base_ref",
+                    "state",
+                    "is_draft",
+                    "merged",
+                    "merge_oid",
+                    "updated_at",
+                    "base_oid"
+                  ],
+                  "properties": {
+                    "node_id": {
+                      "type": "string",
+                      "maxLength": 256,
+                      "minLength": 1
+                    },
+                    "number": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "head_oid": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{40}$"
+                    },
+                    "head_ref": {
+                      "type": "string",
+                      "maxLength": 255,
+                      "minLength": 1
+                    },
+                    "base_ref": {
+                      "type": "string",
+                      "maxLength": 255,
+                      "minLength": 1
+                    },
+                    "state": {
+                      "enum": [
+                        "OPEN",
+                        "CLOSED",
+                        "MERGED"
+                      ]
+                    },
+                    "is_draft": {
+                      "type": "boolean"
+                    },
+                    "merged": {
+                      "type": "boolean"
+                    },
+                    "merge_oid": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "pattern": "^[a-f0-9]{40}$"
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "base_oid": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{40}$"
+                    }
+                  }
+                },
+                "threads": {
+                  "type": "array",
+                  "maxItems": 500,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "node_id",
+                      "path",
+                      "line",
+                      "is_resolved",
+                      "is_outdated",
+                      "comments"
+                    ],
+                    "properties": {
+                      "node_id": {
+                        "type": "string",
+                        "maxLength": 256,
+                        "minLength": 1
+                      },
+                      "path": {
+                        "type": "string",
+                        "maxLength": 4096,
+                        "minLength": 1
+                      },
+                      "line": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "minimum": 1
+                      },
+                      "is_resolved": {
+                        "type": "boolean"
+                      },
+                      "is_outdated": {
+                        "type": "boolean"
+                      },
+                      "comments": {
+                        "type": "array",
+                        "maxItems": 1000,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "node_id",
+                            "author_login",
+                            "author_type",
+                            "body_chunks",
+                            "body_sha256",
+                            "created_at",
+                            "updated_at",
+                            "commit_oid",
+                            "original_commit_oid",
+                            "author_node_id"
+                          ],
+                          "properties": {
+                            "node_id": {
+                              "type": "string",
+                              "maxLength": 256,
+                              "minLength": 1
+                            },
+                            "author_login": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "maxLength": 256,
+                              "minLength": 1
+                            },
+                            "author_type": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "maxLength": 256,
+                              "minLength": 1
+                            },
+                            "body_chunks": {
+                              "type": "array",
+                              "minItems": 1,
+                              "maxItems": 16,
+                              "items": {
+                                "type": "string",
+                                "maxLength": 8192
+                              }
+                            },
+                            "body_sha256": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "created_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "updated_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "commit_oid": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "pattern": "^[a-f0-9]{40}$"
+                            },
+                            "original_commit_oid": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "pattern": "^[a-f0-9]{40}$"
+                            },
+                            "author_node_id": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "minLength": 1,
+                              "maxLength": 256
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "observed_from": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "observed_until": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "pagination": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "requests",
+                    "thread_pages",
+                    "comment_pages",
+                    "complete"
+                  ],
+                  "properties": {
+                    "requests": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "thread_pages": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "comment_pages": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "complete": {
+                      "const": true
+                    }
+                  }
+                },
+                "consistency": {
+                  "const": "head-and-pr-metadata-rechecked"
+                },
+                "observation_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            },
+            "acceptance": {
+              "const": "pending-triage-and-policy-evaluation"
+            },
+            "merge_authorization": {
+              "const": "not-established"
+            }
+          }
+        },
+        "evidence_refs": {
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    {
+      "properties": {
+        "outcome": {
+          "const": "blocked"
+        },
+        "facts": {
+          "maxProperties": 0
+        },
+        "observations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reason_code"
+          ],
+          "properties": {
+            "reason_code": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+            }
+          }
+        },
+        "evidence_refs": {
+          "maxItems": 0
+        }
+      }
+    }
+  ]
+}

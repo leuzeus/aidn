@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/bpmn-process-compilation.v1",
+  "title": "Internal BPMN profile compilation",
+  "x-aidn-contract-version": "bpmn-process-compilation.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "profile", "source_sha256", "model_sha256", "model", "source_map"],
+  "properties": {
+    "contract_version": { "const": "bpmn-process-compilation.v1" },
+    "profile": { "enum": ["aidn-bpmn-structured.v1", "aidn-bpmn-structured.v2"] },
+    "source_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "model_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "model": { "type": "object" },
+    "source_map": {
+      "type": "array", "minItems": 1, "maxItems": 256,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["bpmn_id", "ir_node_id"],
+        "properties": {
+          "bpmn_id": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_.-]{0,127}$" },
+          "ir_node_id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$" }
+        }
+      }
+    }
+  }
+}

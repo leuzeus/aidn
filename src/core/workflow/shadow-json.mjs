@@ -2,13 +2,16 @@ import { createHash } from "node:crypto";
 
 // Internal shadow data only. Reject accessors before reading values; no coercion,
 // toJSON, ambient inputs or timestamps participate in a compilation fingerprint.
-export function checkShadowJson(value) {
+// A source-owned business context may select its separately enforced total
+// bound; ordinary shadow DTO callers keep the historical per-string default.
+export function checkShadowJson(value, { maxStringLength = 16384 } = {}) {
+  if (!Number.isSafeInteger(maxStringLength) || maxStringLength < 1) return "JSON_LIMIT";
   const seen = new Set();
   let count = 0;
   function visit(item, depth) {
     if (++count > 50000 || depth > 24) return "JSON_LIMIT";
     if (item === null || typeof item === "boolean") return null;
-    if (typeof item === "string") return item.length > 16384 ? "JSON_LIMIT" : null;
+    if (typeof item === "string") return item.length > maxStringLength ? "JSON_LIMIT" : null;
     if (typeof item === "number") return Number.isSafeInteger(item) ? null : "INVALID_JSON_NUMBER";
     if (typeof item !== "object" || seen.has(item)) return "INVALID_JSON";
     if (!Array.isArray(item) && ![Object.prototype, null].includes(Object.getPrototypeOf(item))) return "INVALID_JSON";

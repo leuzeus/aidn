@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-external-merge-disposition-question.v1",
+  "x-aidn-contract-version": "standard-pr-external-merge-disposition-question.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_id",
+    "instance_id",
+    "scope_id",
+    "occurrence_id",
+    "intent_sha256",
+    "choices",
+    "expires_at_ms",
+    "subject",
+    "issued_at_ms"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-pr-external-merge-disposition-question.v1"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "instance_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "occurrence_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "intent_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "choices": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "enum": [
+          "acknowledge_external_merge_for_r09",
+          "refused",
+          "deferred",
+          "cancelled"
+        ]
+      }
+    },
+    "expires_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "triage_operation_id",
+        "observation_operation_id",
+        "observation_receipt_sha256",
+        "merge_observation",
+        "incident"
+      ],
+      "properties": {
+        "triage_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "observation_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "observation_receipt_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "merge_observation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "triage_operation_id",
+            "update_operation_id",
+            "pre_merge_base_oid",
+            "source_sha256",
+            "provider"
+          ],
+          "properties": {
+            "triage_operation_id": {
+              "type": "string",
+              "pattern": "^op_[a-f0-9]{40}$"
+            },
+            "update_operation_id": {
+              "type": "string",
+              "pattern": "^op_[a-f0-9]{40}$"
+            },
+            "pre_merge_base_oid": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            },
+            "source_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "provider": {
+              "type": "object"
+            }
+          }
+        },
+        "incident": {
+          "const": "R08_PREMERGE_CONTROLS_UNESTABLISHED"
+        }
+      }
+    },
+    "issued_at_ms": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    }
+  }
+}

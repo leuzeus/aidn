@@ -1,0 +1,139 @@
+{
+  "proof_class": "offline-common-cycle-close-hook-with-durable-restart",
+  "status": "PASS_SCOPED_COMPONENTS_AND_RETAINED_COMMON_CONTINUATION",
+  "owned_delta_base_tree": "ee13a0e96b8f75610fe4a685301d9518da941432",
+  "prefix_snapshot": "cf04014fbadd28dc23569834d11a75a279df172c",
+  "component_catalog_revisions": {
+    "startup": 63,
+    "cycle-create": 61
+  },
+  "prefix26518": {
+    "status": "FAIL_FIXTURE_ASSERTION",
+    "observation": "Actual work/verification/audit/authenticated human acceptance and six canonical metadata writes completed. Hook blocked receipt was durable; explicit external fixture Git checkpoint, completion reload and R05 were run. Product tamper refused with precise STANDARD_AUDIT_NATIVE_SOURCE_CHANGED, while harness incorrectly required a generic wrapper code.",
+    "business_effects_repeated": false
+  },
+  "continuation97173": {
+    "status": "FAIL_BEFORE_HOOK_EFFECTS",
+    "observation": "Read-only harness looked for direct stdout evidence; real validation output points to a result manifest containing stdout/stderr references. Helper corrected to follow actual schema."
+  },
+  "continuation69478": {
+    "status": "PASS",
+    "same_instance": true,
+    "same_model_file_sha256": "1ebc8ab45928f6784bc1c146f7b90551086a763361b0f8a020265c1e38b3bc3f",
+    "before_instance_sha256": "087e9e46ba61aa10e2fc7d8eaca376e0b19361a28c8868341370fffd476a9bc0",
+    "after_instance_sha256": "d057588e643230c372bd535d3a09660131dcfbbb520f0e5738a2049a12540b3a",
+    "cold_node_hook": "Actual finalizer via application port, zero new native launches/sessions",
+    "suffix_canonical_writes": 3,
+    "postimage_refs_checked": 3,
+    "prior_six_record_journal": "Unchanged exact hash",
+    "native_allocations": "Unchanged exact hash",
+    "physical_validation_counter": "Unchanged bytes",
+    "product": "Unchanged bytes after restored refusal probes",
+    "denials": "Product/log tamper and denied grant refuse; prefix/current state/event log and owner unchanged before hook",
+    "duplicate_dispatch": "retained_result, operation digest and event bytes unchanged",
+    "common_reducer_replay": "Exact final instance hash",
+    "cursor": "WAITING; component continuation, not full workflow completion"
+  },
+  "fixture_scope": "Retained local-only diagnostic corpus, source installer; human/native transport are fixture authorities. Recovery changes affected harness assertions/references only, no production hook module was modified.",
+  "external_preconditions": "Git checkpoint and R05/reload were explicit fixture steps. Their complete standard IR routing remains to implement.",
+  "current_base_reanchor": {
+    "base": "6f1a25d",
+    "status": "PASS",
+    "owned_delta_snapshot": "41c507d9e8f1a83314711c9af77f9ac2a5ef1c28",
+    "borrowed_tree_copied": false,
+    "preserved": "Current human/admission source, grant-first recorder, baseline/GitHub prerequisites and required checks",
+    "authored_graph": "Unchanged published component graph; explicit63/61 source-authoring refresh",
+    "implementation_sha256": "b20c74e44ac64afc4921cf75911922c232a09208a47456f84beef9c370301175",
+    "runtime_auto_refresh": false,
+    "qualified_source_snapshot": "b39bd6eeedec2362d816bf4de651738901076d9d",
+    "byte_verification": "New hook/checkpoint modules and three private schemas identical to qualified retained-source snapshot41c507d9. Current parent recorder apply/preparation/deadline block identical to6f1a25d. Existing newer human/admission code preserved.",
+    "published_components": {
+      "startup": {
+        "revision": 63,
+        "model_sha256": "1a3b888401e8e9d1017e0dadf4c679fdfb917732826ffc09b15a67cb79bb82e6"
+      },
+      "cycle_create": {
+        "revision": 61,
+        "model_sha256": "d5f06b65ae94a4d656d088714f1d0eea4fd4f0bf05cb56600a536bfb1c8a692b"
+      }
+    }
+  },
+  "unknown_effect_suffix_recovery": "STILL_OPEN",
+  "full_standard_model": "NOT_COMPLETE",
+  "ordinary_cli_resume": "NOT_QUALIFIED",
+  "native": "NOT_RUN",
+  "installed_archive": "NOT_RUN",
+  "updated_at": "2026-11-03T07:43:51.999453+00:00",
+  "current_actual_component_cases": {
+    "source_snapshot": "b39bd6eeedec2362d816bf4de651738901076d9d",
+    "status": "PASS",
+    "checks_per_case": 4,
+    "cases": [
+      {
+        "mode": "files",
+        "choice": "retain",
+        "handle": 44129
+      },
+      {
+        "mode": "db-only",
+        "choice": "no_go",
+        "handle": 44129
+      },
+      {
+        "mode": "dual",
+        "choice": "drop",
+        "handle": 44129
+      },
+      {
+        "mode": "files",
+        "fault": "event",
+        "handle": 99079
+      },
+      {
+        "mode": "db-only",
+        "fault": "suffix",
+        "handle": 99079
+      },
+      {
+        "mode": "dual",
+        "fault": "projection",
+        "handle": 28064
+      },
+      {
+        "mode": "files",
+        "fault": "grant_after",
+        "handle": 28064
+      }
+    ],
+    "authority": "Actual source installation/application ports, with explicit fixture human/audit authority and external Git/reload/R05 preconditions",
+    "common_full_prefix_on_current_combined_source": "NOT_RUN; earlier common prefix/retained continuation keeps its exact original snapshot"
+  },
+  "current_gates": {
+    "status": "PASS",
+    "handle": 72368,
+    "models": 22,
+    "consumer_contract": 1,
+    "catalog": 63,
+    "policies": "35 source/37 metadata/38 policy coverage",
+    "docs": "references and Markdown PASS",
+    "pack_topology": "5 fresh source clients and failure cleanup PASS; not installed archive",
+    "hook_contracts": 4,
+    "completion_renderer": 8,
+    "git_checkpoint_observation": 4,
+    "route": {
+      "lane": "ASSURED",
+      "snapshot": "b39bd6eeedec2362d816bf4de651738901076d9d",
+      "full_routed_gate_suite": "NOT_RUN; targeted component results listed separately"
+    },
+    "real_ports": {
+      "status": "PASS",
+      "checks": 14,
+      "handle": 64952
+    },
+    "historical_contracts_reducer": {
+      "status": "PASS",
+      "checks": 27
+    },
+    "final_docs": "references and Markdown PASS after proof/plan updates"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/process-control-reservation.v1",
+  "x-aidn-contract-version": "process-control-reservation.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "inbox_id",
+    "source_ref",
+    "request",
+    "key_id",
+    "authentication",
+    "capture_id",
+    "selection_sha256"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "process-control-reservation.v1"
+    },
+    "inbox_id": {
+      "type": "string",
+      "pattern": "^control_[a-f0-9]{40}$"
+    },
+    "source_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "request": {
+      "type": "object"
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authentication": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "capture_id": {
+      "type": "string",
+      "pattern": "^control_[a-f0-9]{40}$"
+    },
+    "selection_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

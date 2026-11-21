@@ -1,0 +1,228 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/native-host-state.v1",
+  "x-aidn-contract-version": "native-host-state.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "authority_id",
+    "instance",
+    "parent_closed",
+    "resources",
+    "results",
+    "native_usage"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "native-host-state.v1"
+    },
+    "authority_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "instance": {
+      "type": "object"
+    },
+    "parent_closed": {
+      "type": "boolean"
+    },
+    "resources": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "executor",
+          "binding_sha256",
+          "skills"
+        ],
+        "properties": {
+          "executor": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "execution_id",
+              "agent_id",
+              "lineage_id",
+              "session_id",
+              "adapter_id",
+              "role",
+              "action",
+              "permissions",
+              "guarantees",
+              "context_sha256",
+              "contributions"
+            ],
+            "properties": {
+              "execution_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "agent_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "lineage_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "session_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "adapter_id": {
+                "const": "codex-agentic-session"
+              },
+              "role": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "action": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "permissions": {
+                "type": "array",
+                "maxItems": 128,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                }
+              },
+              "guarantees": {
+                "type": "array",
+                "maxItems": 128,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                }
+              },
+              "context_sha256": {
+                "type": "array",
+                "maxItems": 128,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "minItems": 1
+              },
+              "contributions": {
+                "type": "array",
+                "maxItems": 128,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "scope_id",
+                    "revision",
+                    "activity_id",
+                    "artifact_sha256",
+                    "role"
+                  ],
+                  "properties": {
+                    "scope_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    },
+                    "revision": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    },
+                    "activity_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    },
+                    "artifact_sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "role": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "binding_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "skills": {
+            "type": "array",
+            "maxItems": 128,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          }
+        }
+      }
+    },
+    "results": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "result",
+          "resource",
+          "reference"
+        ],
+        "properties": {
+          "result": {
+            "type": "object"
+          },
+          "resource": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "reference": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ref",
+              "sha256"
+            ],
+            "properties": {
+              "ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "native_usage": {
+      "type": [
+        "object",
+        "null"
+      ]
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import path from "node:path";
+import { readPrOpeningLocator } from "../../core/workflow/standard-session-pr-record.mjs";
 import {
   createRuntimeCanonicalSnapshotReader,
   resolveEffectiveRuntimePersistence,
@@ -29,6 +30,28 @@ function isOpenCycle(cycle) {
 function isOpenSession(session) {
   const state = normalizeScalar(session?.state || "UNKNOWN").toUpperCase();
   return Boolean(session) && !CLOSED_SESSION_STATES.has(state) && !normalizeScalar(session?.ended_at);
+}
+
+// CLOSED remains a lifecycle state. A recorded managed PR may retain the
+// explicit current-session pointer while its delivery awaits R09; that pointer
+// is not an open work session or a completion/authorization proof.
+function isClosedPrDeliveryAnchor(session, currentMap) {
+  const metadata = session?.artifact_metadata;
+  if (normalizeScalar(session?.state).toUpperCase() !== "CLOSED"
+    || session?.artifact_map?.get("session_closure_status") !== "completed"
+    || metadata?.close_gate_satisfied !== true || !["open", "merged"].includes(metadata.pr_status)
+    || currentMap.get("active_cycle") !== "none"
+    || currentMap.get("session_pr_status") !== metadata.pr_status
+    || currentMap.get("session_branch") !== metadata.session_branch
+    || metadata.pr_head_branch !== metadata.session_branch) return false;
+  try {
+    const locator = readPrOpeningLocator(session.artifact_text);
+    return locator !== null && locator.canonical_lifecycle === "open"
+      && typeof locator.repository_id === "string" && locator.repository_id.length > 0
+      && typeof locator.pull_request_id === "string" && locator.pull_request_id.length > 0
+      && /^[a-f0-9]{64}$/.test(locator.observation_sha256 ?? "")
+      && /^[a-f0-9]{40}$/.test(locator.observed_delivery_head ?? "");
+  } catch { return false; }
 }
 
 function decodeArtifactContent(artifact) {
@@ -170,7 +193,12 @@ function inferActiveRows(payload, currentMap) {
     if (!declaredSession) {
       ambiguities.push(`declared active session ${declaredSessionRef} is missing from canonical runtime rows`);
     } else if (!isOpenSession(declaredSession)) {
-      ambiguities.push(`declared active session ${declaredSessionRef} is closed in canonical runtime rows`);
+      const latestSession = [...sessions].sort((left, right) => normalizeScalar(left.session_id)
+        .localeCompare(normalizeScalar(right.session_id), undefined, { numeric: true })).at(-1);
+      const deliveryAnchor = !activeCycle && openSessions.length === 0
+        && latestSession === declaredSession && isClosedPrDeliveryAnchor(declaredSession, currentMap);
+      if (!deliveryAnchor)
+        ambiguities.push(`declared active session ${declaredSessionRef} is closed in canonical runtime rows`);
     } else {
       activeSession = declaredSession;
     }
@@ -273,6 +301,7 @@ function buildCanonicalSessions(payload, auditRoot) {
     return {
       session_id: sessionId,
       file_path: path.resolve(auditRoot, normalizeArtifactPath(session?.source_artifact_path || `sessions/${sessionId}.md`)),
+      text: session.artifact_text ?? "",
       metadata: {
         mode: normalizeScalar(session?.state).toUpperCase() || null,
         session_branch: normalizeScalar(session?.branch_name) || null,

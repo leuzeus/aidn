@@ -1,0 +1,533 @@
+{
+  "observed_at_utc": "2026-11-04T07:07:32.253616+00:00",
+  "source_commit": "b333074907be37dfebcc314e7c42e4805abb3976",
+  "status": "PASS",
+  "qualified_scope": "offline component: signed missing receipt after local owner released; exact existing Git witness only",
+  "PASS": {
+    "checkpoint_files": 11,
+    "checkpoint_dual": 9,
+    "checkpoint_db_only": 8,
+    "git_checkpoint_port": 19,
+    "generic_signed_host": 20,
+    "source_composition": 28,
+    "synthetic_preflight": 18,
+    "docs_references": true,
+    "gate_catalog": true
+  },
+  "FAIL": [],
+  "SKIP": [],
+  "NOT_RUN": [
+    "positive correction-host recovery and authenticated producer-to-reopen-to-checkpoint composition",
+    "unknown-effect reconciliation with retained owner and proven resource closure",
+    "reconciliation of an already receipted unknown result",
+    "reconciliation after original authority expires during a long wait",
+    "positive db-only checkpoint recovery without a commit witness",
+    "ordinary admitted correction cycle, physical corrections, fresh validation and causal successor delivery",
+    "L4 native authorization epochs and deterministic expired-plan reprepare",
+    "remaining L1-L8/A1-A10, real native/human/provider, PostgreSQL live and exact installed archive",
+    "full runtime family / Governance Admission"
+  ],
+  "historical_long_trials": "Previous four terminal FAIL remain unchanged at their frozen sources; no new long trial or renewal/reset/cleanup",
+  "proof_quality": {
+    "canonical_cas_metadata_projection_and_git": "ACTUAL",
+    "checkpoint_dispatch_HMAC": "ACTUAL_PUBLIC_FIXTURE_KEY",
+    "reopening_accepted_source_native_provider_event": "DOUBLED",
+    "positive_correction_host_method": "SOURCE_BOUND_NOT_EXECUTED_BY_THESE_SUITES",
+    "generic_signed_host": "actual generic protocol and wrong-binding/explicit-write negatives; no positive correction route",
+    "preflight": "SYNTHETIC_SAME_IR_REDUCER_NO_AUTHORIZATION",
+    "db_only_recovery": "REFUSED_NO_COMMIT_WITNESS; 8 PASS are refusal/component coverage, not a positive cold recovery"
+  },
+  "unchanged_authorities": {
+    "original_intent_preview_grant_and_dispatch_owner_preserved": true,
+    "receipt_write_requires_current_original_grant": true,
+    "expired_effect_preview_only_retrospective_evidence": true,
+    "no_ttl_or_budget_change": true,
+    "no_owner_clear_or_index_repair": true,
+    "no_Git_commit_replay": true,
+    "existing_unknown_refused_receipts_not_overwritten": true
+  },
+  "models": {
+    "standard_revision": 70,
+    "startup_revision": 129,
+    "cycle_revision": 127,
+    "nodes": 107,
+    "operations": 65,
+    "referenced_bindings": 55,
+    "registered_bindings": 63,
+    "native_activities": 9,
+    "direct_files": 356,
+    "model_sha256": "1a85b1eae4790291da08c5a9f9280753818319b35d5499914f6e171291be2165",
+    "catalog_sha256": "4f1405c99561377e669dc2364e928330166454f1cc6ddb1d2186e9a3a56376b4",
+    "native_implementation_sha256": "4156fcde4d1b9274c1427b46e34251a07be6eeed0db92992160c594dd4fcd951",
+    "ordinary_entry_changed": false,
+    "complete_standard_workflow": false
+  },
+  "evidence": [
+    {
+      "name": "checkpoint-files",
+      "exit": {
+        "name": "checkpoint-files",
+        "command": [
+          "node",
+          "tools/perf/verify-standard-pr-correction-checkpoint-fixtures.mjs",
+          "--mode=files"
+        ],
+        "started_at_utc": "2026-11-04T06:45:16.229988+00:00",
+        "finished_at_utc": "2026-11-04T06:51:58.874919+00:00",
+        "exit_code": 0,
+        "direct_source_unchanged": true,
+        "checkout_status_unchanged": true
+      },
+      "artifacts": [
+        {
+          "name": "correction-recovery-20261104-final-checkpoint-files.stdout.log",
+          "bytes": 1268,
+          "sha256": "6d4def383ba9acc71de21c455caf775d324b70850fb61ae9522c49c359da0ccf"
+        },
+        {
+          "name": "correction-recovery-20261104-final-checkpoint-files.stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "correction-recovery-20261104-final-checkpoint-files.exit.json",
+          "bytes": 372,
+          "sha256": "d740f09bdaaa4d509d6cb7c682ce16739e12dde192bce2145e48c3fb42472ae5"
+        }
+      ],
+      "structured_results": [
+        {
+          "status": "PASS",
+          "checks": 11,
+          "mode": "files",
+          "git_cas_projection_admission": "ACTUAL",
+          "accepted_source_native_provider_event": "DOUBLED",
+          "host_ir_binding": "SOURCE_BOUND_NOT_EXECUTED_BY_THIS_SUITE",
+          "cycle_creation": "NOT_RUN",
+          "native_models": 0,
+          "full_standard": false,
+          "installed_archive": "NOT_RUN"
+        },
+        {
+          "fixture_cleanup": "completed",
+          "roots": 5,
+          "independent_process_inventory": "NOT_CAPTURED"
+        }
+      ]
+    },
+    {
+      "name": "checkpoint-dual",
+      "exit": {
+        "name": "checkpoint-dual",
+        "command": [
+          "node",
+          "tools/perf/verify-standard-pr-correction-checkpoint-fixtures.mjs",
+          "--mode=dual"
+        ],
+        "started_at_utc": "2026-11-04T06:51:59.092343+00:00",
+        "finished_at_utc": "2026-11-04T06:55:37.150902+00:00",
+        "exit_code": 0,
+        "direct_source_unchanged": true,
+        "checkout_status_unchanged": true
+      },
+      "artifacts": [
+        {
+          "name": "correction-recovery-20261104-final-checkpoint-dual.stdout.log",
+          "bytes": 1113,
+          "sha256": "c606c9525bb1f7abe2c2e02cc97f2f4d1f22113d9cb4f9a4e19bbd7be1d54acf"
+        },
+        {
+          "name": "correction-recovery-20261104-final-checkpoint-dual.stderr.log",
+          "bytes": 169,
+          "sha256": "32cee6ab8434e92e3406a3b2a389ae3950955a35ee33b1a0a9c7b3d0cbf7b9e5"
+        },
+        {
+          "name": "correction-recovery-20261104-final-checkpoint-dual.exit.json",
+          "bytes": 370,
+          "sha256": "1b1179ba02b481798b617241cdd17ad7eb8280aa18b5b291efcf352aaa2d9141"
+        }
+      ],
+      "structured_results": [
+        {
+          "status": "PASS",
+          "checks": 9,
+          "mode": "dual",
+          "git_cas_projection_admission": "ACTUAL",
+          "accepted_source_native_provider_event": "DOUBLED",
+          "host_ir_binding": "SOURCE_BOUND_NOT_EXECUTED_BY_THIS_SUITE",
+          "cycle_creation": "NOT_RUN",
+          "native_models": 0,
+          "full_standard": false,
+          "installed_archive": "NOT_RUN"
+        },
+        {
+          "fixture_cleanup": "completed",
+          "roots": 3,
+          "independent_process_inventory": "NOT_CAPTURED"
+        }
+      ]
+    },
+    {
+      "name": "checkpoint-db-only",
+      "exit": {
+        "name": "checkpoint-db-only",
+        "command": [
+          "node",
+          "tools/perf/verify-standard-pr-correction-checkpoint-fixtures.mjs",
+          "--mode=db-only"
+        ],
+        "started_at_utc": "2026-11-04T06:55:37.346966+00:00",
+        "finished_at_utc": "2026-11-04T06:57:04.358273+00:00",
+        "exit_code": 0,
+        "direct_source_unchanged": true,
+        "checkout_status_unchanged": true
+      },
+      "artifacts": [
+        {
+          "name": "correction-recovery-20261104-final-checkpoint-db-only.stdout.log",
+          "bytes": 1036,
+          "sha256": "99ce9011a5e17bdcc80f09b415867de01ac1bfac4d18a62d7d30a2cf0902fe39"
+        },
+        {
+          "name": "correction-recovery-20261104-final-checkpoint-db-only.stderr.log",
+          "bytes": 169,
+          "sha256": "beaa648fce7e4068c2678b5c323afbaa0203316c45c8fe7710fbe5be1573b89d"
+        },
+        {
+          "name": "correction-recovery-20261104-final-checkpoint-db-only.exit.json",
+          "bytes": 376,
+          "sha256": "955a0b62b6a11e22732229c25b813dd8987623a42ef25b371af803febd814827"
+        }
+      ],
+      "structured_results": [
+        {
+          "status": "PASS",
+          "checks": 8,
+          "mode": "db-only",
+          "git_cas_projection_admission": "ACTUAL",
+          "accepted_source_native_provider_event": "DOUBLED",
+          "host_ir_binding": "SOURCE_BOUND_NOT_EXECUTED_BY_THIS_SUITE",
+          "cycle_creation": "NOT_RUN",
+          "native_models": 0,
+          "full_standard": false,
+          "installed_archive": "NOT_RUN"
+        },
+        {
+          "fixture_cleanup": "completed",
+          "roots": 2,
+          "independent_process_inventory": "NOT_CAPTURED"
+        }
+      ]
+    },
+    {
+      "name": "git-port",
+      "exit": {
+        "name": "git-port",
+        "command": [
+          "node",
+          "tools/perf/verify-workflow-git-checkpoint-port-fixtures.mjs"
+        ],
+        "started_at_utc": "2026-11-04T06:45:27.878112+00:00",
+        "finished_at_utc": "2026-11-04T06:51:26.250903+00:00",
+        "exit_code": 0,
+        "direct_source_unchanged": true,
+        "checkout_status_unchanged": true
+      },
+      "artifacts": [
+        {
+          "name": "correction-recovery-20261104-final-git-port.stdout.log",
+          "bytes": 1721,
+          "sha256": "097bc94be67a5d77b9381bd6d3c8fead0d740513252c54d14cfbc9c5fd9a8d1d"
+        },
+        {
+          "name": "correction-recovery-20261104-final-git-port.stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "correction-recovery-20261104-final-git-port.exit.json",
+          "bytes": 338,
+          "sha256": "c34cffcc9c5bda7c3984600a34c808176ba051445cb7e72457a0be24f2ef6daf"
+        }
+      ],
+      "structured_results": [
+        {
+          "status": "PASS",
+          "checks": 19,
+          "proof": "offline-real-git-port",
+          "application_binding": "NOT_RUN",
+          "full_standard_workflow": "NOT_COMPLETE",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN"
+        }
+      ]
+    },
+    {
+      "name": "signed-host",
+      "exit": {
+        "name": "signed-host",
+        "command": [
+          "node",
+          "tools/perf/verify-standard-workflow-host-fixtures.mjs"
+        ],
+        "started_at_utc": "2026-11-04T06:51:26.649941+00:00",
+        "finished_at_utc": "2026-11-04T06:58:35.550259+00:00",
+        "exit_code": 0,
+        "direct_source_unchanged": true,
+        "checkout_status_unchanged": true
+      },
+      "artifacts": [
+        {
+          "name": "correction-recovery-20261104-final-signed-host.stdout.log",
+          "bytes": 2062,
+          "sha256": "ba53c9fe6f366a5e7a988c3aa4de1a1caf74f43602d0f743e496d4207a0d0317"
+        },
+        {
+          "name": "correction-recovery-20261104-final-signed-host.stderr.log",
+          "bytes": 169,
+          "sha256": "8a6c129083c2ec25a4f64987054cba7c50a4fdb2178938ac7dacee5169b181c2"
+        },
+        {
+          "name": "correction-recovery-20261104-final-signed-host.exit.json",
+          "bytes": 335,
+          "sha256": "6d25b5c32ffb6853f76bb227bb0243879d82293d83286c376dfb6253c964074d"
+        }
+      ],
+      "structured_results": [
+        {
+          "status": "PASS",
+          "checks": 20,
+          "proof": "offline-real-business-ports-common-reducer-and-new-node-hosts",
+          "authorization": "fixture-capability",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN",
+          "full_standard_workflow": "NOT_YET_DELIVERED"
+        }
+      ]
+    },
+    {
+      "name": "composition",
+      "exit": {
+        "name": "composition",
+        "command": [
+          "node",
+          "tools/perf/verify-standard-workflow-composition-fixtures.mjs"
+        ],
+        "started_at_utc": "2026-11-04T06:58:35.802027+00:00",
+        "finished_at_utc": "2026-11-04T06:58:37.696074+00:00",
+        "exit_code": 0,
+        "direct_source_unchanged": true,
+        "checkout_status_unchanged": true
+      },
+      "artifacts": [
+        {
+          "name": "correction-recovery-20261104-final-composition.stdout.log",
+          "bytes": 2612,
+          "sha256": "9fe65668c7db5f55b3e0e4c36fca5ac54f2397d7eed8c778042bc5c897f877f5"
+        },
+        {
+          "name": "correction-recovery-20261104-final-composition.stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "correction-recovery-20261104-final-composition.exit.json",
+          "bytes": 342,
+          "sha256": "2c585db1b1f6c130d81cc0baafd7e9b1ceb2b9a45000d7d0d3c9717efbaa8c58"
+        }
+      ],
+      "structured_results": [
+        {
+          "status": "PASS",
+          "checks": 28,
+          "scope": "offline-source-composition",
+          "application_ports": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN",
+          "full_standard_workflow": "NOT_COMPLETE"
+        }
+      ]
+    },
+    {
+      "name": "preflight",
+      "exit": {
+        "name": "preflight",
+        "command": [
+          "node",
+          "tools/perf/verify-standard-composed-preflight-fixtures.mjs"
+        ],
+        "started_at_utc": "2026-11-04T06:58:37.976650+00:00",
+        "finished_at_utc": "2026-11-04T07:03:14.669444+00:00",
+        "exit_code": 0,
+        "direct_source_unchanged": true,
+        "checkout_status_unchanged": true
+      },
+      "artifacts": [
+        {
+          "name": "correction-recovery-20261104-final-preflight.stdout.log",
+          "bytes": 1411,
+          "sha256": "795314308b7d8b6c532eb9a59c400c329fa157fd07d66f157882f12847b62781"
+        },
+        {
+          "name": "correction-recovery-20261104-final-preflight.stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "correction-recovery-20261104-final-preflight.exit.json",
+          "bytes": 338,
+          "sha256": "aca247e55e734500b5523a49ff17639b20d514b6dc9c70ada181b7b5823a9262"
+        }
+      ],
+      "structured_results": [
+        {
+          "status": "PASS",
+          "checks": 18,
+          "scope": "synthetic-budget-preflight",
+          "model_calls": 0,
+          "live_ports": "NOT_RUN",
+          "native_human_provider": "NOT_RUN",
+          "installed_archive": "NOT_RUN",
+          "full_standard_workflow": false
+        }
+      ]
+    },
+    {
+      "name": "docs",
+      "exit": {
+        "name": "docs",
+        "command": [
+          "node",
+          "tools/verify/verify-doc-references.mjs"
+        ],
+        "started_at_utc": "2026-11-04T07:03:14.862664+00:00",
+        "finished_at_utc": "2026-11-04T07:03:15.375281+00:00",
+        "exit_code": 0,
+        "direct_source_unchanged": true,
+        "checkout_status_unchanged": true
+      },
+      "artifacts": [
+        {
+          "name": "correction-recovery-20261104-final-docs.stdout.log",
+          "bytes": 638,
+          "sha256": "3fd32b97ed9592d9dc9a5aeacffcf59ed06bb5572bc48f93d40fb02325a77d01"
+        },
+        {
+          "name": "correction-recovery-20261104-final-docs.stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "correction-recovery-20261104-final-docs.exit.json",
+          "bytes": 313,
+          "sha256": "303dc2226a0a2c19c8264d202a0dc8b612fbbce2dd383a21dcb7aae020384100"
+        }
+      ],
+      "structured_results": []
+    },
+    {
+      "name": "catalog",
+      "exit": {
+        "name": "catalog",
+        "command": [
+          "node",
+          "tools/verify/verify-gate-catalog.mjs"
+        ],
+        "started_at_utc": "2026-11-04T07:03:15.564270+00:00",
+        "finished_at_utc": "2026-11-04T07:03:16.657659+00:00",
+        "exit_code": 0,
+        "direct_source_unchanged": true,
+        "checkout_status_unchanged": true
+      },
+      "artifacts": [
+        {
+          "name": "correction-recovery-20261104-final-catalog.stdout.log",
+          "bytes": 15206,
+          "sha256": "a1212ea51c35db13b15f9ac1df7f4211760efd253c134c82b3ce785e03af665c"
+        },
+        {
+          "name": "correction-recovery-20261104-final-catalog.stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "correction-recovery-20261104-final-catalog.exit.json",
+          "bytes": 314,
+          "sha256": "4af68921e1667675bc209aeda242ae24880da575fcd1244299cdab593ec6e20b"
+        }
+      ],
+      "structured_results": [
+        "security",
+        "workflow_dispatch",
+        "gates",
+        "workflow_dispatch",
+        "perf-kpi",
+        "push",
+        "publish",
+        "workflow_dispatch",
+        "live-smoke",
+        "release",
+        "security-tracked-sensitivity",
+        "cleanliness",
+        "cleanliness",
+        "cleanliness",
+        "cleanliness",
+        "cleanliness",
+        "cleanliness",
+        "tests/fixtures/**/*selfhost*"
+      ]
+    }
+  ],
+  "label_followup": {
+    "change": "test label and structured coverage only after collecting every active validation; runtime direct source remains exact",
+    "source_fingerprint_unchanged": true,
+    "db_only_recheck": [
+      {
+        "status": "PASS",
+        "checks": 8,
+        "mode": "db-only",
+        "git_cas_projection_admission": "ACTUAL",
+        "accepted_source_native_provider_event": "DOUBLED",
+        "checkpoint_dispatch_hmac": "ACTUAL_PUBLIC_FIXTURE_KEY",
+        "checkpoint_recovery": "REFUSED_NO_COMMIT_WITNESS",
+        "host_ir_binding": "SOURCE_BOUND_NOT_EXECUTED_BY_THIS_SUITE",
+        "cycle_creation": "NOT_RUN",
+        "native_models": 0,
+        "full_standard": false,
+        "installed_archive": "NOT_RUN"
+      },
+      {
+        "fixture_cleanup": "completed",
+        "roots": 2,
+        "independent_process_inventory": "NOT_CAPTURED"
+      }
+    ],
+    "exit": {
+      "exit_code": 0,
+      "finished_at_utc": "2026-11-04T07:05:35.6346241Z",
+      "change": "test labels and explicit structured coverage only after all preceding handles collected"
+    },
+    "artifacts": [
+      {
+        "name": "correction-recovery-20261104-db-only-labelled.stdout.log",
+        "bytes": 1112,
+        "sha256": "86fad71dafa5659a2253d2caf74bddc2ff8e2ce29a28b6fdfe225e5858a395d3"
+      }
+    ]
+  },
+  "cleanup": {
+    "checkpoint_final_roots": 10,
+    "db_only_label_recheck_roots": 2,
+    "component_cleanup": "completed",
+    "independent_process_tree_extinction": "NOT_PROVED",
+    "old_incomplete_trials_cleanup": "NOT_ATTEMPTED"
+  },
+  "new_native_model_calls": 0,
+  "incomplete_attempts": [
+    {
+      "name": "correction-recovery-20261104-docs.exit.json",
+      "exit_code": 1,
+      "cause": "wrong verifier path, MODULE_NOT_FOUND before test execution; corrected command passes; raw stdout/stderr retained separately"
+    }
+  ]
+}

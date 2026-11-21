@@ -1,0 +1,341 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/process-dispatch-record.v2",
+  "x-aidn-contract-version": "process-dispatch-record.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_id",
+    "revision",
+    "phase",
+    "instance_id",
+    "scope_id",
+    "model_sha256",
+    "intent_sha256",
+    "preview_sha256",
+    "authority_sha256",
+    "runtime_sha256",
+    "physical_root_sha256",
+    "operation_owner_sha256",
+    "process_identity",
+    "context_before_sha256",
+    "context_after_sha256",
+    "leases",
+    "output",
+    "output_sha256",
+    "key_id",
+    "authentication",
+    "local_owner_intentions"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "process-dispatch-record.v2"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "phase": {
+      "enum": [
+        "reserved",
+        "running",
+        "returned"
+      ]
+    },
+    "instance_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "model_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "intent_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "preview_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authority_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "runtime_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "physical_root_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "operation_owner_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "process_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platform",
+        "host",
+        "pid",
+        "creation"
+      ],
+      "properties": {
+        "platform": {
+          "enum": [
+            "win32",
+            "linux"
+          ]
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "pid": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "creation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 96
+        }
+      }
+    },
+    "context_before_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "context_after_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "leases": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "owner",
+          "physical_identity",
+          "resource_fence",
+          "status"
+        ],
+        "properties": {
+          "owner": {
+            "type": "object"
+          },
+          "physical_identity": {
+            "type": "object"
+          },
+          "resource_fence": {
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "held",
+              "released"
+            ]
+          }
+        }
+      }
+    },
+    "output": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "output_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authentication": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "local_owner_intentions": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "owner",
+          "lock_path",
+          "resource_fence",
+          "context_sha256"
+        ],
+        "properties": {
+          "owner": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "contract_version",
+              "token",
+              "pid",
+              "scope_sha256",
+              "plan_sha256",
+              "created_at"
+            ],
+            "properties": {
+              "contract_version": {
+                "const": "process-local-effect-owner.v1"
+              },
+              "token": {
+                "type": "string",
+                "pattern": "^[a-f0-9-]{36}$"
+              },
+              "pid": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "scope_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "plan_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "created_at": {
+                "type": "string",
+                "minLength": 20,
+                "maxLength": 32
+              }
+            }
+          },
+          "lock_path": {
+            "const": ".aidn/runtime/standard-workflow/effects.lock"
+          },
+          "resource_fence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "record",
+              "previous_sha256"
+            ],
+            "properties": {
+              "record": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "contract_version",
+                  "revision",
+                  "physical_root_sha256",
+                  "state",
+                  "token",
+                  "process_identity"
+                ],
+                "properties": {
+                  "contract_version": {
+                    "const": "local-artifact-resource-fence.v1"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "physical_root_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "state": {
+                    "enum": [
+                      "held",
+                      "released"
+                    ]
+                  },
+                  "token": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9-]{36}$"
+                  },
+                  "process_identity": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "platform",
+                      "host",
+                      "pid",
+                      "creation"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "enum": [
+                          "win32",
+                          "linux"
+                        ]
+                      },
+                      "host": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      },
+                      "pid": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "creation": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 96
+                      }
+                    }
+                  }
+                }
+              },
+              "previous_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "context_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

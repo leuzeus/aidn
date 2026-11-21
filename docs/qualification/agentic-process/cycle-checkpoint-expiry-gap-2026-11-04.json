@@ -1,0 +1,93 @@
+{
+  "format": "aidn-cycle-checkpoint-expiry-gap.v1",
+  "date": "2026-11-04",
+  "status": "FAIL_PRESERVED_CONTINUATION_UNQUALIFIED",
+  "scope": "source-installed-cycle130-component-opt-in-expiry-probe",
+  "command_option": "--expire-checkpoint",
+  "source_file_sha256": "4aa0b2d006414449400b34e710045abff972cba466de8f871593c65a2b6b76bc",
+  "results": {
+    "files": {
+      "case_label": "source23-expired-cycle-checkpoint-files-20261104",
+      "exit": {
+        "started": "2026-11-04T12:35:15.692577+00:00",
+        "observed_at_utc": "2026-11-04T12:38:43.083156+00:00",
+        "process_pid": 49008,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "source_head": "dd2ff0db2e2153936f39d0ff802bcfadc11ca1a6",
+      "source_files_compared": 2103,
+      "passing_checks_before_assertion": 13,
+      "stdout_sha256": "1fb38596cd06ee736af57afc98cf6297d0c267fe6fe68fcdbc9d375f1f107b26",
+      "stderr_sha256": "4d0f94c1ff074b09a58fd14f8b2a61b5bec899c8b9d137ec2b81c0ba7b5ff171",
+      "observed_receipt_outcome": "blocked",
+      "observed_receipt_effect_status": "no_effect",
+      "actual_reason": "STANDARD_CYCLE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED",
+      "expected_reason_for_expired_reprepare": "STANDARD_PLAN_EXPIRED",
+      "checkpoint_reprepare_or_fresh_success": "NOT_REACHED",
+      "checkpoint_physical_runtime_byte_check": "NOT_REACHED_AFTER_REASON_ASSERTION"
+    },
+    "dual": {
+      "case_label": "source23-expired-cycle-checkpoint-dual-20261104",
+      "exit": {
+        "started": "2026-11-04T12:35:15.726114+00:00",
+        "observed_at_utc": "2026-11-04T12:38:41.236067+00:00",
+        "process_pid": 58600,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "source_head": "dd2ff0db2e2153936f39d0ff802bcfadc11ca1a6",
+      "source_files_compared": 2103,
+      "passing_checks_before_assertion": 13,
+      "stdout_sha256": "29e08cef1ce9e82862bb787e613636ace0645b7daef4be299ee64d93dc281357",
+      "stderr_sha256": "aa0599057e3b5712fdfd76f86410eb6a8dd8ec2f810b4af1e57d4f5b0b7c2fa8",
+      "observed_receipt_outcome": "blocked",
+      "observed_receipt_effect_status": "no_effect",
+      "actual_reason": "STANDARD_CYCLE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED",
+      "expected_reason_for_expired_reprepare": "STANDARD_PLAN_EXPIRED",
+      "checkpoint_reprepare_or_fresh_success": "NOT_REACHED",
+      "checkpoint_physical_runtime_byte_check": "NOT_REACHED_AFTER_REASON_ASSERTION"
+    },
+    "db-only": {
+      "case_label": "source23-expired-cycle-checkpoint-db-only-20261104",
+      "exit": {
+        "started": "2026-11-04T12:35:15.468939+00:00",
+        "observed_at_utc": "2026-11-04T12:38:34.857514+00:00",
+        "process_pid": 31556,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "source_head": "dd2ff0db2e2153936f39d0ff802bcfadc11ca1a6",
+      "source_files_compared": 2103,
+      "passing_checks_before_assertion": 13,
+      "stdout_sha256": "6bce78afb64df12b58dd7851d91e039d935005c33058fa5aeb8e8f13aaf5a60f",
+      "stderr_sha256": "166c4859e22767521d46d8070792c0d5060a54367d1ba81fbfdbe5dd78434d2e",
+      "observed_receipt_outcome": "blocked",
+      "observed_receipt_effect_status": "no_effect",
+      "actual_reason": "STANDARD_CYCLE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED",
+      "expected_reason_for_expired_reprepare": "STANDARD_PLAN_EXPIRED",
+      "checkpoint_reprepare_or_fresh_success": "NOT_REACHED",
+      "checkpoint_physical_runtime_byte_check": "NOT_REACHED_AFTER_REASON_ASSERTION"
+    }
+  },
+  "diagnosis": {
+    "owning_source": "src/application/runtime/standard-cycle-checkpoint.mjs",
+    "observed_behavior": "The initial explicit-effect condition includes expired age and emits the generic checkpoint code before local owner acquisition. The later in-owner expiry check already emits STANDARD_PLAN_EXPIRED.",
+    "reprepare_requirement": "Authenticated accepted deterministic blocked/no_effect/STANDARD_PLAN_EXPIRED, same occurrence and input, fresh read-only preparation and distinct explicit grant/intent. No generic refusal is automatically reclassified.",
+    "next_action": "Separate invalid explicit intent from expired age at the initial hook boundary, preserving all denial/owner/authorization checks; update implementation pins/models as required and rerun this exact opt-in suite on all modes."
+  },
+  "limits": [
+    "These are three retained failed attempts, not a successful checkpoint expiry or full-component proof.",
+    "The expected actual-success continuation has not run. Earlier default20-check proofs remain bound to their exact pre-option sources.",
+    "At the failed assertion, outcome blocked/no_effect was checked, but post-refusal checkout/runtime invariance was not reached.",
+    "No runtime/model/policy/contract was changed and no expiry, grant, native budget or unknown effect was reinterpreted.",
+    "The independently running frozen source23 composed case uses dd2ff0db and is unrelated to this optional probe."
+  ],
+  "model_calls": 0,
+  "native_allocations": 0,
+  "runtime_or_model_changed": false,
+  "full_standard_workflow": false
+}

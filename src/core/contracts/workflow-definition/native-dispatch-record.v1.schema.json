@@ -1,0 +1,611 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/native-dispatch-record.v1",
+  "x-aidn-contract-version": "native-dispatch-record.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "dispatch_id",
+    "nonce",
+    "revision",
+    "journal_id",
+    "instance_id",
+    "scope_id",
+    "model_sha256",
+    "configuration_sha256",
+    "authority",
+    "intent",
+    "kind",
+    "owner_plan_sha256",
+    "physical_root_sha256",
+    "local_owner_scope_sha256",
+    "process_identity",
+    "instance_sha256",
+    "native_journal_before_sha256",
+    "native_journal_after_sha256",
+    "phase",
+    "local_owner_intentions",
+    "leases",
+    "result_sha256",
+    "error_code",
+    "permits_effects",
+    "complete_resource_closure",
+    "key_id",
+    "authentication",
+    "instance_revision"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "native-dispatch-record.v1"
+    },
+    "dispatch_id": {
+      "type": "string",
+      "pattern": "^native_dispatch_[a-f0-9]{40}$"
+    },
+    "nonce": {
+      "type": "string",
+      "pattern": "^[a-f0-9-]{36}$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 256
+    },
+    "journal_id": {
+      "type": "string",
+      "pattern": "^native_[a-f0-9]{40}$"
+    },
+    "instance_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "model_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "configuration_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope_id",
+        "model_sha256",
+        "policy_pins"
+      ],
+      "properties": {
+        "scope_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "model_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "policy_pins": {
+          "type": "object",
+          "maxProperties": 64,
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "intent": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "instance_id",
+            "authorization_sha256"
+          ],
+          "properties": {
+            "instance_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "authorization_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "instance_id",
+            "epoch_request_sha256"
+          ],
+          "properties": {
+            "instance_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "epoch_request_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        }
+      ]
+    },
+    "kind": {
+      "enum": [
+        "allocation",
+        "authorization_epoch"
+      ]
+    },
+    "owner_plan_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "physical_root_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "local_owner_scope_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "process_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platform",
+        "host",
+        "pid",
+        "creation"
+      ],
+      "properties": {
+        "platform": {
+          "enum": [
+            "win32",
+            "linux"
+          ]
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "pid": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "creation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 96
+        }
+      }
+    },
+    "instance_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "native_journal_before_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "native_journal_after_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "phase": {
+      "enum": [
+        "reserved",
+        "running",
+        "returned",
+        "threw"
+      ]
+    },
+    "local_owner_intentions": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "owner",
+          "lock_path",
+          "resource_fence",
+          "context_sha256"
+        ],
+        "properties": {
+          "owner": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "contract_version",
+              "token",
+              "pid",
+              "scope_sha256",
+              "plan_sha256",
+              "created_at"
+            ],
+            "properties": {
+              "contract_version": {
+                "const": "process-local-effect-owner.v1"
+              },
+              "token": {
+                "type": "string",
+                "pattern": "^[a-f0-9-]{36}$"
+              },
+              "pid": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "scope_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "plan_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "created_at": {
+                "type": "string",
+                "minLength": 20,
+                "maxLength": 32
+              }
+            }
+          },
+          "lock_path": {
+            "const": ".aidn/runtime/standard-workflow/effects.lock"
+          },
+          "resource_fence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "record",
+              "previous_sha256"
+            ],
+            "properties": {
+              "record": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "contract_version",
+                  "revision",
+                  "physical_root_sha256",
+                  "state",
+                  "token",
+                  "process_identity"
+                ],
+                "properties": {
+                  "contract_version": {
+                    "const": "local-artifact-resource-fence.v1"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "physical_root_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "state": {
+                    "enum": [
+                      "held",
+                      "released"
+                    ]
+                  },
+                  "token": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9-]{36}$"
+                  },
+                  "process_identity": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "platform",
+                      "host",
+                      "pid",
+                      "creation"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "enum": [
+                          "win32",
+                          "linux"
+                        ]
+                      },
+                      "host": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      },
+                      "pid": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "creation": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 96
+                      }
+                    }
+                  }
+                }
+              },
+              "previous_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "context_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "leases": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "owner",
+          "physical_identity",
+          "resource_fence",
+          "status"
+        ],
+        "properties": {
+          "owner": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "contract_version",
+              "token",
+              "pid",
+              "scope_sha256",
+              "plan_sha256",
+              "created_at"
+            ],
+            "properties": {
+              "contract_version": {
+                "const": "process-local-effect-owner.v1"
+              },
+              "token": {
+                "type": "string",
+                "pattern": "^[a-f0-9-]{36}$"
+              },
+              "pid": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "scope_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "plan_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "created_at": {
+                "type": "string",
+                "minLength": 20,
+                "maxLength": 32
+              }
+            }
+          },
+          "physical_identity": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "dev",
+              "ino",
+              "size",
+              "nlink",
+              "mode",
+              "mtime_ns",
+              "ctime_ns"
+            ],
+            "properties": {
+              "dev": {
+                "type": "string",
+                "pattern": "^[0-9]+$",
+                "maxLength": 64
+              },
+              "ino": {
+                "type": "string",
+                "pattern": "^[0-9]+$",
+                "maxLength": 64
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "nlink": {
+                "const": 1
+              },
+              "mode": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "mtime_ns": {
+                "type": "string",
+                "pattern": "^-?[0-9]+$",
+                "maxLength": 64
+              },
+              "ctime_ns": {
+                "type": "string",
+                "pattern": "^-?[0-9]+$",
+                "maxLength": 64
+              }
+            }
+          },
+          "resource_fence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "contract_version",
+              "revision",
+              "physical_root_sha256",
+              "state",
+              "token",
+              "process_identity"
+            ],
+            "properties": {
+              "contract_version": {
+                "const": "local-artifact-resource-fence.v1"
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "physical_root_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "state": {
+                "enum": [
+                  "held",
+                  "released"
+                ]
+              },
+              "token": {
+                "type": "string",
+                "pattern": "^[a-f0-9-]{36}$"
+              },
+              "process_identity": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "platform",
+                  "host",
+                  "pid",
+                  "creation"
+                ],
+                "properties": {
+                  "platform": {
+                    "enum": [
+                      "win32",
+                      "linux"
+                    ]
+                  },
+                  "host": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "pid": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "creation": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 96
+                  }
+                }
+              }
+            }
+          },
+          "status": {
+            "enum": [
+              "held",
+              "released"
+            ]
+          }
+        }
+      }
+    },
+    "result_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "error_code": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "permits_effects": {
+      "const": false
+    },
+    "complete_resource_closure": {
+      "const": false
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authentication": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "instance_revision": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,196 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-session-pr-update-push-plan.v1",
+  "x-aidn-contract-version": "standard-session-pr-update-push-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "operation_id",
+    "input",
+    "prepared_at_ms",
+    "source_sha256",
+    "session_id",
+    "git",
+    "pull_request"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-session-pr-update-push-plan.v1"
+    },
+    "operation_ref": {
+      "const": "session_pr_update_push"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "checkpoint_operation_id"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "standard-session-pr-update-push-input.v1"
+        },
+        "checkpoint_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        }
+      }
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{3,6}$"
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "remote_identity_sha256",
+        "branch",
+        "ref",
+        "head",
+        "remote_head",
+        "local_sha256"
+      ],
+      "properties": {
+        "profile": {
+          "enum": [
+            "local-bare-remote.v1",
+            "github-https-git.v1"
+          ]
+        },
+        "remote_identity_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 192
+        },
+        "ref": {
+          "type": "string",
+          "pattern": "^refs/heads/"
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "remote_head": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "local_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "pull_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "repository_id",
+        "node_id",
+        "number",
+        "head_branch",
+        "base_branch",
+        "head_oid",
+        "base_oid",
+        "state",
+        "draft",
+        "url",
+        "title_sha256",
+        "body_sha256"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "github-pr-link.v1"
+        },
+        "repository_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "node_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "head_branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 192
+        },
+        "base_branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 192
+        },
+        "head_oid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "base_oid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "state": {
+          "enum": [
+            "OPEN",
+            "CLOSED",
+            "MERGED"
+          ]
+        },
+        "draft": {
+          "type": "boolean"
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "pattern": "^https://github[.]com/"
+        },
+        "title_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "body_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "observed_at_utc": "2026-11-03T21:40:11.186523+00:00",
+  "source": {
+    "commit": "5014f0639a3fd452be4b07e7166168c2426ef06f",
+    "model_revision": 33,
+    "model_sha256": "c248c60101125cfcfe1c686a638af85ae6309554bac61da08b93349bbaea060f",
+    "implementation_pin": "9a2fba61d3e5c5150577020f3300b7e0c674560000db5aa9022989ee6db85bb0"
+  },
+  "verdict": {
+    "status": "PASS",
+    "exit_code": 0,
+    "ended_at_utc": "2026-11-03T21:35:50.7450337Z"
+  },
+  "parent_and_cold_proofs": [
+    {
+      "standard_composed_proof": true,
+      "model_sha256": "c248c60101125cfcfe1c686a638af85ae6309554bac61da08b93349bbaea060f",
+      "instance_sha256": "8dff4ff8d4b686c7d05d95bbf541bbed5d17efbf8ad386d430e2e619ba31dd98",
+      "events": 120,
+      "application_operations": 52,
+      "native_sessions_started": 3,
+      "native_sessions_started_in_child": 0,
+      "native_prior_results": 5,
+      "cold_resume": true,
+      "cold_continuation": false,
+      "prior_operation_journals_preserved": false,
+      "simulation_trace_mode": "streamed-bounded-rows",
+      "simulation_steps": 121,
+      "terminal_ready_node": null,
+      "component_completed": true,
+      "full_standard_workflow": false,
+      "workflow_status": "COMPLETED",
+      "model_calls": 0,
+      "verification_boundary": "fixture-with-actual-Node-check",
+      "human_and_effect_authority": "fixture",
+      "replay_exact": true
+    },
+    {
+      "standard_composed_proof": true,
+      "model_sha256": "c248c60101125cfcfe1c686a638af85ae6309554bac61da08b93349bbaea060f",
+      "instance_sha256": "8dff4ff8d4b686c7d05d95bbf541bbed5d17efbf8ad386d430e2e619ba31dd98",
+      "events": 120,
+      "application_operations": 52,
+      "native_sessions_started": 5,
+      "native_sessions_started_in_child": 3,
+      "native_prior_results": 0,
+      "cold_resume": false,
+      "cold_continuation": true,
+      "prior_operation_journals_preserved": true,
+      "simulation_trace_mode": "streamed-bounded-rows",
+      "simulation_steps": 121,
+      "terminal_ready_node": null,
+      "component_completed": true,
+      "full_standard_workflow": false,
+      "workflow_status": "COMPLETED",
+      "model_calls": 0,
+      "verification_boundary": "fixture-with-actual-Node-check",
+      "human_and_effect_authority": "fixture",
+      "replay_exact": true
+    }
+  ],
+  "scope": "offline actual local chain through R07 and final delivery checkpoint; no branch integration or PR admission in this source",
+  "cleanup": {
+    "parent_and_cold_child_terminal": true,
+    "fixture_root_absent": true,
+    "control_root_absent": true,
+    "source_worktree_clean": true
+  },
+  "replay_and_simulation": "exact assertions passed inside the frozen source run; fixtures were cleaned before an independent snapshot, so no independent post-cleanup replay is claimed",
+  "provider": "FAKE_WIRE",
+  "human_and_effect_authority": "FIXTURE",
+  "model_calls": 0,
+  "native_real": "NOT_RUN",
+  "installed_archive": "NOT_RUN",
+  "full_standard_workflow": false,
+  "log_sha256": "a010887d4b70210164cac1382d9553fd95f199f64df02b8f9fd98095fdd3cf76",
+  "later_sources": "Does not qualify models37/39/41 or the later hook/filter isolation"
+}

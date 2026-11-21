@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-handoff-admission-input.v1",
+  "x-aidn-contract-version": "standard-handoff-admission-input.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "publication_operation_id",
+    "resource_operation_id"
+  ],
+  "properties": {
+    "publication_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "resource_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/process-operation-intent.v1",
+  "x-aidn-contract-version": "process-operation-intent.v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "operation_id", "binding_ref", "binding_sha256", "input_sha256", "preconditions_sha256", "authorization_sha256", "authority_id", "scope_id", "instance_id", "instance_sha256", "model_sha256", "occurrence_id", "instance_revision"],
+  "properties": {
+    "contract_version": { "const": "process-operation-intent.v1" },
+    "operation_id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$" },
+    "binding_ref": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$" },
+    "binding_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "input_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "preconditions_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "authorization_sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+    "authority_id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$" },
+    "scope_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "instance_id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$" },
+    "instance_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "model_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "occurrence_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "instance_revision": { "type": "integer", "minimum": 1, "maximum": 512 }
+  }
+}

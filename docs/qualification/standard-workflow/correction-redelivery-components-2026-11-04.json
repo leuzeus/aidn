@@ -1,0 +1,174 @@
+{
+  "utc": "2026-11-04T18:54:33.333713+00:00",
+  "source_runtime_commit": "80388b02bc985c0d7c4060979aa06355f731f9f8",
+  "source_fixture_commit": "435525df7c32e087cf7e181768acd2f0b15626d6",
+  "latest_test_only_commit": "507144e9",
+  "model_revision": 94,
+  "nodes": 186,
+  "operations": 113,
+  "activities": 17,
+  "full_standard_workflow": false,
+  "ordinary_entry": "UNCHANGED",
+  "jobs": [
+    {
+      "name": "source33-composition-20261104",
+      "root": "G:\\aidn-worktrees\\standard-pr-redelivery-source33-20261104",
+      "head": "e893b30e08aae5badbb6e797139eab2d665a7de4",
+      "status": "FAIL",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-composition-r2-20261104",
+      "root": "G:\\aidn-worktrees\\standard-pr-redelivery-source33-r2-20261104",
+      "head": "6c4d15607a1660521c67f77ccdfeab9e12577f72",
+      "status": "PASS",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-composition-r3-20261104",
+      "root": "G:\\aidn-worktrees\\standard-pr-redelivery-source33-r3-20261104",
+      "head": "80388b02bc985c0d7c4060979aa06355f731f9f8",
+      "status": "PASS",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-docs-r5-20261104",
+      "root": "G:\\aidn-worktrees\\standard-redelivery-fixture-source33-20261104",
+      "head": "435525df7c32e087cf7e181768acd2f0b15626d6",
+      "status": "PASS",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-final-composition-20261104",
+      "root": "G:\\aidn-worktrees\\standard-correction-prefix-source33-20261104",
+      "head": "2bcfe6f7179d79310ab99ecdf57676bb56ba5aaa",
+      "status": "PASS",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-final-model-20261104",
+      "root": "G:\\aidn-worktrees\\standard-correction-prefix-source33-20261104",
+      "head": "2bcfe6f7179d79310ab99ecdf57676bb56ba5aaa",
+      "status": "PASS",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-final-preflight-r5-20261104",
+      "root": "G:\\aidn-worktrees\\standard-redelivery-fixture-source33-20261104",
+      "head": "435525df7c32e087cf7e181768acd2f0b15626d6",
+      "status": "ACTIVE_OR_PENDING_GUARD",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-final-real-preflight-20261104",
+      "root": "G:\\aidn-worktrees\\standard-correction-prefix-source33-20261104",
+      "head": "2bcfe6f7179d79310ab99ecdf57676bb56ba5aaa",
+      "status": "ACTIVE_OR_PENDING_GUARD",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-model-20261104",
+      "root": "G:\\aidn-worktrees\\standard-pr-redelivery-source33-20261104",
+      "head": "e893b30e08aae5badbb6e797139eab2d665a7de4",
+      "status": "PASS",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-preflight-bounded-20261104",
+      "root": "G:\\aidn-worktrees\\standard-correction-prefix-source33-20261104",
+      "head": "2bcfe6f7179d79310ab99ecdf57676bb56ba5aaa",
+      "status": "PASS",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-preflight-files-20261104",
+      "root": "G:\\aidn-worktrees\\standard-pr-redelivery-source33-20261104",
+      "head": "e893b30e08aae5badbb6e797139eab2d665a7de4",
+      "status": "ACTIVE_OR_PENDING_GUARD",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-preflight-suite-20261104",
+      "root": "G:\\aidn-worktrees\\standard-correction-prefix-source33-20261104",
+      "head": "2bcfe6f7179d79310ab99ecdf57676bb56ba5aaa",
+      "status": "FAIL",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-preflight-unknown-r3-20261104",
+      "root": "G:\\aidn-worktrees\\standard-pr-redelivery-source33-r3-20261104",
+      "head": "80388b02bc985c0d7c4060979aa06355f731f9f8",
+      "status": "FAIL",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-redelivery-db-only-r3-20261104",
+      "root": "G:\\aidn-worktrees\\standard-pr-redelivery-source33-r3-20261104",
+      "head": "80388b02bc985c0d7c4060979aa06355f731f9f8",
+      "status": "FAIL",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-redelivery-db-only-r5-20261104",
+      "root": "G:\\aidn-worktrees\\standard-redelivery-fixture-source33-20261104",
+      "head": "435525df7c32e087cf7e181768acd2f0b15626d6",
+      "status": "ACTIVE_OR_PENDING_GUARD",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-redelivery-dual-r3-20261104",
+      "root": "G:\\aidn-worktrees\\standard-pr-redelivery-source33-r3-20261104",
+      "head": "80388b02bc985c0d7c4060979aa06355f731f9f8",
+      "status": "FAIL",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-redelivery-dual-r5-20261104",
+      "root": "G:\\aidn-worktrees\\standard-redelivery-fixture-source33-20261104",
+      "head": "435525df7c32e087cf7e181768acd2f0b15626d6",
+      "status": "ACTIVE_OR_PENDING_GUARD",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-redelivery-files-20261104",
+      "root": "G:\\aidn-worktrees\\standard-pr-redelivery-source33-20261104",
+      "head": "e893b30e08aae5badbb6e797139eab2d665a7de4",
+      "status": "FAIL",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-redelivery-files-r3-20261104",
+      "root": "G:\\aidn-worktrees\\standard-pr-redelivery-source33-r3-20261104",
+      "head": "80388b02bc985c0d7c4060979aa06355f731f9f8",
+      "status": "FAIL",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    },
+    {
+      "name": "source33-redelivery-files-r5-20261104",
+      "root": "G:\\aidn-worktrees\\standard-redelivery-fixture-source33-20261104",
+      "head": "435525df7c32e087cf7e181768acd2f0b15626d6",
+      "status": "ACTIVE_OR_PENDING_GUARD",
+      "scope": "Original terminal footer defines actual fixture scope; ongoing logs never constitute PASS"
+    }
+  ],
+  "known_terminal_failures": [
+    "Initial composition stale operation/activity counters",
+    "Initial redelivery compared unadorned integration proof with effect-status result; fixed without dropping proof properties",
+    "Three r3 redelivery fixture negative cases aliased origin and retained previous PR; fixed by cloning at construction",
+    "Initial component_complete correction preflight encountered genuine undecided routing wait",
+    "Preflight suite still expected component_complete in one older assertion; latest test-only commit uses explicit bounded stop"
+  ],
+  "preflight_tool_failure": {
+    "name": "source33-metadata-r5-20261104",
+    "reason": "Missing tools/verify/verify-metadata-policy.mjs before source snapshot/Node; actual package script is tools/perf/verify-metadata-policy.mjs",
+    "verdict": "NO_TERMINAL_JOB_NOT_SKIP"
+  },
+  "limits": [
+    "NewC2 whole planning/work/validation/reclosure/redelivery journey NOT_RUN",
+    "Production-dispatcher UNKNOWN chain NOT_RUN pending final-source preflight; synthetic bounded preflight is not business evidence",
+    "Native/genuine human/provider/OS/PostgreSQL/installed archive NOT_RUN",
+    "ROOT diagnostic failed before late authorization; retain exact status/tool response and two physical terminal projects",
+    "New source33 tests retain disposable projects; archive only terminal cases, never reconstruct cleaned or copy live cases",
+    "L1-L8/A1-A10 remains incomplete"
+  ]
+}

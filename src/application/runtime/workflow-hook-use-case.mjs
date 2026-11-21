@@ -30,7 +30,12 @@ import {
   resolveRuntimeTargetPath,
 } from "./runtime-path-service.mjs";
 
-export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot, completedCheckpoint = null }) {
+export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot, completedCheckpoint = null, completedStartRunId = null }) {
+  if (completedStartRunId !== null && (args.phase !== "session-start" || args.strict !== true || !/^process_start_[a-f0-9]{40}$/.test(completedStartRunId)
+    || !completedCheckpoint || completedCheckpoint.run_id !== completedStartRunId || completedCheckpoint.summary_run_id !== completedStartRunId
+    || completedCheckpoint.target_root !== targetRoot || completedCheckpoint.mode !== args.mode || completedCheckpoint.gate?.skipped !== false
+    || completedCheckpoint.ok !== true || completedCheckpoint.summary?.result !== "ok" || completedCheckpoint.gate.result !== "ok"))
+    throw Error("START_CHECKPOINT_CORRELATION_CHANGED");
   const gitAdapter = createLocalGitAdapter();
   const processAdapter = createLocalProcessAdapter();
   const started = Date.now();
@@ -42,6 +47,7 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot, completed
   });
   args.stateMode = runtimeMode.stateMode;
   args.indexStore = runtimeMode.indexStore;
+  if (completedStartRunId !== null && completedCheckpoint.state_mode !== args.stateMode) throw Error("START_CHECKPOINT_CORRELATION_CHANGED");
   const strictRequiredByState = requiresStrictRuntime(args.stateMode);
   if (strictRequiredByState) {
     args.strict = true;
@@ -53,7 +59,7 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot, completed
   const indexSqliteOutputPath = resolveRuntimeTargetPath(targetRoot, args.indexSqliteOutput);
   const indexSyncCheckOutPath = resolveRuntimeTargetPath(targetRoot, args.indexSyncCheckOut);
   const branch = gitAdapter.getCurrentBranch(targetRoot);
-  const runId = resolveWorkflowRunId({
+  const runId = completedStartRunId ?? resolveWorkflowRunId({
     phase: args.phase,
     runIdFilePath: runIdFilePathArg,
   });

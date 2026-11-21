@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-handoff-publication-input.v1",
+  "x-aidn-contract-version": "standard-handoff-publication-input.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "next_agent_role",
+    "next_agent_action",
+    "next_agent_goal",
+    "handoff_note",
+    "from_agent_role",
+    "from_agent_action"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-handoff-publication-input.v1"
+    },
+    "next_agent_role": {
+      "enum": [
+        "coordinator",
+        "executor",
+        "auditor",
+        "repair"
+      ]
+    },
+    "next_agent_action": {
+      "enum": [
+        "reanchor",
+        "implement",
+        "audit",
+        "analyze",
+        "repair",
+        "relay",
+        "close",
+        "coordinate"
+      ]
+    },
+    "next_agent_goal": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192,
+      "pattern": "^[^\\r\\n]+$"
+    },
+    "handoff_note": {
+      "type": "string",
+      "maxLength": 4096,
+      "pattern": "^[^\\r\\n]*$"
+    },
+    "from_agent_role": {
+      "enum": [
+        "coordinator",
+        "executor",
+        "auditor",
+        "repair"
+      ]
+    },
+    "from_agent_action": {
+      "enum": [
+        "reanchor",
+        "implement",
+        "audit",
+        "analyze",
+        "repair",
+        "relay",
+        "close",
+        "coordinate"
+      ]
+    }
+  }
+}

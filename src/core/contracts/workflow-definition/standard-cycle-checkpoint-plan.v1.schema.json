@@ -1,0 +1,160 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-checkpoint-plan.v1",
+  "x-aidn-contract-version": "standard-cycle-checkpoint-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "input",
+    "prepared_at_ms",
+    "scope",
+    "mode",
+    "dor_ready",
+    "documents",
+    "effects",
+    "event_log",
+    "hook_mode"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-checkpoint-plan.v1"
+    },
+    "operation_ref": {
+      "const": "cycle_checkpoint_finalize"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_id",
+        "cycle_id"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "pattern": "^S[0-9]{3,6}$"
+        },
+        "cycle_id": {
+          "type": "string",
+          "pattern": "^C[0-9]{3,6}$"
+        },
+        "evaluation_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        }
+      }
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project",
+        "persistence",
+        "branch",
+        "head"
+      ],
+      "properties": {
+        "project": {
+          "type": "object"
+        },
+        "persistence": {
+          "type": "object"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40,64}$"
+        }
+      }
+    },
+    "mode": {
+      "enum": [
+        "EXPLORING",
+        "COMMITTING"
+      ]
+    },
+    "effects": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "enum": [
+          "checkpoint",
+          "runtime_index",
+          "checkpoint_events"
+        ]
+      }
+    },
+    "dor_ready": {
+      "type": "boolean"
+    },
+    "documents": {
+      "type": "array",
+      "minItems": 15,
+      "maxItems": 15,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256",
+          "metadata_sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 192
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "metadata_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "event_log": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4194304
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "objective_completion_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "hook_mode": {
+      "const": "COMMITTING"
+    }
+  }
+}

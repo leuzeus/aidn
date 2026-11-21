@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-correction-cycle-input.v1",
+  "x-aidn-contract-version": "standard-pr-correction-cycle-input.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "decision_operation_id",
+    "cycle_id",
+    "title",
+    "objective"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-pr-correction-cycle-input.v1"
+    },
+    "decision_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "cycle_id": {
+      "type": "string",
+      "pattern": "^C[0-9]{3,6}$"
+    },
+    "title": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 15,
+      "maxLength": 512,
+      "pattern": "^[^\\r\\n\\u0000]+$"
+    }
+  }
+}

@@ -4,7 +4,7 @@ import {
   toCycleSummary,
   toSessionSummary,
 } from "../../lib/workflow/branch-mapping-lib.mjs";
-import { normalizeSessionPrStatus } from "../../lib/workflow/session-context-lib.mjs";
+import { normalizePostMergeSyncStatus, normalizeSessionPrStatus } from "../../lib/workflow/session-context-lib.mjs";
 import {
   WORKFLOW_ACTION,
   WORKFLOW_ADMISSION_STATUS,
@@ -12,7 +12,7 @@ import {
   WORKFLOW_REPAIR_HINT,
 } from "./workflow-transition-constants.mjs";
 
-export function evaluateLatestSessionContinuation(latestSession, sourceBranch) {
+export function evaluateLatestSessionContinuation(latestSession, sourceBranch, reconciliation = null) {
   if (!latestSession || !sourceBranch) {
     return null;
   }
@@ -28,7 +28,9 @@ export function evaluateLatestSessionContinuation(latestSession, sourceBranch) {
     };
   }
   const prStatus = normalizeSessionPrStatus(latestSession.metadata.pr_status);
-  const postMergeSyncStatus = String(latestSession.metadata.post_merge_sync_status ?? "not_needed");
+  const postMergeSyncStatus = normalizePostMergeSyncStatus(latestSession.metadata.post_merge_sync_status);
+
+  if (reconciliation?.completion && ["open", "merged"].includes(prStatus)) return null;
 
   if (prStatus === "open") {
     return {
@@ -56,7 +58,7 @@ export function evaluateLatestSessionContinuation(latestSession, sourceBranch) {
     };
   }
 
-  if (prStatus === "merged" && postMergeSyncStatus === "required") {
+  if (prStatus === "merged" && (reconciliation?.managed || postMergeSyncStatus !== "done")) {
     return {
       action: WORKFLOW_ACTION.BLOCKED_SESSION_BASE_GATE,
       reason_code: WORKFLOW_REASON.START_SESSION_POST_MERGE_SYNC_REQUIRED,
@@ -88,6 +90,7 @@ export function evaluateLatestSessionContinuation(latestSession, sourceBranch) {
 export function evaluateSourceBranchTransition({
   activeSessionArtifact,
   latestSession,
+  reconciliation,
   openCycleTopology,
   openCycles,
   resumableOpenCycles,
@@ -145,7 +148,7 @@ export function evaluateSourceBranchTransition({
     }
   }
 
-  const latestSessionBlock = evaluateLatestSessionContinuation(latestSession, sourceBranch);
+  const latestSessionBlock = evaluateLatestSessionContinuation(latestSession, sourceBranch, reconciliation);
   if (latestSessionBlock) {
     return latestSessionBlock;
   }

@@ -1,0 +1,37 @@
+{
+  "contract_version": "qualification-record.v1",
+  "recorded_at": "2026-11-03T19:48:04.052Z",
+  "source_snapshot": "92cce56a2e1b2997603d9947ae1b0668e702ebd7",
+  "source_ref": "refs/aidn/qualification/branch-integration-filter-context-20261103",
+  "proof_class": "offline-real-Git-port-only",
+  "tested_files": [
+    {
+      "path": "src/adapters/runtime/local-workflow-branch-integration.mjs",
+      "sha256": "f4cc728a1e7152382d69845ca543ae4ec3b3a43e469ed7f731b37d054baacdb3"
+    },
+    {
+      "path": "src/core/ports/workflow-branch-integration-port.mjs",
+      "sha256": "95fe119862fd944d0abef3b981d9dc554270d238c44a4f5be09bc4e7381b337e"
+    },
+    {
+      "path": "tools/perf/verify-workflow-branch-integration-port-fixtures.mjs",
+      "sha256": "3905b920a006bb055299a1959c3b413e2f92b97349e05b1dc82657066395a0fc"
+    }
+  ],
+  "result": "PASS",
+  "checks": 17,
+  "exit_code": 0,
+  "cleanup": "completed",
+  "log_sha256": "d87f3d5c7b09435155e8a695b5c068515510e39ba22f7bdbd655d3a83d7b2c5f",
+  "new_assertions": [
+    "Effective filter configuration SHA is part of the serialized observed plan.",
+    "A cold port refuses integration after that configuration changed, without moving refs.",
+    "Cold confirmation refuses a changed configuration even after an otherwise observed effect."
+  ],
+  "prior_proof": "branch-integration-port-2026-11-03.json preserves the earlier fifteen-check byte identity",
+  "standard_model_binding": false,
+  "process_effect_reconciliation": "NOT_IMPLEMENTED; cold observation grants no authorization or process success",
+  "native": "NOT_RUN",
+  "exact_archive": "NOT_RUN",
+  "complete_standard_workflow": false
+}

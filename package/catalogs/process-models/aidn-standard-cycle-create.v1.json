@@ -1,0 +1,203 @@
+{
+  "contract_version": "agentic-process-model.v2",
+  "model_id": "aidn-standard-cycle-create",
+  "revision": 459,
+  "participants": [
+    {
+      "id": "project"
+    }
+  ],
+  "roles": [],
+  "policies": [],
+  "entry": "cycle_create",
+  "operation_pins": {
+    "cycle_context_refresh": "9bd7130513298a1d276070eff85eebabda77a312f9d6cc9626d6469d4843d666",
+    "cycle_admit": "8be3d6a9eb2e539b3396e848b0391faac10cd9f7174ff688dec13d6663f8e731",
+    "cycle_initialize": "bdd857ef600981c59431e95dc1ca3f5ff548c9357ea8abac20cc630d823d27a7",
+    "branch_cycle_audit": "62d38e3652012b20b8630a0ffcce93c0fbb00dae82cfd4ca861e6c2cb046bf8f",
+    "cycle_checkpoint_finalize": "b7676fe8e2816a680133cbe78277017a67da5b6aad7413146a6e54dac1075bb6"
+  },
+  "nodes": [
+    {
+      "id": "cycle_create",
+      "kind": "sequence",
+      "participant_ref": "project",
+      "children": [
+        "refresh_before",
+        "admit",
+        "initialize",
+        "audit",
+        "checkpoint",
+        "refresh_after"
+      ]
+    },
+    {
+      "id": "refresh_before",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_context_refresh"
+    },
+    {
+      "id": "admit",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_admit"
+    },
+    {
+      "id": "initialize",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_initialize"
+    },
+    {
+      "id": "audit",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "branch_cycle_audit"
+    },
+    {
+      "id": "refresh_after",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_context_refresh"
+    },
+    {
+      "id": "checkpoint",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_checkpoint_finalize"
+    }
+  ],
+  "data_bindings": {
+    "contract_version": "process-data-bindings.v1",
+    "parameter_keys": [
+      "cycle"
+    ],
+    "inputs": [
+      {
+        "node_id": "refresh_before",
+        "fields": {
+          "session_id": {
+            "source": "parameter",
+            "key": "cycle",
+            "path": [
+              "session_id"
+            ]
+          }
+        }
+      },
+      {
+        "node_id": "admit",
+        "fields": {}
+      },
+      {
+        "node_id": "initialize",
+        "fields": {
+          "session_id": {
+            "source": "operation_input",
+            "node_id": "refresh_before",
+            "path": [
+              "session_id"
+            ]
+          },
+          "cycle_id": {
+            "source": "parameter",
+            "key": "cycle",
+            "path": [
+              "cycle_id"
+            ]
+          },
+          "cycle_type": {
+            "source": "parameter",
+            "key": "cycle",
+            "path": [
+              "cycle_type"
+            ]
+          },
+          "title": {
+            "source": "parameter",
+            "key": "cycle",
+            "path": [
+              "title"
+            ]
+          },
+          "objective": {
+            "source": "parameter",
+            "key": "cycle",
+            "path": [
+              "objective"
+            ]
+          },
+          "continuity_rule": {
+            "source": "operation_output",
+            "node_id": "admit",
+            "path": [
+              "observations",
+              "lifecycle",
+              "continuity_rule"
+            ]
+          },
+          "base_branch": {
+            "source": "operation_output",
+            "node_id": "admit",
+            "path": [
+              "observations",
+              "lifecycle",
+              "continuity_base_branch"
+            ]
+          }
+        }
+      },
+      {
+        "node_id": "audit",
+        "fields": {
+          "session_id": {
+            "source": "operation_input",
+            "node_id": "initialize",
+            "path": [
+              "session_id"
+            ]
+          },
+          "cycle_id": {
+            "source": "operation_input",
+            "node_id": "initialize",
+            "path": [
+              "cycle_id"
+            ]
+          }
+        }
+      },
+      {
+        "node_id": "refresh_after",
+        "fields": {
+          "session_id": {
+            "source": "operation_input",
+            "node_id": "initialize",
+            "path": [
+              "session_id"
+            ]
+          }
+        }
+      },
+      {
+        "node_id": "checkpoint",
+        "fields": {
+          "session_id": {
+            "source": "operation_input",
+            "node_id": "initialize",
+            "path": [
+              "session_id"
+            ]
+          },
+          "cycle_id": {
+            "source": "operation_input",
+            "node_id": "initialize",
+            "path": [
+              "cycle_id"
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

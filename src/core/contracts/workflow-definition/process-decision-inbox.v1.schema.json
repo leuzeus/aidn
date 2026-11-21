@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#", "$id": "aidn://contracts/workflow-definition/process-decision-inbox.v1",
+  "x-aidn-contract-version": "process-decision-inbox.v1", "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "inbox_id", "operation_id", "source_ref", "source", "phase", "receipt_sha256", "key_id", "authentication"],
+  "properties": {
+    "contract_version": { "const": "process-decision-inbox.v1" }, "inbox_id": { "type": "string", "pattern": "^decision_[a-f0-9]{40}$" },
+    "operation_id": { "type": "string", "pattern": "^op_[a-f0-9]{40}$" }, "source_ref": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "source": { "type": "object" }, "phase": { "enum": ["reserved", "receipted"] },
+    "receipt_sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+    "key_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "authentication": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

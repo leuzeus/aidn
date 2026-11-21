@@ -1,0 +1,340 @@
+{
+  "observed_at_utc": "2026-11-04T01:52:44.656Z",
+  "source_commit": "71cda48bade87f0e66440344318fea179f3b7879",
+  "lane": "ASSURED",
+  "model": {
+    "revision": 58,
+    "sha256": "2634197d28fb75bda5f80966a3aad007c104f64c53cf93f9f93e90ab937d3dcb",
+    "catalog_sha256": "7ef9e59aba584f4a0a5db6ce27ed40f073c1fd7ecd494d6e6e8f3eae95dee1ee",
+    "runtime_pin": "50f847291c1513cf308414bef8163efde5080354b391b0ed8433ba678f9d3228",
+    "direct_files": 334,
+    "nodes": 95,
+    "operations": 60,
+    "startup_revision": 116,
+    "cycle_revision": 114
+  },
+  "versions": {
+    "new": [
+      "process-control-inbox.v2",
+      "process-pr-review-payload.v1",
+      "github-pr-review-event.v1"
+    ],
+    "preserved": [
+      "process-control-inbox.v1",
+      "process-decision-inbox.v1-v6",
+      "historical process model/instance readers"
+    ],
+    "migration": "explicit new captures only; no historical conversion or repair"
+  },
+  "governance": {
+    "concept": "process_control_inbox",
+    "owner": "trusted human/external delivery host",
+    "scope": "physical project and exact source event/request/instance/occurrence/revision",
+    "retention": "complete content and event actor/revision plus deduplication/delivery checkpoint; no automatic purge",
+    "canonical": "existing project artifact CAS in configured files/runtime backend",
+    "projection": "required in dual; no implicit db-only export",
+    "shared_coordination": "no new table",
+    "replacement": "signed CAS; conflicting event reuse rejected"
+  },
+  "checks": [
+    {
+      "mode": "files",
+      "status": "PASS",
+      "exit": {
+        "exit_code": 0,
+        "ended_at_utc": "2026-11-04T01:40:18.0219340Z"
+      },
+      "log": {
+        "file": "G:/aidn-plans/model58-pr-control-files-20261103.log",
+        "bytes": 1163,
+        "sha256": "a0641fa55825910a9f3b3f27f1094036989c35cc54579d875ed6bce7190546fe"
+      },
+      "results": [
+        {
+          "status": "PASS",
+          "checks": 8,
+          "provider_and_event_identity": "fixture-capabilities",
+          "accepted_update_authority": "fixture",
+          "storage_and_host": "actual-files-SQLite-CAS-and-common-service",
+          "models": 0,
+          "ordinary_standard_route": "NOT_RUN",
+          "triage": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN"
+        },
+        {
+          "cleanup": "PASS",
+          "roots": 2
+        }
+      ]
+    },
+    {
+      "mode": "dual",
+      "status": "PASS",
+      "exit": {
+        "exit_code": 0,
+        "ended_at_utc": "2026-11-04T01:43:55.2540256Z",
+        "source_commit": "71cda48bade87f0e66440344318fea179f3b7879"
+      },
+      "log": {
+        "file": "G:/aidn-plans/model58-pr-control-dual-20261103.log",
+        "bytes": 1327,
+        "sha256": "5aff020554a49544ce8d002b4ded1928c6877b0bafc367b771777825938640ef"
+      },
+      "results": [
+        {
+          "status": "PASS",
+          "checks": 8,
+          "provider_and_event_identity": "fixture-capabilities",
+          "accepted_update_authority": "fixture",
+          "storage_and_host": "actual-files-SQLite-CAS-and-common-service",
+          "models": 0,
+          "ordinary_standard_route": "NOT_RUN",
+          "triage": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN"
+        },
+        {
+          "cleanup": "PASS",
+          "roots": 2
+        }
+      ]
+    },
+    {
+      "mode": "db-only",
+      "status": "PASS",
+      "exit": {
+        "exit_code": 0,
+        "source_commit": "71cda48bade87f0e66440344318fea179f3b7879",
+        "ended_at_utc": "2026-11-04T01:43:56.8779359Z"
+      },
+      "log": {
+        "file": "G:/aidn-plans/model58-pr-control-db-only-20261103.log",
+        "bytes": 1452,
+        "sha256": "b239d715094fe5abe569feb5708aacf9a7181cb7b6d01eacc8467cd7a4203851"
+      },
+      "results": [
+        {
+          "status": "PASS",
+          "checks": 9,
+          "provider_and_event_identity": "fixture-capabilities",
+          "accepted_update_authority": "fixture",
+          "storage_and_host": "actual-files-SQLite-CAS-and-common-service",
+          "models": 0,
+          "ordinary_standard_route": "NOT_RUN",
+          "triage": "NOT_RUN",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN"
+        },
+        {
+          "cleanup": "PASS",
+          "roots": 2
+        }
+      ]
+    }
+  ],
+  "historical_control": {
+    "status": "PASS",
+    "checks": 27,
+    "exit": {
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T01:49:51.5569138Z",
+      "source_commit": "71cda48bade87f0e66440344318fea179f3b7879"
+    },
+    "log": {
+      "file": "G:/aidn-plans/model58-control-historical-20261103.log",
+      "bytes": 3159,
+      "sha256": "0c20be751f5039559083f7e525bfde575ce2f1438322541f1b585f7549a8d481"
+    },
+    "results": [
+      {
+        "status": "PASS",
+        "checks": 27,
+        "proof": "offline-real-canonical-operations-and-authenticated-control-resume",
+        "source_authority": "fixture-capability",
+        "native": "NOT_RUN",
+        "live_provider": "NOT_RUN",
+        "mixed_native_resume": "NOT_YET_DELIVERED",
+        "full_standard_workflow": "NOT_YET_DELIVERED"
+      }
+    ]
+  },
+  "other_pass": [
+    {
+      "name": "composition",
+      "count": 25,
+      "status": "PASS",
+      "log": {
+        "file": "G:/aidn-plans/model58-composition-20261103.log",
+        "bytes": 2354,
+        "sha256": "61e58c714f6c5f2b8eaa4c2e6d304c85cfa825b015b73b71b2cdb2523ee2c328"
+      }
+    },
+    {
+      "name": "startup",
+      "count": 22,
+      "status": "PASS",
+      "log": {
+        "file": "G:/aidn-plans/model58-startup-20261103.log",
+        "bytes": 1724,
+        "sha256": "9f52503dc7311d43ad318235db96e70969140e921b7f2353052a3e412ee8cb45"
+      }
+    },
+    {
+      "name": "binding-inputs",
+      "count": "3 cases / 43 published boundaries",
+      "status": "PASS",
+      "log": {
+        "file": "G:/aidn-plans/model58-binding-inputs-20261103.log",
+        "bytes": 577,
+        "sha256": "846fcd23f8441519d7e9b2f57e8c1070b8eb7e917495dbfecbcbb010483e7c02"
+      }
+    },
+    {
+      "name": "process-operation",
+      "count": 27,
+      "status": "PASS",
+      "log": {
+        "file": "G:/aidn-plans/model58-process-operation-20261103.log",
+        "bytes": 2546,
+        "sha256": "21871800185a1c37a3455d5a096b480544bfdf0f738614c4f04148f87628b050"
+      }
+    },
+    {
+      "name": "source-policy",
+      "count": 35,
+      "status": "PASS",
+      "log": {
+        "file": "G:/aidn-plans/model58-source-policy-20261103.log",
+        "bytes": 197,
+        "sha256": "0bcb91534cb81a505febf0f3d28843e70cc54286e5c0a1e5491d103a7d86e921"
+      }
+    },
+    {
+      "name": "metadata-policy",
+      "count": 37,
+      "status": "PASS",
+      "log": {
+        "file": "G:/aidn-plans/model58-metadata-policy-20261103.log",
+        "bytes": 140,
+        "sha256": "cd6df66f20411384d3217c93e87fe10b140f45d46179a093ce05ec0c80deaec8"
+      }
+    },
+    {
+      "name": "governance",
+      "count": "complete",
+      "status": "PASS",
+      "log": {
+        "file": "G:/aidn-plans/model58-governance-20261103.log",
+        "bytes": 1402,
+        "sha256": "f7f2f55a238f0821085d81e9a25ec5d6c5ad4eae1f2f2783389b7f86c25be8ee"
+      }
+    },
+    {
+      "name": "gate-catalog",
+      "count": "including omission rejection",
+      "status": "PASS",
+      "log": {
+        "file": "G:/aidn-plans/model58-gate-catalog-20261103.log",
+        "bytes": 15576,
+        "sha256": "ef86abfb6f29cfe58f3b6276280a25d4685f0d82ccbe20cfc6897c628eba9cde"
+      }
+    }
+  ],
+  "failures": [
+    {
+      "name": "precommit model55",
+      "status": "FAIL",
+      "reason": "new source supplied readReview/verifyReview; host constructor still required historical read/verify pair",
+      "exact_code_snapshot": "UNAVAILABLE; uncommitted intermediate source, not a reusable qualification",
+      "log": {
+        "file": "G:/aidn-plans/model55-pr-control-files-20261103.log",
+        "bytes": 1258,
+        "sha256": "20e25fb977e14c1a77bdd1541a710de5a2836f340ba2bc348d10cb1a136b2b31"
+      },
+      "cleanup": "PASS, 2 roots"
+    },
+    {
+      "name": "precommit model56",
+      "status": "FAIL",
+      "reason": "typed source diagnostic was normalized by the common service; fixture expected the unpreserved namespace",
+      "exact_code_snapshot": "UNAVAILABLE; uncommitted intermediate source",
+      "log": {
+        "file": "G:/aidn-plans/model56-pr-control-files-20261103.log",
+        "bytes": 2531,
+        "sha256": "346c6f647a0a895333be5f5833c83a6bb41c513dba20b00c1ddf42303caa745c"
+      },
+      "cleanup": "PASS, 2 roots",
+      "correction": "use PROCESS_CONTROL_PR_* under the existing preserved namespace; no allowlist widening"
+    },
+    {
+      "name": "precommit model57 gate catalog",
+      "status": "FAIL",
+      "reason": "required script addition not yet mirrored in immutable governed command",
+      "log": {
+        "file": "G:/aidn-plans/model57-gate-catalog-20261103.log",
+        "bytes": 15561,
+        "sha256": "2f5f454663de42aa9303a90a38d6517e9c72946b1ff97c56cd06ed5671ada1a8"
+      },
+      "correction": "update exact governed command and reject omission of the new suite"
+    },
+    {
+      "name": "generated document golden",
+      "status": "FAIL",
+      "source_commit": "71cda48bade87f0e66440344318fea179f3b7879",
+      "reason": "WORKFLOW fixture expects workflow_version 0.12.0; renderer uses VERSION 0.19.0",
+      "log": {
+        "file": "G:/aidn-plans/model58-doc-golden-20261103.log",
+        "bytes": 1836,
+        "sha256": "70e9980d01a9f35d2a0aa0c5d1ccc786684291638e9f4d1dac05e4adf3785f86"
+      },
+      "baseline": {
+        "source_commit": "c0fe873c9ff1acb3c8efaeb6aa44c0c7c30bddd9",
+        "same_failure": true,
+        "log": {
+          "file": "G:/aidn-plans/model54-doc-golden-baseline-20261103.log",
+          "bytes": 1844,
+          "sha256": "78a4ee88380e19a8ee11c4f79c6ae5fad10225c009dba584b14d19fe51b8d38b"
+        }
+      },
+      "changed_by_this_slice": false,
+      "historical_fixture_rewritten": false
+    }
+  ],
+  "intermediate_positive": {
+    "name": "precommit model57 files",
+    "status": "PASS",
+    "checks": 6,
+    "cleanup": "PASS, 2 roots",
+    "log": {
+      "file": "G:/aidn-plans/model57-pr-control-files-20261103.log",
+      "bytes": 935,
+      "sha256": "969f7390aa9402c997727dcf20c18358aff00059838731a83513c0a99d9b14be"
+    },
+    "transfer_to_58": false
+  },
+  "proof_boundaries": {
+    "actual": "canonical files/SQLite stores, CAS, operation host/service, cold Node delivery, common reducer simulation and acknowledgement fault",
+    "doubles": "provider responses, event identity/current-revision authentication, accepted update authority and grants",
+    "models": 0,
+    "long_wait": "source clock offset is synthetic; current event and actual application collection are rechecked; original native authorization untouched",
+    "capture_before_ack": true,
+    "ack_repair_after_canonical_event": "no provider read or duplicate event",
+    "source_factory": "host capability available; candidate standard graph has not selected a PR wait/triage route",
+    "end_to_end_inbox_deadline": "NOT_PROVEN; synchronous Git readers remain uninterruptible",
+    "direct_subprocess_close": "separate model54 evidence, not general resource extinction"
+  },
+  "not_run": [
+    "candidate composed58",
+    "standard IR PR wait/triage route",
+    "actual native triage/skill, replies/resolutions/fixes",
+    "explicit merge consent/effect and post-merge sync",
+    "full runtime family",
+    "Governance Admission",
+    "real event/provider/native human",
+    "PostgreSQL",
+    "exact installed archive"
+  ],
+  "skip": [],
+  "complete_standard_workflow": false
+}

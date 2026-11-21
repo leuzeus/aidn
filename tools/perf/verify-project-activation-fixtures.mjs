@@ -64,6 +64,23 @@ function installReceipt(root, { activation = false, renamedSkills = false, insta
   return { identity, receipt, tx };
 }
 function check(name, action) { action(); checks.push({ name, status: "PASS" }); }
+function countNativeLeafScans(file, action) {
+  const original = fs.lstatSync; let scans = 0;
+  fs.lstatSync = function(candidate, ...args) {
+    if (String(candidate) === file && new Error().stack.includes("at validateNativeAssets")) scans++;
+    return Reflect.apply(original, this, [candidate, ...args]);
+  };
+  try { return { result: action(), scans }; } finally { fs.lstatSync = original; }
+}
+function countRecordLeafScans(files, action) {
+  const original = fs.lstatSync, scans = new Map(files.map(file => [file, 0]));
+  fs.lstatSync = function(candidate, ...args) {
+    const file = String(candidate);
+    if (scans.has(file)) scans.set(file, scans.get(file) + 1);
+    return Reflect.apply(original, this, [candidate, ...args]);
+  };
+  try { return { result: action(), scans: [...scans.values()] }; } finally { fs.lstatSync = original; }
+}
 let failure = null, cleanup;
 try {
   // Regressions first: the old native binding helper accepted both these receipts.
@@ -127,6 +144,105 @@ try {
   check("repository grant does not prepare legacy or new worktrees implicitly", () => { assert.equal(readActivation({ targetRoot: root }).state, "unprepared"); assert.equal(readActivation({ targetRoot: sibling }).state, "unprepared"); });
   installReceipt(root, { activation: true, installation: true }); installReceipt(sibling, { activation: true, renamedSkills: true });
   check("prepared worktrees become active with either supported skill identity", () => { assert.equal(readActivation({ targetRoot: root }).state, "active"); assert.equal(readActivation({ targetRoot: sibling }).state, "active"); });
+  const nativeLeaf = path.join(root, ".codex/hooks/aidn-session-start.mjs"), nativeBytes = fs.readFileSync(nativeLeaf);
+  check("native asset without observer keeps one final complete path scan and read-only activation", () => {
+    const before = snapshot(root);
+    for (const beforeObserve of [undefined, null]) {
+      const observed = countNativeLeafScans(nativeLeaf, () => readActivation({ targetRoot: root, beforeObserve }));
+      assert.equal(observed.result.state, "active"); assert.equal(observed.scans, 1);
+    }
+    assert.deepEqual(snapshot(root), before);
+  });
+  check("native observer retains both scans and the original six leaf callbacks", () => {
+    let callbacks = 0;
+    const observed = countNativeLeafScans(nativeLeaf, () => readActivation({ targetRoot: root,
+      beforeObserve: candidate => { if (candidate === nativeLeaf) callbacks++; } }));
+    assert.equal(observed.result.state, "active"); assert.equal(callbacks, 6); assert.equal(observed.scans, 2);
+  });
+  check("last native observer callback cannot hide a changed asset from the final read", () => {
+    let callbacks = 0;
+    try {
+      const result = readActivation({ targetRoot: root, beforeObserve: candidate => {
+        if (candidate === nativeLeaf && ++callbacks === 6) fs.appendFileSync(nativeLeaf, "changed at final observer");
+      } });
+      assert.equal(callbacks, 6); assert.equal(result.active, false); assert.deepEqual(result.errors, ["ACTIVATION_ASSET_CHANGED: .codex/hooks/aidn-session-start.mjs"]);
+    } finally { fs.writeFileSync(nativeLeaf, nativeBytes); }
+  });
+  check("last native observer callback cannot substitute a hardlinked asset", () => {
+    const outside = path.join(temp, "outside-native-asset.mjs"); fs.writeFileSync(outside, nativeBytes);
+    let callbacks = 0, linked = false;
+    try {
+      const result = readActivation({ targetRoot: root, beforeObserve: candidate => {
+        if (candidate === nativeLeaf && ++callbacks === 6) { fs.unlinkSync(nativeLeaf); fs.linkSync(outside, nativeLeaf); linked = true; }
+      } });
+      assert.equal(callbacks, 6); assert.equal(result.active, false); assert.deepEqual(result.errors, ["ACTIVATION_UNSAFE_FILE"]);
+      assert.deepEqual(fs.readFileSync(outside), nativeBytes);
+    } finally { if (linked) fs.unlinkSync(nativeLeaf); fs.writeFileSync(nativeLeaf, nativeBytes); }
+    assert.equal(fs.lstatSync(outside).nlink, 1);
+  });
+  await Promise.resolve();
+  check("fresh native reads reject changed missing oversized hardlinked and redirected assets", () => {
+    const expect = code => { const result = readActivation({ targetRoot: root }); assert.equal(result.active, false); assert.deepEqual(result.errors, [code]); };
+    try { fs.appendFileSync(nativeLeaf, "changed after earlier activation and await"); expect("ACTIVATION_ASSET_CHANGED: .codex/hooks/aidn-session-start.mjs"); }
+    finally { fs.writeFileSync(nativeLeaf, nativeBytes); }
+    try { fs.unlinkSync(nativeLeaf); expect("ACTIVATION_ASSET_MISSING: .codex/hooks/aidn-session-start.mjs"); }
+    finally { fs.writeFileSync(nativeLeaf, nativeBytes); }
+    try { fs.truncateSync(nativeLeaf, 8 * 1024 * 1024 + 1); expect("ACTIVATION_RECORD_TOO_LARGE"); }
+    finally { fs.writeFileSync(nativeLeaf, nativeBytes); }
+    const alias = path.join(temp, "native-hardlink.mjs");
+    try { fs.linkSync(nativeLeaf, alias); expect("ACTIVATION_UNSAFE_FILE"); }
+    finally { if (fs.existsSync(alias)) fs.unlinkSync(alias); }
+    const parent = path.dirname(nativeLeaf), retained = `${parent}-retained`, outside = directory("outside-native-hooks");
+    const before = snapshot(outside); fs.renameSync(parent, retained);
+    try { fs.symlinkSync(outside, parent, process.platform === "win32" ? "junction" : "dir"); expect("ACTIVATION_UNSAFE_PATH"); assert.deepEqual(snapshot(outside), before); }
+    finally { if (fs.lstatSync(parent, { throwIfNoEntry: false })?.isSymbolicLink()) fs.unlinkSync(parent); fs.renameSync(retained, parent); }
+    assert.equal(readActivation({ targetRoot: root }).state, "active");
+  });
+  const recordFiles = [path.join(root, ".aidn/install/receipt.json"), path.join(packageRoot, "VERSION"),
+    path.join(packageRoot, binding.entry), path.join(root, `.aidn/install/transactions/${json(root, ".aidn/install/receipt.json").last_transaction}.json`)];
+  check("receipt package and transaction reads retain one complete final scan without observers", () => {
+    const before = snapshot(temp);
+    for (const beforeObserve of [undefined, null]) {
+      const observed = countRecordLeafScans(recordFiles, () => readActivation({ targetRoot: root, beforeObserve }));
+      assert.equal(observed.result.state, "active"); assert.deepEqual(observed.scans, [1, 1, 1, 1]);
+    }
+    assert.deepEqual(snapshot(temp), before);
+  });
+  check("record observers retain both scans and exactly their two existing leaf callbacks", () => {
+    const before = snapshot(temp), callbacks = new Map(recordFiles.map(file => [file, 0]));
+    const observed = countRecordLeafScans(recordFiles, () => readActivation({ targetRoot: root, beforeObserve: candidate => {
+      if (callbacks.has(candidate)) callbacks.set(candidate, callbacks.get(candidate) + 1);
+    } }));
+    assert.equal(observed.result.state, "active"); assert.deepEqual(observed.scans, [2, 2, 2, 2]);
+    assert.deepEqual([...callbacks.values()], [2, 2, 2, 2]); assert.deepEqual(snapshot(temp), before);
+  });
+  check("record mutation at the final existing observer callback still refuses activation", () => {
+    for (const file of recordFiles) {
+      const bytes = fs.readFileSync(file); let callbacks = 0;
+      try {
+        const result = readActivation({ targetRoot: root, beforeObserve: candidate => {
+          if (candidate === file && ++callbacks === 2) fs.appendFileSync(file, "changed after observation\n");
+        } });
+        assert.equal(callbacks, 2); assert.equal(result.active, false); assert.equal(result.state, "degraded");
+      } finally { fs.writeFileSync(file, bytes); }
+    }
+    assert.equal(readActivation({ targetRoot: root }).state, "active");
+  });
+  await Promise.resolve();
+  check("fresh record reads after an await refuse changed missing oversized and hardlinked files", () => {
+    for (const [index, file] of recordFiles.entries()) {
+      const bytes = fs.readFileSync(file), alias = path.join(temp, `record-hardlink-${index}`);
+      try {
+        fs.appendFileSync(file, "changed after await\n"); assert.equal(readActivation({ targetRoot: root }).active, false);
+        fs.writeFileSync(file, bytes); fs.unlinkSync(file); assert.equal(readActivation({ targetRoot: root }).active, false);
+        fs.writeFileSync(file, bytes); fs.truncateSync(file, 8 * 1024 * 1024 + 1);
+        const large = readActivation({ targetRoot: root }); assert.equal(large.active, false); assert.ok(large.errors.some(error => error.includes("ACTIVATION_RECORD_TOO_LARGE")));
+        fs.writeFileSync(file, bytes); fs.linkSync(file, alias);
+        const linked = readActivation({ targetRoot: root }); assert.equal(linked.active, false); assert.ok(linked.errors.some(error => error.includes("ACTIVATION_UNSAFE_FILE")));
+      } finally { if (fs.existsSync(alias)) fs.unlinkSync(alias); fs.writeFileSync(file, bytes); }
+    }
+    assert.equal(readActivation({ targetRoot: root }).state, "active");
+  });
   check("common lock prevents concurrent authorization from another worktree", () => { const release = acquireAuthorizationLock({ targetRoot: root }); try { assert.throws(() => acquireAuthorizationLock({ targetRoot: sibling }), /AUTHORIZATION_LOCKED/); } finally { release(); } });
   const revoke = planAuthorization({ targetRoot: sibling, action: "revoke" }); applyAuthorization(revoke);
   check("revocation covers all worktrees and stale grant cannot reactivate", () => { assert.equal(readActivation({ targetRoot: root }).state, "revoked"); assert.equal(readActivation({ targetRoot: sibling }).state, "revoked"); assert.throws(() => applyAuthorization(grant), /CAS_CONFLICT/); assert.equal(applyAuthorization(revoke).written, false); });

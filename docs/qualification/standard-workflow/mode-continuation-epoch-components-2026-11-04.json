@@ -1,0 +1,112 @@
+{
+  "observed_utc": "2026-11-05T01:19:36.902572+00:00",
+  "scope": "SOURCE43 mode continuation fixture correction and bounded outcome qualification; entire L1-L8/A1-A10 remains incomplete",
+  "lane": "ASSURED",
+  "source42_failure": {
+    "head": "dab8f4488ad75288fa730289de7a6f40946d35d4",
+    "code": "NATIVE_EPOCH_AUTHORIZATION_INVALID",
+    "terminal_exit_code": 1,
+    "diagnosis": "Fixture omitted originalAuthorization for retained v1 journal. v1 has authorization hash and limits, not full initial_authorization. Existing API requires exact originalAuthorization for v1 promotion; production admission correctly refuses undefined. No TTL or ceiling defect.",
+    "journal_contract": "native-allocation-journal.v1",
+    "journal_sha256": "5044a0e0d3aa957a2166d1dceca2348d1565580a377070bc005f7b2d69429d10",
+    "journal_authenticated_and_valid": true,
+    "initial_authorization_present": false,
+    "effective_assert_input": "undefined",
+    "shadow_validation": "INVALID_JSON",
+    "schema_errors": [
+      "$: expected object, got undefined"
+    ],
+    "original_authorization_schema_errors": [],
+    "original_duration_ms": 1800000,
+    "original_allocation_closed": true,
+    "original_responses_observed": 1,
+    "original_storage_debit_bytes": 205841,
+    "cold_child_exit_zero_is_not_global_pass": true,
+    "historical_case_retried_or_modified": false
+  },
+  "source_changes": {
+    "first_fix": "c38dc64e167c46b1f8bd3282f7552e2a4aa9d312",
+    "outcome_selectors": "0f9532730ff5b05390ed46b112f1422c19a05b02",
+    "application_authorities_contracts_ttl_and_ceilings_changed": false,
+    "model_pins_changed": false,
+    "runtime_invocations": 168,
+    "historical_162_exact_prefix_preserved": true,
+    "new_obligations": {
+      "negative_choices": [
+        "refused",
+        "deferred",
+        "cancelled"
+      ],
+      "retention_requested_modes": [
+        "files",
+        "dual",
+        "db-only"
+      ]
+    },
+    "cumulative_report": "prior_epoch_responses is separate from cumulative_responses; final totals include both allocations"
+  },
+  "qualification": {
+    "dated_snapshot": "2026-11-05T01:18:49.340655+00:00",
+    "pass": 4,
+    "fail": 0,
+    "pending": [
+      "source43-thinking-cancelled-files-20261104",
+      "source43-thinking-deferred-files-20261104",
+      "source43-thinking-refused-files-20261104",
+      "source43-thinking-resume-files-20261104"
+    ],
+    "terminal_components": [
+      {
+        "name": "source43-continuation-contracts-20261104",
+        "head": "c38dc64e167c46b1f8bd3282f7552e2a4aa9d312",
+        "exit_code": 0,
+        "source_unchanged": true
+      },
+      {
+        "name": "source43-docrefs-20261104",
+        "head": "c38dc64e167c46b1f8bd3282f7552e2a4aa9d312",
+        "exit_code": 0,
+        "source_unchanged": true
+      },
+      {
+        "name": "source43-gatecatalog-20261104",
+        "head": "0f9532730ff5b05390ed46b112f1422c19a05b02",
+        "exit_code": 0,
+        "source_unchanged": true
+      },
+      {
+        "name": "source43-mode-shape-20261104",
+        "head": "0f9532730ff5b05390ed46b112f1422c19a05b02",
+        "exit_code": 0,
+        "source_unchanged": true
+      }
+    ],
+    "scope": "offline contracts, synthetic reducer shape, gate catalog and doc references; mixed scenarios remain pending at this snapshot",
+    "new_human_native_resource_authorities": "fixture capabilities",
+    "expiry": "injected fixture clock",
+    "wall_clock_expiry": "NOT_RUN",
+    "full_current_runtime": "NOT_RUN",
+    "governance_admission": "NOT_RUN"
+  },
+  "preserved_model": {
+    "startup_revision": 167,
+    "cycle_revision": 165,
+    "standard_revision": 109,
+    "nodes": 202,
+    "operation_occurrences": 121,
+    "activities": 19,
+    "canonical_sha256": "f6bbf6bd160bb8f79c1f95d22e84a59302fc694051bd417961874d611f6d56b7",
+    "ordinary_entry": "UNCHANGED",
+    "global_v2_default_and_availability_and_integrated_standard_are_distinct": true,
+    "complete_standard_workflow": false
+  },
+  "remaining": [
+    "Positive cold new-decision/new-epoch/cumulative-allocation execution and all storage modes require terminal evidence; do not transfer component PASS.",
+    "Negative late decisions, repeated waits and retained exploration cases require their own execution evidence.",
+    "Explicit admitted SPIKE, retained/nonretained experiments, actual THINKING/EXPLORING session closure and general existing-session/cycle/topology routes.",
+    "General L4 all-resource discovery/closure, original owners/UNKNOWN business effects, cumulative debits, crashes and concurrent owners, signed new recovery authority.",
+    "Full C2 causal redelivery, observed technical replies/thread resolutions or exception, fresh exact-HEAD/base/checks/triage consent before merge, observed merge/fetch/divergence/strategy/postsync.",
+    "Genuine Native/Human/Provider/OS, real PostgreSQL, exact installed archive/version/commit/loaded paths and no source fallback.",
+    "Entire plan L1-L8/A1-A10 and current 60 required governance gates remain active."
+  ]
+}

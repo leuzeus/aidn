@@ -1,0 +1,62 @@
+{
+  "proof_class": "component-promotion-request-bindings",
+  "status": "PASS_COMPONENTS_PENDING_COMMON_CURSOR_AND_FINAL_HOOK",
+  "source_base": "19ead2a31d1b4981527398dcdc40d049b821460a",
+  "published_components": {
+    "startup_revision": 64,
+    "cycle_create_revision": 62,
+    "implementation_sha256": "de6c9038810294d7ba005ad6aa0e930a4cac7a2e97ed3b94dce20096c930178c",
+    "authored_graph": "unchanged partial components; full standard model not delivered"
+  },
+  "scope": {
+    "decision_data": "12 PASS closed schemas/fixed bindings/outcomes; no provider authentication by data alone",
+    "human_capture": "11 PASS actual signer and files/dual/db-only canonical capture; human provider is fixture",
+    "source_reader": "7 PASS actual event file/correlation with fixture accepted-journal capability",
+    "source_install_files_first": "PASS4 handle36549 on prior question bound256/prototype; current question bound128 and final source require separate mode checks",
+    "current_real_ports": {
+      "status": "PASS",
+      "checks": 14,
+      "handle": 73701,
+      "inventory": "First19285 refused expected35 vs actual37; exact expected list extended by only reviewed two bindings. All old35 remain; no runtime guard weakened."
+    },
+    "current_source_installed_baseline_modes": {
+      "status": "PASS",
+      "handle": 49768,
+      "cases": {
+        "files": 4,
+        "dual": 4,
+        "db_only": 4
+      },
+      "authority": "Source installation/real application reads and canonical CAS; explicit fixture completed-close/human provenance"
+    },
+    "common_cursor_from_actual_completed_close": "NOT_RUN",
+    "full_standard_model": "NOT_COMPLETE",
+    "final_promotion_hook": "NOT_IMPLEMENTED",
+    "native": "NOT_RUN",
+    "installed_archive": "NOT_RUN"
+  },
+  "limits": "New bindings are wired, not qualified as the full standard workflow. Component trusted close/journal authorities are fixtures. not_requested is only a decision and grants no policy waiver, baseline completion or session closure. Generic historical engine and v1-v3 inbox readers remain separate.",
+  "updated_at": "2026-11-03T08:19:25.356642+00:00",
+  "qualification_snapshot": "98b83189715afc953f89102f8bfac9fda66dfa34",
+  "current_gates": {
+    "status": "PASS",
+    "handle": 81042,
+    "decision_data": 12,
+    "signed_human": 11,
+    "event_reader": 7,
+    "model_loading": 22,
+    "historical_reducer_contracts": 27,
+    "catalog": 63,
+    "policies": "35 source/37 metadata/38 policy coverage only",
+    "docs": "references and Markdown PASS",
+    "topology": {
+      "status": "PASS",
+      "handle": 80099,
+      "fresh_source_clients": 5,
+      "failure_cleanup": "PASS",
+      "installed_archive": "NOT_RUN"
+    },
+    "full_routed_gate_suite": "NOT_RUN; scoped results listed explicitly"
+  },
+  "required_coverage": "Three new focused fixtures added to existing agentic gate and immutable expected chain, retaining every old command. Existing required context-completion baseline producers also check canonical review."
+}

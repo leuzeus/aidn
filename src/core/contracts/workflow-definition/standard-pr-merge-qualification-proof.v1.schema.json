@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-merge-qualification-proof.v1",
+  "x-aidn-contract-version": "standard-pr-merge-qualification-proof.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "prior_base_oid",
+    "observed_base_oid",
+    "base_ahead_by",
+    "thread_observation_sha256",
+    "review_evidence_sha256",
+    "threads_sha256",
+    "reviews_sha256",
+    "reply_proof_sha256"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-pr-merge-qualification-proof.v1"
+    },
+    "prior_base_oid": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "observed_base_oid": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "base_ahead_by": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "thread_observation_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "review_evidence_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "threads_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "reviews_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "reply_proof_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

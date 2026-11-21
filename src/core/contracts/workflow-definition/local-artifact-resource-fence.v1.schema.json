@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/local-artifact-resource-fence.v1",
+  "x-aidn-contract-version": "local-artifact-resource-fence.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "revision",
+    "physical_root_sha256",
+    "state",
+    "token",
+    "process_identity"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "local-artifact-resource-fence.v1"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "physical_root_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "state": {
+      "enum": [
+        "held",
+        "released"
+      ]
+    },
+    "token": {
+      "type": "string",
+      "pattern": "^[a-f0-9-]{36}$"
+    },
+    "process_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platform",
+        "host",
+        "pid",
+        "creation"
+      ],
+      "properties": {
+        "platform": {
+          "enum": [
+            "win32",
+            "linux"
+          ]
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "pid": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "creation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 96
+        }
+      }
+    }
+  }
+}

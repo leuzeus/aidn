@@ -1,0 +1,117 @@
+{
+  "recorded_at_utc": "2026-11-04T04:14:47.601Z",
+  "parent_commit": "1a84bc01e6ad4d5dafb5725260983ec5a6fcdf01",
+  "scope": "internal canonical PR correction-reopen component, not host/IR integration",
+  "model_revision": 65,
+  "model_sha256": "3719562854fa899b6d7e7a0b28b66120a3f04920182889b7dcd386a2014422bd",
+  "ordinary_entry_changed": false,
+  "complete_standard_workflow": false,
+  "implemented": [
+    "specific immutable accepted-source checks plus fresh full provider collection/event/product/local-and-remote-head fences",
+    "three exact-plan canonical document changes under existing local effect owner, metadata-preserving CAS and projections",
+    "preserved closure JSON bodies under historical headings and fresh closure gates",
+    "unknown state/owner retained after a partial transaction; ordinary native product admission still denied with no cycle"
+  ],
+  "not_implemented": [
+    "trusted operation host binding and source capability composition",
+    "operation registry/contract dispatcher registration, direct implementation pins and shipped IR route",
+    "ordinary admitted correction cycle and frozen plan/IMPLEMENTING continuation",
+    "physical corrections, new-HEAD validation/delivery, reply/resolution/exception and follow-up loops"
+  ],
+  "pass": [
+    {
+      "command": "node tools/perf/verify-standard-pr-correction-authority-fixtures.mjs",
+      "checks": 10,
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T04:11:00.2055976Z",
+      "stdout_sha256": "603b3c6e5eab553484d598306dee56af83580beae72ddeb3702598e291c022ba",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "node tools/perf/verify-standard-pr-correction-reopen-fixtures.mjs --mode=files",
+      "checks": 6,
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T04:11:10.5424048Z",
+      "stdout_sha256": "b4977b9f750d7d62a3270c4f6ebe205a555ab40748f85dceb69fe284d8602052",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "node tools/perf/verify-standard-pr-correction-reopen-fixtures.mjs --mode=dual",
+      "checks": 5,
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T04:10:23.2880134Z",
+      "stdout_sha256": "3594ac831e9e6a89a7af2f55c506f372b8f7ea32bef7b84c3254d9147f661966",
+      "stderr_sha256": "61b85c809b8c311d84faf7a4d55db22efab7c1b1d0bae0f40df4e7385800fcf6"
+    },
+    {
+      "command": "node tools/perf/verify-standard-pr-correction-reopen-fixtures.mjs --mode=db-only",
+      "checks": 5,
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T04:10:20.5552896Z",
+      "stdout_sha256": "20394c72833b622860c6d02d2a13fb090c7ffe77a3167e80185a4f50472ec26e",
+      "stderr_sha256": "38404ea55e0cc97845dd775d7a5ed14d1fb6b464cc54c54b2aad49cb3fc0894b"
+    },
+    {
+      "command": "node tools/perf/verify-standard-workflow-composition-fixtures.mjs",
+      "checks": 27
+    },
+    {
+      "command": "node tools/verify/verify-gate-catalog.mjs",
+      "gates": 63,
+      "yaml": 4
+    },
+    {
+      "command": "node tools/perf/verify-source-of-truth-policy.mjs",
+      "policies": 35
+    },
+    {
+      "command": "node tools/perf/verify-metadata-policy.mjs",
+      "policies": 37
+    },
+    {
+      "command": "node tools/perf/verify-governance-completeness.mjs",
+      "concepts": 38
+    },
+    {
+      "command": "git diff --check"
+    }
+  ],
+  "skip": [],
+  "not_run": [
+    "full runtime family",
+    "Governance Admission",
+    "complete correction source/writer/host composition",
+    "native/human/provider real",
+    "exact installed archive",
+    "independent fixture-root process inventory"
+  ],
+  "unavailable": [
+    "governance-completeness adoption native_client=UNAVAILABLE; not native qualification"
+  ],
+  "proof_boundaries": [
+    "Source suite uses actual complete-content adapter/observer code but doubles accepted receipts, native triage reevaluation, event, product, Git and provider transport. It cannot prove canonical producer authentication.",
+    "Writer suite uses actual local canonical store, CAS, metadata, projections, local Git and native write admission. Source/freshness authority is doubled and closed lifecycle input arranged.",
+    "Its source-install fixture preparation is not exact installed-archive evidence.",
+    "Source and writer are separate suites; neither proves their composed trusted host route.",
+    "Finally cleanup completed in these owned fixtures; independent process inventory was not captured. Existing composed and unknown historical resources are untouched."
+  ],
+  "intermediate_draft_failures": [
+    {
+      "kind": "source fixture rejection",
+      "reason": "synthetic accepted triage lacked required checks_acceptance and merge_authorization observations; corrected fixture"
+    },
+    {
+      "kind": "schema rejection after three canonical writes",
+      "reason": "copied output oneOf still required prior operation facts; returned unknown and retained owner; corrected new schema before final suites"
+    },
+    {
+      "kind": "renderer assertion failure",
+      "reason": "arranged fixture appended closure metadata inside a report section; changed arrangement to actual top-level placement and added fail-closed renderer postconditions"
+    },
+    {
+      "kind": "staged whitespace check",
+      "reason": "Python generated CRLF in new schemas; staged diff check rejected them, while the PowerShell sequence still committed. Normalized to LF and amended the unpublished component commit; active trial source remains 1a84bc01."
+    }
+  ],
+  "lock_sha256": "5042197a61ebed568ddb29b18e0e8c1c9e15bc98f03c1bd808b3389b96f2dd3b"
+}

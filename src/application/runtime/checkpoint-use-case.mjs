@@ -52,7 +52,7 @@ function toIsoNowCompact() {
   return new Date().toISOString().replace(/[-:.TZ]/g, "");
 }
 
-export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, completionCycleId = null }) {
+export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, completionCycleId = null, readObjectiveCompletion = null, assertEffectAuthorized = null }) {
   // Validate explicit memory intent and evidence before any checkpoint effects.
   if (args.workingMemory && args.write !== true) throw new Error("WORKING_MEMORY_WRITE_REQUIRED");
   if (args.contextTelemetry && !args.workingMemory) throw new Error("CONTEXT_TELEMETRY_REQUIRES_WORKING_MEMORY");
@@ -93,7 +93,9 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
   }
 
   const reloadStarted = Date.now();
+  if (assertEffectAuthorized !== null) await assertEffectAuthorized();
   const reload = completionCycleId ? await runReloadCheckUseCase({ targetRoot, completionCycleId,
+    assertEffectAuthorized,
     args: { cache: cachePath, stateMode: args.stateMode, stateModeExplicit: true,
       indexFile: reloadIndex.indexFile, indexBackend: reloadIndex.indexBackend, writeCache: true },
   }) : runWorkflowReloadCheck({
@@ -120,6 +122,8 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
     const gateStarted = Date.now();
     gate = await runGatingEvaluateUseCase({
       completionCycleId,
+      readObjectiveCompletion,
+      assertEventAuthorized: assertEffectAuthorized,
       args: {
         target: targetRoot,
         cache: cachePath,
@@ -130,7 +134,7 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
         indexFile: reloadIndex.indexFile,
         indexBackend: reloadIndex.indexBackend,
         thresholdFiles: 3,
-        thresholdMinutes: 45,
+        thresholdMinutes: null,
         mode: args.mode,
         runId: args.runId,
         reloadDecision: String(reload.decision ?? "incremental"),
@@ -183,6 +187,7 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
     index.skip_reason = canonicalPostgres ? 'postgres_canonical_backend' : 'sqlite_canonical_backend';
   }
   if (!shouldSkipIndex) {
+    if (assertEffectAuthorized !== null) await assertEffectAuthorized();
     const indexStarted = Date.now();
     index = runWorkflowIndexSync({
       processAdapter,
@@ -211,6 +216,7 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
     strict: args.indexSyncCheckStrict,
   });
   if (args.indexSyncCheck) {
+    if (assertEffectAuthorized !== null) await assertEffectAuthorized();
     if (shouldSkipIndex) {
       const syncCheckOut = buildSkippedIndexSyncCheckPayload({ targetRoot });
       indexSyncCheck = buildCheckpointIndexSyncCheckResult({
@@ -302,6 +308,7 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
   result.ok = isWorkflowResultOk(result.summary.result);
 
   if (args.emitSummaryEvent) {
+    if (assertEffectAuthorized !== null) await assertEffectAuthorized();
     const reloadEvent = buildReloadSummaryEvent({
       ts: result.ts,
       runId: checkpointRunId,

@@ -1,0 +1,430 @@
+{
+  "status": "PASS",
+  "date": "2026-11-01",
+  "scope": "controlled native read-only verification workload, direct IR versus XML on the same candidate runtime; CPU baseline reducer compared separately",
+  "source_runtime_revision": "44d7072299a61165dab529ee8a7a70ec046a8c80",
+  "candidate_archive_sha256": "045d4ce6e82d53e80fbc5d2e8b73d3fd971265699ee168381c8ddb48e0c39daa",
+  "native_executable_sha256": "3097c909fb6d5cd63510d44aceb1d42df9f6e85722a3e447e477def1ecf60e16",
+  "environment": {
+    "recorded_at": "2026-11-01T20:57:49.298Z",
+    "platform": "win32",
+    "arch": "x64",
+    "os_release": "10.0.26300",
+    "node": "v24.13.1",
+    "logical_cpus": 20,
+    "cpu_model": "AMD Ryzen 9 5950X 16-Core Processor",
+    "total_memory_bytes": 42940235776,
+    "exclusive_cpu_isolation": false,
+    "provider_cache_controlled": false
+  },
+  "model": "gpt-6.1-sol",
+  "effort": "high",
+  "cpu": {
+    "status": "PASS",
+    "model_sha256": "c087eb4880c58720037a62b17cb0df0c20c53cb957a1e991229cf5dc66fb8d79",
+    "metrics": {
+      "parse_ir_ms": {
+        "n": 500,
+        "median_ms": 0.0272000000004482,
+        "p95_ms": 0.04429999999956635,
+        "min_ms": 0.01599999999962165,
+        "max_ms": 0.123899999999594
+      },
+      "compile_xml_ms": {
+        "n": 500,
+        "median_ms": 4.974299999999857,
+        "p95_ms": 6.249700000000303,
+        "min_ms": 4.577400000000125,
+        "max_ms": 8.600600000000668
+      },
+      "baseline_replay_ms": {
+        "n": 50,
+        "median_ms": 64.47720000000027,
+        "p95_ms": 79.19970000000012,
+        "min_ms": 56.88970000000063,
+        "max_ms": 92.48479999999972
+      },
+      "candidate_replay_ms": {
+        "n": 50,
+        "median_ms": 63.909599999999955,
+        "p95_ms": 74.59400000000005,
+        "min_ms": 57.68170000000009,
+        "max_ms": 100.39550000000008
+      }
+    },
+    "xml_bytes": 4424,
+    "ir_bytes": 2730,
+    "activity_results": 10,
+    "events": 22,
+    "occurrences": 23,
+    "baseline_candidate_cursor_equal": true,
+    "measured_at": "2026-11-01T20:11:32.246Z",
+    "provenance": {
+      "baseline_commit": "6757c979631130c753b053860a267837f1a949bc",
+      "candidate_parent": "8f0a3eb0cde8d3ba83c2ca5eb25e45e7e474188c",
+      "cpu_script_sha256": "21056eef8b6cf0a93453f2ab8e473690babf41417c09aa024aba6dcdfcfa2f64",
+      "result_sha256": "0e3a708ee7db31ba18f8ecaffa9a20e42241fea7b9b3a925f24ace1543934827",
+      "source_hashes": [
+        {
+          "path": "src/core/workflow/agentic-process.mjs",
+          "baseline_sha256": "cb62e240fbe52916f83921e0a7707468bbba17692bd1366cc4f364fbe573d94e",
+          "candidate_sha256": "cb62e240fbe52916f83921e0a7707468bbba17692bd1366cc4f364fbe573d94e"
+        },
+        {
+          "path": "src/core/workflow/agentic-process-model.mjs",
+          "baseline_sha256": "b312fc5f1568daf8f5cf0c60ff0cf7121929371315b0c9f598d49e7515f6aab4",
+          "candidate_sha256": "39c6fdb6c72681f987daee2ec6c548cb916172d5a1ad61beca311a88464ab689"
+        },
+        {
+          "path": "src/core/workflow/shadow-json.mjs",
+          "baseline_sha256": "50996feb454c420da7ad04afea44e645ab77511500bbf3e8e09d33cbb100000f",
+          "candidate_sha256": "50996feb454c420da7ad04afea44e645ab77511500bbf3e8e09d33cbb100000f"
+        },
+        {
+          "path": "src/core/agents/agent-reuse-policy.mjs",
+          "baseline_sha256": "bddcab5efc3690599923f8e3881022c0cb015c8ad4c492371826a13fc359e16c",
+          "candidate_sha256": "bddcab5efc3690599923f8e3881022c0cb015c8ad4c492371826a13fc359e16c"
+        }
+      ],
+      "scope": "pure reducer comparison; native runner control-scenario addition measured separately; shared Windows VM, no exclusive CPU isolation"
+    }
+  },
+  "native": {
+    "status": "PASS",
+    "sample_plan": {
+      "initial_case_count": 4,
+      "retained_case_count": 2,
+      "reduction_declared_at": "2026-11-01T21:03:47.792Z",
+      "reason": "Preserve original global deadline after three retained diagnosed failures; one complete IR/XML pair"
+    },
+    "model_sha256": "ec5c8945d666aafb4786d361d9eea434f2cb652ca9ed749531f420082378af26",
+    "order": [
+      "ir-a1-r4",
+      "xml-b1"
+    ],
+    "cases": [
+      {
+        "case": "ir-a1-r4",
+        "status": "COMPLETED",
+        "first_failure": null,
+        "preparation_ms": 0.16890000000000782,
+        "case_elapsed_ms": 456677.2892,
+        "elapsed_since_lot_authorization_ms": 2845156,
+        "native_only_ms": null,
+        "native_responses": 22,
+        "model_sha256": "ec5c8945d666aafb4786d361d9eea434f2cb652ca9ed749531f420082378af26",
+        "replay_equal": true,
+        "product_unchanged": true,
+        "oracle": "PASS",
+        "result_events": 10,
+        "control": {
+          "sha256": "780951cb52d64c4c8e8b76e2a148bab66126c9610706dc8c7f6ce169e29b0f57",
+          "events_applied": 2,
+          "events_expected": 2
+        },
+        "threads": 2,
+        "tokens": {
+          "input": 423350,
+          "cached_input": 380928,
+          "output": 1930,
+          "reasoning_subset": 256,
+          "total": 425280
+        },
+        "tree": "confirmed",
+        "completed_at": "2026-11-01T21:11:28.951Z"
+      },
+      {
+        "case": "xml-b1",
+        "status": "COMPLETED",
+        "first_failure": null,
+        "preparation_ms": 26.177700000000016,
+        "case_elapsed_ms": 529045.5916,
+        "elapsed_since_lot_authorization_ms": 3379654,
+        "native_only_ms": null,
+        "native_responses": 31,
+        "model_sha256": "ec5c8945d666aafb4786d361d9eea434f2cb652ca9ed749531f420082378af26",
+        "replay_equal": true,
+        "product_unchanged": true,
+        "oracle": "PASS",
+        "result_events": 10,
+        "control": {
+          "sha256": "d3f253358dd472d2bf4560dc80cab11c2b540093151d5ee9c44f39abfd1bc4a7",
+          "events_applied": 2,
+          "events_expected": 2
+        },
+        "threads": 2,
+        "tokens": {
+          "input": 612717,
+          "cached_input": 547200,
+          "output": 2117,
+          "reasoning_subset": 208,
+          "total": 614834
+        },
+        "tree": "confirmed",
+        "completed_at": "2026-11-01T21:20:23.422Z"
+      }
+    ],
+    "arms": {
+      "ir": {
+        "n": 1,
+        "mean_case_elapsed_ms": 456677.2892,
+        "mean_preparation_ms": 0.16890000000000782,
+        "tokens_sum": {
+          "input": 423350,
+          "cached_input": 380928,
+          "output": 1930,
+          "reasoning_subset": 256,
+          "total": 425280
+        },
+        "tokens_mean": {
+          "input": 423350,
+          "cached_input": 380928,
+          "output": 1930,
+          "reasoning_subset": 256,
+          "total": 425280
+        }
+      },
+      "xml": {
+        "n": 1,
+        "mean_case_elapsed_ms": 529045.5916,
+        "mean_preparation_ms": 26.177700000000016,
+        "tokens_sum": {
+          "input": 612717,
+          "cached_input": 547200,
+          "output": 2117,
+          "reasoning_subset": 208,
+          "total": 614834
+        },
+        "tokens_mean": {
+          "input": 612717,
+          "cached_input": 547200,
+          "output": 2117,
+          "reasoning_subset": 208,
+          "total": 614834
+        }
+      }
+    },
+    "paired": [
+      {
+        "ir_case": "ir-a1-r4",
+        "xml_case": "xml-b1",
+        "elapsed_percent": 15.846704907698328,
+        "total_tokens_percent": 44.57157637321294
+      }
+    ],
+    "aggregate_delta_percent": {
+      "elapsed": 15.846704907698328,
+      "total_tokens": 44.57157637321294
+    },
+    "retained_tokens": {
+      "input": 1036067,
+      "cached_input": 928128,
+      "output": 4047,
+      "reasoning_subset": 464,
+      "total": 1040114
+    },
+    "failed_attempts": [
+      {
+        "case": "ir-a1",
+        "status": "FAILED",
+        "first_failure": "PROCESS_EXECUTION_FAILED",
+        "preparation_ms": 0.21010000000001128,
+        "case_elapsed_ms": 381656.2473,
+        "elapsed_since_lot_authorization_ms": 385489,
+        "native_only_ms": null,
+        "native_responses": 19,
+        "model_sha256": "ec5c8945d666aafb4786d361d9eea434f2cb652ca9ed749531f420082378af26",
+        "replay_equal": true,
+        "product_unchanged": true,
+        "oracle": "PASS",
+        "result_events": 9,
+        "control": {
+          "sha256": "3665a8f7bd5c7324207904e849e28411d39c4df9b3063708f1d1d39d74972a2c",
+          "events_applied": 2,
+          "events_expected": 2
+        },
+        "threads": 1,
+        "tokens": {
+          "input": 353305,
+          "cached_input": 330368,
+          "output": 1861,
+          "reasoning_subset": 246,
+          "total": 355166
+        },
+        "tree": "confirmed",
+        "completed_at": "2026-11-01T20:30:29.246Z"
+      },
+      {
+        "case": "ir-a1-r2",
+        "status": "FAILED",
+        "first_failure": "PROCESS_ACTIVITY_FAILED",
+        "preparation_ms": 0.1734000000000151,
+        "case_elapsed_ms": 453558.9836,
+        "elapsed_since_lot_authorization_ms": 1317343,
+        "native_only_ms": null,
+        "native_responses": 21,
+        "model_sha256": "ec5c8945d666aafb4786d361d9eea434f2cb652ca9ed749531f420082378af26",
+        "replay_equal": true,
+        "product_unchanged": true,
+        "oracle": "PASS",
+        "result_events": 10,
+        "control": {
+          "sha256": "103c0bcc05dc6e65cf992e3fd8347a0461cd5d78682cdd1372949261c43e1b62",
+          "events_applied": 2,
+          "events_expected": 2
+        },
+        "threads": 2,
+        "tokens": {
+          "input": 383607,
+          "cached_input": 324864,
+          "output": 1873,
+          "reasoning_subset": 191,
+          "total": 385480
+        },
+        "tree": "confirmed",
+        "completed_at": "2026-11-01T20:46:01.115Z"
+      },
+      {
+        "case": "ir-a1-r3",
+        "status": "FAILED",
+        "first_failure": "PROCESS_REVIEW_REJECTED",
+        "preparation_ms": 0.17250000000001364,
+        "case_elapsed_ms": 484305.6957,
+        "elapsed_since_lot_authorization_ms": 2216438,
+        "native_only_ms": null,
+        "native_responses": 23,
+        "model_sha256": "ec5c8945d666aafb4786d361d9eea434f2cb652ca9ed749531f420082378af26",
+        "replay_equal": true,
+        "product_unchanged": true,
+        "oracle": "PASS",
+        "result_events": 10,
+        "control": {
+          "sha256": "9efbcb9d13935f5855cc3e20fdd1f34a31e950c1098b0456abb9e245808472f0",
+          "events_applied": 2,
+          "events_expected": 2
+        },
+        "threads": 2,
+        "tokens": {
+          "input": 420077,
+          "cached_input": 386816,
+          "output": 2432,
+          "reasoning_subset": 449,
+          "total": 422509
+        },
+        "tree": "confirmed",
+        "completed_at": "2026-11-01T21:01:00.221Z"
+      }
+    ],
+    "all_attempt_tokens": {
+      "input": 2193056,
+      "cached_input": 1970176,
+      "output": 10213,
+      "reasoning_subset": 1350,
+      "total": 2203269
+    },
+    "all_attempt_case_elapsed_ms": 2305243.8074,
+    "activity_payloads_identical": true,
+    "identities": [
+      {
+        "case": "ir-a1-r4",
+        "summary_sha256": "00fec64e248b4bbb518b2137fe858527627d778d52f9cb053279defc57cc24c0",
+        "owned_result_sha256": "86564ab8e6c1641b71156eeee96e17645ac4931a741e7a358790dcb97f9ddac7",
+        "oracle_sha256": "b9fbdf832fe86c2541c086921ba22f7dfa56234b9ad1c51ce7e64a3d0ec6aa6d",
+        "activity_input_sha256": "a2091334172c46961353301177eb1c5331c6d791b7fac0a38d13ece3f6190ca3"
+      },
+      {
+        "case": "xml-b1",
+        "summary_sha256": "f3de25047ca1766573c402157648a151f329bb202baba05b29fa43d158864149",
+        "owned_result_sha256": "1e99100d0dbed13f3c3147b578b1b1a74be5ccbaa6852c57d70c01d4f69e819c",
+        "oracle_sha256": "b9fbdf832fe86c2541c086921ba22f7dfa56234b9ad1c51ce7e64a3d0ec6aa6d",
+        "activity_input_sha256": "a2091334172c46961353301177eb1c5331c6d791b7fac0a38d13ece3f6190ca3"
+      }
+    ],
+    "token_accounting": "latest cumulative total per native thread; cached input and reasoning are subsets; inference-only time unmeasured"
+  },
+  "offline": {
+    "status": "PASS",
+    "checks": 100
+  },
+  "limits": [
+    "second counterbalanced pair NOT_RUN to preserve original deadline",
+    "n=1 per arm after predeclared sample reduction; descriptive only",
+    "provider/cache state and Windows VM load not controlled",
+    "read-only verification workload, not fresh application generation",
+    "native comparison is same-runtime IR versus XML, not old-release versus candidate",
+    "host messages/facts are pinned synthetic control inputs",
+    "same product root reuse after Windows review is not qualified; this corpus uses fresh copies",
+    "no graphical editor, arbitrary BPMN, live PostgreSQL or release qualification"
+  ],
+  "evidence_sha256": {
+    "CPU-RESULT.json": "0e3a708ee7db31ba18f8ecaffa9a20e42241fea7b9b3a925f24ace1543934827",
+    "CPU-PROVENANCE.json": "0c4c7d9a6322a634390f91b9b5b9e580ec611cb1a8cf50f86931014ae80d8341",
+    "NATIVE-RETAINED-CASES.json": "40741f3be00ca06ff281249069c508b1f10eafedcd76c0e5269e30feab56854c",
+    "ANALYSIS.json": "0719b3002072403f4a9dbdf865239709b1696e852b7fed5bc78a95619dbd30e4",
+    "OFFLINE-VALIDATION-r2.json": "1270666465630f79f9ba617ab4da7643cc19029948b2c13a80bdaab650f5c6cc",
+    "CROSS-VOLUME-REPRODUCTION.json": "b7905b0f7cb5a6cb30c34e0e3875e3c061a688fccd88581271b64633846f7a98",
+    "CROSS-VOLUME-FIX-PROBE.json": "a45dd7f3f4a245ad35b137e2aed53b9b6e5e6e5fedc822b7e188f4e0c3b1533a",
+    "REVIEW-CANARY-CONTROLLER.json": "8d9a6ff446bba6cafb3dbf9dfbcd34312d248aa1f9a34bb2b33d64e6ec767e45",
+    "AUTHOR-RETURN-CANARY-CONTROLLER.json": "cb7879a9c7e20191f173670fed7987ac8c2def85027d73ba73a39c163d8d70c2",
+    "FRESH-WORK-CANARY-CONTROLLER.json": "61d5e992a40ab180f9e19b7bebfedae693c19422b0d125644d08f977d25d785e",
+    "NATIVE-LOT-AUTHORIZATION.json": "6ba73fa40bf1ed58e5fd38dda445cca187a05b20454bd15e1f4454b388d59544",
+    "REPAIR-ADDENDUM.json": "370fde2901d5f1b8a625ac89820eb8901df87422542e5060a3177a8e4814dab9",
+    "HARNESS-REPAIR-ADDENDUM.json": "5b352dd28a5304a53b3fda5418dfbe8d0f8924801070f6c574877f32cf8f3c21",
+    "INPUT-MANIFEST.json": "72228428e9ba504bfdce98c508882b6be2e1220261867d58be87ac2d3c9b8b0e",
+    "INPUT-MANIFEST-r4.json": "33b2a7bde460e6e5b21c094d018591199f9897b13a300dd65545978abe3fc8d6",
+    "CORPUS-CORRECTION.json": "df1234604fbbe73f31de2e3b2d440bd18b2640b96314c3c62576e08d10480635",
+    "CORPUS-REPAIR-ADDENDUM.json": "08be8e6569429e4ef186e27e1618030cef3758591e9df577aace658f45a21ad4",
+    "FINAL-VALIDATION.json": "c6e9fab489243d44c010aab9ec71e592f2ba7d3cc7bfd2dd29218779ecdae0d5",
+    "FINAL-VALIDATION-r2.json": "226f0aeeaf81222f0b3ce72073ea5de19bf67e036645a523c57eb23da8848cfa",
+    "IMPLEMENTATION-FULL-MATCH.json": "0c5abc62c2194b8e642e4d3e068637944e73723756f60990080cce79c4c25104",
+    "LOT-CLOSURE.json": "e9860bb3fde36af11297f4cb91070a641c49b3c72450058070051419c7615e68"
+  },
+  "implementation_sha256": "0f83341afaa40dea15967cdc8be813f0a878f18e6201f890ac5e9881e0eb893b",
+  "final_validation": {
+    "status": "PASS",
+    "commands": [
+      {
+        "command": "npm run perf:verify-cli-output-contracts",
+        "status": "PASS",
+        "exit_code": 0,
+        "checkout_unchanged": true
+      },
+      {
+        "command": "npm run perf:verify-source-of-truth-policy",
+        "status": "PASS",
+        "exit_code": 0,
+        "checkout_unchanged": true
+      },
+      {
+        "command": "npm run perf:verify-metadata-policy",
+        "status": "PASS",
+        "exit_code": 0,
+        "checkout_unchanged": true
+      },
+      {
+        "command": "npm run perf:verify-markdown-contract",
+        "status": "PASS",
+        "exit_code": 0,
+        "checkout_unchanged": true
+      },
+      {
+        "command": "npm run perf:verify-doc-references",
+        "status": "PASS",
+        "exit_code": 0,
+        "checkout_unchanged": true
+      },
+      {
+        "command": "npm run perf:verify-tracked-sensitivity",
+        "status": "PASS",
+        "exit_code": 0,
+        "checkout_unchanged": true
+      }
+    ],
+    "initial_cli_check": {
+      "status": "INTERRUPTED_BY_RUNNER_TIMEOUT",
+      "timeout_ms": 180000,
+      "error": "ETIMEDOUT"
+    },
+    "retry_timeout_ms": 900000
+  }
+}

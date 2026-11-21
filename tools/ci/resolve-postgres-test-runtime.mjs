@@ -20,7 +20,8 @@ export function resolvePostgresTestRuntime({
 } = {}) {
   let binDir;
   try {
-    binDir = env.PG_BIN_DIR ?? String(run("pg_config", ["--bindir"])).trim();
+    const provisionedBin = platform === "win32" ? env.PGBIN : undefined;
+    binDir = env.PG_BIN_DIR ?? provisionedBin ?? String(run("pg_config", ["--bindir"])).trim();
   } catch {
     throw new Error("POSTGRES_TEST_RUNTIME_UNAVAILABLE: set PG_BIN_DIR to an existing PostgreSQL bin directory");
   }

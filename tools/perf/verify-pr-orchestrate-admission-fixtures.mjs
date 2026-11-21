@@ -278,6 +278,16 @@ function runCase(tmpRoot, testCase) {
     codex_result_expected: String(codex?.result ?? "") === testCase.expectedResult,
     codex_ok_matches_result: Boolean(codex?.ok) === (testCase.expectedResult === "ok"),
   };
+  if (testCase.id === "post_merge_sync_required_on_source_branch") {
+    // A locally aligned tracking ref is a precondition observation. The
+    // canonical session record still requires post-merge reconciliation.
+    runGit(targetRoot, ["update-ref", "refs/remotes/origin/dev", "HEAD"]);
+    const aligned = runJson("tools/perf/pr-orchestrate-hook.mjs", ["--target", targetRoot, "--mode", "COMMITTING", "--json"]);
+    assert.equal(aligned.admission.session_branch_ahead, 0);
+    assert.equal(aligned.admission.session_branch_behind, 0);
+    assert.equal(aligned.action, "post_merge_sync_required");
+    assert.equal(aligned.reason_code, "PR_ORCHESTRATE_POST_MERGE_SYNC_REQUIRED");
+  }
   return {
     id: testCase.id,
     source_target: sourceTarget,

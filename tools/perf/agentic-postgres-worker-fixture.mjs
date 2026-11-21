@@ -10,7 +10,7 @@ let working = structuredClone(state.tables), committed = false;
 try {
   const request = JSON.parse(fs.readFileSync(0, "utf8"));
   if (state.unavailable) throw Error("ARTIFACT_POSTGRES_WORKER_UNAVAILABLE");
-  if (request.action === "get" && state.failReadAfterWrite && state.commits > 0) throw Error("ARTIFACT_POSTGRES_COMMAND_FAILED");
+  if (["get", "get-many"].includes(request.action) && state.failReadAfterWrite && state.commits > 0) throw Error("ARTIFACT_POSTGRES_COMMAND_FAILED");
   const client = { async query(source, values = []) {
     const sql = source.replace(/\s+/g, " ").trim(); queries.push(sql);
     if (/CREATE |ALTER |DROP |DELETE /i.test(sql)) throw Error("ARTIFACT_FIXTURE_UNEXPECTED_DDL");
@@ -21,7 +21,10 @@ try {
     if (sql.startsWith("SELECT DISTINCT scope_key")) return { rows: [{ scope_key: state.scope }] };
     if (sql.includes("to_regclass('aidn_shared.execution_runs')")) return { rows: [{ execution_runs: "aidn_shared.execution_runs" }] };
     if (sql.startsWith("SELECT run_id FROM aidn_shared.execution_runs")) return { rows: state.reserved ? [{ run_id: "reserved-fixture" }] : [] };
-    if (sql.startsWith("SELECT * FROM aidn_runtime.v_materializable_artifacts")) return { rows: working.artifacts.filter(row => row.scope_key === values[0] && row.path === values[1]) };
+    if (sql.startsWith("SELECT * FROM aidn_runtime.v_materializable_artifacts")) {
+      const paths = Array.isArray(values[1]) ? values[1] : [values[1]];
+      return { rows: working.artifacts.filter(row => row.scope_key === values[0] && paths.includes(row.path)) };
+    }
     if (sql.startsWith("SELECT artifact_id FROM")) return { rows: working.artifacts.filter(row => row.scope_key === values[0] && row.path === values[1]).map(row => ({ artifact_id: row.artifact_id })) };
     if (sql.startsWith("SELECT COALESCE(MAX(artifact_id)")) return { rows: [{ id: working.artifacts.length + 1 }] };
     const insert = sql.match(/^INSERT INTO aidn_runtime\.([a-z_]+) \(([^)]+)\)/);

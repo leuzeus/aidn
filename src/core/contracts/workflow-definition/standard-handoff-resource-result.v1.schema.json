@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-handoff-resource-result.v1",
+  "x-aidn-contract-version": "standard-handoff-resource-result.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "request_sha256",
+    "instance_id",
+    "instance_sha256",
+    "scope_id",
+    "model_sha256",
+    "configuration_sha256",
+    "physical_root_sha256",
+    "inventory_material_sha256",
+    "native_history_sha256",
+    "ownership_sha256",
+    "observation_sha256",
+    "authority_id",
+    "evidence_class",
+    "observed_at_ms",
+    "unknown_business_operations",
+    "complete_resource_closure",
+    "snapshot_only",
+    "permits_effects",
+    "permits_handoff",
+    "written",
+    "key_id",
+    "authentication"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-handoff-resource-result.v1"
+    },
+    "request_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "instance_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "instance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "model_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "configuration_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "physical_root_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "inventory_material_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "native_history_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "ownership_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "observation_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authority_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,95}$"
+    },
+    "evidence_class": {
+      "enum": [
+        "fixture",
+        "native"
+      ]
+    },
+    "observed_at_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "unknown_business_operations": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "type": "string",
+        "pattern": "^op_[a-f0-9]{40}$"
+      }
+    },
+    "complete_resource_closure": {
+      "const": true
+    },
+    "snapshot_only": {
+      "const": true
+    },
+    "permits_effects": {
+      "const": false
+    },
+    "permits_handoff": {
+      "const": false
+    },
+    "written": {
+      "const": false
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authentication": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

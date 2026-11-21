@@ -235,7 +235,7 @@ function check(checks, key, pass, details = "") {
   };
 }
 
-export function evaluateCurrentStateConsistency({ targetRoot }) {
+export function evaluateCurrentStateConsistency({ targetRoot, currentFields = null }) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
   const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
   const currentStatePath = path.join(auditRoot, "CURRENT-STATE.md");
@@ -255,7 +255,7 @@ export function evaluateCurrentStateConsistency({ targetRoot }) {
 
   const currentStateText = exists(currentStatePath) ? readText(currentStatePath) : "";
   const snapshotText = exists(snapshotPath) ? readText(snapshotPath) : "";
-  const current = parseSimpleMap(currentStateText);
+  const current = currentFields ?? parseSimpleMap(currentStateText);
   const snapshot = parseSnapshot(snapshotText);
 
   const updatedAt = normalizeScalar(current.get("updated_at") ?? "");

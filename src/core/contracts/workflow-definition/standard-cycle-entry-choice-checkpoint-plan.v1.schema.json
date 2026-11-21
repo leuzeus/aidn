@@ -1,0 +1,266 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-entry-choice-checkpoint-plan.v1",
+  "x-aidn-contract-version": "standard-cycle-entry-choice-checkpoint-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "operation_id",
+    "input",
+    "prepared_at_ms",
+    "source_sha256",
+    "scope_sha256",
+    "scope_without_head_sha256",
+    "backend_binding_sha256",
+    "session_id",
+    "selected_cycle_id",
+    "selected_state",
+    "selected_branch",
+    "selected_branch_head",
+    "documents",
+    "git"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-entry-choice-checkpoint-plan.v1"
+    },
+    "operation_ref": {
+      "const": "cycle_entry_choice_checkpoint"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "record_operation_id"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "standard-cycle-entry-choice-checkpoint-input.v1"
+        },
+        "record_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        }
+      }
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "scope_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "scope_without_head_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "backend_binding_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{3,6}$"
+    },
+    "selected_cycle_id": {
+      "type": "string",
+      "pattern": "^C[0-9]{3,6}$"
+    },
+    "selected_state": {
+      "enum": [
+        "OPEN",
+        "IMPLEMENTING",
+        "VERIFYING"
+      ]
+    },
+    "selected_branch": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 192
+    },
+    "selected_branch_head": {
+      "type": "string",
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    },
+    "documents": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 384,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256",
+          "metadata_sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^[^\\\\\\u0000]+$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "metadata_sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observed",
+        "files",
+        "operation_kind"
+      ],
+      "properties": {
+        "observed": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "branch",
+            "ref",
+            "head",
+            "index_sha256",
+            "index_clean",
+            "lock_present",
+            "changes",
+            "identity",
+            "signing"
+          ],
+          "properties": {
+            "branch": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "ref": {
+              "type": "string",
+              "pattern": "^refs/heads/[^\\r\\n]+$"
+            },
+            "head": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "index_sha256": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "index_clean": {
+              "type": "boolean"
+            },
+            "lock_present": {
+              "type": "boolean"
+            },
+            "changes": {
+              "type": "array",
+              "maxItems": 131,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "status",
+                  "path"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 2
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024
+                  }
+                }
+              }
+            },
+            "identity": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "email"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "email": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                }
+              }
+            },
+            "signing": {
+              "type": "boolean"
+            },
+            "filter_context_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        "files": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 131,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^docs/audit/(?:CURRENT-STATE[.]md|sessions/S[0-9]{3,6}[.]md|snapshots/context-snapshot[.]md|cycles/C[0-9]{3,6}-[A-Za-z0-9._-]+/status[.]md)$"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        },
+        "operation_kind": {
+          "const": "metadata-objects-ref-index.v1"
+        }
+      }
+    }
+  }
+}

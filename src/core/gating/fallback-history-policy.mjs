@@ -5,6 +5,13 @@ const EXPECTED_RELOAD_REASONS = new Set([
   "ACTIVE_CYCLES_CHANGED", "STRUCTURE_PROFILE_CHANGED",
 ]);
 
+// Cache provenance, without a clock or permission decision. A digest miss
+// alone is unexplained; a known invalidation must account for the new digest.
+export function isExpectedReloadInvalidation(reasons) {
+  return Array.isArray(reasons) && reasons.some(code => EXPECTED_RELOAD_REASONS.has(code))
+    && reasons.every(code => EXPECTED_RELOAD_REASONS.has(code) || code === "DIGEST_MISS");
+}
+
 export function countsAsRecentAnomalousFallback(event, { nowMs = Date.now(), branch = "" } = {}) {
   if (event?.skill !== "reload-check" || event.result !== "fallback") return false;
   if (branch && event.branch && event.branch !== branch) return false;
@@ -14,7 +21,5 @@ export function countsAsRecentAnomalousFallback(event, { nowMs = Date.now(), bra
   const reasons = Array.isArray(event.reason_codes) ? event.reason_codes
     : String(event.reason_code ?? "").split(/[|,;]/);
   const codes = reasons.map(code => String(code).trim()).filter(Boolean);
-  const explainedDigestChange = codes.some(code => EXPECTED_RELOAD_REASONS.has(code));
-  return codes.length === 0 || codes.some(code => !EXPECTED_RELOAD_REASONS.has(code)
-    && !(code === "DIGEST_MISS" && explainedDigestChange));
+  return !isExpectedReloadInvalidation(codes);
 }

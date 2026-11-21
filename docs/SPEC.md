@@ -30,10 +30,17 @@ routes control tokens and never creates agents by itself. Compatible roles may
 reuse one eligible execution; mandatory independent review excludes contributors
 and requires its declared context, authority and permission guarantees.
 
-The opt-in internal [structured agentic process](AGENTIC_PROCESS.md) implements
-these distinctions with a declared execution profile. It does not reinterpret
+The [structured agentic process](AGENTIC_PROCESS.md), the default execution engine
+for every new workflow, implements these distinctions with a declared execution
+profile. Direct JSON authoring and BPMN compilation share this engine.
+Sequential compatibility requires explicit selection. It does not reinterpret
 existing workflow instances, replace skill/write admission or activate a native
 executor. Unsupported constructs refuse explicitly.
+
+The explicit [BPMN profile](BPMN_EXECUTION_PROFILE.md) compiles supported modeling
+constructs into that same IR. Simulation replays synthetic events with the
+execution reducer. XML, lane placement and synthetic traces grant no authority;
+retained instances keep their pinned model, policies and canonical journal.
 
 1. **Audit-Informed Development (Primary Philosophy)**
    - Active before, during, and after implementation.
@@ -194,6 +201,13 @@ DoR is an entropy filter, not bureaucracy.
 ------------------------------------------------------------
 
 ## Drift Control (MANDATORY) [SPEC-R05]
+
+Elapsed wall time alone does not establish drift or invalidate an unchanged
+accepted review/completion. Gating and internal hooks impose no default elapsed
+threshold; an explicit caller may select the existing time-threshold policy.
+Missing proof and actual objective, scope, integrity or repair signals still
+require the drift check. Retained timestamps are provenance, while current
+authorization, issuer expiry, context, ownership and CAS remain separate checks.
 
 Drift is any deviation from:
 - the current baseline

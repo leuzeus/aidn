@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-work-output.v1",
+  "x-aidn-contract-version": "standard-cycle-work-output.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-work-output.v1"
+    },
+    "operation_ref": {
+      "const": "cycle_work_evaluate"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "blocked",
+        "deferred",
+        "rejected",
+        "cancelled",
+        "failed",
+        "reconciliation_required"
+      ]
+    },
+    "effect_status": {
+      "enum": [
+        "no_effect",
+        "confirmed",
+        "unknown"
+      ]
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cycle_work_observed": {
+          "type": "boolean"
+        },
+        "cycle_validation_required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

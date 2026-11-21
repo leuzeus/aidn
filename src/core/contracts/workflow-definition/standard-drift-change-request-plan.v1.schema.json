@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-drift-change-request-plan.v1",
+  "x-aidn-contract-version": "standard-drift-change-request-plan.v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "input", "prepared_at_ms", "source_sha256", "context_sha256", "boundary_sha256", "session_id", "cycle_id", "change_request_id", "impact", "changes"],
+  "properties": {
+    "contract_version": { "const": "standard-drift-change-request-plan.v1" },
+    "input": { "type": "object", "additionalProperties": false, "required": ["recovery_record_operation_id"],
+      "properties": { "recovery_record_operation_id": { "type": "string", "pattern": "^op_[a-f0-9]{40}$" } } },
+    "prepared_at_ms": { "type": "integer", "minimum": 0 },
+    "source_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "context_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "boundary_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "session_id": { "type": "string", "pattern": "^S[0-9]{3,6}$" }, "cycle_id": { "type": "string", "pattern": "^C[0-9]{3,6}$" },
+    "change_request_id": { "type": "string", "pattern": "^CR-[0-9]{3,6}$" }, "impact": { "enum": ["low", "medium", "high"] },
+    "changes": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "object", "additionalProperties": false,
+      "required": ["path", "before_sha256", "after_sha256", "before_metadata_sha256", "edit_kind", "text_chunks"], "properties": {
+        "path": { "type": "string", "maxLength": 192, "minLength": 1 },
+        "before_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "after_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "before_metadata_sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "edit_kind": { "enum": ["append", "replace"] }, "text_chunks": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "type": "string", "maxLength": 8192 } }
+      } } }
+  }
+}

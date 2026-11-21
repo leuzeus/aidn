@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.20.0 (2026-11-18)
+
+- Add the canonical JSON STANDARD workflow and the default v2 process
+  engine, with ordinary CLI/console entry, authenticated decisions and governed
+  operations. BPMN remains an optional input to the process IR.
+- Preserve the published 0.19.1 history, historical readers, canonical storage
+  authority and original finite Native grants.
+- Keep offline, installed-archive and genuine-actor qualification tied to its
+  exact source and archive. Preserve original failures and unknown outcomes
+  across later recoveries.
+
+## 0.19.1 (2026-11-01)
+
+- Publish the [StockFlow benchmark report](docs/qualification/benchmarks/2026-11-01-stockflow/README.md)
+  covering the PostgreSQL backend, functional UI, identity design and brand
+  application with AIDN 0.19.0 opt-in and without AIDN. Include stage measurements,
+  screenshots, interrupted attempts and recovery costs.
+- Record the user's confirmation that human checks were performed and approved
+  at each stage. Preserve the original automated receipts and their historical
+  flags separately from the confirmed human approvals.
+- Present the report in English and link it from the repository documentation.
+  Retain favorable UI observations, higher backend token consumption and causal
+  limits. These results concern 0.19.0; no new native benchmark qualifies the
+  0.19.1 package, and no general time, quality or financial advantage is claimed.
+- Update the locked PostgreSQL client from pg 8.22.0 to 8.23.1 through the
+  dependency update already merged into dev. Preserve existing project
+  configurations and opt-in activation requirements.
+
 ## 0.19.0 (2026-10-31)
 
 - Add the opt-in structured agentic process model, deterministic gateway/event/

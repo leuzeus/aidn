@@ -73,6 +73,58 @@ If a concept already has a parent surface or an orthogonal telemetry layer, do n
 
 Keep the source-of-truth policy, metadata policy, and governance diagnostics in sync with the information model.
 
+Workflow incident tracking follows SPEC-R10. Its configured project artifact
+source is distinct from repair findings. With the default local backend, files
+mode reads the incident Markdown; dual/db-only read the configured artifact
+record. Explicit PostgreSQL artifact persistence remains canonical even in files
+mode. A visible copy never replaces a missing canonical database record. After verified resolution and
+confirmed resume, explicit cleanup removes temporary tracking and retains only
+the concise session/snapshot trace. The archived lifecycle refers to that trace.
+The scaffold Git ignore classifies only `/docs/audit/incidents/INC-TMP-*.md`
+at the project root as transient. It preserves their local canonical authority and does not
+resolve them, authorize resume or delete them. Permanent incident documents,
+templates and session/snapshot traces remain reviewable. Previously tracked
+TEMP files stay tracked; the ignore rule performs no history cleanup.
+The private `compareAndDeleteArtifact` capability provides transactional deletion
+of one UTF-8 artifact, requiring explicit write intent and both content and metadata
+revision hashes. It refuses workflow evidence, session/cycle artifacts and runtime
+heads, and does not remove visible projections. It supplies no incident executor:
+resolution, authorization where required, confirmed resume and a retained concise
+trace must be established separately before any caller invokes cleanup.
+
+The private `standard-incident-closure.mjs` candidate consumes fixed trusted
+evidence and boundary capabilities. It requires a resolved canonical tracker,
+observed STOP for L3/L4 and an authorization witness for actual rule changes.
+It writes concise session and snapshot traces before deleting the exact tracker;
+cold application retains verified partial progress. Known partial completion is
+reported as incomplete, and unknown states retain the effect owner. This candidate
+does not provide the production resolution/resume evidence reader, triage or
+published incident route, and its controlled fixtures do not qualify those gates.
+
+The fixed private `standard-pr-incident-evidence.mjs` reader supplies a first
+source profile for accepted L1/L2 external-merge dispositions followed by the
+matching accepted R09 completion. The operation host authenticates the retained
+Human source; the reader reconstructs the canonical session, fetch and alignment
+chain and compares the original SPEC/WORKFLOW pins with current canonical rules.
+The TEMP marker is a lookup key, bound to an incident identity derived from the
+original question and operation. It cannot establish resolution by itself.
+This read creates no tracker, resolution write, cleanup or published R10 route.
+Other incidents, high-severity recovery and rule changes still need their own
+authenticated source profiles. Existing historical question expiry is preserved;
+reading an accepted history adds no preparation-age ceiling.
+
+The registered private `session_pr_incident_record` and
+`session_pr_incident_resolve` business bindings use ordinary host effect grants
+in COMMITTING mode. The first records the accepted L2 source and checkpoint in
+an ignored canonical TEMP tracker; L1 has no mandatory tracker. The second
+changes that same tracker only after the matching accepted R09 source verifies
+resolution and resume. The Human principal supplies its owner. Existing notes
+and canonical artifact metadata remain preserved. A known partial write can be
+completed from the exact retained preparation; an unknown postimage retains
+the actual owner. The bindings add no source authority, backend or implicit
+projection import. They do not delete tracking or write the required concise
+trace. Their published R10 routing and owned unknown-state recovery remain due.
+
 GFD adoption is scoped project policy, not a new runtime concept. The package
 source declaration and client opt-in compatibility boundary are documented in
 [GFD_ADOPTION.md](../GFD_ADOPTION.md). Proposed detection cannot become an
@@ -99,3 +151,21 @@ PostgreSQL database transaction, with a positive planning revision; the first
 historical planning write remains revision zero. Activation and termination
 fixture doubles validate persistence decisions only. They do not qualify a
 native executor, delegated admission or process-tree confinement.
+
+
+The unreturned handoff candidate retains its new controller disposition under
+the existing process_operation_journal concept and configured artifact backend.
+The original signed dispatch capsule remains running and unchanged. The common
+operation journal may append a genuine controller result and advance its phase;
+this does not fabricate an original publisher return. No new canonical parent,
+store or migration is introduced. DUAL may materialize only the already-canonical
+packet projection; DB-only creates no visible packet. A matching visible copy
+never replaces canonical content, metadata or the exact owner/witness evidence.
+
+
+Before-effect disposition v5 remains in process_operation_journal and the
+existing disposition/control stores. It retains a null original output/receipt
+and one genuine current-controller blocked/no-effect result at index zero.
+The immutable original running capsule is not rewritten. Separate acceptance
+permits a fresh operation intention under the existing reducer; no new record
+concept, backend, projection, shared capability or Native allocation is added.

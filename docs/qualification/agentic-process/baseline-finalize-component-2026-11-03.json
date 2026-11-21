@@ -1,0 +1,64 @@
+{
+  "status": "PASS_COMPONENT_PENDING_COMMON_STANDARD_MODEL",
+  "proof_class": "actual-promotion-checkpoint-component",
+  "source_base": "1900998",
+  "first_files15238": {
+    "status": "PASS",
+    "checks": 5,
+    "snapshot": "32191847cfe4046c82c65ff1f5f3588c66d8c038",
+    "scope": "Actual selected admission/shared checkpoint, correlated event, five completion CAS, append-only history, denied grant and no repeated application. Human/close source remains fixture."
+  },
+  "current_cases": {
+    "status": "PASS",
+    "snapshot": "d83613b6dd8d2e3a4724afb5aa1e24128d99b039",
+    "implementation_sha256": "1e6fcb65aed521031512c8ab780d0440226e9afc193989579999bdf12112f4c1",
+    "published_components": {
+      "startup": 65,
+      "cycle_create": 63
+    },
+    "checks_per_case": 5,
+    "positive": {
+      "files": 66387,
+      "dual": 66387,
+      "db_only": 66387
+    },
+    "faults": {
+      "event_files": 1252,
+      "suffix_db_only": 1252,
+      "projection_dual": 23578,
+      "grant_after_files": 23578
+    },
+    "actual_ports": "Source installation, selected target admission, real shared checkpoint, correlated physical event, five metadata-preserving completion CAS",
+    "trusted_provenance": "Explicit fixture human/completed-close/accepted-record authority; not the full common cursor",
+    "no_repeat": "Actual checkpoint count remains one after uncertain or completed effects; uncertainty keeps owner and empty success facts",
+    "history": "Every prior byte including pending entry retained; confirmation appended",
+    "runtime_source_bytes": "Unchanged from frozen current snapshot throughout all cases"
+  },
+  "common_cursor_from_actual_completed_close": "NOT_RUN",
+  "full_standard_model": "NOT_COMPLETE",
+  "ordinary_resume": "NOT_QUALIFIED",
+  "native": "NOT_RUN",
+  "installed_archive": "NOT_RUN",
+  "unknown_suffix_reconciliation": "STILL_OPEN",
+  "updated_at": "2026-11-03T08:58:16.147967+00:00",
+  "gates": {
+    "status": "PASS",
+    "handle": 60327,
+    "models": {
+      "status": "PASS",
+      "checks": 22,
+      "explicit_authoring_revision": "65/63; no runtime refresh"
+    },
+    "hook_contract": 5,
+    "application_dispatch": 5,
+    "historical_contracts_reducer": 27,
+    "catalog": 63,
+    "policies": "35 source/37 metadata/38 policy coverage only",
+    "docs": "references and Markdown PASS",
+    "topology": "5 fresh source clients +failure cleanup; not exact installed archive",
+    "real_ports": 14,
+    "public_wrapper": "Canonical17 PASS after shared defaults extraction; same unchanged app port source",
+    "full_routed_gate_suite": "NOT_RUN; focused verification listed explicitly"
+  },
+  "required_coverage": "Nine additions in existing required agentic gate with immutable expected command aligned; all old commands retained."
+}

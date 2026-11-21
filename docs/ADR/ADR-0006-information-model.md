@@ -121,6 +121,25 @@ whole, while an oversized mandatory closure refuses with expansion references.
 No new canonical store, runtime admission or default installed route is added.
 Rollback removes the opt-in consumer and retains client adoption history.
 
+## Temporary workflow incident information (2026-11-14)
+
+SPEC-R10 temporary incident tracking is distinct from repair findings. Its
+content uses the existing project artifact boundary. With the default local
+backend, incident Markdown is canonical in files mode; the configured artifact
+record is canonical in dual/db-only. Explicit PostgreSQL artifact persistence
+also remains canonical in files mode. A visible copy cannot replace an absent database record. This
+clarifies the incident mapping; it adds no store, table or implicit import of
+legacy incident files.
+
+Unresolved, authorization-pending and deferred tracking is retained. After
+verified resolution and confirmed resume, explicit canonical cleanup removes
+temporary tracking and leaves only the concise session/snapshot trace. The
+archived lifecycle refers to that trace, not to a retained resolved tracker.
+Repair findings and uncertain Native/resource evidence retain their own
+lifecycle and retention. These information policies do not supply a connected
+incident executor, canonical delete capability or permission to edit workflow
+rules; those runtime effects require separate implementation and qualification.
+
 ## Options Compared
 
 ### Derived agent continuation memory (2026-10-07)

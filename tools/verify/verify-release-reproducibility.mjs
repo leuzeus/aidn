@@ -7,6 +7,7 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { execFileSync, spawnSync } from "node:child_process";
 import { qualifyWorkflowPackage } from "./workflow-package-qualification-lib.mjs";
+import { qualifyReleaseGitBlobs } from "./release-git-blob-fixtures.mjs";
 import { buildPackageTarball, readPackageTarball } from "../lib/release-package-tar.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
@@ -30,24 +31,26 @@ function verifyGzipPortability() {
   return { status: "PASS", simulated_host_os: [3, 10], retained_os: 255 };
 }
 
-function runBuild(outputRoot) {
+function runBuild(outputRoot, { buildRoot = repoRoot, sourceRef = "HEAD", requireClean = true } = {}) {
   const result = spawnSync(process.execPath, [
-    path.join(repoRoot, "tools", "build-release.mjs"),
+    path.join(buildRoot, "tools", "build-release.mjs"),
     "--source-ref",
-    "HEAD",
+    sourceRef,
     "--output-root",
     outputRoot,
-    "--require-clean",
+    ...(requireClean ? ["--require-clean"] : []),
     "--json",
   ], {
-    cwd: repoRoot,
+    cwd: buildRoot,
     env: process.env,
     encoding: "utf8",
     timeout: 300000,
     maxBuffer: 30 * 1024 * 1024,
   });
   if (result.status !== 0) {
-    throw new Error(`release build failed\n${result.stdout}\n${result.stderr}`);
+    throw new Error(`release build failed ${JSON.stringify({
+      status: result.status, signal: result.signal, error_code: result.error?.code ?? null,
+    })}\n${result.stdout}\n${result.stderr}`);
   }
   return JSON.parse(result.stdout);
 }
@@ -74,6 +77,7 @@ async function main() {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-release-repro-"));
   try {
     const gzipPortability = verifyGzipPortability();
+    const gitBlobBoundary = qualifyReleaseGitBlobs({ sourceRoot: repoRoot, root: path.join(tempRoot, "git-blobs"), runBuild });
     const first = runBuild(path.join(tempRoot, "first"));
     const second = runBuild(path.join(tempRoot, "second"));
     const firstManifest = JSON.parse(fs.readFileSync(first.manifest, "utf8"));
@@ -128,6 +132,7 @@ async function main() {
       tarball_sha256: sha256(first.tarball),
       build_runtime: { node: process.version, zlib: process.versions.zlib, platform: process.platform },
       gzip_portability: gzipPortability,
+      git_blob_boundary: gitBlobBoundary,
       workflow_qualification: workflowQualification,
       duration_ms: Date.now() - started,
       issues,

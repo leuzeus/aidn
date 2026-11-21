@@ -19,13 +19,31 @@ This source/offline capability adds no automatic installed activation, native
 agent launch or performance claim. See
 [ADR-0021](docs/ADR/ADR-0021-sequential-agent-reuse-decision.md).
 
-The opt-in [structured agentic process](docs/AGENTIC_PROCESS.md) adds explicit
+The [structured agentic process](docs/AGENTIC_PROCESS.md), the default engine for all new workflows, provides
 owned native execution: compatible activities can share a live thread while
 independent review receives a fresh read-only context. The host retains control
 of routing, canonical persistence, budgets and cleanup. Its
 [bounded qualification](https://github.com/leuzeus/aidn/blob/v0.19.0/docs/qualification/agentic-process/v0.19.0.md)
 does not establish general native support or a performance gain. Ordinary
-installed workflows are unchanged.
+historical instances retain their pinned engine and format. Use
+`aidn runtime workflow-run` for normal execution; select `--engine legacy`
+explicitly for a new sequential compatibility run. Native-only JSON graphs
+can use the v1 or v2 process contract; v2 does not accept raw control facts or
+messages through that launcher. Standard operations, authenticated external
+waits and native-history resume still need the complete mixed composition.
+
+AIDN's own standard session/cycle/PR lifecycle still needs its shipped IR model,
+actual operation bindings and durable resume. Engine selection alone does not
+establish that integration; see the
+[remaining integration plan](docs/PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md).
+
+The explicit [BPMN execution profile](docs/BPMN_EXECUTION_PROFILE.md) compiles
+structured task and XOR/AND/OR diagrams into that IR, with role/policy bindings
+and source maps. Synthetic simulation uses the same event reducer. Unsupported
+BPMN semantics refuse explicitly; compilation does not authorize execution.
+The default [v2 XML profile](docs/BPMN_EXECUTION_PROFILE_V2.md) adds correlated
+message races, guarded post-test loops, fixed multi-instance collections and
+local procedure calls, using the existing IR and reducer.
 
 The later [StockFlow benchmark report](docs/qualification/benchmarks/2026-11-01-stockflow/README.md)
 follows v0.19.0 through a PostgreSQL backend, a functional UI, identity design and
@@ -383,7 +401,7 @@ For Windows setup including optional PostgreSQL preparation, follow
 [per-project Windows setup](docs/WINDOWS_PROJECT_SETUP.md) is historical 0.9.x guidance.
 
 Version 0.10.0 introduced one user-level engine shared by registered projects.
-The `v0.19.0` source also executes dispatched agent commands in their target
+The source introduced in 0.19.0 also executes dispatched agent commands in their target
 worktree, including Windows paths with spaces and accents. Install from a published release with verified checksums; a source
 version or branch name alone is not proof of publication.
 Follow [the global setup guide](docs/GLOBAL_SETUP.md) for installation and
@@ -465,7 +483,7 @@ Notes:
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
-- prefer a published tagged install (`#v0.19.0` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
+- prefer a published tagged install (`#v0.20.0` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 

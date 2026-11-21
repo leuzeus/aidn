@@ -10,7 +10,7 @@ export const artifactMetadataHash = artifact => artifactContentHash(JSON.stringi
 ].map(key => [key, artifact?.[key] ?? null]))));
 
 export const isWorkflowRecordArtifactPath = value => typeof value === "string"
-  && /^workflows\/(instances|process-instances|definitions)\/[a-z][a-z0-9_-]{0,95}\.json$/.test(value);
+  && /^workflows\/(instances|process-instances|operation-records|decision-inbox|control-inbox|native-allocations|native-dispatches|native-owner-dispositions|native-allocation-reconciliations|definitions)\/[a-z][a-z0-9_-]{0,95}\.json$/.test(value);
 
 // Bulk projections may reproduce a checkpoint, never replace it with a stale
 // visible copy. Only the dedicated CAS writer advances these canonical records.
@@ -37,4 +37,27 @@ export function assertArtifactCompareSwap({ artifact, expectedSha256, expectedMe
     if (!/^[a-f0-9]{64}$/.test(expectedMetadataSha256)) throw new Error("ARTIFACT_COMPARE_SWAP_INVALID");
     if (!current || artifactMetadataHash(current) !== expectedMetadataSha256) throw new Error("ARTIFACT_REVISION_CONFLICT");
   }
+}
+
+// A private persistence primitive, not permission to discard a governed record.
+// Both revision pins and explicit intent are mandatory. Workflow evidence and
+// artifacts with derived session/cycle state require dedicated lifecycle ports.
+export function assertArtifactCompareDeleteRequest(request) {
+  const name = request?.path;
+  if (request?.write !== true || typeof name !== 'string' || !name
+      || /[\\:\x00-\x1f]/.test(name) || name.split('/').some(part => !part || part === '.' || part === '..')
+      || !/^[a-f0-9]{64}$/.test(request.expectedSha256 ?? '')
+      || !/^[a-f0-9]{64}$/.test(request.expectedMetadataSha256 ?? '')) {
+    throw new Error('ARTIFACT_COMPARE_DELETE_INVALID');
+  }
+}
+
+export function assertArtifactCompareDelete(request, current) {
+  assertArtifactCompareDeleteRequest(request);
+  const name = request.path;
+  if (/^(workflows|sessions|cycles)\//i.test(name)
+      || ['session', 'cycle'].includes(current?.kind)) throw new Error('ARTIFACT_DELETE_PROTECTED');
+  if (!current || current.path !== name) throw new Error('ARTIFACT_REVISION_CONFLICT');
+  assertArtifactCompareSwap({ artifact: { content: current.content, content_format: current.content_format },
+    expectedSha256: request.expectedSha256, expectedMetadataSha256: request.expectedMetadataSha256 }, current);
 }

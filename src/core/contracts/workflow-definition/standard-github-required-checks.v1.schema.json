@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "base_ref",
+    "entries"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-github-required-checks.v1"
+    },
+    "base_ref": {
+      "type": "string",
+      "pattern": "^[^\\u0000-\\u0020\\u007f]{1,255}$"
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "kind",
+          "producer_id"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[^\\u0000-\\u001f\\u007f]{1,100}$"
+          },
+          "kind": {
+            "enum": [
+              "check_run",
+              "commit_status"
+            ]
+          },
+          "producer_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+          }
+        }
+      }
+    }
+  },
+  "$id": "aidn://contracts/workflow-definition/standard-github-required-checks.v1",
+  "x-aidn-contract-version": "standard-github-required-checks.v1"
+}

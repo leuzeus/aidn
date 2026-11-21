@@ -4,8 +4,34 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { runCycleCreateAdmitUseCase } from "../../src/application/runtime/cycle-create-admit-use-case.mjs";
+import { renderStandardSessionPrRecord } from "../../src/core/workflow/standard-session-pr-record.mjs";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
+
+const PR_CONTINUITY_CASES = [
+  ["closed_session_open_pr", "open", "not_needed", true, true],
+  ["merged_session_sync_required", "merged", "required", true, true],
+  ["merged_session_without_sync_record", "merged", "not_needed", true, true],
+  ["reopened_correction_session", "open", "not_needed", false, false],
+].map(([id, prStatus, syncStatus, closed, blocked]) => ({
+  id,
+  fixture: "tests/fixtures/perf-structure/session-multi-cycle-explicit",
+  workingBranch: "S103-multi",
+  mutate(targetRoot) {
+    writeDualConfig(targetRoot);
+    fs.appendFileSync(path.join(targetRoot, "docs/audit/sessions/S103-multi.md"),
+      "\n- pr_status: " + prStatus + "\n- post_merge_sync_status: " + syncStatus
+      + "\n\n### Session close gate satisfied?\n\n- [" + (closed ? "x" : " ") + "] Yes\n");
+    if (closed) for (const name of ["C103-feature-gamma", "C104-feature-delta"]) {
+      const status = path.join(targetRoot, "docs/audit/cycles", name, "status.md");
+      const body = fs.readFileSync(status, "utf8");
+      fs.writeFileSync(status, body.replace(/^state: (?:IMPLEMENTING|VERIFYING)$/m, "state: DONE"));
+    }
+  },
+  expectedAction: blocked ? "stop_pr_continuity" : "proceed_r2_session_base_with_import",
+  expectedResult: blocked ? "stop" : "ok",
+  expectsCheckpoint: !blocked,
+}));
 
 const CASES = [
   {
@@ -110,6 +136,14 @@ const CASES = [
 ];
 
 const CANONICAL_CASES = [
+  ...["valid", "missing-marker", "malformed-marker", "branch-mismatch", "status-mismatch",
+    "foreign-open-session", "open-cycle", "later-closed-session"].map(closedPrAnchor => ({
+    id: "db_only_closed_pr_anchor_" + closedPrAnchor, workingBranch: "main", snapshotAvailable: true, closedPrAnchor,
+    expectedAction: closedPrAnchor === "valid" ? "stop_pr_continuity" : "stop_repair_canonical_continuity",
+    expectedReasonCode: closedPrAnchor === "valid" ? "CYCLE_CREATE_SESSION_PR_OPEN" : "CYCLE_CREATE_CANONICAL_CONTINUITY_AMBIGUOUS",
+    expectedActiveSession: "none", expectedActiveCycle: closedPrAnchor === "open-cycle" ? "C104" : "none",
+    expectedContinuityStatus: closedPrAnchor === "valid" ? "empty" : "ambiguous",
+  })),
   {
     id: "db_only_canonical_cycle_allows_r1",
     workingBranch: "feature/C104-delta",
@@ -222,7 +256,7 @@ function installFilelessVisibleState(targetRoot) {
   ].join("\n"), "utf8");
 }
 
-function createCanonicalRuntimePayload({ ambiguous = false } = {}) {
+function createCanonicalRuntimePayload({ ambiguous = false, closedPrAnchor = null } = {}) {
   const payload = {
     schema_version: 2,
     generated_at: "2026-06-04T00:00:00.000Z",
@@ -289,10 +323,39 @@ function createCanonicalRuntimePayload({ ambiguous = false } = {}) {
       updated_at: "2026-06-04T00:03:00.000Z",
     });
   }
+  if (closedPrAnchor) {
+    payload.sessions[0].state = "CLOSED";
+    for (const cycle of payload.cycles) { cycle.state = "DONE"; cycle.outcome = "DONE"; }
+    const fields = { state: "CLOSED", session_closure_status: "completed", session_id: "S103", mode: "COMMITTING",
+      updated_at: "2026-06-04T00:00:00.000Z", session_branch: "S103-multi", pr_status: "none", pr_url: "none",
+      pr_number: "none", pr_base_branch: "none", pr_head_branch: "none", pr_review_status: "unknown",
+      post_merge_sync_status: "not_needed", post_merge_sync_basis: "none" };
+    const session = "# Session S103\n\n" + Object.entries(fields).map(([key, value]) => key + ": " + value).join("\n")
+      + "\n\n### Session close gate satisfied?\n- [x] Yes\n";
+    const current = "# Current State\n\nupdated_at: 2026-06-04T00:00:00.000Z\nactive_session: S103\nactive_cycle: none\nmode: COMMITTING\nbranch_kind: source\nfirst_plan_step: record PR\n";
+    const documents = [["sessions/S103.md", session], ["CURRENT-STATE.md", current],
+      ["snapshots/context-snapshot.md", "# Context snapshot\n\n## Next entry point\n\n- Record PR.\n"]]
+      .map(([path, content]) => ({ path, content, sha256: createHash("sha256").update(content).digest("hex") }));
+    const link = { contract_version: "github-pr-link.v1", repository_id: "R_fixture", node_id: "PR_fixture", number: 7,
+      head_branch: "S103-multi", base_branch: "main", head_oid: "a".repeat(40), base_oid: "b".repeat(40), state: "OPEN", draft: false,
+      url: "https://github.com/fixture/repository/pull/7", title_sha256: "d".repeat(64), body_sha256: "e".repeat(64) };
+    const rendered = renderStandardSessionPrRecord({ source: { session_id: "S103", session_path: documents[0].path,
+      open_operation_id: "op_" + "c".repeat(40), pull_request: link }, documents, preparedAt: Date.parse(fields.updated_at) });
+    payload.artifacts = rendered.map(document => ({ path: document.path, content_format: "utf8", content: document.text_chunks.join("") }));
+    const sessionRow = payload.artifacts[0], currentRow = payload.artifacts[1];
+    if (closedPrAnchor === "missing-marker") sessionRow.content = sessionRow.content.split("\n## Process PR opening")[0];
+    if (closedPrAnchor === "malformed-marker") sessionRow.content = sessionRow.content.replace('"open_operation_id": "op_', '"open_operation_id": "foreign_');
+    if (closedPrAnchor === "branch-mismatch") currentRow.content = currentRow.content.replace("session_branch: S103-multi", "session_branch: S104-foreign");
+    if (closedPrAnchor === "status-mismatch") currentRow.content = currentRow.content.replace("session_pr_status: open", "session_pr_status: merged");
+    if (["foreign-open-session", "later-closed-session"].includes(closedPrAnchor)) payload.sessions.push({
+      session_id: "S104", branch_name: "S104-other", state: closedPrAnchor === "foreign-open-session" ? "COMMITTING" : "CLOSED", branch_kind: "session" });
+    if (closedPrAnchor === "open-cycle") { payload.cycles[1].state = "IMPLEMENTING"; payload.cycles[1].outcome = "ACTIVE"; }
+    for (const artifact of payload.artifacts) artifact.sha256 = createHash("sha256").update(artifact.content).digest("hex");
+  }
   return payload;
 }
 
-function createCanonicalRuntimeReaderFactory({ available, ambiguous = false }) {
+function createCanonicalRuntimeReaderFactory({ available, ambiguous = false, closedPrAnchor = null }) {
   return () => ({
     describeBackend() {
       return {
@@ -301,12 +364,12 @@ function createCanonicalRuntimeReaderFactory({ available, ambiguous = false }) {
       };
     },
     async readCanonicalSnapshot() {
-      const payload = createCanonicalRuntimePayload({ ambiguous });
+      const payload = createCanonicalRuntimePayload({ ambiguous, closedPrAnchor });
       return available
         ? {
             exists: true,
             payload,
-            runtimeHeads: { current_state: { artifact_path: "CURRENT-STATE.md", artifact_sha256: payload.artifacts[0].sha256 } },
+            runtimeHeads: { current_state: { artifact_path: "CURRENT-STATE.md", artifact_sha256: payload.artifacts.find(row => row.path === "CURRENT-STATE.md").sha256 } },
             warning: "",
           }
         : {
@@ -393,6 +456,7 @@ function parseArgs(argv) {
   const args = {
     tmpRoot: "tests/fixtures",
     keepTmp: false,
+    prContinuity: false,
     json: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -402,6 +466,8 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--keep-tmp") {
       args.keepTmp = true;
+    } else if (token === "--pr-continuity") {
+      args.prContinuity = true;
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--help" || token === "-h") {
@@ -517,6 +583,7 @@ async function runCanonicalCase(tmpRoot, testCase) {
     runtimeSnapshotReaderFactory: createCanonicalRuntimeReaderFactory({
       available: testCase.snapshotAvailable,
       ambiguous: testCase.ambiguousSnapshot === true,
+      closedPrAnchor: testCase.closedPrAnchor ?? null,
     }),
   });
   const checks = {
@@ -562,13 +629,13 @@ async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const tmpRoot = path.resolve(process.cwd(), args.tmpRoot);
-    const fileRuns = CASES.map((testCase) => {
+    const fileRuns = (args.prContinuity ? PR_CONTINUITY_CASES : CASES).map((testCase) => {
       const run = runCase(tmpRoot, testCase);
       createdTargets.push(run.target_root);
       return run;
     });
     const canonicalRuns = [];
-    for (const testCase of CANONICAL_CASES) {
+    for (const testCase of args.prContinuity ? [] : CANONICAL_CASES) {
       const run = await runCanonicalCase(tmpRoot, testCase);
       createdTargets.push(run.target_root);
       canonicalRuns.push(run);

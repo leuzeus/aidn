@@ -1,0 +1,112 @@
+{
+  "format": "aidn-correction-reclosure-component-qualification.v1",
+  "observed_utc": "2026-11-04T18:20:34.489946+00:00",
+  "source_commit": "defc2f24d4e87672c4b9ff7356ab632aa7508740",
+  "results": [
+    {
+      "label": "source32-history-r3-20261104",
+      "script": "tools\\perf\\verify-standard-session-closure-history-fixtures.mjs",
+      "status": "PASS",
+      "commit": "defc2f24d4e87672c4b9ff7356ab632aa7508740",
+      "source_files": 2144
+    },
+    {
+      "label": "source32-composition-r3-20261104",
+      "script": "tools\\perf\\verify-standard-workflow-composition-fixtures.mjs",
+      "status": "PASS",
+      "commit": "defc2f24d4e87672c4b9ff7356ab632aa7508740",
+      "source_files": 2144
+    },
+    {
+      "label": "source32-operations-r3-20261104",
+      "script": "tools\\perf\\verify-process-operation-fixtures.mjs",
+      "status": "PASS",
+      "commit": "defc2f24d4e87672c4b9ff7356ab632aa7508740",
+      "source_files": 2144
+    },
+    {
+      "label": "source32-integration-r3-20261104",
+      "script": "tools\\perf\\verify-standard-session-branch-integration-authority-fixtures.mjs",
+      "status": "PASS",
+      "commit": "defc2f24d4e87672c4b9ff7356ab632aa7508740",
+      "source_files": 2144
+    },
+    {
+      "label": "source32-docs-r3-20261104",
+      "script": "tools\\verify\\verify-doc-references.mjs",
+      "status": "PASS",
+      "commit": "defc2f24d4e87672c4b9ff7356ab632aa7508740",
+      "source_files": 2144
+    },
+    {
+      "label": "source32-metadata-r3-20261104",
+      "script": "tools\\perf\\verify-metadata-policy.mjs",
+      "status": "PASS",
+      "commit": "defc2f24d4e87672c4b9ff7356ab632aa7508740",
+      "source_files": 2144
+    },
+    {
+      "label": "source32-sourceoftruth-r3-20261104",
+      "script": "tools\\perf\\verify-source-of-truth-policy.mjs",
+      "status": "PASS",
+      "commit": "defc2f24d4e87672c4b9ff7356ab632aa7508740",
+      "source_files": 2144
+    },
+    {
+      "label": "source32-governance-r3-20261104",
+      "script": "tools\\perf\\verify-governance-completeness.mjs",
+      "status": "PASS",
+      "commit": "defc2f24d4e87672c4b9ff7356ab632aa7508740",
+      "source_files": 2144
+    }
+  ],
+  "counts": {
+    "history_pure": 9,
+    "static_composition": 31,
+    "integration_authority_injected": 10,
+    "operation_reducer_service": 27,
+    "nested_capacity": 3,
+    "nested_history": 9
+  },
+  "retained_first_failures": [
+    {
+      "label": "source32-history-20261104",
+      "status": "FAIL",
+      "reason": "fixture first replacement changed Outputs, not historical JSON"
+    },
+    {
+      "label": "source32-history-r2-20261104",
+      "status": "FAIL",
+      "reason": "same fixture injection, now named precisely"
+    },
+    {
+      "label": "source32-operations-20261104",
+      "status": "FAIL",
+      "reason": "imports original failing history fixture; other checks retain their own scope"
+    },
+    {
+      "label": "source32-integration-authority-20261104",
+      "status": "FAIL",
+      "reason": "authenticated sibling disappeared when its canonical owner changed; production fence fixed at7360c866"
+    },
+    {
+      "label": "source32-policy-r3-20261104",
+      "status": "PREFLIGHT_FAIL",
+      "reason": "requested workflow-policy script path absent; no Node consumer or guard source snapshot started; actual metadata/source-of-truth/completeness checks run separately"
+    }
+  ],
+  "active_at_observation": [
+    "source32-close-files-r3-20261104",
+    "source32-close-dual-r3-20261104",
+    "source32-close-db-only-r3-20261104",
+    "source31-final-execution-20261104"
+  ],
+  "limits": [
+    "Pure history and static graph are not application-port execution",
+    "Integration uses real canonical files with injected accepted journal capabilities",
+    "New actual CAS/start-close-hook/Git component jobs pending, retain their own source scope",
+    "No actual published corrective journey or production dispatcher UNKNOWN chain proved",
+    "No real human/provider/native/PostgreSQL/installed archive evidence",
+    "complete_standard_workflow=false; ordinary entry unchanged; entire L1-L8/A1-A10 incomplete"
+  ]
+}

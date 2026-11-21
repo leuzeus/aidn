@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import codexIntegrationCases from "../../package/catalogs/codex-integration-fixtures.v1.json" with { type: "json" };
+import contextCompletionCases from "../../package/catalogs/context-completion-fixtures.v1.json" with { type: "json" };
+import contextCoordinationCases from "../../package/catalogs/context-coordination-fixtures.v1.json" with { type: "json" };
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { parseDocument } from "yaml";
 import {
   loadWorkflowSources,
   parseWorkflowStructure,
+  publicationVerificationCommand,
   validateGateAndWorkflowPolicy,
   validateWorkflowYamlSyntax,
 } from "./workflow-policy-lib.mjs";
@@ -86,6 +91,9 @@ function candidateRejected({
   candidateCatalog = catalog,
   candidatePackageJson = packageJson,
   candidateWorkflowSources = workflowSources,
+  candidateCodexIntegrationFixtureManifest = codexIntegrationCases,
+  candidateContextCompletionFixtureManifest = contextCompletionCases,
+  candidateContextCoordinationFixtureManifest = contextCoordinationCases,
 }) {
   const syntaxIssues = candidateWorkflowSources.flatMap((source) => (
     validateWorkflowYamlSyntax(source.text, source.path)
@@ -97,6 +105,9 @@ function candidateRejected({
     catalog: candidateCatalog,
     packageJson: candidatePackageJson,
     workflowModels: candidateWorkflowModels,
+    codexIntegrationFixtureManifest: candidateCodexIntegrationFixtureManifest,
+    contextCompletionFixtureManifest: candidateContextCompletionFixtureManifest,
+    contextCoordinationFixtureManifest: candidateContextCoordinationFixtureManifest,
   }).length > 0 || syntaxIssues.length > 0;
 }
 
@@ -175,8 +186,8 @@ for (const wrapper of [
   }
 }
 if (packageJson.scripts?.["verify:release"]
-  !== "node tools/verify/run-gate-family.mjs obligations") {
-  issues.push("verify:release must execute contextual catalog obligations");
+  !== "node tools/verify/run-gate-family.mjs publication") {
+  issues.push("verify:release must execute the catalog publication selection");
 }
 issues.push(...validateGateAndWorkflowPolicy({
   catalog,
@@ -204,6 +215,49 @@ for (const requiredToken of [
   }
 }
 
+// The three supervised Codex coordinators retain independent frozen command authorities.
+const compoundManifestProbes = {};
+for (const [name, baseline, property, script] of [
+  ["codex_integration", codexIntegrationCases, "codexIntegrationFixtureManifest", "perf:verify-codex-integration"],
+  ["context_completion", contextCompletionCases, "contextCompletionFixtureManifest", "perf:verify-context-completion"],
+  ["context_coordination", contextCoordinationCases, "contextCoordinationFixtureManifest", "perf:verify-context-coordination"],
+]) {
+  const probe = mutate => {
+    const candidate = { catalog: clone(catalog), packageJson: clone(packageJson), workflowModels, [property]: clone(baseline) };
+    mutate(candidate, candidate[property]);
+    return validateGateAndWorkflowPolicy(candidate);
+  };
+  compoundManifestProbes[name + "_baseline_accepted"] = probe(() => {}).length === 0;
+  compoundManifestProbes[name + "_every_omission_rejected"] = baseline.cases.every((_, index) => probe((candidate, manifest) => {
+    manifest.cases.splice(index, 1);
+  }).length > 0);
+  compoundManifestProbes[name + "_every_duplicate_rejected"] = baseline.cases.every((args) => probe((candidate, manifest) => {
+    manifest.cases.push(args);
+  }).length > 0);
+  for (const [variant, mutate] of Object.entries({
+    reorder: (candidate, manifest) => { manifest.cases.reverse(); },
+    argv: (candidate, manifest) => { manifest.cases[0].push("--unexpected"); },
+    extra_key: (candidate, manifest) => { manifest.optional = true; },
+    version: (candidate, manifest) => { manifest.contract_version = "wrong.v1"; },
+    malformed: (candidate, manifest) => { manifest.cases[0] = null; },
+    substituted_dispatcher: candidate => { candidate.packageJson.scripts[script] = "node tools/perf/verify-bpmn-process-fixtures.mjs"; },
+    pre_hook: candidate => { candidate.packageJson.scripts["pre" + script] = "node tools/perf/verify-bpmn-process-fixtures.mjs"; },
+    post_hook: candidate => { candidate.packageJson.scripts["post" + script] = "node tools/perf/verify-bpmn-process-fixtures.mjs"; },
+    duplicate_gate: candidate => {
+      const gate = candidate.catalog.gates.find(row => row.script === script);
+      candidate.catalog.gates.push({ ...gate, id: "fixture-compound-copy", allow_script_reuse: true });
+    },
+    direct_dispatcher_repeat: candidate => {
+      const gate = candidate.catalog.gates.find(row => row.script === script);
+      candidate.packageJson.scripts["fixture:compound-copy"] = candidate.packageJson.scripts[script];
+      candidate.catalog.gates.push({ ...gate, id: "fixture-compound-copy", script: "fixture:compound-copy" });
+    },
+  })) compoundManifestProbes[name + "_" + variant + "_rejected"] = probe(mutate).length > 0;
+}
+for (const [name, passed] of Object.entries(compoundManifestProbes)) {
+  if (!passed) issues.push("compound manifest policy probe failed: " + name);
+}
+
 const weakenedCatalog = clone(catalog);
 weakenedCatalog.gates.find((gate) => gate.id === "cleanliness-worktree").obligation.dev = "skip";
 weakenedCatalog.gates.find((gate) => gate.id === "cleanliness-worktree").obligation.main = "skip";
@@ -221,7 +275,8 @@ substitutedScriptCatalog.gates.find((gate) => gate.id === "runtime-db-runtime-cl
 // Positive nested npm coverage must pass, while omissions and duplicates must
 // fail on their own policy reason rather than on an unrelated workflow error.
 function contextPolicyProbe(mutate) {
-  const candidate = { catalog: clone(catalog), packageJson: clone(packageJson) };
+  const candidate = { catalog: clone(catalog), packageJson: clone(packageJson), contextCompletionFixtureManifest: clone(contextCompletionCases),
+    contextCoordinationFixtureManifest: clone(contextCoordinationCases) };
   mutate(candidate);
   return validateContextResiliencePolicy(candidate);
 }
@@ -235,10 +290,7 @@ function nestFirstContextInvocation(candidate, duplicate = false, group = admiss
   candidate.packageJson.scripts[group] = ["npm run fixture:context-leaf", ...commands].join(" && ");
 }
 const contextPositiveProbes = {
-  current_43_invocations_preserved: contextPolicyProbe(() => {}).length === 0,
-  agent_reuse_addition_equivalent_transitive_accepted: contextPolicyProbe((candidate) => {
-    nestFirstContextInvocation(candidate, false, coordinationGroup);
-  }).length === 0,
+  historical_invocations_and_explicit_additions_preserved: contextPolicyProbe(() => {}).length === 0,
   equivalent_transitive_invocation_accepted: contextPolicyProbe((candidate) => {
     nestFirstContextInvocation(candidate);
   }).length === 0,
@@ -247,30 +299,42 @@ for (const [probe, passed] of Object.entries(contextPositiveProbes)) {
   if (!passed) issues.push(`context resilience positive probe failed: ${probe}`);
 }
 const contextNegativeProbes = {
-  context_agent_reuse_omission_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
-    candidate.scripts[coordinationGroup] = candidate.scripts[coordinationGroup].split(" && ")
-      .filter((command) => command !== reuseInvocation).join(" && ");
+  context_coordination_nested_dispatcher_rejected: contextPolicyProbe((candidate) => {
+    nestFirstContextInvocation(candidate, false, coordinationGroup);
+  }).some((issue) => issue.includes("declared fixture manifest or dispatcher changed")),
+  context_agent_reuse_omission_rejected: contextPolicyProbe((candidate) => {
+    candidate.contextCoordinationFixtureManifest.cases = candidate.contextCoordinationFixtureManifest.cases
+      .filter((args) => "node " + args.join(" ") !== reuseInvocation);
   }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
-  context_agent_reuse_duplicate_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
-    candidate.scripts[coordinationGroup] += ` && ${reuseInvocation}`;
+  context_agent_reuse_duplicate_rejected: contextPolicyProbe((candidate) => {
+    candidate.contextCoordinationFixtureManifest.cases.push(reuseInvocation.split(" ").slice(1));
   }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
-  context_agent_reuse_argument_change_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
-    candidate.scripts[coordinationGroup] = candidate.scripts[coordinationGroup].replace(reuseInvocation, `${reuseInvocation} --json`);
+  context_agent_reuse_argument_change_rejected: contextPolicyProbe((candidate) => {
+    candidate.contextCoordinationFixtureManifest.cases[0].push("--json");
   }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
-  context_agent_reuse_position_change_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
-    const commands = candidate.scripts[coordinationGroup].split(" && ");
-    commands.push(commands.shift()); candidate.scripts[coordinationGroup] = commands.join(" && ");
+  context_agent_reuse_position_change_rejected: contextPolicyProbe((candidate) => {
+    const commands = candidate.contextCoordinationFixtureManifest.cases;
+    commands.push(commands.shift());
   }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
   context_every_invocation_omission_rejected: ["admission", "completion", "coordination", "projection"].every((name) => {
-    const script = `perf:verify-context-${name}`, commands = packageJson.scripts[script].split(" && ");
-    return commands.every((_, index) => contextPolicyProbe(({ packageJson: candidate }) => {
-      candidate.scripts[script] = commands.filter((_, position) => position !== index).join(" && ");
+    const script = `perf:verify-context-${name}`;
+    const commands = name === "completion" ? contextCompletionCases.cases
+      : name === "coordination" ? contextCoordinationCases.cases : packageJson.scripts[script].split(" && ");
+    return commands.every((_, index) => contextPolicyProbe((candidate) => {
+      const retained = commands.filter((_, position) => position !== index);
+      if (name === "completion") candidate.contextCompletionFixtureManifest.cases = retained;
+      else if (name === "coordination") candidate.contextCoordinationFixtureManifest.cases = retained;
+      else candidate.packageJson.scripts[script] = retained.join(" && ");
     }).some((issue) => issue.includes("ordered invocation coverage or argv changed")));
   }),
   context_every_invocation_duplicate_rejected: ["admission", "completion", "coordination", "projection"].every((name) => {
-    const script = `perf:verify-context-${name}`, commands = packageJson.scripts[script].split(" && ");
-    return commands.every((command) => contextPolicyProbe(({ packageJson: candidate }) => {
-      candidate.scripts[script] = [...commands, command].join(" && ");
+    const script = `perf:verify-context-${name}`;
+    const commands = name === "completion" ? contextCompletionCases.cases
+      : name === "coordination" ? contextCoordinationCases.cases : packageJson.scripts[script].split(" && ");
+    return commands.every((command) => contextPolicyProbe((candidate) => {
+      if (name === "completion") candidate.contextCompletionFixtureManifest.cases = [...commands, command];
+      else if (name === "coordination") candidate.contextCoordinationFixtureManifest.cases = [...commands, command];
+      else candidate.packageJson.scripts[script] = [...commands, command].join(" && ");
     }).some((issue) => issue.includes("ordered invocation coverage or argv changed")));
   }),
   context_invocation_omission_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
@@ -339,8 +403,8 @@ const contextNegativeProbes = {
 };
 
 const commandCommentMutation = releaseText.replaceAll(
-  "run: npm run verify:release",
-  "run: npm run perf:verify-release-version\n        # run: npm run verify:release",
+  `run: ${publicationVerificationCommand}`,
+  `run: npm run perf:verify-release-version\n        # run: ${publicationVerificationCommand}`,
 );
 const missingJobMutation = releaseText.replace("  publish:\n", "  publish_removed:\n");
 const duplicateJobMutation = `${releaseText}\n  publish:\n    runs-on: ubuntu-latest\n    steps: []\n`;
@@ -371,7 +435,10 @@ const admissionText = fs.readFileSync(path.join(repoRoot, admissionPath), "utf8"
 const admissionRunnerCommand = "node tools/verify/run-gate-family.mjs "
   + "\"${{ matrix.family }}\" --context "
   + "\"${{ needs.classify.outputs.context }}\" --admission";
+const candidateSource = "${{ github.event.pull_request.head.sha || github.sha }}";
+const admissionMatrixCondition = "${{ !cancelled() && needs.classify.result == 'success' && needs.classify.outputs.family_count != '0' }}";
 const admissionJobIds = Object.freeze(["classify", "gates", "admission"]);
+const platformForFamily = "${{ matrix.family == 'handoff' && 'windows-2025' || 'ubuntu-latest' }}";
 
 function namedStep(job, name) {
   const matches = (job?.steps ?? []).filter((step) => step.name === name);
@@ -422,8 +489,9 @@ function evaluateGovernanceAdmissionExecutable(source) {
     || !String(classificationIntegrity.run ?? "").includes("!route.ok")) {
     sourceIssues.push("admission must fail on classification integrity errors");
   }
-  if (gates?.if
-    !== "${{ needs.classify.result == 'success' && needs.classify.outputs.family_count != '0' }}"
+  if (gates?.if !== admissionMatrixCondition
+    || gates?.needs !== "classify"
+    || gates?.["runs-on"] !== platformForFamily
     || gates?.strategy?.["fail-fast"] !== false
     || gates?.strategy?.matrix?.family
       !== "${{ fromJSON(needs.classify.outputs.families) }}") {
@@ -433,6 +501,13 @@ function evaluateGovernanceAdmissionExecutable(source) {
     sourceIssues.push("admission gate matrix must not declare continue-on-error");
   }
   const gateSteps = gates?.steps ?? [];
+  if (!isDeepStrictEqual(gateSteps[0], {
+    name: "Checkout Exact Candidate", uses: "actions/checkout@v4",
+    with: { ref: candidateSource, "fetch-depth": 0 },
+    env: { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "core.autocrlf", GIT_CONFIG_VALUE_0: "false" },
+  })) {
+    sourceIssues.push("admission runs the selected gates at the exact source with tracked line endings");
+  }
   const fetchStep = namedStep(gates, "Fetch Announced Remote Head");
   if (!fetchStep
     || String(fetchStep.run ?? "").trim() !== canonicalBranchFetchCommand
@@ -452,7 +527,7 @@ function evaluateGovernanceAdmissionExecutable(source) {
     || String(installStep.run ?? "").trim()
       !== "npm ci --include=dev --include=optional --ignore-scripts --no-audit --no-fund"
     || installStep.if
-      !== "${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' || matrix.family == 'runtime' }}"
+      !== "${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' || matrix.family == 'runtime' || matrix.family == 'handoff' }}"
     || hasOwn(installStep, "continue-on-error")
     || installIndex < 0
     || runnerIndex < 0
@@ -475,8 +550,8 @@ function evaluateGovernanceAdmissionExecutable(source) {
     || String(source).split(admissionRunnerCommand).length - 1 !== 1) {
     sourceIssues.push("admission must execute each selected family through one canonical runner call");
   }
-  if (hasOwn(runnerStep, "if") || hasOwn(runnerStep, "continue-on-error")) {
-    sourceIssues.push("admission family execution must be unconditional and blocking inside its matrix cell");
+  if (hasOwn(runnerStep, "if") || hasOwn(runnerStep, "continue-on-error") || gateSteps.length !== 6) {
+    sourceIssues.push("admission must run the blocking selected family without an exhaustive fixture prerequisite");
   }
   if (runnerStep?.env?.AIDN_BRANCH_POLICY_HEAD_REF !== "${{ github.head_ref || github.ref_name }}"
     || runnerStep?.env?.AIDN_BRANCH_POLICY_BASE_REF !== "${{ github.base_ref || 'dev' }}"
@@ -580,7 +655,7 @@ const dispatchContainmentMissingMutation = admissionText.replace(
   "          AIDN_BRANCH_POLICY_CONTAINS_REF: origin/${{ github.head_ref }}",
 );
 const codexDependenciesMissingMutation = admissionText.replace(
-  "${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' || matrix.family == 'runtime' }}",
+  "${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' || matrix.family == 'runtime' || matrix.family == 'handoff' }}",
   "${{ matrix.family == 'cleanliness' || matrix.family == 'release' }}",
 );
 const admissionFetchContinueOnErrorMutation = mutateNamedStepProperty(
@@ -590,7 +665,7 @@ const admissionFetchContinueOnErrorMutation = mutateNamedStepProperty(
   "true",
 );
 const admissionGatesIfFalseMutation = admissionText.replace(
-  "    if: ${{ needs.classify.result == 'success' && needs.classify.outputs.family_count != '0' }}",
+  `    if: ${admissionMatrixCondition}`,
   "    if: ${{ false }}",
 );
 const admissionGatesContinueOnErrorMutation = mutateNamedJobProperty(
@@ -746,6 +821,19 @@ const simulatedRuntime = {
 postgresRuntimeProbes.resolves_existing_runtime = resolvePostgresTestRuntime(simulatedRuntime).bin_dir === testBinDir
   && JSON.stringify(binaryChecks) === JSON.stringify(["initdb", "pg_ctl", "postgres"].map((name) => path.join(testBinDir, name)))
   && binaryCalls.length === 4 && JSON.stringify(binaryCalls[0]) === JSON.stringify(["pg_config", ["--bindir"]]);
+for (const [label, env, expected] of [
+  ["windows_image_bin", { PGBIN: testBinDir }, testBinDir],
+  ["windows_explicit_bin_takes_priority", { PGBIN: testBinDir, PG_BIN_DIR: path.resolve("explicit-postgres-bin") }, path.resolve("explicit-postgres-bin")],
+]) {
+  const commands = [];
+  const result = resolvePostgresTestRuntime({ ...simulatedRuntime, platform: "win32", env,
+    run(command) {
+      commands.push(command);
+      return `${path.basename(command, ".exe")} (PostgreSQL) 17.11\n`;
+    } });
+  postgresRuntimeProbes[label] = result.bin_dir === expected
+    && JSON.stringify(commands) === JSON.stringify(["initdb", "pg_ctl", "postgres"].map(name => path.join(expected, name + ".exe")));
+}
 for (const [name, override] of Object.entries({
   missing_pg_config_fails: { run() { throw new Error("unavailable"); } },
   relative_directory_fails: { env: { PG_BIN_DIR: "relative/bin" } },
@@ -791,7 +879,6 @@ for (const [probe, passed] of Object.entries(postgresRuntimeProbes)) {
 
 const persistenceNegativeProbes = {};
 for (const [id, script] of [
-  ["runtime-agentic-process", "perf:verify-agentic-process"],
   ["runtime-agent-execution-postgres", "perf:verify-agent-execution-postgres"],
   ["runtime-agent-worker-fixtures", "perf:verify-agent-worker-fixtures"],
   ["runtime-agent-execution-scheduler", "perf:verify-agent-execution-scheduler-fixtures"],
@@ -830,7 +917,7 @@ for (const [name, candidate] of Object.entries({
   nonblocking_preflight: mutateNamedStepProperty(admissionText, "Resolve Ephemeral PostgreSQL Runtime", "continue-on-error", "true"),
   bypassed_preflight: admissionText.replace("run: node tools/ci/resolve-postgres-test-runtime.mjs", "run: node tools/ci/resolve-postgres-test-runtime.mjs || true"),
   preflight_before_install: admissionText.replace(postgresPreflightBlock, "").replace("      - name: Install Locked Gate Dependencies", `${postgresPreflightBlock}\n      - name: Install Locked Gate Dependencies`),
-  missing_runtime_dependencies: admissionText.replace(" || matrix.family == 'runtime' }}", " }}"),
+  missing_runtime_dependencies: admissionText.replace(" || matrix.family == 'runtime'", ""),
   omitted_optional_driver: admissionText.replace("--include=dev --include=optional", "--include=dev --omit=optional"),
   nonblocking_install: mutateNamedStepProperty(admissionText, "Install Locked Gate Dependencies", "continue-on-error", "true"),
 })) {
@@ -899,6 +986,7 @@ const negativeProbes = {
     candidate.scripts["perf:verify-agent-execution-contracts"] = "node --version";
   }).some((issue) => issue.includes("runtime-agent-execution-contracts: immutable fixture command")),
   ...contextNegativeProbes,
+  ...compoundManifestProbes,
   governance_route_resolver_required:
     evaluateGovernanceAdmissionExecutable(missingAdmissionResolverMutation).length > 0,
   governance_route_integrity_required:
@@ -907,6 +995,12 @@ const negativeProbes = {
     evaluateGovernanceAdmissionExecutable(admissionRunnerDuplicateMutation).length > 0,
   admission_family_runner_blocking:
     evaluateGovernanceAdmissionExecutable(admissionRunnerContinueOnErrorMutation).length > 0,
+  exhaustive_chain_cannot_reenter_admission: evaluateGovernanceAdmissionExecutable(admissionText.replace(
+    "    needs: classify\n", "    needs: [classify, agentic]\n",
+  )).length > 0,
+  handoff_runner_platform_is_required: evaluateGovernanceAdmissionExecutable(admissionText.replace(
+    platformForFamily, "ubuntu-latest",
+  )).length > 0,
   admission_gate_matrix_condition_required:
     evaluateGovernanceAdmissionExecutable(admissionGatesIfFalseMutation).length > 0,
   admission_gate_matrix_blocking:
@@ -1039,9 +1133,9 @@ const output = {
     steps: Object.values(workflow.jobs).flatMap((job) => job.steps ?? []).length,
   })),
   publication_obligations: {
-    selector: "obligations",
-    contexts: ["main", "release"],
-    critical_gates: ["codex-pack-topology", "security-tracked-sensitivity"],
+    selector: "publication",
+    context: "main",
+    required_gates: catalog.publication_gates,
   },
   governance_route: governanceRouteFixtures,
   performance_routing: {

@@ -16,9 +16,10 @@ const validHash = value => /^[a-f0-9]{64}$/.test(value ?? "");
 
 // Only this entry owns the complete worker + native-client descendant tree.
 // A controller double is a test seam, never selectable through configuration.
-export async function runOwnedAgenticProcess({ configuration, authorization, execute = false, signal }, { controllerFactory = createWindowsProcessTreeController, environment = process.env } = {}) {
+export async function runOwnedAgenticProcess({ configuration, authorization, execute = false, signal }, { controllerFactory = createWindowsProcessTreeController, environment = process.env, allocationObserver, processAuthority } = {}) {
+  if (allocationObserver != null && (typeof allocationObserver.beforeLaunch !== "function" || typeof allocationObserver.afterClosure !== "function")) fail("PROCESS_EXECUTION_ALLOCATION_OBSERVER_INVALID");
   const allocatedAt = Date.now(), allocatedMono = performance.now();
-  const preview = createProjectAgenticProcessExecution(configuration, { environment }).preview();
+  const preview = createProjectAgenticProcessExecution(configuration, { environment, processAuthority }).preview();
   if (!execute) return preview;
   if (authorization?.approved !== true || authorization.model_allowed !== true || authorization.configuration_sha256 !== shadowHash(configuration)
     || !Number.isSafeInteger(authorization.authorized_at_ms) || authorization.authorized_at_ms > allocatedAt
@@ -38,14 +39,26 @@ export async function runOwnedAgenticProcess({ configuration, authorization, exe
   const cwd = configuration.control_root;
   const availability = await controller.checkAvailability({ cwd, executable: process.execPath, executableSha256: pins.node_sha256, signal });
   if (!availability.available) fail("PROCESS_EXECUTION_TREE_CONTROL_UNAVAILABLE");
-  const remaining = Math.floor(authorization.global_deadline_ms - allocatedAt - (performance.now() - allocatedMono));
+  const remainingBudget = () => Math.floor(authorization.global_deadline_ms - allocatedAt
+    - Math.max(performance.now() - allocatedMono, Date.now() - allocatedAt));
+  let remaining = remainingBudget();
   if (remaining <= 30000) fail("PROCESS_EXECUTION_CLOSURE_RESERVE");
   let stdout = Buffer.alloc(0), firstFailure = null;
   const workerEnvironment = createAgenticProcessWorkerEnvironment({ targetRoot: configuration.target_root,
     expectedBinding: preview.persistence.binding_sha256, env: environment });
+  // Only the trusted embedding composes this persistence port. No configuration
+  // or model selects it. Its canonical reservation must precede worker launch.
+  const allocation = allocationObserver ? await allocationObserver.beforeLaunch({ configuration: structuredClone(configuration),
+    authorization: structuredClone(authorization), preview: structuredClone(preview) }) : null;
+  const workerAdmission = typeof allocationObserver?.workerInput === "function" ? await allocationObserver.workerInput(allocation) : undefined;
+  if (allocation?.output_id !== undefined && allocation.output_id !== (allocation.generation === 1 ? configuration.instance_id : `${configuration.instance_id}.g${allocation.generation}`))
+    fail("PROCESS_EXECUTION_ALLOCATION_OBSERVER_INVALID");
+  remaining = remainingBudget();
+  if (remaining <= 30000 || Date.now() >= authorization.workflow_deadline_ms) fail("PROCESS_EXECUTION_CLOSURE_RESERVE");
   const proof = await controller.run({ runnerId: `agentic-${randomUUID()}`, executable: process.execPath, executableSha256: pins.node_sha256,
     args: [worker], cwd, env: { ...workerEnvironment, TEMP: cwd, TMP: cwd },
-    stdin: JSON.stringify({ configuration, authorization, persistenceBinding: preview.persistence.binding_sha256 }), maxDurationMs: remaining - 10000, maxOutputBytes: 131072,
+    stdin: JSON.stringify({ configuration, authorization, persistenceBinding: preview.persistence.binding_sha256,
+      ...(workerAdmission === undefined ? {} : { allocation: workerAdmission }) }), maxDurationMs: remaining - 10000, maxOutputBytes: 131072,
     maxPendingBytes: 131072, stopTimeoutMs: 3000 }, { signal, onEvent(event) {
       if (event.type === "prepared") {
         if (Date.now() >= authorization.global_deadline_ms - 20000 || hashFile(worker) !== pins.worker_sha256) fail("PROCESS_EXECUTION_PREPARED_BINDING_CHANGED");
@@ -66,8 +79,9 @@ export async function runOwnedAgenticProcess({ configuration, authorization, exe
     first_failure: result?.first_failure ?? firstFailure, worker_result: result, process_tree: proof,
     global_deadline_ms: authorization.global_deadline_ms, authorized_at_ms: authorization.authorized_at_ms,
     elapsed_global_ms: Date.now() - authorization.authorized_at_ms, retry: false };
-  const file = path.join(cwd, `${configuration.instance_id}-CLOSURE.json`);
-  const footer = Buffer.from(JSON.stringify(final) + "\n"), workerFooter = path.join(cwd, configuration.instance_id, "RESULT.json");
+  const outputId = allocation?.output_id ?? configuration.instance_id;
+  const file = path.join(cwd, `${outputId}-CLOSURE.json`);
+  const footer = Buffer.from(JSON.stringify(final) + "\n"), workerFooter = path.join(cwd, outputId, "RESULT.json");
   const used = result?.storage_budget_debit_bytes ?? result?.bytes_retained;
   if (["STDOUT_ONLY_STORAGE_LIMIT", "STDOUT_ONLY_STORAGE_UNVERIFIABLE", "STDOUT_ONLY_WRITE_FAILED"].includes(result?.seal)) {
     final.first_failure ??= "PROCESS_EXECUTION_SEAL_STORAGE_LIMIT"; final.status = "FAILED"; final.seal = result.seal;
@@ -82,5 +96,7 @@ export async function runOwnedAgenticProcess({ configuration, authorization, exe
     } else try { fs.writeFileSync(file, footer, { flag: "wx" }); }
     catch { final.first_failure ??= "PROCESS_EXECUTION_SEAL_WRITE_FAILED"; final.status = "FAILED"; final.seal = "STDOUT_ONLY_WRITE_FAILED"; }
   }
+  if (allocationObserver) await allocationObserver.afterClosure({ allocation, configuration: structuredClone(configuration),
+    authorization: structuredClone(authorization), result: structuredClone(final) });
   return final;
 }

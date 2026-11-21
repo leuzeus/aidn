@@ -3,6 +3,7 @@ import { strict as assert } from "node:assert";
 import {
   buildCloseSessionDecisionContext,
   evaluateCloseSessionTransition,
+  evaluateLatestSessionContinuation,
   evaluateMappedBranchTransition,
   evaluateRepairRouting,
   evaluateSourceBranchTransition,
@@ -38,6 +39,17 @@ function testEvaluateSourceBranchTransition() {
   });
   assert.equal(result.action, WORKFLOW_ACTION.RESUME_CURRENT_CYCLE);
   assert.equal(result.reason_code, WORKFLOW_REASON.START_SESSION_RESUME_OPEN_CYCLE);
+}
+
+function testMergedSessionRequiresRecordedSync() {
+  for (const status of [undefined, "not_needed", "required", "unknown", "invalid"]) {
+    const latest = session("S101", { close_gate_satisfied: true, pr_status: "merged", post_merge_sync_status: status });
+    const transition = evaluateLatestSessionContinuation(latest, "dev");
+    assert.equal(transition.action, WORKFLOW_ACTION.BLOCKED_SESSION_BASE_GATE);
+    assert.equal(transition.reason_code, WORKFLOW_REASON.START_SESSION_POST_MERGE_SYNC_REQUIRED);
+  }
+  const synced = session("S101", { close_gate_satisfied: true, pr_status: "merged", post_merge_sync_status: "done" });
+  assert.equal(evaluateLatestSessionContinuation(synced, "dev"), null);
 }
 
 function testEvaluateMappedBranchTransition() {
@@ -107,6 +119,7 @@ function testCloseSessionDecisionHelpers() {
 function main() {
   try {
     testEvaluateSourceBranchTransition();
+    testMergedSessionRequiresRecordedSync();
     testEvaluateMappedBranchTransition();
     testEvaluateRepairRouting();
     testCloseSessionDecisionHelpers();

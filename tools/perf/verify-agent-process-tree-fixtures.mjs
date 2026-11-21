@@ -19,7 +19,7 @@ export async function verifyPortableProcessTreeFixtures() {
   const original = { spawn: childProcess.spawn, lstat: fs.lstatSync, read: fs.readFileSync,
     realpath: fs.realpathSync.native, platform: Object.getOwnPropertyDescriptor(process, "platform"), arch: Object.getOwnPropertyDescriptor(process, "arch") };
   const cwd = path.resolve(os.tmpdir(), "aidn-process-tree-portable"), bytes = Buffer.from("portable helper bytes");
-  const sha256 = createHash("sha256").update(bytes).digest("hex"), events = [], commands = [];
+  const sha256 = createHash("sha256").update(bytes).digest("hex"), events = [], commands = [], payloads = [];
   let launched = 0, mode = "complete", onRead = null, onSpawn = null, onStop = null;
   try {
     Object.defineProperty(process, "platform", { value: "win32", configurable: true });
@@ -42,7 +42,7 @@ export async function verifyPortableProcessTreeFixtures() {
       child.kill = () => { if (!terminal) { terminal = true; child.emit("close", null, "SIGTERM"); } };
       child.stdin.write = (text, callback) => {
         const message = JSON.parse(text); commands.push(message.action ?? "payload"); callback?.();
-        if (!message.action) { payload = message; queueMicrotask(() => frame({ type: "prepared", suspended: true, job_assigned: true, ...runner })); }
+        if (!message.action) { payload = message; payloads.push(message); queueMicrotask(() => frame({ type: "prepared", suspended: true, job_assigned: true, ...runner })); }
         else if (message.action === "resume") { resumed = true; queueMicrotask(() => {
           frame({ type: "resumed", ...runner });
           if (mode === "stdout-close") frame({ type: "stdout", data: Buffer.from("fixture").toString("base64") });
@@ -64,6 +64,25 @@ export async function verifyPortableProcessTreeFixtures() {
       assert.equal(result.outcome, outcome); assert.equal(result.reason_code, reason); assert.equal(result.termination_state, "not_started"); };
     await check("portable absent timeoutSignal preserves ordinary completion", async () => {
       const result = await controller.run(request()); assert.equal(result.outcome, "completed"); assert.equal(result.termination_state, "confirmed");
+    });
+    await check("portable default Native controller still requires a finite execution duration before spawn", async () => {
+      const before = launched;
+      for (const maxDurationMs of [null, undefined, 0, -1, 1.5, NaN, Infinity, 86400001]) {
+        const result = await controller.run(request({ maxDurationMs }));
+        assert.equal(result.reason_code, "PROCESS_REQUEST_INVALID"); assert.equal(result.termination_state, "not_started");
+      }
+      assert.equal(launched, before);
+    });
+    await check("portable explicit verification supervision omits the execution timer and retains closure", async () => {
+      const verification = createWindowsProcessTreeController({ helperPath: path.join(cwd, "helper.exe"), helperSha256: sha256,
+        helperSourceSha256: sha256, candidateSha256: sha256, allowNoDeadline: true });
+      const originalTimer = globalThis.setTimeout; let timers = 0;
+      globalThis.setTimeout = (...args) => { timers++; return originalTimer(...args); };
+      let result;
+      try { result = await verification.run(request({ maxDurationMs: null })); }
+      finally { globalThis.setTimeout = originalTimer; }
+      assert.equal(timers, 0); assert.equal(result.outcome, "completed"); assert.equal(result.termination_proof.active_processes, 0);
+      assert.equal(payloads.at(-1).max_duration_ms, null); assert.equal(payloads.at(-1).supervision_only, true);
     });
     await check("portable invalid timeoutSignal is rejected without spawn", async () => {
       for (const timeoutSignal of [null, {}, { aborted: true }, "timeout"]) await preflight({ timeoutSignal }, "failed", "PROCESS_REQUEST_INVALID");
@@ -144,7 +163,7 @@ export async function verifyPortableProcessTreeFixtures() {
   }
 }
 
-const checks = [], digest = (file) => createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+const checks = [], treeObservations = [], controlObservations = [], digest = (file) => createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 const check = async (name, action) => { await action(); checks.push({ name, status: "PASS" }); };
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (error) { if (error.code === "ESRCH") return false; throw error; } };
 async function assertGone(pids) {
@@ -172,7 +191,21 @@ try {
   assert.equal(manifest.contract_version, "agent-process-helper-build.v1");
   const binding = { helperPath: manifest.helper_path, helperSha256: manifest.helper_sha256,
     helperSourceSha256: manifest.source_sha256, candidateSha256: digest(path.resolve(import.meta.dirname, "../../src/adapters/agents/process-tree/windows-process-tree-controller.mjs")) };
-  const controller = createWindowsProcessTreeController(binding);
+  const nativeController = createWindowsProcessTreeController(binding);
+  const controller = { checkAvailability: nativeController.checkAvailability, async run(input, options = {}) {
+    const started = Date.now(), events = [];
+    try {
+      const result = await nativeController.run(input, { ...options, onEvent(event) {
+        events.push({ type: event.type, after_ms: Date.now() - started });
+        return options.onEvent?.(event);
+      } });
+      controlObservations.push({ runner_id: input.runnerId, max_duration_ms: input.maxDurationMs, events, result });
+      return result;
+    } catch (error) {
+      controlObservations.push({ runner_id: input.runnerId, max_duration_ms: input.maxDurationMs, events,
+        error: { code: error.code ?? null, message: error.message } }); throw error;
+    }
+  } };
   const request = (script, changes = {}) => ({ runnerId: `fixture.${randomUUID()}`, executable: process.execPath,
     executableSha256: digest(process.execPath), args: ["-e", script], cwd,
     env: { SystemRoot: process.env.SystemRoot }, stdin: "", maxDurationMs: 10000, stopTimeoutMs: 3000, ...changes });
@@ -213,16 +246,21 @@ try {
   spectator = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { cwd, stdio: "ignore", windowsHide: true });
   spectatorExit = new Promise((resolve) => spectator.once("exit", resolve));
   await check("unsettled prepared callback is bounded and late completion never resumes", async () => {
-    const events = []; let completeCallback;
-    const sentinel = path.join(cwd, "late-resume-forbidden.txt"), started = Date.now();
-    const result = await controller.run(request("require('node:fs').writeFileSync('late-resume-forbidden.txt','bad')", { maxDurationMs: 600 }), {
+    const events = [], timeout = new AbortController(); let completeCallback, stoppedAt = null;
+    const sentinel = path.join(cwd, "late-resume-forbidden.txt");
+    const result = await controller.run(request("require('node:fs').writeFileSync('late-resume-forbidden.txt','bad')"), {
+      timeoutSignal: timeout.signal,
       onEvent(event) {
         events.push(event.type);
-        if (event.type === "prepared") return new Promise((resolve) => { completeCallback = resolve; });
+        if (event.type === "prepared") {
+          queueMicrotask(() => { stoppedAt = Date.now(); timeout.abort(); });
+          return new Promise((resolve) => { completeCallback = resolve; });
+        }
         assert.fail("suspended worker must not emit another callback");
       },
     });
-    assert(Date.now() - started < 4500, "callback cannot extend the process deadline indefinitely");
+    assert(Number.isSafeInteger(stoppedAt));
+    assert(Date.now() - stoppedAt < 4500, "callback cannot extend shutdown after the observed timeout");
     assert.equal(result.outcome, "timed_out", JSON.stringify(result)); assert.equal(result.termination_state, "confirmed");
     assert.equal(result.termination_proof.active_processes, 0); assert.equal(fs.existsSync(sentinel), false);
     assert.deepEqual(events, ["prepared"]); assert.equal(typeof completeCallback, "function");
@@ -231,48 +269,68 @@ try {
     assert(alive(spectator.pid), "unrelated process preserved"); await assertGone([result.runner.pid]);
   });
   await check("unsettled stdout callback cannot hide terminal proof after helper exits", async () => {
-    const events = []; const started = Date.now();
-    const result = await controller.run(request("process.stdout.write('bounded callback');", { maxDurationMs: 600 }), {
-      onEvent(event) {
-        events.push(event.type);
-        if (event.type === "stdout") return new Promise(() => {});
-      },
-    });
-    assert(Date.now() - started < 4500, "closed helper cannot disable the callback deadline");
+    const events = [], timeout = new AbortController(), originalSpawn = childProcess.spawn;
+    let result, helperClosed = false, stdoutStarted = false, stoppedAt = null;
+    const stopAfterMilestones = () => {
+      if (helperClosed && stdoutStarted && !timeout.signal.aborted) { stoppedAt = Date.now(); timeout.abort(); }
+    };
+    // Observe the real helper's close event; do not replace its process or
+    // predict when stdout becomes available from a previous invocation.
+    childProcess.spawn = (...args) => {
+      const helper = originalSpawn(...args);
+      if (path.resolve(args[0]).toLowerCase() === path.resolve(manifest.helper_path).toLowerCase())
+        helper.once("close", () => { helperClosed = true; stopAfterMilestones(); });
+      return helper;
+    };
+    syncBuiltinESMExports();
+    try {
+      result = await controller.run(request("process.stdout.write('bounded callback');"), {
+        timeoutSignal: timeout.signal,
+        onEvent(event) {
+          events.push(event.type);
+          if (event.type === "stdout") { stdoutStarted = true; queueMicrotask(stopAfterMilestones); return new Promise(() => {}); }
+        },
+      });
+    } finally { childProcess.spawn = originalSpawn; syncBuiltinESMExports(); }
+    assert(helperClosed && stdoutStarted && Number.isSafeInteger(stoppedAt));
+    assert(Date.now() - stoppedAt < 4500, "closed helper cannot disable timeout of its unsettled callback");
     assert.equal(result.outcome, "timed_out", JSON.stringify(result)); assert.equal(result.termination_state, "confirmed");
     assert.equal(result.termination_proof.active_processes, 0); assert(events.includes("stdout"));
     const settledEvents = [...events]; await delay(80); assert.deepEqual(events, settledEvents);
     assert(alive(spectator.pid), "unrelated process preserved"); await assertGone([result.runner.pid]);
   });
   await check("abort releases an unsettled callback without waiting for task timeout", async () => {
-    const abort = new AbortController(), events = [], started = Date.now();
+    const abort = new AbortController(), events = []; let stoppedAt = null;
     const result = await controller.run(request("setInterval(()=>{},1000)"), {
       signal: abort.signal,
       onEvent(event) {
         events.push(event.type);
-        if (event.type === "prepared") { setTimeout(() => abort.abort(), 30); return new Promise(() => {}); }
+        if (event.type === "prepared") { setTimeout(() => { stoppedAt = Date.now(); abort.abort(); }, 30); return new Promise(() => {}); }
       },
     });
-    assert(Date.now() - started < 4500); assert.equal(result.outcome, "cancelled", JSON.stringify(result));
+    assert(Number.isSafeInteger(stoppedAt)); assert(Date.now() - stoppedAt < 4500); assert.equal(result.outcome, "cancelled", JSON.stringify(result));
     assert.equal(result.termination_state, "confirmed"); assert.deepEqual(events, ["prepared"]);
     assert(alive(spectator.pid), "unrelated process preserved"); await assertGone([result.runner.pid]);
   });
   const treeScript = "const c=require('node:child_process').spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore',windowsHide:true}); console.log(JSON.stringify({parent:process.pid,child:c.pid}));setInterval(()=>{},1000);";
   async function treeCase(mode) {
-    const abort = new AbortController(); let runner, observation, text = "";
-    const result = await controller.run(request(treeScript, { maxDurationMs: mode === "timeout" ? 700 : 10000 }), {
+    const abort = new AbortController(), timeout = new AbortController(); let runner, observation, text = "";
+    const result = await controller.run(request(treeScript), {
       signal: abort.signal,
+      timeoutSignal: mode === "timeout" ? timeout.signal : undefined,
       onEvent: async (event) => {
         if (event.type === "prepared") runner = event;
         if (event.type === "stdout") {
           text += event.bytes.toString(); if (!text.includes("\n")) return;
           observation = JSON.parse(text.trim());
           if (mode === "cancel") abort.abort();
+          if (mode === "timeout") timeout.abort();
           if (mode === "helper-death") process.kill(runner.helper_pid);
         }
       },
     });
-    assert(observation?.child > 0, "descendant must be observed before stop");
+    treeObservations.push({ mode, observation: observation ?? null, result });
+    assert(observation?.child > 0, "descendant must be observed before stop: " + JSON.stringify(treeObservations.at(-1)));
     await assertGone([observation.parent, observation.child]); assert(alive(spectator.pid), "unrelated process preserved");
     return result;
   }
@@ -280,7 +338,15 @@ try {
     const result = await treeCase("cancel"); assert.equal(result.outcome, "cancelled", JSON.stringify(result));
     assert.equal(result.termination_state, "confirmed"); assert.equal(result.termination_proof.active_processes, 0);
   });
-  await check("native timeout kills descendants with zero-active proof", async () => {
+  await check("native original600ms and700ms fixed deadlines remain effective without readiness assumptions", async () => {
+    for (const maxDurationMs of [600, 700]) {
+      const result = await controller.run(request("setInterval(()=>{},1000)", { maxDurationMs }));
+      treeObservations.push({ mode: "fixed" + maxDurationMs + "ms", result });
+      assert.equal(result.outcome, "timed_out", JSON.stringify(result)); assert.equal(result.termination_state, "confirmed");
+      assert.equal(result.termination_proof.active_processes, 0); assert(alive(spectator.pid));
+    }
+  });
+  await check("observed native timeout kills descendants with zero-active proof", async () => {
     const result = await treeCase("timeout"); assert.equal(result.outcome, "timed_out", JSON.stringify(result));
     assert.equal(result.termination_state, "confirmed");
   });
@@ -331,7 +397,7 @@ try {
 console.log(JSON.stringify({ status: process.exitCode ? "FAIL" : "PASS", proof_class: portable ? "portable-process-controller-doubles" : "native-process-windows",
   codex_executed: false, sandbox_containment_qualified: false,
   helper_sha256: manifest?.helper_sha256 ?? null, source_sha256: manifest?.source_sha256 ?? null,
-  checks, cleanup }, null, 2));
+  checks, tree_observations: treeObservations, control_observations: controlObservations, cleanup }, null, 2));
 
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) await main();

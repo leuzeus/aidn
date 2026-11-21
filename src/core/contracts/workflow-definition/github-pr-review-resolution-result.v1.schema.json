@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/github-pr-review-resolution-result.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "effect_status",
+    "action",
+    "operation_id",
+    "repository_id",
+    "pull_request_id",
+    "head_oid",
+    "base_oid",
+    "thread_id",
+    "actor_id",
+    "observed_until",
+    "basis_sha256"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "github-pr-review-resolution-result.v1"
+    },
+    "effect_status": {
+      "enum": [
+        "confirmed",
+        "no_effect"
+      ]
+    },
+    "action": {
+      "enum": [
+        "resolved",
+        "recovered"
+      ]
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "repository_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+    },
+    "pull_request_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+    },
+    "head_oid": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "base_oid": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "thread_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+    },
+    "actor_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+    },
+    "observed_until": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "basis_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-post-merge-fast-forward-plan.v1",
+  "x-aidn-contract-version": "standard-pr-post-merge-fast-forward-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "decision_operation_id",
+    "decision_receipt_sha256",
+    "subject_sha256",
+    "git"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-pr-post-merge-fast-forward-plan.v1"
+    },
+    "decision_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "decision_receipt_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "subject_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "repository_sha256",
+        "fetch_plan_sha256",
+        "source_ref",
+        "local_head",
+        "remote_head",
+        "behind",
+        "before"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "repository_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "fetch_plan_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_ref": {
+          "type": "string",
+          "pattern": "^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]{0,191}$"
+        },
+        "local_head": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "remote_head": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "behind": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "before": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "config_sha256",
+            "local_sha256",
+            "changes_sha256",
+            "files_sha256",
+            "head_reflog",
+            "branch_reflog"
+          ],
+          "properties": {
+            "config_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "local_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "changes_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "files_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "head_reflog": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "length",
+                "sha256"
+              ],
+              "properties": {
+                "length": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4194304
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            },
+            "branch_reflog": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "length",
+                "sha256"
+              ],
+              "properties": {
+                "length": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4194304
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

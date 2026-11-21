@@ -19,6 +19,9 @@ import { planAuthorization, applyAuthorization } from "../../src/application/ins
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { validateJsonSchema, validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import { resolveCliEffectClass } from "../../src/core/cli/effect-policy.mjs";
+import { verifyStandardConsoleExactAction } from "./standard-console-action-test-lib.mjs";
+import { verifyStandardWorkflowCallAction } from "./standard-workflow-call-action-test-lib.mjs";
+import { verifyStandardConsoleEntry } from "./verify-standard-console-entry-fixtures.mjs";
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-workflow-console-")), repo = fileURLToPath(new URL("../../", import.meta.url));
 const original = JSON.parse(fs.readFileSync(path.join(repo, "tests/fixtures/workflow-shadow/diagnostic-correction.v1.json")));
@@ -38,6 +41,9 @@ const put = (file, value) => { fs.mkdirSync(path.dirname(file), { recursive: tru
 let checks = 0;
 async function check(name, action) { await action(); checks++; console.log("PASS " + name); }
 try {
+  await check("STANDARD call actions retain exact entry and return through the service", verifyStandardWorkflowCallAction);
+  await check("STANDARD console retains the exact timed action and browser consent subject", verifyStandardConsoleExactAction);
+  await check("public console CLI applies the published STANDARD operation and cold replay/SIM", verifyStandardConsoleEntry);
   await check("public contracts validate and help/JSON cannot start a dashboard", async () => {
     for (const schema of Object.values(schemas)) assert.deepEqual(validateJsonSchemaDefinition(schema), []);
     let started = false;
@@ -81,12 +87,12 @@ try {
     for (const changed of ["request", "token", "instance"]) {
       const pendingPreview = get("preview").onclick(); get(changed).listeners.input();
       // Even an edit reverted to its original value invalidates the pending result.
-      respond({ can_apply: true, action_sha256: "a".repeat(64) }); await pendingPreview;
+      respond({ can_apply: true, action_sha256: "a".repeat(64), action: { effects: ["canonical_workflow_checkpoint"] } }); await pendingPreview;
       get("approve").checked = true; get("approve").onchange(); assert.equal(get("apply").disabled, true);
       const before = requests.length; await get("apply").onclick(); assert.equal(requests.length, before);
     }
     const preview = get("preview").onclick(); get("approve").checked = true;
-    respond({ can_apply: true, action_sha256: "b".repeat(64) }); await preview;
+    respond({ can_apply: true, action_sha256: "b".repeat(64), action: { effects: ["canonical_workflow_checkpoint"] } }); await preview;
     assert.equal(get("approve").checked, false); get("approve").checked = true; get("approve").onchange(); assert.equal(get("apply").disabled, false);
     const application = get("apply").onclick(); assert.deepEqual(requests.at(-1).request, request); assert.equal(requests.at(-1).expectPlan, "b".repeat(64));
     respond({ written: true }); await application; assert.equal(get("apply").disabled, true);
@@ -95,7 +101,7 @@ try {
     const target = path.join(root, mode); activateWorkflowConsoleFixture(target, path.join(root, "package"));
     put(path.join(target, ".aidn/config.json"), { runtime: { stateMode: mode } });
     if (mode !== "files") createArtifactStore({ sqliteFile: path.join(target, ".aidn/runtime/index/workflow-index.sqlite") }).close();
-    const requestFile = path.join(root, mode + "-request.json"), request = { operation: "initialize", input: { instanceId: "sample", definition, context: { ...context, state_mode: mode } } };
+    const requestFile = path.join(root, mode + "-request.json"), request = { operation: "initialize", input: { engine: "legacy", instanceId: "sample", definition, context: { ...context, state_mode: mode } } };
     put(requestFile, request);
     const server = await startWorkflowDashboard({ targetRoot: target });
     const api = async (route, body, headers = {}) => fetch(server.url + "/api/" + route, { method: "POST", headers: { Origin: server.url, "Content-Type": "application/json", Authorization: "Bearer " + server.token, ...headers }, body: JSON.stringify(body) });

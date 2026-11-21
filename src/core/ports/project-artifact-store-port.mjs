@@ -23,3 +23,12 @@ export function assertProjectArtifactReplacements(store) {
   if (typeof store.replaceArtifact !== 'function') throw new TypeError('ProjectArtifactStore requires replaceArtifact');
   return store;
 }
+
+// Optional targeted deletion. Callers must first establish their own lifecycle,
+// authorization, resume and retained-trace evidence. There is no read/unlink or
+// read/delete fallback when an adapter lacks this transactional capability.
+export function assertProjectArtifactCompareDelete(store) {
+  assertProjectArtifactStore(store);
+  if (typeof store.compareAndDeleteArtifact !== 'function') throw new TypeError('ProjectArtifactStore requires compareAndDeleteArtifact');
+  return store;
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-session-initialize-input.v1",
+  "x-aidn-contract-version": "standard-session-initialize-input.v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["session_id", "session_branch", "objective"],
+  "properties": {
+    "session_id": { "type": "string", "pattern": "^S[0-9]{3,6}$" },
+    "session_branch": { "type": "string", "maxLength": 56 },
+    "objective": { "type": "string", "minLength": 1, "maxLength": 512, "pattern": "^[^\r\n\u0000]+$" },
+    "mode": { "const": "UNKNOWN" }
+  }
+}

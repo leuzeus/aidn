@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-prework-subject.v1",
+  "x-aidn-contract-version": "standard-cycle-prework-subject.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "kind",
+    "origin_operation_id",
+    "origin_sha256",
+    "scope_sha256",
+    "canonical_sha256",
+    "product_sha256",
+    "head",
+    "session_id",
+    "cycle_id",
+    "cycle_path",
+    "proposal_sha256",
+    "rule_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-prework-subject.v1"
+    },
+    "kind": {
+      "enum": [
+        "fresh_cycle",
+        "canonical_plan"
+      ]
+    },
+    "origin_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "origin_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "scope_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "canonical_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "product_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "head": {
+      "type": "string",
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{3,6}$"
+    },
+    "cycle_id": {
+      "type": "string",
+      "pattern": "^C[0-9]{3,6}$"
+    },
+    "cycle_path": {
+      "type": "string",
+      "maxLength": 192,
+      "pattern": "^cycles/C[0-9]{3,6}-[A-Za-z0-9._-]+$"
+    },
+    "proposal_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "rule_refs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "type": "string",
+        "pattern": "^SPEC-R(?:0[1-9]|1[01])$"
+      }
+    }
+  }
+}

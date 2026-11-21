@@ -1,0 +1,25 @@
+{
+  "status": "PASS",
+  "evidence": "packed-startup-component-asset-resolution",
+  "recorded_at": "2026-11-02T02:57:27Z",
+  "source_commit": "5e915e61a2174230498f4be6ed24e4282a73724c",
+  "archive_filename": "aidn-workflow-0.19.0.tgz",
+  "archive_sha256": "997d3d23fbc5759522d32f6be99361d969ad0eeb41b65614c882c127091b7374",
+  "model_id": "aidn-standard-startup",
+  "model_revision": 1,
+  "model_sha256": "0f65e074a33bdf815fcb24f8cda6e3811f79ff9e2f8acdcd5c1a5f6f02cdfb16",
+  "catalog_sha256": "181aab0bc6b101b9b03cc5449406b0de9d5440cc958d272e24f252a58e68c606",
+  "procedure": [
+    "Generate a local archive with npm pack --ignore-scripts --json and an isolated offline npm cache.",
+    "Check every archive member stays under package/ before extracting into an owned temporary directory.",
+    "Start a new Node process from outside the source checkout with NODE_PATH, NODE_OPTIONS and NODE_V8_COVERAGE removed.",
+    "Install an fs.readFileSync guard before importing the extracted startup composition; resolve physical paths and refuse reads outside the extracted package.",
+    "Load the fixed catalog, model, SPEC, skills and direct implementation inputs; compare model/catalog identity with the source assets."
+  ],
+  "guarded_unique_sync_asset_reads": 47,
+  "boundary": "The guard covers the synchronous asset reads used by this loader and binding digest, not arbitrary process filesystem access or OS isolation.",
+  "archive_retention": "Temporary archive and extracted project removed after the probe.",
+  "business_execution": "NOT_RUN",
+  "native": "NOT_RUN",
+  "full_installed_workflow": "NOT_RUN"
+}

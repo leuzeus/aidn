@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-canonical-cycle-resume-observe-input.v1",
+  "x-aidn-contract-version": "standard-canonical-cycle-resume-observe-input.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "implementation_operation_id"
+  ],
+  "properties": {
+    "implementation_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    }
+  }
+}

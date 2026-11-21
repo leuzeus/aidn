@@ -1,0 +1,225 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-workflow-catalog.v1",
+  "x-aidn-contract-version": "standard-workflow-catalog.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "component_id",
+    "revision",
+    "scope",
+    "model",
+    "specification",
+    "bindings",
+    "activities"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-workflow-catalog.v1"
+    },
+    "component_id": {
+      "const": "aidn-standard"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "complete_standard_workflow",
+        "entry_conditions",
+        "remaining_activities"
+      ],
+      "properties": {
+        "kind": {
+          "const": "composed_committing_cycle_component"
+        },
+        "complete_standard_workflow": {
+          "const": false
+        },
+        "entry_conditions": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "enum": [
+              "fresh_session_admission",
+              "single_new_cycle"
+            ]
+          }
+        },
+        "remaining_activities": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          }
+        }
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "model_id",
+        "revision"
+      ],
+      "properties": {
+        "path": {
+          "const": "package/catalogs/process-models/aidn-standard.v1.json"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "model_id": {
+          "const": "aidn-standard"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "specification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "const": "docs/SPEC.md"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "bindings": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "node_id",
+          "binding",
+          "skill_source"
+        ],
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "binding": {
+            "type": "object"
+          },
+          "skill_source": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^scaffold/codex/aidn-[a-z][a-z0-9-]{0,63}/SKILL\\.md$"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "activities": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "node_id",
+          "output_contract",
+          "rule_refs",
+          "skill_sources"
+        ],
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "output_contract": {
+            "enum": [
+              "standard-cycle-plan-proposal.v1",
+              "standard-cycle-task-work-report.v1",
+              "standard-cycle-audit-report.v1",
+              "standard-pr-triage-report.v1",
+              "standard-drift-report.v1",
+              "standard-mode-work-report.v1"
+            ]
+          },
+          "rule_refs": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 11,
+            "items": {
+              "enum": [
+                "SPEC-R01",
+                "SPEC-R02",
+                "SPEC-R03",
+                "SPEC-R04",
+                "SPEC-R05",
+                "SPEC-R06",
+                "SPEC-R07",
+                "SPEC-R08",
+                "SPEC-R09",
+                "SPEC-R10",
+                "SPEC-R11"
+              ]
+            }
+          },
+          "skill_sources": {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "pattern": "^scaffold/codex/aidn-[a-z][a-z0-9-]{0,63}/SKILL\\.md$"
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

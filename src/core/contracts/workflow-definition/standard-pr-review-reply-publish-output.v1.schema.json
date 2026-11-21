@@ -1,0 +1,177 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-review-reply-publish-output.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-pr-review-reply-publish-output.v1"
+    },
+    "operation_ref": {
+      "const": "session_pr_review_reply_publish"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "blocked",
+        "reconciliation_required"
+      ]
+    },
+    "effect_status": {
+      "enum": [
+        "no_effect",
+        "confirmed",
+        "unknown"
+      ]
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {}
+    },
+    "observations": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reason_code"
+          ],
+          "properties": {
+            "reason_code": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reply"
+          ],
+          "properties": {
+            "reply": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "contract_version",
+                "effect_status",
+                "action",
+                "operation_id",
+                "repository_id",
+                "pull_request_id",
+                "head_oid",
+                "base_oid",
+                "thread_id",
+                "target_comment_id",
+                "reply_id",
+                "actor_id",
+                "body_sha256",
+                "published_at",
+                "observed_until"
+              ],
+              "properties": {
+                "contract_version": {
+                  "const": "github-pr-review-reply-result.v1"
+                },
+                "effect_status": {
+                  "enum": [
+                    "confirmed",
+                    "no_effect"
+                  ]
+                },
+                "action": {
+                  "enum": [
+                    "published",
+                    "recovered"
+                  ]
+                },
+                "operation_id": {
+                  "type": "string",
+                  "pattern": "^op_[a-f0-9]{40}$"
+                },
+                "repository_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+                },
+                "pull_request_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+                },
+                "head_oid": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{40}$"
+                },
+                "base_oid": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{40}$"
+                },
+                "thread_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+                },
+                "target_comment_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+                },
+                "reply_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+                },
+                "actor_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+                },
+                "body_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "published_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "observed_until": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "pattern": "^github:pr-review-reply/[A-Za-z0-9_=-]{1,256}$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

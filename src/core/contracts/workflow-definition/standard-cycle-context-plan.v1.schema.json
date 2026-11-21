@@ -1,0 +1,94 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "input",
+    "prepared_at_ms",
+    "scope",
+    "mode",
+    "session_sha256",
+    "current_sha256",
+    "runtime_sha256",
+    "session_path"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-context-plan.v1"
+    },
+    "operation_ref": {
+      "const": "cycle_context_refresh"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_id"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "pattern": "^S[0-9]{3,6}$"
+        }
+      }
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project",
+        "persistence",
+        "branch",
+        "head"
+      ],
+      "properties": {
+        "project": {
+          "type": "object"
+        },
+        "persistence": {
+          "type": "object"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40,64}$"
+        }
+      }
+    },
+    "mode": {
+      "enum": [
+        "COMMITTING",
+        "EXPLORING"
+      ]
+    },
+    "session_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "current_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "runtime_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "session_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 192
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-context-plan.v1",
+  "x-aidn-contract-version": "standard-cycle-context-plan.v1"
+}

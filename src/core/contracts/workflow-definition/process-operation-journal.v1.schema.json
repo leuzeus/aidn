@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/process-operation-journal.v1",
+  "x-aidn-contract-version": "process-operation-journal.v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "operation_id", "revision", "phase", "preview", "intent", "grant", "owner", "results", "key_id", "authentication"],
+  "properties": {
+    "contract_version": { "const": "process-operation-journal.v1" },
+    "operation_id": { "type": "string", "pattern": "^op_[a-f0-9]{40}$" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "phase": { "enum": ["staged", "dispatching", "receipted"] },
+    "preview": { "type": "object" },
+    "intent": { "type": "object" },
+    "grant": { "type": ["object", "null"] },
+    "owner": { "type": ["object", "null"], "additionalProperties": false, "required": ["generation", "pid"],
+      "properties": { "generation": { "type": "string", "pattern": "^[a-f0-9-]{36}$" }, "pid": { "type": "integer", "minimum": 1 } } },
+    "decision_claim_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "results": { "type": "array", "maxItems": 32, "items": { "type": "object", "additionalProperties": false,
+      "required": ["output", "receipt"], "properties": { "output": { "type": "object" }, "receipt": { "type": "object" } } } },
+    "key_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "authentication": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

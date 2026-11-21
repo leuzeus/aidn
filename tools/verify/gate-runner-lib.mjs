@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { runOwnedVerificationCommandSync } from "./owned-verification-process-lib.mjs";
 import { findCodexLauncher } from "./codex-discovery-lib.mjs";
 import {
   captureGitHead,
@@ -155,7 +156,7 @@ export function inferGateContext({
   return branch.startsWith("release/") ? "release" : "dev";
 }
 
-function defaultCommandRunner({
+export function defaultCommandRunner({
   repoRoot,
   script,
   env,
@@ -165,11 +166,13 @@ function defaultCommandRunner({
   const npmCli = path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
   const npmCommand = fs.existsSync(npmCli) ? process.execPath : "npm";
   const npmPrefix = fs.existsSync(npmCli) ? [npmCli] : [];
+  if (process.platform === "win32") return runOwnedVerificationCommandSync({ command: npmCommand,
+    args: [...npmPrefix, "run", script], cwd: repoRoot, env, timeoutMs, maxBuffer });
   return spawnSync(npmCommand, [...npmPrefix, "run", script], {
     cwd: repoRoot,
     env,
     encoding: "utf8",
-    timeout: timeoutMs,
+    ...(timeoutMs === null ? {} : { timeout: timeoutMs }),
     maxBuffer,
     shell: false,
   });
@@ -216,12 +219,15 @@ export function runGateFamily({
   commandRunner = defaultCommandRunner,
   stdoutWriter = (value) => process.stdout.write(value),
   stderrWriter = (value) => process.stderr.write(value),
-  timeoutMs = 900000,
+  timeoutMs,
   maxBuffer = 30 * 1024 * 1024,
 }) {
+  const onDemand = new Set(catalog.on_demand_gates ?? []);
+  const publication = new Set(catalog.publication_gates ?? []);
   const selected = catalog.gates.filter(
     (gate) => (requested === "all"
         || requested === "obligations"
+        || (requested === "publication" && publication.has(gate.id))
         || gate.family === requested)
       && (!admission || gate.execution_scope !== "manual-only")
       && (!explicitGate || gate.id === explicitGate),
@@ -230,10 +236,15 @@ export function runGateFamily({
     throw new Error(`Unknown gate for ${requested}: ${explicitGate}`);
   }
 
+  if (requested === "publication" && (publication.size === 0 || selected.length !== publication.size
+    || selected.some(gate => onDemand.has(gate.id) || gate.obligation?.[context] !== "required"))) {
+    throw new Error("Invalid publication gate selection");
+  }
   const results = [];
   for (const gate of selected) {
     const started = Date.now();
-    const obligation = gate.obligation?.[context] ?? "required";
+    const deferred = admission && onDemand.has(gate.id);
+    const obligation = deferred ? "skip" : gate.obligation?.[context] ?? "required";
     if (obligation === "skip") {
       results.push({
         id: gate.id,
@@ -243,7 +254,7 @@ export function runGateFamily({
         obligation,
         condition: gate.condition,
         duration_ms: 0,
-        reason: `catalog obligation is skip for ${context}`,
+        reason: deferred ? "on-demand qualification outside admission" : `catalog obligation is skip for ${context}`,
       });
       continue;
     }
@@ -303,7 +314,14 @@ export function runGateFamily({
           ...env,
           AIDN_GATE_CONTEXT: context,
         },
-        timeoutMs,
+        // This declared manifest coordinates individually supervised fixtures.
+        // Its length is not an execution deadline. Explicit caller budgets
+        // remain exact; ordinary single-command gates keep their default.
+        timeoutMs: timeoutMs === undefined
+          ? ((gate.id === "codex-integration-lifecycle" && gate.script === "perf:verify-codex-integration")
+            || (gate.id === "codex-context-completion" && gate.script === "perf:verify-context-completion")
+             || (gate.id === "codex-context-coordination" && gate.script === "perf:verify-context-coordination")) ? null : 900000
+          : timeoutMs,
         maxBuffer,
       });
     } catch (error) {
@@ -361,6 +379,7 @@ export function runGateFamily({
       duration_ms: Date.now() - started,
       reason,
       exit_code: Number.isInteger(result?.status) ? result.status : null,
+      ...(result?.verification_process ? { verification_process: result.verification_process } : {}),
       condition_evaluation: {
         met: condition.met,
         failure_kind: condition.failure_kind,
@@ -437,6 +456,10 @@ function formatGateProcessDiagnostic(item) {
   }
   if (item.error) {
     pieces.push(`error=${JSON.stringify(item.error)}`);
+  }
+  if (item.verification_process) {
+    pieces.push(`owned_tree=${item.verification_process.cleanup.state}`,
+      `process_evidence=${JSON.stringify(item.verification_process.evidence_dir)}`);
   }
   return pieces.join(" ");
 }

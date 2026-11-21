@@ -1,0 +1,48 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "checkpoint_operation_id",
+    "candidate_cycle"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-pr-correction-review-input.v2"
+    },
+    "checkpoint_operation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 43,
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "candidate_cycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cycle_id",
+        "title",
+        "objective"
+      ],
+      "properties": {
+        "cycle_id": {
+          "type": "string",
+          "pattern": "^C[0-9]{3,6}$"
+        },
+        "title": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+        },
+        "objective": {
+          "type": "string",
+          "minLength": 15,
+          "maxLength": 512,
+          "pattern": "^[^\\r\\n\\u0000]+$"
+        }
+      }
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-correction-review-input.v2",
+  "x-aidn-contract-version": "standard-pr-correction-review-input.v2"
+}

@@ -1,0 +1,140 @@
+{
+  "observed_at_utc": "2026-11-04T00:04:19.937Z",
+  "source_commit": "73240f7108ebf6019230ca3b7784bd7c656a611b",
+  "model_revision": 49,
+  "model_sha256": "6c281d2110dc537ead5438504f783183b9195a6fcfba684ef927ea7388a36439",
+  "catalog_sha256": "45f7ed57edac3a7b003f4999831073b7f3c93204fb805dd8d808f16ebb6f58f2",
+  "runtime_pin_sha256": "db9a5a0f9da70b75612d94da861c1a9e790d2050e6cc4704b834cfbe3aa0ef7a",
+  "runtime_pinned_files": 314,
+  "nodes": 95,
+  "operation_occurrences": 60,
+  "referenced_bindings": 50,
+  "registered_bindings": 57,
+  "native_activities": 8,
+  "complete_standard_workflow": false,
+  "proof_class": "offline components with real canonical stores, CAS, Git/bare and production observation/application ports",
+  "doubles": [
+    "accepted-history lookup",
+    "GitHub transport",
+    "human/grant identities"
+  ],
+  "evidence": [
+    {
+      "log_name": "github-review-evidence-components-20261103.log",
+      "bytes": 1134,
+      "sha256": "12930a1709f208e37bc9eab91ece8d966dee75f920192623fb999aab392da94e",
+      "result": {
+        "status": "PASS",
+        "checks": 13,
+        "proof_class": "actual-read-only-adapter-with-fixture-GitHub-transport",
+        "actual_network": "NOT_RUN",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "cleanup": "no checkout files created; temporary host directory removed by fixture finally"
+    },
+    {
+      "log_name": "review-observation-v2-files-20261103.log",
+      "bytes": 1206,
+      "sha256": "2bb5784542c8d6fdb565b43a4866f62e9624c0db0ac62913fb72e7802c76bcac",
+      "result": {
+        "status": "PASS",
+        "mode": "files",
+        "checks": 10,
+        "proof_class": "real-canonical-CAS-Git-bare-and-observation-ports",
+        "accepted_history": "fixture-lookup",
+        "provider_transport": "fixture",
+        "authenticated_native_human": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "cleanup": {
+        "cleanup": "confirmed",
+        "owned_roots": 2
+      }
+    },
+    {
+      "log_name": "review-observation-v2-dual-20261103.log",
+      "bytes": 1376,
+      "sha256": "67bfbde1e11dc9cb8708e14d0935781ff330193ccd83ee1b2147b048bfe7ff60",
+      "result": {
+        "status": "PASS",
+        "mode": "dual",
+        "checks": 10,
+        "proof_class": "real-canonical-CAS-Git-bare-and-observation-ports",
+        "accepted_history": "fixture-lookup",
+        "provider_transport": "fixture",
+        "authenticated_native_human": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "cleanup": {
+        "cleanup": "confirmed",
+        "owned_roots": 2
+      }
+    },
+    {
+      "log_name": "review-observation-v2-db-only-20261103.log",
+      "bytes": 1379,
+      "sha256": "b417b1203897d140dec9496e8c95d40bd83b15cdcf52776a1bd0a99af0a1a03d",
+      "result": {
+        "status": "PASS",
+        "mode": "db-only",
+        "checks": 10,
+        "proof_class": "real-canonical-CAS-Git-bare-and-observation-ports",
+        "accepted_history": "fixture-lookup",
+        "provider_transport": "fixture",
+        "authenticated_native_human": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "cleanup": {
+        "cleanup": "confirmed",
+        "owned_roots": 2
+      }
+    }
+  ],
+  "draft": {
+    "checks_per_mode": 8,
+    "status": "PASS",
+    "scope": "earlier working-tree component trial before explicit stale-snapshot and reducer-boundary cases; not final source qualification"
+  },
+  "focused_checks": {
+    "composition": 25,
+    "startup": 22,
+    "operation_contract_reducer_service": 27,
+    "published_input_boundaries": 43,
+    "legacy_thread_adapter": 18,
+    "source_of_truth_policies": 35,
+    "metadata_policies": 37,
+    "governance_completeness": "PASS",
+    "gate_catalog": "PASS after adding the same four commands to its immutable command authority",
+    "doc_references": "PASS",
+    "git_diff_check": "PASS",
+    "budget_negative_probes": 3
+  },
+  "classifier": {
+    "contract": "governance-route.v1",
+    "lane": "ASSURED",
+    "source_commit": "73240f7108ebf6019230ca3b7784bd7c656a611b",
+    "status": "route admitted",
+    "full_family_execution": "NOT_RUN",
+    "governance_admission_rollup": "NOT_RUN"
+  },
+  "composed49": {
+    "source_commit": "73240f7108ebf6019230ca3b7784bd7c656a611b",
+    "status": "RUNNING",
+    "initial_fixture_budget_ms": 10800000,
+    "deadline_renewal": false,
+    "proof": "no verdict yet"
+  },
+  "limits": {
+    "actual_network_provider": "NOT_RUN",
+    "native_human_provider": "NOT_RUN",
+    "installed_exact_archive": "NOT_RUN",
+    "PostgreSQL": "NOT_RUN",
+    "actual_triage": "NOT_IMPLEMENTED",
+    "external_durable_delivery": "NOT_IMPLEMENTED",
+    "merge_authorization": "NOT_ESTABLISHED",
+    "ordinary_entrypoint": "UNCHANGED",
+    "general_reconciliation": "OPEN"
+  },
+  "direct_runtime_pin_coverage_limit": "Review files and standard-operation-contracts are covered by operation implementation hashes but absent from the launchers direct runtime file list in source73240f7; explicit direct-pin successor required. Running composition49 cannot qualify that successor."
+}

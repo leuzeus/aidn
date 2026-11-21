@@ -23,6 +23,13 @@ const REVIEWED_CLIENT = Object.freeze({
   executable_sha256: "8f0554ede25bbc5450921897c468b2e84635aa513c5017457997af0954581f49",
   source_commit: "0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807",
 });
+// The public release and the historical app artifact share the reviewed source
+// commit. Each exact executable still needs its own native evidence; neither
+// artifact makes a strict profile compatible or supplies runtime availability.
+const REVIEWED_CLIENTS = Object.freeze([REVIEWED_CLIENT, Object.freeze({
+  ...REVIEWED_CLIENT,
+  executable_sha256: "21f6fb0b01ba12a687f5fcd33546c0008ebd45654fdb23d84732ee8d62ee980b",
+})]);
 const SOURCE = path.join(import.meta.dirname, "codex-validation-trampoline.cs");
 const CONTROLLER = path.resolve(import.meta.dirname, "../agents/process-tree/windows-process-tree-controller.mjs");
 const HELPER_SOURCE = path.resolve(import.meta.dirname, "../agents/process-tree/windows-job-helper.cs");
@@ -154,12 +161,12 @@ export function fingerprintCodexSandboxValidationConfiguration(config) { assertC
 // https://github.com/openai/codex/blob/0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807/codex-rs/windows-sandbox-rs/src/identity.rs#L238
 export function getCodexSandboxValidationLaunchSupport(config) {
   assertCodexSandboxValidationConfiguration(config);
-  const reviewed = config.client.sha256 === REVIEWED_CLIENT.executable_sha256;
-  const candidate = cooperative(config) && reviewed;
+  const reviewed = REVIEWED_CLIENTS.find(client => client.executable_sha256 === config.client.sha256);
+  const candidate = cooperative(config) && Boolean(reviewed);
   return { available: candidate, native: false,
     reason_code: candidate ? "SANDBOX_NATIVE_QUALIFICATION_REQUIRED" : !reviewed ? "SANDBOX_CLIENT_UNQUALIFIED" : managed(config)
       ? "SANDBOX_SHARED_DENY_READ_UNSUPPORTED" : "SANDBOX_EXISTING_ONLY_UNSUPPORTED",
-    reviewed_client: reviewed ? { ...REVIEWED_CLIENT } : null };
+    reviewed_client: reviewed ? { ...reviewed } : null };
 }
 export function assertCodexSandboxValidationLaunchSupported(config) {
   const support = getCodexSandboxValidationLaunchSupport(config);

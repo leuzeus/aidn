@@ -1,0 +1,196 @@
+{
+  "observed_at_utc": "2026-11-04T00:53:20.343Z",
+  "source_commit": "48106fab31aba4c37ce4f9cbe305d66730338c66",
+  "lane": "ASSURED",
+  "model": {
+    "revision": 52,
+    "sha256": "567a228b93e0b9da991f0931cc76cae85aaa2a6cf126fc10e0fe75c92d8db260",
+    "catalog_sha256": "4328b47f5f65485f8c42b991dac2fb1ccbf755fafae5abd69ba5acb35873c506",
+    "nodes": 95,
+    "operations": 60,
+    "startup_revision": 110,
+    "cycle_revision": 108,
+    "runtime_pin": "60efd90d2d2ef5830767ea82cd62e526975512c397cd01df184acee248ca78d7",
+    "direct_pinned_files": 330
+  },
+  "results": [
+    {
+      "command": "node tools/perf/verify-github-review-content-fixtures.mjs",
+      "checks": 12,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:47:09.2050717Z",
+      "log": {
+        "file": "review-content-reader-20261103.log",
+        "bytes": 1176,
+        "sha256": "77068c7cfc0c1de676ad03718bd26d0cab18d754a382d8adeaafd0c566cf4bcf"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-standard-session-pr-review-fixtures.mjs --mode=files --content",
+      "checks": 10,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:51:56.7748243Z",
+      "log": {
+        "file": "review-content-files-20261103.log",
+        "bytes": 1221,
+        "sha256": "0549c92d52a3a5c12118d191b6d00e69c4271559b10cd6ff5115cce22976eba0"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-standard-session-pr-review-fixtures.mjs --mode=dual --content",
+      "checks": 10,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:51:56.1774868Z",
+      "log": {
+        "file": "review-content-dual-20261103.log",
+        "bytes": 1391,
+        "sha256": "533ffe54b03eaea0490eb453f0ab15b31a1bf2370ecc2c4272a894058774e3bf"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-standard-session-pr-review-fixtures.mjs --mode=db-only --content",
+      "checks": 10,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:51:30.3232714Z",
+      "log": {
+        "file": "review-content-db-only-20261103.log",
+        "bytes": 1394,
+        "sha256": "fbee91ffed370fe97c782c63df4b2b00393ef34a4ee1750375c360a9a044d9e9"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-github-observation-async-fixtures.mjs",
+      "checks": 10,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:47:42.0064591Z",
+      "log": {
+        "file": "review-content-async-20261103.log",
+        "bytes": 1163,
+        "sha256": "091c423907c0d26542471afdece8ef6007b19b8e39b8271f3e3ef6f19ce2b80d"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-standard-workflow-model-fixtures.mjs",
+      "checks": 22,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:47:35.0546205Z",
+      "log": {
+        "file": "review-content-models-20261103.log",
+        "bytes": 1724,
+        "sha256": "9f52503dc7311d43ad318235db96e70969140e921b7f2353052a3e412ee8cb45"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-standard-workflow-composition-fixtures.mjs",
+      "checks": 25,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:48:33.1185371Z",
+      "log": {
+        "file": "review-content-composition-corrected-20261103.log",
+        "bytes": 2354,
+        "sha256": "61e58c714f6c5f2b8eaa4c2e6d304c85cfa825b015b73b71b2cdb2523ee2c328"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-process-operation-fixtures.mjs",
+      "checks": 27,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:47:42.5058871Z",
+      "log": {
+        "file": "review-content-contracts-20261103.log",
+        "bytes": 2546,
+        "sha256": "a62b6b2f31b6817084e7e4af6966780792b443958fa6f6b1adb94e222a5292fb"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-standard-process-binding-input-fixtures.mjs",
+      "checks": 3,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:47:30.0956959Z",
+      "log": {
+        "file": "review-content-inputs-20261103.log",
+        "bytes": 577,
+        "sha256": "846fcd23f8441519d7e9b2f57e8c1070b8eb7e917495dbfecbcbb010483e7c02"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-github-review-evidence-fixtures.mjs",
+      "checks": 14,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:47:45.3987109Z",
+      "log": {
+        "file": "review-content-legacy-review-20261103.log",
+        "bytes": 1239,
+        "sha256": "7efbcecbf5160f6297825138d97b1e58784b707005f7322adfdd03c6c941d6d4"
+      }
+    },
+    {
+      "command": "node tools/perf/verify-github-pr-observation-fixtures.mjs",
+      "checks": 18,
+      "status": "PASS",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T00:47:41.6847326Z",
+      "log": {
+        "file": "review-content-legacy-threads-20261103.log",
+        "bytes": 1498,
+        "sha256": "51f8d82197e2140437c7426cfe38fd74c0d3438f3d2e9e6e0df8bcf02a525070"
+      }
+    }
+  ],
+  "initial_failures": [
+    {
+      "command": "composition suite before selected-binding correction",
+      "status": "FAIL",
+      "reason": "negative changed the first registered binding, which is now the unused historical observation; corrected case changes a binding actually selected by the published catalog",
+      "corrected": "PASS25"
+    },
+    {
+      "command": "git diff --cached --check",
+      "status": "FAIL",
+      "reason": "CRLF in four new schema files; separately normalized successor required before integration",
+      "effect_on_runtime_proof": "model52 pins retain the exact pre-normalization bytes"
+    }
+  ],
+  "additional_checks": {
+    "source_of_truth": {
+      "status": "PASS",
+      "policies": 35
+    },
+    "metadata": {
+      "status": "PASS",
+      "policies": 37
+    },
+    "gate_catalog": "PASS",
+    "doc_references": "PASS",
+    "published_input_boundaries": 43
+  },
+  "proof": "actual canonical CAS/Git/bare successor and review application ports; accepted-history lookup, provider transport, human/grant identities are fixture capabilities",
+  "replay_simulation": "actual content observation output through common reducer with synthetic boundary intent/receipt, not complete signed IR composition",
+  "cleanup": "three application modes report confirmed cleanup; reader/async report fixture_removed true",
+  "model_calls": 0,
+  "claims": {
+    "provider_content": "complete bounded bodies retained with revisions, actor identities and exact head/base/refs; no triage acceptance",
+    "full_runtime_family": "NOT_RUN",
+    "governance_admission_rollup": "NOT_RUN",
+    "composed_model52": "NOT_RUN",
+    "durable_pr_specific_wait": "NOT_RUN",
+    "triage_and_thread_effects": "NOT_RUN",
+    "merge_and_sync": "NOT_RUN",
+    "live_provider": "NOT_RUN",
+    "native_human_provider": "NOT_RUN",
+    "postgresql": "NOT_RUN",
+    "installed_archive": "NOT_RUN",
+    "complete_standard_workflow": false
+  },
+  "skips": []
+}

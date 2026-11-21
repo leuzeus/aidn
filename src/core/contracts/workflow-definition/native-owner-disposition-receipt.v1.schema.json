@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/native-owner-disposition-receipt.v1",
+  "x-aidn-contract-version": "native-owner-disposition-receipt.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "dispatch_id",
+    "plan_sha256",
+    "attempt_id",
+    "retirement_sha256",
+    "confirmed_at_ms",
+    "original_failure_preserved",
+    "complete_resource_closure",
+    "permits_resume",
+    "permits_native_renewal",
+    "accounting_reconciled",
+    "key_id",
+    "authentication",
+    "original_lease_sha256",
+    "lock_sha256",
+    "effect",
+    "native_started"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "native-owner-disposition-receipt.v1"
+    },
+    "dispatch_id": {
+      "type": "string",
+      "pattern": "^native_dispatch_[a-f0-9]{40}$"
+    },
+    "plan_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "attempt_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9-]{36}$"
+    },
+    "retirement_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "confirmed_at_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "original_failure_preserved": {
+      "const": true
+    },
+    "complete_resource_closure": {
+      "const": false
+    },
+    "permits_resume": {
+      "const": false
+    },
+    "permits_native_renewal": {
+      "const": false
+    },
+    "accounting_reconciled": {
+      "const": false
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authentication": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "original_lease_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "lock_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "effect": {
+      "const": "owner_lock_retired"
+    },
+    "native_started": {
+      "const": false
+    }
+  }
+}

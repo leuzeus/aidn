@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/process-operation-disposition.v1",
+  "x-aidn-contract-version": "process-operation-disposition.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_id",
+    "revision",
+    "plan",
+    "grant",
+    "receipt",
+    "resource_fence",
+    "attempts",
+    "admissions",
+    "acceptance_reservations",
+    "key_id",
+    "authentication"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "process-operation-disposition.v1"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "plan": {
+      "type": "object"
+    },
+    "grant": {
+      "type": "object"
+    },
+    "receipt": {
+      "type": "object"
+    },
+    "resource_fence": {
+      "type": "object"
+    },
+    "attempts": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "plan",
+          "grant",
+          "resource_fence"
+        ],
+        "properties": {
+          "plan": {
+            "type": "object"
+          },
+          "grant": {
+            "type": "object"
+          },
+          "resource_fence": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "admissions": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "instance_sha256",
+          "receipt_sha256",
+          "grant"
+        ],
+        "properties": {
+          "instance_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "receipt_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "grant": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "acceptance_reservations": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "instance_sha256",
+          "resource_fence"
+        ],
+        "properties": {
+          "instance_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "resource_fence": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authentication": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

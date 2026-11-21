@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/github-pr-review-resolution-request.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "pull_request",
+    "thread_id",
+    "basis_sha256",
+    "not_before_ms"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "github-pr-review-resolution-request.v1"
+    },
+    "pull_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "pull_request_number",
+        "expected_pull_request_id",
+        "expected_head_oid",
+        "expected_base_oid",
+        "expected_head_ref",
+        "expected_base_ref"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "github-pr-observation-request.v2"
+        },
+        "pull_request_number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "expected_pull_request_id": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "expected_head_oid": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "expected_base_oid": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "expected_head_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "expected_base_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        }
+      }
+    },
+    "thread_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+    },
+    "basis_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "not_before_ms": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

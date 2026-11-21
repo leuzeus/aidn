@@ -1,0 +1,78 @@
+{
+  "observed_at_utc": "2026-11-03T21:12:43.907Z",
+  "source": {
+    "commit": "9c9f221e10053beeca38c43e1050a4afa62f6fac",
+    "model_revision": 32,
+    "model_sha256": "ed84e539890c548e7f418e19c486eddaa920f353c848e59a79dabadd7075de9a",
+    "implementation_pin": "4fba3247cb4bd0a25e57f44cc3904540695ab3df3d03ed4d3eb7bd8394dec047"
+  },
+  "verdict": {
+    "status": "PASS",
+    "exit_code": 0,
+    "ended_at_utc": "2026-11-03T21:08:41.3597653Z"
+  },
+  "parent_and_cold_proofs": [
+    {
+      "standard_composed_proof": true,
+      "model_sha256": "ed84e539890c548e7f418e19c486eddaa920f353c848e59a79dabadd7075de9a",
+      "instance_sha256": "112eb0170b6c8de8165a852f7d66038e0d696e61412392006b733f627add7248",
+      "events": 118,
+      "application_operations": 51,
+      "native_sessions_started": 3,
+      "native_sessions_started_in_child": 0,
+      "native_prior_results": 5,
+      "cold_resume": true,
+      "cold_continuation": false,
+      "prior_operation_journals_preserved": false,
+      "simulation_trace_mode": "streamed-bounded-rows",
+      "simulation_steps": 119,
+      "terminal_ready_node": null,
+      "component_completed": true,
+      "full_standard_workflow": false,
+      "workflow_status": "COMPLETED",
+      "model_calls": 0,
+      "verification_boundary": "fixture-with-actual-Node-check",
+      "human_and_effect_authority": "fixture",
+      "replay_exact": true
+    },
+    {
+      "standard_composed_proof": true,
+      "model_sha256": "ed84e539890c548e7f418e19c486eddaa920f353c848e59a79dabadd7075de9a",
+      "instance_sha256": "112eb0170b6c8de8165a852f7d66038e0d696e61412392006b733f627add7248",
+      "events": 118,
+      "application_operations": 51,
+      "native_sessions_started": 5,
+      "native_sessions_started_in_child": 3,
+      "native_prior_results": 0,
+      "cold_resume": false,
+      "cold_continuation": true,
+      "prior_operation_journals_preserved": true,
+      "simulation_trace_mode": "streamed-bounded-rows",
+      "simulation_steps": 119,
+      "terminal_ready_node": null,
+      "component_completed": true,
+      "full_standard_workflow": false,
+      "workflow_status": "COMPLETED",
+      "model_calls": 0,
+      "verification_boundary": "fixture-with-actual-Node-check",
+      "human_and_effect_authority": "fixture",
+      "replay_exact": true
+    }
+  ],
+  "scope": "offline actual local startup/cycle/R05/promotion/session-close chain through final R07; this model has no final delivery checkpoint, branch integration or PR admission",
+  "cleanup": {
+    "parent_and_cold_child_terminal": true,
+    "fixture_root_absent": true,
+    "control_root_absent": true,
+    "source_worktree_clean": true
+  },
+  "replay_and_simulation": "exact assertions passed in the frozen source during this run; terminal fixture was then cleaned, so no independent post-cleanup replay is claimed",
+  "provider": "FAKE_WIRE",
+  "human_and_effect_authority": "FIXTURE",
+  "model_calls": 0,
+  "native_real": "NOT_RUN",
+  "installed_archive": "NOT_RUN",
+  "full_standard_workflow": false,
+  "log_sha256": "0ce411e82a9f7383b444b61e307daf03e982b4925a6c03e38336795ff2dc97c2",
+  "later_sources": "This PASS does not qualify models33/37/39"
+}

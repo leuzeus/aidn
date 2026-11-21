@@ -16,6 +16,10 @@ The classification keeps automation from confusing output format with write perm
 
 ## Rules
 
+- `convert-to-spike` creates a cycle from an active EXPLORING session. Its
+  generic pre-write admission uses the cycle-creation Git, continuity and
+  canonical initial-cycle freshness checks; it cannot require that new cycle
+  already exists. The separate specialized continuity admission remains required.
 - `--json` controls output format only and must never imply mutation.
 - `--help` and `-h` are always read-only, even when another selector is present.
 - `--dry-run` is always preview-only; parsers must reject contradictory write
@@ -38,9 +42,23 @@ The classification keeps automation from confusing output format with write perm
   creates preparation resources, reserves a run or observes native Codex state.
 - Every public stable command must have an effect class.
 - `workflow-inspect` is read-only; `workflow-action` requires the exact console
-  preview and explicit write/execute flags. Run actions also require shared
-  sync. `workflow-dashboard` is preview-only until `--serve` explicitly opens
+  preview and explicit write/execute flags. Sequential compatibility run actions
+  also require shared sync. `workflow-run` defaults to the structured agentic
+  engine, previews without model allocation and requires exact `--expect-plan`,
+  `--execute` and the owned runner's authorization/budgets before native effects.
+  `workflow-dashboard` is preview-only until `--serve` explicitly opens
   its foreground loopback listener. Both clients use the same admissions.
+  A STANDARD execution configuration selects the published mixed composition.
+  Its saved action-file plus execute/expect-plan admits one exact action;
+  preparing a durable host key and initializing an instance are separate actions.
+  A pinned call entry or return uses that same exact-action consent boundary.
+  Its preview writes nothing. Apply records only the canonical process
+  transition through the existing CAS. Decision/control selectors never imply
+  writes. Replay/SIM remain preview-only.
+  For STANDARD console actions, the returned `action.request` retains the closed
+  prepared action. Resubmitting that request and its outer digest preserves the
+  original plan; the host still rechecks freshness, authority and CAS. This JSON
+  object supplies no permission, actor, controller or new execution authority.
 - A command whose effect depends on an option carries a machine-readable
   invocation rule. Options do not inherit a command-level class as a shortcut.
 - Effect resolution uses an immutable copy of the original argument vector and
@@ -93,3 +111,74 @@ remain mutating. Explicit `--db-sync` is a separate requested effect. A checkpoi
 must preserve an existing canonical SQLite database in dual/db-only and the
 configured PostgreSQL scope; writing new session artifacts is a separate
 DB-first operation, not a side effect of admitting the next action.
+
+
+The ordinary STANDARD entry can prepare closed Native owner-retirement,
+accounting-reconciliation and authorization-epoch actions. They use the same
+explicit action-file/execute/expect-plan boundary and allocate no worker. A
+read-only preview may return a signed preparation but creates no key, instance,
+intent, source envelope or budget. A source reference is data within the exact
+action, separately authenticated by the fixed protected source before writes.
+CLI and console retain the original prepared payload across cold application;
+Native recovery context comparison cannot authorize a business action.
+
+The admitted_post_assignment action/result v2 uses that same boundary with closed
+owner/accounting v2 preparations. It changes neither the command's effect class
+nor its flags. Downgrading a v2 payload to the v1 action refuses. Accounting
+confirmation does not supply the separate operation grant for a later business
+step or the finite Native grant for a new allocation.
+
+A refused or incomplete `handoff-close` checkpoint skips the wrapper's automatic
+DB synchronization, including `--db-sync` requested in that same invocation.
+The `handoff_not_completed` reason retains the checkpoint outcome. Synchronizing a visible
+projection remains a separate explicit operation; the refused hook must preserve
+the canonical evidence it just read.
+
+The private ordinary analysis handoff preparation uses the existing synchronization
+use case with a fixed `importIntent: false` capability and full fallback disabled.
+That profile refuses any changed audit projection before import and runs repair
+diagnostics without canonical repair application. It is not a CLI flag or an
+authored JSON capability; the explicit public synchronization defaults remain.
+A separately admitted checkpoint first commits only the four proved session
+metadata paths. The subsequent CURRENT/runtime refresh uses metadata-aware CAS.
+The summary and checkpoint ports recheck current authorization after awaited
+preparation and before their first canonical or diagnostic effect. A refusal
+there releases the owner without inventing an uncertain business write.
+
+
+## Common workflow CLI observer process
+
+The registered workflow-run and workflow-console CLI adapters execute in the
+invoking CLI process. Their implementation paths, fixed arguments, help
+precedence and effect admissions still come from the existing registry and
+adapters. This avoids creating a separate target-marked launcher that remains
+alive while the resource observer runs. Other target/control processes and
+retained owners remain subject to the existing independent discovery.
+
+
+The unreturned handoff candidate uses the existing operation_disposition and
+operation_disposition_accept exact-action boundary. The fixed host selects its
+closed v4 plan from authenticated unreturned history; action JSON supplies no
+owner, lease, native authorization or new effect capability. Preview is read-only.
+Apply and separate acceptance still require explicit intent and the exact
+current prepared subject. Recognizing an unreturned capsule does not authorize
+repeating the original packet CAS or allocating a model.
+
+
+The separate before-effect v5 candidate uses the same operation_disposition and
+operation_disposition_accept exact-action boundary. A dead unreturned publisher
+can receive a distinct current blocked/no-effect confirmation only under the
+authenticated fixed beforeimage profile and a fresh controller fence/grant.
+Acceptance preserves the original capsule and opens the ordinary blocked-frame
+repreparation path. A subsequent publication has a new operation identity and
+requires its own current grant; the old packet writer is never replayed.
+
+An ordinary dispatch action for an interrupted corrective Git checkpoint first
+reobserves the original process through the host's signed owner observation.
+Active or unresolved originals remain read-only waits. A new confirmation after
+actual absence uses only the existing exact-commit observer under current
+operation permission, followed by ordinary receipt acceptance. It never falls
+back to another Git dispatch after an observation or permission refusal. A
+staged checkpoint retains its normal first dispatch; a retained confirmation
+needs no new observation result. Cancellation and exact-action checks precede
+execution. No action kind, JSON capability, Native grant or age ceiling is added.

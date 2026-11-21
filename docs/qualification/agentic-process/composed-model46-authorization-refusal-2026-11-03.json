@@ -1,0 +1,120 @@
+{
+  "observed_at_utc": "2026-11-04T01:00:34.589Z",
+  "source_commit": "72fd5b87abaaec315ee1865628f01a1df518da83",
+  "model_revision": 46,
+  "execution_verdict": "FAIL",
+  "exit": {
+    "scope": "model46 composed component through canonical PR successor update; not complete standard workflow",
+    "ended_at_utc": "2026-11-04T00:57:33.3668290Z",
+    "exit_code": 1,
+    "source_commit": "72fd5b87abaaec315ee1865628f01a1df518da83"
+  },
+  "original_deadline_utc": "2026-11-04T00:57:17.399Z",
+  "deadline_renewed": false,
+  "last_accepted_operation": "session_close_admit completed",
+  "reason": "PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED/no_effect in owned native entry after session_close_admit",
+  "causal_limit": "terminal time alone does not prove every guard condition; code and no_effect are emitted by owned entry",
+  "events": 104,
+  "instance_sha256": "5c3f68a273f14da354f5dd37a02d369709a60ce2e40db21e3dd2568e3ed918d6",
+  "native_journal_observation": [
+    {
+      "allocations": [
+        {
+          "phase": "closed",
+          "tree_closed": true,
+          "first_failure": null,
+          "generation": 1
+        },
+        {
+          "phase": "closed",
+          "tree_closed": true,
+          "first_failure": null,
+          "generation": 2
+        },
+        {
+          "phase": "closed",
+          "tree_closed": true,
+          "first_failure": null,
+          "generation": 3
+        },
+        {
+          "phase": "closed",
+          "tree_closed": true,
+          "first_failure": null,
+          "generation": 4
+        },
+        {
+          "phase": "closed",
+          "tree_closed": true,
+          "first_failure": null,
+          "generation": 5
+        },
+        {
+          "phase": "closed",
+          "tree_closed": true,
+          "first_failure": null,
+          "generation": 6
+        },
+        {
+          "phase": "closed",
+          "tree_closed": true,
+          "first_failure": null,
+          "generation": 7
+        }
+      ],
+      "revision": 14
+    }
+  ],
+  "owner_present_at_capture": false,
+  "generation8_reserved": false,
+  "known_os_identities_present": [],
+  "independent_replay": {
+    "observed_at_utc": "2026-11-04T00:59:23.716Z",
+    "source_commit": "72fd5b87abaaec315ee1865628f01a1df518da83",
+    "model_revision": 46,
+    "events": 104,
+    "instance_sha256": "5c3f68a273f14da354f5dd37a02d369709a60ce2e40db21e3dd2568e3ed918d6",
+    "replay_status": "RUNNING",
+    "simulation_steps": 105,
+    "exact": true,
+    "execution": "FAIL",
+    "effects_replayed": false,
+    "native_reauthorized": false,
+    "ports_constructed": false
+  },
+  "cleanup": "NOT_DONE; retained fixture",
+  "resources_limit": "known OS identities only; not independent all-resource extinction",
+  "evidence_files": [
+    {
+      "bytes": 251,
+      "file": "exit.json",
+      "sha256": "f3b5a32f3df6d284b1612c2c57886c6db0bbb97c6162f66ef60438995de324af"
+    },
+    {
+      "bytes": 132395,
+      "file": "instance.json",
+      "sha256": "434d3e8721f9a880f76f709b16b44593ae23a0b6164ad84aaed663df11dcb0b1"
+    },
+    {
+      "bytes": 12456,
+      "file": "native-0.json",
+      "sha256": "2ac01d86a96cbf8232afd343de844d5260047c2c8e100541de2188e706ef8a72"
+    },
+    {
+      "bytes": 9633,
+      "file": "result.txt",
+      "sha256": "8907d79c121893845a5e7ceb3b962e505408596e834b6fe71ca8faee233dfa2e"
+    },
+    {
+      "file": "replay.json",
+      "bytes": 433,
+      "sha256": "72c9d9191d1c47ec61c54daeb55910c3f0303acec412c3141669821463528c9b"
+    }
+  ],
+  "limits": {
+    "provider_and_native_transports": "fixture capabilities",
+    "live_native": "NOT_RUN",
+    "complete_standard_workflow": false,
+    "current_model53": "NOT_QUALIFIED_BY_THIS_RUN"
+  }
+}

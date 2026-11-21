@@ -1,0 +1,173 @@
+{
+  "observed_at_utc": "2026-11-03T22:57:40.382Z",
+  "code_commit": "72fd5b87abaaec315ee1865628f01a1df518da83",
+  "model_revision": 46,
+  "model_sha256": "4516351822050c6b189947c20f1ac351b09602b6ee2988b23eed2004b561bf1d",
+  "catalog_sha256": "f13a48c65b993335d29f58b54cf160105ab0faf37755802bfaaafcaa6e5c2173",
+  "implementation_pin": "f5f6cd9b1df4e4bf331071e691dee2e1a2ef599587e27bcc1c9067a9e48ef6ec",
+  "pinned_files": 312,
+  "operations": 59,
+  "nodes": 93,
+  "component_cases": [
+    {
+      "mode": "files",
+      "status": "PASS",
+      "checks": 7,
+      "state_mode": "files",
+      "canonical_writer_checkpoint_push": "ACTUAL",
+      "git_remote": "ACTUAL_LOCAL_BARE",
+      "github_adapter": "ACTUAL",
+      "http": "DOUBLED_REST",
+      "accepted_operation_lookup_and_history": "INJECTED_FIXTURE",
+      "full_signed_standard_chain": "NOT_RUN",
+      "real_github": "NOT_RUN",
+      "native": "NOT_RUN",
+      "installed_archive": "NOT_RUN",
+      "ended_at_utc": "2026-11-03T22:54:52.6075473Z",
+      "exit_code": 0,
+      "log_sha256": "b8a892565be1024c62778ec3740706d2f2bf0056400ff6b6eb6ff7fe6343692d",
+      "cleanup_completed": true
+    },
+    {
+      "mode": "dual",
+      "status": "PASS",
+      "checks": 6,
+      "state_mode": "dual",
+      "canonical_writer_checkpoint_push": "ACTUAL",
+      "git_remote": "ACTUAL_LOCAL_BARE",
+      "github_adapter": "ACTUAL",
+      "http": "DOUBLED_REST",
+      "accepted_operation_lookup_and_history": "INJECTED_FIXTURE",
+      "full_signed_standard_chain": "NOT_RUN",
+      "real_github": "NOT_RUN",
+      "native": "NOT_RUN",
+      "installed_archive": "NOT_RUN",
+      "ended_at_utc": "2026-11-03T22:52:52.6854080Z",
+      "exit_code": 0,
+      "log_sha256": "6326f18d7ab5e8c834b0c71157f0b4a0b871234e957e672051f3fb02fde67f58",
+      "cleanup_completed": true
+    },
+    {
+      "mode": "db-only",
+      "status": "PASS",
+      "checks": 6,
+      "state_mode": "db-only",
+      "canonical_writer_checkpoint_push": "ACTUAL",
+      "git_remote": "ACTUAL_LOCAL_BARE",
+      "github_adapter": "ACTUAL",
+      "http": "DOUBLED_REST",
+      "accepted_operation_lookup_and_history": "INJECTED_FIXTURE",
+      "full_signed_standard_chain": "NOT_RUN",
+      "real_github": "NOT_RUN",
+      "native": "NOT_RUN",
+      "installed_archive": "NOT_RUN",
+      "ended_at_utc": "2026-11-03T22:52:06.3471156Z",
+      "exit_code": 0,
+      "log_sha256": "8faadd0471f9ae307025ebdcc62d43c5c286ab6f048ad567baa31938066d1724",
+      "cleanup_completed": true
+    }
+  ],
+  "focused_checks": [
+    {
+      "name": "composition",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-03T22:55:37.2914339Z",
+      "log_sha256": "6981dde7fa6aab7802f90dbb25224a04b8796707c77dea2eae8bfb5506e632f3"
+    },
+    {
+      "name": "input-boundary",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-03T22:55:44.4087106Z",
+      "log_sha256": "bc76bd27ec77062b858bf55331707941933147a32199ededbc6bd8169b7d6a7a"
+    },
+    {
+      "name": "startup",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-03T22:52:08.8224594Z",
+      "log_sha256": "9f52503dc7311d43ad318235db96e70969140e921b7f2353052a3e412ee8cb45"
+    },
+    {
+      "name": "source-policy",
+      "ended_at_utc": "2026-11-03T22:52:06.8016049Z",
+      "exit_code": 0,
+      "log_sha256": "cdd1801dd522cd04d6e7cbbdd3a147eab849fb16bd84ebdbb0b29c179d77fb0b"
+    },
+    {
+      "name": "metadata-policy",
+      "ended_at_utc": "2026-11-03T22:52:06.8821119Z",
+      "exit_code": 0,
+      "log_sha256": "20f91e673b54a3c6c03cd6c501fc87662d03056569f5412afa690a4b0d7077c2"
+    },
+    {
+      "name": "governance-completeness",
+      "ended_at_utc": "2026-11-03T22:52:18.7779871Z",
+      "exit_code": 0,
+      "log_sha256": "4b72ef36a5b45421504370cb25a87694ca1d82b76c1a6f2cb4a560fb16c2722e"
+    },
+    {
+      "name": "gate-catalog",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-03T22:52:08.5238785Z",
+      "log_sha256": "ac7853b13bffb9bff58c486d4cbb8b2d3f939248cefd43e6158e25d833bd4c3a"
+    },
+    {
+      "name": "process-contracts",
+      "ended_at_utc": "2026-11-03T22:52:17.1911971Z",
+      "exit_code": 0,
+      "log_sha256": "f36c7a9ad642da286b332efefb50b75a8699bc8574159533e707372e2bb81913"
+    },
+    {
+      "name": "doc-references",
+      "ended_at_utc": "2026-11-03T22:53:37.0562400Z",
+      "exit_code": 0,
+      "log_sha256": "dbb41035f91782d9df2fdcdb5e8549ff676b7e3d61a7458ba8c16d033c7b14ff"
+    }
+  ],
+  "historical_authority_regression": {
+    "status": "PASS",
+    "checks": 4,
+    "exit_code": 0,
+    "physical_events": "ACTUAL",
+    "accepted_operation_and_provider_capabilities": "INJECTED_FIXTURE"
+  },
+  "input_boundary": {
+    "status": "PASS",
+    "checks": 3,
+    "published_input_boundaries": 42,
+    "actual_reducer_and_resolver": true,
+    "prior_receipts": "SYNTHETIC_PURE_FIXTURE",
+    "ports": "NOT_CONSTRUCTED",
+    "missing_or_wrong_literal": "REFUSED_BEFORE_DISPATCH",
+    "historical_models_changed": false
+  },
+  "failed_arrangements": [
+    {
+      "name": "files-v1",
+      "status": "FAIL",
+      "cause": "duplicate prepared declaration in fixture library; no fixture operation started"
+    },
+    {
+      "name": "files-v2",
+      "status": "FAIL",
+      "cause": "new checkpoint used closure path order instead of PR successor path order; refused before checkpoint effect"
+    },
+    {
+      "name": "dual-v1 and db-only-v1",
+      "status": "FAIL",
+      "cause": "successor guard incorrectly compared new metadata hash to predecessor metadata despite updated_at advancing; refused before checkpoint effect"
+    }
+  ],
+  "limitations": {
+    "accepted_history_lookup": "INJECTED_FIXTURE in successor components",
+    "http": "DOUBLED_REST",
+    "git_remote": "LOCAL_BARE",
+    "complete_signed_chain": "new source snapshot launched separately; no terminal verdict yet",
+    "production_github_push": "NOT_IMPLEMENTED",
+    "review_checks_merge_sync": "NOT_IMPLEMENTED",
+    "full_runtime_family": "NOT_RUN",
+    "governance_admission_rollup": "NOT_RUN",
+    "native_real": "NOT_RUN",
+    "installed_archive": "NOT_RUN",
+    "complete_standard_workflow": false
+  }
+}

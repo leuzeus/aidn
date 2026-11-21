@@ -1,0 +1,203 @@
+{
+  "recorded_at_utc": "2026-11-04T04:49:57.727Z",
+  "parent_commit": "b8115be28f5c8ea820156d85864292aa6e513f25",
+  "scope": "candidate fixed-host correction authority/writer integration, contracts, binding, direct pins and common IR route",
+  "ordinary_entry_changed": false,
+  "complete_standard_workflow": false,
+  "model": {
+    "revision": 66,
+    "semantic_sha256": "5296d7df108f836a63bd702b33e5ff0ea992ab4af192caeccca321613f00e9d4",
+    "nodes": 105,
+    "operations": 64,
+    "referenced_binding_pins": 54,
+    "registered_bindings": 62,
+    "native_activities": 9,
+    "native_direct_sha256": "305b6cbc89683209d69976b3a379e4bf9394060fd48dc39785ee8bb60743bcc0",
+    "direct_file_count": 352
+  },
+  "implemented": [
+    "Host composition from actual authenticated accepted-operation and signed delivered-inbox readers, triage reevaluation, current event/product/provider/Git capabilities",
+    "Registered mutating input/output/plan binding with exact signed preview/intent/grant/result dispatch",
+    "Direct native and operation pins and explicit same-model valid-finding conditional route",
+    "Packaged PR skill states same-owner reopening, preserved closure bodies and new admitted-cycle requirements; ordinary native admission unchanged",
+    "Distinct v2 correction fixture/driver with preserved nine-response initial budget/cold scenario and explicit host composition assertions"
+  ],
+  "pass": [
+    {
+      "name": "composition",
+      "exit_code": 0,
+      "script": "tools/perf/verify-standard-workflow-composition-fixtures.mjs",
+      "started_at_utc": "2026-11-04T04:43:39.9930049Z",
+      "ended_at_utc": "2026-11-04T04:43:42.2821791Z",
+      "checks": 28,
+      "stdout_sha256": "9fe65668c7db5f55b3e0e4c36fca5ac54f2397d7eed8c778042bc5c897f877f5",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "binding-inputs",
+      "exit_code": 0,
+      "script": "tools/perf/verify-standard-process-binding-input-fixtures.mjs",
+      "started_at_utc": "2026-11-04T04:43:42.3167248Z",
+      "ended_at_utc": "2026-11-04T04:43:43.8807198Z",
+      "checks": 3,
+      "stdout_sha256": "d49b97daffae0e7afd2c5f2be5d4eb6c4743677e05d17bb5fa96a0212425453f",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "startup-model",
+      "exit_code": 0,
+      "script": "tools/perf/verify-standard-workflow-model-fixtures.mjs",
+      "started_at_utc": "2026-11-04T04:43:43.8843994Z",
+      "ended_at_utc": "2026-11-04T04:43:46.1571671Z",
+      "checks": 22,
+      "stdout_sha256": "90a1622927d5acbc3d3af629c31771fa1ae52dd2401ff8ace275544dae8ceb55",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "source-of-truth",
+      "exit_code": 0,
+      "script": "tools/perf/verify-source-of-truth-policy.mjs",
+      "started_at_utc": "2026-11-04T04:43:46.1590292Z",
+      "ended_at_utc": "2026-11-04T04:43:46.3658799Z",
+      "checks": 0,
+      "stdout_sha256": "b3a5cb758d1ccf8a34e5cdb2cac3792471631cc19d47647cfac9b97ae9cb4432",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "metadata",
+      "exit_code": 0,
+      "script": "tools/perf/verify-metadata-policy.mjs",
+      "started_at_utc": "2026-11-04T04:43:46.3675582Z",
+      "ended_at_utc": "2026-11-04T04:43:46.5907657Z",
+      "checks": 0,
+      "stdout_sha256": "8a0f62f755be2b3081e5cbfbb900478d5c510e1885bb43ec921b620f3a294d75",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "completeness",
+      "exit_code": 0,
+      "script": "tools/perf/verify-governance-completeness.mjs",
+      "started_at_utc": "2026-11-04T04:43:46.5926528Z",
+      "ended_at_utc": "2026-11-04T04:43:54.5688510Z",
+      "checks": 0,
+      "stdout_sha256": "837a12ac33aab34d3fb59d3d4e5632c37464dbb022e89aae3c6a9fd820c4f960",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "gate-catalog-final",
+      "ended_at_utc": "2026-11-04T04:46:19.4992988Z",
+      "started_at_utc": "2026-11-04T04:46:18.0020117Z",
+      "exit_code": 0,
+      "checks": 0,
+      "stdout_sha256": "a1212ea51c35db13b15f9ac1df7f4211760efd253c134c82b3ce785e03af665c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "canonical-files",
+      "started_at_utc": "2026-11-04T04:42:02.1587995Z",
+      "ended_at_utc": "2026-11-04T04:44:26.1142444Z",
+      "exit_code": 0,
+      "checks": 7,
+      "stdout_sha256": "1302f43e1bf7dd5a89b87a8c6b6eb534188c736e413be3577ad4af360c9d0e7c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "canonical-dual",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T04:43:35.6139897Z",
+      "started_at_utc": "2026-11-04T04:42:01.8856176Z",
+      "checks": 6,
+      "stdout_sha256": "78aa2ddce69de0b9b920424ea7e133ffc921ee531bb5d460e2a1dfdf51ab4080",
+      "stderr_sha256": "dc504cb78c74169b3528002f60a13294729d2598ba036ec06b16e8e747fb2de4"
+    },
+    {
+      "name": "canonical-db-only",
+      "started_at_utc": "2026-11-04T04:42:02.6205933Z",
+      "exit_code": 0,
+      "ended_at_utc": "2026-11-04T04:43:34.6627531Z",
+      "checks": 6,
+      "stdout_sha256": "89d1cc9185a58ca35424b88c7d0d1d131259d4e8d1c7acec01173d72b6339708",
+      "stderr_sha256": "4a21d25c3617bd8f14be52e670f6b8630e2ca43c3aa4d681e80c184b0127133a"
+    },
+    {
+      "name": "source-final",
+      "ended_at_utc": "2026-11-04T04:48:17.4563737Z",
+      "exit_code": 0,
+      "started_at_utc": "2026-11-04T04:47:40.0007505Z",
+      "checks": 10,
+      "stdout_sha256": "a97120c048560facfa72b7e822c62d7955f8b6689f26a847e87e45d5026482ee",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "preflight-final",
+      "started_at_utc": "2026-11-04T04:47:39.5806248Z",
+      "ended_at_utc": "2026-11-04T04:48:25.3086260Z",
+      "exit_code": 0,
+      "checks": 0,
+      "stdout_sha256": "37ba5a088d75cd11265b545aa3f7de818186a8c69ab3ebc3c23feb46395f79dd",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "additional_observed_pass": [
+    {
+      "command": "node tools/perf/verify-standard-composed-preflight-fixtures.mjs",
+      "checks": 18,
+      "observation": "completed tool session 77411; stdout not separately captured; synthetic scenario/routing only"
+    }
+  ],
+  "policy_counts": {
+    "source_of_truth": 35,
+    "metadata": 37,
+    "governed_concepts": 38,
+    "gate_catalog": 63,
+    "yaml_files": 4
+  },
+  "intermediate_failures": [
+    {
+      "check": "composition",
+      "reason": "63-operation assertion after intentional 64-operation addition",
+      "resolution": "updated expected catalog count; final28PASS"
+    },
+    {
+      "check": "synthetic preflight",
+      "reason": "new conditional route had no synthetic corrections-required fact",
+      "resolution": "emit explicit synthetic triage booleans; final18PASS and correction preflight plans nine responses"
+    },
+    {
+      "check": "gate-catalog",
+      "reason": "immutable runtime-agentic-process fixture command lacked the newly added correction scenario",
+      "resolution": "updated fixed mirrored command and added omission-negative probe; final PASS"
+    }
+  ],
+  "proof_boundaries": {
+    "source_suite": "actual complete-content adapters; accepted/native/event/product/Git/transport capabilities doubled",
+    "canonical_suites": "actual local CAS, metadata, projections, Git and ordinary native admission; accepted/source-freshness doubled",
+    "source_and_writer_tests": "SEPARATE",
+    "published_model_common_input_resolution": "ACTUAL resolver/reducer, synthetic prior receipts; no business effect",
+    "synthetic_preflight": "current common IR/reducer, replay, zero model calls; never effect/native/human/provider proof",
+    "generic_signed_host_regression": "RUNNING at recorded time; it does not exercise the new PR correction branch",
+    "correction_driver_assertions": "WRITTEN; NOT_EXECUTED as of recorded time",
+    "authenticated_producer_to_canonical_writer_composition": "NOT_ESTABLISHED",
+    "fixture_cleanup": "own finally completed for canonical suites; independent process inventory NOT_CAPTURED"
+  },
+  "skip": [],
+  "unavailable": [
+    "native_client=UNAVAILABLE in adoption declaration check; no native proof"
+  ],
+  "not_run": [
+    "full runtime family",
+    "Governance Admission",
+    "versioned correction scenario through complete real host path",
+    "physical correction/new-HEAD checks/fresh delivery",
+    "technical response/resolution/exception and fresh review loops",
+    "real native/human/provider",
+    "clean live PostgreSQL qualification",
+    "exact installed distribution archive"
+  ],
+  "next": [
+    "Execute the versioned correction scenario on its frozen new source/authorization; no earlier source trial qualifies this host route",
+    "Then ordinary admitted correction cycle, frozen plan/readiness/IMPLEMENTING branch and physical work with new-HEAD validation and causal delivery",
+    "Keep entire L1-L8/A1-A10 scope, all modes/resumes/non-success/drift/incidents/reconciliation/reauthorization/merge/sync/native/PostgreSQL/archive/comparison requirements"
+  ],
+  "retained_history": "Earlier sealed packets and source65 trials unchanged; no relaunch, renewal, dependency change, unknown owner cleanup or inferred remote authorization"
+}

@@ -270,10 +270,19 @@ function verifyDriftCompletion(tmpRoot, onCreated) {
     fs.appendFileSync(file, JSON.stringify({ ...completed[0], ts: new Date(nowMs).toISOString(), ...extra }) + '\n');
   }
   assert.equal(readEventSignalStats(file, { branch: 'feature/C101-alpha', nowMs }).latestDriftMs, recordedMs);
-  // Age the observed completion in this owned fixture, then exercise a real
-  // unresolved objective change. Neither failed check may refresh the proof.
+  // Elapsed time alone does not expire a valid completion. A caller may still
+  // select a time threshold; neither observation may refresh the journal.
   fs.writeFileSync(file, JSON.stringify({ ...completed[0], ts: new Date(nowMs - 46 * 60000).toISOString() }) + '\n');
-  assert.equal(audit().result, 'warn');
+  const retainedCompletion = fs.readFileSync(file);
+  const withoutTimeThreshold = audit();
+  assert.equal(withoutTimeThreshold.result, 'ok');
+  assert.ok(!withoutTimeThreshold.levels.level2.active_signals.includes('time_since_last_drift_check'));
+  assert.deepEqual(fs.readFileSync(file), retainedCompletion);
+  const withTimeThreshold = run('tools/perf/branch-cycle-audit-hook.mjs', ['--threshold-minutes', '45', '--no-emit-event']);
+  assert.equal(withTimeThreshold.result, 'warn');
+  assert.ok(withTimeThreshold.levels.level2.active_signals.includes('time_since_last_drift_check'));
+  assert.deepEqual(fs.readFileSync(file), retainedCompletion);
+  // A real unresolved objective change must still refuse completion.
   const session = path.join(root, 'docs/audit/sessions/S101-alpha.md');
   fs.appendFileSync(session, '\nsession_objective: replace the unrelated payment system\n');
   const failed = run('tools/codex/run-json-hook.mjs', ['--skill', 'drift-check', '--strict']);
@@ -429,7 +438,7 @@ async function main() {
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));
     } else {
-      console.log('PASS drift completion: real skill event, subsequent admission, preview, age/branch boundaries and unresolved warning/stop');
+      console.log('PASS drift completion: retained evidence, explicit time threshold, branch boundaries and unresolved warning/stop');
       for (const run of objectiveRuns) console.log(`${run.pass ? "PASS" : "FAIL"} session objective: ${run.id}`);
       for (const run of runs) {
         console.log(`${run.pass ? "PASS" : "FAIL"} ${run.id}`);

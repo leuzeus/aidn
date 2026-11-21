@@ -1,0 +1,1111 @@
+{
+  "status": "PASS",
+  "control_compliance": "PASS",
+  "source_commit": "4501cbd3f26e654529557080feaa0b94e9f5520f",
+  "implementation_sha256": "63d9b364163565c781ab972e6ad2ef4a8ec1482bea25eaa824c76113e27a2da1",
+  "archive_sha256": "361c413cce44434e946206431055c3d72f09b841f6d2e60606e65914632e530e",
+  "default_profile": "aidn-bpmn-structured.v2",
+  "model": "gpt-6.1-sol",
+  "effort": "high",
+  "analysis": {
+    "status": "PASS",
+    "control_compliance": "PASS",
+    "source_commit": "4501cbd3f26e654529557080feaa0b94e9f5520f",
+    "implementation_sha256": "63d9b364163565c781ab972e6ad2ef4a8ec1482bea25eaa824c76113e27a2da1",
+    "model_sha256": "ec5c8945d666aafb4786d361d9eea434f2cb652ca9ed749531f420082378af26",
+    "scope": "same-candidate IR versus default-v2 XML, controlled immutable verification, four native executions in counterbalanced order",
+    "old_diagnostic": {
+      "status": "OBSERVED",
+      "cases": [
+        {
+          "case": "ir-a1-r4",
+          "author_responses": 19,
+          "review_responses": 3,
+          "author_tool_cells": 10,
+          "author_tool_ms": 61226.56999999999,
+          "author_input": 373210,
+          "review_input": 50140
+        },
+        {
+          "case": "xml-b1",
+          "author_responses": 28,
+          "review_responses": 3,
+          "author_tool_cells": 19,
+          "author_tool_ms": 111726.71549999999,
+          "author_input": 562424,
+          "review_input": 50293
+        }
+      ],
+      "per_activity": [
+        {
+          "case": "ir-a1-r4",
+          "occurrence": "root/0/f_1",
+          "responses": 3,
+          "usage_snapshots": 3,
+          "total": {
+            "totalTokens": 48795,
+            "inputTokens": 48405,
+            "cachedInputTokens": 31616,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 390,
+            "reasoningOutputTokens": 183
+          }
+        },
+        {
+          "case": "ir-a1-r4",
+          "occurrence": "root/1/iteration-1",
+          "responses": 2,
+          "usage_snapshots": 2,
+          "total": {
+            "totalTokens": 83286,
+            "inputTokens": 82731,
+            "cachedInputTokens": 64896,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 555,
+            "reasoningOutputTokens": 183
+          }
+        },
+        {
+          "case": "ir-a1-r4",
+          "occurrence": "root/1/iteration-2",
+          "responses": 2,
+          "usage_snapshots": 2,
+          "total": {
+            "totalTokens": 119566,
+            "inputTokens": 118856,
+            "cachedInputTokens": 99968,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 710,
+            "reasoningOutputTokens": 183
+          }
+        },
+        {
+          "case": "ir-a1-r4",
+          "occurrence": "root/2/item-0/call/0/call",
+          "responses": 2,
+          "usage_snapshots": 2,
+          "total": {
+            "totalTokens": 157633,
+            "inputTokens": 156763,
+            "cachedInputTokens": 136832,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 870,
+            "reasoningOutputTokens": 183
+          }
+        },
+        {
+          "case": "ir-a1-r4",
+          "occurrence": "root/2/item-1/call/0/call",
+          "responses": 2,
+          "usage_snapshots": 2,
+          "total": {
+            "totalTokens": 197495,
+            "inputTokens": 196460,
+            "cachedInputTokens": 175488,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 1035,
+            "reasoningOutputTokens": 183
+          }
+        },
+        {
+          "case": "ir-a1-r4",
+          "occurrence": "root/2/item-0/call/1",
+          "responses": 2,
+          "usage_snapshots": 2,
+          "total": {
+            "totalTokens": 239152,
+            "inputTokens": 237954,
+            "cachedInputTokens": 215936,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 1198,
+            "reasoningOutputTokens": 183
+          }
+        },
+        {
+          "case": "ir-a1-r4",
+          "occurrence": "root/2/item-1/call/1",
+          "responses": 2,
+          "usage_snapshots": 2,
+          "total": {
+            "totalTokens": 282604,
+            "inputTokens": 281244,
+            "cachedInputTokens": 258176,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 1360,
+            "reasoningOutputTokens": 183
+          }
+        },
+        {
+          "case": "ir-a1-r4",
+          "occurrence": "root/3/call/0/call",
+          "responses": 2,
+          "usage_snapshots": 2,
+          "total": {
+            "totalTokens": 327852,
+            "inputTokens": 326329,
+            "cachedInputTokens": 302208,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 1523,
+            "reasoningOutputTokens": 183
+          }
+        },
+        {
+          "case": "ir-a1-r4",
+          "occurrence": "root/3/call/1",
+          "responses": 2,
+          "usage_snapshots": 2,
+          "total": {
+            "totalTokens": 374897,
+            "inputTokens": 373210,
+            "cachedInputTokens": 348032,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 1687,
+            "reasoningOutputTokens": 183
+          }
+        },
+        {
+          "case": "ir-a1-r4",
+          "occurrence": "root/4",
+          "responses": 3,
+          "usage_snapshots": 3,
+          "total": {
+            "totalTokens": 50383,
+            "inputTokens": 50140,
+            "cachedInputTokens": 32896,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 243,
+            "reasoningOutputTokens": 73
+          }
+        },
+        {
+          "case": "xml-b1",
+          "occurrence": "root/0/f_1",
+          "responses": 4,
+          "usage_snapshots": 4,
+          "total": {
+            "totalTokens": 64800,
+            "inputTokens": 64459,
+            "cachedInputTokens": 47488,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 341,
+            "reasoningOutputTokens": 111
+          }
+        },
+        {
+          "case": "xml-b1",
+          "occurrence": "root/1/iteration-1",
+          "responses": 3,
+          "usage_snapshots": 3,
+          "total": {
+            "totalTokens": 116985,
+            "inputTokens": 116461,
+            "cachedInputTokens": 98176,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 524,
+            "reasoningOutputTokens": 111
+          }
+        },
+        {
+          "case": "xml-b1",
+          "occurrence": "root/1/iteration-2",
+          "responses": 3,
+          "usage_snapshots": 3,
+          "total": {
+            "totalTokens": 172098,
+            "inputTokens": 171384,
+            "cachedInputTokens": 151808,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 714,
+            "reasoningOutputTokens": 111
+          }
+        },
+        {
+          "case": "xml-b1",
+          "occurrence": "root/2/item-0/call/0/call",
+          "responses": 3,
+          "usage_snapshots": 3,
+          "total": {
+            "totalTokens": 230142,
+            "inputTokens": 229241,
+            "cachedInputTokens": 208256,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 901,
+            "reasoningOutputTokens": 111
+          }
+        },
+        {
+          "case": "xml-b1",
+          "occurrence": "root/2/item-1/call/0/call",
+          "responses": 3,
+          "usage_snapshots": 3,
+          "total": {
+            "totalTokens": 291109,
+            "inputTokens": 290026,
+            "cachedInputTokens": 267776,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 1083,
+            "reasoningOutputTokens": 111
+          }
+        },
+        {
+          "case": "xml-b1",
+          "occurrence": "root/2/item-0/call/1",
+          "responses": 3,
+          "usage_snapshots": 3,
+          "total": {
+            "totalTokens": 354997,
+            "inputTokens": 353727,
+            "cachedInputTokens": 309504,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 1270,
+            "reasoningOutputTokens": 111
+          }
+        },
+        {
+          "case": "xml-b1",
+          "occurrence": "root/2/item-1/call/1",
+          "responses": 3,
+          "usage_snapshots": 3,
+          "total": {
+            "totalTokens": 421819,
+            "inputTokens": 420355,
+            "cachedInputTokens": 374784,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 1464,
+            "reasoningOutputTokens": 111
+          }
+        },
+        {
+          "case": "xml-b1",
+          "occurrence": "root/3/call/0/call",
+          "responses": 3,
+          "usage_snapshots": 3,
+          "total": {
+            "totalTokens": 491577,
+            "inputTokens": 489931,
+            "cachedInputTokens": 443008,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 1646,
+            "reasoningOutputTokens": 111
+          }
+        },
+        {
+          "case": "xml-b1",
+          "occurrence": "root/3/call/1",
+          "responses": 3,
+          "usage_snapshots": 3,
+          "total": {
+            "totalTokens": 564259,
+            "inputTokens": 562424,
+            "cachedInputTokens": 514176,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 1835,
+            "reasoningOutputTokens": 111
+          }
+        },
+        {
+          "case": "xml-b1",
+          "occurrence": "root/4",
+          "responses": 3,
+          "usage_snapshots": 3,
+          "total": {
+            "totalTokens": 50575,
+            "inputTokens": 50293,
+            "cachedInputTokens": 33024,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 282,
+            "reasoningOutputTokens": 97
+          }
+        }
+      ],
+      "limitations": [
+        "Old transport retained payload hashes, not tool arguments. Exact commands and polling cannot be reconstructed.",
+        "Each of nine author activities has exactly one extra tool cell and provider response in XML; review response count is equal.",
+        "Compilation occurred before native startup and produced identical IR/activity inputs."
+      ],
+      "avoidable_costs": [
+        "Unconstrained tool granularity",
+        "Nine repetitions of the same immutable verification",
+        "Ambiguous request to read AGENTS already supplied in developer instructions"
+      ]
+    },
+    "controlled_cases": [
+      {
+        "case": "run-01",
+        "arm": "ir",
+        "status": "COMPLETED",
+        "first_failure": null,
+        "preparation_ms": 0.18530000000001223,
+        "case_elapsed_ms": 381501.14009999996,
+        "elapsed_since_lot_authorization_ms": 390496,
+        "native_only_ms": null,
+        "native_responses": 12,
+        "model_sha256": "ec5c8945d666aafb4786d361d9eea434f2cb652ca9ed749531f420082378af26",
+        "replay_equal": true,
+        "product_unchanged": true,
+        "oracle": "PASS",
+        "result_events": 10,
+        "control": {
+          "sha256": "2e371746aca9e9d6375fc9b4a1bd7401e958ef95ad57d68015acfb09c8fbfa31",
+          "events_applied": 2,
+          "events_expected": 2
+        },
+        "threads": 2,
+        "tokens": {
+          "input": 208106,
+          "cached_input": 171008,
+          "output": 1125,
+          "reasoning_subset": 89,
+          "total": 209231
+        },
+        "tree": "confirmed",
+        "completed_at": "2026-11-01T21:58:31.898Z",
+        "activity_exchanges": [
+          {
+            "occurrence_id": "root/0/f_1",
+            "native_responses": 2,
+            "observed_tool_items": 1,
+            "tool_kinds": {
+              "commandExecution": 1
+            },
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/1/iteration-1",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/1/iteration-2",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/2/item-0/call/0/call",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/2/item-1/call/0/call",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/2/item-0/call/1",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/2/item-1/call/1",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/3/call/0/call",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/3/call/1",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/4",
+            "native_responses": 2,
+            "observed_tool_items": 1,
+            "tool_kinds": {
+              "commandExecution": 1
+            },
+            "poll_markers": 0
+          }
+        ],
+        "reused_activity_tool_items": 0
+      },
+      {
+        "case": "run-02",
+        "arm": "xml",
+        "status": "COMPLETED",
+        "first_failure": null,
+        "preparation_ms": 23.3065,
+        "case_elapsed_ms": 388235.7117,
+        "elapsed_since_lot_authorization_ms": 782950,
+        "native_only_ms": null,
+        "native_responses": 12,
+        "model_sha256": "ec5c8945d666aafb4786d361d9eea434f2cb652ca9ed749531f420082378af26",
+        "replay_equal": true,
+        "product_unchanged": true,
+        "oracle": "PASS",
+        "result_events": 10,
+        "control": {
+          "sha256": "4cd14fce5a741466a049068f12688304a97e397fce97f614d4780bb319817f4f",
+          "events_applied": 2,
+          "events_expected": 2
+        },
+        "threads": 2,
+        "tokens": {
+          "input": 208514,
+          "cached_input": 178688,
+          "output": 1180,
+          "reasoning_subset": 83,
+          "total": 209694
+        },
+        "tree": "confirmed",
+        "completed_at": "2026-11-01T22:05:04.340Z",
+        "activity_exchanges": [
+          {
+            "occurrence_id": "root/0/f_1",
+            "native_responses": 2,
+            "observed_tool_items": 1,
+            "tool_kinds": {
+              "commandExecution": 1
+            },
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/1/iteration-1",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/1/iteration-2",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/2/item-0/call/0/call",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/2/item-1/call/0/call",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/2/item-0/call/1",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/2/item-1/call/1",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/3/call/0/call",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/3/call/1",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/4",
+            "native_responses": 2,
+            "observed_tool_items": 1,
+            "tool_kinds": {
+              "commandExecution": 1
+            },
+            "poll_markers": 0
+          }
+        ],
+        "reused_activity_tool_items": 0
+      },
+      {
+        "case": "run-03",
+        "arm": "xml",
+        "status": "COMPLETED",
+        "first_failure": null,
+        "preparation_ms": 24.91069999999999,
+        "case_elapsed_ms": 384888.97390000004,
+        "elapsed_since_lot_authorization_ms": 1172017,
+        "native_only_ms": null,
+        "native_responses": 12,
+        "model_sha256": "ec5c8945d666aafb4786d361d9eea434f2cb652ca9ed749531f420082378af26",
+        "replay_equal": true,
+        "product_unchanged": true,
+        "oracle": "PASS",
+        "result_events": 10,
+        "control": {
+          "sha256": "1c2a4e4ff7d31f6cc9fb60876bf1508743234f629806f611d8b0fe9b6f04649d",
+          "events_applied": 2,
+          "events_expected": 2
+        },
+        "threads": 2,
+        "tokens": {
+          "input": 209159,
+          "cached_input": 172032,
+          "output": 1255,
+          "reasoning_subset": 98,
+          "total": 210414
+        },
+        "tree": "confirmed",
+        "completed_at": "2026-11-01T22:11:33.409Z",
+        "activity_exchanges": [
+          {
+            "occurrence_id": "root/0/f_1",
+            "native_responses": 2,
+            "observed_tool_items": 1,
+            "tool_kinds": {
+              "commandExecution": 1
+            },
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/1/iteration-1",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/1/iteration-2",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/2/item-0/call/0/call",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/2/item-1/call/0/call",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/2/item-0/call/1",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/2/item-1/call/1",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/3/call/0/call",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/3/call/1",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/4",
+            "native_responses": 2,
+            "observed_tool_items": 1,
+            "tool_kinds": {
+              "commandExecution": 1
+            },
+            "poll_markers": 0
+          }
+        ],
+        "reused_activity_tool_items": 0
+      },
+      {
+        "case": "run-04",
+        "arm": "ir",
+        "status": "COMPLETED",
+        "first_failure": null,
+        "preparation_ms": 0.2161999999999864,
+        "case_elapsed_ms": 381364.68779999996,
+        "elapsed_since_lot_authorization_ms": 1557471,
+        "native_only_ms": null,
+        "native_responses": 12,
+        "model_sha256": "ec5c8945d666aafb4786d361d9eea434f2cb652ca9ed749531f420082378af26",
+        "replay_equal": true,
+        "product_unchanged": true,
+        "oracle": "PASS",
+        "result_events": 10,
+        "control": {
+          "sha256": "d148a585a907837b01808732bc065b13256a058f7e5b41c1787531f842836586",
+          "events_applied": 2,
+          "events_expected": 2
+        },
+        "threads": 2,
+        "tokens": {
+          "input": 208529,
+          "cached_input": 178304,
+          "output": 1101,
+          "reasoning_subset": 93,
+          "total": 209630
+        },
+        "tree": "confirmed",
+        "completed_at": "2026-11-01T22:17:58.907Z",
+        "activity_exchanges": [
+          {
+            "occurrence_id": "root/0/f_1",
+            "native_responses": 2,
+            "observed_tool_items": 1,
+            "tool_kinds": {
+              "commandExecution": 1
+            },
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/1/iteration-1",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/1/iteration-2",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/2/item-0/call/0/call",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/2/item-1/call/0/call",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/2/item-0/call/1",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/2/item-1/call/1",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/3/call/0/call",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/3/call/1",
+            "native_responses": 1,
+            "observed_tool_items": 0,
+            "tool_kinds": {},
+            "poll_markers": 0
+          },
+          {
+            "occurrence_id": "root/4",
+            "native_responses": 2,
+            "observed_tool_items": 1,
+            "tool_kinds": {
+              "commandExecution": 1
+            },
+            "poll_markers": 0
+          }
+        ],
+        "reused_activity_tool_items": 0
+      }
+    ],
+    "checks": [
+      {
+        "case": "run-01",
+        "only_initial_and_review_commands": true,
+        "no_tools_on_reused_activities": true,
+        "explicit_reuse_summaries": true,
+        "responses": [
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2
+        ],
+        "commands": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "summary_sha256": "2206f2b5547350a690674d543286fd01f0c6dc21a81a4f5207da39fbcb78dfc1",
+        "owned_result_sha256": "0523f7b52ea8ca61e5e9a317299c22c61ec2999606a0642c205151ab0544dda6",
+        "oracle_sha256": "b9fbdf832fe86c2541c086921ba22f7dfa56234b9ad1c51ce7e64a3d0ec6aa6d"
+      },
+      {
+        "case": "run-02",
+        "only_initial_and_review_commands": true,
+        "no_tools_on_reused_activities": true,
+        "explicit_reuse_summaries": true,
+        "responses": [
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2
+        ],
+        "commands": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "summary_sha256": "004257b9027fa121ab73979f10a637b682ef2259275d5f6f962a7bc7dd866640",
+        "owned_result_sha256": "ebd1f78f767cd00fc665db9f1a76bf58b15f41de3a530e636f7eebe9ece930bb",
+        "oracle_sha256": "b9fbdf832fe86c2541c086921ba22f7dfa56234b9ad1c51ce7e64a3d0ec6aa6d"
+      },
+      {
+        "case": "run-03",
+        "only_initial_and_review_commands": true,
+        "no_tools_on_reused_activities": true,
+        "explicit_reuse_summaries": true,
+        "responses": [
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2
+        ],
+        "commands": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "summary_sha256": "09a5d82488d0042dceb65b09936afe69aa1488c5cb862dd9f22c343aea2fff3a",
+        "owned_result_sha256": "4f16354f351fb66e6aca4ffaf18e70d7db7aee23c12f461659a90fa0c5c2afb1",
+        "oracle_sha256": "b9fbdf832fe86c2541c086921ba22f7dfa56234b9ad1c51ce7e64a3d0ec6aa6d"
+      },
+      {
+        "case": "run-04",
+        "only_initial_and_review_commands": true,
+        "no_tools_on_reused_activities": true,
+        "explicit_reuse_summaries": true,
+        "responses": [
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2
+        ],
+        "commands": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "summary_sha256": "4c2d789bdd9e2632b4194bba14319166254ba12c5bad8e8202b08e14d5e9b22a",
+        "owned_result_sha256": "e7f327cebc9d52a6671ca1eab02e319fd0b51f05b8f4f07e056f2cb1b59a4cca",
+        "oracle_sha256": "b9fbdf832fe86c2541c086921ba22f7dfa56234b9ad1c51ce7e64a3d0ec6aa6d"
+      }
+    ],
+    "arms": {
+      "ir": {
+        "n": 2,
+        "mean_ms": 381432.91394999996,
+        "mean_responses": 12,
+        "tokens_sum": {
+          "input": 416635,
+          "cached_input": 349312,
+          "output": 2226,
+          "reasoning_subset": 182,
+          "total": 418861
+        },
+        "tokens_mean": {
+          "input": 208317.5,
+          "cached_input": 174656,
+          "output": 1113,
+          "reasoning_subset": 91,
+          "total": 209430.5
+        }
+      },
+      "xml": {
+        "n": 2,
+        "mean_ms": 386562.3428,
+        "mean_responses": 12,
+        "tokens_sum": {
+          "input": 417673,
+          "cached_input": 350720,
+          "output": 2435,
+          "reasoning_subset": 181,
+          "total": 420108
+        },
+        "tokens_mean": {
+          "input": 208836.5,
+          "cached_input": 175360,
+          "output": 1217.5,
+          "reasoning_subset": 90.5,
+          "total": 210054
+        }
+      }
+    },
+    "pairs": [
+      {
+        "ir": "run-01",
+        "xml": "run-02",
+        "elapsed_delta_percent": 1.7652821688120657,
+        "tokens_delta_percent": 0.22128652063986287
+      },
+      {
+        "ir": "run-04",
+        "xml": "run-03",
+        "elapsed_delta_percent": 0.9241249157940779,
+        "tokens_delta_percent": 0.37399227209846675
+      }
+    ],
+    "xml_ir_delta_percent": {
+      "owned_elapsed": 1.3447787703691594,
+      "total_tokens": 0.2977121288446627
+    },
+    "cohort_tokens": {
+      "input": 834308,
+      "cached_input": 700032,
+      "output": 4661,
+      "reasoning_subset": 363,
+      "total": 838969
+    },
+    "cohort_owned_ms": 1535990.5135,
+    "limits": [
+      "n=2 per arm, descriptive only",
+      "provider cache and host load remain uncontrolled",
+      "historical before/after changes verification strategy; not a general product speedup",
+      "all ten activities remain independently assigned and authenticated; no collapsed workflow",
+      "same product root reuse after Windows review is not qualified",
+      "not fresh application generation or public release qualification"
+    ]
+  },
+  "cpu": {
+    "status": "PASS",
+    "model_sha256": "c087eb4880c58720037a62b17cb0df0c20c53cb957a1e991229cf5dc66fb8d79",
+    "metrics": {
+      "parse_ir_ms": {
+        "n": 500,
+        "median_ms": 0.022500000000945874,
+        "p95_ms": 0.03349999999954889,
+        "min_ms": 0.016099999998914427,
+        "max_ms": 0.4345999999995911
+      },
+      "compile_xml_ms": {
+        "n": 500,
+        "median_ms": 4.8049999999993815,
+        "p95_ms": 5.702800000000025,
+        "min_ms": 4.542499999999563,
+        "max_ms": 8.963700000000244
+      },
+      "baseline_replay_ms": {
+        "n": 50,
+        "median_ms": 58.79260000000022,
+        "p95_ms": 68.42769999999996,
+        "min_ms": 56.22730000000047,
+        "max_ms": 70.04510000000005
+      },
+      "candidate_replay_ms": {
+        "n": 50,
+        "median_ms": 59.45640000000003,
+        "p95_ms": 69.22350000000006,
+        "min_ms": 56.417599999999766,
+        "max_ms": 77.04369999999994
+      }
+    },
+    "baseline_candidate_cursor_equal": true,
+    "events": 22,
+    "activity_results": 10,
+    "occurrences": 23,
+    "node": "v24.13.1"
+  },
+  "offline_validation": {
+    "status": "PASS",
+    "compiler_checks": 14,
+    "core_service_checks": 38,
+    "production_composition_checks": 49,
+    "total": 101,
+    "model_calls": 0,
+    "initial_fixture_issue": "Injected completed-tool output preceded the known-usage snapshot in the storage-race double; the double now preserves its original known-usage ordering. Runtime failure behavior was not weakened."
+  },
+  "delivered_engine": {
+    "release_tag": "v0.19.1",
+    "published_at": "2026-11-01T19:15:32Z",
+    "url": "https://github.com/leuzeus/aidn/releases/tag/v0.19.1",
+    "engine_file": "src/core/workflow/agentic-process.mjs",
+    "release_engine_sha256": "cb62e240fbe52916f83921e0a7707468bbba17692bd1366cc4f364fbe573d94e",
+    "current_engine_sha256": "cb62e240fbe52916f83921e0a7707468bbba17692bd1366cc4f364fbe573d94e",
+    "byte_identical": true,
+    "reference_benchmark": "docs/qualification/benchmarks/2026-11-01-stockflow/README.md",
+    "scope": "Current candidate extends the delivered engine with compilation, control inputs, Windows publication repair and exchange evidence. Source package base/dependency lock is retained; this is not qualification of the complete public v0.19.1 archive."
+  },
+  "evidence_sha256": {
+    "OLD-EXCESS-ANALYSIS.json": "101fa43371fa278647920a3db9b26d05a46e2c8534c9edd1df9f0f395e23f1c3",
+    "PREFLIGHT.json": "878f754a65081079ec4c118726196300d4acb542a2a26251d4c3cbdb808856eb",
+    "AUTHORIZATION-LOT.json": "fe22dbb4dc655ba75b2c9d3e4277a04110521660004f7b5fd8e98635a1188e02",
+    "PROTOCOL.md": "37e35cc2cd3e1645838c9ef16d73bbfeec0d3ccfd6749acc77d0edd262fd8d20",
+    "CONTROLLED-ANALYSIS.json": "460a65f8f1865fc5c714d91c7281089dadb61c849f6bfe4dc2dfe487d9144aed",
+    "CPU-RESULT.json": "b37a6d1b644dfafa36dfadc1f38f304d490e04401e5b387cfb976e084f46455d",
+    "OFFLINE-VALIDATION.json": "dcfcd484d9c524a72d1c6cec8570a26c667dad1457429787069b8acd06ea61fc",
+    "RETAINED-CASES.json": "72545fe6cec1827b6cb43ac42164989ee0d0fc19ffb052fdfe55381d605f301b",
+    "ENGINE-REFERENCE.json": "2345a65ad02b9b06a52e206ced913515897c1c3c04637e7c20f5811a4669ff35",
+    "LATEST-PUBLISHED-RELEASE.json": "a5e9bfc5a7a1242a934b51ea329a624aa1cc15b5a4793aec26ad30914dfdd393",
+    "LOT-CLOSURE.json": "e6f40496dc52be8080abe44ea45ce74c2d5912281aa9ea6c3bdb8550e399479d",
+    "FINAL-VALIDATION.json": "cb59520a393dc567be52c947aa247f6d0f3aff929e49f7eb9629f063a48ae58c"
+  },
+  "historical_protocol_comparison": [
+    {
+      "arm": "ir",
+      "old_n": 1,
+      "controlled_n": 2,
+      "old_responses": 22,
+      "controlled_mean_responses": 12,
+      "old_total_tokens": 425280,
+      "controlled_mean_total_tokens": 209430.5,
+      "token_change_percent": -50.75467927012791,
+      "old_owned_ms": 456677.2892,
+      "controlled_mean_owned_ms": 381432.91394999996,
+      "scope": "historical protocol comparison, immutable verification only; no causal product-version speedup claim"
+    },
+    {
+      "arm": "xml",
+      "old_n": 1,
+      "controlled_n": 2,
+      "old_responses": 31,
+      "controlled_mean_responses": 12,
+      "old_total_tokens": 614834,
+      "controlled_mean_total_tokens": 210054,
+      "token_change_percent": -65.83565645361188,
+      "old_owned_ms": 529045.5916,
+      "controlled_mean_owned_ms": 386562.3428,
+      "scope": "historical protocol comparison, immutable verification only; no causal product-version speedup claim"
+    }
+  ],
+  "final_validation": {
+    "status": "PASS",
+    "commands": [
+      {
+        "command": "npm run perf:verify-source-of-truth-policy",
+        "status": "PASS",
+        "exit_code": 0,
+        "checkout_unchanged": true
+      },
+      {
+        "command": "npm run perf:verify-metadata-policy",
+        "status": "PASS",
+        "exit_code": 0,
+        "checkout_unchanged": true
+      },
+      {
+        "command": "npm run perf:verify-markdown-contract",
+        "status": "PASS",
+        "exit_code": 0,
+        "checkout_unchanged": true
+      },
+      {
+        "command": "npm run perf:verify-doc-references",
+        "status": "PASS",
+        "exit_code": 0,
+        "checkout_unchanged": true
+      },
+      {
+        "command": "npm run perf:verify-tracked-sensitivity",
+        "status": "PASS",
+        "exit_code": 0,
+        "checkout_unchanged": true
+      }
+    ]
+  }
+}

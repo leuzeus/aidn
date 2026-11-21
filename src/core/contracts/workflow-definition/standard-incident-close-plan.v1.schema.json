@@ -1,0 +1,412 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-incident-close-plan.v1",
+  "title": "standard-incident-close-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "instance_id",
+    "scope_id",
+    "instance_sha256",
+    "incident_id",
+    "incident_path",
+    "incident_sha256",
+    "incident_metadata_sha256",
+    "session_path",
+    "boundary_sha256",
+    "selection_sha256",
+    "evidence",
+    "prepared_at_ms",
+    "traces"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-incident-close-plan.v1"
+    },
+    "instance_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "instance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "incident_id": {
+      "type": "string",
+      "pattern": "^INC-TMP-[0-9]{8}-[0-9]{6}-[A-Za-z0-9][A-Za-z0-9_-]{0,95}$"
+    },
+    "incident_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "incident_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "incident_metadata_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "session_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "boundary_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "selection_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "incident_id",
+        "scope_id",
+        "instance_id",
+        "instance_sha256",
+        "checkpoint_sha256",
+        "resolution_verified",
+        "resolution_ref",
+        "resume_confirmed",
+        "resume_ref",
+        "stop_observed",
+        "workflow_rules_changed",
+        "rule_authorization",
+        "incident_sha256"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "standard-incident-close-evidence.v1"
+        },
+        "incident_id": {
+          "type": "string",
+          "pattern": "^INC-TMP-[0-9]{8}-[0-9]{6}-[A-Za-z0-9][A-Za-z0-9_-]{0,95}$"
+        },
+        "scope_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "instance_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "instance_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "checkpoint_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "resolution_verified": {
+          "const": true
+        },
+        "resolution_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ref",
+            "sha256"
+          ],
+          "properties": {
+            "ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        "resume_confirmed": {
+          "const": true
+        },
+        "resume_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ref",
+            "sha256"
+          ],
+          "properties": {
+            "ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        "stop_observed": {
+          "type": "boolean"
+        },
+        "workflow_rules_changed": {
+          "type": "boolean"
+        },
+        "rule_authorization": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "ref",
+                "sha256"
+              ],
+              "properties": {
+                "ref": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "incident_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "traces": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "before_sha256",
+          "before_metadata_sha256",
+          "after",
+          "after_sha256",
+          "after_metadata_sha256",
+          "metadata"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "before_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "before_metadata_sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "after": {
+            "type": "string",
+            "maxLength": 1048576
+          },
+          "after_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "after_metadata_sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "family",
+                  "subtype",
+                  "classification_reason",
+                  "session_id",
+                  "cycle_id",
+                  "source_mode",
+                  "legacy_origin",
+                  "updated_at",
+                  "gate_relevance",
+                  "entity_confidence"
+                ],
+                "properties": {
+                  "kind": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2048
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "family": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2048
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "subtype": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2048
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "classification_reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2048
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "session_id": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2048
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "cycle_id": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2048
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "source_mode": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2048
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "legacy_origin": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2048
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "updated_at": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2048
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "gate_relevance": {
+                    "type": "integer"
+                  },
+                  "entity_confidence": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "title": "Lossless finite-number text for the canonical confidence metadata; decoded before hashing or persistence."
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

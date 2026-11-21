@@ -1,0 +1,100 @@
+{
+  "date": "2026-11-04",
+  "status": "PARTIAL_IMPLEMENTATION_AND_SEPARATE_BOUNDARY_PROOFS",
+  "lane": "ASSURED",
+  "source_boundary": "package source and disposable fixture corpus; no exact installed archive",
+  "model": {
+    "revision": 72,
+    "sha256": "be5b71dfce8cc7d3bc3bd6616acf335754c1b7c6c1ad77f9645e618968bd99c0",
+    "startup_revision": 131,
+    "cycle_revision": 129,
+    "native_direct_implementation_sha256": "a62b627c0a53471688fd7afbc6f83e5ce1e2915b5a14e60f572ce92cb15e81e3",
+    "native_direct_files": 356,
+    "graph_and_data_binding_structure_changed": false,
+    "complete_standard_workflow": false
+  },
+  "runtime_change": [
+    "Preserve historical index-zero receipt, output reference and accepted event identifiers.",
+    "Create distinct receipt/output/event identifiers for appended results within the existing 32-result bound.",
+    "Look up and authenticate an exact historical receipt, retaining all earlier results and events.",
+    "Permit checkpoint observation of a signed already-receipted unknown under the original verified grant, exact Git witness and absent local owner.",
+    "Append the observed checkpoint result through host CAS without replacing the original preview, intent, grant or dispatch owner."
+  ],
+  "validation": {
+    "PASS": {
+      "verify-standard-workflow-host-fixtures.mjs": 38,
+      "verify-process-operation-fixtures.mjs": 27,
+      "verify-standard-workflow-model-fixtures.mjs": 22,
+      "verify-standard-pr-correction-checkpoint-fixtures.mjs --mode=files": 12,
+      "verify-standard-pr-correction-checkpoint-fixtures.mjs --mode=dual": 10,
+      "verify-standard-pr-correction-checkpoint-fixtures.mjs --mode=db-only": 8
+    },
+    "source_fingerprints_unchanged_during_each_suite": true,
+    "retained_initial_failure": {
+      "suite": "checkpoint files initial result-history fixture",
+      "passed_checks_before_failure": 8,
+      "reason": "The authored fixture receipt omitted the contract-required evidence reference.",
+      "classification": "INVALID_TEST_FIXTURE_BEFORE_OBSERVER_EXECUTION",
+      "source_fingerprints_unchanged": true,
+      "corrected_distinct_run": "files rerun reported above",
+      "automatic_fixture_cleanup": "completed by the original test driver"
+    },
+    "SKIP": [],
+    "NOT_RUN": [
+      "Complete runtime family and Governance Admission",
+      "Actual host reconciliation/append/CAS after an unknown produced by its real business dispatcher",
+      "Retained-owner recovery with authenticated resource closure",
+      "Expired-original-authority recovery",
+      "Positive DB-only recovery without a Git witness",
+      "Real PostgreSQL, native model, provider, human consent and exact installed archive qualification"
+    ]
+  },
+  "proof_boundaries": [
+    "The host history fixture authors signed unknown/appended results; it proves receipt lookup, acceptance, preserved history and exact replay/simulation, not business recovery production.",
+    "The checkpoint component fixture authors a signed unknown and directly invokes the actual observer in a fresh Node process with real Git/canonical ports and doubled source/provider authorities.",
+    "These proofs are separate and do not establish the composed host recovery path by juxtaposition.",
+    "DB-only continues to refuse observation when the required operation-specific Git witness is absent.",
+    "No model, external provider call, real human consent, authority renewal, owner takeover or installed-client change occurs."
+  ],
+  "frozen_composed_experiment": {
+    "source_commit": "a447a674c29ba4ea38633d30904efa6bd947aa8d",
+    "model_revision": 70,
+    "parent_exit_code": 1,
+    "child_status_retained_by_old_assertion": null,
+    "child_error_and_signal": "NOT_RETAINED",
+    "original_authorized_at_ms": 1793777966139,
+    "original_deadline_ms": 1793785166139,
+    "cold_wait_watchdog_deadline_ms": 1793785226139,
+    "parent_exit_observed_utc": "2026-11-04T09:40:27.053752+00:00",
+    "cause": "Watchdog code and timing are consistent; exact child error/signal are unavailable.",
+    "source_unchanged_files": 2092,
+    "accepted_revision": 137,
+    "accepted_events": 136,
+    "last_accepted_binding": "session_pr_update_push",
+    "next_journal": {
+      "binding": "session_pr_review_content_observe",
+      "phase": "staged",
+      "results": 0,
+      "owner": null,
+      "canonical_intent_accepted": false
+    },
+    "snapshot_only_replay": "EXACT_RECORD_AND_CURSOR",
+    "streaming_simulation_rows": 137,
+    "cursor": "RUNNING",
+    "closed_fixture_allocations_with_referenced_checkpoint_and_closure_bytes": 8,
+    "cumulative_fixture_responses": 8,
+    "cumulative_storage_debit_bytes": 1765832,
+    "real_native_model_calls": 0,
+    "correction_recovery_reached": false,
+    "general_os_resource_extinction": "NOT_ESTABLISHED",
+    "authorization_renewal_or_new_long_trial": false,
+    "qualification_of_current_model": false
+  },
+  "diagnostic_change": {
+    "scope": "current fixture driver only",
+    "fields_retained_before_parent_assertion": ["pid", "status", "signal", "error_code", "timeout_ms", "elapsed_ms", "stdout_bytes", "stderr_bytes"],
+    "deadline_or_authority_extension": false,
+    "validation": "syntax checked; frozen failed trial was not rerun"
+  },
+  "architecture_decision": "Existing ADR-0025 retained-result protocol; implementation clarification only, no new authority or historical conversion."
+}

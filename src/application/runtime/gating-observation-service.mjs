@@ -405,7 +405,7 @@ function canonicalIntent(continuity, targetRoot, branch) {
   return { sessionObjective, cycleGoal, canonicalIntentUncertain: Boolean(cycle && !cycleGoal) };
 }
 
-export async function collectGatingObservations({ targetRoot, eventFile, indexSyncCheckFile, indexFile, indexBackend, stateMode, mode, reloadResult, gitAdapter, completionContext = null }) {
+export async function collectGatingObservations({ targetRoot, eventFile, indexSyncCheckFile, indexFile, indexBackend, stateMode, mode, reloadResult, gitAdapter, completionContext = null, requireIntentSignals = false }) {
   const configData = readAidnProjectConfig(targetRoot).data;
   const persistence = resolveConfigRuntimePersistence(configData);
   const backend = persistence?.backend === "postgres" ? "postgres" : detectIndexBackend(indexFile, indexBackend);
@@ -487,7 +487,7 @@ export async function collectGatingObservations({ targetRoot, eventFile, indexSy
     cycleGoal = null;
   }
   const changedFiles = getChangedFiles(targetRoot, gitAdapter);
-  const noChangeFastPath = buildNoChangeFastPath(reloadResult, changedFiles);
+  const noChangeFastPath = !requireIntentSignals && buildNoChangeFastPath(reloadResult, changedFiles);
   const eventStats = readEventSignalStats(eventFile, {
     branch: gitAdapter.getCurrentBranch(targetRoot),
     // Closure always evaluates drift, even on a clean incremental reload.

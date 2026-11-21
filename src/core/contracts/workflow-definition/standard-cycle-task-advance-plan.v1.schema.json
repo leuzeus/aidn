@@ -1,0 +1,175 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-task-advance-plan.v1",
+  "x-aidn-contract-version": "standard-cycle-task-advance-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "input",
+    "prepared_at_ms",
+    "evaluation_sha256",
+    "context_sha256",
+    "boundary_sha256",
+    "cycle_path",
+    "changes",
+    "scope_sha256",
+    "implementation_operation_id",
+    "task_operation_id",
+    "validation_operation_id",
+    "work_operation_id",
+    "task_id",
+    "next_task_id",
+    "ordinal",
+    "previous_progress_operation_id",
+    "completed_task_ids",
+    "finished",
+    "selection_context_sha256"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-task-advance-plan.v1"
+    },
+    "operation_ref": {
+      "const": "cycle_task_advance"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evaluation_operation_id"
+      ],
+      "properties": {
+        "evaluation_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        }
+      }
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "evaluation_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "context_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "boundary_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "cycle_path": {
+      "type": "string",
+      "pattern": "^cycles/C[0-9]{3,6}-[a-z]+-[A-Za-z0-9._-]+$"
+    },
+    "changes": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "before_sha256",
+          "after",
+          "after_sha256",
+          "before_metadata_sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 192
+          },
+          "before_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "after": {
+            "type": "string",
+            "maxLength": 1048576
+          },
+          "after_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "before_metadata_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "scope_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "implementation_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "task_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "validation_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "work_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^TASK-[0-9]{3,6}$"
+    },
+    "next_task_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^TASK-[0-9]{3,6}$"
+    },
+    "ordinal": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 64
+    },
+    "previous_progress_operation_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "completed_task_ids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "type": "string",
+        "pattern": "^TASK-[0-9]{3,6}$"
+      }
+    },
+    "finished": {
+      "type": "boolean"
+    },
+    "selection_context_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/process-control-inbox.v1",
+  "x-aidn-contract-version": "process-control-inbox.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "inbox_id",
+    "source_ref",
+    "request",
+    "source",
+    "delivery",
+    "phase",
+    "delivered_instance_sha256",
+    "key_id",
+    "authentication"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "process-control-inbox.v1"
+    },
+    "inbox_id": {
+      "type": "string",
+      "pattern": "^control_[a-f0-9]{40}$"
+    },
+    "source_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "request": {
+      "type": "object"
+    },
+    "source": {
+      "type": "object"
+    },
+    "delivery": {
+      "type": "object"
+    },
+    "phase": {
+      "enum": [
+        "reserved",
+        "delivered"
+      ]
+    },
+    "delivered_instance_sha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authentication": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

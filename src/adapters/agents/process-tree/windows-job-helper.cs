@@ -109,7 +109,7 @@ internal static class AgentJobHelper {
     public static int Main() {
         Console.InputEncoding = new UTF8Encoding(false, true); Console.OutputEncoding = new UTF8Encoding(false, true);
         string jobName = null, startedAt = null, failure = null;
-        long duration = 10000, stopTimeout = 5000; bool confirmed = false, attributesReady = false;
+        long duration = 10000, stopTimeout = 5000; bool confirmed = false, attributesReady = false, supervisionOnly = false;
         uint exitCode = STILL_ACTIVE, active = 0; Thread stdout = null, stderr = null;
         IntPtr stdinRead = IntPtr.Zero, stdinWrite = IntPtr.Zero, stdoutRead = IntPtr.Zero, stdoutWrite = IntPtr.Zero, stderrRead = IntPtr.Zero, stderrWrite = IntPtr.Zero;
         IntPtr attributes = IntPtr.Zero, handles = IntPtr.Zero, jobs = IntPtr.Zero, environment = IntPtr.Zero;
@@ -121,7 +121,10 @@ internal static class AgentJobHelper {
             RunnerId = Text(request, "runner_id"); Require(RunnerId.Length > 0 && RunnerId.Length <= 128, "INVALID_REQUEST");
             string executable = Text(request, "executable"), cwd = Text(request, "cwd");
             Require(Path.IsPathRooted(executable) && Path.IsPathRooted(cwd) && Directory.Exists(cwd), "INVALID_REQUEST");
-            duration = Number(request, "max_duration_ms", 86400000); stopTimeout = Number(request, "stop_timeout_ms", 30000); MaxOutput = Number(request, "max_output_bytes", 1073741824);
+            supervisionOnly = request.ContainsKey("supervision_only") && request["supervision_only"] is bool && (bool)request["supervision_only"];
+            if (supervisionOnly) Require(request.ContainsKey("max_duration_ms") && request["max_duration_ms"] == null, "INVALID_REQUEST");
+            else duration = Number(request, "max_duration_ms", 86400000);
+            stopTimeout = Number(request, "stop_timeout_ms", 30000); MaxOutput = Number(request, "max_output_bytes", 1073741824);
             var args = request["args"] as System.Collections.IList; Require(args != null && args.Count <= 256, "INVALID_REQUEST");
             var argv = new List<string> { executable };
             foreach (object arg in args) { Require(arg is string && ((string)arg).IndexOf('\0') < 0, "INVALID_REQUEST"); argv.Add((string)arg); }
@@ -177,8 +180,8 @@ internal static class AgentJobHelper {
                 } catch { Stop("INVALID_CONTROL"); }
             }); control.IsBackground = true; control.Start();
             stdout = Drain(stdoutRead, "stdout"); stdoutRead = IntPtr.Zero; stderr = Drain(stderrRead, "stderr"); stderrRead = IntPtr.Zero;
-            while (!ResumeRequested && Reason() == null && clock.ElapsedMilliseconds < duration) Thread.Sleep(5);
-            if (clock.ElapsedMilliseconds >= duration) Stop("TIMEOUT");
+            while (!ResumeRequested && Reason() == null && (supervisionOnly || clock.ElapsedMilliseconds < duration)) Thread.Sleep(5);
+            if (!supervisionOnly && clock.ElapsedMilliseconds >= duration) Stop("TIMEOUT");
             if (Reason() == null) {
                 lock (OutputLock) {
                     Require(ResumeThread(ThreadHandle) != UInt32.MaxValue, "RESUME_FAILED"); Resumed = true; Close(ref ThreadHandle);
@@ -192,7 +195,7 @@ internal static class AgentJobHelper {
             }
             long stopping = -1;
             for (;;) {
-                if (clock.ElapsedMilliseconds >= duration) Stop("TIMEOUT");
+                if (!supervisionOnly && clock.ElapsedMilliseconds >= duration) Stop("TIMEOUT");
                 if (Reason() != null && stopping < 0) { Require(TerminateJobObject(Job, 125), "JOB_TERMINATE_FAILED"); stopping = clock.ElapsedMilliseconds; Close(ref stdinWrite); }
                 active = Active(); if (active == 0) { confirmed = true; break; }
                 if (stopping >= 0 && clock.ElapsedMilliseconds - stopping >= stopTimeout) { failure = "JOB_TERMINATION_UNCONFIRMED"; break; }

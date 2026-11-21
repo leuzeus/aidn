@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:aidn="urn:aidn:bpmn:execution:v1" targetNamespace="urn:aidn:fixtures">
+  <bpmn:process id="Delivery" isExecutable="true">
+    <bpmn:startEvent id="Start"/>
+    <bpmn:task id="Analyze" name="Analyze requirement">
+      <bpmn:extensionElements><aidn:execution roleRef="analysis" policyRef="work"/></bpmn:extensionElements>
+    </bpmn:task>
+    <bpmn:parallelGateway id="InspectSplit"/>
+    <bpmn:task id="InspectCode" name="Inspect code">
+      <bpmn:extensionElements><aidn:execution roleRef="implementation" policyRef="work"/></bpmn:extensionElements>
+    </bpmn:task>
+    <bpmn:task id="InspectTests" name="Inspect tests">
+      <bpmn:extensionElements><aidn:execution roleRef="implementation" policyRef="work"/></bpmn:extensionElements>
+    </bpmn:task>
+    <bpmn:parallelGateway id="InspectJoin"/>
+    <bpmn:task id="Review" name="Independent review">
+      <bpmn:extensionElements><aidn:execution roleRef="review" policyRef="review"/></bpmn:extensionElements>
+    </bpmn:task>
+    <bpmn:endEvent id="End"/>
+    <bpmn:sequenceFlow id="StartAnalyze" sourceRef="Start" targetRef="Analyze"/>
+    <bpmn:sequenceFlow id="AnalyzeSplit" sourceRef="Analyze" targetRef="InspectSplit"/>
+    <bpmn:sequenceFlow id="CodeBranch" sourceRef="InspectSplit" targetRef="InspectCode"/>
+    <bpmn:sequenceFlow id="TestsBranch" sourceRef="InspectSplit" targetRef="InspectTests"/>
+    <bpmn:sequenceFlow id="CodeJoin" sourceRef="InspectCode" targetRef="InspectJoin"/>
+    <bpmn:sequenceFlow id="TestsJoin" sourceRef="InspectTests" targetRef="InspectJoin"/>
+    <bpmn:sequenceFlow id="JoinReview" sourceRef="InspectJoin" targetRef="Review"/>
+    <bpmn:sequenceFlow id="ReviewEnd" sourceRef="Review" targetRef="End"/>
+  </bpmn:process>
+</bpmn:definitions>
