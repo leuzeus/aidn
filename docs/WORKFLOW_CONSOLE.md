@@ -52,10 +52,12 @@ Ctrl+C. An already admitted run uses its normal status/cancel lifecycle;
 closing the dashboard is not proof of process termination or cleanup.
 
 Enter an instance ID in **Instance exacte** to enable **Moteur de l’instance**.
-If both engines retain that ID, choose **Agentique** or **Historique** and
-refresh. Clearing the ID also clears the engine. Changing the engine invalidates
-any action preview awaiting confirmation. If you click **Actualiser** again while
-a read is in progress, only the latest click can update the displayed results,
+If both engines retain that ID, the dashboard prompts you to choose **Agentique**
+or **Historique** and click **Actualiser**. The raw inspection JSON keeps the
+`WORKFLOW_ENGINE_AMBIGUOUS` code. Clearing the ID also clears the engine.
+Changing the engine invalidates any action preview awaiting confirmation.
+If you click **Actualiser** again while a read is in progress, only the latest
+click can update the displayed results,
 errors and connection status. If that request fails, the dashboard clears the
 previous results and their JSON. The error and the selected filters stay visible
 so you can retry with **Actualiser**.

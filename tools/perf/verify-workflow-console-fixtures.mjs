@@ -31,6 +31,7 @@ original.compatibility.product_version = productVersion;
 const definition = { ...original, workflow_id: "reviewed-correction", entry: "approval", steps: original.steps.filter(s => s.id !== "diagnose"), transitions: original.transitions.filter(e => e.from !== "diagnose") };
 const context = { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: productVersion, workflow_version: 7, state_mode: "files" };
 const evidence = [{ ref: "fixture-human-review", sha256: "b".repeat(64) }];
+const expectedAmbiguityMessage = "Cet identifiant existe dans les deux moteurs. Choisissez Agentique ou Historique, puis cliquez sur Actualiser.";
 const schemas = Object.fromEntries(["inspect", "action", "dashboard"].map(name => [name, JSON.parse(fs.readFileSync(path.join(repo, `src/core/contracts/cli-output/runtime-workflow-${name}.v1.schema.json`)))]));
 function contracted(name, output) { assert.deepEqual(validateJsonSchema(output, schemas[name]), []); return output; }
 function snapshot(folder) {
@@ -213,16 +214,19 @@ try {
     assert.equal(cards.length, 1);
     assert(cards[0].children.some(child => child.textContent === output.view.instances[0].instance_sha256));
   }), "refresh-failure");
-  await check("dashboard selects each engine for the same exact instance ID", () => withAmbiguousDashboard(async ({ get, html, requests }) => {
+  await check("choosing a historical instance clears the ambiguity message and each engine displays its own card", () => withAmbiguousDashboard(async ({ get, html, requests }) => {
     const options = html.match(/<select\b[^>]*\bid="engine"[^>]*>([\s\S]*?)<\/select>/)[1];
     assert.deepEqual(Array.from(options.matchAll(/<option value="([^"]*)"/g), match => match[1]), ["", "agentic", "legacy"]);
     assert.equal(get("engine").disabled, true);
     get("instance").value = " same "; get("instance").listeners.input();
     assert.equal(get("engine").disabled, false);
-    for (const engine of ["agentic", "legacy"]) {
+    await get("refresh").onclick();
+    assert.equal(get("errors").textContent, expectedAmbiguityMessage);
+    for (const engine of ["legacy", "agentic"]) {
       get("engine").value = engine; get("engine").listeners.change();
       await get("refresh").onclick();
       assert.deepEqual(requests.at(-1), { instanceId: "same", engine });
+      assert.equal(get("errors").textContent, "");
       const output = contracted("inspect", JSON.parse(get("raw").textContent));
       assert.deepEqual(output.errors, []);
       assert.deepEqual(output.view.instances.map(row => [row.instance_id, row.engine]), [["same", engine]]);
@@ -231,11 +235,13 @@ try {
       assert(cards[0].children.some(child => child.textContent === output.view.instances[0].instance_sha256));
     }
   }), "engine-selector");
-  await check("dashboard omits an unspecified engine and preserves the catalog and ambiguity verdict", () => withAmbiguousDashboard(async ({ get, requests }) => {
+  await check("dashboard explains an ambiguous ID and retains the exact error in the raw inspection", () => withAmbiguousDashboard(async ({ get, requests }) => {
     get("instance").value = "same"; get("instance").listeners.input();
     await get("refresh").onclick();
     assert.deepEqual(requests.at(-1), { instanceId: "same" });
-    assert.equal(get("errors").textContent, "WORKFLOW_ENGINE_AMBIGUOUS");
+    assert.equal(get("errors").textContent, expectedAmbiguityMessage);
+    const output = contracted("inspect", JSON.parse(get("raw").textContent));
+    assert.deepEqual(output.errors, ["WORKFLOW_ENGINE_AMBIGUOUS"]);
     get("engine").value = "legacy"; get("engine").listeners.change();
     get("instance").value = "  "; get("instance").listeners.input();
     assert.equal(get("engine").disabled, true); assert.equal(get("engine").value, "");
