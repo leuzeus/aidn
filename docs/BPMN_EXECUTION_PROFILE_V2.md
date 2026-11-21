@@ -30,6 +30,8 @@ authorize writes or native calls; execution still requires pinned inputs and
 explicit host authorization. Historical sequential workflow records retain
 their versioned reader rather than being silently converted into agentic models.
 
+Composed workflows use the [BPMN model project format](BPMN_MODEL_PROJECT.md).
+
 ## Typed operations
 
 For the IR v2 target a task can bind an operation with
