@@ -64,9 +64,11 @@ so you can retry with **Actualiser**.
 
 The interface first displays observations. The advanced action editor accepts
 the same request JSON as the CLI and shows the exact preview. Editing a request
-invalidates its approval. Applying requires explicit confirmation; run commands
-using the sequential lifecycle also require explicit shared synchronization
-consent. Ordinary agentic execution retains its local owned-host admission.
+immediately clears its preview and approval. The dashboard ignores late replies
+and errors from that preview. Prepare and confirm a fresh preview for the edited
+request. Run commands using the sequential lifecycle also require explicit
+shared synchronization consent. Ordinary agentic execution retains its local
+owned-host admission.
 After a lost response,
 inspect canonical state before taking any further action.
 

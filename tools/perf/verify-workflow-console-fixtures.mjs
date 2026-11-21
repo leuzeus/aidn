@@ -41,9 +41,9 @@ function snapshot(folder) {
 }
 const put = (file, value) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(value)); };
 let checks = 0;
-const focusedGroups = ["engine-selector", "refresh-order", "refresh-failure"].filter(group => process.argv.includes(`--${group}-only`));
-async function check(name, action, group) {
-  if (focusedGroups.length && !focusedGroups.includes(group)) return;
+const focusedGroups = ["engine-selector", "refresh-order", "refresh-failure", "action-preview"].filter(group => process.argv.includes(`--${group}-only`));
+async function check(name, action, ...groups) {
+  if (focusedGroups.length && !groups.some(group => focusedGroups.includes(group))) return;
   await action(); checks++; console.log("PASS " + name);
 }
 
@@ -61,6 +61,22 @@ function loadDashboard(fetch) {
     document: { createElement, getElementById: get }, fetch,
   });
   return { get, html };
+}
+
+const applicablePreview = { can_apply: true, action_sha256: "a".repeat(64), action: { effects: ["canonical_workflow_checkpoint"] } };
+function loadPreviewDashboard() {
+  const calls = [];
+  const { get } = loadDashboard((_url, options) => new Promise((resolve, reject) => {
+    calls.push({ body: JSON.parse(options.body), reject, respond: value => resolve({ ok: true, json: async () => value }) });
+  }));
+  function edit(id, value) {
+    get(id).value = value;
+    get(id).listeners[id === "engine" ? "change" : "input"]();
+  }
+  edit("instance", "sample");
+  edit("token", "fixture");
+  edit("request", JSON.stringify({ operation: "decide", input: { instanceId: "sample", outcome: "rejected" } }));
+  return { get, calls, edit };
 }
 
 async function withAmbiguousDashboard(verify, fetchInspection = fetch) {
@@ -250,36 +266,75 @@ try {
     assert.equal(get("errors").textContent, "");
     assert.deepEqual(JSON.parse(get("raw").textContent).view.instances.map(row => row.engine).sort(), ["agentic", "legacy"]);
   }), "engine-selector");
-  await check("dashboard selector edits invalidate approved and in-flight previews", async () => {
-    let respond; const requests = [];
-    const { get } = loadDashboard((_url, options) => {
-      requests.push(JSON.parse(options.body));
-      return new Promise(resolve => { respond = value => resolve({ ok: true, json: async () => value }); });
-    });
-    const request = { operation: "decide", input: { instanceId: "sample", outcome: "rejected" } };
-    get("request").value = JSON.stringify(request); get("token").value = "fixture";
-    get("instance").value = "sample"; get("instance").listeners.input();
-    for (const changed of ["request", "token", "instance", "engine"]) {
-      const pendingPreview = get("preview").onclick();
-      if (changed === "engine") { get(changed).value = "agentic"; get(changed).listeners.change(); }
-      else get(changed).listeners.input();
-      // Even an edit reverted to its original value invalidates the pending result.
-      respond({ can_apply: true, action_sha256: "a".repeat(64), action: { effects: ["canonical_workflow_checkpoint"] } }); await pendingPreview;
-      get("approve").checked = true; get("approve").onchange(); assert.equal(get("apply").disabled, true);
-      const before = requests.length; await get("apply").onclick(); assert.equal(requests.length, before);
-    }
-    const preview = get("preview").onclick(); get("approve").checked = true;
-    respond({ can_apply: true, action_sha256: "b".repeat(64), action: { effects: ["canonical_workflow_checkpoint"] } }); await preview;
-    assert.equal(get("approve").checked, false); get("approve").checked = true; get("approve").onchange(); assert.equal(get("apply").disabled, false);
-    get("engine").value = "legacy"; get("engine").listeners.change();
-    assert.equal(get("approve").checked, false); assert.equal(get("apply").disabled, true);
-    const before = requests.length; await get("apply").onclick(); assert.equal(requests.length, before);
-    const fresh = get("preview").onclick();
-    respond({ can_apply: true, action_sha256: "b".repeat(64), action: { effects: ["canonical_workflow_checkpoint"] } }); await fresh;
+  await check("editing an approved request clears the displayed preview and its confirmation", async () => {
+    const { get, calls, edit } = loadPreviewDashboard();
+    const preview = get("preview").onclick();
+    calls[0].respond(applicablePreview);
+    await preview;
+    assert.deepEqual(JSON.parse(get("preview-output").textContent), applicablePreview);
     get("approve").checked = true; get("approve").onchange();
-    const application = get("apply").onclick(); assert.deepEqual(requests.at(-1).request, request); assert.equal(requests.at(-1).expectPlan, "b".repeat(64));
-    respond({ written: true }); await application; assert.equal(get("apply").disabled, true);
-  }, "engine-selector");
+    assert.equal(get("apply").disabled, false);
+
+    edit("request", JSON.stringify({ operation: "decide", input: { instanceId: "updated", outcome: "rejected" } }));
+    assert.equal(get("preview-output").textContent, "Aucun aperçu préparé.");
+    assert.equal(get("approve").checked, false);
+    assert.equal(get("apply").disabled, true);
+    await get("apply").onclick();
+    assert.equal(calls.length, 1);
+  }, "action-preview");
+  await check("late preview success and failure cannot restore an invalidated panel or approval", async () => {
+    const { get, calls, edit } = loadPreviewDashboard();
+    for (const field of ["request", "token", "instance", "engine"]) {
+      for (const outcome of ["success", "failure"]) {
+        const preview = get("preview").onclick();
+        const call = calls.at(-1);
+        const original = get(field).value;
+        edit(field, field === "engine" ? "legacy" : original + " ");
+        edit(field, original);
+        if (outcome === "success") call.respond(applicablePreview);
+        else call.reject(new Error("obsolete preview error"));
+        await preview;
+        assert.equal(get("preview-output").textContent, "Aucun aperçu préparé.");
+        get("approve").checked = true; get("approve").onchange();
+        assert.equal(get("apply").disabled, true);
+        const before = calls.length;
+        await get("apply").onclick();
+        assert.equal(calls.length, before);
+      }
+    }
+  }, "action-preview", "engine-selector");
+  await check("the edited request requires confirmation of its fresh preview before applying", async () => {
+    const { get, calls, edit } = loadPreviewDashboard();
+    const first = get("preview").onclick();
+    calls[0].respond(applicablePreview);
+    await first;
+    get("approve").checked = true; get("approve").onchange();
+    edit("engine", "legacy");
+    assert.equal(get("approve").checked, false);
+    assert.equal(get("apply").disabled, true);
+    await get("apply").onclick();
+    assert.equal(calls.length, 1);
+
+    const updated = { operation: "decide", input: { instanceId: "updated", outcome: "rejected" } };
+    edit("request", JSON.stringify(updated));
+    const fresh = get("preview").onclick();
+    assert.deepEqual(calls[1].body, { request: updated });
+    get("approve").checked = true; get("approve").onchange();
+    const output = { ...applicablePreview, action_sha256: "b".repeat(64) };
+    calls[1].respond(output);
+    await fresh;
+    assert.deepEqual(JSON.parse(get("preview-output").textContent), output);
+    assert.equal(get("approve").checked, false);
+    assert.equal(get("apply").disabled, true);
+    get("approve").checked = true; get("approve").onchange();
+    assert.equal(get("apply").disabled, false);
+    const application = get("apply").onclick();
+    assert.deepEqual(calls[2].body.request, updated);
+    assert.equal(calls[2].body.expectPlan, output.action_sha256);
+    calls[2].respond({ written: true });
+    await application;
+    assert.equal(get("apply").disabled, true);
+  }, "action-preview", "engine-selector");
   for (const mode of ["files", "dual", "db-only"]) await check("CLI and dashboard share observations, exact preview and guarded actions: " + mode, async () => {
     const target = path.join(root, mode); activateWorkflowConsoleFixture(target, path.join(root, "package"));
     put(path.join(target, ".aidn/config.json"), { runtime: { stateMode: mode } });
