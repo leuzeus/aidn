@@ -31,3 +31,18 @@ const changedCatalog = structuredClone(project);
 changedCatalog.manifest.catalog_sha256 = "0".repeat(64);
 assert.throws(() => compareStandardBpmnProject(changedCatalog, assets), /BPMN_PROJECT_CATALOG_CHANGED/);
 console.log("PASS an altered binding identifies its diagram and task, and a substituted catalog refuses");
+
+const stripped = structuredClone(project);
+const task = assets.model.nodes.find(node => node.kind === "operation");
+const elementId = "N_" + task.id;
+const xml = stripped.diagrams[rootFile];
+const taskStart = xml.indexOf('id="' + elementId + '"');
+assert.ok(taskStart >= 0);
+const bindingStart = xml.indexOf("<aidn:operation ", taskStart);
+assert.ok(bindingStart > taskStart && bindingStart < xml.indexOf("</bpmn:serviceTask>", taskStart));
+const bindingEnd = xml.indexOf("/>", bindingStart) + 2;
+stripped.diagrams[rootFile] = xml.slice(0, bindingStart) + xml.slice(bindingEnd);
+assert.throws(() => compileBpmnProject(stripped), error =>
+  error.code === "BPMN_EXECUTION_BINDING_INVALID" &&
+  error.model_id === assets.model.model_id && error.element_id === elementId);
+console.log("PASS a stripped operation extension identifies the published model and BPMN task");
