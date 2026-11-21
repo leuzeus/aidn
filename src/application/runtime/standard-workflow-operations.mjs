@@ -264,6 +264,13 @@ new URL("standard-cycle-implementation.mjs", import.meta.url), new URL("../../co
     new URL("../../core/contracts/workflow-definition/standard-session-start-plan.v2.schema.json", import.meta.url));
   refs.push(...["standard-cycle-entry-input.v1", "standard-cycle-entry-output.v1", "standard-cycle-entry-observation-output.v1", "standard-session-entry-input.v1", "standard-session-entry-output.v1", "standard-workflow-startup-catalog.v2", "standard-workflow-catalog.v4", "standard-workflow-catalog.v5"]
     .map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)));
+  refs.push(...[
+    "../workflow/workflow-evaluations.mjs", "../../../package/catalogs/workflow-evaluations.v1.json",
+    "../../core/contracts/workflow-definition/evaluation-definition.v1.schema.json",
+    "../../core/contracts/workflow-definition/evaluation-result.v1.schema.json",
+    "../../core/agents/agent-role-model.mjs", "../../core/agents/agent-reuse-policy.mjs",
+    "../../core/agents/agent-transition-policy.mjs", "../../core/gating/gating-policy.mjs",
+  ].map(name => new URL(name, import.meta.url)));
   refs.push(new URL('native-reconciliation-history.mjs', import.meta.url));
   refs.push(...["../../core/contracts/workflow-definition/native-allocation-reconciliation-request.v2.schema.json","../../core/contracts/workflow-definition/native-allocation-reconciliation-grant.v2.schema.json","../../core/contracts/workflow-definition/native-allocation-reconciliation-receipt.v2.schema.json","../../core/contracts/workflow-definition/native-allocation-journal.v5.schema.json","../../core/contracts/workflow-definition/native-allocation-reconciliation-record.v2.schema.json"].map(name => new URL(name, import.meta.url)));
   refs.push(...["standard-native-post-assignment-assessment.mjs","../../core/workflow/native-post-assignment-assessment.mjs","../../core/contracts/workflow-definition/native-post-assignment-assessment.v1.schema.json"].map(name => new URL(name, import.meta.url)));

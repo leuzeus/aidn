@@ -439,7 +439,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     files: "published STANDARD resources selected by package/catalogs/standard.workflow-package.json and separately pinned startup and cycle-create components",
     dual: "same versioned package assets; project instances and operation journals use their configured canonical artifact store",
     dbOnly: "same versioned package assets; no fallback from canonical project state to package fixtures",
-    projection: "source descriptor retained in signed operation previews; component IR embedded in its process instance",
+    projection: "source descriptor retained in signed operation previews; component IR embedded in its process instance; derived evaluation envelopes reference the host observation and versioned package evaluator",
     notes: "Fresh-session startup and cycle scaffold components only, not the complete standard model, full cycle-create skill or ordinary default workflow selection. Catalog pins model, exact code bindings, SPEC and skill sources. Loading refuses changed bytes instead of repairing pins. Metadata never grants effects, human identity or native qualification. No new runtime table.",
   }),
   policy({

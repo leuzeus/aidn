@@ -1,5 +1,6 @@
 import { rankAgentAdapters } from "../../core/agents/agent-selection-policy.mjs";
-import { assertAgentReuseRequest, assertAgentReuseObservation, agentReuseWait, evaluateAgentReuse,
+import { evaluateWorkflow } from "../workflow/workflow-evaluations.mjs";
+import { assertAgentReuseRequest, assertAgentReuseObservation, agentReuseWait,
   fingerprintAgentReuse } from "../../core/agents/agent-reuse-policy.mjs";
 
 // No default provider, disk attestation, native launcher or trust boolean. The
@@ -43,7 +44,7 @@ export async function decideAgentReuse({ request, authority, recommendation, sco
       .map(row => row.profile.id);
     const explicit = requestedAgent !== "auto" ? requestedAgent : roster?.default_requested_agent;
     const allowedIds = explicit && explicit !== "auto" ? eligibleAdapterIds.filter(id => id === explicit) : eligibleAdapterIds;
-    const decision = evaluateAgentReuse({ request: frozen, observation, eligibleAdapterIds: allowedIds, now: now() });
+    const decision = evaluateWorkflow("agent_reuse@1", { request: frozen, observation, eligibleAdapterIds: allowedIds, now: now() }).details;
     if (phase === "verdict" && (decision.decision !== "reuse" || decision.execution_id !== expectedExecutionId)) {
       return { ...decision, decision: "wait", reason_code: "VERDICT_EXECUTOR_INELIGIBLE" };
     }
