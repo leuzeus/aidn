@@ -30,6 +30,17 @@ authorize writes or native calls; execution still requires pinned inputs and
 explicit host authorization. Historical sequential workflow records retain
 their versioned reader rather than being silently converted into agentic models.
 
+## Typed operations
+
+For the IR v2 target a task can bind an operation with
+`<aidn:operation bindingRef="context_reload" sha256="…"/>` inside its extension
+elements. Supply the matching `process-operation-binding.v1` definitions in
+`operationBindings`. The compiler verifies their hashes and copies only
+referenced pins into the model. Optional `dataBindings` use
+`process-data-bindings.v4` with XML task IDs in node references. The compiler
+resolves them through the source map and validates the resulting IR scopes
+and order. Repeated or ambiguous source IDs refuse.
+
 ## Mapping to the existing engine
 
 | XML construct | IR construct | Supported semantics |
