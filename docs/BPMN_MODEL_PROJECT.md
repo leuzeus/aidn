@@ -47,3 +47,28 @@ model, implementation bindings, specification and skills before export.
 IR paths against the published revision. A matching model is checked with the
 catalog verifier. Project XML accepts up to 1 MiB, 16,384 elements and 48 levels
 per file, with an 8 MiB aggregate diagram limit.
+
+## Local graphical editor
+
+From a source checkout, install the editor's pinned dependencies once and open
+a working project. On Windows, use `npm.cmd` for the npm commands.
+
+```sh
+npm ci --prefix tools/author/bpmn-editor --ignore-scripts
+node tools/author/export-bpmn-project.mjs --standard --out my-standard
+node tools/author/bpmn-editor/server.mjs --project my-standard
+```
+
+Open the loopback URL printed by the server. Select a model and a subprocess
+under **Bloc**. Move a shape to edit the layout. In a routing block, select a
+conditional sequence flow, edit **Condition du flux**, then choose **Appliquer**.
+**Comparer** recompiles the working copy against the published model.
+**Enregistrer** writes the selected diagram after compilation. **Recharger**
+reopens the files on disk. A changed file digest refuses a stale save.
+
+The editor serves the installed bpmn-js bundle, styles and font locally.
+With the npm packages cached, `npm ci --offline` also works. For a project
+exported from another IR v2 model, supply its authoritative JSON with
+`--baseline model.json` on server startup. To run the three browser scenarios,
+use `npm test --prefix tools/author/bpmn-editor` with the matching Playwright
+Chromium installed, or set `BPMN_BROWSER_PATH` to a local Chromium executable.

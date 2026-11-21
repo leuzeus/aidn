@@ -17,7 +17,7 @@ export function exportStandardBpmnProject(assets = loadStandardWorkflowAssets())
   return freezeShadow({ manifest: { ...project.manifest, catalog_sha256: assets.source.catalog_sha256 }, diagrams: project.diagrams });
 }
 
-function modelDifferences(before, after) {
+export function compareBpmnModels(before, after) {
   const differences = [];
   let count = 0;
   function visit(left, right, path, node) {
@@ -39,7 +39,7 @@ function modelDifferences(before, after) {
 export function compareStandardBpmnProject(project, assets = loadStandardWorkflowAssets()) {
   if (project.manifest?.catalog_sha256 !== assets.source.catalog_sha256) fail("BPMN_PROJECT_CATALOG_CHANGED");
   const result = compileBpmnProject(project);
-  const delta = modelDifferences(assets.model, result.model);
+  const delta = compareBpmnModels(assets.model, result.model);
   if (delta.count === 0) assertStandardWorkflowModelSource(assets.source, result.model);
   return { baseline_sha256: assets.source.model_sha256, candidate_sha256: result.model_sha256, ...delta };
 }

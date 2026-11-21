@@ -176,6 +176,7 @@ function inspectPackageDocsAllowlist(files) {
     "docs/architecture/STANDARD_WORKFLOW_IR_TRACEABILITY.md",
     "docs/BPMN_EXECUTION_PROFILE.md",
     "docs/BPMN_EXECUTION_PROFILE_V2.md",
+    "docs/BPMN_MODEL_PROJECT.md",
     "docs/CODEX_NATIVE_QUALIFICATION.md",
     "docs/qualification/GLOBAL_WINDOWS.md",
     "docs/CODEX_CLIENT_MIGRATION.md",
@@ -404,6 +405,8 @@ function main() {
     for (const internal of ["tools/verify/qualify-context-local-clm.mjs", "tools/verify/context-local-pilot-lib.mjs", "tools/verify/context-local-runner.py"]) {
       assert(!packageLeakGuard.files.some(file => file.path === internal), `source-only local research tool leaked: ${internal}`);
     }
+    assert(!packageLeakGuard.files.some(file => file.path.startsWith("tools/author/bpmn-editor/")),
+      "source-only BPMN editor included in the runtime package");
     for (const asset of ["dashboard.html", "dashboard.css", "dashboard.js"]) {
       assert(packageLeakGuard.files.some(file => file.path === `src/adapters/workflow-console/${asset}`), `workflow dashboard package asset missing: ${asset}`);
     }
