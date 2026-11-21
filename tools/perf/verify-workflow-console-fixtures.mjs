@@ -40,7 +40,7 @@ function snapshot(folder) {
 }
 const put = (file, value) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(value)); };
 let checks = 0;
-const focusedGroups = ["engine-selector", "refresh-order"].filter(group => process.argv.includes(`--${group}-only`));
+const focusedGroups = ["engine-selector", "refresh-order", "refresh-failure"].filter(group => process.argv.includes(`--${group}-only`));
 async function check(name, action, group) {
   if (focusedGroups.length && !focusedGroups.includes(group)) return;
   await action(); checks++; console.log("PASS " + name);
@@ -130,6 +130,26 @@ async function verifyRefreshOrder(failingEngine) {
     assert(get("raw").textContent === raw, "older refresh changed the inspection output");
   }, holdInspection);
 }
+
+async function verifyClearedInspection(get, interrupt, expectedError) {
+  const sections = ["summary", "instances", "catalog", "limits", "live"];
+  await get("refresh").onclick();
+  assert.deepEqual(JSON.parse(get("raw").textContent).errors, []);
+  for (const section of sections) assert(get(section).children.length > 0, section);
+
+  const filters = { instance: "same", engine: "legacy", workflow: "reviewed-correction", configuration: "example.json", run: "example-run" };
+  for (const [id, value] of Object.entries(filters)) {
+    get(id).value = value;
+    get(id).listeners[id === "engine" ? "change" : "input"]();
+  }
+  interrupt();
+  await get("refresh").onclick();
+  assert.equal(get("errors").textContent, expectedError);
+  assert.equal(get("connection-state").textContent, "Indisponible");
+  for (const section of sections) assert.equal(get(section).children.length, 0, section);
+  assert.equal(get("raw").textContent, "");
+  for (const [id, value] of Object.entries(filters)) assert.equal(get(id).value, value, id);
+}
 try {
   await check("STANDARD call actions retain exact entry and return through the service", verifyStandardWorkflowCallAction);
   await check("STANDARD console retains the exact timed action and browser consent subject", verifyStandardConsoleExactAction);
@@ -166,6 +186,33 @@ try {
   await check("an older successful refresh cannot replace the newer engine card", () => verifyRefreshOrder(null), "refresh-order");
   await check("an older failed refresh cannot replace a newer successful read", () => verifyRefreshOrder("agentic"), "refresh-order");
   await check("an older successful refresh cannot clear the newer read error", () => verifyRefreshOrder("legacy"), "refresh-order");
+  await check("network failure clears the previous inspection and retains the filters", async () => {
+    let offline = false;
+    await withAmbiguousDashboard(({ get }) => verifyClearedInspection(get, () => { offline = true; }, "Failed to fetch"),
+      async (url, options) => {
+        if (offline) throw new TypeError("Failed to fetch");
+        return fetch(url, options);
+      });
+  }, "refresh-failure");
+  await check("HTTP 403 clears the previous inspection and shows the refusal reason", () => withAmbiguousDashboard(({ get }) =>
+    verifyClearedInspection(get, () => { get("token").value = ""; }, "WORKFLOW_DASHBOARD_AUTH_REQUIRED")), "refresh-failure");
+  await check("a successful retry displays the selected engine and clears the read error", () => withAmbiguousDashboard(async ({ get }) => {
+    const token = get("token").value;
+    get("instance").value = "same"; get("instance").listeners.input();
+    get("engine").value = "legacy"; get("engine").listeners.change();
+    get("token").value = "";
+    await get("refresh").onclick();
+    assert.equal(get("errors").textContent, "WORKFLOW_DASHBOARD_AUTH_REQUIRED");
+    get("token").value = token;
+    await get("refresh").onclick();
+    assert.equal(get("errors").textContent, "");
+    assert.equal(get("connection-state").textContent, "État consulté · lecture seule");
+    const output = JSON.parse(get("raw").textContent);
+    assert.deepEqual(output.view.instances.map(row => [row.instance_id, row.engine]), [["same", "legacy"]]);
+    const cards = get("instances").children;
+    assert.equal(cards.length, 1);
+    assert(cards[0].children.some(child => child.textContent === output.view.instances[0].instance_sha256));
+  }), "refresh-failure");
   await check("dashboard selects each engine for the same exact instance ID", () => withAmbiguousDashboard(async ({ get, html, requests }) => {
     const options = html.match(/<select\b[^>]*\bid="engine"[^>]*>([\s\S]*?)<\/select>/)[1];
     assert.deepEqual(Array.from(options.matchAll(/<option value="([^"]*)"/g), match => match[1]), ["", "agentic", "legacy"]);
