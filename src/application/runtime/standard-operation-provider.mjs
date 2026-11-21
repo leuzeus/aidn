@@ -1,3 +1,4 @@
+import { standardOperationReliability } from "../workflow/installed-operation-reliability.mjs";
 import { prIncidentCloseOperation } from "../../core/workflow/standard-pr-incident-close.mjs";
 import { handoffResourceOperation } from "../../core/workflow/standard-handoff-resource-operation.mjs";
 import { handoffPublicationOperation } from "../../core/workflow/standard-handoff-operation.mjs";
@@ -759,8 +760,8 @@ export function createStandardOperationProvider({
       assertCurrent: () => { if (current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256) fail("STANDARD_START_PROCESS_CHANGED"); } });
     }],
   ]);
-  return { id: "aidn-standard", revision: 1, operations: standardWorkflowOperationBindings().map(binding => ({
-    binding,
+  return { id: "aidn-standard", revision: 2, operations: standardWorkflowOperationBindings().map(binding => ({
+    binding, reliability: standardOperationReliability(binding),
     prepare: previews.get(binding.id) ?? (() => null),
     dispatch: observations.get(binding.id) ?? (async context => {
       const { record } = context;

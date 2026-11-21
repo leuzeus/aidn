@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/operation-reliability.v1",
+  "x-aidn-contract-version": "operation-reliability.v1",
+  "type": "object", "additionalProperties": false, "minProperties": 2,
+  "required": ["contract_version"],
+  "properties": {
+    "contract_version": { "const": "operation-reliability.v1" },
+    "max_retries": { "type": "integer", "minimum": 0, "maximum": 255 },
+    "wait_timeout_ms": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
+  }
+}

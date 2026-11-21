@@ -132,6 +132,23 @@ facts. Binding identity, effect class, executor and implementation digest are
 read-only. An embedding host can supply its own catalog when starting the
 editor. The catalog is a projection of installed definitions and package data.
 
+## Operation reliability
+
+An editable project can record a retry budget or a wait deadline on a
+provider-supported operation. The editor displays **max retries** and **wait
+timeout in milliseconds** only where the installed provider declares them.
+`max_retries` counts successors after the initial attempt. A wait-only policy
+allows one attempt. The compiler and host check the binding pin and provider
+capabilities. Installed STANDARD provider revision 2 declares both settings for
+`context_reload@1` and `session_entry_admit@1`. A timeout produces
+`PROCESS_OPERATION_WAIT_EXPIRED` when new
+work is attempted. Both the saved project and the compiled model retain the
+policy. See [the runtime decision](ADR/ADR-0025-standard-workflow-runtime-binding.md).
+
+Run `node tools/perf/verify-workflow-reliability.mjs` for the Windows fixture
+covering an expired wait, process restart, concurrent duplicate dispatch and
+reconciliation of a synthetic authenticated unknown result.
+
 ## Local graphical editor
 
 From a source checkout, install the editor's pinned dependencies once and open
@@ -165,6 +182,11 @@ requires a corresponding installed operation. A conditional split creates two
 sequences for its branches. Calls target a local model and validate its parameter
 mapping. **Appliquer Ã  lâ€™Ã©tape** previews the compiled result; **Enregistrer**
 commits the working project.
+
+The step form offers a retry count only for installed, idempotent operation
+bindings and a wait deadline only when the provider supports one. Clearing
+both fields removes the authored policy. These settings are checked against
+the exact binding digest again on save and execution.
 
 New workflows live under `.aidn-workflows/<id>` in the opened directory.
 A coordinated save stages a complete manifest and diagrams under

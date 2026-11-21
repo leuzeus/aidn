@@ -6,6 +6,8 @@ import { loadStandardWorkflowAssets } from "../../src/application/runtime/standa
 import { exportStandardBpmnProject } from "../../src/application/workflow/standard-bpmn-project.mjs";
 import { createWorkflowProject, duplicateWorkflowProject } from "../../src/application/workflow/workflow-project-edit.mjs";
 import roles from "../../package/catalogs/standard-role-profile.v1.json" with { type: "json" };
+import { exportBpmnProject } from "../../src/core/workflow/bpmn-project-export.mjs";
+import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { projectDiagramName } from "../../src/core/workflow/bpmn-project-diagram.mjs";
 import { exportPortableWorkflowProject, importPortableWorkflowProject } from "../author/portable-workflow-project.mjs";
 
@@ -18,6 +20,20 @@ project.diagrams[file] = moved;
 const catalogs = [{ id: assets.catalog.component_id, revision: assets.catalog.revision, document: assets.catalog }];
 const scratch = await fs.mkdtemp(path.join(os.tmpdir(), "aidn-workflow-transfer-"));
 try {
+  const { binding } = assets.catalog.bindings.find(row => row.binding.id === "context_reload");
+  const reliability = { contract_version: "operation-reliability.v1", max_retries: 1 };
+  const reliable = { contract_version: "agentic-process-model.v2", model_id: "portable-observer", revision: 1,
+    participants: [{ id: "team" }], roles: [], policies: [], entry: "observe",
+    nodes: [{ id: "observe", kind: "operation", participant_ref: "team", binding_ref: binding.id, reliability }],
+    operation_pins: { [binding.id]: shadowHash(binding) } };
+  const reliableProject = exportBpmnProject(reliable, { [projectDiagramName(reliable)]: [binding] });
+  const reliableDir = path.join(scratch, "reliable");
+  await exportPortableWorkflowProject(reliableDir, reliableProject);
+  const reliableCopy = await importPortableWorkflowProject(reliableDir);
+  assert.deepEqual(reliableCopy.compilation.model, reliable);
+  assert.ok(reliableCopy.schemas[reliability.contract_version]);
+  console.log("PASS portable retry policy preserves the binding pin, policy and schema");
+
   const custom = structuredClone(createWorkflowProject({ id: "role-transfer" }));
   custom.manifest.models[0].role_profile = { ...roles, id: "business-roles" };
   const customDir = path.join(scratch, "roles");

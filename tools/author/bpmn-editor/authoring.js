@@ -40,6 +40,21 @@ function renderMappings(op, fields) {
   }
   if (list.children.length > 1) get("step-properties").append(list);
 }
+function renderReliability(op, policy) {
+  get("reliability-fields")?.remove();
+  const capabilities = op?.reliability;
+  if (!capabilities?.idempotent && !capabilities?.wait_deadline) return;
+  const list = document.createElement("fieldset"), legend = document.createElement("legend");
+  list.id = "reliability-fields"; legend.textContent = "Attente et reprises"; list.append(legend);
+  function number(id, label, minimum, maximum, value) {
+    const row = document.createElement("label"), field = document.createElement("input");
+    row.append(label, field); field.id = id; field.type = "number"; field.min = minimum;
+    field.max = maximum; field.step = 1; field.value = value ?? ""; list.append(row);
+  }
+  if (capabilities.idempotent) number("step-retries", "Nombre maximal de reprises", 0, 255, policy?.max_retries);
+  if (capabilities.wait_deadline) number("step-timeout", "Délai d’attente (ms)", 1, Number.MAX_SAFE_INTEGER, policy?.wait_timeout_ms);
+  get("step-properties").append(list);
+}
 function renderStepProperties() {
   const model = currentModel(), kind = get("step-kind").value, id = get("step-id").value;
   if (!model) return;
@@ -59,7 +74,8 @@ function renderStepProperties() {
         op.binding.id === node?.binding_ref && model.operation_pins[op.binding.id] === op.provenance.binding_sha256));
       if (selected) control.value = selected.id + "@" + selected.revision;
     }
-    control.onchange = () => renderMappings(boundOperation(), {}); renderMappings(boundOperation(), fields);
+    control.onchange = () => { renderMappings(boundOperation(), {}); renderReliability(boundOperation()); };
+    renderMappings(boundOperation(), fields); renderReliability(boundOperation(), node?.reliability);
   }
   if (kind === "activity") {
     const roles = [...new Set([...model.roles, ...propertyCatalog.roles].map(row => row.id))];
@@ -100,6 +116,9 @@ function readStep() {
   if (kind === "operation" || kind === "evaluation") {
     if (kind === "operation") edit.operation_ref = get("step-operation").value;
     else edit.evaluator_ref = get("step-evaluator").value;
+    const retries = get("step-retries")?.value, timeout = get("step-timeout")?.value;
+    edit.reliability = retries || timeout ? { contract_version: "operation-reliability.v1",
+      ...(retries ? { max_retries: Number(retries) } : {}), ...(timeout ? { wait_timeout_ms: Number(timeout) } : {}) } : null;
     edit.fields = {};
     for (const row of document.querySelectorAll("#mappings [data-field]")) {
       const field = row.dataset.field, source = row.querySelector("select").value, text = row.querySelector("input").value;

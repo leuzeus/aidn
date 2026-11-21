@@ -1377,6 +1377,24 @@ effectful experiments, general UNKNOWN/resource recovery, ordinary entry and
 the complete L1-L8/A1-A10 plan remain open. There is no installed/native claim.
 
 
+## Authored operation waits and bounded retries
+
+An operation node can pin `operation-reliability.v1` with an explicit
+`max_retries` or `wait_timeout_ms`. The trusted provider declares its capabilities
+for the resolved binding. The initial STANDARD declarations cover `context_reload`
+and `session_entry_admit`, both deterministic read-only observations. The
+editor offers the settings advertised for that exact installed binding.
+
+Count canonical operation intents per occurrence. A successor requires a
+previously accepted blocked or deferred no-effect receipt, a fresh preview and
+the usual explicit stage, current permission and CAS. A configured deadline
+uses the signed preparation time of the first staged intent for the occurrence.
+A restart or a new preview retains that origin. At expiry the host refuses to
+begin or dispatch work and leaves the journal available for inspection. A
+previously completed result can still be accepted. An unknown effect remains
+in the original reconciliation path. Models omitting these settings retain
+their historical behavior.
+
 ## Status
 
 New model revisions retain a mode report observation before routing its outcome.

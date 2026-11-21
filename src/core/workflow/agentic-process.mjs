@@ -1,6 +1,7 @@
 import { assertAgenticProcessModel, AGENTIC_PROCESS_PROFILE, AGENTIC_PROCESS_OPERATION_PROFILE, exactKeys, processId, processFail as fail } from "./agentic-process-model.mjs";
 import { checkShadowJson, freezeShadow, shadowHash, canonicalShadowJson } from "./shadow-json.mjs";
 import { createHash } from "node:crypto";
+import { assertRetryBudget } from "./operation-reliability.mjs";
 import { assertAgentReuseRequest, fingerprintAgentReuse } from "../agents/agent-reuse-policy.mjs";
 import decisionSchema from "../contracts/agent-reuse/agent-reuse-decision.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
@@ -189,6 +190,7 @@ function replay(instance) {
   }
   const eventIds = new Set(), resultIds = new Set(), operationIds = new Set(), receiptIds = new Set();
   const deliveryIds = new Set(), sourceEvents = new Set();
+  const attempts = new Map();
   for (const event of instance.events) {
     if (!processId(event.event_id) || eventIds.has(event.event_id) || terminal(frames.get("root").status)) fail("PROCESS_EVENT_ORDER_INVALID");
     eventIds.add(event.event_id);
@@ -222,6 +224,11 @@ function replay(instance) {
       assertProcessOperationIntent(event.intent, { instance, node, revision: eventIds.size, occurrenceId: frame.occurrence_id,
         expectedInstanceSha256: prefixSha256(eventIds.size - 1), model: modelOf(frame) });
       if (operationIds.has(event.intent.operation_id)) fail("PROCESS_OPERATION_ID_REUSED");
+      if (node.reliability) {
+        const count = attempts.get(frame.occurrence_id) ?? 0;
+        assertRetryBudget(node.reliability, count);
+        attempts.set(frame.occurrence_id, count + 1);
+      }
       operationIds.add(event.intent.operation_id);
       frame.operation = { intent: event.intent, receipt: null };
       frame.status = "WAITING"; frame.wait_reason = "operation_result";

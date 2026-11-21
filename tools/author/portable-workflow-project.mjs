@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { processModels } from "../../src/core/workflow/process-call-model.mjs";
 import { compileBpmnProject } from "../../src/application/workflow/bpmn-project-service.mjs";
 import { exactKeys, processId } from "../../src/core/workflow/agentic-process-model.mjs";
 import { projectDiagramName } from "../../src/core/workflow/bpmn-project-diagram.mjs";
@@ -49,9 +50,12 @@ function parse(bytes, file) {
   catch { fail("WORKFLOW_PORTABLE_JSON_INVALID", file); }
 }
 
-function neededSchemas(project, catalogs) {
+function neededSchemas(project, catalogs, model) {
   const ids = new Set(["agentic-process-model.v2", "workflow-transfer.v1"]);
   if (project.manifest.contract_version === "workflow-project.v1") ids.add(project.manifest.contract_version);
+  for (const component of processModels(model)) {
+    for (const node of component.nodes) if (node.reliability) ids.add(node.reliability.contract_version);
+  }
   for (const row of project.manifest.models) {
     if (row.data_bindings) ids.add(row.data_bindings.contract_version);
     if (row.role_profile) ids.add(row.role_profile.contract_version);
@@ -124,7 +128,7 @@ export async function exportPortableWorkflowProject(destination, project, { sche
     diagrams[file] = digest(project.diagrams[file]);
   }
   const references = { schemas: [], catalogs: [] };
-  for (const id of neededSchemas(project, catalogs)) {
+  for (const id of neededSchemas(project, catalogs, compiled.model)) {
     if (!schemaId(id)) fail("WORKFLOW_PORTABLE_SCHEMA_INVALID", id);
     const name = id + ".schema.json";
     const schema = Object.hasOwn(schemas, id) ? schemas[id] : parse(await readLocal(schemaDirectory, name, {total: 0}), name);
@@ -209,7 +213,7 @@ export async function importPortableWorkflowProject(directory) {
     schemas[row.id] = parse(await verified(file, row.sha256), file);
     schemaMatches(row.id, schemas[row.id]);
   }
-  const needed = neededSchemas(project, catalogs);
+  const needed = neededSchemas(project, catalogs, compilation.model);
   for (const id of needed) if (!Object.hasOwn(schemas, id)) fail("WORKFLOW_PORTABLE_SCHEMA_MISSING", id);
   if (Object.keys(schemas).length !== needed.length) fail("WORKFLOW_PORTABLE_INDEX_INVALID", "schemas");
   return { project, compilation, catalogs, schemas };

@@ -63,10 +63,19 @@ export function compileProjectDiagram(root, row, targets, pins) {
     records.push({ order, node, bpmn_id: id(element) });
     const metadata = ["order", "participant"];
     if (["task", "serviceTask", "userTask"].includes(element.name)) {
-      shape(element, ["id", "name"], metadata, [...links, "extensionElements"]);
+      shape(element, ["id", "name"], [...metadata, "reliability", "maxRetries", "waitTimeoutMs"], [...links, "extensionElements"]);
       const task = { ...element, attributes: element.attributes.filter(a => !a.uri) };
       const { binding } = readBpmnActivity(task, pins);
       Object.assign(node, { kind: "activity" }, binding);
+      const version = aidn(element, "reliability"), retries = aidn(element, "maxRetries"), timeout = aidn(element, "waitTimeoutMs");
+      if (version !== undefined || retries !== undefined || timeout !== undefined) {
+        if (node.kind !== "operation" || version !== "operation-reliability.v1" ||
+            [retries, timeout].some(value => value !== undefined && !/^(?:0|[1-9][0-9]{0,15})$/.test(value)))
+          fail("PROCESS_OPERATION_RELIABILITY_INVALID", id(element));
+        node.reliability = { contract_version: version,
+          ...(retries === undefined ? {} : { max_retries: Number(retries) }),
+          ...(timeout === undefined ? {} : { wait_timeout_ms: Number(timeout) }) };
+      }
       if (node.kind === "operation") usedPins.set(node.binding_ref, pins.get(node.binding_ref));
     } else if (element.name === "callActivity") {
       shape(element, ["id", "name", "calledElement"], [...metadata, "sha256"], links);
