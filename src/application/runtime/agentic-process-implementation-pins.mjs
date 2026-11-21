@@ -82,6 +82,7 @@ const files = [
   ...["input", "plan", "output"].map(kind =>
     `src/core/contracts/workflow-definition/standard-pr-post-merge-fast-forward-${kind}.v1.schema.json`),
   "src/adapters/runtime/local-git-adapter.mjs",
+  "src/application/runtime/workspace-resolution-service.mjs",
   "src/application/runtime/standard-session-pr-external-merge.mjs",
   "src/application/runtime/standard-session-pr-pretriage-merge.mjs",
   "src/core/workflow/standard-pr-external-merge.mjs",
@@ -222,6 +223,7 @@ const files = [
   "src/core/contracts/workflow-definition/standard-drift-output.v1.schema.json", "scaffold/codex/aidn-drift-check/SKILL.md",
   "src/application/runtime/standard-workflow-operation-host.mjs", "src/application/runtime/standard-workflow-operations.mjs",
   "src/application/runtime/standard-operation-provider.mjs", "src/application/workflow/operation-provider-registry.mjs",
+  "src/application/runtime/standard-workflow-artifacts.mjs",
   "src/application/workflow/workflow-package.mjs", "package/catalogs/standard.workflow-package.json",
   "src/core/contracts/workflow-definition/workflow-package.v1.schema.json",
   "src/application/runtime/standard-cycle-entry-admission.mjs",
