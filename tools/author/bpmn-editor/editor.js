@@ -50,7 +50,8 @@ async function reload() {
   if (Object.hasOwn(project.diagrams, file)) await openDiagram(file, get("scope").value);
   else await openDiagram(project.models[0].file);
 }
-function discard() {
+function discard(hasUnappliedCondition = false) {
+  if (hasUnappliedCondition) return window.confirm("Recharger et abandonner les modifications, y compris la condition non appliquée ?");
   return !dirty || window.confirm("Abandonner les modifications du diagramme ouvert ?");
 }
 get("model").onchange = () => action(async () => {
@@ -71,7 +72,7 @@ modeler.on("root.set", ({ element }) => {
 modeler.on("selection.changed", ({ newSelection }) => {
   selectedFlow = newSelection.length === 1 && newSelection[0].businessObject.conditionExpression ? newSelection[0] : null;
   get("condition-form").hidden = !selectedFlow;
-  if (selectedFlow) get("condition").value = selectedFlow.businessObject.conditionExpression.body;
+  if (selectedFlow) get("condition").value = selectedFlow.businessObject.conditionExpression.body ?? "";
 });
 get("condition-form").onsubmit = event => {
   event.preventDefault();
@@ -102,5 +103,8 @@ async function compare(save) {
 }
 get("compare").onclick = () => action(() => compare(false));
 get("save").onclick = () => action(() => compare(true));
-get("reload").onclick = () => action(async () => { if (discard()) await reload(); });
+get("reload").onclick = () => action(async () => {
+  const hasUnappliedCondition = selectedFlow && get("condition").value !== (selectedFlow.businessObject.conditionExpression?.body ?? "");
+  if (discard(hasUnappliedCondition)) await reload();
+});
 action(reload);
