@@ -23,7 +23,7 @@
   "workflow_configuration_sha256": "56f8c7bb5ba9ae631fb060c73db35831a0c4c3935af830396af4286aa3dbb5a9",
   "native_configuration_sha256": "c819d9c5baf9883ec57cd1caa7fe58f338ef33a70b51f5b6e40bd971e35ed232",
   "installed_projection_sha256": "971aea00534a39f5448ae495f3bfb7b2e28218b86b854ba69ccfa4ca23319da2",
-  "public_full_nominal": "SKIP",
+  "public_full_nominal": "FAIL",
   "windows_installed_nominal": "SKIP",
   "p0_go": false,
   "complete_standard_workflow": false,
@@ -319,6 +319,45 @@
       "process_status": "RUNNING",
       "operation_outcome": null,
       "effect_status": null
+    },
+    {
+      "action": "native_authorization_epoch",
+      "action_sha256": "d07d820a9f397104ffd61299b5398b51719c630378ff78434d3d14942351dad0",
+      "process_status": "RUNNING",
+      "operation_outcome": null,
+      "effect_status": "confirmed"
+    },
+    {
+      "action": "native",
+      "action_sha256": "7ec7080141610f8352734f4de0c4ba295545370a24efcf1b01e9e17f2fcba250",
+      "process_status": "RUNNING",
+      "operation_outcome": null,
+      "effect_status": null,
+      "authorization_sha256": "52685d52e8df9a492eca73135fbad3a877e79cf0e385e2152527ac986c38df1e"
+    },
+    {
+      "action": "operation",
+      "binding": "drift_report_evaluate",
+      "action_sha256": "1fd7a9f729b41aff19a8f2f620afba173e029edb18baefd254c86f91b20e000b",
+      "process_status": "RUNNING",
+      "operation_outcome": "completed",
+      "effect_status": "no_effect",
+      "actor": "standard_operation_host",
+      "intent_sha256": "8636dbcaa3a437d45171270d4fc3aa27d00ee88c350a5513ed59ffe38c70724b",
+      "receipt_sha256": "d775594c8d5e60b8ba18c3c5b1f2a31e949a58fbd7d397e5deca2ed633d0fdf5",
+      "output_sha256": "57ec8d4c865189787dc0bf18f6041402d074d4d30667a3a3eb16198911930ce3"
+    },
+    {
+      "action": "operation",
+      "binding": "drift_check_finalize",
+      "action_sha256": "5977f5ed754ddc45fa12f33b23d06fb188021f404b845a02a1472b2ff93e2a93",
+      "process_status": "WAITING",
+      "operation_outcome": "blocked",
+      "effect_status": "no_effect",
+      "actor": "standard_operation_host",
+      "intent_sha256": "af5e8429e5d549210b587f166fe7a0ce9a9afe2b35e8b1e60653a58b0dffefd7",
+      "receipt_sha256": "a25f2e945fef1dca8d222f60320424720e91ded8a85d54d3caff016176d848ad",
+      "output_sha256": "adb09dd854ef9a8290503a4ea8d22d9a860296715772310adf0acb7661674db0"
     }
   ],
   "native_allocations": [
@@ -337,17 +376,37 @@
       "parent_closed": true,
       "closure_method": "windows-job-object",
       "active_processes_after_close": 0,
-      "elapsed_global_ms": 2261215
+      "elapsed_global_ms": 2261215,
+      "supervised_duration_ms": 100494
+    },
+    {
+      "host_status": "RUNNING",
+      "first_failure": null,
+      "generation": 2,
+      "instance_before_sha256": "d1846eada7c899c2c43dce2573a5277ec3cd6eb012c3b2b97d5b9dd72aebe89b",
+      "instance_after_sha256": "e13d43d22b0f3cdcec7fa3dead1a4099b142acaeaa102290e00c19cf1303ca9d",
+      "action_sha256": "7ec7080141610f8352734f4de0c4ba295545370a24efcf1b01e9e17f2fcba250",
+      "authorization_sha256": "52685d52e8df9a492eca73135fbad3a877e79cf0e385e2152527ac986c38df1e",
+      "journal_sha256": "7712c0c31f6af2ed471ae38fa77944bca7ee58477c7ad964b5939d4fc6364335",
+      "journal_phase": "closed",
+      "responses_observed": 1,
+      "worker_storage_debit_bytes": 2456866,
+      "parent_closed": true,
+      "closure_method": "windows-job-object",
+      "active_processes_after_close": 0,
+      "elapsed_global_ms": 329910,
+      "supervised_duration_ms": 110492
     }
   ],
   "current_prefix": {
-    "process_status": "RUNNING",
+    "process_status": "WAITING",
     "workflow_completed": false,
-    "events_sha256": "ee8c2ed21a6cdbe4f34d7bd297584d74d0f2594eb99dc9f5a736319a4588f92d",
-    "state_file_sha256": "4d829502d16104702805a3203e424ea82763cbd7683a432b56ce4f116f1f6c6b"
+    "events_sha256": "447150c2c7a6004abe2c327f63425b7bb1cd19c72212bd7b6ce4499578330d97",
+    "state_file_sha256": "590da2db747e446462c9eacac229a19c3cc71834f6ae653634903d3ff909c428"
   },
   "native_responses": [
     {
+      "generation": 1,
       "output_contract": "standard-drift-report.v1",
       "result_sha256": "33f53f6f0b1eb4253d257f33b332d750ff98362a7462d851bd6728eb10862803",
       "client_reported_tokens": {
@@ -357,9 +416,29 @@
         "cachedInputTokens": 0,
         "reasoningOutputTokens": 41
       }
+    },
+    {
+      "generation": 2,
+      "output_contract": "standard-drift-report.v1",
+      "result_sha256": "f9da96b94e377dcfbd34e92f8ef1b20483a9e9314d04d8aa17da66b7c9555b63",
+      "client_reported_tokens": {
+        "totalTokens": 31388,
+        "inputTokens": 29847,
+        "outputTokens": 1541,
+        "cachedInputTokens": 0,
+        "reasoningOutputTokens": 20
+      }
     }
   ],
   "git_observations": [
+    {
+      "stage": "cycle-drift-blocked",
+      "head": "28364ac4a11ec1dec5ca2a35254f3a470cda5720",
+      "tree": "758482c80d148e048b577adf3f639b0b8b3e6d56",
+      "observation_sha256": "4b45b00aa31dab7cdd46b44ce52b980a0fe78e709a7b2820519401c6432c882f",
+      "product_commit_differs_from_seed": false,
+      "product_has_working_changes": false
+    },
     {
       "stage": "cycle-initialized",
       "head": "28364ac4a11ec1dec5ca2a35254f3a470cda5720",
@@ -378,7 +457,7 @@
     }
   ],
   "native_renewal": {
-    "status": "SKIP",
+    "status": "PASS",
     "reason_at_boundary": "initial_deadline_elapsed",
     "source_required": "AUTHENTICATED_NATIVE_RESOURCE_SOURCE_REQUIRED",
     "initial_deadline_utc": "2026-11-22T07:07:10.904Z",
@@ -391,7 +470,19 @@
     "responses_debited": 1,
     "storage_bytes_debited": 2147732,
     "responses_remaining": 22,
-    "storage_bytes_remaining": 63024122
+    "storage_bytes_remaining": 63024122,
+    "activation_action_sha256": "d07d820a9f397104ffd61299b5398b51719c630378ff78434d3d14942351dad0",
+    "native_started_on_activation": false,
+    "signed_request_sha256": "1116d55f35462638c75e5b12a8dcf41a0e807938971cb04dac94781d9760d642",
+    "signed_envelope_sha256": "1716f79a546d8ce2b938f6321c9d5b2be39b2490e5eece3dc393f4bf18bac4f0",
+    "signed_grant_sha256": "43137e81a9ba6d072519d83820f5609b3017954218b851a1f52a9cf38d2883e5",
+    "observation_sha256": "ef0f422b2bce14edc6475b0fb77c28e455d736e6381addb83f31003f38c398c2",
+    "evidence_class": "native",
+    "active_resources": 0,
+    "source_role": "native-renewal",
+    "cumulative_response_limit": 23,
+    "cumulative_byte_limit": 65171854,
+    "effective_deadline_utc": "2026-11-22T08:38:02.383Z"
   },
   "cycle_start_observation": {
     "session": "S001",
@@ -404,5 +495,34 @@
     "cycle_owned_by_session": true,
     "cycle_branch_matches_git": true,
     "product_differs_from_seed": false
+  },
+  "first_blocked_transition": {
+    "status": "FAIL",
+    "operation": "drift_check_finalize",
+    "occurrence": "fresh cycle R05",
+    "operation_id": "op_c08e74f16301d9f9b42f5a6540f14d3af25d686d",
+    "action_sha256": "5977f5ed754ddc45fa12f33b23d06fb188021f404b845a02a1472b2ff93e2a93",
+    "receipt_sha256": "a25f2e945fef1dca8d222f60320424720e91ded8a85d54d3caff016176d848ad",
+    "output_sha256": "adb09dd854ef9a8290503a4ea8d22d9a860296715772310adf0acb7661674db0",
+    "accepted_evaluation_sha256": "d775594c8d5e60b8ba18c3c5b1f2a31e949a58fbd7d397e5deca2ed633d0fdf5",
+    "cause": "STANDARD_DRIFT_GATE_BLOCKED",
+    "gate_reason": "L2_SIGNAL_TRIGGERED",
+    "active_signals": [
+      "objective_delta",
+      "time_since_last_drift_check"
+    ],
+    "accepted_evaluation_facts": {
+      "drift_report_available": true,
+      "drift_present": false,
+      "drift_recovery_required": false,
+      "drift_context_complete": true,
+      "drift_check_completed": false
+    },
+    "next_public_action_binding": "drift_check_finalize",
+    "next_public_action_sha256": "867cf280c599077f4a2243b6a0c41733c1b9fb1048c8127a73837d55c3ee6bb2",
+    "effect_status": "no_effect",
+    "physical_report_present": false,
+    "physical_completion_event_count": 0,
+    "git_observation_sha256": "4b45b00aa31dab7cdd46b44ce52b980a0fe78e709a7b2820519401c6432c882f"
   }
 }
