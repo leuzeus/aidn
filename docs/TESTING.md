@@ -2756,6 +2756,12 @@ live Windows/model qualification or an exact archive installation.
 mixed partition is already running on the same immutable production sources;
 the required default command still includes both partitions.
 
+The native-composition fixtures check that each Codex app-server starts with
+the permission profile generated for its activity as the default. The changed
+default case checks that an effective profile mismatch stops execution before
+the first model turn. Run both outcomes with
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --native-permission-profile-only`.
+
 The production native-composition suite also tests the internal authenticated
 allocation composition: canonical reservation before owned launch, a competing
 launch refusal, signed closure/checkpoint reopening in a new Node process,

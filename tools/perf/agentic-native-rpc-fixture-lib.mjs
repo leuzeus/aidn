@@ -21,7 +21,10 @@ export function transport(f, options = {}) {
   const rpcFactory = configuration => {
     const index = sessions.length + 1, thread = `thread-${index}`, permission = configuration.args.find(arg => arg.startsWith("permissions.aidn_agentic_"));
     const profile = permission.split("=")[0].slice("permissions.".length), parsed = inlineTomlToJson(permission.slice(permission.indexOf("=") + 1));
+    const defaults = configuration.args.filter(arg => arg.startsWith("default_permissions="));
+    assert.deepEqual(defaults, [`default_permissions=${JSON.stringify(profile)}`]);
     const cfg = { model: "fixture-model", model_provider: "openai", model_reasoning_effort: "medium", approval_policy: "never", memories: { use_memories: false, generate_memories: false },
+      default_permissions: options.changedDefault ? ":read-only" : profile,
       features: { memories: false, plugins: false, apps: false, hooks: true, multi_agent: false }, agents: { enabled: false }, history: { persistence: "none" },
       project_doc_max_bytes: 0, instructions: "", developer_instructions: "",
       log_dir: JSON.parse(configuration.args.find(arg => arg.startsWith("log_dir=")).slice("log_dir=".length)),

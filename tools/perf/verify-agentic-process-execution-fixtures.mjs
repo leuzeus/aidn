@@ -256,7 +256,7 @@ const checkFlags = new Set([
   "--native-human-port-only", "--historical-diagnostic-only", "--native-human-turn-only",
   "--checkpoint-only", "--large-checkpoint-only", "--journal-only",
   "--journal-preview-only", "--owned-only", "--resume-only",
-  "--worker-only", "--bpmn-control-only",
+  "--worker-only", "--bpmn-control-only", "--native-permission-profile-only",
   "--drift-git-only", "--drift-contract-only",
   "--drift-finalize-contract-only", "--drift-published-rollback", "--drift-published-rollback-rediagnosis",
 ]);
@@ -294,6 +294,8 @@ const put = (base, name, text) => { const file = path.join(base, name); fs.mkdir
 async function check(name, callback) { if (process.argv.includes("--host-resource-activity-only") && !name.startsWith("host resource activity:") && name !== "worker mixed private v2 authority stops at an operation boundary without native startup") return; if (process.argv.includes("--drift-git-readonly-only") && !name.startsWith("drift controlled Git ")) return; if (selectedCanonicalResumeNativeMode && !name.startsWith(`canonical resume native ${selectedCanonicalResumeNativeMode}:`)) return; if (selectedStandardExistingOpenWorkMode && !name.startsWith(`standard existing open work ${selectedStandardExistingOpenWorkMode}:`)) return; if (selectedPublishedChoiceMode && !name.startsWith(`standard selected root ${selectedPublishedChoiceMode}:`)) return; if (selectedStandardExistingCompleteMode && !name.startsWith(`standard existing complete ${selectedStandardExistingCompleteMode}:`)) return; if (selectedStandardExistingOpenMode && !name.startsWith(`standard existing open ${selectedStandardExistingOpenMode}:`)) return; if (process.argv.includes("--cycle-plan-select-native-only") && !name.startsWith("cycle plan selection native files:")) return; if (selectedCanonicalPlanSelectionMode && !name.startsWith(`cycle plan selection ${selectedCanonicalPlanSelectionMode}:`)) return; if (process.argv.includes("--canonical-plan-work-only") && !name.startsWith("canonical plan work files:")) return; if (selectedCanonicalPlanReadinessMode && !name.startsWith(`cycle plan readiness ${selectedCanonicalPlanReadinessMode}:`)) return; if (selectedCanonicalPlanAdoptionMode && !name.startsWith(`cycle plan adoption ${selectedCanonicalPlanAdoptionMode}:`)) return; if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
   if (process.argv.includes("--native-human-port-only") && !name.startsWith("native human port:")) return;
   if (process.argv.includes("--bpmn-control-only") && !name.startsWith("explicit pinned host scenario drives XML")) return;
+  if (process.argv.includes("--native-permission-profile-only") && !name.startsWith("explicit pinned host scenario drives XML")
+    && name !== "stop without retry and retain partial: changed default permission profile") return;
   if (process.argv.includes("--historical-diagnostic-only") && !name.startsWith("historical diagnostic:")) return;
   if (process.argv.includes("--native-human-turn-only") && !name.startsWith("worker private before-turn")) return;
   if (publishedRollbackCase && !name.startsWith("drift published rollback:")) return;
@@ -3782,6 +3784,7 @@ if (process.argv[2] === "--mixed-continue") {
     ["foreign turn", { foreignTurn: true }, "PROCESS_SESSION_FOREIGN_TURN"],
     ["missing usage", { noUsage: true }, "PROCESS_SESSION_CAPTURE_INCOMPLETE"],
     ["changed profile", { badProfile: true }, "PROCESS_SESSION_EFFECTIVE_PROFILE_CHANGED"],
+    ["changed default permission profile", { changedDefault: true }, "PROCESS_SESSION_EFFECTIVE_PROFILE_CHANGED"],
     ["unavailable sandbox refuses provisioning", { backendMissing: true }, "PROCESS_SESSION_SANDBOX_NOT_PREEXISTING"],
     ["profile forbidden by managed requirements", { profileDenied: true }, "PROCESS_SESSION_PERMISSION_PROFILE_UNAVAILABLE"],
     ["unexpected native hooks", { foreignHook: true }, "PROCESS_SESSION_HOOKS_CHANGED"],
@@ -3796,6 +3799,7 @@ if (process.argv[2] === "--mixed-continue") {
     const { result, sessions } = await run(fixture(), options);
     assert.equal(result.status, "FAILED"); assert.equal(result.first_failure, reason, JSON.stringify(result));
     assert.ok(sessions.length <= 2); assert.equal(result.retry, false);
+    if (options.changedDefault) assert.ok(sessions.length === 1 && sessions[0].turns === 0);
   });
   await check("authenticated rejection remains terminal failure, never replaced by a favorable retry", async () => {
     const f = fixture(), { result } = await run(f, { reject: true }); assert.equal(result.status, "FAILED");
