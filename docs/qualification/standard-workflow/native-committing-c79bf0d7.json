@@ -105,5 +105,124 @@
     "ordinary_actions_before_question": 7,
     "native_actor_starts_before_question": 0,
     "same_question_on_fresh_process": true
+  },
+  "resumed_local_pilot": {
+    "observed_at": "2026-11-22T16:31:11.157Z",
+    "configuration_sha256": "d4e923d05e77fdc03a1ac07461eed134d00453556bbc951c980462f1f3fa6640",
+    "connector": "1b666e1a6434afa360ee683904f14699a053518c",
+    "local_relay": {
+      "mode_sha256": "85e26d339b3e6dc0a2702a81d67b4aeb554e98ecf7dd749217c54f09070908ea",
+      "alignment_sha256": "32c4821b0016edb2753f0f8d00a9b42ce567934016919187133d21fb1409d011"
+    },
+    "human_decisions": [
+      {
+        "kind": "mode",
+        "operation_id": "op_43c033c3c30747f792bfe09ff94ccc76074c5041",
+        "receipt_id": "receipt_43c033c3c30747f792bfe09ff94ccc76074c5041",
+        "choice": "COMMITTING",
+        "record_sha256": "3cb26502c8970f3f18c37fa3f7605c15bdc434e83b28180156c3eccceba01901",
+        "output_sha256": "89a32bed75e996904a54f2d14ad85d25322bf3a8b68df031059cb789124a36c1",
+        "result_count": 1,
+        "evidence_class": "operator-accepted-local-history-observation",
+        "independent_original_author_proof": false,
+        "manual_signature_steps": 0
+      },
+      {
+        "kind": "objective_alignment",
+        "operation_id": "op_e4c7deed26e587f88189321f60fcbe929498638a",
+        "receipt_id": "receipt_e4c7deed26e587f88189321f60fcbe929498638a",
+        "choice": "confirm_alignment",
+        "record_sha256": "368f908fdcde5845ddf34f352c4112a2d0eec1d87ab1471dcf1d97a80888ef70",
+        "output_sha256": "208987da62ed0a36cf7da210b594148155c9e20e1a5e5c2e25c16941c096a314",
+        "result_count": 1,
+        "evidence_class": "operator-accepted-local-history-observation",
+        "independent_original_author_proof": false,
+        "manual_signature_steps": 0
+      }
+    ],
+    "native_runs": [
+      {
+        "generation": 1,
+        "status": "RUNNING",
+        "first_failure": null,
+        "journal_phase": "closed",
+        "trace_sha256": "51619c4e1bc9b474a86bf4dc8c4af992ac14fbca6d8a9dfb92f038fa1369aeff",
+        "journal_sha256": "0222b8658341934107de778fc121e22d14dc81ab231d1fe6de05ecf2109f1c21",
+        "exit_code": 0,
+        "process_closure": "confirmed",
+        "active_processes": 0,
+        "elapsed_ms": 96933
+      },
+      {
+        "generation": 2,
+        "status": "RUNNING",
+        "first_failure": null,
+        "journal_phase": "closed",
+        "trace_sha256": "09f37ca68403d09e858e23da03d26d2bff5419f2f6f78e87105ad7cb7208670e",
+        "journal_sha256": "90639eb0416a9e6c624b0a00b1df8ddc47bcd689ed219a4baa9fc708482adf94",
+        "exit_code": 0,
+        "process_closure": "confirmed",
+        "active_processes": 0,
+        "elapsed_ms": 106613
+      }
+    ],
+    "consumption": [
+      {
+        "generation": 1,
+        "phase": "closed",
+        "tree_closed": true,
+        "responses": 1,
+        "storage_debit_bytes": 1924150,
+        "native_usage_sha256": "0d306e49be80b9d58b603a8d00fb726532dcf995c754e92077fcccaed09c24cf"
+      },
+      {
+        "generation": 2,
+        "phase": "closed",
+        "tree_closed": true,
+        "responses": 1,
+        "storage_debit_bytes": 2516667,
+        "native_usage_sha256": "7853fd9d456754622ef89425320ded1146ec344b9de4299493db4f1415702bd9"
+      }
+    ],
+    "totals": {
+      "responses": 2,
+      "storage_debit_bytes": 4440817,
+      "deadline": "2026-11-22T17:07:54.451Z"
+    },
+    "physical_artifacts": [
+      {
+        "kind": "session",
+        "sha256": "e8b40ebdc55ff2f5358b44a87c8962815eb85574c541455459c46df2eaef2e33"
+      },
+      {
+        "kind": "current_state",
+        "sha256": "e7e68d801f56e3667f61277d62018e1ae7068c9cd94282b4a141844742577b0d"
+      },
+      {
+        "kind": "cycle_status",
+        "sha256": "348fca954346fcfef50a15f9369f32a409b7c2d772a87442a05bca576bbbee0d"
+      }
+    ],
+    "progress": {
+      "session_mode_applied": "PASS",
+      "cycle_initialized": "PASS",
+      "objective_alignment_received": "PASS",
+      "drift_finalization": "PASS",
+      "plan_implementation_validation": "SKIP"
+    },
+    "first_unexpected_transition": {
+      "binding": "drift_completion_decision",
+      "operation_id": "op_1d476067e7cb80db07aa3859f8475b9ef3d3fdd9",
+      "question_sha256": "603f3280c498487968a5476983d9ec320d0fdbfc9efaecdf93588106a2038414",
+      "workflow_status": "WAITING",
+      "accepted_alignment_operation_id": "op_e4c7deed26e587f88189321f60fcbe929498638a",
+      "completed_finalization_operation_id": "op_0c64498b8f6484969971f18cac6ca894cde7d863",
+      "same_evaluation_and_context": true,
+      "new_answer_requested_from_operator": false,
+      "second_source_submitted": false,
+      "reason": "The authored shared checkpoint call unconditionally asks for a linked completion opinion after accepting the alignment and confirming the physical finalizer.",
+      "correction_status": "in_progress"
+    },
+    "evidence_scope": "Source runtime with installed connector and an operator-accepted local-history observer; independent original-author proof remains open."
   }
 }

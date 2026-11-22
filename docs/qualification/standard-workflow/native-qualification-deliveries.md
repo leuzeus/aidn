@@ -42,9 +42,18 @@ S001 pilot. A dedicated local observer read the original COMMITTING message and
 the exception consent through Codex, signed one source and submitted it through
 the public host. The mode occurrence now has one completed receipt. A separate
 process recovered the same receipt, and the session and canonical current state
-both record COMMITTING. The public path continued through session admission to
-its first Native activity. This recovery required zero new mode answers and zero
-manual signing steps.
+both record COMMITTING. The public path completed two genuine Native drift
+activities, initialized the cycle and accepted its objective alignment through
+one answer in the chat, with zero manual signing steps. Both Native generations
+closed their journals and observed zero active Job Object processes.
+
+The shared checkpoint call then requested a second alignment opinion for the
+same evaluation and context after the confirmed physical finalizer. The pilot
+retains that first unexpected transition. No second answer was requested from
+the operator or submitted to the runtime. A focused product correction removes
+that unconditional question while keeping the checkpoint's original source,
+completion and effect checks. The candidate remains stopped at that question.
+[Resumed Windows evidence](native-committing-c79bf0d7.json)
 
 The exception establishes what the local observer read. Independent proof of
 the original message author and the product-level authenticated interface remain
