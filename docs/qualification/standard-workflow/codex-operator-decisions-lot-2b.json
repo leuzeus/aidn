@@ -62,6 +62,32 @@
       "changed_message_and_question_refused": true
     }
   },
+  "accepted_local_observation": {
+    "status": "PASS",
+    "evidence_class": "operator-accepted-local-history-observation",
+    "scope": "S001 mode question on the frozen Windows pilot",
+    "independent_original_author_proof": false,
+    "user_exception_consent": "observed in the same Codex chat",
+    "issuer": "dedicated local observer",
+    "issuer_scope": "local-only pilot helper outside the installed package",
+    "issuer_script_sha256": "85e26d339b3e6dc0a2702a81d67b4aeb554e98ecf7dd749217c54f09070908ea",
+    "private_signing_key": "generated for this source in memory",
+    "canonical_operation": "op_43c033c3c30747f792bfe09ff94ccc76074c5041",
+    "receipt": "receipt_43c033c3c30747f792bfe09ff94ccc76074c5041",
+    "canonical_phase": "receipted",
+    "canonical_receipts": 1,
+    "choice": "COMMITTING",
+    "observation_sha256": "8276e666875cbb7c55d9ea0ff2c9f9ea6fb2626fbd4938a98a6406d6524e7ae5",
+    "operation_file_sha256": "3cb26502c8970f3f18c37fa3f7605c15bdc434e83b28180156c3eccceba01901",
+    "tampered_choice_refused": true,
+    "cold_process_recovered_same_receipt": true,
+    "mode_applied_in_session": true,
+    "mode_applied_in_current_state": true,
+    "new_mode_questions": 0,
+    "manual_signature_steps": 0,
+    "next_public_step": "native",
+    "product_authenticated_interface": "UNAVAILABLE"
+  },
   "full_workflow": "SKIP",
   "p0_go": false
 }

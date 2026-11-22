@@ -32,11 +32,23 @@ For a fresh Windows pilot, observe both installed hooks as enabled and trusted i
 
 ## Acceptance evidence for lots 2b–4
 
-The Windows operator declared COMMITTING in the Codex chat. S001 on the frozen
-candidate still has zero receipts for its mode question. A fresh Codex process
-discovered the installed in-chat connector. A disposable enrolled connection
-exercised the public host through cold delivery. Binding the real project account
-to the live connection and authenticating the original chat item remain open.
+The initial Windows recovery trial retained zero receipts for the mode question.
+A fresh Codex process discovered the installed connector and resolved the original
+user message. A disposable enrolled connection exercised the public host through
+cold delivery.
+
+The operator subsequently accepted a local-history evidence exception for the
+S001 pilot. A dedicated local observer read the original COMMITTING message and
+the exception consent through Codex, signed one source and submitted it through
+the public host. The mode occurrence now has one completed receipt. A separate
+process recovered the same receipt, and the session and canonical current state
+both record COMMITTING. The public path continued through session admission to
+its first Native activity. This recovery required zero new mode answers and zero
+manual signing steps.
+
+The exception establishes what the local observer read. Independent proof of
+the original message author and the product-level authenticated interface remain
+open. Lot 2b retains those requirements, and P0 remains pending.
 [Lot 2b evidence](codex-operator-decisions-lot-2b.json) · [Product PR](https://github.com/leuzeus/aidn/pull/203)
 
 Begin observation in the authenticated project session before the pending question appears. Retain a redacted observation of the question as displayed, its offered answers and the subject the person can see. Follow the same occurrence through the answer, background submission, host acceptance and the next workflow step. Count each business answer and any extra steps the person has to take, including opening a terminal, choosing a key, entering a passphrase or returning to repeat a choice. Record the same counts after a cold restart. One-time setup can be reported separately when the run shows it took place before the question.
