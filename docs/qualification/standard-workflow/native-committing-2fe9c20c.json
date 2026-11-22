@@ -24,21 +24,72 @@
     "process_plan_sha256": "9290a9028ea8bad71512d689e85f4d04b6422cbb3ec421e7f109fa634ec8e3c1",
     "case_limit_ms": 60000,
     "cases": {
-      "filesystem_access": "SKIP",
-      "timeout": "SKIP",
-      "cancel": "SKIP",
-      "callback": "SKIP"
+      "filesystem_access": "PASS",
+      "timeout": "PASS",
+      "cancel": "PASS",
+      "callback": "PASS"
     },
-    "signed_boundary": "UNAVAILABLE",
-    "reason": "Exact-plan execution consent pending; no controls have run for this candidate.",
+    "signed_boundary": "PASS",
     "oracle": {
       "seed": "failed",
       "control": "passed"
+    },
+    "assurance_profile": "codex-cooperative-access.v1",
+    "filesystem_evidence_method": "windows-access-check.v1",
+    "read_isolation": "not_guaranteed",
+    "network_isolation": "not_guaranteed",
+    "process_observations": [
+      {
+        "id": "filesystem_access",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 11447,
+        "active_processes": 0,
+        "companion_active_processes": 0,
+        "sha256": "08fbf4d5fcd29a7c889e87616707a72fccc920d4d10d0839373930f997ac6638"
+      },
+      {
+        "id": "timeout",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 8433,
+        "active_processes": 0,
+        "sha256": "f9690da319fd4b55a2920f35188b49f5a113b237080db2cf5e372809ec98d143"
+      },
+      {
+        "id": "cancel",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 6439,
+        "active_processes": 0,
+        "sha256": "eb93cc0ea139006cdaa2a549351064d8f3d5eab89a3208694fe264db100a6e2b"
+      },
+      {
+        "id": "callback",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 6068,
+        "active_processes": 0,
+        "sha256": "5800d4548f1ffb7415129af7a2c44666eb0cd54161ae14f00e6ac9d71a01a6fc"
+      }
+    ],
+    "signed_qualification_sha256": "1842081ec30a313cc4dd11ef2e155981670fc773568485d5f83854263717a859",
+    "validation_profile_sha256": "fe36cbf296b62ac05423d013e4416181092d9398e44dcf6f12cbcdafb54c1276",
+    "native_availability": true,
+    "human_review": {
+      "evidence_class": "operator-accepted-local-history-observation",
+      "independent_original_author_proof": false,
+      "message_sha256": "2d588b17cd720c1b87170726aea9d817a8528943dd25984f37389c409436ef96",
+      "attestation_sha256": "6e6926a3bbf208b3c22f3d8e83f968a5997a9a8a6eba457367e78817c4f9039e",
+      "manual_signature_steps": 0,
+      "tampered_attestation_refused": true
     }
   },
   "native_model_calls": 0,
   "public_full_nominal": "SKIP",
   "windows_installed_nominal": "SKIP",
   "p0_go": false,
-  "complete_standard_workflow": false
+  "complete_standard_workflow": false,
+  "preparation_correction": {
+    "first_public_preview": "ENOENT",
+    "missing": "Reserved empty protected directory",
+    "workflow_effects_before_correction": 0,
+    "candidate_changed": false
+  }
 }
