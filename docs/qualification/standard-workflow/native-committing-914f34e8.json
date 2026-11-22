@@ -6,7 +6,7 @@
   "model_revision": 430,
   "backend": "Windows/PostgreSQL",
   "state_mode": "db-only",
-  "campaign_state": "IN_PROGRESS",
+  "campaign_state": "WAITING_HUMAN_ALIGNMENT",
   "package_installation": "PASS",
   "source_installed_inventory": {
     "models": 16,
@@ -137,7 +137,7 @@
   "native": {
     "status": "PASS",
     "launched": true,
-    "responses": 2,
+    "responses": 3,
     "budget": {
       "configuration_sha256": "cba4ca805035feb11ee91f06a3b0a4f363d5b8e7cf1a6dffc8be995bc14d127b",
       "max_responses": 24,
@@ -229,9 +229,50 @@
           ]
         },
         "trace_sha256": "adca474f73a4137535c0ee960823bb95f7b0ba8a6563ad5b6abce11b597c6116"
+      },
+      {
+        "generation": 3,
+        "status": "PASS",
+        "native_answer_outcome": "completed",
+        "output_contract": "standard-drift-report.v1",
+        "answer_sha256": "93ca69e8412676572be1f5b3566619b4ff8b2cff362a8bf82b0a335e47d8bb11",
+        "process_status": "RUNNING",
+        "first_failure": null,
+        "journal_phase": "closed",
+        "active_processes": 0,
+        "responses": 1,
+        "bytes_retained": 2143529,
+        "storage_budget_debit_bytes": 2527488,
+        "canonical_payload_bytes_acknowledged": 383959,
+        "elapsed_ms": 1294967,
+        "usage": {
+          "client_reported": true,
+          "billed_total": false,
+          "threads": [
+            {
+              "total": {
+                "totalTokens": 32152,
+                "inputTokens": 30696,
+                "cachedInputTokens": 0,
+                "cacheWriteInputTokens": 0,
+                "outputTokens": 1456,
+                "reasoningOutputTokens": 0
+              },
+              "last": {
+                "totalTokens": 32152,
+                "inputTokens": 30696,
+                "cachedInputTokens": 0,
+                "cacheWriteInputTokens": 0,
+                "outputTokens": 1456,
+                "reasoningOutputTokens": 0
+              }
+            }
+          ]
+        },
+        "trace_sha256": "8175f6ce04f7d1f24349fff9e8105862342c7b88e33088d815464a2eded47141"
       }
     ],
-    "next_activity": "additional diagnosis running"
+    "next_activity": "human decision on the additional diagnosis"
   },
   "full_nominal": "SKIP",
   "installed_nominal": "SKIP",
@@ -244,7 +285,7 @@
     "The pilot local observer is an accepted qualification exception; lot 2b independent interface proof remains open.",
     "The four Windows controls qualify the validator boundary, not the full STANDARD native workflow."
   ],
-  "report_checkpoint_at": "2026-11-22T20:37:27.848Z",
+  "report_checkpoint_at": "2026-11-22T20:42:33.259Z",
   "preserved_diagnosis": {
     "status": "PASS",
     "choice": "request_diagnosis",
@@ -258,5 +299,16 @@
     "manual_signature_steps": 0,
     "repeated_human_questions": 0,
     "independent_original_author_proof": false
+  },
+  "additional_diagnosis": {
+    "status": "PASS",
+    "source_generation": 3,
+    "new_native_report_matches": true,
+    "evaluation_operation_id": "op_0309437b713d8567d23e644b9ae5a70219136909",
+    "previous_evaluation_operation_id": "op_7308a827d5abdc0f79fd98af09d2201c3c3310a0",
+    "report_sha256": "89d402280496a94bdc26f345ca0f88992770dbcc35a060bc977edfa711ecf8a5",
+    "unchanged_evidence_context": true,
+    "decision": "PENDING",
+    "question_sha256": "3a30d6ed31e9dfe3d3b575b70a057ff638b44fe2d29b063a4d5b7e006b3732e0"
   }
 }
