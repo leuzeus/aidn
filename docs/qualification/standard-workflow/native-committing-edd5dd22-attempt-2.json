@@ -27,6 +27,19 @@
   "windows_installed_nominal": "SKIP",
   "p0_go": false,
   "complete_standard_workflow": false,
+  "human_decision_interface": {
+    "status": "UNAVAILABLE",
+    "scope": "Authenticated project interface on this frozen pilot",
+    "observed_capture": "Operator-run Ed25519 signing script with a passphrase prompt",
+    "valid_envelopes_for_same_choice_at_acceptance": 2,
+    "verified_manual_decision": "#/signed_mode",
+    "one_business_answer_with_background_proof": "SKIP",
+    "cold_resume_without_reprompt": "SKIP",
+    "delivery_plan": "native-qualification-deliveries.md",
+    "product_lot": "2b",
+    "resume_lot": 3,
+    "installed_lot": 4
+  },
   "public_entry": {
     "status": "PASS",
     "instance_id": "standard-vertical-pr201-r2",
