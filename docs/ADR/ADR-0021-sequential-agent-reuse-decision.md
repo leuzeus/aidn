@@ -1,5 +1,19 @@
 # ADR-0021 — Sequential agent reuse decision
 
+## Business roles in workflow projects
+
+A versioned role-profile.v1 supplies business role IDs, aliases, required
+permissions and versioned capabilities. The project compiler resolves each
+business role to a host role and action admitted by the installed capability
+catalog. It checks the effective policy at each activity against the business
+role's permission requirements. Assignment still compares this pinned policy
+with the executor's verified observation.
+
+The four STANDARD roles and their aliases are defined by the installed profile.
+Transition decisions use standard-transitions@1, including its original mode
+matrix. A custom project can specialize a role while retaining that transition
+policy. New host capabilities and transition policies require trusted installation.
+
 ## Status
 
 Implemented as an opt-in source decision with offline fixture verification.

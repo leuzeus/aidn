@@ -1,0 +1,68 @@
+{
+  "contract_version": "role-profile.v1",
+  "id": "standard",
+  "revision": 1,
+  "transition_policy_ref": "standard-transitions@1",
+  "roles": [
+    {
+      "id": "coordinator",
+      "host_role": "coordinator",
+      "capabilities": [
+        "reanchor@1",
+        "relay@1",
+        "close@1",
+        "coordinate@1"
+      ],
+      "required_permissions": []
+    },
+    {
+      "id": "executor",
+      "host_role": "executor",
+      "capabilities": [
+        "implement@1",
+        "relay@1"
+      ],
+      "required_permissions": []
+    },
+    {
+      "id": "auditor",
+      "host_role": "auditor",
+      "capabilities": [
+        "audit@1",
+        "analyze@1",
+        "relay@1"
+      ],
+      "required_permissions": []
+    },
+    {
+      "id": "repair",
+      "host_role": "repair",
+      "capabilities": [
+        "repair@1",
+        "relay@1"
+      ],
+      "required_permissions": []
+    }
+  ],
+  "capabilities": [
+    "reanchor@1",
+    "implement@1",
+    "audit@1",
+    "analyze@1",
+    "repair@1",
+    "relay@1",
+    "close@1",
+    "coordinate@1"
+  ],
+  "role_aliases": {
+    "implementer": "executor",
+    "analyst": "auditor",
+    "review": "auditor",
+    "reviewer": "auditor"
+  },
+  "capability_aliases": {
+    "analyse": "analyze",
+    "review": "audit",
+    "fix": "repair"
+  }
+}

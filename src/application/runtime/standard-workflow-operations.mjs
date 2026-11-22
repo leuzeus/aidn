@@ -270,6 +270,7 @@ new URL("standard-cycle-implementation.mjs", import.meta.url), new URL("../../co
     "../../core/contracts/workflow-definition/evaluation-definition.v1.schema.json",
     "../../core/contracts/workflow-definition/evaluation-result.v1.schema.json",
     "../../core/agents/agent-role-model.mjs", "../../core/agents/agent-reuse-policy.mjs",
+    "../../../package/catalogs/standard-role-profile.v1.json", "../../../package/catalogs/standard-role-transitions.v1.json",
     "../../core/agents/agent-transition-policy.mjs", "../../core/gating/gating-policy.mjs",
   ].map(name => new URL(name, import.meta.url)));
   refs.push(new URL('native-reconciliation-history.mjs', import.meta.url));

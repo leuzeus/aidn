@@ -4,6 +4,8 @@ import path from "node:path";
 import { writeNewBpmnProject } from "../author/export-bpmn-project.mjs";
 import assert from "node:assert/strict";
 import { compileBpmnProject } from "../../src/application/workflow/bpmn-project-service.mjs";
+import { decideAgentReuse } from "../../src/application/runtime/agent-reuse-decision-service.mjs";
+import { fingerprintAgentReuse } from "../../src/core/agents/agent-reuse-policy.mjs";
 import { exportBpmnProject } from "../../src/core/workflow/bpmn-project-export.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 
@@ -68,6 +70,46 @@ console.log("PASS pinned IR exports as editable planes and round-trips exactly")
 const editParent = xml => compileBpmnProject({ manifest: exported.manifest, diagrams: { ...exported.diagrams, "parent.1.bpmn": xml } });
 assert.equal(editParent(drawing.replace('x="60"', 'x="180"')).model_sha256, compiled.model_sha256);
 console.log("PASS moving a shape preserves the IR hash");
+
+const policy = { id: "review", version: 1, assurance_profile: "consultation.v1", mode: "EXPLORING",
+  independent_review: false, context_isolation_required: false, required_permissions: ["read:brief"], allowed_permissions: ["read:brief"] };
+const model = { contract_version: "agentic-process-model.v2", model_id: "intake", revision: 1, entry: "read",
+  participants: [{ id: "office" }], operation_pins: {}, policies: [policy],
+  roles: [{ id: "business_analyst", role: "auditor", action: "analyze", skills: [] }],
+  nodes: [{ id: "read", kind: "activity", participant_ref: "office", role_ref: "business_analyst", policy_ref: "review" }] };
+const intake = structuredClone(exportBpmnProject(model));
+const author = intake.manifest.models[0];
+author.role_profile = { contract_version: "role-profile.v1", id: "intake", revision: 1,
+  transition_policy_ref: "standard-transitions@1", capabilities: ["analyze@1"], role_aliases: { analyst: "business_analyst" }, capability_aliases: {},
+  roles: [{ id: "business_analyst", host_role: "auditor", capabilities: ["analyze@1"], required_permissions: ["read:brief"] }] };
+author.roles = [{ id: "business_analyst", profile_role: "analyst", capability_ref: "analyze@1", skills: [] }];
+const compiledIntake = compileBpmnProject(intake).model;
+assert.deepEqual(compiledIntake, model);
+const [resolvedRole] = compiledIntake.roles, [resolvedPolicy] = compiledIntake.policies;
+const observedAt = Date.now(), h = shadowHash(compiledIntake);
+const request = { contract_version: "agent-reuse-request.v1", activity_id: "read", scope_id: "intake", revision: "1",
+  assurance_profile: resolvedPolicy.assurance_profile, artifact_sha256: h, criteria_sha256: h, mode: resolvedPolicy.mode,
+  role: resolvedRole.role, action: resolvedRole.action, required_permissions: resolvedPolicy.required_permissions,
+  allowed_permissions: resolvedPolicy.allowed_permissions, independent_review: false, context_isolation_required: false,
+  allowed_context_sha256: [h], reviewed_contributors: [] };
+const observation = { contract_version: "agent-reuse-observation.v1", authority_id: "fixture", observation_id: "review",
+  scope_id: "intake", revision: "1", assurance_profile: request.assurance_profile, request_sha256: fingerprintAgentReuse(request),
+  artifact_sha256: h, criteria_sha256: h, observed_at: new Date(observedAt).toISOString(), expires_at: new Date(observedAt + 1000).toISOString(),
+  current_execution_id: "worker", executors: [{ execution_id: "worker", agent_id: "analyst", lineage_id: "team", session_id: "session",
+    adapter_id: "fixture", role: resolvedRole.role, action: resolvedRole.action, permissions: [], guarantees: [],
+    context_sha256: [h], contributions: [] }], evidence_refs: [{ ref: "snapshot", sha256: h }] };
+const decision = await decideAgentReuse({ request, recommendation: request, scope: { scope_id: "intake" }, now: () => observedAt,
+  adapters: [{ getProfile: () => ({ id: "fixture", default_role: "auditor", supported_roles: ["auditor"] }), canHandleRole: () => true }],
+  authority: { observe: () => observation, verify: () => ({ outcome: "verified", authority_id: "fixture",
+    request_sha256: observation.request_sha256, observation_sha256: fingerprintAgentReuse(observation) }) } });
+assert.equal(decision.decision, "wait");
+assert.equal(decision.rejected[0].reason_code, "EFFECTIVE_PERMISSIONS_MISMATCH");
+author.roles[0].capability_ref = "audit@1";
+assert.throws(() => compileBpmnProject(intake), { code: "WORKFLOW_ROLE_BINDING_INVALID" });
+author.roles[0].capability_ref = "analyze@1";
+author.policies[0].required_permissions = [];
+assert.throws(() => compileBpmnProject(intake), { code: "WORKFLOW_ROLE_PERMISSION_REQUIRED" });
+console.log("PASS business role alias compiles to a host role with mandatory observed permissions");
 const rewired = drawing.replace(/(sourceRef|targetRef)="N_(first|second)"/g, (_, attr, id) =>
   `${attr}="N_${id === "first" ? "second" : "first"}"`);
 const candidate = editParent(rewired);

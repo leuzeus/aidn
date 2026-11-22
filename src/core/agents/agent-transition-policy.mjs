@@ -5,32 +5,12 @@ import {
   normalizeAgentRole,
 } from "./agent-role-model.mjs";
 
-export const AGENT_MODES = Object.freeze([
-  "THINKING",
-  "EXPLORING",
-  "COMMITTING",
-]);
+import transitionPolicy from "../../../package/catalogs/standard-role-transitions.v1.json" with { type: "json" };
+import { freezeShadow } from "../workflow/shadow-json.mjs";
 
-const TRANSITION_POLICY = Object.freeze({
-  THINKING: Object.freeze({
-    coordinator: Object.freeze(["coordinator", "executor", "auditor", "repair"]),
-    executor: Object.freeze(["coordinator", "executor", "auditor", "repair"]),
-    auditor: Object.freeze(["coordinator", "executor", "auditor", "repair"]),
-    repair: Object.freeze(["coordinator", "auditor", "repair"]),
-  }),
-  EXPLORING: Object.freeze({
-    coordinator: Object.freeze(["coordinator", "auditor", "executor", "repair"]),
-    executor: Object.freeze(["coordinator", "auditor", "repair"]),
-    auditor: Object.freeze(["coordinator", "executor", "repair"]),
-    repair: Object.freeze(["coordinator", "auditor", "repair"]),
-  }),
-  COMMITTING: Object.freeze({
-    coordinator: Object.freeze(["coordinator", "executor", "auditor", "repair"]),
-    executor: Object.freeze(["coordinator", "auditor", "repair"]),
-    auditor: Object.freeze(["coordinator", "executor", "repair"]),
-    repair: Object.freeze(["coordinator", "auditor", "repair"]),
-  }),
-});
+export const STANDARD_TRANSITION_POLICY_REF = transitionPolicy.id + "@" + transitionPolicy.revision;
+const TRANSITION_POLICY = freezeShadow(transitionPolicy.modes);
+export const AGENT_MODES = Object.freeze(Object.keys(TRANSITION_POLICY));
 
 export function normalizeAgentMode(value) {
   const normalized = String(value ?? "").trim().toUpperCase();
