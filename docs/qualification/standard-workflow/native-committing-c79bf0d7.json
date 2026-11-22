@@ -36,11 +36,50 @@
     "case_limit_ms": 60000,
     "signed_boundary": "UNAVAILABLE",
     "cases": {
-      "filesystem_access": "SKIP",
-      "timeout": "SKIP",
-      "cancel": "SKIP",
-      "callback": "SKIP"
-    }
+      "filesystem_access": "PASS",
+      "timeout": "PASS",
+      "cancel": "PASS",
+      "callback": "PASS"
+    },
+    "assurance_profile": "codex-cooperative-access.v1",
+    "filesystem_evidence_method": "windows-access-check.v1",
+    "collection": "READY_FOR_INDEPENDENT_REVIEW",
+    "process_observations": [
+      {
+        "case": "filesystem_access",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "result_sha256": "bbb2224f78bde1cc8bd46eaa2b6228654d695810b4655865d9af809f14f881c4",
+        "elapsed_ms": 10643,
+        "termination": "confirmed",
+        "active_processes": 0,
+        "companion_active_processes": 0
+      },
+      {
+        "case": "timeout",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "result_sha256": "a005dc0d9041b95ff511e3746a16fcf01d07e593a3956443b69759144fc4b106",
+        "elapsed_ms": 8881,
+        "termination": "confirmed",
+        "active_processes": 0
+      },
+      {
+        "case": "cancel",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "result_sha256": "09056179c55b0198bdffba1826464bcc8e3e16c7c389725f6b8ea880e5a7adfd",
+        "elapsed_ms": 6240,
+        "termination": "confirmed",
+        "active_processes": 0
+      },
+      {
+        "case": "callback",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "result_sha256": "cd0d46ee110493aef29d2ce495f907613d248387a4a38a32f9026c65faa9ed92",
+        "elapsed_ms": 6287,
+        "termination": "confirmed",
+        "active_processes": 0
+      }
+    ],
+    "qualification_payload_sha256": "ac82811e8239f3271dbc3ee714b4ef1b358befb24839c7e2b190aee7975cb2d2"
   },
   "public_full_nominal": "SKIP",
   "windows_installed_nominal": "SKIP",
