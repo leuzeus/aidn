@@ -82,7 +82,7 @@
     "request_diagnosis"
   ],
   "public_entry": {
-    "status": "WAITING_HUMAN",
+    "status": "RUNNING",
     "mode": "COMMITTING",
     "mode_applied": true,
     "mode_receipt": "receipt_d868949013e3595155e1f77ae2c33ea7383640ca",
@@ -90,12 +90,7 @@
     "new_mode_questions": 0,
     "manual_signature_steps": 0,
     "cold_receipt_recovered": true,
-    "pending_question": {
-      "kind": "standard-drift-recovery-question.v2",
-      "operation_id": "op_e3c54d113cb4ca9fcc3abedc6a92ab05a38ad412",
-      "question_sha256": "bfbb10f5127cb1e6a0d2babae5171e9e73897a198ca7530d4b784087741a92e6",
-      "reason": "Alignment decision after the explicitly requested additional diagnosis"
-    }
+    "next_stage": "Genuine Native cycle planning"
   },
   "limits": "The local chat observer does not establish independent proof of original author identity.",
   "full_configuration_sha256": "82ddfc7b96182d4f756d3a929b809030438d4a20e66ac224ee881dbce439ae6b",
@@ -117,7 +112,10 @@
     "fresh_evaluation": "op_033cae193b3ebc59980cf3c2bf8b561f44db3793",
     "distinct_native_occurrences": true,
     "intervening_cycle_finalizer_count": 0,
-    "second_human_decision": "WAITING"
+    "second_human_decision": "CONFIRM_ALIGNMENT_ACCEPTED",
+    "second_human_receipt": "receipt_e3c54d113cb4ca9fcc3abedc6a92ab05a38ad412",
+    "second_human_result_count": 1,
+    "second_human_cold_receipt_recovered": true
   },
   "native_authorization": {
     "status": "ACCEPTED",
@@ -282,7 +280,7 @@
     "deadline": "2026-11-22T19:36:17.016Z"
   },
   "progress": {
-    "operations": 22,
+    "operations": 26,
     "decisions": [
       {
         "binding": "mode_decision",
@@ -297,6 +295,14 @@
         "operation_id": "op_63a7ae815c546965283faaf8b219c39f2183eb3e",
         "receipt_id": "receipt_63a7ae815c546965283faaf8b219c39f2183eb3e",
         "record_sha256": "c499f2de653d4c788c6565068ba18f578ca77fc3abc9a5aae1d08892dd314ec0",
+        "result_count": 1,
+        "manual_signature_steps": 0
+      },
+      {
+        "binding": "drift_recovery_decision",
+        "operation_id": "op_e3c54d113cb4ca9fcc3abedc6a92ab05a38ad412",
+        "receipt_id": "receipt_e3c54d113cb4ca9fcc3abedc6a92ab05a38ad412",
+        "record_sha256": "dac6275e2e44e0abb998edc9f8eca25e9268f4b1694ab43dec009a761c6fd545",
         "result_count": 1,
         "manual_signature_steps": 0
       }
@@ -328,5 +334,21 @@
         }
       ]
     }
+  },
+  "observed_at": "2026-11-22T19:08:22.656Z",
+  "fresh_checkpoint": {
+    "status": "PASS",
+    "candidate": "6b6437c4715a500124f3de7978bcbe4ca23efdf2",
+    "finalizer_receipt": "receipt_b60d024b0f17ab81ad2834aade4659c39c6f6033",
+    "evaluation_operation_id": "op_033cae193b3ebc59980cf3c2bf8b561f44db3793",
+    "checkpoint_receipt": "receipt_4fbe6fb77dd7445acbe9849817da475c0011549f",
+    "iteration": 2,
+    "physical_event_matches": 1,
+    "event_sha256": "31b9548d56c6bfb3b0ea993c33681d7ae9170c5ae139dde88228857d2e09e5cc",
+    "physical_index_sha256": "f483552e49cb6f212548daf7c3d560514ee8fa5e4ea064c9528978a0f410668e",
+    "index_bytes": 330907,
+    "checkpoint_elapsed_ms": 38568,
+    "manual_signature_steps": 0,
+    "duplicate_completion_questions": 0
   }
 }
