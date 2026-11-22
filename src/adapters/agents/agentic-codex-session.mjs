@@ -41,7 +41,8 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
     const expectedConfig = { profileId, permissionProfile, model: native.model, effort: native.effort };
     const args = [...buildCodexStartupArguments({ ...native.startup, log_dir: path.join(controlRoot, `native-${index}-logs`),
       sqlite_home: path.join(controlRoot, `native-${index}-sqlite`) }),
-      "-c", `permissions.${profileId}=${toml(permissionProfile)}`, "-c", 'approval_policy="never"',
+      "-c", `permissions.${profileId}=${toml(permissionProfile)}`, "-c", `default_permissions=${JSON.stringify(profileId)}`,
+      "-c", 'approval_policy="never"',
       "-c", 'windows.sandbox="elevated"', "-c", "features.hooks=true", "-c", "features.multi_agent=false", "-c", "agents.enabled=false", "-c", "project_doc_max_bytes=0",
       "-c", `model=${JSON.stringify(native.model)}`, "-c", `model_reasoning_effort=${JSON.stringify(native.effort)}`,
       "app-server", "--listen", "stdio://"];
@@ -96,7 +97,7 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
       if (wireFailure) throw wireFailure;
       const cfg = await rpc.request("config/read", { cwd, includeLayers: false });
       const c = cfg?.config;
-      if (c?.model !== native.model || c?.model_reasoning_effort !== native.effort || c?.approval_policy !== "never"
+      if (c?.default_permissions !== profileId || c?.model !== native.model || c?.model_reasoning_effort !== native.effort || c?.approval_policy !== "never"
         || c?.memories?.use_memories !== false || c?.features?.memories !== false
         || shadowHash(normalizePermissionProfile(c?.permissions?.[profileId] ?? null)) !== shadowHash(permissionProfile)
         || c?.features?.plugins !== false || c?.features?.apps !== false || c?.features?.hooks !== true || c?.features?.multi_agent !== false || c?.agents?.enabled !== false
