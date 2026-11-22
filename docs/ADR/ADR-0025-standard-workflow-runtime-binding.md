@@ -936,10 +936,12 @@ post-selector expiry recovery, cold productive published execution, general L4,
 required193, genuine actors and exact installed behavior remain unqualified.
 The entire L1-L8/A1-A10 objective remains incomplete.
 
-### Corrective cycle checkpoint
+### Fresh and corrective cycle checkpoints
 
-The published corrective cycle creation route passes its accepted R05 evaluation
-to a pinned call. The deterministic selector requests human review only for a
+Fresh and corrective cycle creation each pass their own accepted R05 evaluation
+to the same pinned call. The fresh cycle also supplies that evaluation to its
+checkpoint so the hook can authenticate the corresponding completion. The
+deterministic selector requests human review only for a
 clean diagnostic with a sole objective disagreement. The existing v2 review
 binds that exact diagnostic and objective pair. The R05 finalizer authenticates
 current alignment and retains its separate effect authority. Before the objective

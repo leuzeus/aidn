@@ -554,12 +554,12 @@ for (const id of correctionNodes) {
 }
 nodes.find(row => row.id === "correction_cycle").children.push(...correctionRoots.map(correctionName));
 
-// Keep the evaluated report at the call boundary. Session closure consumes the
-// actual accepted finalizer through the existing typed return, never the call
-// occurrence or a previous corrective checkpoint's operation.
-for (const stage of ["cycle", "closure", "promotion", "session_closure"]) {
-  const call = nodes.find(row => row.id === `correction_${stage}_drift_finalize`);
-  if (call?.kind !== "operation" || call.binding_ref !== "drift_check_finalize") throw Error("STANDARD_CORRECTIVE_DRIFT_SITE_CHANGED");
+// Fresh and corrective checkpoints both need the objective review when their
+// accepted Native diagnosis is clean but the gate detects differing goals.
+for (const id of ["cycle_drift_finalize", "correction_cycle_drift_finalize", "correction_closure_drift_finalize",
+  "correction_promotion_drift_finalize", "correction_session_closure_drift_finalize"]) {
+  const call = nodes.find(row => row.id === id);
+  if (call?.kind !== "operation" || call.binding_ref !== "drift_check_finalize") throw Error("STANDARD_CHECKPOINT_DRIFT_SITE_CHANGED");
   delete call.binding_ref;
   Object.assign(call, { kind: "call", target: correctiveDriftRef });
 }
@@ -770,11 +770,15 @@ const freshEntryRef = freshCall("fresh_entry", "aidn-standard-fresh-cycle-entry"
   }, { session_id: { source: "operation_input", node_id: "cycle_refresh_before", path: ["session_id"] },
     context_operation_id: { source: "operation_id", node_id: "cycle_refresh_before" },
     ...Object.fromEntries(["cycle_id", "cycle_type", "title", "objective"].map(key => [key, { source: "parameter", key: "cycle", path: [key] }])) });
+inputs.find(row => row.node_id === "cycle_checkpoint").fields.evaluation_operation_id = {
+  source: "parameter", key: "evaluation_operation_id", path: [],
+};
 const freshCheckpointRef = freshCall("fresh_checkpoint", "aidn-standard-fresh-cycle-checkpoint",
-  ["cycle_checkpoint", "cycle_refresh_after"], ["session_id", "cycle_id"], field => {
+  ["cycle_checkpoint", "cycle_refresh_after"], ["session_id", "cycle_id", "evaluation_operation_id"], field => {
     if (field.source === "operation_input" && field.node_id === "cycle_initialize" && field.path.length === 1) parameterField(field, field.path[0]);
   }, { session_id: { source: "operation_input", node_id: "cycle_refresh_before", path: ["session_id"] },
-    cycle_id: { source: "parameter", key: "cycle", path: ["cycle_id"] } });
+    cycle_id: { source: "parameter", key: "cycle", path: ["cycle_id"] },
+    ...operation(null, "evaluation_operation_id", "cycle_drift_evaluate") });
 for (const row of inputs) for (const field of Object.values(row.fields)) if (movedFreshNames.has(field.node_id))
   throw Error("STANDARD_FRESH_CALL_UNDECLARED_RETURN");
 

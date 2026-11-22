@@ -1,7 +1,7 @@
 {
   "contract_version": "agentic-process-model.v2",
   "model_id": "aidn-standard",
-  "revision": 424,
+  "revision": 425,
   "participants": [
     {
       "id": "project"
@@ -1501,9 +1501,13 @@
     },
     {
       "id": "cycle_drift_finalize",
-      "kind": "operation",
+      "kind": "call",
       "participant_ref": "project",
-      "binding_ref": "drift_check_finalize"
+      "target": {
+        "model_id": "aidn-standard-corrective-drift",
+        "revision": 194,
+        "model_sha256": "ccd65366478ef7bd1c9dbc55535b0070a8fdb583bcd31dfaed2d67784891744f"
+      }
     },
     {
       "id": "correction_cycle_drift",
@@ -2377,8 +2381,8 @@
       "participant_ref": "project",
       "target": {
         "model_id": "aidn-standard-fresh-cycle-checkpoint",
-        "revision": 91,
-        "model_sha256": "066899486b92ad013e7c71aac2937d40a73bc9fcd75eb210c70d769d42f104c6"
+        "revision": 92,
+        "model_sha256": "a45ed5e2d84f96e6ad2db8baf9129acf411808bca15537a9fc853f8a268645eb"
       }
     }
   ],
@@ -5620,12 +5624,12 @@
     },
     {
       "model_id": "aidn-standard-fresh-cycle-checkpoint",
-      "revision": 91,
-      "model_sha256": "066899486b92ad013e7c71aac2937d40a73bc9fcd75eb210c70d769d42f104c6",
+      "revision": 92,
+      "model_sha256": "a45ed5e2d84f96e6ad2db8baf9129acf411808bca15537a9fc853f8a268645eb",
       "model": {
         "contract_version": "agentic-process-model.v2",
         "model_id": "aidn-standard-fresh-cycle-checkpoint",
-        "revision": 91,
+        "revision": 92,
         "participants": [
           {
             "id": "project"
@@ -5664,7 +5668,8 @@
         "call_interface": {
           "parameters": {
             "session_id": "string",
-            "cycle_id": "string"
+            "cycle_id": "string",
+            "evaluation_operation_id": "string"
           },
           "returns": {}
         },
@@ -5672,7 +5677,8 @@
           "contract_version": "process-data-bindings.v4",
           "parameter_keys": [
             "session_id",
-            "cycle_id"
+            "cycle_id",
+            "evaluation_operation_id"
           ],
           "inputs": [
             {
@@ -5696,6 +5702,11 @@
                 "cycle_id": {
                   "source": "parameter",
                   "key": "cycle_id",
+                  "path": []
+                },
+                "evaluation_operation_id": {
+                  "source": "parameter",
+                  "key": "evaluation_operation_id",
                   "path": []
                 }
               }
@@ -7585,6 +7596,10 @@
             "path": [
               "cycle_id"
             ]
+          },
+          "evaluation_operation_id": {
+            "source": "operation_id",
+            "node_id": "cycle_drift_evaluate"
           }
         }
       }
