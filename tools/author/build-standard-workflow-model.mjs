@@ -495,15 +495,14 @@ checkpointDrift("session_closure_drift", null, null);
 // finalizer still owns R05 and refuses unresolved drift.
 const correctiveDriftNodeStart = nodes.length, correctiveDriftInputStart = inputs.length;
 const correctiveEvaluation = { evaluation_operation_id: { source: "parameter", key: "evaluation_operation_id", path: [] } };
-seq("checkpoint_drift", ["select", "objective_route", "finalize", "checkpoint_review_route"]);
+// The checkpoint reauthenticates the accepted alignment and physical completion.
+// Finishing the finalizer adds evidence, not a second human choice of objectives.
+seq("checkpoint_drift", ["select", "objective_route", "finalize"]);
 op("select", "drift_followup_select", correctiveEvaluation);
 xor("objective_route", [["review", "decide", "drift_objective_review_required"], ["other", "without_review", null]]);
 op("decide", "drift_recovery_decision", correctiveEvaluation);
 seq("without_review", []);
 op("finalize", "drift_check_finalize", correctiveEvaluation);
-xor("checkpoint_review_route", [["review", "checkpoint_review", "drift_objective_review_required"], ["nominal", "checkpoint_without_review", null]]);
-op("checkpoint_review", "drift_completion_decision");
-seq("checkpoint_without_review", []);
 const correctiveDriftNodes = nodes.splice(correctiveDriftNodeStart);
 const correctiveDriftTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-corrective-drift", revision: 1,
   participants: [{ id: "project" }], roles: [], policies: [], entry: "checkpoint_drift", nodes: correctiveDriftNodes,

@@ -1322,16 +1322,19 @@ to exercise the exact published corrective checkpoint call inside a disposable
 mixed fixture with an active cycle. The direct finalizer first retains its
 objective refusal. The call then binds the accepted evaluation, waits for the
 signed fixture opinion across host reopening, and returns after the confirmed
-R05 result and the fresh review linked to that completion. Use `--drift-objective-published-checkpoint` with
+R05 result without another human question. Reopening after finalization preserves
+the one decision receipt and its original completion evidence.
+Use `--drift-objective-published-checkpoint` with
 `--drift-objective-mismatch-only` to also exercise the next real cycle checkpoint,
-including its linked plan, separate grant, gate invocation and retained result.
+including its plan bound to the original alignment, separate grant, gate invocation and retained result.
 The full correction sequence, installed package and actual actors have separate
 gates.
 Run `node tools/perf/verify-standard-composed-preflight-fixtures.mjs --cycle-entry-only`
 to check the published fresh cycle caller. The synthetic preflight covers
 equivalent objectives, an accepted review of differing objectives and a deferred
-review. It verifies that the same evaluation reaches the checkpoint and that
-deferring the decision stops the route before finalization.
+review. It verifies that the same evaluation reaches the checkpoint with one
+alignment question, that deferring the decision stops before finalization,
+and that an unconfirmed finalizer cannot reach the checkpoint.
 Add `--drift-objective-checkpoint-only` with the published-checkpoint selector
 to isolate its positive route within the same execution bound. The direct
 refusal is verified by a separate execution.

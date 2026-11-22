@@ -944,16 +944,17 @@ checkpoint so the hook can authenticate the corresponding completion. The
 deterministic selector requests human review only for a
 clean diagnostic with a sole objective disagreement. The existing v2 review
 binds that exact diagnostic and objective pair. The R05 finalizer authenticates
-current alignment and retains its separate effect authority. Before the objective
-route returns, a fresh v3 review binds the accepted R05 receipt, report and
-physical event to the separate checkpoint. It preserves the original completion
-and starts a new review window under the existing limit. The cycle checkpoint's
-signed plan retains the renewed completion digest and the existing hook
-reauthenticates that proof under its own grant. Other signals and unconfirmed
+current alignment and retains its separate effect authority. The call returns
+after that confirmed completion. It asks once about the objective pair; the
+finalizer's new receipt, report and physical event do not require a second
+human opinion about the same evaluation. The cycle checkpoint's signed plan
+retains the accepted alignment digest and the existing hook reauthenticates
+the original source and physical completion under its own grant. Other signals and unconfirmed
 alignment stop the checkpoint. Corrective rediagnosis and later corrective R05
 checkpoints require separate routing and qualification.
 
-Within a single renewal read, the authenticated completion reader supplies
+Historical linked reviews retain their existing protocol. Within a single
+renewal read, the authenticated completion reader supplies
 the witnessed historical anchor and authenticated evaluation to current review
 validation. The live gate and context are reobserved before authenticating the
 new human source. After that authentication the completion reader checks the retained
@@ -4493,7 +4494,7 @@ separate recovery boundaries.
 
 ### Corrective R05 evaluation and finalizer return
 
-Every corrective R05 boundary (entry, cycle closure, promotion and session closure) uses the pinned corrective-drift call with that boundary's accepted evaluation. A prior human alignment cannot authorize another evaluation. The call retains the ordinary current-subject review, physical finalizer and separate completion review; unresolved drift and other gate signals still block.
+Every corrective R05 boundary (entry, cycle closure, promotion and session closure) uses the pinned corrective-drift call with that boundary's accepted evaluation. A prior human alignment cannot authorize another evaluation. The call retains one ordinary current-subject review and the physical finalizer; unresolved drift and other gate signals still block. The next checkpoint authenticates that accepted evidence with its own effect grant. Historical models with an explicit linked completion review retain their original readers and identities.
 
 The confirmed finalizer adds its own operation identity to `observations.operation_id`. The call exports that signed output as the typed `finalization_operation_id` return. Corrective session closure consumes this return through the existing `call_output` data binding and still authenticates the original accepted finalizer and physical evidence. No engine, Native activity, elapsed-time gate or authorization ceiling is added. Historical outputs without the additive observation remain readable under their original model pins.
 
