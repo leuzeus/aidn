@@ -2524,28 +2524,21 @@ if (process.argv[2] === "--mixed-continue") {
             assert.equal((await f.open().dispatchOperation(closed.operation_id, { write: true })).status, "retained_result");
             assert.equal(f.open().readOperation(closed.operation_id).results.length, record.results.length);
             if (published) {
-              const review = await f.open().step({ write: true });
-              assert.equal(review.status, "waiting_for_human");
-              assert.equal(review.question.review.previous_completion.operation_id, closed.operation_id);
-              const renewed = { ...claim, source_event_id: "fixture-objective-checkpoint-1",
-                question_sha256: shadowHash(review.question), subject_sha256: shadowHash(review.question.review),
-                rationale: "Fixture operator confirms the witnessed completion for the separate cycle checkpoint." };
-              humanClaims.set("renew", renewed);
-              await f.open().receiveDecision(review.operation_id, { write: true, sourceRef: "renew" });
-              await f.open().acceptOperation(review.operation_id, { write: true });
-              const renewal = f.open().readOperation(review.operation_id).results.at(-1).output;
-              assert.equal(renewal.effect_status, "no_effect");
-              assert.equal(renewal.observations.signal_discharged, false);
-              assert.deepEqual(f.open().readOperation(closed.operation_id), record);
               const state = f.open().inspect();
+              assert.equal(f.reopen().inspect().record.instance_sha256, state.record.instance_sha256);
               const returned = await f.open().step({ write: true });
               assert.equal(returned.kind, "call");
               verifyPublishedCall(state, returned);
+              assert.deepEqual(f.open().readOperation(closed.operation_id), record);
+              assert.equal(f.open().readOperation(waiting.operation_id).results.length, 1);
+              assert.equal(humanClaims.size, 1);
+              assert.equal(f.open().inspect().record.events.some(row => row.kind === "operation_intent"
+                && row.intent.binding_ref === "drift_completion_decision"), false);
               const transitions = f.open().inspect().record.events.filter(row => ["call_enter", "call_return"].includes(row.kind));
               assert.deepEqual(transitions.map(row => row.kind), ["call_enter", "call_return"]);
               assert.equal(transitions[0].occurrence_id, transitions[1].occurrence_id);
               if (publishedCheckpoint) {
-                assert.deepEqual(review.question.review.gate_constraints.level1, { decision: "full", fallback: true, reason_codes: ["MISSING_CACHE"] });
+                assert.deepEqual(waiting.question.review.gate_constraints.level1, { decision: "full", fallback: true, reason_codes: ["MISSING_CACHE"] });
                 const previewStarted = performance.now();
                 const checkpointPreview = await f.open().step({ write: false });
                 const previewMs = Math.round(performance.now() - previewStarted);
@@ -2553,7 +2546,7 @@ if (process.argv[2] === "--mixed-continue") {
                 assert.equal(prepared.can_apply, true, JSON.stringify(prepared));
                 assert.equal(prepared.plan.input.evaluation_operation_id, evaluated.operation_id);
                 assert.match(prepared.plan.objective_completion_sha256, /^[a-f0-9]{64}$/);
-                assert.notEqual(prepared.plan.objective_completion_sha256, shadowHash(finalized.observations.hook.payload.objective_alignment));
+                assert.equal(prepared.plan.objective_completion_sha256, shadowHash(finalized.observations.hook.payload.objective_alignment));
                 const stageStarted = performance.now();
                 const staged = await f.open().stageOperation(checkpointPreview.preview,
                   { write: true, expectedPreviewSha256: shadowHash(checkpointPreview.preview) });
@@ -2582,7 +2575,7 @@ if (process.argv[2] === "--mixed-continue") {
       }
       if (route === "finalize") assert.equal(f.open().inspect().record.instance_sha256, before);
       assert.equal(c.artifacts.ownerPending(), false);
-      assert.equal(humanReads, route === "recovery" && acceptOpinion ? published ? 3 : 1 : 0);
+      assert.equal(humanReads, route === "recovery" && acceptOpinion ? published ? 2 : 1 : 0);
       assert.equal(f.t.sessions.length, 1); assert.ok(f.t.sessions.every(row => row.closed));
       console.log(JSON.stringify({ diagnosis: route === "recovery" && finalizeOpinion ? "AUTHENTICATED_FIXTURE_ALIGNMENT_FINALIZED" : "UNRESOLVED_SIGNAL_REPORT_DISAGREEMENT", route,
         session_objective: sessionObjective, cycle_objective: cycleObjective, target: f.configuration.target_root,

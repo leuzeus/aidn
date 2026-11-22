@@ -1,7 +1,7 @@
 {
   "contract_version": "agentic-process-model.v2",
   "model_id": "aidn-standard",
-  "revision": 425,
+  "revision": 426,
   "participants": [
     {
       "id": "project"
@@ -1505,8 +1505,8 @@
       "participant_ref": "project",
       "target": {
         "model_id": "aidn-standard-corrective-drift",
-        "revision": 194,
-        "model_sha256": "ccd65366478ef7bd1c9dbc55535b0070a8fdb583bcd31dfaed2d67784891744f"
+        "revision": 195,
+        "model_sha256": "05ab0056896ef2e8f40618b11af32e997da46397648405a3ba8d0ce552761afb"
       }
     },
     {
@@ -1538,8 +1538,8 @@
       "participant_ref": "project",
       "target": {
         "model_id": "aidn-standard-corrective-drift",
-        "revision": 194,
-        "model_sha256": "ccd65366478ef7bd1c9dbc55535b0070a8fdb583bcd31dfaed2d67784891744f"
+        "revision": 195,
+        "model_sha256": "05ab0056896ef2e8f40618b11af32e997da46397648405a3ba8d0ce552761afb"
       }
     },
     {
@@ -1765,8 +1765,8 @@
       "participant_ref": "project",
       "target": {
         "model_id": "aidn-standard-corrective-drift",
-        "revision": 194,
-        "model_sha256": "ccd65366478ef7bd1c9dbc55535b0070a8fdb583bcd31dfaed2d67784891744f"
+        "revision": 195,
+        "model_sha256": "05ab0056896ef2e8f40618b11af32e997da46397648405a3ba8d0ce552761afb"
       }
     },
     {
@@ -1868,8 +1868,8 @@
       "participant_ref": "project",
       "target": {
         "model_id": "aidn-standard-corrective-drift",
-        "revision": 194,
-        "model_sha256": "ccd65366478ef7bd1c9dbc55535b0070a8fdb583bcd31dfaed2d67784891744f"
+        "revision": 195,
+        "model_sha256": "05ab0056896ef2e8f40618b11af32e997da46397648405a3ba8d0ce552761afb"
       }
     },
     {
@@ -1931,8 +1931,8 @@
       "participant_ref": "project",
       "target": {
         "model_id": "aidn-standard-corrective-drift",
-        "revision": 194,
-        "model_sha256": "ccd65366478ef7bd1c9dbc55535b0070a8fdb583bcd31dfaed2d67784891744f"
+        "revision": 195,
+        "model_sha256": "05ab0056896ef2e8f40618b11af32e997da46397648405a3ba8d0ce552761afb"
       }
     },
     {
@@ -4080,12 +4080,12 @@
     },
     {
       "model_id": "aidn-standard-corrective-drift",
-      "revision": 194,
-      "model_sha256": "ccd65366478ef7bd1c9dbc55535b0070a8fdb583bcd31dfaed2d67784891744f",
+      "revision": 195,
+      "model_sha256": "05ab0056896ef2e8f40618b11af32e997da46397648405a3ba8d0ce552761afb",
       "model": {
         "contract_version": "agentic-process-model.v2",
         "model_id": "aidn-standard-corrective-drift",
-        "revision": 194,
+        "revision": 195,
         "participants": [
           {
             "id": "project"
@@ -4102,8 +4102,7 @@
             "children": [
               "select",
               "objective_route",
-              "finalize",
-              "checkpoint_review_route"
+              "finalize"
             ]
           },
           {
@@ -4146,39 +4145,9 @@
             "kind": "operation",
             "participant_ref": "project",
             "binding_ref": "drift_check_finalize"
-          },
-          {
-            "id": "checkpoint_review_route",
-            "kind": "xor",
-            "participant_ref": "project",
-            "branches": [
-              {
-                "flow_id": "review",
-                "node_id": "checkpoint_review",
-                "condition": "drift_objective_review_required"
-              },
-              {
-                "flow_id": "nominal",
-                "node_id": "checkpoint_without_review",
-                "condition": null
-              }
-            ]
-          },
-          {
-            "id": "checkpoint_review",
-            "kind": "operation",
-            "participant_ref": "project",
-            "binding_ref": "drift_completion_decision"
-          },
-          {
-            "id": "checkpoint_without_review",
-            "kind": "sequence",
-            "participant_ref": "project",
-            "children": []
           }
         ],
         "operation_pins": {
-          "drift_completion_decision": "743c48448de3a3a0fba915ef5c18674ce0a33dcc1107c54005ad602726fc6821",
           "drift_followup_select": "866f355cafd9f011d259faec62b6b79e01cb0001586c0a8c59350538f439c41a",
           "drift_check_finalize": "8a1858acdf019f2e859f4f7cbb38585748a6cec9d527407c71151c91d40879fb",
           "drift_recovery_decision": "9d5a28983e5b86050eb372388bfa6ca09855b3914a7caee71ef8f188798625f5"
@@ -4233,10 +4202,6 @@
                   "path": []
                 }
               }
-            },
-            {
-              "node_id": "checkpoint_review",
-              "fields": {}
             }
           ]
         }

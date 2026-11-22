@@ -94,7 +94,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
   // Fresh and corrective R05 share the target's finalizer binding.
-  assert.equal(assets.catalog.bindings.length, 218); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 217); assert.equal(assets.catalog.activities.length, 23);
   assert.deepEqual(assets.catalog.bindings.filter(row => row.model_ref?.model_id === "aidn-standard-mode-handoff")
     .map(row => [row.node_id, row.binding.id]).sort(), [
       ["mode_handoff_decide", "mode_work_continue_decision"], ["mode_handoff_summary", "handoff_summary_prepare"],
@@ -803,7 +803,7 @@ test("the ordinary loader authenticates the two final-verification operations fo
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 256);
   assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 129);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 89);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 88);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
   assert.equal(loaded.model.call_targets.length, 15);
   assert.equal(child.model_id, "aidn-standard-final-verification");

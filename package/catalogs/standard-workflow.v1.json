@@ -1,7 +1,7 @@
 {
   "contract_version": "standard-workflow-catalog.v7",
   "component_id": "aidn-standard",
-  "revision": 425,
+  "revision": 426,
   "scope": {
     "kind": "composed_committing_cycle_component",
     "complete_standard_workflow": false,
@@ -24,9 +24,9 @@
   },
   "model": {
     "path": "package/catalogs/process-models/aidn-standard.v1.json",
-    "sha256": "a31918ca56cc1d7dbc958e3b3a4a01c5815ae5d1f6e56ebb9c074f0b198923e4",
+    "sha256": "2bd50c49f6436983e70dcfabdf24c3801e673cee8948002a13f3b92861a1f4e0",
     "model_id": "aidn-standard",
-    "revision": 425
+    "revision": 426
   },
   "specification": {
     "path": "docs/SPEC.md",
@@ -4769,8 +4769,8 @@
       "node_id": "select",
       "model_ref": {
         "model_id": "aidn-standard-corrective-drift",
-        "revision": 194,
-        "model_sha256": "ccd65366478ef7bd1c9dbc55535b0070a8fdb583bcd31dfaed2d67784891744f"
+        "revision": 195,
+        "model_sha256": "05ab0056896ef2e8f40618b11af32e997da46397648405a3ba8d0ce552761afb"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4801,8 +4801,8 @@
       "node_id": "decide",
       "model_ref": {
         "model_id": "aidn-standard-corrective-drift",
-        "revision": 194,
-        "model_sha256": "ccd65366478ef7bd1c9dbc55535b0070a8fdb583bcd31dfaed2d67784891744f"
+        "revision": 195,
+        "model_sha256": "05ab0056896ef2e8f40618b11af32e997da46397648405a3ba8d0ce552761afb"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4833,8 +4833,8 @@
       "node_id": "finalize",
       "model_ref": {
         "model_id": "aidn-standard-corrective-drift",
-        "revision": 194,
-        "model_sha256": "ccd65366478ef7bd1c9dbc55535b0070a8fdb583bcd31dfaed2d67784891744f"
+        "revision": 195,
+        "model_sha256": "05ab0056896ef2e8f40618b11af32e997da46397648405a3ba8d0ce552761afb"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -4845,38 +4845,6 @@
         "skill_id": "drift-check",
         "input_contract": "standard-drift-followup-input.v1",
         "output_contract": "standard-drift-output.v1",
-        "rule_refs": [
-          "SPEC-R05"
-        ],
-        "allowed_modes": [
-          "UNKNOWN",
-          "THINKING",
-          "EXPLORING",
-          "COMMITTING"
-        ],
-        "implementation_sha256": "93c418e910494afdd500b751ddd31e2aaed854c76e629b56818ff8fe5635333b"
-      },
-      "skill_source": {
-        "path": "scaffold/codex/aidn-drift-check/SKILL.md",
-        "sha256": "be09c8ac54deff056e19d5f3e56b00fc21571aafa84777626a632479a25e44dd"
-      }
-    },
-    {
-      "node_id": "checkpoint_review",
-      "model_ref": {
-        "model_id": "aidn-standard-corrective-drift",
-        "revision": 194,
-        "model_sha256": "ccd65366478ef7bd1c9dbc55535b0070a8fdb583bcd31dfaed2d67784891744f"
-      },
-      "binding": {
-        "contract_version": "process-operation-binding.v1",
-        "id": "drift_completion_decision",
-        "revision": 1,
-        "executor_kind": "human",
-        "effect_class": "read-only",
-        "skill_id": "drift-check",
-        "input_contract": "standard-empty-input.v1",
-        "output_contract": "standard-drift-recovery-output.v1",
         "rule_refs": [
           "SPEC-R05"
         ],

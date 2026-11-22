@@ -144,13 +144,20 @@ function verifyFinalVerificationCalls(result, sites) {
 test("fresh objective review precedes finalization and checkpoint", () => {
   const subject = { model, scenario, cycleObjective: "Verify both endpoints of a closed interval", stop: "plan" };
   const complete = preflightStandardComposedFixture(subject);
-  const steps = ["cycle_drift_evaluate", "cycle_drift_select", "cycle_drift_decide", "cycle_drift_finalize", "cycle_drift_checkpoint_review", "cycle_checkpoint"];
+  assert.equal(complete.operations.filter(id => id === "cycle_drift_decide").length, 1);
+  assert.equal(complete.operations.includes("cycle_drift_checkpoint_review"), false,
+    "An accepted alignment and its confirmed finalization must reach the checkpoint without asking the same person again.");
+  const steps = ["cycle_drift_evaluate", "cycle_drift_select", "cycle_drift_decide", "cycle_drift_finalize", "cycle_checkpoint"];
   assert.deepEqual(complete.operations.filter(id => steps.includes(id)), steps);
   verifyFreshCalls(complete, subject.cycleObjective);
   const pending = preflightStandardComposedFixture({ ...subject, scenario: { ...scenario, interruption: { node_id: "cycle_drift_decide", outcome: "deferred" } } });
   assert.equal(pending.planned_status, "WAITING");
   assert.ok(!pending.operations.includes("cycle_drift_finalize"));
   assert.ok(!pending.operations.includes("cycle_checkpoint"));
+  const unfinished = preflightStandardComposedFixture({ ...subject, scenario: { ...scenario,
+    interruption: { node_id: "cycle_drift_finalize", outcome: "blocked" } } });
+  assert.ok(!unfinished.operations.includes("cycle_checkpoint"));
+  assert.notEqual(unfinished.planned_status, "COMPLETED");
 });
 function verifyReviewCall(result, prefix) {
   const captureSites = prefix === "correction" ? ["session_pr_review_capture", "correction_pr_review_capture"] : ["session_pr_review_capture"];
@@ -220,7 +227,7 @@ test('v3 plans both cycles through the same published model, new closure, redeli
   const correction = JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/standard-workflow/composed-correction.v3.json', import.meta.url)));
   const result = preflightStandardComposedFixture({ model, scenario: correction, stop: "pr_effects_pending" });
   assert.equal(result.responses_required, 17); assert.equal(result.planned_status, 'WAITING');
-  assert.equal(result.operations.length, 139); assert.equal(result.event_count, 343);
+  assert.equal(result.operations.length, 135); assert.equal(result.event_count, 335);
   verifyFreshCalls(result);
   verifyPlanningOrigin(result, "cycle_plan_record");
   assert.equal(result.operations.filter(id => id === "cycle_entry_observe").length, 1);
@@ -231,9 +238,9 @@ test('v3 plans both cycles through the same published model, new closure, redeli
   assert.deepEqual(correctiveDrift[0].resolution.sources.map(({ source, operation_id }) => [source, operation_id]), [["operation_id", evaluation]]);
   const decisionIndex = result.operations.indexOf("correction_cycle_drift_decide");
   assert.ok(decisionIndex > 0);
-  assert.deepEqual(result.operations.slice(decisionIndex - 2, decisionIndex + 4), ["correction_cycle_drift_evaluate",
+  assert.deepEqual(result.operations.slice(decisionIndex - 2, decisionIndex + 3), ["correction_cycle_drift_evaluate",
     "correction_cycle_drift_select", "correction_cycle_drift_decide", "correction_cycle_drift_finalize",
-    "correction_cycle_drift_checkpoint_review", "correction_cycle_checkpoint"]);
+    "correction_cycle_checkpoint"]);
   for (const stage of ["cycle", "closure", "promotion", "session_closure"]) {
     const site = `correction_${stage}_drift_finalize`, evaluationNode = site.replace(/_finalize$/, "_evaluate");
     const call = model.nodes.find(row => row.id === site), input = model.data_bindings.inputs.find(row => row.node_id === site);
@@ -271,8 +278,8 @@ test("correction retains its original budget refusal and interruption choices", 
     assert.ok(!stopped.operations.includes('correction_initialize'));
     assert.notEqual(stopped.planned_status, 'COMPLETED');
   }
-  for (const stage of ["cycle", "closure", "promotion", "session_closure"]) for (const suffix of ["decide", "checkpoint_review"]) {
-    const node_id = `correction_${stage}_drift_${suffix}`;
+  for (const stage of ["cycle", "closure", "promotion", "session_closure"]) {
+    const node_id = `correction_${stage}_drift_decide`;
     const deferred = preflightStandardComposedFixture({ model, scenario: { ...correction, interruption: { node_id, outcome: "deferred" } } });
     assert.equal(deferred.planned_status, "WAITING");
     assert.deepEqual(deferred.call_transitions.filter(row => row.node_id === `correction_${stage}_drift_finalize`).map(row => row.kind), ["call_enter"]);
