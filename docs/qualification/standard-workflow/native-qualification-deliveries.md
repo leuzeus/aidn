@@ -32,6 +32,13 @@ For a fresh Windows pilot, observe both installed hooks as enabled and trusted i
 
 ## Acceptance evidence for lots 2b–4
 
+The Windows operator declared COMMITTING in the Codex chat. S001 on the frozen
+candidate still has zero receipts for its mode question. A fresh Codex process
+discovered the installed in-chat connector. A disposable enrolled connection
+exercised the public host through cold delivery. Binding the real project account
+to the live connection and authenticating the original chat item remain open.
+[Lot 2b evidence](codex-operator-decisions-lot-2b.json) · [Product PR](https://github.com/leuzeus/aidn/pull/203)
+
 Begin observation in the authenticated project session before the pending question appears. Retain a redacted observation of the question as displayed, its offered answers and the subject the person can see. Follow the same occurrence through the answer, background submission, host acceptance and the next workflow step. Count each business answer and any extra steps the person has to take, including opening a terminal, choosing a key, entering a passphrase or returning to repeat a choice. Record the same counts after a cold restart. One-time setup can be reported separately when the run shows it took place before the question.
 
 | Scenario | Required observation |

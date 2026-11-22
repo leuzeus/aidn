@@ -1,0 +1,44 @@
+{
+  "pilot_candidate": "c79bf0d79ae4af0d3fa40ef59d13100a07a61eee",
+  "pilot_archive_sha256": "97c31cdf05ade66eb1d9cc3384b4d7d716a31c599aaf8df843696ac8cc194ccd",
+  "interface_candidate": "72fcb258dfcc1d7fc5a21a815eece3bb18e34fde",
+  "interface_archive_sha256": "ad586f2615c84f72dadf96da15a1f57648a072786a6a5b88c4c95c70a57d5025",
+  "platform": "Windows",
+  "state_mode": "FILES",
+  "interface": "Codex MCP form elicitation",
+  "installed_transport_discovery": {
+    "status": "PASS",
+    "scope": "fresh real Codex app-server",
+    "tools": [
+      "session",
+      "question",
+      "ask"
+    ],
+    "compared_implementation_files": 5
+  },
+  "form_and_public_host_fixture": {
+    "status": "PASS",
+    "identity": "disposable independently enrolled test connection",
+    "answers": 1,
+    "receipts": 1,
+    "choice": "COMMITTING",
+    "cold_before_and_after_acceptance": "PASS",
+    "changed_merge_subject_refused": "PASS",
+    "replacement_client_refused": "PASS",
+    "tool_supplied_answer_refused": "PASS"
+  },
+  "genuine_chat": {
+    "session": "S001",
+    "declared_choice": "COMMITTING",
+    "question_sha256": "5a885eaeffece1e1043ea435314172a748f7e62f3b9ba27e5a9e4d835a3bed6e",
+    "message_observation": "first-party thread item retained in private pilot evidence",
+    "verified_account_binding": "UNAVAILABLE",
+    "signed_source": "UNAVAILABLE",
+    "canonical_phase": "staged",
+    "receipts": 0,
+    "genuine_form_processing": "SKIP",
+    "continuation": "SKIP"
+  },
+  "full_workflow": "SKIP",
+  "p0_go": false
+}
