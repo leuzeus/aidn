@@ -563,5 +563,17 @@
     "model_shell_database_credentials": "excluded by the Native shell environment policy",
     "original_tool_command": "UNAVAILABLE",
     "original_cause": "unclassified; these later observations do not reconstruct the original command"
+  },
+  "targeted_follow_up": {
+    "pull_request": 207,
+    "tested_head": "b57ce53e94a1a8ea611b7cb4e3c43bf1ef012daf",
+    "merged_candidate": "cb9ed086ea426c7644d1f18a2c10a8ac1c500a78",
+    "change": "Distinguish the hosted Native activity from coordinator startup in the trusted developer message and installed startup contract",
+    "instruction_delivery_and_refusal_fixtures": "PASS",
+    "installed_contract_upgrade_and_rollback_fixtures": "PASS",
+    "published_model_fixtures": "PASS",
+    "governance_admission": "PASS",
+    "new_candidate_native_replay": "SKIP",
+    "original_failure_reclassified": false
   }
 }
