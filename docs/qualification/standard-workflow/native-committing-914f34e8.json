@@ -6,7 +6,7 @@
   "model_revision": 430,
   "backend": "Windows/PostgreSQL",
   "state_mode": "db-only",
-  "campaign_state": "WAITING_HUMAN_ALIGNMENT",
+  "campaign_state": "RUNNING_PREWORK_ADMISSION",
   "package_installation": "PASS",
   "source_installed_inventory": {
     "models": 16,
@@ -137,14 +137,15 @@
   "native": {
     "status": "PASS",
     "launched": true,
-    "responses": 3,
+    "responses": 5,
     "budget": {
       "configuration_sha256": "cba4ca805035feb11ee91f06a3b0a4f363d5b8e7cf1a6dffc8be995bc14d127b",
       "max_responses": 24,
       "max_bytes": 67108864,
       "max_turn_ms": 600000,
       "authorized_at_ms": 1795378652530,
-      "deadline_ms": 1795382252530
+      "deadline_ms": 1795382252530,
+      "status": "RENEWED"
     },
     "scope": "completed Native activities only; the full nominal remains unqualified",
     "runs": [
@@ -273,16 +274,96 @@
           ]
         },
         "trace_sha256": "8175f6ce04f7d1f24349fff9e8105862342c7b88e33088d815464a2eded47141"
+      },
+      {
+        "generation": 4,
+        "status": "PASS",
+        "native_answer_outcome": "completed",
+        "output_contract": "standard-cycle-prework-report.v1",
+        "answer_sha256": "c12996faa330b7d82cfb92d482f723a8986dae9bb990cac35382ed38f1fbf6e0",
+        "process_status": "RUNNING",
+        "first_failure": null,
+        "journal_phase": "closed",
+        "active_processes": 0,
+        "responses": 2,
+        "bytes_retained": 3399884,
+        "storage_budget_debit_bytes": 3826588,
+        "canonical_payload_bytes_acknowledged": 426704,
+        "elapsed_since_authorization_ms": 254248,
+        "supervised_process_ms": 158312,
+        "trace_sha256": "bdd9cd395b2dc8e61c9b9f1eba9c6c6d10ec54a03d0d137ca59662c6c7a28b6d",
+        "usage": {
+          "client_reported": true,
+          "billed_total": false,
+          "threads": [
+            {
+              "total": {
+                "totalTokens": 77758,
+                "inputTokens": 75072,
+                "cachedInputTokens": 37248,
+                "cacheWriteInputTokens": 0,
+                "outputTokens": 2686,
+                "reasoningOutputTokens": 90
+              },
+              "last": {
+                "totalTokens": 40285,
+                "inputTokens": 37679,
+                "cachedInputTokens": 37248,
+                "cacheWriteInputTokens": 0,
+                "outputTokens": 2606,
+                "reasoningOutputTokens": 90
+              },
+              "modelContextWindow": 475000
+            }
+          ]
+        }
       }
     ],
-    "next_activity": "human decision on the additional diagnosis",
+    "next_activity": "canonical plan acceptance and implementation admission",
     "budget_consumption": {
       "known": true,
-      "responses": 3,
-      "bytes": 7012287
+      "responses": 5,
+      "bytes": 10844689
     },
     "budget_consumption_scope": "Host allocation ledger from the public preview; individual worker storage debits exclude other retained host evidence and are not its replacement",
-    "timing_scope": "supervised_process_ms measures the observed Windows Job interval; elapsed_since_authorization_ms is cumulative campaign time and must not be summed across runs"
+    "timing_scope": "supervised_process_ms measures the observed Windows Job interval; elapsed_since_authorization_ms is cumulative campaign time and must not be summed across runs",
+    "renewal": {
+      "candidate": "914f34e83607df7ae8beec256623a9b6251d3633",
+      "status": "PASS",
+      "epoch": 2,
+      "request_sha256": "b96ca337e7a0328d2a565dcc8c6276596d2a296cbac02a2c8a2074223acf45a5",
+      "grant_sha256": "6fd97d7a9c261a80ec4502ad47cbd9a17a93af53aab145a8a0999119a2c775a3",
+      "stable_subject_sha256": "784e9598ec008a7c9e1d7ce5e1dc35c6c00398c4a1abf6caaa35b553c80e6618",
+      "previous_allocations_unchanged": true,
+      "initial_authorization_unchanged": true,
+      "cumulative_max_responses": 24,
+      "cumulative_max_bytes": 67108864,
+      "remaining_responses": 21,
+      "remaining_bytes": 60096577,
+      "deadline_ms": 1795391122833,
+      "native_started": false,
+      "manual_signature_steps": 0,
+      "independent_original_author_proof": false,
+      "preparation_findings": [
+        {
+          "code": "LOCAL_OBSERVER_CUMULATIVE_CHECKPOINT_ASSUMPTION",
+          "scope": "local renewal preparation",
+          "observed": "Expected one checkpoint resource; generation two retained two cumulative resources.",
+          "disposition": "Verified all cumulative prefixes unchanged and each generation bound to its own result and native session.",
+          "native_started": false,
+          "grant_activated": false
+        },
+        {
+          "code": "LOCAL_PROCESS_DISCOVERY_REFUSAL",
+          "scope": "local renewal preparation",
+          "observed": "Current process discovery incomplete or nonempty. The first detailed process inventory was not retained.",
+          "disposition": "A new standalone observation verified all three terminal Jobs, client state and two stable empty scoped process scans before activation.",
+          "original_process_detail": "UNAVAILABLE",
+          "native_started": false,
+          "grant_activated": false
+        }
+      ]
+    }
   },
   "full_nominal": "SKIP",
   "installed_nominal": "SKIP",
@@ -295,7 +376,7 @@
     "The pilot local observer is an accepted qualification exception; lot 2b independent interface proof remains open.",
     "The four Windows controls qualify the validator boundary, not the full STANDARD native workflow."
   ],
-  "report_checkpoint_at": "2026-11-22T20:42:33.259Z",
+  "report_checkpoint_at": "2026-11-22T22:51:31.369Z",
   "preserved_diagnosis": {
     "status": "PASS",
     "choice": "request_diagnosis",
@@ -318,7 +399,60 @@
     "previous_evaluation_operation_id": "op_7308a827d5abdc0f79fd98af09d2201c3c3310a0",
     "report_sha256": "89d402280496a94bdc26f345ca0f88992770dbcc35a060bc977edfa711ecf8a5",
     "unchanged_evidence_context": true,
-    "decision": "PENDING",
-    "question_sha256": "3a30d6ed31e9dfe3d3b575b70a057ff638b44fe2d29b063a4d5b7e006b3732e0"
+    "decision": "confirm_alignment",
+    "question_sha256": "3a30d6ed31e9dfe3d3b575b70a057ff638b44fe2d29b063a4d5b7e006b3732e0",
+    "decision_status": "PASS",
+    "operation_id": "op_be4300a3649b6eb0dfd60fbefa9a8e735d104f6d",
+    "receipt_id": "receipt_be4300a3649b6eb0dfd60fbefa9a8e735d104f6d",
+    "accepted_results": 1,
+    "tampered_choice_refused": true,
+    "same_receipt_on_redelivery": true,
+    "manual_signature_steps": 0,
+    "repeated_human_questions": 0,
+    "independent_original_author_proof": false,
+    "cold_receipt_recovery": "PASS"
+  },
+  "alignment_checkpoint": {
+    "status": "PASS",
+    "records": [
+      {
+        "binding": "drift_check_finalize",
+        "operation_id": "op_99c63f95abe476a20421fd8b1add16cebc82ac33",
+        "receipt_id": "receipt_99c63f95abe476a20421fd8b1add16cebc82ac33",
+        "evaluation_operation_id": "op_0309437b713d8567d23e644b9ae5a70219136909",
+        "accepted_results": 1,
+        "trace_sha256": "2089deb6a27b69520f3f412fc05bc192a0f0a8b5e23546ad78cdca5d430e43c8",
+        "output_sha256": "bd737581f1cb99b47a68fbc779d5ce2625b6bb994a573081f0c9d19e435bf634"
+      },
+      {
+        "binding": "cycle_checkpoint_finalize",
+        "operation_id": "op_fef762a0d7ee251610c0c77e26479e0d91d2bade",
+        "receipt_id": "receipt_fef762a0d7ee251610c0c77e26479e0d91d2bade",
+        "evaluation_operation_id": "op_0309437b713d8567d23e644b9ae5a70219136909",
+        "accepted_results": 1,
+        "trace_sha256": "d65760c18cd5741d2327670ce29540d0aa817e07131963bae491137104d94b07",
+        "output_sha256": "871e3f6f432b36ef312e14f54306c7dd725809569d088baa57b2c3924820f4e9"
+      }
+    ],
+    "physical_checkpoint": {
+      "summary_occurrences": 1,
+      "event_sha256": "a6ca2e313923df6f42a0e354f8c1e65352811fafad300cc65f8992581de75bc1",
+      "physical_file_sha256": "5f3dcdffb771d641675046750a74784a7d122b097241c0edc4d68bccc9870162"
+    }
+  },
+  "prework": {
+    "status": "PASS",
+    "generation": 4,
+    "kind": "propose_plan",
+    "contract": "standard-cycle-prework-report.v1",
+    "intent_verdict": "passed",
+    "architecture_verdict": "passed",
+    "proposed_tasks": 1,
+    "product_paths": [
+      "product/interval.mjs",
+      "product/interval.test.mjs"
+    ],
+    "tests_executed": false,
+    "independent_final_audit": "SKIP"
   }
 }
