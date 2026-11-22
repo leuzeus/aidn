@@ -81,8 +81,8 @@
       "tampered_attestation_refused": true
     }
   },
-  "native_model_calls": 0,
-  "public_full_nominal": "SKIP",
+  "native_model_calls": 2,
+  "public_full_nominal": "FAIL",
   "windows_installed_nominal": "SKIP",
   "p0_go": false,
   "complete_standard_workflow": false,
@@ -91,5 +91,165 @@
     "missing": "Reserved empty protected directory",
     "workflow_effects_before_correction": 0,
     "candidate_changed": false
+  },
+  "public_entry": {
+    "status": "PASS",
+    "instance_id": "standard-vertical-pr204",
+    "initialized": true,
+    "native_configuration_sha256": "e408ddad5ccc6340a3f408e6eb08d70df6f1c6df973483bec53edfcc326516ee",
+    "mode": "COMMITTING",
+    "mode_receipt": {
+      "status": "received",
+      "operation_id": "op_a7086c6f0550fa9709513e9f78886a0b041400ba",
+      "question_sha256": "fc77eaac9fe4e6fe5eb33b3f28b19f206812d06ed66cd819bf491de4b5cd77b5",
+      "choice": "COMMITTING",
+      "receipt_id": "receipt_a7086c6f0550fa9709513e9f78886a0b041400ba",
+      "outcome": "completed"
+    },
+    "result_count": 1,
+    "new_mode_questions": 0,
+    "manual_signature_steps": 0,
+    "same_receipt_on_cold_reopening": true,
+    "tampered_choice_refused": true,
+    "evidence_class": "operator-accepted-local-history-observation",
+    "independent_original_author_proof": false
+  },
+  "native_authorization": {
+    "max_responses": 24,
+    "max_bytes": 67108864,
+    "max_turn_ms": 600000,
+    "deadline": "2026-11-22T18:09:12.646Z"
+  },
+  "resumed_local_pilot": {
+    "observed_at": "2026-11-22T17:22:25.669Z",
+    "connector": "1b666e1a6434afa360ee683904f14699a053518c",
+    "native_runs": [
+      {
+        "generation": 1,
+        "status": "RUNNING",
+        "first_failure": null,
+        "journal_phase": "closed",
+        "trace_sha256": "852b5adffa693f52d435dea5cb4e0bd38e07093e98f9374b094dcb2d33aea9e3",
+        "journal_sha256": "5756d8a05926fc75962c4ca1d5151a56b83b76e12df70961b20513552d559d36",
+        "exit_code": 0,
+        "process_closure": "confirmed",
+        "active_processes": 0,
+        "elapsed_global_ms": 121604,
+        "client_reported_usage": [
+          {
+            "totalTokens": 28417,
+            "inputTokens": 27383,
+            "cachedInputTokens": 0,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 1034,
+            "reasoningOutputTokens": 42
+          }
+        ]
+      },
+      {
+        "generation": 2,
+        "status": "RUNNING",
+        "first_failure": null,
+        "journal_phase": "closed",
+        "trace_sha256": "fc5ff2bd3a8074d31ad0ba712099da34c9d830e3d4991aad594fc683c3c10b63",
+        "journal_sha256": "d9999cacf91e8fa0a5a701be63f7aba8fa5b1d2751a2c627c87d2ffbaaad0dd9",
+        "exit_code": 0,
+        "process_closure": "confirmed",
+        "active_processes": 0,
+        "elapsed_global_ms": 608931,
+        "client_reported_usage": [
+          {
+            "totalTokens": 31434,
+            "inputTokens": 29908,
+            "cachedInputTokens": 0,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 1526,
+            "reasoningOutputTokens": 32
+          }
+        ]
+      }
+    ],
+    "consumption": [
+      {
+        "generation": 1,
+        "phase": "closed",
+        "tree_closed": true,
+        "responses": 1,
+        "storage_debit_bytes": 1889858,
+        "native_usage_sha256": "42c9ca7ab5d47626824ff696b4b67f2d4d18df83a4047adf231c8e83993efc83"
+      },
+      {
+        "generation": 2,
+        "phase": "closed",
+        "tree_closed": true,
+        "responses": 1,
+        "storage_debit_bytes": 2568867,
+        "native_usage_sha256": "d8d6b00edb2a0743e0ed13fcdc0de7ce75c0af27ac79ce601ef36e70a10def7a"
+      }
+    ],
+    "totals": {
+      "responses": 2,
+      "storage_debit_bytes": 4458725,
+      "deadline": "2026-11-22T18:09:12.646Z"
+    },
+    "physical_artifacts": [
+      {
+        "kind": "session",
+        "sha256": "31d6a7ae20755506a3cc6a831c080f8a225a4485f22026acce217ae427ea15c0"
+      },
+      {
+        "kind": "current_state",
+        "sha256": "75650633ea66887f130474d7c59d6bc89f56e756bba2238e159a91ee6676ebe5"
+      },
+      {
+        "kind": "cycle_status",
+        "sha256": "c513d5956d764432c89d9680faaeeac607588ef8675caef27facc5691222c8fb"
+      }
+    ],
+    "physical_git": {
+      "head": "0eecb867459acf2bdb7c23bb603be6bed0f680d0",
+      "product": [
+        {
+          "file": "interval.mjs",
+          "sha256": "81beb0d272d1db36213fc707861b53108a0cbb1a2446b9d455898d44006d8865"
+        },
+        {
+          "file": "interval.test.mjs",
+          "sha256": "70d900458b5b7a6306428a95ffa50a7a397154e9f4bc0e4fa5bdd9168a4eef9f"
+        }
+      ]
+    },
+    "progress": {
+      "mode_applied": "PASS",
+      "cycle_initialized": "PASS",
+      "branch_cycle_audit": "PASS",
+      "objective_alignment": "DIAGNOSIS_REQUESTED",
+      "plan_implementation_validation": "SKIP",
+      "diagnosis_continuation": "FAIL"
+    },
+    "pending": {
+      "kind": "targeted_product_correction",
+      "human_decision_pending": false
+    },
+    "evidence_scope": "Source runtime with installed connector and an operator-accepted local-history observer. Independent original-author proof remains open.",
+    "human_diagnosis": {
+      "choice": "request_diagnosis",
+      "operation_id": "op_5dce45668cfae5f4913bbde96ed90110dc2dae11",
+      "receipt_id": "receipt_5dce45668cfae5f4913bbde96ed90110dc2dae11",
+      "question_sha256": "4878eed4aa07d97c194152829e0643ca4f790e8512018b10a2956070919178d7",
+      "accepted_results": 1,
+      "cold_reopen_same_receipt": true,
+      "manual_signature_steps": 0
+    },
+    "first_failure": {
+      "action": "public_preview_after_request_diagnosis",
+      "code": "STANDARD_OBJECTIVE_ALIGNMENT_NOT_CONFIRMED",
+      "trace_sha256": "f8132e5ffd7898139d361cd7dec20daa17cca953d979584dff851c7cd8961c47",
+      "additional_native_calls": 0,
+      "finalization_effects": 0,
+      "product_writes": 0,
+      "classification": "Authored fresh cycle route unconditionally tries to finalize after the accepted diagnostic request. The authority refusal is correct.",
+      "candidate_preserved": true
+    }
   }
 }
