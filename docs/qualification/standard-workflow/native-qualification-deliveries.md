@@ -66,6 +66,8 @@ A fresh local pilot starts from the same product baseline. Its hook trust,
 validation boundary and Native allocation are observed separately; earlier
 candidate receipts are not migrated into this new instance.
 
+The `2fe9c20c` run passed its four Windows boundary controls and the local chat review, applied the preserved COMMITTING choice, and consumed two genuine Native responses. The operator then chose `request_diagnosis` for the differing objective formulations. Its accepted receipt survives cold reopening. The following public preview refused `STANDARD_OBJECTIVE_ALIGNMENT_NOT_CONFIRMED`: the fresh-cycle graph tried to finalize that choice. No further Native response, finalization or product write followed. [Candidate evidence](native-committing-2fe9c20c.json) preserves this first failure. [Product PR #205](https://github.com/leuzeus/aidn/pull/205) supplies the bounded diagnosis loop; integration and successor qualification are tracked separately. No new human decision is pending on the failed candidate.
+
 The exception establishes what the local observer read. Independent proof of
 the original message author and the product-level authenticated interface remain
 open. Lot 2b retains those requirements, and P0 remains pending.
