@@ -94,7 +94,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
   // Fresh and corrective R05 share the target's finalizer binding.
-  assert.equal(assets.catalog.bindings.length, 217); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 221); assert.equal(assets.catalog.activities.length, 23);
   assert.deepEqual(assets.catalog.bindings.filter(row => row.model_ref?.model_id === "aidn-standard-mode-handoff")
     .map(row => [row.node_id, row.binding.id]).sort(), [
       ["mode_handoff_decide", "mode_work_continue_decision"], ["mode_handoff_summary", "handoff_summary_prepare"],
@@ -656,15 +656,22 @@ test("published cycle entry preserves creation preconditions and separates owned
   assert.equal(owned.model.nodes.find(row => row.id === "entry").binding_ref, "cycle_entry_admit");
   assert.equal(owned.model.nodes.find(row => row.id === "resume").binding_ref, "cycle_owned_resume_admit");
   assert.equal(assets.catalog.bindings.find(row => row.node_id === "resume" && row.model_ref?.model_id === owned.model_id).binding.effect_class, "read-only");
-  assert.deepEqual(node("fresh_cycle").children, ["fresh_entry", "cycle_drift_report", "cycle_drift_evaluate", "cycle_drift_finalize", "fresh_checkpoint"]);
+  assert.deepEqual(node("fresh_cycle").children, ["fresh_entry", "cycle_drift_loop"]);
+  assert.equal(node("cycle_drift_loop").until, "drift_check_completed");
+  assert.equal(node("cycle_drift_loop").max_iterations, 32);
+  assert.deepEqual(node("cycle_drift_iteration").children, ["cycle_drift_report", "cycle_drift_evaluate", "cycle_drift_select", "cycle_drift_objective_route", "cycle_drift_outcome"]);
+  assert.deepEqual(node("cycle_drift_checkpoint_ready").children, ["cycle_drift_finalize", "fresh_checkpoint"]);
+  assert.deepEqual(node("cycle_drift_outcome").branches, [
+    { flow_id: "ready", node_id: "cycle_drift_checkpoint_ready", condition: "drift_route_ready" },
+    { flow_id: "diagnose", node_id: "cycle_drift_diagnosis_requested", condition: "drift_diagnosis_requested" },
+    { flow_id: "unresolved", node_id: "cycle_drift_unresolved", condition: null }]);
+  assert.equal(node("cycle_drift_unresolved").binding_ref, "drift_check_finalize");
   assert.deepEqual(freshEntry.model.nodes.find(row => row.id === "fresh_entry").children,
     ["session_git_checkpoint", "cycle_entry", "cycle_admit", "cycle_initialize", "cycle_audit"]);
   const checkpoint = assets.model.call_targets.find(row => row.model_id === "aidn-standard-fresh-cycle-checkpoint");
-  const review = assets.model.call_targets.find(row => row.model_id === "aidn-standard-corrective-drift");
   const evaluated = { source: "operation_id", node_id: "cycle_drift_evaluate" };
-  assert.equal(node("cycle_drift_finalize").kind, "call");
-  assert.deepEqual(node("cycle_drift_finalize").target, processModelIdentity(review.model));
-  for (const id of ["cycle_drift_finalize", "fresh_checkpoint"]) {
+  assert.equal(node("cycle_drift_finalize").binding_ref, "drift_check_finalize");
+  for (const id of ["cycle_drift_select", "cycle_drift_decide", "cycle_drift_finalize", "fresh_checkpoint"]) {
     const input = assets.model.data_bindings.inputs.find(row => row.node_id === id);
     assert.deepEqual(input.fields.evaluation_operation_id, evaluated);
   }
@@ -684,7 +691,7 @@ test("published cycle entry preserves creation preconditions and separates owned
     { flow_id: "canonical", node_id: "prework_record_inapplicable", condition: null }]);
   assert.equal(node("cycle_drift_report").kind, "activity");
   assert.equal(assets.model.nodes.filter(row => row.kind === "activity").length, 23);
-  assert.equal(assets.model.nodes.length, 256); assert.ok(assets.model.nodes.length <= 256);
+  assert.equal(assets.model.nodes.length, 266); assert.ok(assets.model.nodes.length <= 288);
 });
 test("catalog v7 declares typed initial audits while the closed v4-v6 formats retain their scopes", () => {
   assert.deepEqual(validateJsonSchema(assets.catalog, catalogSchemaV7, "$", { contractKind: "workflow-definition" }), []);
@@ -801,8 +808,8 @@ test("the ordinary loader authenticates the two final-verification operations fo
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV6, "#", { contractKind: "workflow-definition" }), []);
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV7, "#", { contractKind: "workflow-definition" }), []);
   const input = fresh(), loaded = assets;
-  assert.equal(loaded.model.nodes.length, 256);
-  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 129);
+  assert.equal(loaded.model.nodes.length, 266);
+  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 133);
   assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 88);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
   assert.equal(loaded.model.call_targets.length, 15);

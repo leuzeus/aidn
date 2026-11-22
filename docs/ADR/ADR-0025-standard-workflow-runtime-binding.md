@@ -5165,3 +5165,30 @@ No public action kind, JSON shape, store, shared coordination surface, Native
 allocation or preparation-age ceiling is added. Running/returned capsules retain
 their separate reconciliation requirements. Component observations do not close
 the full A6 boundary/concurrency, installed or genuine-actor qualification.
+
+## Fresh-cycle diagnosis continuation
+
+The fresh COMMITTING cycle's objective review can return `request_diagnosis`.
+That accepted choice must lead to a new Native occurrence, not to an attempted
+alignment finalization. Creation stays outside the bounded loop. Its evaluation,
+follow-up selection, human choice, conditional finalizer and checkpoint remain
+inside one iteration; only `drift_route_ready` permits the latter two effects.
+Each retry selects its own report and evaluation. The existing authority still
+refuses to finalize an unconfirmed alignment, and a new occurrence remains
+subject to the original cumulative Native authorization.
+
+Routing facts are local to a call. Moving the human choice into a child call
+would hide its result from the parent loop. The fresh route therefore keeps
+these nodes in the root instead of exporting implicit facts or weakening the
+call/source selection contracts. The terminal and corrective routes keep their
+existing structure. This decision supersedes the previous 256-node v2 capacity:
+the schema and loader now admit 288 nodes per component, while the published
+root uses 266. V1 stays at 128. Depth 16, 32 children/iterations, expanded and
+runtime occurrence bounds, and the 256-character occurrence identity bound are
+unchanged. Boundary tests admit 288 and reject 289; no execution budget is raised.
+
+Synthetic published-model planning and a FILES mixed-host regression separately
+cover diagnosis, cold reopening, the subsequent alignment and one physical
+checkpoint. Their Native and human ports are fixtures. Genuine actors, the
+installed archive, corrective diagnosis branches and full STANDARD completion
+remain independently qualified; this change does not close those requirements.
