@@ -1,0 +1,96 @@
+{
+  "candidate": "69e43d9296d7ebf2616ec16d2170be4dad3c83b4",
+  "archive_sha256": "99774809339ccafb5c47656b7db728986f1f005b21c9951b1a298f03c94860d3",
+  "model_revision": 422,
+  "backend": "FILES",
+  "phase": "Session mode requested",
+  "transitions": [
+    {
+      "action": "prepare_host",
+      "action_sha256": "7759d22d4181e15d60c59e99bef6edd5a69a4f23a440c1c8ebffe8da62674f33",
+      "process_status": null,
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
+    },
+    {
+      "action": "initialize",
+      "action_sha256": "8b6859c37a8ca5e5b3f191fb5813ffdcf1b4bad80f05d3af7bd3382a8ff63efa",
+      "process_status": "RUNNING",
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
+    },
+    {
+      "action": "operation",
+      "binding": "context_reload",
+      "action_sha256": "10912dc7cb0eb670d5d1b9e3f70e6e1ecb95b7b43d8f01ece2227622a766eb25",
+      "process_status": "WAITING",
+      "operation_outcome": "completed",
+      "effect_status": "no_effect",
+      "receipt_sha256": "545d67fa34197c12e19060cd7e2c880b9f1727332906a7c34235fa42d8fa20b3"
+    },
+    {
+      "action": "call",
+      "action_sha256": "f78d16ba631657e0cefa63cd8be29e9a9f246099b6f328b0d86bbf1a436e8c8a",
+      "process_status": "RUNNING",
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
+    },
+    {
+      "action": "operation",
+      "binding": "session_entry_admit",
+      "action_sha256": "de9c8334e1796c7c0937b2dd4b03285282cff4ebca9769d138f1458510136a35",
+      "process_status": "RUNNING",
+      "operation_outcome": "completed",
+      "effect_status": "no_effect",
+      "receipt_sha256": "4e4383ebf98179f7d62c5fd2bdbb8e0e2e9812563fd4037d9d8b5438933006c8"
+    },
+    {
+      "action": "operation",
+      "binding": "session_initialize",
+      "action_sha256": "7a93834e8b61e6bd8766f96df00d6eeadbfed5da109abbaa062546e45f9e0104",
+      "process_status": "RUNNING",
+      "operation_outcome": "completed",
+      "effect_status": "confirmed",
+      "receipt_sha256": "3ec9be1f99f7f4b4d974505706f287f5408023a2da85000b7c35f58bfe52d6c1"
+    },
+    {
+      "action": "operation",
+      "binding": "mode_decision",
+      "action_sha256": "5ad6628e461ce3d666b3ff43fd68461158838f75aaabe2c66e8104b907afe5d4",
+      "process_status": "WAITING",
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
+    }
+  ],
+  "physical_observation": {
+    "session_document_sha256": "a5069d68089dc7edf7282fdd5da6c4de7a54aecd9f9cb08c1e60fb65e977ffb6",
+    "matches_session_id": true,
+    "observed_mode": "UNKNOWN",
+    "session_branch_active": true
+  },
+  "human_wait": {
+    "status": "WAITING",
+    "question_contract": "standard-mode-question.v1",
+    "question_sha256": "124385d25cffc5d69ecc557cc62482bd7c8d7373699cb519f45f445028e51b1a",
+    "permitted_choices": [
+      "THINKING",
+      "EXPLORING",
+      "COMMITTING",
+      "refused",
+      "deferred",
+      "cancelled"
+    ],
+    "distinct_preview_processes": 2,
+    "action_sha256": "1f18d5a8aff956172eff811e10591e4a7ca0bec565d26fee10531722e6b89b11",
+    "stable_across_processes": true
+  },
+  "terminal": {
+    "workflow_completed": false,
+    "native_model_turns_at_wait": 0,
+    "p0_go": false
+  }
+}
