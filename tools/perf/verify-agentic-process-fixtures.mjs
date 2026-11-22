@@ -8,7 +8,7 @@ import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { createAgenticCodexRpc } from "../../src/adapters/agents/agentic-codex-rpc.mjs";
 import { loadStandardWorkflowAssets } from "../../src/application/runtime/standard-workflow-composition.mjs";
-import { nativeActivityAnswerSchema, nativeActivityTransportSchema, assertNativeActivityAnswer } from "../../src/core/workflow/native-activity-output.mjs";
+import { nativeActivityAnswerSchema, nativeActivityTransportSchema, nativeActivityOutputBindings, nativeActivityOutputInstructions, assertNativeActivityAnswer } from "../../src/core/workflow/native-activity-output.mjs";
 import { assertAgenticProcessModel, agenticPolicyPins, agenticProcessCapabilities } from "../../src/core/workflow/agentic-process-model.mjs";
 import { createAgenticProcess, inspectAgenticProcess, advanceAgenticProcess, assertAgenticProcessInstance } from "../../src/core/workflow/agentic-process.mjs";
 import { createAgenticProcessService } from "../../src/application/runtime/agentic-process-service.mjs";
@@ -571,6 +571,31 @@ try {
       changes: [], keep: [], discard: [], split_recommendation: { new_cycle: false, new_branch: false, change_request_required: false, impact: "none" },
       recommendation: "continue", rationale: "No deviation observed.", evidence_refs: [{ ref: "fixture:report", sha256: "a".repeat(64) }] } };
     assertNativeActivityAnswer(answer, contract, context);
+    const bindings = nativeActivityOutputBindings(contract, { original_objective: answer.report.original_objective });
+    const boundWire = nativeActivityTransportSchema(contract, context, bindings);
+    checkWire(boundWire);
+    assert.deepEqual(boundWire.properties.report.anyOf[1].properties.original_objective, { type: "string", const: answer.report.original_objective });
+    assert.throws(() => nativeActivityOutputBindings(contract, {}), /PROCESS_ACTIVITY_OUTPUT_BINDINGS_INVALID/);
+    assert.throws(() => assertNativeActivityAnswer({ ...answer, report: { ...answer.report, original_objective: "Different objective." } }, contract, context, bindings), /PROCESS_SESSION_ANSWER_INVALID/);
+    const assess = changes => assertNativeActivityAnswer({ ...answer, report: { ...answer.report, ...changes } }, contract, context, bindings);
+    assess({ current_objective: "Neutral  objective." });
+    const revised = { current_objective: "Revised scope.", objective_changed: true, drift_level: "mild", changes: ["Objective revised."],
+      recommendation: "requirements_delta", split_recommendation: { ...answer.report.split_recommendation, change_request_required: true } };
+    assess(revised);
+    assess({ ...revised, drift_level: "severe", recommendation: "human_arbitration", split_recommendation: { ...revised.split_recommendation, new_cycle: true, impact: "high" } });
+    const instructions = nativeActivityOutputInstructions(contract);
+    for (const [invalid, guidance] of [
+      [{ current_objective: "A paraphrase." }, "copy it into current_objective"],
+      [{ changes: ["A planned edit."] }, "changes must be empty"],
+      [{ ...revised, recommendation: "continue" }, "other than continue"],
+      [{ ...revised, drift_level: "severe" }, "requires human_arbitration"],
+      [{ ...revised, split_recommendation: answer.report.split_recommendation }, "requires change_request_required=true"],
+      [{ ...revised, split_recommendation: { ...revised.split_recommendation, impact: "high" } }, "requires new_cycle=true"],
+      [{ split_recommendation: { ...answer.report.split_recommendation, new_branch: true } }, "all split flags must be false"]
+    ]) {
+      assert(instructions.includes(guidance));
+      assert.throws(() => assess(invalid), /STANDARD_DRIFT_REPORT_INCONSISTENT/);
+    }
     assert.throws(() => assertNativeActivityAnswer({ ...answer, report: { ...answer.report, rationale: "" } }, contract, context), /PROCESS_SESSION_ANSWER_INVALID/);
     assert.throws(() => assertNativeActivityAnswer({ ...answer, report: { ...answer.report, evidence_refs: [] } }, contract, context), /PROCESS_SESSION_ANSWER_INVALID/);
   });
