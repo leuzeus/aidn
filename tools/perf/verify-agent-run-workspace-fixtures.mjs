@@ -34,19 +34,19 @@ try {
       spawnProcess: () => { throw new Error("forbidden spawn fallback"); }, runGitProcess: async (request, { onEvent }) => {
         count++; const runner = { runner_id: request.operation_id, pid: 5555, started_at: "2026-09-27T00:00:00Z", job_name: "Local\\aidn-execution-" + "d".repeat(32) };
         await onEvent({ type: "prepared", ...runner, suspended: true, job_assigned: true });
-        const output = request.args.includes("--git-common-dir") ? common : request.args.includes("--show-object-format") ? "sha1"
+        const output = request.args.includes("--show-object-format") ? [common, "sha1"].join("\n")
           : request.args.includes("config") ? "" : "1".repeat(40);
         await onEvent({ type: "stdout", bytes: Buffer.from(output) });
         return { outcome: "completed", reason_code: "PROCESS_EXITED", termination_state: "confirmed", exit_code: 0, signal: null,
           termination_proof: { ...runner, active_processes: 0, method: "FIXTURE_ONLY" } };
       } };
     const adapter = make(options); await adapter.inspectIntegration({}, { phase: "head" });
-    const records = await make(options).inspectGitOperations(); assert.equal(count, 4); assert.equal(records.operations.length, 4);
+    const records = await make(options).inspectGitOperations(); assert.equal(count, 3); assert.equal(records.operations.length, count);
     assert(records.operations.every(row => row.intent.effect_class === "read-only" && row.recovery_required === false));
     const chosen = records.operations[0], file = path.join(resourcesRoot, "git-operations", `${chosen.operation_id}.closed.json`);
     const changed = JSON.parse(fs.readFileSync(file)); changed.termination_proof.runner_id = randomUUID(); fs.writeFileSync(file, JSON.stringify(changed));
     assert((await make(options).inspectGitOperations()).operations.find(row => row.operation_id === chosen.operation_id).recovery_required);
-    await assert.rejects(make(options).inspectIntegration({}, { phase: "head" }), /AGENT_GIT_RECOVERY_REQUIRED/); assert.equal(count, 4);
+    await assert.rejects(make(options).inspectIntegration({}, { phase: "head" }), /AGENT_GIT_RECOVERY_REQUIRED/); assert.equal(count, 3);
   });
   await check("large operation journals remain bounded and freshly detect a late missing termination", async () => {
     const repositoryRoot = path.join(temp, "journal-repo"), sourceRoot = path.join(temp, "journal-resources");
@@ -113,8 +113,9 @@ try {
           fs.writeFileSync(path.join(worker, ".git"), `gitdir: ${gitDir}\n`); fs.writeFileSync(path.join(gitDir, "HEAD"), `ref: refs/heads/${branch}\n`); fs.writeFileSync(path.join(gitDir, "index"), "fixture-index"); fs.writeFileSync(path.join(gitDir, "gitdir"), path.join(worker, ".git") + "\n"); fs.writeFileSync(path.join(gitDir, "commondir"), path.relative(gitDir, common) + "\n"); const branchRef = path.join(common, "refs", "heads", branch); fs.mkdirSync(path.dirname(branchRef), { recursive: true }); fs.writeFileSync(branchRef, base + "\n");
         } else if (args[0] === "worktree" && args[1] === "list") output = [...branches.keys()].map(worker => `worktree ${worker}\0`).join("");
         else if (args[0] === "worktree" && args[1] === "remove") { removals++; throw new Error("fixture deletion must not occur"); }
+        else if (args.includes("--show-object-format")) output = common + "\nsha1";
+        else if (args.includes("--git-common-dir") && args.includes("--absolute-git-dir")) output = common + "\n" + path.join(common, "worktrees", path.basename(cwd));
         else if (args.includes("--git-common-dir")) output = common;
-        else if (args.includes("--show-object-format")) output = "sha1";
         else if (args.includes("--absolute-git-dir")) output = path.join(common, "worktrees", path.basename(cwd));
         else if (args[0] === "symbolic-ref") output = args.includes("--short") ? branches.get(cwd) : `refs/heads/${branches.get(cwd)}`;
         else if (args[0] === "rev-parse") {

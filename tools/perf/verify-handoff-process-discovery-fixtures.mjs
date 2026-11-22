@@ -49,6 +49,11 @@ try {
   fs.writeFileSync(leaf, "process.stdin.resume();process.stdin.once('data',()=>process.exit(0));process.stdout.write('ready\\n');\n");
   fs.writeFileSync(holder, "import {spawn} from 'node:child_process';const child=spawn(process.execPath,[process.argv[2]],{stdio:['pipe','pipe','inherit'],windowsHide:true});child.once('error',()=>process.exit(1));child.stdout.once('data',()=>process.stdout.write(JSON.stringify({pid:process.pid,child:child.pid})+'\\n'));process.stdin.once('data',()=>child.stdin.end('stop\\n'));child.once('exit',code=>process.exit(code??1));\n");
   const selfIdentity = observeLocalProcess(process.pid);
+  const writableCopy = observeLocalProcess(process.pid);
+  writableCopy.creation = 'caller-modified';
+  assert.deepEqual(observeLocalProcess(process.pid), selfIdentity);
+  check('kernel self identity survives caller mutation and distinguishes a reused PID', observeLocalProcessOwner(selfIdentity) === 'active'
+    && observeLocalProcessOwner(writableCopy) === 'terminated');
   for (const invalid of [null, 1, [null], [{ ...selfIdentity, extra: true }], [{ ...selfIdentity, pid: 0 }],
     [{ ...selfIdentity, host: 'foreign-host' }], [{ ...selfIdentity, platform: 'foreign' }], [{ ...selfIdentity, creation: 'invalid' }],
     Array(10001).fill(selfIdentity)]) {
