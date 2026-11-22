@@ -39,6 +39,29 @@
     "genuine_form_processing": "SKIP",
     "continuation": "SKIP"
   },
+  "historical_message_recovery": {
+    "interface_candidate": "1b666e1a6434afa360ee683904f14699a053518c",
+    "interface_archive_sha256": "503807ce9fca998343afc49260fb1414af7d3c9c0adcbc304989e8d8b18bc24d",
+    "compared_implementation_files": 6,
+    "original_codex_user_message_lookup": "PASS",
+    "lookup_transport": "thread/items/list on the installed Codex app-server",
+    "installed_mcp_recovery": "PASS",
+    "scope": "original pilot instance with the separately installed connector",
+    "genuine_source_attestation": "UNAVAILABLE",
+    "host_response": "awaiting_attestation",
+    "canonical_journal_byte_identical": true,
+    "canonical_receipts": 0,
+    "new_form_requests": 0,
+    "native_model_calls": 0,
+    "signed_fixture_recovery": {
+      "status": "PASS",
+      "canonical_receipts": 1,
+      "new_form_requests": 0,
+      "cold_retry_same_receipt": true,
+      "different_enrolled_author_refused": true,
+      "changed_message_and_question_refused": true
+    }
+  },
   "full_workflow": "SKIP",
   "p0_go": false
 }
