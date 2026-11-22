@@ -162,7 +162,8 @@
         "bytes_retained": 1599385,
         "storage_budget_debit_bytes": 1911803,
         "canonical_payload_bytes_acknowledged": 312418,
-        "elapsed_ms": 132774,
+        "elapsed_since_authorization_ms": 132774,
+        "supervised_process_ms": 103720,
         "usage": {
           "client_reported": true,
           "billed_total": false,
@@ -203,7 +204,8 @@
         "bytes_retained": 2189956,
         "storage_budget_debit_bytes": 2555619,
         "canonical_payload_bytes_acknowledged": 365663,
-        "elapsed_ms": 842518,
+        "elapsed_since_authorization_ms": 842518,
+        "supervised_process_ms": 114517,
         "usage": {
           "client_reported": true,
           "billed_total": false,
@@ -244,7 +246,8 @@
         "bytes_retained": 2143529,
         "storage_budget_debit_bytes": 2527488,
         "canonical_payload_bytes_acknowledged": 383959,
-        "elapsed_ms": 1294967,
+        "elapsed_since_authorization_ms": 1294967,
+        "supervised_process_ms": 114079,
         "usage": {
           "client_reported": true,
           "billed_total": false,
@@ -272,7 +275,14 @@
         "trace_sha256": "8175f6ce04f7d1f24349fff9e8105862342c7b88e33088d815464a2eded47141"
       }
     ],
-    "next_activity": "human decision on the additional diagnosis"
+    "next_activity": "human decision on the additional diagnosis",
+    "budget_consumption": {
+      "known": true,
+      "responses": 3,
+      "bytes": 7012287
+    },
+    "budget_consumption_scope": "Host allocation ledger from the public preview; individual worker storage debits exclude other retained host evidence and are not its replacement",
+    "timing_scope": "supervised_process_ms measures the observed Windows Job interval; elapsed_since_authorization_ms is cumulative campaign time and must not be summed across runs"
   },
   "full_nominal": "SKIP",
   "installed_nominal": "SKIP",
