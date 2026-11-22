@@ -72,7 +72,7 @@
       "tampered_attestation_refused": true
     }
   },
-  "public_full_nominal": "SKIP",
+  "public_full_nominal": "FAIL",
   "windows_installed_nominal": "SKIP",
   "p0_go": false,
   "complete_standard_workflow": false,
@@ -82,7 +82,7 @@
     "request_diagnosis"
   ],
   "public_entry": {
-    "status": "RUNNING",
+    "status": "FAIL",
     "mode": "COMMITTING",
     "mode_applied": true,
     "mode_receipt": "receipt_d868949013e3595155e1f77ae2c33ea7383640ca",
@@ -90,7 +90,7 @@
     "new_mode_questions": 0,
     "manual_signature_steps": 0,
     "cold_receipt_recovered": true,
-    "next_stage": "Genuine Native cycle planning"
+    "next_stage": "Preserve failed occurrence; correct producer constraints and refusal evidence before a new frozen candidate replay"
   },
   "limits": "The local chat observer does not establish independent proof of original author identity.",
   "full_configuration_sha256": "82ddfc7b96182d4f756d3a929b809030438d4a20e66ac224ee881dbce439ae6b",
@@ -200,7 +200,8 @@
           "outputTokens": 1080,
           "reasoningOutputTokens": 24
         }
-      ]
+      ],
+      "activity_status": "PASS"
     },
     {
       "generation": 2,
@@ -222,7 +223,8 @@
           "outputTokens": 1497,
           "reasoningOutputTokens": 20
         }
-      ]
+      ],
+      "activity_status": "PASS"
     },
     {
       "generation": 3,
@@ -244,10 +246,34 @@
           "outputTokens": 1474,
           "reasoningOutputTokens": 0
         }
-      ]
+      ],
+      "activity_status": "PASS"
+    },
+    {
+      "generation": 4,
+      "status": "FAILED",
+      "first_failure": "PROCESS_SESSION_ANSWER_INVALID",
+      "journal_phase": "failed",
+      "trace_sha256": "a07557d44941f656cefe456c514783edbd5131e79e4cccc0a0f596dc9c04b553",
+      "journal_sha256": "49c872ec6c977b56019fa96637ac25362d014b6cffd00b213be854563d2f4409",
+      "exit_code": 0,
+      "process_closure": "confirmed",
+      "active_processes": 0,
+      "elapsed_global_ms": 2026139,
+      "client_reported_usage": [
+        {
+          "totalTokens": 71215,
+          "inputTokens": 68737,
+          "cachedInputTokens": 34176,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 2478,
+          "reasoningOutputTokens": 58
+        }
+      ],
+      "activity_status": "FAIL"
     }
   ],
-  "native_responses_observed": 3,
+  "native_responses_observed": 5,
   "native_consumption": [
     {
       "generation": 1,
@@ -272,11 +298,19 @@
       "responses": 1,
       "storage_debit_bytes": 2296515,
       "native_usage_sha256": "ee32e038f1c05e393403ea1caeb91f91fd9a75bf09bfa926e6958e01fe7856ed"
+    },
+    {
+      "generation": 4,
+      "phase": "failed",
+      "tree_closed": true,
+      "responses": 2,
+      "storage_debit_bytes": 3114589,
+      "native_usage_sha256": "546f919d75e6fee509aae8d582164957da28cb204e0a7cceb467e5e096476c5d"
     }
   ],
   "native_totals": {
-    "responses": 3,
-    "storage_debit_bytes": 6519785,
+    "responses": 5,
+    "storage_debit_bytes": 9634374,
     "deadline": "2026-11-22T19:36:17.016Z"
   },
   "progress": {
@@ -335,7 +369,7 @@
       ]
     }
   },
-  "observed_at": "2026-11-22T19:08:22.656Z",
+  "observed_at": "2026-11-22T19:30:16.171Z",
   "fresh_checkpoint": {
     "status": "PASS",
     "candidate": "6b6437c4715a500124f3de7978bcbe4ca23efdf2",
@@ -350,5 +384,40 @@
     "checkpoint_elapsed_ms": 38568,
     "manual_signature_steps": 0,
     "duplicate_completion_questions": 0
+  },
+  "first_native_failure": {
+    "status": "FAIL",
+    "generation": 4,
+    "stage": "initial cycle prework proposal and intent/architecture assessment",
+    "occurrence_id": "root/5/committing/4/assess/0",
+    "contract": "standard-cycle-prework-report.v1",
+    "error": "PROCESS_SESSION_ANSWER_INVALID",
+    "trace_sha256": "a07557d44941f656cefe456c514783edbd5131e79e4cccc0a0f596dc9c04b553",
+    "context_sha256": "51aff6db2d5f0a4d7faaf0d3cd126900ad3a9b401ea22d1297cc484c747f235d",
+    "output_bindings_sha256": "6b4573bc5391bb5c37fbced3679f7d890d949455f4831dd3dcfd21d0f105fc77",
+    "original_rejected_answer": "UNAVAILABLE",
+    "cause": "unclassified",
+    "retry_performed": false,
+    "product_bytes_unchanged": true,
+    "product_tests": "SKIP",
+    "process_closure": "PASS",
+    "active_processes": 0,
+    "post_failure_preview": "NATIVE_OWNER_DISPOSITION_UNPROVEN_EFFECTS",
+    "post_failure_preview_sha256": "7854abcbc30a52f0b038d148db591c175730e6e4753f129a66d3cb3b0c187018",
+    "observation": "The adapter validated the ephemeral final answer before retaining a native-result. Available local records do not expose the rejected text or offending constraint. The failed occurrence remains fenced; process closure does not establish business disposition."
+  },
+  "synthetic_contract_counterexample": {
+    "status": "PASS",
+    "genuine_rejected_answer_recovered": false,
+    "native_calls": 0,
+    "transport_accepts_text_rejected_by_full_schema": true,
+    "field": "$.report.proposal.scope[0]",
+    "establishes_real_failure_cause": false,
+    "observation": "A synthetic plan containing code comparison operators in a safe-prose field passes the strict transport projection but fails the full host schema. The projection omits patterns and bounds; those full constraints were absent from the producer instructions."
+  },
+  "session_continuity": {
+    "status": "SKIP",
+    "scenario": "Fresh candidate replay in another checkout of the same private repository",
+    "observation": "Repeated session/cycle labels and objectives do not establish continuity. FILES identity and accessible session history across checkouts remain a separate qualification case."
   }
 }
