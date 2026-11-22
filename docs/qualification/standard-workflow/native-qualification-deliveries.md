@@ -28,6 +28,8 @@ The interface records the user's choice and produces the proof in the background
 
 The two parts of lot 2 let the current Windows trace keep its frozen candidate. Once 2b merges, freeze the new candidate and archive and repeat the complete path. Record the end-to-end host result and the authenticated-interface result separately. A project-ready verdict requires evidence of the one-answer interaction.
 
+For a fresh Windows pilot, observe both installed hooks as enabled and trusted in a real thread before preparing the validator plan for approval. On revision 425, trusting the project updated the client configuration included in the plan. Its previous fingerprint was stale before the first control ran. [Windows preparation report](native-committing-c79bf0d7.json)
+
 ## Acceptance evidence for lots 2b–4
 
 Begin observation in the authenticated project session before the pending question appears. Retain a redacted observation of the question as displayed, its offered answers and the subject the person can see. Follow the same occurrence through the answer, background submission, host acceptance and the next workflow step. Count each business answer and any extra steps the person has to take, including opening a terminal, choosing a key, entering a passphrase or returning to repeat a choice. Record the same counts after a cold restart. One-time setup can be reported separately when the run shows it took place before the question.

@@ -1,0 +1,49 @@
+{
+  "candidate": "c79bf0d79ae4af0d3fa40ef59d13100a07a61eee",
+  "archive_sha256": "97c31cdf05ade66eb1d9cc3384b4d7d716a31c599aaf8df843696ac8cc194ccd",
+  "predecessor": "edd5dd2294d0a3ecbb84caeee530799657e71403",
+  "model_revision": 425,
+  "backend": "Windows/FILES",
+  "package_installation": "PASS",
+  "source_installed_inventory": {
+    "models": 16,
+    "provider_bindings": 131,
+    "implementation_files": 689,
+    "implementation_sha256": "62e19d9f5f9ffde386a6765be3874093c492a7eb7ea537e016cdb643428910f6"
+  },
+  "github_provider_identity": "PASS",
+  "native_hooks": {
+    "expected": 2,
+    "observed": 2,
+    "status": "PASS"
+  },
+  "cycle_validation": {
+    "host_material_check": "PASS",
+    "configuration_sha256": "295f80bef75f6fde799d35ec50e38229cf341441fc03352cb43673b223d18e1a",
+    "executable_sha256": "21f6fb0b01ba12a687f5fcd33546c0008ebd45654fdb23d84732ee8d62ee980b",
+    "interval_check_sha256": "3068288486aa95825e6063d1c19a8d11ed66c1d91df251453aca24f6912ad16a",
+    "oracle": {
+      "baseline": "failed",
+      "positive": "passed"
+    },
+    "before_hook_approval": {
+      "plan_sha256": "79b554c50aa3a298dba5606fa55832cac2dc887afc17bcae5ce036dc0d4696c6",
+      "admission": "FAIL",
+      "reason": "Trusting the new pilot changed the protected client configuration after preparation.",
+      "executed_cases": 0
+    },
+    "process_plan_sha256": "90dc1bcb3453d470067c36661551cd378656c6b0467cdae5ef2efb5cb393ff2c",
+    "case_limit_ms": 60000,
+    "signed_boundary": "UNAVAILABLE",
+    "cases": {
+      "filesystem_access": "SKIP",
+      "timeout": "SKIP",
+      "cancel": "SKIP",
+      "callback": "SKIP"
+    }
+  },
+  "public_full_nominal": "SKIP",
+  "windows_installed_nominal": "SKIP",
+  "p0_go": false,
+  "complete_standard_workflow": false
+}
