@@ -221,7 +221,18 @@
       "new_answer_requested_from_operator": false,
       "second_source_submitted": false,
       "reason": "The authored shared checkpoint call unconditionally asks for a linked completion opinion after accepting the alignment and confirming the physical finalizer.",
-      "correction_status": "in_progress"
+      "correction_status": "merged",
+      "correction_pr": "https://github.com/leuzeus/aidn/pull/204",
+      "correction_head": "78460371b48e75e63b0ac884bb27cf6a14a95d4f",
+      "successor_candidate": "2fe9c20caffce69e7c888f4d04975e85ca20d2b8",
+      "successor_archive_sha256": "ae8f5b6f13b8c3e0daacdbb7b1da09d5461a5482a4fb15b12c030b7eeef0731f",
+      "regression": {
+        "original_model": "FAIL",
+        "corrected_model": "PASS",
+        "cold_checkpoint_with_one_source_and_receipt": "PASS",
+        "governance_admission": "PASS",
+        "native_nominal_on_successor": "SKIP"
+      }
     },
     "evidence_scope": "Source runtime with installed connector and an operator-accepted local-history observer; independent original-author proof remains open."
   }

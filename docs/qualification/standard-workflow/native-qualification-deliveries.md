@@ -50,10 +50,21 @@ closed their journals and observed zero active Job Object processes.
 The shared checkpoint call then requested a second alignment opinion for the
 same evaluation and context after the confirmed physical finalizer. The pilot
 retains that first unexpected transition. No second answer was requested from
-the operator or submitted to the runtime. A focused product correction removes
-that unconditional question while keeping the checkpoint's original source,
-completion and effect checks. The candidate remains stopped at that question.
+the operator or submitted to the runtime. [Product PR #204](https://github.com/leuzeus/aidn/pull/204)
+merged the correction after the original model reproduced the duplicate and
+the corrected model passed the cold checkpoint with one source and one receipt.
+The checkpoint keeps its original source, completion and effect checks.
+Governance Admission and its ten selected families passed on the reviewed head.
+The original candidate remains stopped at that question; its receipts are retained.
 [Resumed Windows evidence](native-committing-c79bf0d7.json)
+
+The successor is `2fe9c20caffce69e7c888f4d04975e85ca20d2b8`, catalog revision
+426. Its frozen archive has SHA-256
+`ae8f5b6f13b8c3e0daacdbb7b1da09d5461a5482a4fb15b12c030b7eeef0731f`.
+The installed model, provider inventory and implementation pins match source.
+A fresh local pilot starts from the same product baseline. Its hook trust,
+validation boundary and Native allocation are observed separately; earlier
+candidate receipts are not migrated into this new instance.
 
 The exception establishes what the local observer read. Independent proof of
 the original message author and the product-level authenticated interface remain
