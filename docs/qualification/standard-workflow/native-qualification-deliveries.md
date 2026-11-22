@@ -90,12 +90,14 @@ Report each observation in order with the tested SHA and archive digest, the int
 
 On `6b6437c4`, the local clone inherited a cycle branch from an earlier pilot. Before the collision, AIDN admitted creation and reported resumption unavailable. The public preview returned only `STANDARD_CYCLE_BRANCH_EXISTS` and wrote nothing. It left the operator to identify the conflicting branch, determine whether the cycle could be resumed and choose how to proceed. The later creation succeeded after a manual Git repair. [Candidate report](native-committing-6b6437c4.json)
 
-Both pilots used FILES. The earlier pilot's open cycle records were outside the inherited Git commit. After the repair, the installed AIDN CLIs returned complete file inventories with identical cycle brief hashes. This confirms the objectives matched across the two pilots. It does not establish that the new pilot had a resumable cycle when it refused creation.
+Both pilots used FILES. The installed `runtime db-status` found no SQLite index in either pilot. After the repair, `runtime artifact-store list --view agent` returned complete file inventories with identical cycle brief hashes. The two objectives matched. At the earlier refusal, the new project's state showed no active cycle. The open cycle records still lived in the previous pilot's working tree, outside the inherited Git commit.
+
+Use the configured source for the lookup. FILES with SQLite indexing reads the project files. Canonical SQLite and PostgreSQL require a read in the configured database scope.
 
 | Observed at entry | Expected public behavior to qualify |
 | --- | --- |
 | The branch name is taken | In a read-only preview, show the requested cycle and objective, the conflicting local branch and tip, the intended base, and what AIDN found in the configured project's canonical cycle inventory. Distinguish a complete lookup with no record from an unavailable or incomplete lookup. |
-| Same objective and a resumable cycle | Verify cycle identity, session ownership, branch, lifecycle state and point of resumption. Use the existing resume path, with a single in-session choice if a decision is needed. Keep the cycle ID and verify that the cycle and branch are each created only once. |
+| Same objective and a resumable cycle | Verify cycle identity, session ownership, branch, lifecycle state and point of resumption. Use the existing resume path, with a single in-session choice if a decision is needed. Verify the same cycle ID and zero additional cycle or branch creations. |
 | A different objective is established and a new cycle is wanted | Offer the next available cycle ID and branch. Obtain acceptance of that specific creation plan and recheck availability before writing. Preserve the existing cycle and its history. |
 | Only a Git reference exists, ownership or objective is uncertain, or the cycle cannot be resumed | Explain which evidence is missing or which admission failed. Offer recovery or deferral. Keep the existing reference intact and require fresh admission for any later creation. |
 
