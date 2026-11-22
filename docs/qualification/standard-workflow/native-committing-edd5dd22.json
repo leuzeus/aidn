@@ -1,0 +1,79 @@
+{
+  "candidate": "edd5dd2294d0a3ecbb84caeee530799657e71403",
+  "archive_sha256": "06258ff06d0697236465b10b82bbd367f82b8bd2d68f22e9317f791027c74a60",
+  "predecessor": "da1f5a76d237b6ae566e8176255dc125b888be88",
+  "model_revision": 424,
+  "backend": {
+    "mode": "files",
+    "persistence_backend": "sqlite"
+  },
+  "package_installation": "PASS",
+  "source_installed_inventory": {
+    "status": "PASS",
+    "models": 16,
+    "bindings": 131,
+    "implementation_files": 689,
+    "implementation_sha256": "62e19d9f5f9ffde386a6765be3874093c492a7eb7ea537e016cdb643428910f6"
+  },
+  "github_provider_identity": "PASS",
+  "native_hooks": {
+    "expected": 2,
+    "observed": 2,
+    "status": "PASS"
+  },
+  "cycle_validation": {
+    "host_material_check": "PASS",
+    "configuration_sha256": "b2dd6c5c23bf69b14227b7cb411a0f88f6b183499bca56095f2580a047d3f5cb",
+    "executable_sha256": "21f6fb0b01ba12a687f5fcd33546c0008ebd45654fdb23d84732ee8d62ee980b",
+    "interval_check_sha256": "3068288486aa95825e6063d1c19a8d11ed66c1d91df251453aca24f6912ad16a",
+    "oracle": {
+      "baseline": "failed",
+      "positive": "passed"
+    },
+    "assurance_profile": "codex-cooperative-access.v1",
+    "filesystem_evidence_method": "windows-access-check.v1",
+    "process_plan_sha256": "36f4c2f6ea632e3ee319fc338b50a7ce6ee58eef94b6e3d9ed51254d933ea677",
+    "collection": "PASS",
+    "qualification_payload_sha256": "8b8ac0a85fba3a19b6e4a52229ad91576936ad1d209f5059f9e6476c3a34e358",
+    "signed_boundary": "UNAVAILABLE",
+    "process_observations": [
+      {
+        "case": "filesystem_access",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "result_sha256": "beb0c003b88a411fea1f2211ab828f9c94672d4b9e639a551a634ea9a8a236d9",
+        "elapsed_ms": 10961,
+        "termination": "confirmed",
+        "active_processes": 0,
+        "companion_active_processes": 0
+      },
+      {
+        "case": "timeout",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "result_sha256": "6f028a5e189e915724c5d9df9c96528228e870897b615bf161e0366340df9032",
+        "elapsed_ms": 8419,
+        "termination": "confirmed",
+        "active_processes": 0
+      },
+      {
+        "case": "cancel",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "result_sha256": "de389b7a6ecb9ca1193d4cb35305c8c532b6a369faaef761416aa1aa2f980806",
+        "elapsed_ms": 6196,
+        "termination": "confirmed",
+        "active_processes": 0
+      },
+      {
+        "case": "callback",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "result_sha256": "998dcadf3b1bc6089129ca27183d5b487e6e4bfd01e5fe6b172b43865b3b1ab1",
+        "elapsed_ms": 6277,
+        "termination": "confirmed",
+        "active_processes": 0
+      }
+    ]
+  },
+  "public_full_nominal": "SKIP",
+  "windows_installed_nominal": "SKIP",
+  "p0_go": false,
+  "complete_standard_workflow": false
+}
