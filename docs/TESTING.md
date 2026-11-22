@@ -3737,11 +3737,13 @@ on dev, main and release:
 - `verify-workflow-candidate-fixtures.mjs`
 - `verify-workflow-console-fixtures.mjs`
 
-Run `npm run perf:verify-standard-operator-session` for the authenticated
-STANDARD operator interface. Its disposable Ed25519 enrollment exercises
-signed submission through the loopback listener, cold redelivery before host
-acceptance, deduplication after acceptance and a changed merge subject.
-Record the live human interaction separately during qualification.
+The operator-session fixture exercises a Codex form and the public STANDARD
+FILES host with a disposable enrolled identity. Run
+`npm run perf:verify-standard-operator-session`. The stdio fixture in
+`tools/perf/verify-codex-decision-channel-fixtures.mjs` exercises transport
+negotiation, signed capture, cancellation, stale subjects and refusal of
+answers supplied as tool arguments. A live, authenticated Codex account
+requires its own evidence.
 
 The console suite is also available as `perf:verify-workflow-console`. It
 compares complete CLI and HTTP read/action payloads on disposable files/SQLite

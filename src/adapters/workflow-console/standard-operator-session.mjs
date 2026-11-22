@@ -81,6 +81,7 @@ export function createStandardOperatorSession({ targetRoot, configuration, envir
     const instance = createAgenticProcessStore(options).read(resolved.instance_id).record;
     if (!instance?.events.some(event => event.kind === "operation_result" && event.occurrence_id === record.intent.occurrence_id
       && shadowHash(event.receipt) === shadowHash(result.receipt))) return null;
+    if (!pointer.source_ref.startsWith("ui-" + pointer.question_sha256 + "-")) fail("OPERATOR_SOURCE_CHANGED");
     return { status: "received", operation_id: record.operation_id, question_sha256: pointer.question_sha256,
       choice: result.output.observations.choice, receipt_id: result.receipt.receipt_id, outcome: result.receipt.outcome };
   }

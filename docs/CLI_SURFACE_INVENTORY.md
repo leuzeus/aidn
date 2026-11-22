@@ -466,9 +466,6 @@ finalization; `--verify` retains its read-only verification behavior.
     A prepared action and
     `actionFile` cannot be combined. JSON alone grants no effect.
 - `aidn runtime workflow-dashboard --target <root> --json`
-  - `--configuration <standard.json> --serve` opens the project operator session on
-    loopback. The browser signs each explicit answer and the STANDARD host verifies
-    it against the current question. Omitting `--serve` previews the listener.
 - `aidn runtime agent-run-status --configuration <file> --run <id> --json`
 - `aidn runtime agent-run-resume --configuration <file> --run <id> --json`
 - `aidn runtime agent-run-cancel --configuration <file> --run <id> --json`

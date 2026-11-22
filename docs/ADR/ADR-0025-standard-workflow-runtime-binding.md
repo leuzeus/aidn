@@ -5167,10 +5167,11 @@ the full A6 boundary/concurrency, installed or genuine-actor qualification.
 
 ## Capturing an operator answer
 
-An authenticated project dashboard can submit the existing signed human
-source for a STANDARD decision. The listener checks the proposed envelope
-against the enrolled registry before publishing it in the protected inbox.
-The workflow entry verifies it again at reception. The browser displays the
-scope of the choice, keeps the signing key in its operator session and returns
-the receipt for the same occurrence. The signed source remains available to
-the public entry after a listener restart. ADR-0020 describes the transport.
+The Codex MCP transport presents a prepared STANDARD question using form
+elicitation. The registered operator connection holds its Ed25519 key in
+memory. The runtime checks the signed response against the enrolled registry
+before durable publication and verifies it again when accepting the operation.
+The source and the operation receipt remain available after a host restart.
+Chat history records the declared choice. Authenticating a historical message
+requires evidence from its issuing interface. A connection public key is
+eligible only after independent binding to the project operator.

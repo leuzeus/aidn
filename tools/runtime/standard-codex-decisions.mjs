@@ -1,0 +1,102 @@
+#!/usr/bin/env node
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { pathToFileURL } from "node:url";
+import { createStandardOperatorSession } from "../../src/adapters/workflow-console/standard-operator-session.mjs";
+import { createCodexDecisionChannel } from "../../src/adapters/workflow-console/codex-decision-channel.mjs";
+
+const noArgs = { type: "object", properties: {}, additionalProperties: false };
+const methods = [
+  { name: "session", description: "Read the AIDN operator channel enrollment and last host receipt.", inputSchema: noArgs, annotations: { readOnlyHint: true } },
+  { name: "question", description: "Read the exact pending STANDARD question in this project.", inputSchema: noArgs, annotations: { readOnlyHint: true } },
+  { name: "ask", description: "Present the pending AIDN question to the human in Codex and deliver their authenticated answer.", inputSchema: noArgs },
+];
+const safeError = err => /^[A-Z][A-Z_0-9]{0,100}$/.test(err?.message) ? err.message : "CODEX_DECISION_UNAVAILABLE";
+const maxLine = 524288;
+export async function serveCodexDecisions({ session, input = process.stdin, output = process.stdout }) {
+  let started = false, initialized = false, form = false, pending = null;
+  const calls = new Set();
+  const send = obj => output.write(JSON.stringify({ jsonrpc: "2.0", ...obj }) + "\n");
+  function elicit(params, callId) {
+    if (pending) throw Error("CODEX_DECISION_IN_PROGRESS");
+    return new Promise((resolve, reject) => {
+      const id = randomUUID();
+      pending = { id, callId, resolve, reject };
+      send({ id, method: "elicitation/create", params });
+    });
+  }
+  let activeCall = null;
+  const channel = createCodexDecisionChannel({ session, elicit: params => elicit(params, activeCall), formSupported: () => form });
+  async function dispatch(m) {
+    if (m.method === "initialize" && !started) {
+      started = true;
+      const capabilities = m.params?.capabilities?.elicitation;
+      form = Boolean(capabilities && (Object.hasOwn(capabilities, "form") || Object.keys(capabilities).length === 0));
+      const versions = ["2025-11-25", "2025-06-18"];
+      const protocolVersion = versions.includes(m.params?.protocolVersion) ? m.params.protocolVersion : versions[0];
+      return { protocolVersion, serverInfo: { name: "aidn-decisions", version: "1.0.0" }, capabilities: { tools: {} } };
+    }
+    if (m.method === "ping") return {};
+    if (!initialized) throw Error("MCP_INITIALIZATION_REQUIRED");
+    if (m.method === "tools/list") return { tools: methods };
+    if (m.method === "resources/list") return { resources: [] };
+    if (m.method === "resources/templates/list") return { resourceTemplates: [] };
+    if (m.method === "prompts/list") return { prompts: [] };
+    if (m.method !== "tools/call") throw Error("MCP_METHOD_UNAVAILABLE");
+    const { name, arguments: args = {} } = m.params ?? {};
+    if (!methods.some(t => t.name === name) || !args || typeof args !== "object" || Array.isArray(args) || Object.keys(args).length)
+      throw Error("MCP_ARGUMENTS_REFUSED");
+    if (name === "ask" && activeCall !== null) throw Error("CODEX_DECISION_IN_PROGRESS");
+    if (name === "ask") activeCall = m.id;
+    try {
+      const data = name === "ask" ? await channel.decide() : name === "question" ? await channel.present() : channel.describe();
+      return { content: [{ type: "text", text: JSON.stringify(data) }] };
+    } catch (err) { return { isError: true, content: [{ type: "text", text: safeError(err) }] }; }
+    finally { if (name === "ask") activeCall = null; }
+  }
+  function closePending(code) {
+    const request = pending;
+    pending = null;
+    request?.reject(Error(code));
+  }
+  function message(m) {
+    if (!m || typeof m !== "object" || m.jsonrpc !== "2.0") return;
+    if (!Object.hasOwn(m, "method")) {
+      if (!pending || m.id !== pending.id) return;
+      const request = pending;
+      pending = null;
+      if (m.error) request.reject(Error("CODEX_FORM_UNAVAILABLE"));
+      else request.resolve(m.result);
+      return;
+    }
+    if (!Object.hasOwn(m, "id")) {
+      if (m.method === "notifications/initialized" && started) initialized = true;
+      if (m.method === "notifications/cancelled" && pending?.callId === m.params?.requestId) closePending("CODEX_DECISION_CANCELLED");
+      return;
+    }
+    if (!["string", "number"].includes(typeof m.id) || calls.has(m.id)) return;
+    calls.add(m.id);
+    dispatch(m).then(result => send({ id: m.id, result }), err => send({ id: m.id, error: { code: -32602, message: safeError(err) } }))
+      .finally(() => calls.delete(m.id));
+  }
+  let buffer = "";
+  input.setEncoding("utf8");
+  try {
+    for await (const chunk of input) {
+      buffer += chunk;
+      let newline;
+      while ((newline = buffer.indexOf("\n")) >= 0) {
+        const line = buffer.slice(0, newline).trim();
+        buffer = buffer.slice(newline + 1);
+        if (line.length > maxLine) throw Error("MCP_MESSAGE_LIMIT");
+        if (line) message(JSON.parse(line));
+      }
+      if (buffer.length > maxLine) throw Error("MCP_MESSAGE_LIMIT");
+    }
+  } finally { closePending("CODEX_DECISION_CHANNEL_CLOSED"); }
+}
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  const [intent, targetRoot, configuration, ...rest] = process.argv.slice(2);
+  if (intent !== "--serve" || !targetRoot || !configuration || rest.length) throw Error("AIDN_CODEX_PROJECT_CONFIGURATION_REQUIRED");
+  await serveCodexDecisions({ session: createStandardOperatorSession({ targetRoot: path.resolve(targetRoot), configuration }) });
+}

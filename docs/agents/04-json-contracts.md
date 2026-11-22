@@ -548,12 +548,6 @@ The common derived view retains exact IDs, reason codes and independent run
 status axes. CLI and HTTP fixtures compare complete objects; existing internal
 schemas still validate nested instances and selections before projection.
 
-Selecting a STANDARD configuration at dashboard startup preserves the
-`runtime-workflow-dashboard.v1` root. The operator tab projects a typed
-host question and returns one `standard-host-source.v1` envelope. Its nested
-payload uses the question's existing human decision contract. The host
-authenticates the envelope before accepting the corresponding operation.
-
 ADR-0024 adds `runtime-workflow-run.v1` for ordinary structured-agentic execution.
 Its selected engine, exact preview, requirements and owned-host result remain
 explicit. The console's derived instances carry `engine`; their nested agentic

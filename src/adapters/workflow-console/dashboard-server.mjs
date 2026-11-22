@@ -6,20 +6,9 @@ import { workflowConsoleCode } from "../../application/runtime/workflow-console-
 
 // Explicit foreground server. No discovery, persisted credentials, SQL access,
 // browser launch, telemetry, CORS grant or network-facing bind.
-export async function startWorkflowDashboard({ targetRoot, configuration, createService = createProjectWorkflowConsole, createDecisions }) {
-  const operator = configuration && await (createDecisions ??
-    (await import("./standard-operator-session.mjs")).createStandardOperatorSession)({ targetRoot, configuration });
-  const service = operator ? null : createService({ targetRoot });
-  const token = randomBytes(32).toString("hex");
+export async function startWorkflowDashboard({ targetRoot, createService = createProjectWorkflowConsole }) {
+  const service = createService({ targetRoot }), token = randomBytes(32).toString("hex");
   const assets = new Map([["/", ["text/html; charset=utf-8", "dashboard.html"]], ["/dashboard.js", ["text/javascript; charset=utf-8", "dashboard.js"]], ["/dashboard.css", ["text/css; charset=utf-8", "dashboard.css"]]]);
-  if (operator) {
-    assets.clear();
-    assets.set("/", ["text/html; charset=utf-8", "operator.html"]);
-    assets.set("/operator.css", ["text/css; charset=utf-8", "operator.css"]);
-    for (const file of ["operator.js", "operator-key.mjs", "operator-fields.mjs"]) {
-      assets.set("/" + file, ["text/javascript; charset=utf-8", file]);
-    }
-  }
   let origin, active = false;
   const server = http.createServer(async (request, response) => {
     const send = (code, value, type = "application/json") => {
@@ -35,23 +24,11 @@ export async function startWorkflowDashboard({ targetRoot, configuration, create
       const supplied = request.headers.authorization ?? "", expected = "Bearer " + token;
       if (Buffer.byteLength(supplied) !== Buffer.byteLength(expected) || !timingSafeEqual(Buffer.from(supplied), Buffer.from(expected))) return send(403, { errors: ["WORKFLOW_DASHBOARD_AUTH_REQUIRED"] });
       if (request.method !== "POST" || request.headers.origin !== origin || request.headers["content-type"] !== "application/json") return send(405, { errors: ["WORKFLOW_DASHBOARD_REQUEST_REFUSED"] });
-      const routes = operator ? ["/api/session", "/api/question", "/api/submit", "/api/resume"] : ["/api/inspect", "/api/action"];
-      if (!routes.includes(request.url)) return send(404, { errors: ["WORKFLOW_DASHBOARD_ROUTE_UNKNOWN"] });
+      if (!["/api/inspect", "/api/action"].includes(request.url)) return send(404, { errors: ["WORKFLOW_DASHBOARD_ROUTE_UNKNOWN"] });
       let size = 0; const chunks = [];
       for await (const chunk of request) { size += chunk.length; if (size > 2 * 1024 * 1024) return send(413, { errors: ["WORKFLOW_DASHBOARD_REQUEST_LIMIT"] }); chunks.push(chunk); }
       const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
       if (!body || typeof body !== "object" || Array.isArray(body)) return send(400, { errors: ["WORKFLOW_DASHBOARD_REQUEST_INVALID"] });
-      if (operator) {
-        if (request.url !== "/api/submit" && Object.keys(body).length) return send(400, { errors: ["OPERATOR_REQUEST_INVALID"] });
-        if (active) return send(409, { errors: ["WORKFLOW_DASHBOARD_ACTION_BUSY"] });
-        active = true;
-        try {
-          if (request.url === "/api/session") return send(200, operator.session());
-          if (request.url === "/api/question") return send(200, await operator.question());
-          if (request.url === "/api/resume") return send(200, await operator.resume());
-          return send(200, await operator.submit(body));
-        } finally { active = false; }
-      }
       if (request.url === "/api/inspect") {
         if (Object.keys(body).some(key => !["instanceId", "workflowId", "configuration", "run", "engine"].includes(key))) return send(400, { errors: ["WORKFLOW_DASHBOARD_REQUEST_INVALID"] });
         return send(200, await service.inspect(body));
