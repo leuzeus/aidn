@@ -51,6 +51,37 @@ Host/Origin/token and rejects cross-origin API calls. Stop the listener with
 Ctrl+C. An already admitted run uses its normal status/cancel lifecycle;
 closing the dashboard is not proof of process termination or cleanup.
 
+### Answering STANDARD questions
+
+Start the operator dashboard once for a project session using its execution
+configuration and the enrolled host home.
+
+```sh
+aidn runtime workflow-dashboard --target <project> --configuration <standard.json> --serve --json
+```
+
+Open the local URL in an operator-controlled browser. A desktop launcher can
+open `<url>/#token=<token>` for the operator. The page removes the fragment
+on load. Choose the enrolled encrypted private key, enter its passphrase at
+sign-in and select a validity period for answers. Current Edge and Chrome
+support the Ed25519 WebCrypto operation. Enrollment uses an Ed25519 PKCS#8
+PEM encrypted with PBES2, PBKDF2 and AES-CBC.
+
+Keep the tab open. When a question appears, read its subject, enter any
+requested business details, and click the answer. Merge questions show the
+repository, PR number, target branch and full commit. The browser signs the
+exact question and choice in the background. The host returns its receipt
+and advances the instance. The tab polls for the next human question. Native
+execution, provider effects and budget grants retain their own admissions.
+
+The private key exists as a non-exportable signing key in the operator tab.
+Locking or closing the tab ends that signing session. Run this tab in the
+human operator’s browser, separate from agent browser automation. A dashboard
+token grants transport access. Human authorship comes from the enrolled key.
+The server redelivers a retained, still-valid signed answer on reconnect.
+The ordinary host verifies freshness, scope and current authorization on
+delivery. Its journal and decision inbox identify an already processed answer.
+
 Enter an instance ID in **Instance exacte** to enable **Moteur de l’instance**.
 If both engines retain that ID, the dashboard prompts you to choose **Agentique**
 or **Historique** and click **Actualiser**. The raw inspection JSON keeps the

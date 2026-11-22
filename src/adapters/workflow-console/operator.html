@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Décisions de session · AIDN</title><link rel="stylesheet" href="/operator.css">
+  <script type="module" src="/operator.js"></script>
+</head>
+<body><main>
+  <header><span>AIDN</span><span id="instance"></span><button id="lock" type="button" hidden>Verrouiller</button></header>
+  <section id="login">
+    <h1>Ouvrir la session de décision</h1>
+    <p>Déverrouille ta clé inscrite pour répondre aux questions dans cet onglet. Fermer ou verrouiller l’onglet termine la session.</p>
+    <form id="unlock">
+      <label id="access" hidden>Jeton du tableau de bord<input id="token" autocomplete="off" type="password"></label>
+      <label>Clé privée Ed25519 chiffrée<input id="file" type="file" accept=".pem,.key" required></label>
+      <label>Phrase secrète<input id="password" type="password" autocomplete="off" required></label>
+      <label>Validité des nouvelles réponses<select id="validity"><option value="60">1 heure</option><option value="480">8 heures</option><option value="1440">24 heures</option></select></label>
+      <p class="hint">Une échéance fixée par la question s’applique en priorité.</p>
+      <button type="submit">Ouvrir ma session</button>
+    </form>
+  </section>
+  <section id="decision" hidden><p id="person"></p><div id="content"></div></section>
+  <p id="feedback" role="status" aria-live="polite"></p>
+  <p id="receipt" aria-live="polite"></p>
+</main></body></html>

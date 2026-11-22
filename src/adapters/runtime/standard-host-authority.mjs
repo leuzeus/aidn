@@ -85,7 +85,9 @@ export function createStandardHostAuthority({ configuration, environment = proce
     if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,95}$/.test(sourceRef ?? "")) fail("STANDARD_HOST_SOURCE_REF_INVALID");
     const file = path.join(home, "inbox", `${sourceRef}.json`);
     if (!fs.existsSync(file)) return null;
-    const envelope = JSON.parse(bytes(file));
+    return verifyEnvelope(kind, sourceRef, subject, fresh, JSON.parse(bytes(file)));
+  }
+  function verifyEnvelope(kind, sourceRef, subject, fresh, envelope) {
     if (!exact(envelope, ["contract_version", "kind", "authority_id", "source_ref", "subject_sha256", "payload", "issued_at_ms", "expires_at_ms", "signature"])
       || envelope.contract_version !== "standard-host-source.v1" || envelope.kind !== kind || envelope.source_ref !== sourceRef
       || envelope.subject_sha256 !== shadowHash(subject) || !Number.isSafeInteger(envelope.issued_at_ms) || !Number.isSafeInteger(envelope.expires_at_ms)
@@ -184,6 +186,11 @@ export function createStandardHostAuthority({ configuration, environment = proce
     return { ...body, grant_sha256: createHmac('sha256', readKey()).update(shadowHash(body)).digest('hex') };
   }
   return Object.freeze({ home, keyId, readKey, ensureKey, trustSha, githubProvider,
+    humanPrincipals() {
+      return (registry()?.principals ?? []).filter(row => row.kinds.includes("human"))
+        .map(({ authority_id, public_key }) => ({ authority_id, public_key }));
+    },
+    verifyHumanEnvelope: (envelope, sourceRef, question) => verifyEnvelope("human", sourceRef, question, true, envelope),
     createHandoffResourceSource({ readInventory, readNativeHistory, observeNativeActivity, observeOperationActivity }) {
       return createStandardHostResourceSource({ configuration, home, identity, readKey,
         readTrust: () => ({ key_id: keyId(), trust_sha256: trustSha() }), observeSources, provider: githubProvider,

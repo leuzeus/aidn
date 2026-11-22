@@ -5164,3 +5164,13 @@ No public action kind, JSON shape, store, shared coordination surface, Native
 allocation or preparation-age ceiling is added. Running/returned capsules retain
 their separate reconciliation requirements. Component observations do not close
 the full A6 boundary/concurrency, installed or genuine-actor qualification.
+
+## Capturing an operator answer
+
+An authenticated project dashboard can submit the existing signed human
+source for a STANDARD decision. The listener checks the proposed envelope
+against the enrolled registry before publishing it in the protected inbox.
+The workflow entry verifies it again at reception. The browser displays the
+scope of the choice, keeps the signing key in its operator session and returns
+the receipt for the same occurrence. The signed source remains available to
+the public entry after a listener restart. ADR-0020 describes the transport.

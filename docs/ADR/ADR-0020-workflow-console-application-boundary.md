@@ -8,6 +8,22 @@ do not establish native Codex or external pilot qualification.
 
 ## Decision
 
+A dashboard started with a STANDARD configuration serves the human operator
+interface for one fixed project and instance. Its listener exposes the enrolled
+public identities, the current question, signed-answer submission and redelivery.
+The operator unlocks the Ed25519 key at sign-in. The signing capability lives
+in the human-controlled browser tab. The requester has access only to the
+workflow runtime and cannot produce a human grant with a dashboard token.
+
+The interface derives its forms from the existing versioned decision contracts.
+It displays the exact prepared subject and signs the existing host-source
+envelope. The protected host inbox publishes the first valid answer atomically.
+Until delivery, a private pending copy allows a restarted listener to reconstruct
+the same source reference. A fresh public-entry preview, exact decision apply,
+independent signature verification and the ordinary journal CAS own acceptance.
+The panel sends the resulting receipt identifier to the operator. Later
+physical actions remain subject to their normal admissions.
+
 Three public commands expose one application service: `workflow-inspect`,
 `workflow-action` and `workflow-dashboard`. Their JSON roots have explicit v1
 contracts. The dashboard consumes the same inspection and action objects as

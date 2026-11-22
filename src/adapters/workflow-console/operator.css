@@ -1,0 +1,20 @@
+:root { font-family: "Segoe UI", system-ui, sans-serif; color: #193333; background: #f3f6f4; }
+* { box-sizing: border-box; } [hidden] { display: none !important; }
+body { margin: 0; } main { max-width: 54rem; margin: 2.5rem auto; padding: 0 1.4rem; }
+header { display: flex; gap: 1rem; align-items: center; border-bottom: 1px solid #b9ccc5; padding-bottom: 1.15rem; }
+header > :first-child { font-weight: 750; letter-spacing: .13em; } header button { margin-left: auto; }
+section { margin: 1.8rem 0; padding: clamp(1.2rem,4vw,2.5rem); border: 1px solid #cbd7d1; background: #fff; border-radius: .75rem; }
+h1, h2 { line-height: 1.21; margin: .3rem 0 1.1rem; } h1 { font-size: clamp(1.6rem,3.5vw,2.3rem); }
+p { line-height: 1.55; } label { display: grid; gap: .35rem; margin: .75rem 0; font-weight: 600; }
+input, select, textarea, button { font: inherit; border-radius: .35rem; }
+input, select, textarea { padding: .6rem; border: 1px solid #839c93; width: 100%; }
+textarea { min-height: 4.2rem; } button { border: 1px solid #08715d; background: #126453; color: white; padding: .6rem 1rem; cursor: pointer; }
+button:disabled { opacity: .6; cursor: progress; } button.secondary, header button { background: white; color: #244e43; }
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible { outline: 3px solid #2468a2; outline-offset: 2px; }
+fieldset { margin: .7rem 0; border: 1px solid #b9ccc5; } details { margin: .8rem 0; } summary { cursor: pointer; }
+.choices { display: flex; gap: .55rem; align-items: flex-start; flex-wrap: wrap; margin-top: 1rem; }
+.choices details { width: 100%; } .choices form { margin: 0; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .82rem; max-height: 24rem; overflow: auto; }
+dl { display: grid; grid-template-columns: max-content minmax(0,1fr); gap: .4rem 1rem; } dt { color: #455c52; } dd { margin: 0; overflow-wrap: anywhere; }
+#person,.hint { color: #52695f; font-size: .9rem; } #feedback:empty,#receipt:empty { display: none; }
+#receipt { border-left: 3px solid #08715d; padding-left: .9rem; } @media(max-width:35rem){ main { margin: 1.1rem auto; } dl { display: block; } dd { margin-bottom: .5rem; } }

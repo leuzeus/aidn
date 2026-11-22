@@ -24,7 +24,8 @@ export function parseWorkflowConsoleArguments(command, argv) {
   }
   if (args.write && args.execute || args.dryRun && (args.write || args.execute || args.serve || args.syncRelay)
     || command !== "workflow-action" && (args.write || args.execute || args.syncRelay || args.request || args.expectPlan)
-    || command !== "workflow-inspect" && (args.instanceId || args.workflowId || args.configuration || args.run || args.engine)
+    || command !== "workflow-inspect" && (args.instanceId || args.workflowId || args.run || args.engine)
+    || command === "workflow-action" && args.configuration
     || command !== "workflow-dashboard" && args.serve) throw new Error("WORKFLOW_CONSOLE_EFFECT_CONFLICT");
   return args;
 }
@@ -40,11 +41,11 @@ export async function runWorkflowConsoleCli(command, argv, { createService = cre
   try {
     args = parseWorkflowConsoleArguments(command, argv);
     if (args.help) return { ...workflowConsoleEnvelope(name), usage: `aidn runtime ${command} --target <root> [--json]` +
-      (name === "inspect" ? " [--instance <id> [--engine agentic|legacy]] [--workflow <id>] [--configuration <file> --run <id>]" : name === "action" ? " --request <file> [--write|--execute --expect-plan <sha256> [--sync-relay]]" : " [--serve]") };
+      (name === "inspect" ? " [--instance <id> [--engine agentic|legacy]] [--workflow <id>] [--configuration <file> --run <id>]" : name === "action" ? " --request <file> [--write|--execute --expect-plan <sha256> [--sync-relay]]" : " [--configuration <STANDARD.json>] [--serve]") };
     if (name === "dashboard") {
       if (!args.serve) return { ...workflowConsoleEnvelope(name, "preview"), listening: false, url: null, token: null };
       const start = startDashboard ?? (await import("../../src/adapters/workflow-console/dashboard-server.mjs")).startWorkflowDashboard;
-      const server = await start({ targetRoot: args.target });
+      const server = await start({ targetRoot: args.target, ...(args.configuration && { configuration: args.configuration }) });
       const stop = () => { server.close(); };
       process.once("SIGINT", stop); process.once("SIGTERM", stop);
       return { ...workflowConsoleEnvelope(name, "executor"), dry_run: false, listening: true, url: server.url, token: server.token };
