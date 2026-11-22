@@ -55,12 +55,22 @@
       }
     ],
     "attestation_sha256": "94228cf124b80578164474a6c77effc998c69410f5434843b7e7081021a4a03b",
-    "signed_boundary": "WAITING_HUMAN_REVIEW",
+    "signed_boundary": "PASS",
     "oracle": "PASS",
     "assurance_profile": "codex-cooperative-access.v1",
     "filesystem_evidence_method": "windows-access-check.v1",
     "read_isolation": "not_guaranteed",
-    "network_isolation": "not_guaranteed"
+    "network_isolation": "not_guaranteed",
+    "qualification_sha256": "90c4ef1776ffb062de2c7986229c3bcbbc4185ab1cc75219d84a0a715ac1cf5c",
+    "profile_sha256": "7eeed934ad5237e22692c73e5775ebae9c6a9ee72ab961228f9bc9a03c27ad0b",
+    "review": {
+      "status": "PASS",
+      "evidence_class": "operator-accepted-local-history-observation",
+      "answer_association": "explicit-plain-reply-to-pending-review-local-interpretation",
+      "independent_original_author_proof": false,
+      "manual_signature_steps": 0,
+      "tampered_attestation_refused": true
+    }
   },
   "native_model_calls": 0,
   "public_full_nominal": "SKIP",
@@ -73,8 +83,65 @@
     "request_diagnosis"
   ],
   "public_entry": {
-    "status": "NOT_STARTED",
-    "reason": "Validator qualification review pending"
+    "status": "RUNNING",
+    "mode": "COMMITTING",
+    "mode_applied": true,
+    "mode_receipt": "receipt_d868949013e3595155e1f77ae2c33ea7383640ca",
+    "mode_result_count": 1,
+    "new_mode_questions": 0,
+    "manual_signature_steps": 0,
+    "cold_receipt_recovered": true
   },
-  "limits": "The local chat observer does not establish independent proof of original author identity."
+  "limits": "The local chat observer does not establish independent proof of original author identity.",
+  "full_configuration_sha256": "82ddfc7b96182d4f756d3a929b809030438d4a20e66ac224ee881dbce439ae6b",
+  "preserved_diagnosis": {
+    "choice": "request_diagnosis",
+    "status": "PRESERVED_PENDING_CURRENT_SUBJECT",
+    "answer_association": "explicit-continuation-of-diagnosis-local-interpretation",
+    "new_diagnosis_questions": 0
+  },
+  "native_authorization": {
+    "status": "ACCEPTED",
+    "configuration_sha256": "5b14cf871864f9a9d0f3d13280eebd642ccff40bdc09959b66f084c6b0d44f7b",
+    "max_responses": 24,
+    "max_bytes": 67108864,
+    "max_turn_ms": 600000,
+    "deadline": "2026-11-22T19:36:17.016Z"
+  },
+  "connector_composition": {
+    "connector": "1b666e1a6434afa360ee683904f14699a053518c",
+    "original_receipt_reader": "FAIL",
+    "error": "PROCESS_MODEL_INVALID",
+    "reason": "The installed connector retained the previous 256-node model bound; the candidate model has 266 nodes.",
+    "mode_already_accepted": true,
+    "composed_reader": "PASS",
+    "imports_only": true,
+    "source_module_sha256": "85f83dcac509502615ed53b61364385024b69403f683b1f7dc08669437f08c4a",
+    "composed_module_sha256": "8ea091f4b44316b1eb4277e4b660f5f1d2f33fa09f266d4e0c8d99b4fde4e000",
+    "runtime_dependency_candidate": "6b6437c4715a500124f3de7978bcbe4ca23efdf2",
+    "installed_connector_qualification": "SKIP"
+  },
+  "last_observed_before_first_native": {
+    "operations": 6,
+    "decisions": [
+      {
+        "binding": "mode_decision",
+        "operation_id": "op_d868949013e3595155e1f77ae2c33ea7383640ca",
+        "receipt_id": "receipt_d868949013e3595155e1f77ae2c33ea7383640ca",
+        "record_sha256": "c5bf1b9c6f07882ed09a99bcc05eb83fc254ad5c7600b06816709d9443ec5111",
+        "result_count": 1,
+        "manual_signature_steps": 0
+      }
+    ],
+    "physical_artifacts": [
+      {
+        "kind": "session",
+        "sha256": "a3e906991b29b8a86e1f302accc0b0a4bdfdb61b2169071fb69fd1bfac91de66"
+      },
+      {
+        "kind": "current_state",
+        "sha256": "9c83e681eeb61f70ffc13a33c6b12b72cf189cae94401d4157bbe6117e6f1305"
+      }
+    ]
+  }
 }
