@@ -493,6 +493,10 @@ await check("v4 plan separates four required native cases from its optional netw
   }
   const main = plan.cases[0]; assert(main.companion); assert.notEqual(build(config, main.request).jobName, build(config, main.companion.request).jobName);
 });
+await check("v5 binds calibrated NTFS access to the observed validator and two closed Jobs", async () => {
+  const { verifyAccessEvidence } = await import("./codex-validation-access-fixture-lib.mjs");
+  verifyAccessEvidence({ networkCooperativeFixture, networkCooperativeReport, networkCooperativeQualification, managedPlan });
+});
 await check("v4 requires four write/process proofs and never claims enforced network isolation", () => {
   const { config } = networkCooperativeFixture(), q = networkCooperativeQualification(config);
   assert.equal(assertCodexSandboxValidationQualificationPayload(q, config), q);

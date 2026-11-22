@@ -106,6 +106,21 @@ The new profile cannot consume old reports or satisfy an older profile. Its
 availability remains conditional on the other native evidence, not on this
 documentary exception alone.
 
+### NTFS access evidence for STANDARD cycle validation
+
+STANDARD cycle validation can select `codex-cooperative-access.v1` using
+configuration and signed boundary v5. Its `filesystem_access` case uses
+Windows AccessCheck on the supervised validator's primary token. It measures
+the named NTFS snapshot file, supervisor file and their directory chains to
+the volume root. Each measurement requires read access and excludes write,
+delete, replacement and security-descriptor changes. A newly created scratch
+file provides the positive control. The host verifies all three file hashes.
+Two distinct Jobs bind the measurements to companion presence and confirmed
+termination. The signed method is `windows-access-check.v1`. Its evidence
+describes these witnesses at those two times. Read and network isolation
+remain unguaranteed. Agent execution plans v1 through v3 retain their existing
+profile requirements.
+
 ### Boundaries and identities
 
 V1 has one supervisor host, at most one mutating run for a canonical scope, and

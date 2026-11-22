@@ -10,11 +10,15 @@ const VERSION = "codex-sandbox-validation-configuration.v1";
 const MANAGED_VERSION = "codex-sandbox-validation-configuration.v2";
 const COOPERATIVE_VERSION = "codex-sandbox-validation-configuration.v3";
 const NETWORK_UNGUARANTEED_VERSION = "codex-sandbox-validation-configuration.v4";
-const networkUnguaranteed = config => config?.contract_version === NETWORK_UNGUARANTEED_VERSION;
+const ACCESS_VERSION = "codex-sandbox-validation-configuration.v5";
+export const usesCodexValidationAccessCheck = config => config?.contract_version === ACCESS_VERSION;
+const networkUnguaranteed = config => config?.contract_version === NETWORK_UNGUARANTEED_VERSION || usesCodexValidationAccessCheck(config);
 const cooperative = config => config?.contract_version === COOPERATIVE_VERSION || networkUnguaranteed(config);
-const assuranceProfile = config => networkUnguaranteed(config) ? "codex-cooperative.v2" : "codex-cooperative.v1";
-const requiredCases = config => networkUnguaranteed(config) ? ["filesystem", "timeout", "cancel", "callback"] : ["filesystem", "network", "timeout", "cancel", "callback"];
-const observationVersion = config => networkUnguaranteed(config) ? "codex-validation-native-observation.v3" : "codex-validation-native-observation.v2";
+const assuranceProfile = config => usesCodexValidationAccessCheck(config) ? "codex-cooperative-access.v1" : networkUnguaranteed(config) ? "codex-cooperative.v2" : "codex-cooperative.v1";
+const filesystemCase = config => usesCodexValidationAccessCheck(config) ? "filesystem_access" : "filesystem";
+const requiredCases = config => [filesystemCase(config), ...(networkUnguaranteed(config) ? [] : ["network"]), "timeout", "cancel", "callback"];
+export const codexValidationObservationVersion = config => usesCodexValidationAccessCheck(config) ? "codex-validation-access-observation.v1"
+  : networkUnguaranteed(config) ? "codex-validation-native-observation.v3" : cooperative(config) ? "codex-validation-native-observation.v2" : "codex-validation-native-observation.v1";
 const managed = config => config?.contract_version === MANAGED_VERSION || cooperative(config);
 const PROTECTED_CATEGORIES = ["configuration", "data", "git", "runtime"];
 const ID = "codex-sandbox-validation";
@@ -31,6 +35,8 @@ const REVIEWED_CLIENTS = Object.freeze([REVIEWED_CLIENT, Object.freeze({
   executable_sha256: "21f6fb0b01ba12a687f5fcd33546c0008ebd45654fdb23d84732ee8d62ee980b",
 })]);
 const SOURCE = path.join(import.meta.dirname, "codex-validation-trampoline.cs");
+const ACCESS_SOURCE = path.join(import.meta.dirname, "codex-validation-access-check.cs");
+const ACCESS_PROBE = path.resolve(import.meta.dirname, "../../../tools/verify/codex-validation-access-probe.mjs");
 const CONTROLLER = path.resolve(import.meta.dirname, "../agents/process-tree/windows-process-tree-controller.mjs");
 const HELPER_SOURCE = path.resolve(import.meta.dirname, "../agents/process-tree/windows-job-helper.cs");
 const HASH = /^[a-f0-9]{64}$/u;
@@ -95,8 +101,8 @@ export function assertCodexSandboxProtectedBaseline(value, config) {
 // that a named profile enforces its declared permissions on the current host.
 export function assertCodexSandboxValidationConfiguration(config) {
   fingerprint(config);
-  requireThat(exact(config, ["contract_version", "boundary_id", "platform", "architecture", "engine_sha256", "verification_policy_sha256", "environment_sha256", "client", "controller", "trampoline", "runner", "profile", "roots", "launcher_environment", ...(managed(config) ? ["protected_resources"] : []), ...(cooperative(config) ? ["assurance_profile", "read_isolation"] : []), ...(networkUnguaranteed(config) ? ["network_isolation"] : [])])
-    && [VERSION, MANAGED_VERSION, COOPERATIVE_VERSION, NETWORK_UNGUARANTEED_VERSION].includes(config.contract_version) && config.boundary_id === ID && config.platform === "win32" && config.architecture === "x64"
+  requireThat(exact(config, ["contract_version", "boundary_id", "platform", "architecture", "engine_sha256", "verification_policy_sha256", "environment_sha256", "client", "controller", "trampoline", "runner", "profile", "roots", "launcher_environment", ...(managed(config) ? ["protected_resources"] : []), ...(cooperative(config) ? ["assurance_profile", "read_isolation"] : []), ...(networkUnguaranteed(config) ? ["network_isolation"] : []), ...(usesCodexValidationAccessCheck(config) ? ["access_observer"] : [])])
+    && [VERSION, MANAGED_VERSION, COOPERATIVE_VERSION, NETWORK_UNGUARANTEED_VERSION, ACCESS_VERSION].includes(config.contract_version) && config.boundary_id === ID && config.platform === "win32" && config.architecture === "x64"
     && [config.engine_sha256, config.verification_policy_sha256, config.environment_sha256].every(value => HASH.test(value))
     && filePin(config.client) && filePin(config.runner), "SANDBOX_CONFIGURATION_INVALID");
   requireThat(exact(config.controller, ["helperPath", "helperSha256", "helperSourceSha256", "candidateSha256"])
@@ -124,6 +130,14 @@ export function assertCodexSandboxValidationConfiguration(config) {
     && !equalPath(config.roots.supervisor, config.roots.snapshots) && !equalPath(config.roots.supervisor, config.roots.scratch)
     && !inside(config.roots.snapshots, p.home) && !inside(config.roots.scratch, p.home), "SANDBOX_ROOTS_INVALID");
   const rule = (target, access) => e.filesystem.some(row => equalPath(row.path, target) && row.access === access);
+  if (usesCodexValidationAccessCheck(config)) {
+    const observer = config.access_observer;
+    requireThat(exact(observer, ["executable", "sha256", "source_sha256", "probe_sha256"]) && absolute(observer.executable)
+      && [observer.sha256, observer.source_sha256, observer.probe_sha256].every(value => HASH.test(value))
+      && inside(config.roots.supervisor, observer.executable) && !equalPath(config.roots.supervisor, observer.executable)
+      && !inside(config.roots.scratch, observer.executable) && !inside(config.roots.snapshots, observer.executable)
+      && !inside(config.roots.scratch, config.roots.supervisor), "SANDBOX_ACCESS_OBSERVER_INVALID");
+  }
   // Official elevated Windows setup requires root read; v2 accepts that read
   // scope while preserving the explicit denies and sole scratch write grant.
   requireThat(rule(":root", managed(config) ? "read" : "deny") && rule(":minimal", "read") && rule(config.roots.snapshots, "read") && rule(config.roots.scratch, "write")
@@ -212,7 +226,8 @@ function checkQualification(envelope, config, key) {
 }
 export function assertCodexSandboxValidationQualificationPayload(q, config) {
   assertCodexSandboxValidationConfiguration(config);
-  requireThat(q?.contract_version === (networkUnguaranteed(config) ? "agent-verification-boundary.v4" : cooperative(config) ? "agent-verification-boundary.v3" : managed(config) ? "agent-verification-boundary.v2" : "agent-verification-boundary.v1") && q.boundary_id === ID && q.evidence_class === "native"
+  requireThat(q?.contract_version === (usesCodexValidationAccessCheck(config) ? "agent-verification-boundary.v5" : networkUnguaranteed(config) ? "agent-verification-boundary.v4" : cooperative(config) ? "agent-verification-boundary.v3" : managed(config) ? "agent-verification-boundary.v2" : "agent-verification-boundary.v1") && q.boundary_id === ID && q.evidence_class === "native"
+    && (usesCodexValidationAccessCheck(config) ? q.filesystem_evidence_method === "windows-access-check.v1" : !Object.hasOwn(q, "filesystem_evidence_method"))
     && q.platform === config.platform && q.configuration_sha256 === fingerprint(config) && q.engine_sha256 === config.engine_sha256
     && q.policy_sha256 === config.verification_policy_sha256 && q.executable_sha256 === config.runner.sha256 && q.environment_sha256 === config.environment_sha256
     && q.snapshot_read_only === true && (cooperative(config)
@@ -253,28 +268,30 @@ export function assertCodexSandboxNativeCase(report, qualification, config) {
     && report.observation?.case_id === report.case_id && report.observation.environment_sha256 === config.environment_sha256,
   "SANDBOX_NATIVE_EVIDENCE_INVALID");
   if (cooperative(config)) requireThat(report.assurance_profile === config.assurance_profile && report.read_isolation === config.read_isolation
-    && report.observation.contract_version === observationVersion(config) && report.observation.pid === member.pid
+    && report.observation.contract_version === codexValidationObservationVersion(config) && report.observation.pid === member.pid
     && (!networkUnguaranteed(config) || report.network_isolation === "not_guaranteed" && report.evidence_role === "qualification"
       && report.observation.assurance_profile === config.assurance_profile && report.observation.read_isolation === "not_guaranteed"
       && report.observation.network_isolation === "not_guaranteed")
     && Number.isSafeInteger(report.elapsed_ms) && report.elapsed_ms > 0 && report.elapsed_ms <= 60000, "SANDBOX_NATIVE_EVIDENCE_INVALID");
   const observations = report.observation.observations;
-  if (["filesystem", "network", "timeout"].includes(report.case_id)) requireThat(report.child_terminal?.pid === member.pid
+  if (usesCodexValidationAccessCheck(config)) requireThat(report.source?.sha256 === config.access_observer.probe_sha256
+    && positive(report.source.bytes, 262144), "SANDBOX_NATIVE_EVIDENCE_INVALID");
+  if ([filesystemCase(config), "network", "timeout"].includes(report.case_id)) requireThat(report.child_terminal?.pid === member.pid
     && report.child_terminal.job_name === member.job_name && report.child_terminal.active_processes === 0
     && report.child_terminal.termination_state === "confirmed" && report.child_terminal.outcome === (report.case_id === "timeout" ? "timed_out" : "completed"), "SANDBOX_NATIVE_EVIDENCE_INVALID");
   if (report.case_id === "cancel") requireThat(report.process.reason_code === "PROCESS_CANCELLED", "SANDBOX_NATIVE_EVIDENCE_INVALID");
   if (report.case_id === "callback") requireThat(report.process.reason_code === "PROCESS_CALLBACK_FAILED", "SANDBOX_NATIVE_EVIDENCE_INVALID");
   if (report.case_id === "filesystem") requireThat(observations?.snapshot_write_denied === true && (cooperative(config) || observations.supervisor_read_denied === true)
     && observations.supervisor_write_denied === true && HASH.test(observations.snapshot_sha256) && HASH.test(observations.scratch_sha256), "SANDBOX_NATIVE_EVIDENCE_INVALID");
-  if (cooperative(config) && report.case_id === "filesystem") assertCodexCooperativeConcurrency(report, config);
+  if (cooperative(config) && report.case_id === filesystemCase(config)) assertCodexCooperativeConcurrency(report, config);
   if (report.case_id === "network") requireThat(["denied", "timed_out"].includes(observations?.network) && report.network?.positive_control === true
     && report.network.sandbox_connections === 0, "SANDBOX_NATIVE_EVIDENCE_INVALID");
   if (["timeout", "cancel", "callback"].includes(report.case_id)) requireThat(Number.isSafeInteger(observations?.descendant_pid) && observations.descendant_pid > 0, "SANDBOX_NATIVE_EVIDENCE_INVALID");
   return report.case_id;
 }
 
-// The companion completes only after the primary reports its during-launch
-// writes. The parent records Job0 before releasing the primary's after check.
+// The companion finishes after the first measurement. The host observes Job0
+// before releasing the primary for the second measurement.
 export function assertCodexCooperativeConcurrency(report, config) {
   const companion = report.concurrency, proof = companion?.process?.termination_proof, runner = companion?.process?.runner;
   const member = companion?.prepared, terminal = companion?.child_terminal, observation = companion?.observation;
@@ -289,17 +306,52 @@ export function assertCodexCooperativeConcurrency(report, config) {
     && member.environment_sha256 === config.environment_sha256 && member.executable_sha256 === config.runner.sha256
     && terminal?.pid === member.pid && terminal.job_name === member.job_name && terminal.active_processes === 0
     && terminal.termination_state === "confirmed" && terminal.outcome === "completed"
-    && observation?.contract_version === observationVersion(config) && observation.case_id === "filesystem"
+    && observation?.contract_version === codexValidationObservationVersion(config) && observation.case_id === filesystemCase(config)
     && (!networkUnguaranteed(config) || observation.assurance_profile === config.assurance_profile && observation.read_isolation === "not_guaranteed"
       && observation.network_isolation === "not_guaranteed")
     && observation.phase === "companion_completed" && observation.challenge === report.observation.challenge
     && observation.pid === member.pid && observation.environment_sha256 === config.environment_sha256
     && observation.observations?.primary_pid === report.observation.pid
-    && value?.during?.companion_pid === member.pid && value.after?.companion_pid === member.pid
-    && [value.during, value.after].every(row => row.snapshot_write_denied === true && row.supervisor_write_denied === true
-      && row.snapshot_sha256 === value.snapshot_sha256) && value.after.companion_stopped === true,
+    && value?.during?.companion_pid === member.pid && value.after?.companion_pid === member.pid && value.after.companion_stopped === true,
   "SANDBOX_CONCURRENT_WRITE_EVIDENCE_INVALID");
+  if (usesCodexValidationAccessCheck(config)) assertAccessWitnesses(report, config);
+  else requireThat([value.during, value.after].every(row => row.snapshot_write_denied === true && row.supervisor_write_denied === true
+    && row.snapshot_sha256 === value.snapshot_sha256), "SANDBOX_CONCURRENT_WRITE_EVIDENCE_INVALID");
   return true;
+}
+
+function assertAccessWitnesses(report, config) {
+  const { observations, pid, phase, challenge } = report.observation;
+  const { paths, during, after } = observations;
+  const check = condition => requireThat(condition, "SANDBOX_ACCESS_WITNESS_INVALID");
+  check(phase === "primary_completed" && report.process?.outcome === "completed" && positive(pid, 0xffffffff)
+    && pid !== during.companion_pid && /^[a-f0-9-]{36}$/u.test(challenge)
+    && report.host_canaries?.snapshot_sha256 === observations.snapshot_sha256 && HASH.test(observations.snapshot_sha256)
+    && report.host_canaries?.scratch_sha256 === hash(challenge) && observations.scratch_sha256 === hash(challenge)
+    && HASH.test(report.host_canaries?.supervisor_sha256) && exact(paths, ["snapshot", "supervisor", "scratch"]));
+  const roots = { snapshot: config.roots.snapshots, supervisor: config.roots.supervisor, scratch: config.roots.scratch };
+  for (const [role, root] of Object.entries(roots)) {
+    const target = paths[role];
+    check(absolute(target) && inside(root, target) && !equalPath(target, root)
+      && (role === "scratch" || !inside(roots.scratch, target)) && (role !== "supervisor" || !inside(roots.snapshot, target)));
+    let depth = 0;
+    for (let parent = target; parent !== path.dirname(parent); parent = path.dirname(parent)) depth++;
+    for (const sample of [during, after]) {
+      const chain = sample[role];
+      check(sample.subject_pid === pid && /^[a-f0-9]{16}$/u.test(sample.token_id) && sample.token_id === during.token_id
+        && sample.observer_sha256 === config.access_observer.sha256 && Array.isArray(chain?.ancestors)
+        && depth > 0 && depth <= 64 && chain.ancestors.length === depth);
+      for (const rights of [chain.file, ...chain.ancestors]) {
+        check(Number.isSafeInteger(rights?.granted) && rights.granted >= 0 && rights.granted <= 0x1f01ff
+          && HASH.test(rights.descriptor_sha256) && (rights.granted & 1) !== 0);
+        // File writes, append, EA, attributes, delete, directory delete-child,
+        // WRITE_DAC and WRITE_OWNER. Parents may not grant replacement rights.
+        if (role !== "scratch") check((rights.granted & 0x000d0156) === 0);
+      }
+      if (role === "scratch") check((chain.file.granted & 2) !== 0 && (chain.ancestors[0].granted & 2) !== 0);
+    }
+    if (role !== "scratch") check(fingerprint(during[role]) === fingerprint(after[role]));
+  }
 }
 
 // Structured argv only. No permission-profile fallback, unmanaged sandbox state,
@@ -457,6 +509,8 @@ export async function inspectCodexSandboxValidationBinaryPins(config, { signal }
   // Match the worker client bound without widening runner/helper/source limits.
   requireThat((await readFile(config.client.executable, 512 * 1024 * 1024, signal)).sha256 === config.client.sha256, "SANDBOX_BINARY_CHANGED");
   for (const row of [config.runner, config.trampoline, { executable: SOURCE, sha256: config.trampoline.source_sha256 },
+    ...(usesCodexValidationAccessCheck(config) ? [config.access_observer, { executable: ACCESS_SOURCE, sha256: config.access_observer.source_sha256 },
+      { executable: ACCESS_PROBE, sha256: config.access_observer.probe_sha256 }] : []),
     { executable: CONTROLLER, sha256: config.controller.candidateSha256 }, { executable: HELPER_SOURCE, sha256: config.controller.helperSourceSha256 },
     { executable: config.controller.helperPath, sha256: config.controller.helperSha256 }]) {
     requireThat((await readFile(row.executable, 256 * 1024 * 1024, signal)).sha256 === row.sha256, "SANDBOX_BINARY_CHANGED");

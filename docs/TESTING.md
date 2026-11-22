@@ -3841,6 +3841,21 @@ and v1/v2/v3 boundary evidence retain their original requirements and hashes.
 The final three-task/two-simultaneous-Codex campaign remains unexecuted until the
 exact compatible composition has its own evidence.
 
+For STANDARD cycle validation on Windows x64 with local NTFS, configuration v5
+uses the `codex-cooperative-access.v1` profile. Build the observer with
+`tools/verify/build-codex-validation-trampoline.mjs --access-observer --out-dir <empty-supervisor-directory> --compiler <absolute-csc.exe>`.
+Pin the executable, C# source and packaged `codex-validation-access-probe.mjs`
+in `access_observer`. Preview the qualification plan with the staged probe and
+collect `filesystem_access`, `timeout`, `cancel` and `callback` under its
+exact digest. The filesystem case writes its challenge and rendezvous files to
+scratch and queries the Windows permissions of the two protected witnesses
+and their ancestors. An API error, unknown token privilege, incomplete
+ancestry, missing positive control or missing Job closure refuses the proof.
+An independent reviewer signs the v5 qualification over the four report
+references and the method `windows-access-check.v1`. Availability also
+rechecks their bytes and the pinned host material. The portable
+`verify-codex-sandbox-validation-fixtures.mjs` gate covers report rejection.
+
 For the injected supervisor candidate, run
 `npm run perf:verify-agent-execution-scheduler-fixtures` and
 `npm run perf:verify-agent-git-integration-fixtures`. Their required runtime gates
