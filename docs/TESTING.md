@@ -1327,6 +1327,11 @@ R05 result and the fresh review linked to that completion. Use `--drift-objectiv
 including its linked plan, separate grant, gate invocation and retained result.
 The full correction sequence, installed package and actual actors have separate
 gates.
+Run `node tools/perf/verify-standard-composed-preflight-fixtures.mjs --cycle-entry-only`
+to check the published fresh cycle caller. The synthetic preflight covers
+equivalent objectives, an accepted review of differing objectives and a deferred
+review. It verifies that the same evaluation reaches the checkpoint and that
+deferring the decision stops the route before finalization.
 Add `--drift-objective-checkpoint-only` with the published-checkpoint selector
 to isolate its positive route within the same execution bound. The direct
 refusal is verified by a separate execution.

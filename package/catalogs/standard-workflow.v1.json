@@ -1,7 +1,7 @@
 {
   "contract_version": "standard-workflow-catalog.v7",
   "component_id": "aidn-standard",
-  "revision": 424,
+  "revision": 425,
   "scope": {
     "kind": "composed_committing_cycle_component",
     "complete_standard_workflow": false,
@@ -24,9 +24,9 @@
   },
   "model": {
     "path": "package/catalogs/process-models/aidn-standard.v1.json",
-    "sha256": "f7dc51c6e9b2765e456d0cf47064c38763cc804b024590885730a57a843ab414",
+    "sha256": "a31918ca56cc1d7dbc958e3b3a4a01c5815ae5d1f6e56ebb9c074f0b198923e4",
     "model_id": "aidn-standard",
-    "revision": 424
+    "revision": 425
   },
   "specification": {
     "path": "docs/SPEC.md",
@@ -2080,33 +2080,6 @@
         "effect_class": "read-only",
         "skill_id": "drift-check",
         "input_contract": "standard-drift-evaluate-input.v1",
-        "output_contract": "standard-drift-output.v1",
-        "rule_refs": [
-          "SPEC-R05"
-        ],
-        "allowed_modes": [
-          "UNKNOWN",
-          "THINKING",
-          "EXPLORING",
-          "COMMITTING"
-        ],
-        "implementation_sha256": "93c418e910494afdd500b751ddd31e2aaed854c76e629b56818ff8fe5635333b"
-      },
-      "skill_source": {
-        "path": "scaffold/codex/aidn-drift-check/SKILL.md",
-        "sha256": "be09c8ac54deff056e19d5f3e56b00fc21571aafa84777626a632479a25e44dd"
-      }
-    },
-    {
-      "node_id": "cycle_drift_finalize",
-      "binding": {
-        "contract_version": "process-operation-binding.v1",
-        "id": "drift_check_finalize",
-        "revision": 1,
-        "executor_kind": "deterministic",
-        "effect_class": "executor",
-        "skill_id": "drift-check",
-        "input_contract": "standard-drift-followup-input.v1",
         "output_contract": "standard-drift-output.v1",
         "rule_refs": [
           "SPEC-R05"
@@ -6154,8 +6127,8 @@
       "node_id": "cycle_checkpoint",
       "model_ref": {
         "model_id": "aidn-standard-fresh-cycle-checkpoint",
-        "revision": 91,
-        "model_sha256": "066899486b92ad013e7c71aac2937d40a73bc9fcd75eb210c70d769d42f104c6"
+        "revision": 92,
+        "model_sha256": "a45ed5e2d84f96e6ad2db8baf9129acf411808bca15537a9fc853f8a268645eb"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -6187,8 +6160,8 @@
       "node_id": "cycle_refresh_after",
       "model_ref": {
         "model_id": "aidn-standard-fresh-cycle-checkpoint",
-        "revision": 91,
-        "model_sha256": "066899486b92ad013e7c71aac2937d40a73bc9fcd75eb210c70d769d42f104c6"
+        "revision": 92,
+        "model_sha256": "a45ed5e2d84f96e6ad2db8baf9129acf411808bca15537a9fc853f8a268645eb"
       },
       "binding": {
         "contract_version": "process-operation-binding.v1",

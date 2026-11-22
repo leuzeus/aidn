@@ -93,9 +93,8 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  // The nine shared handoff operations replace two inline continuation
-  // decisions: the original 212 bindings therefore become exactly 219.
-  assert.equal(assets.catalog.bindings.length, 219); assert.equal(assets.catalog.activities.length, 23);
+  // Fresh and corrective R05 share the target's finalizer binding.
+  assert.equal(assets.catalog.bindings.length, 218); assert.equal(assets.catalog.activities.length, 23);
   assert.deepEqual(assets.catalog.bindings.filter(row => row.model_ref?.model_id === "aidn-standard-mode-handoff")
     .map(row => [row.node_id, row.binding.id]).sort(), [
       ["mode_handoff_decide", "mode_work_continue_decision"], ["mode_handoff_summary", "handoff_summary_prepare"],
@@ -661,6 +660,17 @@ test("published cycle entry preserves creation preconditions and separates owned
   assert.deepEqual(freshEntry.model.nodes.find(row => row.id === "fresh_entry").children,
     ["session_git_checkpoint", "cycle_entry", "cycle_admit", "cycle_initialize", "cycle_audit"]);
   const checkpoint = assets.model.call_targets.find(row => row.model_id === "aidn-standard-fresh-cycle-checkpoint");
+  const review = assets.model.call_targets.find(row => row.model_id === "aidn-standard-corrective-drift");
+  const evaluated = { source: "operation_id", node_id: "cycle_drift_evaluate" };
+  assert.equal(node("cycle_drift_finalize").kind, "call");
+  assert.deepEqual(node("cycle_drift_finalize").target, processModelIdentity(review.model));
+  for (const id of ["cycle_drift_finalize", "fresh_checkpoint"]) {
+    const input = assets.model.data_bindings.inputs.find(row => row.node_id === id);
+    assert.deepEqual(input.fields.evaluation_operation_id, evaluated);
+  }
+  assert.equal(checkpoint.model.call_interface.parameters.evaluation_operation_id, "string");
+  assert.deepEqual(checkpoint.model.data_bindings.inputs.find(row => row.node_id === "cycle_checkpoint").fields.evaluation_operation_id,
+    { source: "parameter", key: "evaluation_operation_id", path: [] });
   assert.deepEqual(checkpoint.model.nodes.find(row => row.id === "fresh_checkpoint").children, ["cycle_checkpoint", "cycle_refresh_after"]);
   for (const target of [freshEntry, checkpoint]) {
     assert.equal(target.model.nodes.some(row => row.kind === "activity"), false);
@@ -792,7 +802,7 @@ test("the ordinary loader authenticates the two final-verification operations fo
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV7, "#", { contractKind: "workflow-definition" }), []);
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 256);
-  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 130);
+  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 129);
   assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 89);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
   assert.equal(loaded.model.call_targets.length, 15);

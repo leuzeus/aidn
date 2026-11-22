@@ -16,6 +16,7 @@ const reviewCaptureTargetId = "aidn-standard-pr-review-capture";
 const callSites = new Map([
   ["session_setup", { model_id: "aidn-standard-session-setup", prefix: "" }],
   ["fresh_entry", { model_id: "aidn-standard-fresh-cycle-entry", prefix: "" }],
+  ["cycle_drift_finalize", { model_id: "aidn-standard-corrective-drift", prefix: "cycle_drift_" }],
   ["fresh_checkpoint", { model_id: "aidn-standard-fresh-cycle-checkpoint", prefix: "" }],
   ["owned_cycle", { model_id: "aidn-standard-owned-entry", prefix: "owned_" }],
   ["selected_cycle", { model_id: "aidn-standard-selected-entry", prefix: "selected_" }],
@@ -37,7 +38,7 @@ const callSites = new Map([
 
 // Test planning only. Synthetic receipts/control/assignments never authenticate
 // a human, native producer, provider or effect. Routing uses the execution reducer.
-export function preflightStandardComposedFixture({ model, scenario, stop = "component_complete", cycleEntry = "fresh" }) {
+export function preflightStandardComposedFixture({ model, scenario, stop = "component_complete", cycleEntry = "fresh", cycleObjective = "Synthetic fixture budget planning" }) {
   if (!["fresh", "owned_open"].includes(cycleEntry) || cycleEntry === "owned_open" && scenario?.mode !== "COMMITTING") fail("STANDARD_FIXTURE_CYCLE_ENTRY_INVALID");
   const nominalPostMerge = stop === "nominal_post_merge_complete";
   const fullCorrection = scenario?.contract_version === "fixture-standard-composed-scenario.v3";
@@ -63,7 +64,7 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
     || !["blocked", "deferred", "rejected", "failed", "cancelled"].includes(interruption.outcome))) fail("STANDARD_FIXTURE_SCENARIO_INVALID");
   const initial = { instanceId: "budget-preflight", scopeId: "synthetic-fixture", model, policyPins: agenticPolicyPins(model), facts: {},
     parameters: { session: { session_id: "S001", session_branch: "S001-standard", objective: "Synthetic fixture budget planning" },
-      cycle: { cycle_id: "C001", cycle_type: "feature", title: "standard-prefix", objective: "Synthetic fixture budget planning" } } };
+      cycle: { cycle_id: "C001", cycle_type: "feature", title: "standard-prefix", objective: cycleObjective } } };
   let state = createAgenticProcess(initial), serial = 0, deferred = false, interrupted = false;
   const native = [], operations = [], checkpoints = [], callTransitions = [], verificationInputs = [];
   const operationInputs = new Map(), syntheticWitnesses = new Map(), sourceOperations = [], advancedByNode = new Map();
@@ -181,7 +182,8 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         if (fullCorrection && node.id === "session_pr_correction_decide") facts = { session_pr_correction_cycle_requested: true };
         if (node.binding_ref === "drift_completion_select") facts = { drift_diagnosis_requested: !operations.includes("closure_drift_finalize"), drift_completion_review_required: false, drift_completion_reviewed: operations.includes("closure_drift_finalize") };
         if (node.binding_ref === "drift_followup_select") {
-          const objective = fullCorrection && callSites.get(site?.node_id)?.model_id === "aidn-standard-corrective-drift";
+          const objective = site?.node_id === "cycle_drift_finalize" ? cycleObjective !== initial.parameters.session.objective
+            : fullCorrection && callSites.get(site?.node_id)?.model_id === "aidn-standard-corrective-drift";
           facts = { drift_route_ready: !objective, drift_followup_review_required: objective, drift_objective_review_required: objective };
         }
         if (node.binding_ref === "drift_check_finalize") facts = { drift_check_completed: true };

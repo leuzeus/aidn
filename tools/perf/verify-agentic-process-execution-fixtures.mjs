@@ -1339,7 +1339,8 @@ if (process.argv[2] === "--mixed-continue") {
         const event = proposed.record.events.at(-1), entering = call.wait_reason === "call_entry";
         assert.equal(event.kind, entering ? "call_enter" : "call_return");
         assert.equal(event.occurrence_id, call.occurrence_id);
-        if (!standardDataCallTargets.has(call.node_id) && (entering || !/^correction_(?:cycle|closure|promotion|session_closure)_drift_finalize$/.test(call.node_id))) assert.deepEqual(event.witnesses, []);
+        const checkpointDrift = state.record.model.nodes.find(node => node.id === call.node_id)?.target?.model_id === "aidn-standard-corrective-drift";
+        if (!standardDataCallTargets.has(call.node_id) && (entering || !checkpointDrift)) assert.deepEqual(event.witnesses, []);
         const journals = new Map();
         const accepted = (id, binding) => {
           const journal = host.readOperation(id), receipt = journal.results.at(-1)?.receipt;
@@ -1377,9 +1378,8 @@ if (process.argv[2] === "--mixed-continue") {
             accepted(completion.operation.intent.operation_id, "session_pr_post_merge_complete");
             assert.deepEqual(event.resolution.input, {});
           }
-        } else if (["correction_cycle_drift_finalize", "correction_closure_drift_finalize",
-          "correction_promotion_drift_finalize", "correction_session_closure_drift_finalize"].includes(call.node_id)) {
-          assert.equal(fullCorrection, true);
+        } else if (checkpointDrift) {
+          if (call.node_id !== "cycle_drift_finalize") assert.equal(fullCorrection, true);
           verifyCorrectiveDriftCall({ call, cursor: state.cursor, prefix, event, accepted,
             evaluationNode: call.node_id.replace(/_finalize$/, "_evaluate") });
         } else if (standardDataCallTargets.has(call.node_id)) {
@@ -1547,10 +1547,9 @@ if (process.argv[2] === "--mixed-continue") {
             assert.equal(f.open().inspect().record.instance_sha256, beforeWait); assert.equal(f.t.sessions.length, nativeCount);
             claim = composedCorrectionChoice(result.question, result.operation_id);
           } else if (["drift_recovery_decision", "drift_completion_decision"].includes(binding)) {
-            assert.equal(fullCorrection, true);
             const question = result.question, parent = state.cursor.occurrences.find(row => row.occurrence_id === frame.call_scope_id);
-            assert.ok(["correction_cycle_drift_finalize", "correction_closure_drift_finalize",
-              "correction_promotion_drift_finalize", "correction_session_closure_drift_finalize"].includes(parent?.node_id));
+            assert.equal(state.record.model.nodes.find(node => node.id === parent?.node_id)?.target?.model_id, "aidn-standard-corrective-drift");
+            if (parent.node_id !== "cycle_drift_finalize") assert.equal(fullCorrection, true);
             assert.equal(question.contract_version, "standard-drift-recovery-question.v2");
             assert.ok(question.choices.includes("confirm_alignment"));
             const beforeWait = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
