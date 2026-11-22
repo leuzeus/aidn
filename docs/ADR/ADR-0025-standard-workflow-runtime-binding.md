@@ -38,6 +38,12 @@ including lengths, item bounds, patterns, bindings and cross-field rules. The
 transport schema is derived for the current request and grants no authority.
 Canonical report schemas, retained receipts and acceptance rules stay the same.
 
+For a Native R05 diagnosis, the request binds `original_objective` to the
+canonical context. The actor receives the host's rules for comparing objective
+text, classifying deviations and reporting the corresponding recommendation
+and split flags. The host checks the returned report and evaluates its
+freshness and evidence against the current context.
+
 ## Retained failure of an ordinary Native action, 2026-11-20
 
 The ordinary entry returns the first worker failure when the allocation is

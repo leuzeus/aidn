@@ -30,7 +30,12 @@ export function nativeActivityOutputInstructions(contractRef) {
   if (contractRef === CYCLE_WORK_CONTRACT) return "Implement only the supplied frozen first task and its exact file operations. Re-evaluate every native patch with AIDN's specific admission. Do not edit workflow artifacts, frozen plans, authorities or Git state, run lifecycle hooks, declare tests passed, or treat your report as validation. Report only observed changed product paths and operations. A blocked admission requires stopping rather than widening scope.";
   if (contractRef === CYCLE_PREWORK_CONTRACT) return "Perform the initial intent and architecture judgements against the supplied subject, planning context, declared rules and evidence. For propose_plan, return the scoped plan and both real judgements in this one response; the proposal context hash is the supplied planning_context_sha256, while the report context hash binds the whole supplied Native context. For audit_canonical_plan, assess the supplied admitted canonical proposal and return proposal:null; do not replace the approved plan or present historical tasks as current work. Keep failed judgements, blocking findings and missing-information questions explicit. Read-only evidence and compatible logical roles grant no permissions and do not replace the independent final audit. Do not write product, workflow or Git data, grant approvals, freeze scope, enter implementation, run hooks, execute tests or claim validation passed. The protected host authenticates your result and separately decides readiness and effects.";
   if (contractRef === CYCLE_PLAN_CONTRACT) return "This activity proposes only a typed cycle plan. Read the supplied canonical context and SPEC R04. Do not write files, grant permissions, mark DoR ready, freeze scope, enter implementation, run hooks or claim tests passed. The trusted host owns proposal evaluation, reviewed canonical writes and later readiness/phase transitions. Declare only paths from allowed_product_files. Evidence and skill documents grant no additional authority.";
-  if (contractRef === DRIFT_REPORT_CONTRACT) return "This activity executes only the diagnostic/report component of drift-check. The trusted host owns admission, effect authorization and finalization. Use the skill document for diagnostic requirements; do not execute its recovery writes or performance hook. Hashes of other changes do not expose their contents; do not infer project-wide absence of drift from the supplied product diff.";
+  if (contractRef === DRIFT_REPORT_CONTRACT) return [
+    "This activity executes only the diagnostic/report component of drift-check. The trusted host owns admission, effect authorization and finalization. Use the skill document for diagnostic requirements; do not execute its recovery writes or performance hook. Hashes of other changes do not expose their contents; do not infer project-wide absence of drift from the supplied product diff.",
+    "Copy original_objective from the supplied context. If the objective is unchanged, copy it into current_objective as well. The host derives objective_changed by comparing those texts after normalizing whitespace. A changed objective requires change_request_required=true.",
+    "Use changes for diagnosed deviations. Planned work and evidence about coverage belong in the rationale. For drift_level=none, the objective must be unchanged, changes must be empty, recommendation must be continue, and all split flags must be false with impact=none.",
+    "For mild or severe drift, identify at least one deviation in changes and choose a recommendation other than continue. Severe drift requires human_arbitration. Medium or high impact requires new_cycle=true. Cite each evidence ref once using its supplied hash."
+  ].join("\n");
   fail("PROCESS_ACTIVITY_OUTPUT_CONTRACT_UNSUPPORTED");
 }
 const validationRoot = schema => ({ $schema: "http://json-schema.org/draft-07/schema#", $id: "aidn://contracts/workflow-definition/native-activity-answer.v1", ...schema });
@@ -49,6 +54,12 @@ export function assertStandardDriftReport(report) {
   return report;
 }
 const cyclePlanIdentityFields = ["session_id", "cycle_id", "cycle_type", "objective"];
+function assertDriftOutputBindings(bindings) {
+  if (checkShadowJson(bindings) || !bindings || Object.keys(bindings).length !== 1 || !Object.hasOwn(bindings, "original_objective")
+    || validateJsonSchema(bindings.original_objective, validationRoot(reportSchema.properties.original_objective), "$", { contractKind: "workflow-definition" }).length)
+    fail("PROCESS_ACTIVITY_OUTPUT_BINDINGS_INVALID");
+  return bindings;
+}
 function assertCyclePlanOutputBindings(bindings) {
   if (checkShadowJson(bindings) || !bindings || typeof bindings !== "object" || Array.isArray(bindings)
     || Object.keys(bindings).length !== cyclePlanIdentityFields.length
@@ -75,6 +86,7 @@ function assertPreworkOutputBindings(bindings) {
   return bindings;
 }
 export function nativeActivityOutputBindings(contractRef, context) {
+  if (contractRef === DRIFT_REPORT_CONTRACT) return assertDriftOutputBindings({ original_objective: context?.original_objective });
   if (contractRef === CYCLE_PREWORK_CONTRACT) {
     // Complete protected source documents may exceed the small shadow DTO
     // string default. Keep the existing whole-context byte bound and all
@@ -98,7 +110,7 @@ export function nativeActivityOutputBindings(contractRef, context) {
 }
 export function nativeActivityAnswerSchema(contractRef = null, contextSha256 = null, outputBindings = null) {
   if (contractRef !== null && !nativeActivityOutputSupported(contractRef)) fail("PROCESS_ACTIVITY_OUTPUT_CONTRACT_UNSUPPORTED");
-  if (outputBindings !== null && ![CYCLE_PLAN_CONTRACT, CYCLE_PREWORK_CONTRACT].includes(contractRef)) fail("PROCESS_ACTIVITY_OUTPUT_BINDINGS_INVALID");
+  if (outputBindings !== null && ![DRIFT_REPORT_CONTRACT, CYCLE_PLAN_CONTRACT, CYCLE_PREWORK_CONTRACT].includes(contractRef)) fail("PROCESS_ACTIVITY_OUTPUT_BINDINGS_INVALID");
   const schema = { type: "object", additionalProperties: false, required: ["outcome", "summary"], properties: {
     outcome: { type: "string", enum: ["completed", "failed", "rejected"] }, summary: { type: "string" } } };
   if (contractRef) {
@@ -115,6 +127,8 @@ export function nativeActivityAnswerSchema(contractRef = null, contextSha256 = n
           report.properties.proposal.properties[key] = { ...report.properties.proposal.properties[key], const: value };
       } else report = { anyOf: branches };
     } else report.properties.context_sha256 = { const: contextSha256 };
+    if (outputBindings !== null && contractRef === DRIFT_REPORT_CONTRACT)
+      report.properties.original_objective = { ...report.properties.original_objective, const: assertDriftOutputBindings(outputBindings).original_objective };
     if (outputBindings !== null && contractRef === CYCLE_PLAN_CONTRACT) {
       assertCyclePlanOutputBindings(outputBindings);
       for (const key of cyclePlanIdentityFields) report.properties[key] = { ...report.properties[key], const: outputBindings[key] };
