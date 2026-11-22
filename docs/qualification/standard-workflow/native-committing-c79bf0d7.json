@@ -34,7 +34,7 @@
     },
     "process_plan_sha256": "90dc1bcb3453d470067c36661551cd378656c6b0467cdae5ef2efb5cb393ff2c",
     "case_limit_ms": 60000,
-    "signed_boundary": "UNAVAILABLE",
+    "signed_boundary": "PASS",
     "cases": {
       "filesystem_access": "PASS",
       "timeout": "PASS",
@@ -79,10 +79,31 @@
         "active_processes": 0
       }
     ],
-    "qualification_payload_sha256": "ac82811e8239f3271dbc3ee714b4ef1b358befb24839c7e2b190aee7975cb2d2"
+    "qualification_payload_sha256": "ac82811e8239f3271dbc3ee714b4ef1b358befb24839c7e2b190aee7975cb2d2",
+    "native_availability": true,
+    "signed_qualification_sha256": "1859807dbaf751f3436cdf06aa761514ff4b7b808e67260a9df52e7f614fd8d0",
+    "validation_profile_sha256": "48c3fb6f3abb78b150d7627f3cb13b2bedc076a053316ae219bfa965a8badb1e"
   },
   "public_full_nominal": "SKIP",
   "windows_installed_nominal": "SKIP",
   "p0_go": false,
-  "complete_standard_workflow": false
+  "complete_standard_workflow": false,
+  "public_entry": {
+    "status": "PASS",
+    "instance_id": "standard-vertical-pr202",
+    "initialized": true,
+    "workflow_configuration_sha256": "f1e8324607ac65b242de0dfe3f843c971b61c572c972d5d4f0d73b7ab765eeb9",
+    "request_sha256": "dd8a6401a3c66950bbf73b58153f3546f5a822aadc6aade431550c3e52caa048",
+    "native_configuration_sha256": "d4e923d05e77fdc03a1ac07461eed134d00453556bbc951c980462f1f3fa6640",
+    "profile_sha256": "48c3fb6f3abb78b150d7627f3cb13b2bedc076a053316ae219bfa965a8badb1e"
+  },
+  "initial_human_question": {
+    "type": "standard-mode-question.v1",
+    "session": "S001",
+    "question_sha256": "5a885eaeffece1e1043ea435314172a748f7e62f3b9ba27e5a9e4d835a3bed6e",
+    "action_sha256": "8a984985b27df30832f6f4d31bfcd4f1a9da6756ada4bf48c25d45534fafe612",
+    "ordinary_actions_before_question": 7,
+    "native_actor_starts_before_question": 0,
+    "same_question_on_fresh_process": true
+  }
 }
