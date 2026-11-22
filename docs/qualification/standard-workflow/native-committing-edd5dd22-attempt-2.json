@@ -33,6 +33,13 @@
     "observed_capture": "Operator-run Ed25519 signing script with a passphrase prompt",
     "valid_envelopes_for_same_choice_at_acceptance": 2,
     "verified_manual_decision": "#/signed_mode",
+    "signed_mode_measurement_start": "Submitted signed envelope",
+    "authenticated_interface_observation": {
+      "question_as_displayed_observed": false,
+      "business_answer_count": null,
+      "extra_signing_step_count": null,
+      "repeated_question_count_after_cold_resume": null
+    },
     "one_business_answer_with_background_proof": "SKIP",
     "cold_resume_without_reprompt": "SKIP",
     "delivery_plan": "native-qualification-deliveries.md",
