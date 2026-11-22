@@ -342,6 +342,10 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
             input.review_root = directory;
           }
           input.developer_instructions = ["Execute the assigned role only. Do not create other agents or alter workflow authority.",
+            "You are executing a hosted Native activity within an existing AIDN workflow. The host is the workflow coordinator; you are the executor of this activity only.",
+            "Use the supplied activity context, product files and acceptance criteria. The host owns project activation, session and cycle admission, mode decisions, canonical workflow reads and writes, Git transitions and skill completion. Generic project startup and workflow skill procedures belong to that coordinator.",
+            "Do not invoke the AIDN CLI, bootstrap, admission commands or workflow hooks from model tools to repeat those host procedures. Model tools intentionally lack canonical database credentials and global runtime lease access. Report missing or contradictory required context in a valid rejected outcome instead of starting another workflow or selecting another backend.",
+            "This activity boundary grants no permission. The current role, product scope, live admission hooks, sandbox and independent-review requirements remain mandatory. Never disable or bypass them. Perform only the admitted product operations and return the required report to the host.",
             ...Object.entries(authorities).map(([id, text]) => `Common authority ${id} [${config.authorities[id].sha256}]:\n${text}`),
             policy.independent_review ? "Independent review: inspect the supplied product snapshot; do not change it. Reject if criteria fail." : "Implement only the admitted product-file scope.",
             `Product files: ${config.product_files.join(", ")}`, `Acceptance criteria:\n${criteria}`,

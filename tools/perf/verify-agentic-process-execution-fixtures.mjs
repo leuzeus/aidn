@@ -368,7 +368,7 @@ function fixture(options = {}) {
   for (const name of [".codex/hooks/aidn-hook-runtime.mjs", ".codex/hooks/aidn-session-start.mjs", ".codex/hooks/aidn-pre-tool-use.mjs", ".agents/skills/context-reload/SKILL.md", ".agents/skills/start-session/SKILL.md"]) {
     const text = "Neutral fixture\n"; put(targetRoot, name, text); assets[name] = { kind: "file", current: Buffer.from(text).toString("base64") };
   }
-  block = "<!-- CODEX-AUDIT-WORKFLOW START -->\nNeutral fixture\n<!-- CODEX-AUDIT-WORKFLOW END -->";
+  block = options.agentsText ?? "<!-- CODEX-AUDIT-WORKFLOW START -->\nNeutral fixture\n<!-- CODEX-AUDIT-WORKFLOW END -->";
   put(targetRoot, "AGENTS.md", block); assets["AGENTS.md"] = { kind: "agents-block", current: block };
   const hooks = ["SessionStart", "PreToolUse"].map(event => ({ event, group: { matcher: "fixture" }, hook: { type: "command", command: "echo fixture" } }));
   put(targetRoot, ".codex/hooks.json", JSON.stringify({ hooks: Object.fromEntries(hooks.map(h => [h.event, [{ ...h.group, hooks: [h.hook] }]])) }));
@@ -3577,6 +3577,47 @@ if (process.argv[2] === "--mixed-continue") {
         assert(!JSON.stringify(records).includes("private command/output must not be retained"));
         assert.equal(t.calls.filter(row => row.method === "turn/start").length, 1);
       } finally { assert.equal((await sessions.close()).closed, true); }
+    }
+  });
+  await check("native answer: hosted activity scope reaches reused work and isolated review without credential or hook bypass", async () => {
+    const agentsText = fs.readFileSync(new URL("../../scaffold/root/AGENTS.md", import.meta.url), "utf8").replace(/\r\n/g, "\n").trim();
+    for (const noAdmission of [false, true]) {
+      const f = fixture({ agentsText }); persistenceFixture(f, "postgres", "db-only");
+      const { result, sessions, calls } = await run(f, { noAdmission });
+      const starts = calls.filter(row => row.method === "thread/start");
+      assert.equal(starts.length, noAdmission ? 1 : 2);
+      for (const { params } of starts) {
+        const developer = params.developerInstructions;
+        const boundary = developer.slice(0, developer.indexOf("Common authority "));
+        assert.match(boundary, /hosted Native activity within an existing AIDN workflow/);
+        assert.match(boundary, /host owns project activation, session and cycle admission/);
+        assert.match(boundary, /Do not invoke the AIDN CLI, bootstrap, admission commands or workflow hooks from model tools/);
+        assert.match(boundary, /live admission hooks, sandbox and independent-review requirements remain mandatory/);
+        assert.match(boundary, /valid rejected outcome/);
+        assert(developer.includes(agentsText), "Supply the installed contract with its ordinary-session startup and hosted-activity scope");
+        assert.doesNotMatch(developer, /fixture:fixture|AIDN_TEST_DB/);
+      }
+      assert.equal(sessions[0].configuration.env.AIDN_TEST_DB, f.environment.AIDN_TEST_DB);
+      for (const session of sessions) {
+        assert.equal(session.cfg.shell_environment_policy.filters.AIDN_TEST_DB, undefined);
+        assert.deepEqual(Object.keys(session.cfg.shell_environment_policy.filters).sort(), [...CODEX_STARTUP_ENVIRONMENT_PROFILES.worker].sort());
+      }
+      if (noAdmission) {
+        assert.equal(result.first_failure, "PROCESS_SESSION_ADMISSION_HOOKS_REQUIRED");
+        assert.equal(calls.filter(row => row.method === "turn/start").length, 0);
+        assert.equal(fs.readFileSync(path.join(f.dirs.product, "app.mjs"), "utf8"), "export const value = 1;\n");
+      } else {
+        assert.equal(result.status, "COMPLETED", JSON.stringify(result));
+        assert.deepEqual(calls.filter(row => row.method === "turn/start").map(row => row.thread), ["thread-1", "thread-1", "thread-2"]);
+        assert.equal(sessions[1].configuration.env.AIDN_TEST_DB, undefined);
+        assert.notEqual(sessions[0].configuration.cwd, sessions[1].configuration.cwd);
+        assert.equal(sessions[1].cfg.permissions.aidn_agentic_2.filesystem[sessions[1].configuration.cwd.replaceAll("\\", "/")], "read");
+        const inputs = fs.readdirSync(path.join(f.dirs.control, "case")).filter(name => name.endsWith("-activity-input.json"))
+          .sort().map(name => JSON.parse(fs.readFileSync(path.join(f.dirs.control, "case", name))));
+        assert.deepEqual(inputs.map(input => input.developer_sha256), [starts[0], starts[0], starts[1]].map(row => shadowHash(row.params.developerInstructions)));
+        assert.equal(fs.readFileSync(path.join(f.dirs.product, "app.mjs"), "utf8"), "export const value = 2;\n");
+      }
+      assert(sessions.every(session => session.closed));
     }
   });
   await check("native answer: full bound constraints reach the turn with matching prompt evidence", async () => {

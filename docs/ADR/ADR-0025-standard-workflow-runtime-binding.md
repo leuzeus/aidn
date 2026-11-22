@@ -53,6 +53,25 @@ text, classifying deviations and reporting the corresponding recommendation
 and split flags. The host checks the returned report and evaluates its
 freshness and evidence against the current context.
 
+## Hosted Native activity and coordinator startup, 2026-11-22
+
+The execution composition identifies a hosted Native activity in the trusted
+developer message, before supplying project authorities and skills. The actor
+uses the supplied activity context and product scope. Project activation,
+session/cycle admission, mode decisions, canonical workflow access, Git
+transitions and skill completion belong to the existing host. Installed startup
+instructions preserve this distinction; ordinary interactive sessions retain
+their admission-first startup. Project data cannot declare an admitted activity.
+
+The actor must not repeat coordinator startup through the ambient AIDN CLI.
+Its model tools intentionally lack canonical database credentials and global
+runtime lease access. Missing required context produces a rejected outcome
+for the host. Existing live hooks, permission profiles, current admissions,
+independent-review rules and result validation remain in force. This is an
+instruction boundary, not a capability or an admission receipt. The retained
+developer-message digest covers it; no environment marker, new permission,
+credential exposure or global runtime access is introduced.
+
 ## Retained failure of an ordinary Native action, 2026-11-20
 
 The ordinary entry returns the first worker failure when the allocation is

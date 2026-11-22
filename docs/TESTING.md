@@ -124,6 +124,18 @@ field of the complete schema, naming the field without echoing its value.
 These checks make no genuine Native call and do not establish the cause of
 an earlier live rejection whose answer was not retained.
 
+The same selector checks hosted activity instructions at the actual
+`thread/start` boundary, including the reused work context and isolated review.
+It loads the installed startup contract and uses an explicit PostgreSQL worker
+double in `db-only`: the trusted Native parent receives the configured connection,
+while model-tool environment filters exclude it. Retained developer-message
+hashes must match the messages sent to the client. This verifies delivery and
+scope of the instructions, not whether a genuine model follows them. Run
+`node tools/perf/verify-codex-assets-fixtures.mjs` for managed startup-contract
+upgrade/rollback and `node tools/perf/verify-codex-db-only-skill-readiness.mjs
+--root scaffold/codex --agents scaffold/root/AGENTS.md` for DB-only startup
+coverage. Native replay remains separate qualification.
+
 The catalog lists slower checks that are omitted from required admission.
 Their route and family results show `SKIP`. Run a relevant individual command
 during diagnosis. For agentic execution fixtures, select one scoped case
