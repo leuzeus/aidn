@@ -82,7 +82,17 @@
     "cold_resume": "SKIP",
     "stale_local_projection": "SKIP",
     "linux_connectivity": "SKIP",
-    "files_session_migration": "SKIP"
+    "files_session_migration": "SKIP",
+    "two_checkouts_same_session_cycle": {
+      "status": "PASS",
+      "sessions": 1,
+      "cycles": 1,
+      "session_lists_cycle": true,
+      "cycle_owner_matches": true,
+      "relational_link_projection_rows": 0,
+      "proof_sha256": "aff2952e4bef2f2c25aa1f6dd59559058f54af1ed5f79a10c73e9906d6f5082e",
+      "scope": "Canonical records and cycles table; no cross-checkout resume executed"
+    }
   },
   "preparation_findings": [
     {
@@ -125,10 +135,9 @@
     "scope": "session initialization, human mode receipt and mode application through the public STANDARD entry"
   },
   "native": {
-    "status": "SKIP",
-    "reason": "No completed Native result at this checkpoint; the first real actor is running",
+    "status": "PASS",
     "launched": true,
-    "responses": null,
+    "responses": 2,
     "budget": {
       "configuration_sha256": "cba4ca805035feb11ee91f06a3b0a4f363d5b8e7cf1a6dffc8be995bc14d127b",
       "max_responses": 24,
@@ -136,7 +145,93 @@
       "max_turn_ms": 600000,
       "authorized_at_ms": 1795378652530,
       "deadline_ms": 1795382252530
-    }
+    },
+    "scope": "completed Native activities only; the full nominal remains unqualified",
+    "runs": [
+      {
+        "generation": 1,
+        "status": "PASS",
+        "native_answer_outcome": "completed",
+        "output_contract": "standard-drift-report.v1",
+        "answer_sha256": "6591b3b7c68ab9fd89bff2cfc38718282f1fe225e089d6314183916fb8a15523",
+        "process_status": "RUNNING",
+        "first_failure": null,
+        "journal_phase": "closed",
+        "active_processes": 0,
+        "responses": 1,
+        "bytes_retained": 1599385,
+        "storage_budget_debit_bytes": 1911803,
+        "canonical_payload_bytes_acknowledged": 312418,
+        "elapsed_ms": 132774,
+        "usage": {
+          "client_reported": true,
+          "billed_total": false,
+          "threads": [
+            {
+              "total": {
+                "totalTokens": 29155,
+                "inputTokens": 28175,
+                "cachedInputTokens": 0,
+                "cacheWriteInputTokens": 0,
+                "outputTokens": 980,
+                "reasoningOutputTokens": 26
+              },
+              "last": {
+                "totalTokens": 29155,
+                "inputTokens": 28175,
+                "cachedInputTokens": 0,
+                "cacheWriteInputTokens": 0,
+                "outputTokens": 980,
+                "reasoningOutputTokens": 26
+              }
+            }
+          ]
+        },
+        "trace_sha256": "d3048ece18ceb396ffd08fa8534df209fb6fc27e8f02c60cc7b896a9e1c96b89"
+      },
+      {
+        "generation": 2,
+        "status": "PASS",
+        "native_answer_outcome": "completed",
+        "output_contract": "standard-drift-report.v1",
+        "answer_sha256": "b977c89cb53e69b9c5abfa86a8d91e99ac5b1165e3a6340d8a11b6a1a3af28fe",
+        "process_status": "RUNNING",
+        "first_failure": null,
+        "journal_phase": "closed",
+        "active_processes": 0,
+        "responses": 1,
+        "bytes_retained": 2189956,
+        "storage_budget_debit_bytes": 2555619,
+        "canonical_payload_bytes_acknowledged": 365663,
+        "elapsed_ms": 842518,
+        "usage": {
+          "client_reported": true,
+          "billed_total": false,
+          "threads": [
+            {
+              "total": {
+                "totalTokens": 32166,
+                "inputTokens": 30698,
+                "cachedInputTokens": 0,
+                "cacheWriteInputTokens": 0,
+                "outputTokens": 1468,
+                "reasoningOutputTokens": 0
+              },
+              "last": {
+                "totalTokens": 32166,
+                "inputTokens": 30698,
+                "cachedInputTokens": 0,
+                "cacheWriteInputTokens": 0,
+                "outputTokens": 1468,
+                "reasoningOutputTokens": 0
+              }
+            }
+          ]
+        },
+        "trace_sha256": "adca474f73a4137535c0ee960823bb95f7b0ba8a6563ad5b6abce11b597c6116"
+      }
+    ],
+    "next_activity": "additional diagnosis running"
   },
   "full_nominal": "SKIP",
   "installed_nominal": "SKIP",
@@ -149,5 +244,19 @@
     "The pilot local observer is an accepted qualification exception; lot 2b independent interface proof remains open.",
     "The four Windows controls qualify the validator boundary, not the full STANDARD native workflow."
   ],
-  "report_checkpoint_at": "2026-11-22T20:20:03.048Z"
+  "report_checkpoint_at": "2026-11-22T20:37:27.848Z",
+  "preserved_diagnosis": {
+    "status": "PASS",
+    "choice": "request_diagnosis",
+    "operation_id": "op_657bdf33a9f22ef649b2467ac9bbe1a112ac4f03",
+    "question_sha256": "a6bf608ccd47ae16628f847a65859f865bbd7525c10211f05a681fe4a7889497",
+    "receipt_id": "receipt_657bdf33a9f22ef649b2467ac9bbe1a112ac4f03",
+    "accepted_results": 1,
+    "evaluation_operation_id": "op_7308a827d5abdc0f79fd98af09d2201c3c3310a0",
+    "answer_association": "explicit-continuation-of-diagnosis-local-interpretation",
+    "receipt_evidence_sha256": "dbc964437a15e61413e0ae91761dab8cd9e7b306332d8fb1a44f054b9f8d1236",
+    "manual_signature_steps": 0,
+    "repeated_human_questions": 0,
+    "independent_original_author_proof": false
+  }
 }
