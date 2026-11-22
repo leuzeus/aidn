@@ -1,0 +1,80 @@
+{
+  "candidate": "6b6437c4715a500124f3de7978bcbe4ca23efdf2",
+  "archive_sha256": "8b24ebdcf497f65aff765099c65b09b20802c3b9ec6162432f5f5fede4f09957",
+  "predecessor": "2fe9c20caffce69e7c888f4d04975e85ca20d2b8",
+  "correction_pr": "https://github.com/leuzeus/aidn/pull/205",
+  "model_revision": 429,
+  "backend": "Windows/FILES",
+  "package_installation": "PASS",
+  "source_installed_inventory": {
+    "models": 16,
+    "provider_bindings": 131,
+    "implementation_files": 689,
+    "implementation_sha256": "c0ce0fe09f8e8d0a8a86e7ab7ce4caa814fcb5a9bc51ed8a5a1f0fcf1f7b44a3"
+  },
+  "github_provider_identity": "PASS",
+  "native_hooks": {
+    "expected": 2,
+    "observed": 2,
+    "status": "PASS"
+  },
+  "cycle_validation": {
+    "host_material_check": "PASS",
+    "configuration_sha256": "84d326a8d51a860f1b2469e4f5ba77554c02dc0b3af38e846d6899d75dd99e51",
+    "process_plan_sha256": "98a928ccba8a75bd312ed57099d9e192dbd3db77af908e6f446bc52f1da235b5",
+    "case_limit_ms": 60000,
+    "cases": [
+      {
+        "id": "filesystem_access",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 11265,
+        "active_processes": 0,
+        "companion_active_processes": 0,
+        "sha256": "ced67198dfdc2311aa71c9b1b9661c07aff3643cd1d5ac6643d748fc560596cc"
+      },
+      {
+        "id": "timeout",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 8136,
+        "active_processes": 0,
+        "sha256": "6961ac889c3eca4f7291eceb213e5e0f9a0d010ef3d66efd8aba7fbb132ff326"
+      },
+      {
+        "id": "cancel",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 6098,
+        "active_processes": 0,
+        "sha256": "b3926849588afc9b0dab884f9b3347be22d6110295a818339b8ac6af71021503"
+      },
+      {
+        "id": "callback",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 5899,
+        "active_processes": 0,
+        "sha256": "952131cea3fc8c313bcef09cfdce265d22cffb750d61f8db5a87a4bfd9fa9369"
+      }
+    ],
+    "attestation_sha256": "94228cf124b80578164474a6c77effc998c69410f5434843b7e7081021a4a03b",
+    "signed_boundary": "WAITING_HUMAN_REVIEW",
+    "oracle": "PASS",
+    "assurance_profile": "codex-cooperative-access.v1",
+    "filesystem_evidence_method": "windows-access-check.v1",
+    "read_isolation": "not_guaranteed",
+    "network_isolation": "not_guaranteed"
+  },
+  "native_model_calls": 0,
+  "public_full_nominal": "SKIP",
+  "windows_installed_nominal": "SKIP",
+  "p0_go": false,
+  "complete_standard_workflow": false,
+  "prior_receipts_migrated": false,
+  "prior_business_intent_retained": [
+    "COMMITTING",
+    "request_diagnosis"
+  ],
+  "public_entry": {
+    "status": "NOT_STARTED",
+    "reason": "Validator qualification review pending"
+  },
+  "limits": "The local chat observer does not establish independent proof of original author identity."
+}

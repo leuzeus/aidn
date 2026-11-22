@@ -249,7 +249,10 @@
       "finalization_effects": 0,
       "product_writes": 0,
       "classification": "Authored fresh cycle route unconditionally tries to finalize after the accepted diagnostic request. The authority refusal is correct.",
-      "candidate_preserved": true
+      "candidate_preserved": true,
+      "correction_pr": "https://github.com/leuzeus/aidn/pull/205",
+      "correction_status": "MERGED",
+      "successor_candidate": "6b6437c4715a500124f3de7978bcbe4ca23efdf2"
     }
   }
 }
