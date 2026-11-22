@@ -2,6 +2,14 @@ import { agenticProcessCapabilities } from "../../core/workflow/agentic-process-
 import { assertProcessOperationBinding } from "../../core/workflow/process-operation-contracts.mjs";
 import { freezeShadow, shadowHash } from "../../core/workflow/shadow-json.mjs";
 
+export function editorCompileOptions(catalog) {
+  if (!catalog) return undefined;
+  return { resolveReliability(binding) {
+    return catalog.operations.find(op => op.ref === binding.id + "@" + binding.revision &&
+      op.provenance.binding_sha256 === shadowHash(binding))?.reliability;
+  } };
+}
+
 function describeFields(schema, editable) {
   if (!schema || typeof schema !== "object") throw Error("WORKFLOW_PROPERTY_SCHEMA_MISSING");
   return Object.entries(schema.properties ?? {}).map(([name, field]) => ({
@@ -11,7 +19,7 @@ function describeFields(schema, editable) {
 }
 
 export function createWorkflowPropertyCatalog({ operations, roles = [], policies = [], evaluations = [],
-  roleProfiles = [], facts = [], readSchema }) {
+  roleProfiles = [], facts = [], readSchema, reliabilityFor = () => ({}) }) {
   const byRef = new Map();
   const factKeys = new Set(facts);
   for (const binding of operations) {
@@ -23,7 +31,9 @@ export function createWorkflowPropertyCatalog({ operations, roles = [], policies
     }
     const output = readSchema(binding.output_contract);
     for (const key of Object.keys(output?.properties?.facts?.properties ?? {})) factKeys.add(key);
+    const capabilities = reliabilityFor(binding);
     byRef.set(ref, { ref, binding: structuredClone(binding), inputs: describeFields(readSchema(binding.input_contract), true),
+      reliability: { idempotent: capabilities?.idempotent === true, wait_deadline: capabilities?.wait_deadline === true },
       outputs: describeFields(output, false), provenance: { editable: false, implementation_sha256: binding.implementation_sha256,
         binding_sha256: shadowHash(binding), executor_kind: binding.executor_kind, effect_class: binding.effect_class } });
   }

@@ -297,6 +297,7 @@
           "specification": {
             "type": "object"
           },
+          "reliability": { "type": "object" },
           "binding_ref": {
             "type": "string",
             "pattern": "^[a-z][a-z0-9_-]{0,63}$"

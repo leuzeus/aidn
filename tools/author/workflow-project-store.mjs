@@ -62,8 +62,8 @@ async function exclusive(dir, action) {
   finally { await new Promise(resolve => lock.close(resolve)); }
 }
 
-export async function commitEditorProject(dir, expected, next, singleFile) {
-  compileBpmnProject(next);
+export async function commitEditorProject(dir, expected, next, singleFile, compileOptions) {
+  compileBpmnProject(next, compileOptions);
   await exclusive(dir, async () => {
     const check = async () => {
       if (projectHash(await readEditorProject(dir)) !== expected) refuse("BPMN_PROJECT_FILE_CONFLICT", 409);
@@ -90,9 +90,9 @@ export async function editorWorkspace(root, key) {
   if (!safeName(key)) refuse("BPMN_PROJECT_FILENAME_INVALID");
   return plainDirectory(path.join(root, ".aidn-workflows", key));
 }
-export async function createEditorWorkspace(root, key, project) {
+export async function createEditorWorkspace(root, key, project, compileOptions) {
   if (!safeName(key)) refuse("BPMN_PROJECT_FILENAME_INVALID");
-  const { model } = compileBpmnProject(project);
+  const { model } = compileBpmnProject(project, compileOptions);
   if (model.model_id !== key) refuse("BPMN_PROJECT_FILENAME_INVALID");
   const home = await plainDirectory(path.join(root, ".aidn-workflows"), true);
   await exclusive(home, async () => {

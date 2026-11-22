@@ -12,6 +12,7 @@ import { assertAgenticProcessModel } from "../../../src/core/workflow/agentic-pr
 import { shadowHash } from "../../../src/core/workflow/shadow-json.mjs";
 import { projectDiagramName } from "../../../src/core/workflow/bpmn-project-diagram.mjs";
 
+import { editorCompileOptions } from "../../../src/application/workflow/workflow-property-catalog.mjs";
 import { createWorkflowProject, duplicateWorkflowProject, updateWorkflowProject } from "../../../src/application/workflow/workflow-project-edit.mjs";
 import { readEditorProject, readLocalFile, projectHash, refuse, commitEditorProject, editorWorkspace, createEditorWorkspace } from "../workflow-project-store.mjs";
 
@@ -39,7 +40,8 @@ export async function serveBpmnEditor(directory, port = 0, baseline, { catalog }
   const dir = await fs.realpath(path.resolve(directory));
   await fs.access(files.get("/modeler.js"));
   const project = await readEditorProject(dir);
-  compileBpmnProject(project);
+  const compileOptions = editorCompileOptions(catalog);
+  compileBpmnProject(project, compileOptions);
   const standard = Object.hasOwn(project.manifest, "catalog_sha256");
   const assets = standard ? loadStandardWorkflowAssets() : null;
   if (standard && (baseline || project.manifest.catalog_sha256 !== assets.source.catalog_sha256)) refuse("BPMN_PROJECT_CATALOG_CHANGED");
@@ -50,10 +52,9 @@ export async function serveBpmnEditor(directory, port = 0, baseline, { catalog }
       refuse("BPMN_PROJECT_BASELINE_INVALID");
   }
   const baselineHash = standard ? assets.source.model_sha256 : shadowHash(baseline);
-  function compare(current) {
+  function compare(current, compiled) {
     if (standard) return compareStandardBpmnProject(current, assets);
     if (Object.hasOwn(current.manifest, "catalog_sha256")) refuse("BPMN_PROJECT_CATALOG_CHANGED");
-    const compiled = compileBpmnProject(current);
     return { ...compareBpmnModels(baseline, compiled.model), baseline_sha256: baselineHash, candidate_sha256: compiled.model_sha256 };
   }
   const properties = () => catalog ??= standardPropertyCatalog(assets ?? loadStandardWorkflowAssets());
@@ -78,7 +79,7 @@ export async function serveBpmnEditor(directory, port = 0, baseline, { catalog }
       const isStandard = !workspace && standard;
       const current = await readEditorProject(location), digest = projectHash(current);
       if (req.method === "GET" && pathname === "/api/project") {
-        const compiled = compileBpmnProject(current);
+        const compiled = compileBpmnProject(current, compileOptions);
         return json(200, { standard: isStandard, models: current.manifest.models.map(row => ({ file: projectDiagramName(row), id: row.model_id, revision: row.revision })),
           manifest: current.manifest, model: compiled.model, diagrams: current.diagrams, project_sha256: digest,
           hashes: Object.fromEntries(Object.entries(current.diagrams).map(([file, xml]) => [file, hash(xml)])) });
@@ -93,8 +94,8 @@ export async function serveBpmnEditor(directory, port = 0, baseline, { catalog }
       if (body.project && (body.base_project_sha256 !== digest || candidate.manifest?.models?.[0]?.model_id !== current.manifest.models[0].model_id ||
         candidate.manifest.catalog_sha256 !== current.manifest.catalog_sha256)) refuse("BPMN_REQUEST_INVALID", 400);
       if (pathname === "/api/create" || pathname === "/api/duplicate") {
-        const fresh = pathname === "/api/create" ? createWorkflowProject({ id: body.id }) : duplicateWorkflowProject(candidate, body.id);
-        await createEditorWorkspace(dir, body.id, fresh);
+        const fresh = pathname === "/api/create" ? createWorkflowProject({ id: body.id }) : duplicateWorkflowProject(candidate, body.id, catalog);
+        await createEditorWorkspace(dir, body.id, fresh, compileOptions);
         return json(201, { project: body.id });
       }
       if (body.file !== undefined) {
@@ -106,16 +107,16 @@ export async function serveBpmnEditor(directory, port = 0, baseline, { catalog }
       if (pathname === "/api/edit") {
         if (body.base_project_sha256 !== digest || !body.edit) refuse("BPMN_REQUEST_INVALID", 400);
         const project = updateWorkflowProject(candidate, body.edit, properties());
-        return json(200, { ...project, model: compileBpmnProject(project).model });
+        return json(200, { ...project, model: compileBpmnProject(project, compileOptions).model });
       }
       if (!body.file && !body.project) refuse("BPMN_REQUEST_INVALID", 400);
+      const compiled = compileBpmnProject(candidate, compileOptions);
       let comparison;
       if (workspace) {
         const original = JSON.parse(await readLocalFile(location, ".aidn-baseline.json", 4 * xmlLimit));
-        const compiled = compileBpmnProject(candidate);
         comparison = { ...compareBpmnModels(original, compiled.model), baseline_sha256: shadowHash(original), candidate_sha256: compiled.model_sha256 };
-      } else comparison = compare(candidate);
-      if (pathname === "/api/save") await commitEditorProject(location, digest, candidate, body.project ? null : body.file);
+      } else comparison = compare(candidate, compiled);
+      if (pathname === "/api/save") await commitEditorProject(location, digest, candidate, body.project ? null : body.file, compileOptions);
       return json(200, { ...comparison, project_sha256: projectHash(candidate), ...(body.file ? { file_sha256: hash(body.xml) } : {}) });
     } catch (error) {
       return json(error.status ?? 422, { error: error.code ?? "BPMN_PROJECT_INVALID", model_id: error.model_id, element_id: error.element_id });

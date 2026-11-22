@@ -4,8 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import { loadStandardWorkflowAssets } from "../../src/application/runtime/standard-workflow-composition.mjs";
 import { exportStandardBpmnProject } from "../../src/application/workflow/standard-bpmn-project.mjs";
-import { createWorkflowProject, duplicateWorkflowProject } from "../../src/application/workflow/workflow-project-edit.mjs";
+import { createWorkflowProject, duplicateWorkflowProject, updateWorkflowProject } from "../../src/application/workflow/workflow-project-edit.mjs";
 import roles from "../../package/catalogs/standard-role-profile.v1.json" with { type: "json" };
+import { buildWorkflowProject } from "../../src/application/workflow/workflow-builder.mjs";
+import { createWorkflowPropertyCatalog, editorCompileOptions } from "../../src/application/workflow/workflow-property-catalog.mjs";
+import { exportBpmnProject } from "../../src/core/workflow/bpmn-project-export.mjs";
+import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { projectDiagramName } from "../../src/core/workflow/bpmn-project-diagram.mjs";
 import { exportPortableWorkflowProject, importPortableWorkflowProject } from "../author/portable-workflow-project.mjs";
 
@@ -18,6 +22,33 @@ project.diagrams[file] = moved;
 const catalogs = [{ id: assets.catalog.component_id, revision: assets.catalog.revision, document: assets.catalog }];
 const scratch = await fs.mkdtemp(path.join(os.tmpdir(), "aidn-workflow-transfer-"));
 try {
+  const { binding } = assets.catalog.bindings.find(row => row.binding.id === "context_reload");
+  const reliability = { contract_version: "operation-reliability.v1", max_retries: 1 };
+  const customBinding = { ...binding, id: "inspect_intake" };
+  const hostCatalog = createWorkflowPropertyCatalog({ operations: [customBinding],
+    readSchema: () => ({ properties: {} }), reliabilityFor: () => ({ idempotent: true }) });
+  const step = { id: "inspect", kind: "operation", operation_ref: "inspect_intake@1", reliability };
+  const authorProject = buildWorkflowProject({ id: "intake", steps: [step] }, hostCatalog);
+  const editorProject = updateWorkflowProject(createWorkflowProject({ id: "intake" }), step, hostCatalog);
+  assert.deepEqual(authorProject, editorProject);
+  const options = editorCompileOptions(hostCatalog), hostDir = path.join(scratch, "host-project");
+  await exportPortableWorkflowProject(hostDir, authorProject, {}, options);
+  await assert.rejects(importPortableWorkflowProject(hostDir), { code: "PROCESS_OPERATION_RETRY_UNSUPPORTED" });
+  assert.deepEqual((await importPortableWorkflowProject(hostDir, options)).project, authorProject);
+  console.log("PASS JS, editor and transfer honor the same host-installed capability and reject its absence");
+
+  const reliable = { contract_version: "agentic-process-model.v2", model_id: "portable-observer", revision: 1,
+    participants: [{ id: "team" }], roles: [], policies: [], entry: "observe",
+    nodes: [{ id: "observe", kind: "operation", participant_ref: "team", binding_ref: binding.id, reliability }],
+    operation_pins: { [binding.id]: shadowHash(binding) } };
+  const reliableProject = exportBpmnProject(reliable, { [projectDiagramName(reliable)]: [binding] });
+  const reliableDir = path.join(scratch, "reliable");
+  await exportPortableWorkflowProject(reliableDir, reliableProject);
+  const reliableCopy = await importPortableWorkflowProject(reliableDir);
+  assert.deepEqual(reliableCopy.compilation.model, reliable);
+  assert.ok(reliableCopy.schemas[reliability.contract_version]);
+  console.log("PASS portable retry policy preserves the binding pin, policy and schema");
+
   const custom = structuredClone(createWorkflowProject({ id: "role-transfer" }));
   custom.manifest.models[0].role_profile = { ...roles, id: "business-roles" };
   const customDir = path.join(scratch, "roles");

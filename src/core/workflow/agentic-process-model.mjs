@@ -1,4 +1,5 @@
 import { checkShadowJson, freezeShadow, shadowHash } from "./shadow-json.mjs";
+import { assertOperationReliability } from "./operation-reliability.mjs";
 import { canAgentRolePerform, normalizeAgentRole, normalizeAgentAction } from "../agents/agent-role-model.mjs";
 import { isKnownAgentMode } from "../agents/agent-transition-policy.mjs";
 import schema from "../contracts/workflow-definition/agentic-process-model.v1.schema.json" with { type: "json" };
@@ -67,7 +68,8 @@ function assertLocalModel(model, { executable = true, policyPins = null } = {}) 
       if (!exactKeys(node, [...base, "specification"]) || !node.specification || typeof node.specification !== "object") fail("PROCESS_DESCRIPTION_INVALID");
       if (executable) fail("PROCESS_CONSTRUCT_UNSUPPORTED");
     } else if (node.kind === "operation") {
-      if (!exactKeys(node, [...base, "binding_ref"]) || !processId(node.binding_ref)) fail("PROCESS_OPERATION_NODE_INVALID");
+      if (!exactKeys(node, [...base, "binding_ref"], ["reliability"]) || !processId(node.binding_ref)) fail("PROCESS_OPERATION_NODE_INVALID");
+      if (Object.hasOwn(node, "reliability")) assertOperationReliability(node.reliability);
     } else if (node.kind === "activity") {
       if (!exactKeys(node, [...base, "role_ref", "policy_ref"]) || !roles.has(node.role_ref) || !policies.has(node.policy_ref)) fail("PROCESS_ACTIVITY_INVALID");
       const role = roles.get(node.role_ref), policy = policies.get(node.policy_ref);

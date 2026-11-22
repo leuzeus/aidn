@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { installedStandardOperationReliability } from "../../../src/application/workflow/installed-operation-reliability.mjs";
 import { createWorkflowPropertyCatalog } from "../../../src/application/workflow/workflow-property-catalog.mjs";
 import { processModels } from "../../../src/core/workflow/process-call-model.mjs";
 import evaluations from "../../../package/catalogs/workflow-evaluations.v1.json" with { type: "json" };
@@ -13,7 +14,7 @@ export function standardPropertyCatalog(assets) {
   }
   const definitions = assets.catalog.bindings.map(row => row.binding);
   return createWorkflowPropertyCatalog({ operations: definitions, roles: assets.model.roles,
-    policies: assets.model.policies, roleProfiles: [standardProfile], evaluations, readSchema,
+    policies: assets.model.policies, roleProfiles: [standardProfile], evaluations, readSchema, reliabilityFor: installedStandardOperationReliability,
     facts: processModels(assets.model).flatMap(model => model.nodes.flatMap(node =>
       (node.branches ?? []).map(branch => branch.condition).filter(Boolean))) });
 }

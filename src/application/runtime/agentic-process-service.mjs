@@ -1,5 +1,6 @@
 import { createAgenticProcess, inspectAgenticProcess, advanceAgenticProcess, assertProcessResult } from "../../core/workflow/agentic-process.mjs";
 import { processFrameModel, processFrameNode } from "../../core/workflow/process-call-model.mjs";
+import { assertOperationReliability, assertWaitDeadline, noOperationReliability } from "../../core/workflow/operation-reliability.mjs";
 import { resolveProcessCallData } from "../../core/workflow/process-call-data.mjs";
 import { processFail as fail, processId } from "../../core/workflow/agentic-process-model.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
@@ -178,6 +179,10 @@ export function createAgenticProcessService({ store, readAuthority, readBinding,
       const { intent } = await authorityObservation(operationAuthority, async invoke => {
         const observed = await invoke("prepare", { instance: previous.record, occurrence: frame, binding_ref: node.binding_ref });
         assertProcessOperationBinding(observed.binding);
+        if (node.reliability) {
+          assertOperationReliability(node.reliability, observed.reliability ?? noOperationReliability);
+          assertWaitDeadline(node.reliability, observed.wait_started_at_ms, now());
+        }
         assertProcessOperationIntent(observed.intent, { instance: previous.record, node, occurrenceId: frame.occurrence_id, model: processFrameModel(previous.record.model, frame) });
         if (observed.binding.id !== node.binding_ref || shadowHash(observed.binding) !== observed.intent.binding_sha256
           || !["read-only", "preview"].includes(observed.binding.effect_class) && observed.intent.authorization_sha256 === null) fail("PROCESS_OPERATION_INTENT_BINDING_CHANGED");

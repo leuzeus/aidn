@@ -45,6 +45,11 @@ function exportDiagram(model) {
       const meta = { name: key, "aidn:participant": node.participant_ref, "aidn:order": order };
       if (node.kind === "activity" || node.kind === "operation") {
         const operation = node.kind === "operation";
+        if (node.reliability) {
+          meta["aidn:reliability"] = node.reliability.contract_version;
+          if (Object.hasOwn(node.reliability, "max_retries")) meta["aidn:maxRetries"] = node.reliability.max_retries;
+          if (Object.hasOwn(node.reliability, "wait_timeout_ms")) meta["aidn:waitTimeoutMs"] = node.reliability.wait_timeout_ms;
+        }
         const binding = operation ? tag("aidn:operation", { bindingRef: node.binding_ref, sha256: model.operation_pins[node.binding_ref] })
           : tag("aidn:execution", { roleRef: node.role_ref, policyRef: node.policy_ref });
         return place(id, operation ? "serviceTask" : "task", meta, bpmn("extensionElements", {}, binding), column, row);
