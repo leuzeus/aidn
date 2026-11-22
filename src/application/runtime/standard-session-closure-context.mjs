@@ -21,14 +21,17 @@ export async function readStandardSessionClosureContext({ targetRoot, sessionId 
   const owned = artifacts.cycles().filter(row => analyzeStructuredArtifact(row.content).key_values.session_owner === sessionId);
   if (owned.length > 48) fail("STANDARD_SESSION_CLOSURE_CONTEXT_LIMIT");
   for (const row of owned) names.push(row.path);
-  const documents = [...new Set(names)].map(name => artifacts.read(name, { required: [selected.path, "CURRENT-STATE.md", "snapshots/context-snapshot.md"].includes(name) }))
-    .filter(row => row.sha256 !== null).map(row => ({ ref: "audit:" + row.path, sha256: row.sha256, metadata_sha256: artifacts.metadataHash(row.path) }));
+  function observeDocuments(paths, required = []) {
+    return artifacts.readMany(paths, { required, includeMetadata: true }).filter(row => row.sha256 !== null)
+      .map(row => ({ ref: "audit:" + row.path, sha256: row.sha256, metadata_sha256: row.metadata_sha256 }));
+  }
+  const documents = observeDocuments([...new Set(names)], [selected.path, "CURRENT-STATE.md", "snapshots/context-snapshot.md"]);
   if (documents.length > 64) fail("STANDARD_SESSION_CLOSURE_CONTEXT_LIMIT");
   const head = execFileSync("git", ["-C", artifacts.root, "-c", "core.hooksPath=NUL", "-c", "core.fsmonitor=false", "rev-parse", "HEAD"],
     { encoding: "utf8", windowsHide: true, stdio: "pipe", timeout: 10000, env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } }).trim();
   const after = await operations.admitSessionClose({ session_id: sessionId });
   if (after.outcome !== "completed" || after.observations.scope_sha256 !== before.observations.scope_sha256
-    || documents.some(row => { const name = row.ref.slice(6); return artifacts.read(name).sha256 !== row.sha256 || artifacts.metadataHash(name) !== row.metadata_sha256; }))
+    || shadowHash(observeDocuments(documents.map(row => row.ref.slice(6)))) !== shadowHash(documents))
     fail("STANDARD_SESSION_CLOSURE_CONTEXT_CHANGED");
   const body = { session_id: sessionId, session_path: selected.path, mode: admission.mode, branch: admission.branch, session_branch: metadata.session_branch, head,
     admission_allowed: true, scope_sha256: before.observations.scope_sha256, documents,

@@ -225,6 +225,9 @@ function createMissingReadOnlyArtifactStore(sqliteFile) {
     getArtifact() {
       return null;
     },
+    getArtifacts(paths) {
+      return paths.map(() => null);
+    },
     listArtifacts() {
       return [];
     },
@@ -450,6 +453,12 @@ export function createArtifactStore(options = {}) {
         return null;
       }
       return mapArtifactRow(getStmt.get(rel));
+    },
+    getArtifacts(artifactPaths) {
+      const paths = artifactPaths.map(value => String(value ?? "").replaceAll("\\", "/"));
+      const rows = db.prepare(`${buildArtifactSelectSql()} WHERE path IN (SELECT value FROM json_each(?))`).all(JSON.stringify(paths));
+      const byPath = new Map(rows.map(row => [row.path, row]));
+      return paths.map(name => mapArtifactRow(byPath.get(name)));
     },
     listArtifacts(limit = 50) {
       const safeLimit = Math.max(1, Number(limit || 50));

@@ -42,10 +42,11 @@ let observationSequence = 0;
 const observe = value => fs.appendFileSync(observationFile, JSON.stringify({ sequence: ++observationSequence,
   at: new Date().toISOString(), ...value }) + "\n");
 process.stderr.write(`PostgreSQL fixture evidence: ${observationDirectory}\n`);
-const selectedArguments=process.argv.slice(2);
-if(selectedArguments.length && (selectedArguments.length!==1 || !["--lifecycle-fences", "--reconciliation"].includes(selectedArguments[0])))throw new Error("POSTGRES_FIXTURE_OPTION_INVALID");
-const reconciliationOnly = selectedArguments[0] === "--reconciliation";
-const focused=selectedArguments.length===1, skipped=[];
+const selectedArguments = process.argv.slice(2);
+const selection = selectedArguments[0]?.slice(2) ?? "all";
+if (selectedArguments.length && (selectedArguments.length !== 1 || !["--lifecycle-fences", "--reconciliation", "--scheduler-integration"].includes(selectedArguments[0])))
+  throw new Error("POSTGRES_FIXTURE_OPTION_INVALID");
+const focused = selectedArguments.length === 1, skipped = [];
 const lifecycleChecks=new Set([
   "missing schema is unavailable without implicit DDL",
   "never-started reconciliation preserves its type, proof and absent result across reconnect",
@@ -66,6 +67,13 @@ const lifecycleChecks=new Set([
   "injected failure also stops and removes its private cluster",
 ]);
 let currentCheck = "preconditions";
+const selectedChecks = {
+  "lifecycle-fences": lifecycleChecks,
+  reconciliation: new Set(["two-process migration applies v3 through v6 once and preserves v2 data", "never-started reconciliation preserves its type, proof and absent result across reconnect"]),
+  "scheduler-integration": new Set(["two-process migration applies v3 through v6 once and preserves v2 data",
+    "real PostgreSQL and Git scheduler overlap two children and integrate dependent output",
+    "successful cluster and all child processes are removed"]),
+};
 const gitInspectionTimings=[];
 const timedGitInspector=inspect=>async(input,options)=>{
   const started=performance.now(), timing={phase:options.phase,outcome:"pending",elapsed_ms:null};
@@ -80,7 +88,7 @@ const id = prefix => `${prefix}.${++serial}`;
 const sha = text => createHash("sha256").update(text).digest("hex");
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const check = async (name, operation) => {
-  if(focused && (reconciliationOnly ? !["two-process migration applies v3 through v6 once and preserves v2 data", "never-started reconciliation preserves its type, proof and absent result across reconnect"].includes(name) : !lifecycleChecks.has(name))){skipped.push(name);return;}
+  if (focused && !selectedChecks[selection].has(name)) { skipped.push(name); return; }
   currentCheck = name;
   const started = performance.now(); observe({ kind: "check", boundary: "start", name });
   try { await operation(); }
@@ -1641,7 +1649,7 @@ async function runSuite({ connectionString, version, root }) {
       // verification here is an explicit double; real Ed25519 is tested above.
       const fixtureRun=createSchedulerFixture({realGit:true,verification:verificationPolicy});
       try {
-        const cleanupGit=createLocalAgentGitIntegration({repositoryRoot:path.join(fixtureRun.root,"repository"),resourcesRoot:path.join(fixtureRun.root,"resources"),
+        const cleanupGit=createLocalAgentGitIntegration({repositoryRoot:path.join(fixtureRun.root,"repository"),resourcesRoot:path.join(fixtureRun.root,"resources"),gitExecutable:fixtureRun.gitExecutable,
           integrationRef:"refs/heads/codex/integration-fixture",verifyTermination:async({binding,termination})=>({confirmed:termination?.confirmed===true,attempt_id:binding.attempt_id}),
           verifyCleanupTermination:async()=>({confirmed:fixtureRun.children.length===3 && fixtureRun.children.every(child=>child.ended!==null)})});
         const context=await seed({planInput:fixtureRun.plan,runIdOverride:fixtureRun.options.runId,options:{
@@ -1666,6 +1674,7 @@ async function runSuite({ connectionString, version, root }) {
           };
         }});
         observe({kind:"scheduler",boundary:"start",run_id:context.runId,limits:context.plan.limits,
+          git_executable: fixtureRun.gitExecutable === "git" ? "path" : "verified-git-for-windows",
           tasks:context.plan.tasks.map(({task_id,max_duration_ms,depends_on})=>({task_id,max_duration_ms,depends_on}))});
         const schedulerStarted=performance.now();
         const result=await fixtureRun.create({store:observedStore}).run(fixtureRun.options);
@@ -1776,9 +1785,10 @@ try {
     assert.ok(participantPid); assert.equal(children.size,0); assert.equal(fs.existsSync(injectedRoot),false);
   });
   process.stdout.write(JSON.stringify({ ok:true, backend:"ephemeral-postgres", version:result.version, checks:checks.length,
-    qualification:focused ? "partial" : "full",selection:reconciliationOnly ? "reconciliation" : focused ? "lifecycle-fences" : "all",skipped:skipped.length,
+    qualification:focused ? "partial" : "full",selection,skipped:skipped.length,
     cleanup:"PASS", codex_native:"SKIP", os_confinement:"SKIP", verifier_authority:"injected-supervisor-doubles",
-    validation_evidence:focused ? "injected-double-for-cleanup" : "real-ed25519-with-fixture-process-boundary" })+"\n");
+    validation_evidence:selection === "scheduler-integration" ? "injected-scheduler-verifier"
+      : focused ? "injected-double-for-cleanup" : "real-ed25519-with-fixture-process-boundary" })+"\n");
 } catch (error) {
   try { await drainChildren(); } catch { /* Retain unconfirmed children in diagnostics. */ }
   // The assertion's bounded message is useful, but driver/connection details
