@@ -7,6 +7,8 @@ import { execFileSync } from "node:child_process";
 import { fixturePhysicalStat } from "./fixture-physical-stat-lib.mjs";
 import { diagnosticFixtureWitness } from "./standard-terminal-diagnostic-fixture-lib.mjs";
 import { readStandardGitHead } from "../../src/application/runtime/standard-drift-git.mjs";
+import { createStandardWorkflowOperations } from "../../src/application/runtime/standard-workflow-operations.mjs";
+import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 export function verifyStandardGitHead() {
   const temporary = fs.realpathSync(os.tmpdir()), root = fs.mkdtempSync(path.join(temporary, "aidn-git-head-"));
@@ -58,7 +60,31 @@ export function verifyStandardGitHead() {
     git(["switch", "-c", "fixture-next"]); assert.equal(observed().branch, "fixture-next");
     for (const value of ["", "a".repeat(40), "a".repeat(40) + "\nrefs/tags/foreign\n", "a".repeat(40) + "\nHEAD\nextra\n"])
       assert.throws(() => readStandardGitHead(() => value), { code: "STANDARD_DRIFT_GIT_OBSERVATION_FAILED" });
-    return { checks: 17, exact_bigint_identity: true, fresh_per_invocation: true, unchanged_read_witnesses: true, native_started: false };
+    // Change only the current ref as the real FILES reader opens its canonical
+    // document. A HEAD sampled during activation would return the old commit.
+    prepareActivationFixture(root);
+    const currentState = path.join(root, "docs", "audit", "CURRENT-STATE.md");
+    fs.mkdirSync(path.dirname(currentState), { recursive: true });
+    fs.writeFileSync(currentState, "active_session: none\n");
+    const previous = git(["rev-parse", "HEAD"]).trim();
+    const next = git(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+      "commit-tree", "HEAD^{tree}", "-p", previous, "-m", "advance during canonical read"]).trim();
+    const operations = createStandardWorkflowOperations({ targetRoot: root });
+    const open = fs.openSync;
+    let changed = false;
+    try {
+      fs.openSync = (file, ...args) => {
+        if (!changed && file === currentState) {
+          changed = true;
+          git(["update-ref", "HEAD", next, previous]);
+        }
+        return open(file, ...args);
+      };
+      const scope = operations.observeScope();
+      assert.equal(changed, true);
+      assert.equal(scope.head, next);
+    } finally { fs.openSync = open; }
+    return { checks: 19, exact_bigint_identity: true, fresh_per_invocation: true, current_after_document_read: true, unchanged_read_witnesses: true, native_started: false };
   } finally {
     const resolved = fs.realpathSync(root);
     if (!resolved.startsWith(temporary + path.sep)) throw Error("FIXTURE_CLEANUP_SCOPE_INVALID");

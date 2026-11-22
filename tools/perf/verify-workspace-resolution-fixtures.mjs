@@ -3,6 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { deepStrictEqual } from "node:assert";
+import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
 import {
   getWorkspaceResolutionCacheStats,
   resetWorkspaceResolutionCache,
@@ -30,6 +32,14 @@ function runGit(targetRoot, args) {
     throw new Error(`git ${args.join(" ")} failed: ${String(result.stderr ?? result.stdout ?? "").trim()}`);
   }
   return String(result.stdout ?? "").trim();
+}
+
+function compareCheckoutReads(targetRoot) {
+  const options = { targetRoot, env: {}, locatorState: { exists: false } };
+  const batched = resolveWorkspaceContext(options);
+  const individual = resolveWorkspaceContext({ ...options, gitAdapter: createLocalGitAdapter() });
+  deepStrictEqual(batched, individual);
+  return batched;
 }
 
 function main() {
@@ -179,6 +189,20 @@ function main() {
     });
     assert(emptyRepoContext.is_git_repo === true, "expected empty git repo with no commits to be detected as git repo");
     assert(emptyRepoContext.head_commit === "unknown", "expected empty git repo head commit to stay unknown");
+    compareCheckoutReads(emptyRepoRoot);
+    compareCheckoutReads(mainRoot);
+    compareCheckoutReads(linkedRoot);
+    compareCheckoutReads(tempRoot);
+    const bareRoot = path.join(tempRoot, "bare.git");
+    runGit(mainRoot, ["clone", "--bare", mainRoot, bareRoot]);
+    compareCheckoutReads(bareRoot);
+    runGit(linkedRoot, ["switch", "--detach", "HEAD"]);
+    const detachedHead = compareCheckoutReads(linkedRoot).head_commit;
+    runGit(linkedRoot, ["commit", "--allow-empty", "-m", "new detached tip"]);
+    const advanced = resolveWorkspaceContext({ targetRoot: linkedRoot, env: {} });
+    assert(advanced.head_commit !== detachedHead && advanced.head_commit === runGit(linkedRoot, ["rev-parse", "HEAD"]),
+      "expected linked checkout to observe an advancing detached HEAD");
+    assert(advanced.worktree_id === linkedContext.worktree_id, "expected a detached worktree to retain its identity");
 
     const monorepoRoot = path.join(tempRoot, "monorepo");
     const appAlphaRoot = path.join(monorepoRoot, "apps", "alpha");
@@ -226,6 +250,7 @@ function main() {
     assert(canonicalizePath(appBetaContext.project_root) === canonicalizePath(appBetaRoot), "expected nested project beta root to stay scoped to the app root");
     assert(canonicalizePath(appAlphaContext.repo_root) === canonicalizePath(monorepoRoot), "expected nested project alpha repo root to resolve to the monorepo root");
     assert(canonicalizePath(appBetaContext.repo_root) === canonicalizePath(monorepoRoot), "expected nested project beta repo root to resolve to the monorepo root");
+    compareCheckoutReads(appAlphaRoot);
     assert(canonicalizePath(appAlphaContext.git_common_dir) === canonicalizePath(appBetaContext.git_common_dir), "expected nested projects in one repo to share the same git common dir");
     const cacheStats = getWorkspaceResolutionCacheStats();
     assert(Number(cacheStats.hits ?? 0) >= 2, "expected workspace resolution cache hit diagnostics");
