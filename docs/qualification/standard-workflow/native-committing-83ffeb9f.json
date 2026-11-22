@@ -1,0 +1,244 @@
+{
+  "candidate": "83ffeb9fdc8fec015a58abf58de1374ed0161ae3",
+  "archive_sha256": "0530e0f01cd5df46fca38b71142e9a13e5c5905a4cd52efdb7dc8a88b1ee76b4",
+  "model_revision": 422,
+  "backend": "FILES",
+  "phase": "Session mode requested",
+  "transitions": [
+    {
+      "action": "prepare_host",
+      "action_sha256": "f8da302456b5fcba55066910bad1edfe225ffca455d61bbf42d48d84855f0896",
+      "process_status": null,
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
+    },
+    {
+      "action": "initialize",
+      "action_sha256": "37c4769df9b43f301909264f19092cdc552630f81078734afe6b247bd7edf30c",
+      "process_status": "RUNNING",
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
+    },
+    {
+      "action": "operation",
+      "binding": "context_reload",
+      "action_sha256": "e925492d1ef086a25fcfce828ab4854acd22bc22f214b6cf58dfe17517f5e3e3",
+      "process_status": "WAITING",
+      "operation_outcome": "completed",
+      "effect_status": "no_effect",
+      "receipt_sha256": "35f883f3d266dfe12f96e29d87a7ea49c51afc2abc96c6872d3074b6adef3ba6"
+    },
+    {
+      "action": "call",
+      "action_sha256": "a72b187242c71222e90e02ea35a89a99061115835fe46b950426f5b1862f1050",
+      "process_status": "RUNNING",
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
+    },
+    {
+      "action": "operation",
+      "binding": "session_entry_admit",
+      "action_sha256": "9b5c93d4707742bb603ef227c2fc9e0f307c7b088f35680fa2486dc2d63964be",
+      "process_status": "RUNNING",
+      "operation_outcome": "completed",
+      "effect_status": "no_effect",
+      "receipt_sha256": "36501e067806d8409c21831b184bc1de94cface17b676652caee6d2eac39b607"
+    },
+    {
+      "action": "operation",
+      "binding": "session_initialize",
+      "action_sha256": "19f8395c05a413bad5ac455b67ecd4579bd29e8d5983497f00293953eaf294fb",
+      "process_status": "RUNNING",
+      "operation_outcome": "completed",
+      "effect_status": "confirmed",
+      "receipt_sha256": "7b62f90a57c90421e3eba6c2dbcc8e0f58ea9aaa34ba6fad038fff8ffc340cb3"
+    },
+    {
+      "action": "operation",
+      "binding": "mode_decision",
+      "action_sha256": "274215feb0351bc7b3f319b65f9e114ac4a4c19d30b466c3fb88081ef6828556",
+      "process_status": "WAITING",
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
+    }
+  ],
+  "physical_observation": {
+    "session_document_sha256": "5f69182936aa136f545c01264001acdaba1f12dda58bfc51ea7bc559edfc073d",
+    "matches_session_id": true,
+    "observed_mode": "UNKNOWN",
+    "session_branch_active": true
+  },
+  "human_wait": {
+    "status": "WAITING",
+    "question_contract": "standard-mode-question.v1",
+    "question_sha256": "f7737f042f5a88093d18398cbfdd04d0756692d9020b3cc5127ac03b663653af",
+    "permitted_choices": [
+      "THINKING",
+      "EXPLORING",
+      "COMMITTING",
+      "refused",
+      "deferred",
+      "cancelled"
+    ],
+    "distinct_preview_processes": 2,
+    "action_sha256": "f1754b4c16ba9fa01e98a3979419d9577d2ab4e676168a736518f7f9b4ad2083",
+    "stable_across_processes": true
+  },
+  "terminal": {
+    "workflow_completed": false,
+    "native_model_turns_at_wait": 0,
+    "p0_go": false
+  },
+  "predecessor": {
+    "candidate": "69e43d9296d7ebf2616ec16d2170be4dad3c83b4",
+    "report": "native-committing-69e43d9.json",
+    "fix_pr": 198
+  },
+  "source_archive_comparison": {
+    "status": "PASS",
+    "archive_name": "aidn-workflow-0.20.0.tgz",
+    "installed_lock_sha256": "0af0944fc664cb0b2f647abfbaebbdbec61abc09774ab2ef721d31d73d91ff7f",
+    "windows": {
+      "platform": "win32",
+      "architecture": "x64",
+      "release": "10.0.26300",
+      "node": "v24.13.1",
+      "codex": {
+        "version": "codex-cli 0.171.0-alpha.13",
+        "sha256": "4069acdd8d101830f63ea5e2775883bfecf8a152ae87ee1b0ef9f14204f850f9"
+      },
+      "node_sha256": "e3be0545990c90995d7bf3a7af5d64af1f2e0fc1bbd9b79c27f7abc1e9676e50",
+      "git_sha256": "332883ea074abeabaa6b2ff4d744371da0fa00d259f7e49d3ab5c8fdfbe80920",
+      "gh_sha256": "e76a7ca5b2ce7e57d111668525a84a3ee5b7053eeab40a5c4d61408b941a9b4a",
+      "helper_source_sha256": "479fe351e23e94a9f56e59ebe79a2534249a64636df5ef62a862da78ab75a41c",
+      "helper_sha256": "03fd80f067c0e82983a89dc1fad3060287bd1e60e65e4e42809919c8982a36ad"
+    },
+    "storage": {
+      "mode": "files",
+      "persistence_backend": "sqlite"
+    },
+    "workflow": {
+      "package_version": "0.20.0",
+      "model_file_sha256": "06d63c95b062f3ae9fac30b1b7938788b91f07182cdf151b26526b7574889905",
+      "catalog_sha256": "beae56ea26ecbbf519a5e61636a99cafd584c515987f09e5915b85116327b7f0",
+      "descriptor_sha256": "6bb0223846917a0cd7a232e1c93ef427e0ee199a08a9eb1b92beec49e9791a64",
+      "complete_standard_workflow": false,
+      "models": [
+        {
+          "id": "aidn-standard",
+          "revision": 422,
+          "sha256": "06d63c95b062f3ae9fac30b1b7938788b91f07182cdf151b26526b7574889905"
+        },
+        {
+          "id": "aidn-standard-final-verification",
+          "revision": 231,
+          "sha256": "1617eb012189e284eab9c5bbb662a4b90ae2fcafb3da8fffbeb57f0b144ee302"
+        },
+        {
+          "id": "aidn-standard-pr-review-completion",
+          "revision": 222,
+          "sha256": "87af856d270b58079ccd4879adab6809babe5adb95c119d88b727a2bbb37f437"
+        },
+        {
+          "id": "aidn-standard-pr-pretriage-completion",
+          "revision": 204,
+          "sha256": "5164a513b64a37558784bb3795f84c3ed3f28e42b0cd0feb8e094f0a98ae5872"
+        },
+        {
+          "id": "aidn-standard-pr-review-capture",
+          "revision": 2,
+          "sha256": "b9b2d1b7338374f6a3286cd14b862999cea989d72091be3970bfdb8513261739"
+        },
+        {
+          "id": "aidn-standard-drift-recovery",
+          "revision": 194,
+          "sha256": "8338e6f6f48d2154b8946c3f846787304e6a9402ba36cd04a73cddf3dd55b123"
+        },
+        {
+          "id": "aidn-standard-corrective-drift",
+          "revision": 192,
+          "sha256": "bbf4c090defc8406c36150533c228782cbeb12e074fec46bba476abbe44ca8c3"
+        },
+        {
+          "id": "aidn-standard-session-setup",
+          "revision": 137,
+          "sha256": "b8fdae97cf09adedd9fa2c300a93c2298946bc4f23f4f6bb89711fb2cd436612"
+        },
+        {
+          "id": "aidn-standard-mode-handoff",
+          "revision": 49,
+          "sha256": "86844277d6b86c3e4ae19c4f25c0287dbbc2ed9ca676e98d1c5e5f421b04dd34"
+        },
+        {
+          "id": "aidn-standard-mode-session-closure",
+          "revision": 124,
+          "sha256": "8800bb547c137a779fa921cc54f71fcdcf5010b105f7dc3edc8d70d29db8f23e"
+        },
+        {
+          "id": "aidn-standard-owned-entry",
+          "revision": 94,
+          "sha256": "c76b6555fdf34f0e05b218ea26c1a9a3f5e61fd074176da5f98ed34dd4341b78"
+        },
+        {
+          "id": "aidn-standard-selected-entry",
+          "revision": 94,
+          "sha256": "1bd83b4f1f67b0e23a7f9b3b86f3a882d1afb1258e4e473df411cabd4547801d"
+        },
+        {
+          "id": "aidn-standard-cycle-preparation",
+          "revision": 94,
+          "sha256": "2772a08ab69a275025a0418467e79d82d2c31a84a8321bc52a5a9057ae67d43a"
+        },
+        {
+          "id": "aidn-standard-canonical-verification",
+          "revision": 94,
+          "sha256": "b951c358e494f2b01cf6df52d08783070fb34c90af11d8b64b983b97af2e2d96"
+        },
+        {
+          "id": "aidn-standard-fresh-cycle-entry",
+          "revision": 89,
+          "sha256": "0fbe776136aabba573755aad6fde580dca185dc5263fa8116bc8987d39966270"
+        },
+        {
+          "id": "aidn-standard-fresh-cycle-checkpoint",
+          "revision": 89,
+          "sha256": "cc961c3ba8301a793496a5a02bf9cc5687d335db5f775f764ed6e207f4c11125"
+        }
+      ],
+      "provider": {
+        "id": "aidn-standard",
+        "revision": 2,
+        "binding_count": 131,
+        "descriptors_sha256": "1d9d9af2613d6b9b3933cf97319af1e3bbb3dc160f2658470a176900cb70cb4a"
+      },
+      "implementation": {
+        "file_count": 687,
+        "sha256": "2cab75adb5101d55e8071bdd86ec7a86a2f30dc62a6ec165f42480624b10bd8c"
+      }
+    }
+  },
+  "capabilities": {
+    "public_key_enrolled": true,
+    "installed_client_verification": "PASS",
+    "production_provider_identity": "PASS",
+    "actual_hook_inventory": [
+      {
+        "event": "preToolUse",
+        "enabled": true,
+        "trust": "trusted",
+        "sha256": "sha256:4cddb9da39349a8f15cd114c1b1908beeb647c5a6b256b4d6a17daf08bb35d99"
+      },
+      {
+        "event": "sessionStart",
+        "enabled": true,
+        "trust": "trusted",
+        "sha256": "sha256:cd772cb97155774fd82966f03d7d377966f40b7165a143f9259ee314458c1afc"
+      }
+    ],
+    "native_validation_profile_configured": false
+  }
+}
