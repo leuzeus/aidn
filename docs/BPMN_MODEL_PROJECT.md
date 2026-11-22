@@ -88,7 +88,25 @@ If the condition field differs from the applied condition, **Recharger** asks
 for confirmation. Cancelling keeps the block, selected flow and typed text.
 Confirming reloads the saved diagram. Restoring the original text before
 reloading avoids the prompt when the diagram has no other unsaved edits.
-A changed file digest refuses a stale save.
+A changed project digest refuses a stale save, including changes to a sibling diagram.
+
+Open **Créer ou dupliquer un workflow** to reserve a new local workflow by ID.
+Each created workflow opens at a separate bookmarkable URL and has its own local
+reference model. Under **Éditer les étapes**, choose a parent sequence and enter
+a new step ID, or select an existing ID to edit its properties. Operation inputs
+accept literals, workflow parameters and scoped outputs. Selecting an evaluator
+requires a corresponding installed operation. A conditional split creates two
+sequences for its branches. Calls target a local model and validate its parameter
+mapping. **Appliquer à l’étape** previews the compiled result; **Enregistrer**
+commits the working project.
+
+New workflows live under `.aidn-workflows/<id>` in the opened directory.
+A coordinated save stages a complete manifest and diagrams under
+`.aidn-generations/<generation>`, then atomically switches `.aidn-generation`.
+The editor and portable project reader resolve that pointer before opening files.
+Earlier generations remain available on disk. A layout-only save in a flat
+project continues to update its diagram directly. All editor writers use the
+same project lock and compare the whole-project digest before publication.
 
 The editor serves the installed bpmn-js bundle, styles and font locally.
 With the npm packages cached, `npm ci --offline` also works. For a project
