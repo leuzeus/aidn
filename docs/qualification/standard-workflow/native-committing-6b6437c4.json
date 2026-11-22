@@ -72,7 +72,6 @@
       "tampered_attestation_refused": true
     }
   },
-  "native_model_calls": 0,
   "public_full_nominal": "SKIP",
   "windows_installed_nominal": "SKIP",
   "p0_go": false,
@@ -83,22 +82,42 @@
     "request_diagnosis"
   ],
   "public_entry": {
-    "status": "RUNNING",
+    "status": "WAITING_HUMAN",
     "mode": "COMMITTING",
     "mode_applied": true,
     "mode_receipt": "receipt_d868949013e3595155e1f77ae2c33ea7383640ca",
     "mode_result_count": 1,
     "new_mode_questions": 0,
     "manual_signature_steps": 0,
-    "cold_receipt_recovered": true
+    "cold_receipt_recovered": true,
+    "pending_question": {
+      "kind": "standard-drift-recovery-question.v2",
+      "operation_id": "op_e3c54d113cb4ca9fcc3abedc6a92ab05a38ad412",
+      "question_sha256": "bfbb10f5127cb1e6a0d2babae5171e9e73897a198ca7530d4b784087741a92e6",
+      "reason": "Alignment decision after the explicitly requested additional diagnosis"
+    }
   },
   "limits": "The local chat observer does not establish independent proof of original author identity.",
   "full_configuration_sha256": "82ddfc7b96182d4f756d3a929b809030438d4a20e66ac224ee881dbce439ae6b",
   "preserved_diagnosis": {
     "choice": "request_diagnosis",
-    "status": "PRESERVED_PENDING_CURRENT_SUBJECT",
+    "status": "ACCEPTED",
     "answer_association": "explicit-continuation-of-diagnosis-local-interpretation",
-    "new_diagnosis_questions": 0
+    "new_diagnosis_questions": 0,
+    "operation_id": "op_63a7ae815c546965283faaf8b219c39f2183eb3e",
+    "question_sha256": "08a1d3bb62b61b64ad359e94b37f5c85737a6729fc0d6d7ef1c99c6bfb67d454",
+    "receipt_id": "receipt_63a7ae815c546965283faaf8b219c39f2183eb3e",
+    "result_count": 1,
+    "cold_receipt_recovered": true,
+    "tampered_choice_refused": true,
+    "manual_signature_steps": 0,
+    "next_public_action": "native",
+    "next_generation": 3,
+    "additional_diagnosis": "PASS",
+    "fresh_evaluation": "op_033cae193b3ebc59980cf3c2bf8b561f44db3793",
+    "distinct_native_occurrences": true,
+    "intervening_cycle_finalizer_count": 0,
+    "second_human_decision": "WAITING"
   },
   "native_authorization": {
     "status": "ACCEPTED",
@@ -117,9 +136,13 @@
     "composed_reader": "PASS",
     "imports_only": true,
     "source_module_sha256": "85f83dcac509502615ed53b61364385024b69403f683b1f7dc08669437f08c4a",
-    "composed_module_sha256": "8ea091f4b44316b1eb4277e4b660f5f1d2f33fa09f266d4e0c8d99b4fde4e000",
+    "composed_module_sha256": "b0b7a84b0ff3fada8124a5f24e44165e9923d5660ea5cc0285251785743dcef3",
     "runtime_dependency_candidate": "6b6437c4715a500124f3de7978bcbe4ca23efdf2",
-    "installed_connector_qualification": "SKIP"
+    "installed_connector_qualification": "SKIP",
+    "composition": "Only the process-instance store reads with the frozen candidate kernel; connector authority, offer, Codex message and receipt verification retain their pinned connector code. Current workflow entry remains explicitly injected by the pilot.",
+    "first_composition_submit_failure": "TypeError: authority.verifyHumanEnvelope is not a function",
+    "first_composition_failed_before_valid_submission": true,
+    "first_composition_sha256": "8ea091f4b44316b1eb4277e4b660f5f1d2f33fa09f266d4e0c8d99b4fde4e000"
   },
   "last_observed_before_first_native": {
     "operations": 6,
@@ -143,5 +166,167 @@
         "sha256": "9c83e681eeb61f70ffc13a33c6b12b72cf189cae94401d4157bbe6117e6f1305"
       }
     ]
+  },
+  "preparation_repairs": [
+    {
+      "error": "STANDARD_CYCLE_BRANCH_EXISTS",
+      "classification": "pilot-preparation-defect",
+      "first_preview_sha256": "d67574f2cdbe95f3d4c0864d06681076c7846c50fb0ac970ada7e228802d2fcc",
+      "observed_before_cycle_creation": true,
+      "old_candidate_branch_inherited": true,
+      "remote_branch_existed": false,
+      "current_head_unchanged": true,
+      "old_history_preserved": true,
+      "action": "Retain the inactive inherited branch under a distinct local name and prune obsolete remote references.",
+      "product_change": false
+    }
+  ],
+  "native_runs": [
+    {
+      "generation": 1,
+      "status": "RUNNING",
+      "first_failure": null,
+      "journal_phase": "closed",
+      "trace_sha256": "16e67881bcacbaf0f441c9e02aaa573e33a05337b5590aee0424e1df9364b247",
+      "journal_sha256": "a9d3ee6a6403606899faa78e1cd8595520b5346c253804eed63104cb1fb8be0b",
+      "exit_code": 0,
+      "process_closure": "confirmed",
+      "active_processes": 0,
+      "elapsed_global_ms": 141117,
+      "client_reported_usage": [
+        {
+          "totalTokens": 28527,
+          "inputTokens": 27447,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 1080,
+          "reasoningOutputTokens": 24
+        }
+      ]
+    },
+    {
+      "generation": 2,
+      "status": "RUNNING",
+      "first_failure": null,
+      "journal_phase": "closed",
+      "trace_sha256": "1886bdbdf19be69cf6014fcf58a0056b4890ed03c0962d5656becf38a7904266",
+      "journal_sha256": "5859e805f9a224da907688e120fcdd630a53b7af7db114d7fafda849686226fa",
+      "exit_code": 0,
+      "process_closure": "confirmed",
+      "active_processes": 0,
+      "elapsed_global_ms": 736591,
+      "client_reported_usage": [
+        {
+          "totalTokens": 31491,
+          "inputTokens": 29994,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 1497,
+          "reasoningOutputTokens": 20
+        }
+      ]
+    },
+    {
+      "generation": 3,
+      "status": "RUNNING",
+      "first_failure": null,
+      "journal_phase": "closed",
+      "trace_sha256": "af87fbc1772d817e8359ee98d9557c44bbc608c0b6b5b1ecff935f81cd62ee80",
+      "journal_sha256": "3e72d874757e1b5336b6b129e0e4ab25873ce62c4c67a91f58c0bcdd044b3214",
+      "exit_code": 0,
+      "process_closure": "confirmed",
+      "active_processes": 0,
+      "elapsed_global_ms": 1175206,
+      "client_reported_usage": [
+        {
+          "totalTokens": 31467,
+          "inputTokens": 29993,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 1474,
+          "reasoningOutputTokens": 0
+        }
+      ]
+    }
+  ],
+  "native_responses_observed": 3,
+  "native_consumption": [
+    {
+      "generation": 1,
+      "phase": "closed",
+      "tree_closed": true,
+      "responses": 1,
+      "storage_debit_bytes": 1869159,
+      "native_usage_sha256": "a9e16c5871b2603b4ea7de2593eee919491a6a2f51342905c8443f7b2922e15f"
+    },
+    {
+      "generation": 2,
+      "phase": "closed",
+      "tree_closed": true,
+      "responses": 1,
+      "storage_debit_bytes": 2354111,
+      "native_usage_sha256": "75043c1bba7518c7f2ea38166cfa7dccde0ac5157207ad29d2a8027e6a9cdeed"
+    },
+    {
+      "generation": 3,
+      "phase": "closed",
+      "tree_closed": true,
+      "responses": 1,
+      "storage_debit_bytes": 2296515,
+      "native_usage_sha256": "ee32e038f1c05e393403ea1caeb91f91fd9a75bf09bfa926e6958e01fe7856ed"
+    }
+  ],
+  "native_totals": {
+    "responses": 3,
+    "storage_debit_bytes": 6519785,
+    "deadline": "2026-11-22T19:36:17.016Z"
+  },
+  "progress": {
+    "operations": 22,
+    "decisions": [
+      {
+        "binding": "mode_decision",
+        "operation_id": "op_d868949013e3595155e1f77ae2c33ea7383640ca",
+        "receipt_id": "receipt_d868949013e3595155e1f77ae2c33ea7383640ca",
+        "record_sha256": "c5bf1b9c6f07882ed09a99bcc05eb83fc254ad5c7600b06816709d9443ec5111",
+        "result_count": 1,
+        "manual_signature_steps": 0
+      },
+      {
+        "binding": "drift_recovery_decision",
+        "operation_id": "op_63a7ae815c546965283faaf8b219c39f2183eb3e",
+        "receipt_id": "receipt_63a7ae815c546965283faaf8b219c39f2183eb3e",
+        "record_sha256": "c499f2de653d4c788c6565068ba18f578ca77fc3abc9a5aae1d08892dd314ec0",
+        "result_count": 1,
+        "manual_signature_steps": 0
+      }
+    ],
+    "physical_artifacts": [
+      {
+        "kind": "session",
+        "sha256": "e0b0d1e58c9448b4d8377fb7480a7ba0c73e293dfe88081b2c305ef939de00a9"
+      },
+      {
+        "kind": "current_state",
+        "sha256": "af35937a56e2935844c0545c1eb74d9690049aaf4012afef8dc773d60e88a004"
+      },
+      {
+        "kind": "cycle_status",
+        "sha256": "9ba77ef77ef52ac3cb271c729ed58d0a9d4df0f8260a852177ebf97238e234ab"
+      }
+    ],
+    "physical_git": {
+      "head": "f03479103c2f1b055abf10b53fc5eca0a9519945",
+      "product": [
+        {
+          "file": "interval.mjs",
+          "sha256": "81beb0d272d1db36213fc707861b53108a0cbb1a2446b9d455898d44006d8865"
+        },
+        {
+          "file": "interval.test.mjs",
+          "sha256": "70d900458b5b7a6306428a95ffa50a7a397154e9f4bc0e4fa5bdd9168a4eef9f"
+        }
+      ]
+    }
   }
 }
