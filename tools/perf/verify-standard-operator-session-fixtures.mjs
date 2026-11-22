@@ -5,6 +5,7 @@ import { generateKeyPairSync, sign, verify } from "node:crypto";
 import { createStandardConsoleFixture } from "./verify-standard-console-entry-fixtures.mjs";
 import { createStandardOperatorSession } from "../../src/adapters/workflow-console/standard-operator-session.mjs";
 import { createCodexDecisionChannel } from "../../src/adapters/workflow-console/codex-decision-channel.mjs";
+import { bindOperatorChat, readCodexMessageReference } from "../../src/adapters/workflow-console/codex-message-recovery.mjs";
 import { operatorOffer, assertOperatorClaim } from "../../src/adapters/workflow-console/standard-operator-offer.mjs";
 import { runStandardWorkflowEntry } from "../../src/application/runtime/standard-workflow-entry.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
@@ -14,12 +15,12 @@ const { target, config, configuration: request, dirs } = fixture;
 const environment = { ...process.env, AIDN_STANDARD_HOST_HOME: dirs.authority };
 const run = options => runStandardWorkflowEntry({ request, environment, ...options });
 const session = dependencies => createStandardOperatorSession({ targetRoot: target, configuration: config, environment }, dependencies);
-async function walkToQuestion() {
+async function walkToQuestion(runEntry) {
   for (let step = 0; step < 20; step++) {
-    const planned = await run({});
+    const planned = await runEntry({});
     if (planned.preview.payload.question) return planned.preview.payload.question;
     assert(["prepare_host", "initialize", "operation", "dispatch", "call"].includes(planned.preview.kind));
-    assert((await run({ preparedAction: planned.preview, execute: true, expectPlan: planned.action_sha256 })).written);
+    assert((await runEntry({ preparedAction: planned.preview, execute: true, expectPlan: planned.action_sha256 })).written);
   }
   assert.fail("fixture did not reach a human question");
 }
@@ -39,7 +40,7 @@ try {
     } });
   const pub = channel.describe().public_key;
   enroll([other, { authority_id: "fixture_codex", kinds: ["human"], public_key: pub }]); // Disposable fixture enrollment.
-  const q = await walkToQuestion();
+  const q = await walkToQuestion(run);
   assert.equal(q.contract_version, "standard-mode-question.v1");
   const offer = (await session().question()).offer;
   assert.equal(offer.question_sha256, shadowHash(q));
@@ -72,4 +73,58 @@ try {
     cold_resume: true, changed_merge_head_refused: true, genuine_codex_user: "SKIP" }));
 } finally {
   for (const dir of [fixture.base, ...fixture.owned]) fs.rmSync(dir, { recursive: true, force: true });
+}
+
+const historical = createStandardConsoleFixture();
+try {
+  const env = { ...process.env, AIDN_STANDARD_HOST_HOME: historical.dirs.authority };
+  const threadId = "10000000-0000-4000-8000-000000000001", turnId = "20000000-0000-4000-8000-000000000002";
+  const messageId = "30000000-0000-4000-8000-000000000003";
+  const chat = bindOperatorChat(threadId, "fixture_operator"), keys = generateKeyPairSync("ed25519");
+  const foreign = generateKeyPairSync("ed25519");
+  const principals = [[chat.authority_id, keys], ["fixture_other", foreign]].map(([authority_id, key]) =>
+    ({ authority_id, kinds: ["human"], public_key: key.publicKey.export({ format: "pem", type: "spki" }) }));
+  fs.writeFileSync(path.join(historical.dirs.authority, "principals.json"), JSON.stringify({ contract_version: "standard-host-principals.v1", principals }));
+  const open = () => createStandardOperatorSession({ targetRoot: historical.target, configuration: historical.config, environment: env, operatorChat: chat });
+  const q = await walkToQuestion(options => runStandardWorkflowEntry({ request: historical.configuration, environment: env, ...options }));
+  const row = { turnId, item: { id: messageId, type: "userMessage", content: [{ type: "text", text: "COMMITTING\n" }] } };
+  const ref = await readCodexMessageReference(async params => {
+    assert.equal(params.threadId, threadId); assert.equal(params.turnId, turnId); assert.equal(params.limit, 1);
+    if (params.sortDirection === "asc") { assert.equal(params.cursor.itemId, messageId); return { data: [] }; }
+    assert.equal(params.cursor, undefined); return { data: [row] };
+  }, { threadId, turnId, messageId });
+  const selector = { ...ref, operation_id: q.operation_id, question_sha256: shadowHash(q) };
+  const recover = value => open().recoverMessage(value);
+  const awaited = await recover(selector);
+  assert.equal(awaited.status, "awaiting_attestation");
+  await assert.rejects(recover({ ...selector, choice: "COMMITTING" }), /CODEX_MESSAGE_SELECTOR_INVALID/);
+  await assert.rejects(recover({ ...selector, question_sha256: "f".repeat(64) }), /OPERATOR_QUESTION_CHANGED/);
+  const inbox = path.join(historical.dirs.authority, "inbox"), file = path.join(inbox, awaited.source_ref + ".json");
+  assert(!fs.existsSync(file)); assert(!fs.existsSync(path.join(inbox, awaited.source_ref + ".pending")));
+  fs.mkdirSync(inbox, { recursive: true });
+  function publish(authority_id, key) {
+    const payload = { contract_version: "human-mode-decision.v1", source_kind: "human", authority_id,
+      source_event_id: awaited.source_ref, subject_sha256: shadowHash(q), question_sha256: shadowHash(q),
+      choice: "COMMITTING", evidence_refs: [awaited.evidence] };
+    const now = Date.now(), body = { contract_version: "standard-host-source.v1", kind: "human", authority_id, source_ref: awaited.source_ref,
+      subject_sha256: shadowHash(q), payload, issued_at_ms: now, expires_at_ms: now + 60000 };
+    fs.writeFileSync(file, JSON.stringify({ ...body, signature: sign(null, Buffer.from(shadowHash(body)), key.privateKey).toString("base64") }));
+  }
+  publish("fixture_other", foreign);
+  await assert.rejects(recover(selector), /CODEX_MESSAGE_AUTHOR_CHANGED/);
+  publish(chat.authority_id, keys);
+  await assert.rejects(recover({ ...selector, content_sha256: "f".repeat(64) }), /CODEX_MESSAGE_EVIDENCE_CHANGED/);
+  assert(!fs.existsSync(path.join(inbox, awaited.source_ref + ".pending")));
+  const received = await recover(selector);
+  assert.equal(received.choice, "COMMITTING"); assert.equal(received.outcome, "completed");
+  fs.unlinkSync(file);
+  assert.deepEqual(await recover(selector), received);
+  await assert.rejects(recover({ ...selector, message_id: threadId }), /CODEX_MESSAGE_EVIDENCE_CHANGED/);
+  const record = JSON.parse(fs.readFileSync(path.join(historical.target, "docs/audit/workflows/operation-records", q.operation_id + ".json")));
+  assert.equal(record.results.length, 1);
+  assert(record.results[0].output.evidence_refs.some(e => e.ref === awaited.evidence.ref && e.sha256 === selector.content_sha256));
+  console.log(JSON.stringify({ status: "PASS", proof: "independently signed fixture message through public STANDARD FILES",
+    receipts: 1, prompts: 0, cold_recovery: true, genuine_codex_attestation: "SKIP" }));
+} finally {
+  for (const dir of [historical.base, ...historical.owned]) fs.rmSync(dir, { recursive: true, force: true });
 }

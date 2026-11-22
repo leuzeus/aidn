@@ -3745,6 +3745,12 @@ negotiation, signed capture, cancellation, stale subjects and refusal of
 answers supplied as tool arguments. A live, authenticated Codex account
 requires its own evidence.
 
+The operator-session fixture also checks historical text recovery with an
+independently signed fixture source. It covers a missing attestation, a
+different enrolled author, a changed question or message, and a cold retry
+after removal of the transport copy. One operation receipt carries the signed
+message reference. The real deployment requires evidence from its own issuer.
+
 The console suite is also available as `perf:verify-workflow-console`. It
 compares complete CLI and HTTP read/action payloads on disposable files/SQLite
 clients, exact preview application, revocation and stale projections; checks

@@ -4,9 +4,10 @@ import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { createStandardOperatorSession } from "../../src/adapters/workflow-console/standard-operator-session.mjs";
 import { createCodexDecisionChannel } from "../../src/adapters/workflow-console/codex-decision-channel.mjs";
+import { bindOperatorChat, codexMessageSelectorSchema } from "../../src/adapters/workflow-console/codex-message-recovery.mjs";
 
 const noArgs = { type: "object", properties: {}, additionalProperties: false };
-const methods = [
+const baseMethods = [
   { name: "session", description: "Read the AIDN operator channel enrollment and last host receipt.", inputSchema: noArgs, annotations: { readOnlyHint: true } },
   { name: "question", description: "Read the exact pending STANDARD question in this project.", inputSchema: noArgs, annotations: { readOnlyHint: true } },
   { name: "ask", description: "Present the pending AIDN question to the human in Codex and deliver their authenticated answer.", inputSchema: noArgs },
@@ -14,6 +15,10 @@ const methods = [
 const safeError = err => /^[A-Z][A-Z_0-9]{0,100}$/.test(err?.message) ? err.message : "CODEX_DECISION_UNAVAILABLE";
 const maxLine = 524288;
 export async function serveCodexDecisions({ session, input = process.stdin, output = process.stdout }) {
+  const methods = session.recoverMessage ? [...baseMethods, {
+    name: "recover_message", description: "Recover an already attested Codex message for one pending AIDN operation, or read its existing receipt. Never presents a form.",
+    inputSchema: codexMessageSelectorSchema,
+  }] : baseMethods;
   let started = false, initialized = false, form = false, pending = null;
   const calls = new Set();
   const send = obj => output.write(JSON.stringify({ jsonrpc: "2.0", ...obj }) + "\n");
@@ -44,15 +49,19 @@ export async function serveCodexDecisions({ session, input = process.stdin, outp
     if (m.method === "prompts/list") return { prompts: [] };
     if (m.method !== "tools/call") throw Error("MCP_METHOD_UNAVAILABLE");
     const { name, arguments: args = {} } = m.params ?? {};
-    if (!methods.some(t => t.name === name) || !args || typeof args !== "object" || Array.isArray(args) || Object.keys(args).length)
+    if (!methods.some(t => t.name === name) || !args || typeof args !== "object" || Array.isArray(args) || name !== "recover_message" && Object.keys(args).length)
       throw Error("MCP_ARGUMENTS_REFUSED");
-    if (name === "ask" && activeCall !== null) throw Error("CODEX_DECISION_IN_PROGRESS");
-    if (name === "ask") activeCall = m.id;
+    const delivery = name === "ask" || name === "recover_message";
+    if (delivery && activeCall !== null) throw Error("CODEX_DECISION_IN_PROGRESS");
+    if (delivery) activeCall = m.id;
     try {
-      const data = name === "ask" ? await channel.decide() : name === "question" ? await channel.present() : channel.describe();
+      let data;
+      if (name === "ask") data = await channel.decide();
+      else if (name === "recover_message") data = await session.recoverMessage(args);
+      else data = name === "question" ? await channel.present() : channel.describe();
       return { content: [{ type: "text", text: JSON.stringify(data) }] };
     } catch (err) { return { isError: true, content: [{ type: "text", text: safeError(err) }] }; }
-    finally { if (name === "ask") activeCall = null; }
+    finally { if (delivery) activeCall = null; }
   }
   function closePending(code) {
     const request = pending;
@@ -97,6 +106,8 @@ export async function serveCodexDecisions({ session, input = process.stdin, outp
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   const [intent, targetRoot, configuration, ...rest] = process.argv.slice(2);
-  if (intent !== "--serve" || !targetRoot || !configuration || rest.length) throw Error("AIDN_CODEX_PROJECT_CONFIGURATION_REQUIRED");
-  await serveCodexDecisions({ session: createStandardOperatorSession({ targetRoot: path.resolve(targetRoot), configuration }) });
+  if (intent !== "--serve" || !targetRoot || !configuration || rest.length && (rest.length !== 3 || rest[0] !== "--chat"))
+    throw Error("AIDN_CODEX_PROJECT_CONFIGURATION_REQUIRED");
+  const operatorChat = rest.length ? bindOperatorChat(rest[1], rest[2]) : undefined;
+  await serveCodexDecisions({ session: createStandardOperatorSession({ targetRoot: path.resolve(targetRoot), configuration, operatorChat }) });
 }

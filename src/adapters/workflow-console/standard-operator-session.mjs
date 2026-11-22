@@ -10,16 +10,19 @@ import { createOperationJournalSigner } from "../../core/workflow/process-operat
 import { createAgenticProcessStore } from "../runtime/agentic-process-store.mjs";
 import { createProcessOperationJournalStore } from "../runtime/process-operation-journal-store.mjs";
 import { readAidnProjectConfig, resolveConfigStateMode } from "../../lib/config/aidn-config-lib.mjs";
+import { decisionInboxId } from "../../core/workflow/process-decision-inbox.mjs";
+import { bindOperatorChat, codexMessageEvidence, assertCodexMessageEvidence } from "./codex-message-recovery.mjs";
 
 const fail = code => { throw Error(code); };
 const read = file => readAgentRunFile(file, { maxBytes: 262144 }).value;
 
-export function createStandardOperatorSession({ targetRoot, configuration, environment = process.env },
+export function createStandardOperatorSession({ targetRoot, configuration, environment = process.env, operatorChat },
   { resolve = resolveStandardWorkflowConfiguration, enter = runStandardWorkflowEntry } = {}) {
   const request = readAgentRunFile(path.resolve(configuration)).value;
   const resolved = resolve(request).configuration;
   if (path.relative(agentRunPhysicalPath(targetRoot, { directory: true }), resolved.target_root) !== "") fail("OPERATOR_TARGET_CHANGED");
   const authority = createStandardHostAuthority({ configuration: resolved, environment }, { useProvider: false });
+  const chat = operatorChat && bindOperatorChat(operatorChat.thread_id, operatorChat.authority_id);
   const { identity } = readStandardHostInstance({ targetRoot: resolved.target_root, instanceId: resolved.instance_id, environment });
   const lastAnswer = path.join(authority.home, identity + ".operator-answer.json");
   const inbox = path.join(authority.home, "inbox");
@@ -69,19 +72,28 @@ export function createStandardOperatorSession({ targetRoot, configuration, envir
     return winner;
   }
   const run = options => enter({ request, environment, ...options });
-  function lastReceipt() {
-    const pointer = readAgentRunFile(lastAnswer, { optional: true })?.value;
+  function recordedReceipt(pointer, messageEvidence) {
     if (!pointer) return null;
     const options = { targetRoot: resolved.target_root, stateMode: resolveConfigStateMode(readAidnProjectConfig(resolved.target_root).data) ?? "files" };
     const record = createProcessOperationJournalStore(options).read(pointer.operation_id).record;
     if (!record?.results.length || record.intent.instance_id !== resolved.instance_id) return null;
     createOperationJournalSigner(authority.readKey).verify(record);
-    const result = record.results.find(row => row.output?.observations?.source_ref === pointer.source_ref);
+    const prefix = "ui-" + pointer.question_sha256 + "-";
+    const result = record.results.find(row => {
+      const ref = row.output?.observations?.source_ref;
+      return pointer.source_ref ? ref === pointer.source_ref : typeof ref === "string" && ref.startsWith(prefix);
+    });
     if (!result) return null;
     const instance = createAgenticProcessStore(options).read(resolved.instance_id).record;
     if (!instance?.events.some(event => event.kind === "operation_result" && event.occurrence_id === record.intent.occurrence_id
       && shadowHash(event.receipt) === shadowHash(result.receipt))) return null;
-    if (!pointer.source_ref.startsWith("ui-" + pointer.question_sha256 + "-")) fail("OPERATOR_SOURCE_CHANGED");
+    const observed = result.output.observations;
+    if (!observed.source_ref.startsWith(prefix)) fail("OPERATOR_SOURCE_CHANGED");
+    if (messageEvidence) {
+      const id = decisionInboxId({ source_kind: "human", authority_id: chat.authority_id, source_event_id: observed.source_ref });
+      if (id !== observed.inbox_id) fail("CODEX_MESSAGE_AUTHOR_CHANGED");
+      assertCodexMessageEvidence(result.output.evidence_refs, messageEvidence);
+    }
     return { status: "received", operation_id: record.operation_id, question_sha256: pointer.question_sha256,
       choice: result.output.observations.choice, receipt_id: result.receipt.receipt_id, outcome: result.receipt.outcome };
   }
@@ -118,8 +130,37 @@ export function createStandardOperatorSession({ targetRoot, configuration, envir
     return { status: "received", operation_id: q.operation_id, question_sha256: shadowHash(q), choice: answer.payload.choice,
       receipt_id: receipt.receipt_id, outcome: receipt.outcome };
   }
+  async function recoverMessage(selector) {
+    const evidence = codexMessageEvidence(chat, selector);
+    const receipt = () => recordedReceipt(selector, evidence);
+    const accepted = receipt();
+    if (accepted) return accepted;
+    if (!authority.humanPrincipals().some(principal => principal.authority_id === chat.authority_id))
+      fail("CODEX_CHAT_PRINCIPAL_NOT_ENROLLED");
+    const state = await pending();
+    if (!state.q || state.q.operation_id !== selector.operation_id || shadowHash(state.q) !== selector.question_sha256)
+      return receipt() ?? fail("OPERATOR_QUESTION_CHANGED");
+    const { q, slot } = state;
+    const published = readAgentRunFile(path.join(checkedInbox(), slot.ref + ".json"), { optional: true, maxBytes: 262144 })?.value;
+    if (slot.envelope && published && shadowHash(slot.envelope) !== shadowHash(published)) fail("OPERATOR_SOURCE_CHANGED");
+    const envelope = slot.envelope ?? published;
+    if (!envelope) return { status: "awaiting_attestation", operation_id: q.operation_id, question_sha256: selector.question_sha256,
+      source_ref: slot.ref, authority_id: chat.authority_id, evidence };
+    authenticate(envelope, q, slot.ref, Date.now());
+    if (envelope.authority_id !== chat.authority_id) fail("CODEX_MESSAGE_AUTHOR_CHANGED");
+    assertCodexMessageEvidence(envelope.payload.evidence_refs, evidence);
+    try {
+      await receive(envelope);
+    } catch (error) {
+      const concurrent = receipt();
+      if (concurrent) return concurrent;
+      throw error;
+    }
+    return receipt() ?? fail("OPERATOR_RECEIPT_PENDING");
+  }
   return {
-    session: () => ({ instance: resolved.instance_id, principals: authority.humanPrincipals(), last_receipt: lastReceipt() }),
+    session: () => ({ instance: resolved.instance_id, principals: authority.humanPrincipals(),
+      last_receipt: recordedReceipt(readAgentRunFile(lastAnswer, { optional: true })?.value) }),
     async question() {
       const state = await pending();
       if (!state.q) return state;
@@ -128,5 +169,6 @@ export function createStandardOperatorSession({ targetRoot, configuration, envir
     },
     submit: envelope => receive(envelope),
     resume: () => receive(null),
+    ...(chat && { recoverMessage }),
   };
 }

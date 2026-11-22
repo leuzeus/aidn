@@ -6,16 +6,18 @@ import { once } from "node:events";
 import { serveCodexDecisions } from "../runtime/standard-codex-decisions.mjs";
 import { operatorOffer, assertOperatorClaim } from "../../src/adapters/workflow-console/standard-operator-offer.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { bindOperatorChat, codexMessageEvidence } from "../../src/adapters/workflow-console/codex-message-recovery.mjs";
 
 const q = { contract_version: "standard-mode-question.v1", operation_id: "op_" + "a".repeat(40), session_id: "S001",
   instance_id: "fixture", scope_id: "b".repeat(64), occurrence_id: "root/1", intent_sha256: "c".repeat(64),
   choices: ["THINKING", "EXPLORING", "COMMITTING", "refused", "deferred", "cancelled"] };
 let current = q, principals = [], captured = [];
-const transport = () => {
+const transport = recoverMessage => {
   const input = new PassThrough(), output = new PassThrough(), lines = createInterface({ input: output });
   const send = msg => input.write(JSON.stringify({ jsonrpc: "2.0", ...msg }) + "\n");
   const next = async () => JSON.parse((await once(lines, "line"))[0]);
   const session = {
+    ...(recoverMessage && { recoverMessage }),
     session: () => ({ instance: "fixture", principals, last_receipt: null }),
     question: async () => captured.length ? { status: "workflow" } : { status: "question", offer: operatorOffer(current, "fixture-mode") },
     submit(value) {
@@ -38,7 +40,8 @@ const transport = () => {
   }, async close() { input.end(); await done; lines.close(); } };
 };
 
-const a = transport(), b = transport();
+const chat = bindOperatorChat("10000000-0000-4000-9000-000000000001", "fixture_operator");
+const a = transport(), b = transport(selector => ({ status: "awaiting_attestation", evidence: codexMessageEvidence(chat, selector) }));
 try {
   const session = await a.start();
   assert.equal(session.form_supported, true); assert.equal(session.enrolled, false);
@@ -46,6 +49,11 @@ try {
   // Only the test authority can enroll this disposable connection.
   principals = [{ authority_id: "fixture_operator", public_key: session.public_key }];
   assert.equal((await b.start()).enrolled, false, "starting another local server must not inherit the genuine channel key");
+  const selector = { operation_id: q.operation_id, question_sha256: shadowHash(q), turn_id: "20000000-0000-4000-9000-000000000002",
+    message_id: "30000000-0000-4000-9000-000000000003", content_sha256: "e".repeat(64) };
+  assert.equal((await a.tool("recover_message", selector)).error.message, "MCP_ARGUMENTS_REFUSED");
+  assert.equal((await b.tool("recover_message", { ...selector, choice: "COMMITTING" })).result.content[0].text, "CODEX_MESSAGE_SELECTOR_INVALID");
+  assert.equal(JSON.parse((await b.tool("recover_message", selector)).result.content[0].text).status, "awaiting_attestation");
   assert.equal((await b.tool("ask")).result.content[0].text, "CODEX_DECISION_CHANNEL_NOT_ENROLLED");
   assert.equal((await a.tool("ask", { choice: "COMMITTING" })).error.message, "MCP_ARGUMENTS_REFUSED");
   assert.equal((await a.tool("ask", { transcript: "je choisi committing" })).error.message, "MCP_ARGUMENTS_REFUSED");

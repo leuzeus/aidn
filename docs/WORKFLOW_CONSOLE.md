@@ -10,7 +10,7 @@ reads the pending subject. Calling `ask` presents it in Codex through MCP
 form elicitation. The person answers in the chat. Merge consent identifies
 the repository, pull request, target branch and complete commit.
 
-The tool accepts zero arguments. Only a correlated form result supplies
+The `ask` tool accepts zero arguments. Only a correlated form result supplies
 the business answer. The connection signs it in memory and the workflow host
 verifies the enrolled principal and current subject. Closing a form leaves
 the question pending. A restarted host can consume a retained signed answer
@@ -22,6 +22,26 @@ A configured MCP server and a discoverable tool establish transport
 availability. Proving that the authenticated project account owns the live
 connection is a separate qualification step. Plain-text chat history alone
 does not carry the host-source proof required by this version.
+
+A trusted launcher can append `--chat <thread-uuid> <enrolled-human-authority>`
+to expose `recover_message`. These two selectors restrict delivery to that
+chat and principal. For an existing text answer the Codex client reads the
+item through `thread/items/list`. The packaged `readCodexMessageReference`
+helper uses two single-item requests and hashes the exact UTF-8 text,
+including any trailing newline. The client supplies the resulting
+`turn_id`, `message_id` and `content_sha256` together with the original
+`operation_id` and `question_sha256`. This path never opens a form.
+
+An independent authenticated integration must attest the author's choice for
+that question. It publishes the ordinary signed human `standard-host-source.v1`
+at the offered source reference in the protected host inbox. Its signed
+`evidence_refs` include exactly one Codex message reference
+`codex:thread/<thread-uuid>/turn/<turn-uuid>/message/<message-uuid>` and the
+text digest. The workflow host checks the enrolled principal, complete claim,
+signature and current question. While the source is missing, recovery returns
+`awaiting_attestation` with the required reference and records no decision.
+After acceptance, the same lookup reads the matching signed journal result and
+process receipt across restarts, even after the transport copy is removed.
 
 The experimental workflow console shares its read model and action service
 between the CLI and a local browser dashboard. It requires no dashboard install

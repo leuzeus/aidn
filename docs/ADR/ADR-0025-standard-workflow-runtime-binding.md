@@ -5175,3 +5175,11 @@ The source and the operation receipt remain available after a host restart.
 Chat history records the declared choice. Authenticating a historical message
 requires evidence from its issuing interface. A connection public key is
 eligible only after independent binding to the project operator.
+
+Historical text recovery uses the existing signed human source and the same
+decision inbox and journal. The trusted launcher narrows lookup to a thread
+and enrolled principal. The source signature covers the exact question,
+choice, thread/turn/message reference and digest of the original UTF-8 text.
+Codex history, account status and the lookup arguments grant no authority.
+Redelivery identifies the accepted source and message evidence in the signed
+operation result and confirms the same receipt on the workflow instance.
