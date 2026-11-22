@@ -1,0 +1,64 @@
+{
+  "candidate": "da1f5a76d237b6ae566e8176255dc125b888be88",
+  "archive_sha256": "1de425d2ac6f57ca851e32f5585af0f31b70c7ee6de3674164ae286c0e94dfae",
+  "predecessor": "64d988c69c35fa796efd98215ee5e4b362fea48e",
+  "model_revision": 423,
+  "backend": {
+    "mode": "files",
+    "persistence_backend": "sqlite"
+  },
+  "package_installation": "PASS",
+  "source_installed_inventory": {
+    "status": "PASS",
+    "models": 16,
+    "bindings": 131,
+    "implementation_files": 687,
+    "implementation_sha256": "fbbbb5349d8b3e196920fbdb7b28c0423eef7325fe736ac3ce69c029bcf9bef1"
+  },
+  "github_provider_identity": "PASS",
+  "native_hooks": {
+    "expected": 2,
+    "observed": 2,
+    "status": "PASS"
+  },
+  "cycle_validation": {
+    "host_material_check": "PASS",
+    "configuration_sha256": "1a95299b85ba128a4f97a5e48e5ff5ce6a0dfe900854184d26626cb6e502af7e",
+    "executable_sha256": "21f6fb0b01ba12a687f5fcd33546c0008ebd45654fdb23d84732ee8d62ee980b",
+    "interval_check_sha256": "3068288486aa95825e6063d1c19a8d11ed66c1d91df251453aca24f6912ad16a",
+    "oracle": {
+      "baseline": "failed",
+      "positive": "passed"
+    },
+    "signed_boundary": "UNAVAILABLE",
+    "process_plan_sha256": "3e283c94e27ee060094820e0695fc1aff4ad19e21822ccadce4a7141aa744dc3",
+    "process_observations": [
+      {
+        "case": "timeout",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "result_sha256": "e0534bea97e5b9857cd66a03d2cdc4f0d2693d93325e62b56e352b64eea53e23",
+        "termination": "confirmed",
+        "active_processes": 0
+      },
+      {
+        "case": "cancel",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "result_sha256": "a5497f144f720606446ba5f98f35b3f858ee9953b8770ea6dd0270f6eaf447ca",
+        "termination": "confirmed",
+        "active_processes": 0
+      },
+      {
+        "case": "callback",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "result_sha256": "ff7e3c76ea525f31dfb9f143f6b822bde304f33f5d104be1a3514478ffb771f5",
+        "termination": "confirmed",
+        "active_processes": 0
+      }
+    ],
+    "filesystem_evidence": "UNAVAILABLE"
+  },
+  "public_full_nominal": "SKIP",
+  "windows_installed_nominal": "SKIP",
+  "p0_go": false,
+  "complete_standard_workflow": false
+}
