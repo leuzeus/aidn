@@ -3,7 +3,7 @@
   "archive_sha256": "ed4cbf0ffeb5b6c26cad24489b18170045b85da721317ac4d2c61b47806693be",
   "model_revision": 422,
   "backend": "FILES",
-  "phase": "Session mode requested",
+  "phase": "Native allocation failed",
   "transitions": [
     {
       "action": "prepare_host",
@@ -64,6 +64,48 @@
       "operation_outcome": null,
       "effect_status": null,
       "receipt_sha256": null
+    },
+    {
+      "action": "decision",
+      "action_sha256": "47c57b0f8f540607febe602da329d0f544241992e60cc16b1c6f4782993e5b88",
+      "process_status": "RUNNING",
+      "operation_outcome": "completed",
+      "effect_status": "no_effect",
+      "receipt_sha256": "40ffc88fdd54bdee6377fec9b4776e234cae9093ef1ef4ec2bc1aecec41fa9d9"
+    },
+    {
+      "action": "operation",
+      "binding": "session_mode_apply",
+      "action_sha256": "2745ab2cc26d873df4b170979c0feee6293f4b68c35eb2656626ff719051bda0",
+      "process_status": "WAITING",
+      "operation_outcome": "completed",
+      "effect_status": "confirmed",
+      "receipt_sha256": "5e8198315645c3c537d6520f4d573b0cbb42f90d630b57f403dd0c84cb1cecd8"
+    },
+    {
+      "action": "call",
+      "action_sha256": "92ab6637fe177d2a01416ec4687a28020193a368d23433acbd87db52a74b6146",
+      "process_status": "RUNNING",
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
+    },
+    {
+      "action": "operation",
+      "binding": "session_entry_admit",
+      "action_sha256": "f497c94d09a29c930bddd436b89133c2030600c828229910356566ac61a02817",
+      "process_status": "RUNNING",
+      "operation_outcome": "completed",
+      "effect_status": "no_effect",
+      "receipt_sha256": "2c6408efad6c3e96790f25b6eef17a7b1cd197547a9127ff5bdbe595201c2fae"
+    },
+    {
+      "action": "native",
+      "action_sha256": "7abe7318a440e54b09ce10e958529dd429aa60311fa138c2ef9c452a2ffcb726",
+      "process_status": "RUNNING",
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
     }
   ],
   "physical_observation": {
@@ -89,9 +131,11 @@
     "stable_across_processes": true
   },
   "terminal": {
+    "process_status": "RUNNING",
     "workflow_completed": false,
-    "native_model_turns_at_wait": 0,
-    "p0_go": false
+    "p0_go": false,
+    "windows_installed_nominal": "SKIP",
+    "post_merge_sync": "SKIP"
   },
   "predecessor": {
     "candidate": "83ffeb9fdc8fec015a58abf58de1374ed0161ae3",
@@ -229,8 +273,21 @@
       "sha256:4cddb9da39349a8f15cd114c1b1908beeb647c5a6b256b4d6a17daf08bb35d99",
       "sha256:cd772cb97155774fd82966f03d7d377966f40b7165a143f9259ee314458c1afc"
     ],
-    "actual_hooks_status": "UNAVAILABLE",
-    "actual_hook_inventory": [],
+    "actual_hooks_status": "PASS",
+    "actual_hook_inventory": [
+      {
+        "event": "preToolUse",
+        "enabled": true,
+        "trust": "trusted",
+        "sha256": "sha256:4cddb9da39349a8f15cd114c1b1908beeb647c5a6b256b4d6a17daf08bb35d99"
+      },
+      {
+        "event": "sessionStart",
+        "enabled": true,
+        "trust": "trusted",
+        "sha256": "sha256:cd772cb97155774fd82966f03d7d377966f40b7165a143f9259ee314458c1afc"
+      }
+    ],
     "native_validation_profile_configured": false
   },
   "cycle_validation": {
@@ -248,5 +305,56 @@
     "repository_material": "v1 schema, qualification tool and offline fixture",
     "pilot_check_sha256": "3068288486aa95825e6063d1c19a8d11ed66c1d91df251453aca24f6912ad16a",
     "full_campaign_freeze_requires_verified_profile": true
-  }
+  },
+  "signed_mode": {
+    "status": "PASS",
+    "choice": "COMMITTING",
+    "authority_kind": "human",
+    "signature_algorithm": "Ed25519",
+    "question_sha256": "ed2ff3623c1209f69c24bbd318f77306d1a11bd31fc01f2171df62a9e13957a8",
+    "signed_envelope_sha256": "b75fa935dd529eaf901e0a9ef951d022be804f4ce500e1db6f39215b99db950b",
+    "decision_receipt_sha256": "40ffc88fdd54bdee6377fec9b4776e234cae9093ef1ef4ec2bc1aecec41fa9d9",
+    "apply_receipt_sha256": "5e8198315645c3c537d6520f4d573b0cbb42f90d630b57f403dd0c84cb1cecd8",
+    "observed_mode": "COMMITTING",
+    "session_document_sha256": "13aefec22a8feb55a6b234ba7d2566cab014de5845dd30993a56643033627278",
+    "matching_result_events_in_instance": 1
+  },
+  "native_allocations": [
+    {
+      "status": "FAIL",
+      "host_status": "FAILED",
+      "first_failure": "STANDARD_DRIFT_REPORT_INCONSISTENT",
+      "generation": 1,
+      "ready_activities": [
+        {
+          "node": "startup_drift_report",
+          "occurrence": "root/3/committing/0"
+        }
+      ],
+      "instance_before_sha256": "3ff70315ddc755dcd4f35e603d3c63a9efe6ce3161c2d35659a66cac17af0176",
+      "instance_after_sha256": "c793aac69971a8f611b702fec3ddc8a3f68ce9c029a55b33ac249e2cbd1557b4",
+      "action_sha256": "7abe7318a440e54b09ce10e958529dd429aa60311fa138c2ef9c452a2ffcb726",
+      "authorization_sha256": "424831cfec9c21403fbf4c51857c1db5efdd14d8307a81d798f23602eb8acf8a",
+      "journal_sha256": "3d27fc8ba705b1167ee78d600f2b5f3c4e29dec712b1941f34f7541a67a3ddb6",
+      "journal_phase": "failed",
+      "responses_observed": 1,
+      "thread_counters_reported": 1,
+      "closure_method": "windows-job-object",
+      "active_processes_after_close": 0,
+      "elapsed_global_ms": 116316,
+      "failure_stage": "activity_execution",
+      "client_reported_tokens": {
+        "totalTokens": 27709,
+        "inputTokens": 26798,
+        "cachedInputTokens": 0,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 911,
+        "reasoningOutputTokens": 62
+      },
+      "product_observation": {
+        "head": "3e91c007406e86d78a6f965f75a76b57f912ae8f",
+        "changed_files": 0
+      }
+    }
+  ]
 }
