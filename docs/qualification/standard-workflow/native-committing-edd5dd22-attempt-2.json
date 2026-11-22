@@ -1,0 +1,29 @@
+{
+  "candidate": "edd5dd2294d0a3ecbb84caeee530799657e71403",
+  "attempt": 2,
+  "archive_sha256": "06258ff06d0697236465b10b82bbd367f82b8bd2d68f22e9317f791027c74a60",
+  "model_revision": 424,
+  "backend": {
+    "mode": "files",
+    "persistence_backend": "sqlite"
+  },
+  "instance_id": "standard-vertical-pr201-r2",
+  "prior_refusal": {
+    "stage": "pilot input",
+    "operation": "cycle_initialize",
+    "evidence_sha256": "849d381540a62f977ae0463d5ea08e94960f9a684be826a7eaddbc7fbd945661"
+  },
+  "session_input_preflight": "PASS",
+  "cycle_input_preflight": "PASS",
+  "source_seed": "3e91c007406e86d78a6f965f75a76b57f912ae8f",
+  "signed_boundary": "PASS",
+  "native_validation_available": true,
+  "validation_profile_sha256": "d6fc6baada4accbd9dc1d446ec709fd8f9a10d0b0c13552de5422f4335c2faec",
+  "github_provider_identity": "PASS",
+  "workflow_configuration_sha256": "56f8c7bb5ba9ae631fb060c73db35831a0c4c3935af830396af4286aa3dbb5a9",
+  "native_configuration_sha256": "971aea00534a39f5448ae495f3bfb7b2e28218b86b854ba69ccfa4ca23319da2",
+  "public_full_nominal": "SKIP",
+  "windows_installed_nominal": "SKIP",
+  "p0_go": false,
+  "complete_standard_workflow": false
+}
