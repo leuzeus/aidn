@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
+import { createLocalGitAdapter, readLocalWorkspaceGit } from "../../adapters/runtime/local-git-adapter.mjs";
 import { assertVcsAdapter, hasWorkspaceIdentityMethods } from "../../core/ports/vcs-adapter-port.mjs";
 import { readSharedRuntimeLocator } from "../../lib/config/shared-runtime-locator-config-lib.mjs";
 import { canonicalizeRuntimePath, resolveRuntimePath } from "./shared-runtime-path-lib.mjs";
@@ -428,9 +428,23 @@ function resolveSharedRuntime({
   };
 }
 
+function readAdapterWorkspaceGit(adapter, targetRoot) {
+  const identity = hasWorkspaceIdentityMethods(adapter);
+  const repoRoot = typeof adapter.getRepoRoot === "function" ? adapter.getRepoRoot(targetRoot) : "";
+  return {
+    repoRoot,
+    worktreeRoot: identity ? adapter.getWorktreeRoot(targetRoot) : "",
+    gitDir: identity ? adapter.getGitDir(targetRoot) : "",
+    gitCommonDir: identity ? adapter.getGitCommonDir(targetRoot) : "",
+    linkedWorktree: identity && adapter.isLinkedWorktree(targetRoot) === true,
+    headCommit: typeof adapter.getHeadCommit === "function" ? adapter.getHeadCommit(targetRoot) : "unknown",
+    insideWorkTree: identity && adapter.isInsideWorkTree(targetRoot) === true,
+  };
+}
+
 export function resolveWorkspaceContext({
   targetRoot = ".",
-  gitAdapter = createLocalGitAdapter(),
+  gitAdapter,
   env = process.env,
   projectId = "",
   projectRoot = "",
@@ -440,7 +454,7 @@ export function resolveWorkspaceContext({
   sharedRuntimeEnabled = null,
   locatorState = null,
 } = {}) {
-  const adapter = assertVcsAdapter(gitAdapter, "WorkspaceResolutionGitAdapter");
+  const adapter = assertVcsAdapter(gitAdapter === undefined ? createLocalGitAdapter() : gitAdapter, "WorkspaceResolutionGitAdapter");
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
   const cacheKey = buildWorkspaceResolutionCacheKey({
     absoluteTargetRoot,
@@ -480,31 +494,13 @@ export function resolveWorkspaceContext({
   const locator = locatorState ?? readSharedRuntimeLocator(absoluteTargetRoot);
   const locatorData = locator.data ?? {};
 
-  const supportsWorkspaceIdentity = hasWorkspaceIdentityMethods(adapter);
-  const worktreeRoot = normalizeIdentityPath(
-    (supportsWorkspaceIdentity ? adapter.getWorktreeRoot(absoluteTargetRoot) : "")
-    || (typeof adapter.getRepoRoot === "function" ? adapter.getRepoRoot(absoluteTargetRoot) : "")
-    || absoluteTargetRoot,
-  );
-  const repoRoot = normalizeIdentityPath(
-    (typeof adapter.getRepoRoot === "function" ? adapter.getRepoRoot(absoluteTargetRoot) : "")
-    || worktreeRoot,
-  );
-  const gitDir = supportsWorkspaceIdentity
-    ? normalizeIdentityPath(adapter.getGitDir(absoluteTargetRoot) || "")
-    : "";
-  const gitCommonDir = supportsWorkspaceIdentity
-    ? normalizeIdentityPath(adapter.getGitCommonDir(absoluteTargetRoot) || "")
-    : "";
-  const linkedWorktree = supportsWorkspaceIdentity
-    ? adapter.isLinkedWorktree(absoluteTargetRoot) === true
-    : false;
-  const headCommit = typeof adapter.getHeadCommit === "function"
-    ? adapter.getHeadCommit(absoluteTargetRoot)
-    : "unknown";
-  const insideWorkTree = supportsWorkspaceIdentity
-    ? adapter.isInsideWorkTree(absoluteTargetRoot) === true
-    : false;
+  const checkout = (gitAdapter === undefined ? readLocalWorkspaceGit(absoluteTargetRoot) : null)
+    ?? readAdapterWorkspaceGit(adapter, absoluteTargetRoot);
+  const worktreeRoot = normalizeIdentityPath(checkout.worktreeRoot || checkout.repoRoot || absoluteTargetRoot);
+  const repoRoot = normalizeIdentityPath(checkout.repoRoot || worktreeRoot);
+  const gitDir = normalizeIdentityPath(checkout.gitDir || "");
+  const gitCommonDir = normalizeIdentityPath(checkout.gitCommonDir || "");
+  const { linkedWorktree, headCommit, insideWorkTree } = checkout;
   const isGitRepo = insideWorkTree
     || (repoRoot.length > 0 && repoRoot !== normalizeIdentityPath(absoluteTargetRoot))
     || Boolean(gitDir)

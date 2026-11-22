@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createArtifactStore } from '../../src/adapters/runtime/artifact-store.mjs';
 import { getDatabaseSync } from '../../src/lib/sqlite/workflow-db-schema-lib.mjs';
-import { artifactContentHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
+import { artifactContentHash, artifactMetadataHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
+import { createStandardWorkflowArtifacts } from '../../src/application/runtime/standard-workflow-artifacts.mjs';
 import { resolveEffectiveRuntimePersistence } from '../../src/application/runtime/runtime-persistence-service.mjs';
 import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
 import { executePostgresArtifactCommand, validateArtifactPath } from '../../src/adapters/runtime/postgres-artifact-command-lib.mjs';
@@ -174,6 +175,13 @@ export async function verifyProjectArtifactCommands() {
       const artifact = { path: 'sessions/S001-test.md', kind: 'session', session_id: 'S001', content_format: 'utf8',
         content: 'mode: THINKING\nsession_branch: S001-original\nparent_session: none\n' };
       store.compareAndSwapArtifact({ artifact, expectedSha256: null });
+      const original = store.getArtifact(artifact.path);
+      assert.deepEqual(store.getArtifacts(['absent.md', artifact.path, artifact.path]), [null, original, original]); count++;
+      db.prepare('UPDATE artifacts SET classification_reason=? WHERE path=?').run('changed-after-read', artifact.path);
+      const [current] = store.getArtifacts([artifact.path]);
+      assert.equal(current.sha256, original.sha256); assert.notEqual(artifactMetadataHash(current), artifactMetadataHash(original));
+      assert.throws(() => store.compareAndSwapArtifact({ artifact, expectedSha256: original.sha256,
+        expectedMetadataSha256: artifactMetadataHash(original) }), /ARTIFACT_REVISION_CONFLICT/); count++;
       assert.equal(db.prepare('SELECT branch_name FROM sessions WHERE session_id=?').get('S001').branch_name, 'S001-original'); count++;
       const changed = { ...artifact, content: artifact.content.replace('THINKING', 'COMMITTING').replace('S001-original', 'S001-updated') };
       store.compareAndSwapArtifact({ artifact: changed, expectedSha256: artifactContentHash(artifact.content) });
@@ -206,6 +214,13 @@ export async function verifyProjectArtifactCommands() {
     assert.equal(readerProcess.status,0,readerProcess.error?.code);
     assert.equal(readerProcess.stdout,'ARTIFACT_BACKEND_CHANGED');
     assert.equal(readerProcess.stderr,'');assert.deepEqual(fs.readdirSync(target),[]);count++;
+    const audit = path.join(target, 'docs/audit'); fs.mkdirSync(audit, { recursive: true });
+    fs.writeFileSync(path.join(audit, 'one.md'), 'one');
+    const files = createStandardWorkflowArtifacts({ targetRoot: target, env: {} });
+    const batch = files.readMany(['absent.md', 'one.md'], { required: ['one.md'], includeMetadata: true });
+    assert.deepEqual(batch.map(row => [row.content, row.metadata_sha256]), [[null, null], ['one', null]]);
+    assert.throws(() => files.readMany(['absent.md'], { required: ['absent.md'] }), { code: 'STANDARD_REQUIRED_ARTIFACT_MISSING' });
+    assert.equal(fs.existsSync(path.join(target, '.aidn')), false); count++;
   } finally {
     assert.equal(path.dirname(path.resolve(target)), path.resolve(os.tmpdir())); fs.rmSync(target, { recursive: true, force: true });
   }
