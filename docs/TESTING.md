@@ -2759,7 +2759,10 @@ the required default command still includes both partitions.
 The native-composition fixtures check that each Codex app-server starts with
 the permission profile generated for its activity as the default. The changed
 default case checks that an effective profile mismatch stops execution before
-the first model turn. Run both outcomes with
+the first model turn. Thread startup uses the authorized turn budget and the
+RPC transport clips it to the remaining workflow deadline. The same fixtures
+check Codex's optional `network.transparent_tcp` field. Only its null value
+matches an omitted setting. Run the focused regressions with
 `node tools/perf/verify-agentic-process-execution-fixtures.mjs --native-permission-profile-only`.
 
 The production native-composition suite also tests the internal authenticated

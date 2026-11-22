@@ -127,7 +127,7 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
       const profiles = await rpc.request("permissionProfile/list", { cwd });
       if (!profiles?.data?.some(row => row.id === profileId && row.allowed === true)) fail("PROCESS_SESSION_PERMISSION_PROFILE_UNAVAILABLE");
       const started = await rpc.request("thread/start", { cwd, permissions: profileId, approvalPolicy: "never", model: native.model,
-        allowProviderModelFallback: false, ephemeral: true, experimentalRawEvents: true, developerInstructions: developer });
+        allowProviderModelFallback: false, ephemeral: true, experimentalRawEvents: true, developerInstructions: developer }, budget.maxTurnMs);
       if (typeof started?.thread?.id !== "string" || started.model !== native.model || started.approvalPolicy !== "never"
         || started.activePermissionProfile?.id !== profileId || started.sandbox?.type !== sandbox
         || started.sandbox?.networkAccess === true) fail("PROCESS_SESSION_NATIVE_POLICY_REFUSED");
@@ -229,7 +229,7 @@ export function normalizePermissionProfile(value) {
   removeNull(result, ["description", "workspace_roots"]);
   removeNull(result.filesystem, ["glob_scan_max_depth"]);
   removeNull(result.network, ["proxy_url", "enable_socks5", "socks_url", "enable_socks5_udp", "allow_upstream_proxy",
-    "dangerously_allow_non_loopback_proxy", "dangerously_allow_all_unix_sockets", "mode", "domains", "unix_sockets", "allow_local_binding", "mitm"]);
+    "dangerously_allow_non_loopback_proxy", "dangerously_allow_all_unix_sockets", "mode", "domains", "unix_sockets", "allow_local_binding", "mitm", "transparent_tcp"]);
   return result;
 }
 

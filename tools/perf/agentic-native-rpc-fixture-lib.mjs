@@ -34,7 +34,8 @@ export function transport(f, options = {}) {
       permissions: { [profile]: parsed } };
     const session = { thread, turns: 0, closed: false, closeCalls: 0, confirmedClosures: 0, configuration, cfg }; sessions.push(session);
     return {
-      async request(method, params) {
+      async request(method, params, timeoutMs) {
+        if (method === "thread/start") session.threadStartTimeoutMs = timeoutMs;
         calls.push({ method, params, thread });
         if (method === "initialize") return {};
         if (method === "windowsSandbox/readiness") return { status: options.backendMissing ? "notReady" : "ready" };

@@ -295,6 +295,7 @@ async function check(name, callback) { if (process.argv.includes("--host-resourc
   if (process.argv.includes("--native-human-port-only") && !name.startsWith("native human port:")) return;
   if (process.argv.includes("--bpmn-control-only") && !name.startsWith("explicit pinned host scenario drives XML")) return;
   if (process.argv.includes("--native-permission-profile-only") && !name.startsWith("explicit pinned host scenario drives XML")
+    && !name.startsWith("typed native permission null defaults")
     && name !== "stop without retry and retain partial: changed default permission profile") return;
   if (process.argv.includes("--historical-diagnostic-only") && !name.startsWith("historical diagnostic:")) return;
   if (process.argv.includes("--native-human-turn-only") && !name.startsWith("worker private before-turn")) return;
@@ -428,6 +429,9 @@ async function run(f, options = {}) {
   const result = await createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory,
     ...(f.artifactStoreFactory ? { artifactStoreFactory: f.artifactStoreFactory } : {}), ...(f.environment ? { environment: f.environment } : {}) }).run({ execute: true, authorization: auth, signal: options.signal });
   assert.equal(t.sessions.every(session => session.closed), true);
+  for (const session of t.sessions.filter(row => Object.hasOwn(row, "threadStartTimeoutMs"))) {
+    assert.equal(session.threadStartTimeoutMs, auth.max_turn_ms);
+  }
   assert.equal(fs.existsSync(path.join(f.dirs.control, "case/RESULT.json")), !result.seal?.startsWith("STDOUT_ONLY"));
   return { result, ...t };
 }
@@ -3481,8 +3485,9 @@ if (process.argv[2] === "--mixed-continue") {
       filesystem: { ...expected.filesystem, glob_scan_max_depth: null },
       network: { ...expected.network, proxy_url: null, enable_socks5: null, socks_url: null, enable_socks5_udp: null,
         allow_upstream_proxy: null, dangerously_allow_non_loopback_proxy: null, dangerously_allow_all_unix_sockets: null,
-        mode: null, domains: null, unix_sockets: null, allow_local_binding: null, mitm: null } };
+        mode: null, domains: null, unix_sockets: null, allow_local_binding: null, mitm: null, transparent_tcp: null } };
     assert.deepEqual(normalizePermissionProfile(native), expected);
+    assert.notDeepEqual(normalizePermissionProfile({ ...native, network: { ...native.network, transparent_tcp: true } }), expected);
     assert.notDeepEqual(normalizePermissionProfile({ ...native, unknown_policy: null }), expected);
     assert.notDeepEqual(normalizePermissionProfile({ ...native, network: { ...native.network, proxy_url: "http://foreign.invalid" } }), expected);
     assert.notDeepEqual(normalizePermissionProfile({ ...native, filesystem: { ...native.filesystem, ":root": "write" } }), expected);
