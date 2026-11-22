@@ -234,13 +234,19 @@
     "native_validation_profile_configured": false
   },
   "cycle_validation": {
+    "host_material_check": "PASS",
+    "boundary_configuration_sha256": "87defbcf064bc3c14694b97a3f0a4409da8583c9d3cc6ed77c19b47b0d59fb7d",
+    "reviewed_validator_executable_sha256": "21f6fb0b01ba12a687f5fcd33546c0008ebd45654fdb23d84732ee8d62ee980b",
+    "interval_oracle_baseline": "failed",
+    "interval_oracle_positive_control": "passed",
+    "signed_native_boundary": "UNAVAILABLE",
     "status": "UNAVAILABLE",
     "transition_reached": false,
     "configured_profile": false,
     "expected_refusal_without_profile": "STANDARD_VALIDATION_PROFILE_REQUIRED",
     "observed_refusal_on_instance": false,
     "repository_material": "v1 schema, qualification tool and offline fixture",
-    "pilot_check_sha256": "3096ef82907f7d185e29eb7c3297e9aa7aebef2852b4b9b642d5460acd0d606a",
+    "pilot_check_sha256": "3068288486aa95825e6063d1c19a8d11ed66c1d91df251453aca24f6912ad16a",
     "full_campaign_freeze_requires_verified_profile": true
   }
 }
