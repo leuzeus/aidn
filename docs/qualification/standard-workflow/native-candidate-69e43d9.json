@@ -1,0 +1,241 @@
+{
+  "candidate": "69e43d9296d7ebf2616ec16d2170be4dad3c83b4",
+  "archive": {
+    "name": "aidn-workflow-0.20.0.tgz",
+    "sha256": "99774809339ccafb5c47656b7db728986f1f005b21c9951b1a298f03c94860d3"
+  },
+  "installed_lock_sha256": "234439a53457d042cf5e9093c697e81bef1c46879ba15ac319c7da3949c8fde3",
+  "windows": {
+    "platform": "win32",
+    "architecture": "x64",
+    "release": "10.0.26300",
+    "node": "v24.13.1",
+    "codex": {
+      "version": "codex-cli 0.171.0-alpha.13",
+      "sha256": "4069acdd8d101830f63ea5e2775883bfecf8a152ae87ee1b0ef9f14204f850f9"
+    },
+    "node_sha256": "e3be0545990c90995d7bf3a7af5d64af1f2e0fc1bbd9b79c27f7abc1e9676e50",
+    "git_sha256": "332883ea074abeabaa6b2ff4d744371da0fa00d259f7e49d3ab5c8fdfbe80920",
+    "gh_sha256": "e76a7ca5b2ce7e57d111668525a84a3ee5b7053eeab40a5c4d61408b941a9b4a",
+    "helper_source_sha256": "479fe351e23e94a9f56e59ebe79a2534249a64636df5ef62a862da78ab75a41c",
+    "helper_sha256": "03fd80f067c0e82983a89dc1fad3060287bd1e60e65e4e42809919c8982a36ad"
+  },
+  "storage": {
+    "mode": "files",
+    "persistence_backend": "sqlite"
+  },
+  "workflow": {
+    "package_version": "0.20.0",
+    "model_file_sha256": "06d63c95b062f3ae9fac30b1b7938788b91f07182cdf151b26526b7574889905",
+    "catalog_sha256": "beae56ea26ecbbf519a5e61636a99cafd584c515987f09e5915b85116327b7f0",
+    "descriptor_sha256": "6bb0223846917a0cd7a232e1c93ef427e0ee199a08a9eb1b92beec49e9791a64",
+    "complete_standard_workflow": false,
+    "models": [
+      {
+        "id": "aidn-standard",
+        "revision": 422,
+        "sha256": "06d63c95b062f3ae9fac30b1b7938788b91f07182cdf151b26526b7574889905"
+      },
+      {
+        "id": "aidn-standard-final-verification",
+        "revision": 231,
+        "sha256": "1617eb012189e284eab9c5bbb662a4b90ae2fcafb3da8fffbeb57f0b144ee302"
+      },
+      {
+        "id": "aidn-standard-pr-review-completion",
+        "revision": 222,
+        "sha256": "87af856d270b58079ccd4879adab6809babe5adb95c119d88b727a2bbb37f437"
+      },
+      {
+        "id": "aidn-standard-pr-pretriage-completion",
+        "revision": 204,
+        "sha256": "5164a513b64a37558784bb3795f84c3ed3f28e42b0cd0feb8e094f0a98ae5872"
+      },
+      {
+        "id": "aidn-standard-pr-review-capture",
+        "revision": 2,
+        "sha256": "b9b2d1b7338374f6a3286cd14b862999cea989d72091be3970bfdb8513261739"
+      },
+      {
+        "id": "aidn-standard-drift-recovery",
+        "revision": 194,
+        "sha256": "8338e6f6f48d2154b8946c3f846787304e6a9402ba36cd04a73cddf3dd55b123"
+      },
+      {
+        "id": "aidn-standard-corrective-drift",
+        "revision": 192,
+        "sha256": "bbf4c090defc8406c36150533c228782cbeb12e074fec46bba476abbe44ca8c3"
+      },
+      {
+        "id": "aidn-standard-session-setup",
+        "revision": 137,
+        "sha256": "b8fdae97cf09adedd9fa2c300a93c2298946bc4f23f4f6bb89711fb2cd436612"
+      },
+      {
+        "id": "aidn-standard-mode-handoff",
+        "revision": 49,
+        "sha256": "86844277d6b86c3e4ae19c4f25c0287dbbc2ed9ca676e98d1c5e5f421b04dd34"
+      },
+      {
+        "id": "aidn-standard-mode-session-closure",
+        "revision": 124,
+        "sha256": "8800bb547c137a779fa921cc54f71fcdcf5010b105f7dc3edc8d70d29db8f23e"
+      },
+      {
+        "id": "aidn-standard-owned-entry",
+        "revision": 94,
+        "sha256": "c76b6555fdf34f0e05b218ea26c1a9a3f5e61fd074176da5f98ed34dd4341b78"
+      },
+      {
+        "id": "aidn-standard-selected-entry",
+        "revision": 94,
+        "sha256": "1bd83b4f1f67b0e23a7f9b3b86f3a882d1afb1258e4e473df411cabd4547801d"
+      },
+      {
+        "id": "aidn-standard-cycle-preparation",
+        "revision": 94,
+        "sha256": "2772a08ab69a275025a0418467e79d82d2c31a84a8321bc52a5a9057ae67d43a"
+      },
+      {
+        "id": "aidn-standard-canonical-verification",
+        "revision": 94,
+        "sha256": "b951c358e494f2b01cf6df52d08783070fb34c90af11d8b64b983b97af2e2d96"
+      },
+      {
+        "id": "aidn-standard-fresh-cycle-entry",
+        "revision": 89,
+        "sha256": "0fbe776136aabba573755aad6fde580dca185dc5263fa8116bc8987d39966270"
+      },
+      {
+        "id": "aidn-standard-fresh-cycle-checkpoint",
+        "revision": 89,
+        "sha256": "cc961c3ba8301a793496a5a02bf9cc5687d335db5f775f764ed6e207f4c11125"
+      }
+    ],
+    "provider": {
+      "id": "aidn-standard",
+      "revision": 2,
+      "binding_count": 131,
+      "descriptors_sha256": "1d9d9af2613d6b9b3933cf97319af1e3bbb3dc160f2658470a176900cb70cb4a"
+    },
+    "implementation": {
+      "file_count": 687,
+      "sha256": "fc6513e523611152a4a86780e9960e394a492ea85f3a76aa7ded93f0537d3ea7"
+    }
+  },
+  "qualification": {
+    "scope": "Candidate preparation for the first Windows FILES production entry. Native workflow qualification is pending.",
+    "candidate_integrity": {
+      "status": "PASS",
+      "observations": [
+        "Rehashed the retained npm archive, installation lockfile and original baseline.",
+        "Loaded the workflow package in the candidate checkout and the separate installed engine. Compared all model identities, the provider descriptors and implementation inventory."
+      ]
+    },
+    "pilot": {
+      "status": "PASS",
+      "observations": [
+        "Installed the candidate from the retained archive into a neutral private project and verified activation.",
+        "Pushed the neutral product baseline and verified the remote base commit. The two baseline assertions passed in one Node test."
+      ]
+    },
+    "provider_identity": {
+      "status": "PASS",
+      "observation": "The installed production GitHub provider verified its bound identity through the real transport. The isolated GitHub CLI profile independently observed write permission on the pilot."
+    },
+    "reviewer_access": {
+      "status": "UNAVAILABLE",
+      "observation": "Resolved the configured reviewer bot identity on GitHub. Its access to the private pilot and an independent review on a real pull request remain unverified."
+    },
+    "operator_signing": {
+      "enrollment": "PASS",
+      "decision_signature": "SKIP",
+      "observation": "The protected registry contains the operator’s Ed25519 public key with the human role. No signed workflow decision had been consumed at the time of this preview."
+    },
+    "windows_hook_discovery": {
+      "status": "PASS",
+      "observations": [
+        "The initial unconfigured profile exposed zero hooks. After human review, the isolated CLI reported an active ChatGPT login.",
+        "The native thread inventory returned two enabled, trusted project hooks."
+      ],
+      "hooks": [
+        {
+          "event": "preToolUse",
+          "current_hash": "sha256:4cddb9da39349a8f15cd114c1b1908beeb647c5a6b256b4d6a17daf08bb35d99"
+        },
+        {
+          "event": "sessionStart",
+          "current_hash": "sha256:cd772cb97155774fd82966f03d7d377966f40b7165a143f9259ee314458c1afc"
+        }
+      ]
+    },
+    "public_entry": {
+      "status": "PASS",
+      "entry": "aidn runtime workflow-run --target <pilot> --configuration <standard-configuration> --json",
+      "expected": "prepare_host",
+      "observed": "prepare_host",
+      "written": false,
+      "action_sha256": "7759d22d4181e15d60c59e99bef6edd5a69a4f23a440c1c8ebffe8da62674f33",
+      "work_hook_pins_observed": 2,
+      "prior_refusals": [
+        "PROCESS_EXECUTION_NATIVE_CONFIGURATION_INVALID",
+        "WORKFLOW_GIT_ENV_SCOPE_CONFLICT"
+      ],
+      "observation": "The ordinary source CLI prepared the exact host-key action against the activated pilot. The invocation omitted inherited Git configuration for the unrelated desktop Sites credential endpoint. No action was applied by this preview."
+    },
+    "linux": {
+      "scope": "Codex Cloud host capability survey",
+      "host": {
+        "os": "Debian GNU/Linux 13",
+        "architecture": "x86_64",
+        "kernel": "6.18.57",
+        "node": "24.19.0",
+        "git": "2.52.0",
+        "gh": "2.46.0",
+        "codex": "0.159.0-alpha.3"
+      },
+      "client_login": {
+        "status": "PASS",
+        "observation": "Native CLI reported an active ChatGPT login."
+      },
+      "remote_candidate": {
+        "status": "PASS",
+        "observation": "Both GitHub and git ls-remote resolved dev to the frozen candidate."
+      },
+      "checkout": {
+        "status": "FAIL",
+        "head": "89710792fba65df1127705c7c4b465bcd71f4ebc",
+        "observation": "The candidate object was absent in the default checkout. A temporary clone attempt stopped before fetch because the temporary directory was read-only."
+      },
+      "private_pilot_read": {
+        "status": "FAIL",
+        "git_http": 403,
+        "api_http": 404
+      },
+      "reviewer_access": {
+        "status": "UNAVAILABLE",
+        "observation": "The current Cloud connection could not enumerate pilot collaborators."
+      },
+      "cgroup_v2": {
+        "status": "PASS",
+        "mount": "read-only",
+        "delegation": "UNAVAILABLE"
+      },
+      "controlled_shutdown": {
+        "status": "PASS",
+        "observation": "After SIGTERM the supervisor stopped the process group, exited successfully and all three observed PIDs disappeared from procfs."
+      },
+      "abrupt_supervisor_death": {
+        "status": "SKIP",
+        "observation": "The controlled shutdown did not test a supervisor killed before cleanup. No delegated writable cgroup was available to test kernel-enforced group closure."
+      },
+      "native_workflow": "SKIP"
+    },
+    "native_run": {
+      "status": "SKIP",
+      "model_turns_at_preview": 0,
+      "go_p0": false,
+      "observation": "Scope ends at the first actionable preview. Nominal execution, independent review, signed closure and post-merge qualification are tracked separately."
+    }
+  }
+}
