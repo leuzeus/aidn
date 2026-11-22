@@ -3,7 +3,7 @@
   "archive_sha256": "0530e0f01cd5df46fca38b71142e9a13e5c5905a4cd52efdb7dc8a88b1ee76b4",
   "model_revision": 422,
   "backend": "FILES",
-  "phase": "Session mode requested",
+  "phase": "Native allocation failed at thread startup",
   "transitions": [
     {
       "action": "prepare_host",
@@ -64,6 +64,48 @@
       "operation_outcome": null,
       "effect_status": null,
       "receipt_sha256": null
+    },
+    {
+      "action": "decision",
+      "action_sha256": "4a9a393c22682960457e1d9472123523ee5bde58b6ab41e23058dc5236f652a3",
+      "process_status": "RUNNING",
+      "operation_outcome": "completed",
+      "effect_status": "no_effect",
+      "receipt_sha256": "330f9909adce526b13463a35f41237a50bcf869d46706c5c16203ed3163c7193"
+    },
+    {
+      "action": "operation",
+      "binding": "session_mode_apply",
+      "action_sha256": "3ad71e0635829c917ce496d0f74d1b66d334dcbfbd48ae020c218342dbf4258a",
+      "process_status": "WAITING",
+      "operation_outcome": "completed",
+      "effect_status": "confirmed",
+      "receipt_sha256": "55215e3ed7529ee8b4f2d6a6f6eab01fe4d7323bb4bcd3afddad57a7ca93f49f"
+    },
+    {
+      "action": "call",
+      "action_sha256": "787c8d7720b47cd3e71bec546b406639d164d60c0a53c7ae241400fcc75a3470",
+      "process_status": "RUNNING",
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
+    },
+    {
+      "action": "operation",
+      "binding": "session_entry_admit",
+      "action_sha256": "998e762f25c1fa398b37197ab8c51f80ac6ce45710e29063bf73875be680075f",
+      "process_status": "RUNNING",
+      "operation_outcome": "completed",
+      "effect_status": "no_effect",
+      "receipt_sha256": "e03cf135c43d5c97eff05af32927019c841be426df26ad38249e17c4221b3432"
+    },
+    {
+      "action": "native",
+      "action_sha256": "214e49a94a44262be0f63ef82a1284ae391d2b8a856b138b27e06ed12312090f",
+      "process_status": "RUNNING",
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
     }
   ],
   "physical_observation": {
@@ -89,9 +131,11 @@
     "stable_across_processes": true
   },
   "terminal": {
+    "process_status": "RUNNING",
     "workflow_completed": false,
-    "native_model_turns_at_wait": 0,
-    "p0_go": false
+    "p0_go": false,
+    "windows_installed_nominal": "SKIP",
+    "post_merge_sync": "SKIP"
   },
   "predecessor": {
     "candidate": "69e43d9296d7ebf2616ec16d2170be4dad3c83b4",
@@ -240,5 +284,43 @@
       }
     ],
     "native_validation_profile_configured": false
-  }
+  },
+  "signed_mode": {
+    "status": "PASS",
+    "choice": "COMMITTING",
+    "authority_kind": "human",
+    "signature_algorithm": "Ed25519",
+    "question_sha256": "f7737f042f5a88093d18398cbfdd04d0756692d9020b3cc5127ac03b663653af",
+    "signed_envelope_sha256": "f23a2bdb3257abe5d07dcb3c0eb47ca001f21d0792b47846eaca213c20068e21",
+    "decision_receipt_sha256": "330f9909adce526b13463a35f41237a50bcf869d46706c5c16203ed3163c7193",
+    "apply_receipt_sha256": "55215e3ed7529ee8b4f2d6a6f6eab01fe4d7323bb4bcd3afddad57a7ca93f49f",
+    "observed_mode": "COMMITTING",
+    "session_document_sha256": "2d36cc083e5fef48fb1f890ca8dfde52442165fbeddac5d40f80af9a86894138",
+    "matching_result_events_in_instance": 1
+  },
+  "native_allocations": [
+    {
+      "status": "FAIL",
+      "host_status": "FAILED",
+      "first_failure": "PROCESS_RPC_TIMEOUT",
+      "generation": 1,
+      "ready_activities": [
+        {
+          "node": "startup_drift_report",
+          "occurrence": "root/3/committing/0"
+        }
+      ],
+      "instance_before_sha256": "9024daef395ddb068d32c0c0b9dfabb1b3920b9228158513468083476081a27c",
+      "instance_after_sha256": "9024daef395ddb068d32c0c0b9dfabb1b3920b9228158513468083476081a27c",
+      "action_sha256": "214e49a94a44262be0f63ef82a1284ae391d2b8a856b138b27e06ed12312090f",
+      "authorization_sha256": "28b5565f5996de7eafa0119ddddbf3f33f3fe01c2fd4bef11f4398ea41c54c8a",
+      "journal_sha256": "f8937bc6b70e47c3ebc2070114234f71b28778746e4e5f6a3e45e899e484ae03",
+      "journal_phase": "failed",
+      "responses_observed": 0,
+      "thread_counters_reported": 0,
+      "closure_method": "windows-job-object",
+      "active_processes_after_close": 0,
+      "elapsed_global_ms": 49913
+    }
+  ]
 }
