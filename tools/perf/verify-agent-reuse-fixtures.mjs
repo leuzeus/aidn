@@ -32,7 +32,17 @@ const profile = buildAgentProfile({ id: "codex", label: "Fixture", defaultRole: 
 const adapter = { getProfile: () => profile, canHandleRole: ({ role, action }) => canAgentRolePerform(role, action) };
 function authority(observe) { return { observe, verify: async ({ request: r, observation: o }) => ({ outcome: "verified",
   authority_id: o.authority_id, request_sha256: fingerprintAgentReuse(r), observation_sha256: fingerprintAgentReuse(o) }) }; }
-const pure = (r, o) => evaluateAgentReuse({ request: r, observation: o, eligibleAdapterIds: ["codex"], now: NOW });
+import { evaluateWorkflow } from "../../src/application/workflow/workflow-evaluations.mjs";
+function pure(request, observation) {
+  const input = { request, observation, eligibleAdapterIds: ["codex"], now: NOW };
+  const result = evaluateWorkflow("agent_reuse@1", input);
+  assert.deepEqual(result.details, evaluateAgentReuse(input));
+  assert.equal(result.verdict, result.details.decision);
+  assert.equal(result.observed_subject.sha256, fingerprintAgentReuse(observation));
+  assert.deepEqual(result.evidence_refs, observation.evidence_refs);
+  assert.ok(result.reason_codes.includes(result.details.reason_code));
+  return result.details;
+}
 const service = (r, provider, rest = {}) => decideAgentReuse({ request: r, authority: provider,
   recommendation: { role: r.role, action: r.action, mode: r.mode }, scope: { scope_id: r.scope_id }, adapters: [adapter], now: () => NOW, ...rest });
 const cases = [];

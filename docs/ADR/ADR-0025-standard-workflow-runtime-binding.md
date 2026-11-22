@@ -1,5 +1,19 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Evaluation definitions and results
+
+The installed evaluator registry resolves a logical identifier and revision.
+An evaluation definition describes its input, output and boolean facts. Gating,
+cycle validation and agent reuse each keep their native verdict and full detail
+inside evaluation-result.v1. A subject digest binds each result to the observed
+input. Evidence references come from the original policy observation.
+
+The host obtains and verifies the native observation or cycle receipt before
+calling the pure evaluator. Evaluators produce read-only derived views. A replay
+over fixture inputs can reproduce the verdict but provides no live attestation.
+The existing gate, operation and assignment interfaces return their original
+typed results. A changed evaluator is published under a new revision.
+
 ## Native response format and host validation, 2026-11-20
 
 The Codex request uses a portable strict response schema with explicit types,
