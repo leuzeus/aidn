@@ -165,8 +165,52 @@
       "work_hook_pins_observed": 0
     },
     "linux": {
-      "status": "SKIP",
-      "observation": "Cloud host survey pending."
+      "scope": "Codex Cloud host capability survey",
+      "host": {
+        "os": "Debian GNU/Linux 13",
+        "architecture": "x86_64",
+        "kernel": "6.18.57",
+        "node": "24.19.0",
+        "git": "2.52.0",
+        "gh": "2.46.0",
+        "codex": "0.159.0-alpha.3"
+      },
+      "client_login": {
+        "status": "PASS",
+        "observation": "Native CLI reported an active ChatGPT login."
+      },
+      "remote_candidate": {
+        "status": "PASS",
+        "observation": "Both GitHub and git ls-remote resolved dev to the frozen candidate."
+      },
+      "checkout": {
+        "status": "FAIL",
+        "head": "89710792fba65df1127705c7c4b465bcd71f4ebc",
+        "observation": "The candidate object was absent in the default checkout. A temporary clone attempt stopped before fetch because the temporary directory was read-only."
+      },
+      "private_pilot_read": {
+        "status": "FAIL",
+        "git_http": 403,
+        "api_http": 404
+      },
+      "reviewer_access": {
+        "status": "UNAVAILABLE",
+        "observation": "The current Cloud connection could not enumerate pilot collaborators."
+      },
+      "cgroup_v2": {
+        "status": "PASS",
+        "mount": "read-only",
+        "delegation": "UNAVAILABLE"
+      },
+      "controlled_shutdown": {
+        "status": "PASS",
+        "observation": "After SIGTERM the supervisor stopped the process group, exited successfully and all three observed PIDs disappeared from procfs."
+      },
+      "abrupt_supervisor_death": {
+        "status": "SKIP",
+        "observation": "The controlled shutdown did not test a supervisor killed before cleanup. No delegated writable cgroup was available to test kernel-enforced group closure."
+      },
+      "native_workflow": "SKIP"
     },
     "native_run": {
       "status": "SKIP",
