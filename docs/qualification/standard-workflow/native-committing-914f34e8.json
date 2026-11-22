@@ -1,0 +1,153 @@
+{
+  "candidate": "914f34e83607df7ae8beec256623a9b6251d3633",
+  "archive_sha256": "dba49b6c35942c7ed007a7dcd3ed20d2c6af68f3cc8113e8df420607f3793098",
+  "predecessor": "6b6437c4715a500124f3de7978bcbe4ca23efdf2",
+  "correction_pr": "https://github.com/leuzeus/aidn/pull/206",
+  "model_revision": 430,
+  "backend": "Windows/PostgreSQL",
+  "state_mode": "db-only",
+  "campaign_state": "IN_PROGRESS",
+  "package_installation": "PASS",
+  "source_installed_inventory": {
+    "models": 16,
+    "provider_bindings": 131,
+    "implementation_files": 689,
+    "implementation_sha256": "aa0ba00f9543ba18582d96c1b5103140c39c5a5b5531ee8c1eb2d4df286eeca4"
+  },
+  "github_provider_identity": "PASS",
+  "native_hooks": {
+    "expected": 2,
+    "observed": 2,
+    "status": "PASS"
+  },
+  "cycle_validation": {
+    "host_material_check": "PASS",
+    "configuration_sha256": "49637bcbf543106d260f803ceeeef213fc05508885e1d524ab7eeafd73c6b4bb",
+    "process_plan_sha256": "62b77589e7f303ebb263dbf7a257299a182c75ce174799395122fbe433195d08",
+    "case_limit_ms": 60000,
+    "cases": [
+      {
+        "id": "filesystem_access",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 10994,
+        "active_processes": 0,
+        "companion_active_processes": 0,
+        "sha256": "1038c1009a68ec5d1ef54276ac9821a4a4d2a56a3f31555a17edd752c00bd212"
+      },
+      {
+        "id": "timeout",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 8265,
+        "active_processes": 0,
+        "sha256": "04d899daaf34d192876c61b9202a1cf421d420e9c1ef29da1df2c1991ab7179c"
+      },
+      {
+        "id": "cancel",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 6277,
+        "active_processes": 0,
+        "sha256": "adfa39ebe3d88b6f3f9a3948f9334ed664cf4fe98ec31a9e47f0e8d334a844f0"
+      },
+      {
+        "id": "callback",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 6222,
+        "active_processes": 0,
+        "sha256": "4341a51f5e5548eb193c41d1c8d90a9c77d4d2b9344b7b6aa0c4214907273f27"
+      }
+    ],
+    "review_status": "PASS",
+    "attestation_sha256": "bd0a9ac0d67de67d9daa12f8962d3f62f56e8ad2f87fc143d5e874c664afa229",
+    "qualification_sha256": "ed4d32344baa0be1cfb94cd5d4fbbb833aaee76e4b0b40a6970ecb8cc91ce83f",
+    "profile_sha256": "9878f808bfd7474c42e65be612993e3ebcd51f7de49c89435ba928bb53c57ff5",
+    "review_channel": "operator-accepted-local-history-observation",
+    "independent_original_author_proof": false,
+    "manual_signature_steps": 0,
+    "read_isolation": "not_guaranteed",
+    "network_isolation": "not_guaranteed"
+  },
+  "postgres": {
+    "isolated_database": "PASS",
+    "dedicated_non_superuser_role": "PASS",
+    "version": "18.7",
+    "stable_locator_identity": "PASS",
+    "two_checkouts_same_inventory": {
+      "status": "PASS",
+      "artifact_count": 44,
+      "distinct_worktree_identity": true,
+      "session_count": 1,
+      "cycle_count": 0,
+      "proof_sha256": "2e937969673f6e4086b230387a34362f20f150290432bfaa84f6393a129a87d4"
+    },
+    "cold_resume": "SKIP",
+    "stale_local_projection": "SKIP",
+    "linux_connectivity": "SKIP",
+    "files_session_migration": "SKIP"
+  },
+  "preparation_findings": [
+    {
+      "code": "ENOENT",
+      "scope": "declared empty protected directory missing",
+      "disposition": "Created the declared directory without changing the frozen configuration",
+      "original_trace_sha256": "1e135570253485d05a0d44cc0d2c0e56d7bc1d2b9ff1b1c2a61da6d7c0c5e8e5"
+    },
+    {
+      "code": "ARTIFACT_CANONICAL_SCOPE_MISSING_OR_AMBIGUOUS",
+      "scope": "public preview after fresh PostgreSQL schema-only installation",
+      "original_trace_sha256": "32efcf79e0423d09f0e35a3a92f2899f3dd33d0948df9aa8f1e5f5f1383e9a03",
+      "disposition": "Explicit installed index-sync initialized the empty canonical scope from 35 installation bootstrap artifacts; zero sessions and cycles imported. Its SQLite output is retained as preparation evidence; PostgreSQL remains canonical with localProjectionPolicy none.",
+      "product_modified": false
+    },
+    {
+      "code": "ARTIFACT_POSTGRES_CONNECTION_UNAVAILABLE",
+      "scope": "local chat connector composition before decision",
+      "disposition": "Passed the selected connection through the native Node worker environment"
+    },
+    {
+      "code": "ARTIFACT_POSTGRES_COMMAND_FAILED",
+      "scope": "local connector receipt recovery after accepted mode",
+      "disposition": "Historical connector installation lacked pg. Canonical journal and instance readers use the frozen candidate; cold recovery returned the accepted receipt without resubmission."
+    }
+  ],
+  "signed_mode": {
+    "status": "PASS",
+    "choice": "COMMITTING",
+    "operation_id": "op_f6cd394411bdf5ee89c0df6f0df49d49ad5a3d91",
+    "receipt_id": "receipt_f6cd394411bdf5ee89c0df6f0df49d49ad5a3d91",
+    "accepted_results": 1,
+    "cold_receipt_recovery": "PASS",
+    "new_mode_questions": 0,
+    "manual_signature_steps": 0,
+    "independent_original_author_proof": false
+  },
+  "public_entry": {
+    "status": "PASS",
+    "scope": "session initialization, human mode receipt and mode application through the public STANDARD entry"
+  },
+  "native": {
+    "status": "SKIP",
+    "reason": "No completed Native result at this checkpoint; the first real actor is running",
+    "launched": true,
+    "responses": null,
+    "budget": {
+      "configuration_sha256": "cba4ca805035feb11ee91f06a3b0a4f363d5b8e7cf1a6dffc8be995bc14d127b",
+      "max_responses": 24,
+      "max_bytes": 67108864,
+      "max_turn_ms": 600000,
+      "authorized_at_ms": 1795378652530,
+      "deadline_ms": 1795382252530
+    }
+  },
+  "full_nominal": "SKIP",
+  "installed_nominal": "SKIP",
+  "same_session_resume": "SKIP",
+  "p0_complete": false,
+  "complete_standard_workflow": false,
+  "limitations": [
+    "Fresh candidate replay; no old pilot receipts or sessions were migrated.",
+    "Same canonical inventory does not prove resumption from the second checkout.",
+    "The pilot local observer is an accepted qualification exception; lot 2b independent interface proof remains open.",
+    "The four Windows controls qualify the validator boundary, not the full STANDARD native workflow."
+  ],
+  "report_checkpoint_at": "2026-11-22T20:20:03.048Z"
+}

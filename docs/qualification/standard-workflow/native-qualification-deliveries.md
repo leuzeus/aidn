@@ -30,6 +30,8 @@ Prepare the shared database now. Use the next corrected, frozen candidate for th
 
 For a fresh Windows pilot, observe both installed hooks as enabled and trusted in a real thread before preparing the validator plan for approval. On revision 425, trusting the project updated the client configuration included in the plan. Its previous fingerprint was stale before the first control ran. [Windows preparation report](native-committing-c79bf0d7.json)
 
+Candidate `914f34e8` starts the PostgreSQL/db-only campaign after [PR #206](https://github.com/leuzeus/aidn/pull/206). The four Windows validator controls and their local chat review passed. Both installed checkouts read the same 44 canonical artifacts and one S001 under a stable project scope. COMMITTING was accepted once and its receipt recovered in a new process. Fresh installation created the database schema without canonical project rows: the first public preview refusal is retained, followed by an explicit import of the 35 untouched bootstrap artifacts into the empty scope. No historical session was migrated. Cross-checkout resumption, the full nominal, installed replay and independent interface proof remain open. [PostgreSQL campaign report](native-committing-914f34e8.json)
+
 ## Acceptance evidence for lots 2b–4
 
 The initial Windows recovery trial retained zero receipts for the mode question.
