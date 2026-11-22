@@ -148,21 +148,40 @@
       "observation": "Resolved the configured reviewer bot identity on GitHub. Its access to the private pilot and an independent review on a real pull request remain unverified."
     },
     "operator_signing": {
-      "status": "UNAVAILABLE",
-      "observation": "No independent human principal was enrolled during preparation."
+      "enrollment": "PASS",
+      "decision_signature": "SKIP",
+      "observation": "The protected registry contains the operator’s Ed25519 public key with the human role. No signed workflow decision had been consumed at the time of this preview."
     },
     "windows_hook_discovery": {
-      "status": "UNAVAILABLE",
-      "observation": "The installed project declares SessionStart and PreToolUse. Both the cwd inventory and the ephemeral read-only thread inventory returned zero hooks, with zero warnings and zero errors. The isolated client reported not logged in."
+      "status": "PASS",
+      "observations": [
+        "The initial unconfigured profile exposed zero hooks. After human review, the isolated CLI reported an active ChatGPT login.",
+        "The native thread inventory returned two enabled, trusted project hooks."
+      ],
+      "hooks": [
+        {
+          "event": "preToolUse",
+          "current_hash": "sha256:4cddb9da39349a8f15cd114c1b1908beeb647c5a6b256b4d6a17daf08bb35d99"
+        },
+        {
+          "event": "sessionStart",
+          "current_hash": "sha256:cd772cb97155774fd82966f03d7d377966f40b7165a143f9259ee314458c1afc"
+        }
+      ]
     },
     "public_entry": {
-      "status": "FAIL",
+      "status": "PASS",
       "entry": "aidn runtime workflow-run --target <pilot> --configuration <standard-configuration> --json",
       "expected": "prepare_host",
-      "observed": "PROCESS_EXECUTION_NATIVE_CONFIGURATION_INVALID",
+      "observed": "prepare_host",
       "written": false,
-      "action_sha256": null,
-      "work_hook_pins_observed": 0
+      "action_sha256": "7759d22d4181e15d60c59e99bef6edd5a69a4f23a440c1c8ebffe8da62674f33",
+      "work_hook_pins_observed": 2,
+      "prior_refusals": [
+        "PROCESS_EXECUTION_NATIVE_CONFIGURATION_INVALID",
+        "WORKFLOW_GIT_ENV_SCOPE_CONFLICT"
+      ],
+      "observation": "The ordinary source CLI prepared the exact host-key action against the activated pilot. The invocation omitted inherited Git configuration for the unrelated desktop Sites credential endpoint. No action was applied by this preview."
     },
     "linux": {
       "scope": "Codex Cloud host capability survey",
@@ -214,9 +233,9 @@
     },
     "native_run": {
       "status": "SKIP",
-      "workflow_instances_executed": 0,
-      "model_turns": 0,
-      "go_p0": false
+      "model_turns_at_preview": 0,
+      "go_p0": false,
+      "observation": "Scope ends at the first actionable preview. Nominal execution, independent review, signed closure and post-merge qualification are tracked separately."
     }
   }
 }
