@@ -1,5 +1,20 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Human decision profiles
+
+A human-decision-question.v1 names the subject and its digest, an explicit
+prompt and the offered options. A human-decision-response.v1 binds the choice,
+subject, question hash, source event, principal and evidence. Acceptance requires
+a matching proof from the host authority over the original source. A changed
+question, changed subject, unoffered option or absent authentication refuses
+before the signed inbox is written.
+
+The mode, spike and drift-recovery adapters keep their historical questions,
+inbox readers and business responses. Mode v1 and recovery v1 bind their subject
+through the complete signed native question. Spike and recovery v2 also bind the
+review digest in the native claim. The common view reproduces these distinctions
+without rewriting retained signatures.
+
 ## Evaluation definitions and results
 
 The installed evaluator registry resolves a logical identifier and revision.
