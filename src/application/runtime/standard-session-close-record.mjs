@@ -21,9 +21,11 @@ export function createStandardSessionCloseRecord({ targetRoot, readDecision, rea
     return plan;
   }
   function assertDocuments(rows, after = false, metadata = null) {
+    const names = rows.map(row => row.path);
+    const documents = artifacts.readMany(names, { required: names, includeMetadata: true });
     for (const [i, row] of rows.entries()) {
       const hash = after ? row.after_sha256 : row.before_sha256;
-      if (artifacts.read(row.path, { required: true }).sha256 !== hash || artifacts.metadataHash(row.path) !== (metadata ? metadata[i] : row.before_metadata_sha256))
+      if (documents[i].sha256 !== hash || documents[i].metadata_sha256 !== (metadata ? metadata[i] : row.before_metadata_sha256))
         fail("STANDARD_SESSION_CLOSE_DOCUMENT_CHANGED");
       if (artifacts.describe().state_mode !== "db-only" && readAgentRunFile(agentRunPhysicalPath(path.join(artifacts.root, "docs/audit", row.path)), { json: false, maxBytes: 1048576 }).sha256 !== hash)
         fail("STANDARD_SESSION_CLOSE_PROJECTION_CHANGED");
@@ -36,8 +38,10 @@ export function createStandardSessionCloseRecord({ targetRoot, readDecision, rea
     if (question.operation_id !== input.decision_operation_id) fail("STANDARD_SESSION_CLOSE_DECISION_CHANGED");
     const before = operations.observeScope();
     if (shadowHash(before) !== question.review.scope_sha256) fail("STANDARD_SESSION_CLOSE_SCOPE_CHANGED");
-    const documents = sessionClosePaths(question.review.session_path).map(name => artifacts.read(name, { required: true }));
-    const changes = renderStandardSessionClose({ question, decision, documents, preparedAt: at }).map(row => ({ ...row, before_metadata_sha256: artifacts.metadataHash(row.path) }));
+    const names = sessionClosePaths(question.review.session_path);
+    const documents = artifacts.readMany(names, { required: names, includeMetadata: true });
+    const changes = renderStandardSessionClose({ question, decision, documents, preparedAt: at })
+      .map((row, index) => ({ ...row, before_metadata_sha256: documents[index].metadata_sha256 }));
     assertDocuments(changes);
     const plan = assertPlan({ contract_version: "standard-session-close-plan.v1", operation_ref: "session_close_record", input, prepared_at_ms: at,
       session_path: question.review.session_path, decision_material_sha256: shadowHash(source), context_sha256: question.review.context_sha256,

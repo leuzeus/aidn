@@ -742,6 +742,18 @@ productive STANDARD and the entire L1-L8/A1-A10 goal remain separately due.
 No public CLI/JSON contract, governed concept, store or historical conversion is
 introduced; existing source-of-truth, metadata and authorization policies remain.
 
+## Synchronous reads for local operation scope and ownership
+
+STANDARD reads its current Git HEAD after checking activation and reading
+the canonical current-state document. The kernel creation identity of the running process is immutable
+for its lifetime. Its hostname and every foreign PID observation remain
+current at the point of use.
+
+Session closure reads each SQLite document group, including its metadata,
+in one statement. It opens another group after admission and around the
+write. Physical projections, metadata preconditions, the resource fence,
+canonical CAS and the signed decision each keep their own checks.
+
 ## Fresh shell-free branch and HEAD observations, 2026-11-05
 
 The local VCS branch and HEAD readers use the existing shell-free Git string

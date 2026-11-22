@@ -115,7 +115,13 @@ try {
   execFileSync("git", ["-C",root,"switch","-c","feature/other"], {stdio:"pipe"});
   await denied(update, "CYCLE_BRANCH_MISMATCH");
   execFileSync("git", ["-C",root,"switch","feature/C101-alpha"], {stdio:"pipe"});
-  assert.equal((await admit(update)).ok, true);
+  execFileSync("git", ["-C", root, "commit", "--allow-empty", "-m", "advance the admission fixture"], { stdio: "pipe" });
+  const nextHead = execFileSync("git", ["-C", root, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+  const refreshed = await admit(update);
+  assert.equal(refreshed.ok, true);
+  assert.notEqual(second.workspace.head_commit, nextHead);
+  assert.equal(refreshed.workspace.head_commit, nextHead);
+  assert.equal(refreshed.write_decision.observation.head, nextHead);
   for (const bad of ["*** Begin Patch\n*** Update File: src/example.mjs\n*** End Patch", add("src/a.txt:stream"), add("src/NUL.txt"), add("src/file. "), add("src/example.mjs"), update.replace("@@", "unclassified"), add("docs/audit/notes/a.md").replace("*** End Patch", "*** Add File: docs/audit/notes/a.md\n+x\n*** End Patch")]) await denied(bad);
   write("nested/.git/HEAD", "ref: refs/heads/main\n");
   await denied(add("nested/inside.txt"), "NESTED_REPOSITORY");
