@@ -21,9 +21,22 @@
   "validation_profile_sha256": "d6fc6baada4accbd9dc1d446ec709fd8f9a10d0b0c13552de5422f4335c2faec",
   "github_provider_identity": "PASS",
   "workflow_configuration_sha256": "56f8c7bb5ba9ae631fb060c73db35831a0c4c3935af830396af4286aa3dbb5a9",
-  "native_configuration_sha256": "971aea00534a39f5448ae495f3bfb7b2e28218b86b854ba69ccfa4ca23319da2",
+  "native_configuration_sha256": "c819d9c5baf9883ec57cd1caa7fe58f338ef33a70b51f5b6e40bd971e35ed232",
+  "installed_projection_sha256": "971aea00534a39f5448ae495f3bfb7b2e28218b86b854ba69ccfa4ca23319da2",
   "public_full_nominal": "SKIP",
   "windows_installed_nominal": "SKIP",
   "p0_go": false,
-  "complete_standard_workflow": false
+  "complete_standard_workflow": false,
+  "public_entry": {
+    "status": "PASS",
+    "instance_id": "standard-vertical-pr201-r2",
+    "workflow_configuration_sha256": "56f8c7bb5ba9ae631fb060c73db35831a0c4c3935af830396af4286aa3dbb5a9",
+    "profile_sha256": "d6fc6baada4accbd9dc1d446ec709fd8f9a10d0b0c13552de5422f4335c2faec",
+    "initialized": true
+  },
+  "initial_human_question": {
+    "type": "standard-mode-question.v1",
+    "session": "S001",
+    "action_sha256": "75dc59cfe9460543e877aab08664e41c54cf5798a425ef48d6af8ba0063c1ff6"
+  }
 }
