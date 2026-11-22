@@ -1,7 +1,7 @@
 import path from "node:path";
 import fs from "node:fs";
-import { nativeActivityTransportSchema, assertNativeActivityAnswer } from "../../core/workflow/native-activity-output.mjs";
-import { randomUUID } from "node:crypto";
+import { nativeActivityAnswerSchema, nativeActivityTransportSchema, assertNativeActivityAnswer } from "../../core/workflow/native-activity-output.mjs";
+import { createHash, randomUUID } from "node:crypto";
 import { createAgenticCodexRpc } from "./agentic-codex-rpc.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { processFail as fail } from "../../core/workflow/agentic-process-model.mjs";
@@ -179,8 +179,28 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
           for (const event of active.pending.splice(0)) await notification(event);
           await completion; await rpc.flush();
           if (active.answers.length !== 1 || active.usage === null) fail("PROCESS_SESSION_CAPTURE_INCOMPLETE");
-          let answer; try { answer = JSON.parse(active.answers[0].text); } catch { fail("PROCESS_SESSION_ANSWER_INVALID"); }
-          assertNativeActivityAnswer(answer, output_contract, output_context_sha256, output_bindings);
+          let answer, stage = "json_parse";
+          try {
+            try { answer = JSON.parse(active.answers[0].text); } catch { fail("PROCESS_SESSION_ANSWER_INVALID"); }
+            stage = "answer_validation";
+            assertNativeActivityAnswer(answer, output_contract, output_context_sha256, output_bindings);
+          } catch (error) {
+            const code = /^[A-Z][A-Z0-9_]{0,127}$/.test(error.code ?? "") ? error.code : "PROCESS_SESSION_ANSWER_INVALID";
+            const data = Buffer.from(active.answers[0].text);
+            // Only the captured final answer, already bounded to 64 KiB. Base64
+            // bounds JSON expansion even for control characters. This private
+            // diagnostic is never a native-result or an acceptance receipt.
+            try { await evidence.retain("native-answer-rejected", {
+              thread_id: threadId, turn_id: active.turnId, request_sha256, binding_sha256: binding,
+              code, validation: error.native_answer_validation ?? { stage, issues: [] },
+              output_contract, output_context_sha256, output_bindings_sha256: shadowHash(output_bindings),
+              answer_schema_sha256: shadowHash(nativeActivityAnswerSchema(output_contract, output_context_sha256, output_bindings)),
+              answer_encoding: "base64", answer_base64: data.toString("base64"), answer_bytes: data.length,
+              answer_sha256: createHash("sha256").update(data).digest("hex"),
+              native_usage: active.usage, exchanges: { native_responses: active.responseIds.size, observed_tool_items: active.tools }
+            }, { failureCode: code }); } catch { /* Retention failure must not replace the original refusal. */ }
+            throw error;
+          }
           context.push(shadowHash(instruction));
           const ref = await evidence.retain("native-result", { thread_id: threadId, turn_id: active.turnId,
             request_sha256, binding_sha256: binding, answer, ...(output_contract ? { output_contract, output_context_sha256 } : {}), native_usage: active.usage,

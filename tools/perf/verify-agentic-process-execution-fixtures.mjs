@@ -58,7 +58,7 @@ import { createGithubPrOpenTransportFixture } from "./github-pr-open-fixture-lib
 import { createLocalWorkflowSessionPush } from "../../src/adapters/runtime/local-workflow-session-push.mjs";
 import { createStandardWorkflowMixedHost } from "../../src/application/runtime/standard-workflow-mixed-composition.mjs";
 import { createStandardProcessAuthority } from "../../src/application/runtime/standard-process-authority.mjs";
-import { assertNativeActivityAnswer, nativeActivityAnswerSchema, assertStandardDriftReport } from "../../src/core/workflow/native-activity-output.mjs";
+import { assertNativeActivityAnswer, nativeActivityAnswerSchema, nativeActivityAnswerInstructions, nativeActivityOutputBindings, assertStandardDriftReport } from "../../src/core/workflow/native-activity-output.mjs";
 import { evaluateStandardDriftReport, readStandardDriftContext } from "../../src/application/runtime/standard-drift-report.mjs";
 import { runReloadCheckUseCase } from "../../src/application/runtime/reload-check-use-case.mjs";
 import { createStandardDriftFinalization } from "../../src/application/runtime/standard-drift-finalization.mjs";
@@ -252,6 +252,7 @@ if (process.argv.includes("--standard-composed-preflight-only")) {
   console.log(JSON.stringify(standardPreflight)); process.exit(0);
 }
 const checkFlags = new Set([
+  "--native-answer-only",
   "--host-resource-activity-only", "--drift-git-readonly-only", "--cycle-plan-select-native-only",
   "--canonical-plan-work-only", "--drift-objective-mismatch-only", "--v2-only",
   "--native-human-port-only", "--historical-diagnostic-only", "--native-human-turn-only",
@@ -294,6 +295,7 @@ let serial = 0, completed = false;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
 async function check(name, callback) { if (process.argv.includes("--host-resource-activity-only") && !name.startsWith("host resource activity:") && name !== "worker mixed private v2 authority stops at an operation boundary without native startup") return; if (process.argv.includes("--drift-git-readonly-only") && !name.startsWith("drift controlled Git ")) return; if (selectedCanonicalResumeNativeMode && !name.startsWith(`canonical resume native ${selectedCanonicalResumeNativeMode}:`)) return; if (selectedStandardExistingOpenWorkMode && !name.startsWith(`standard existing open work ${selectedStandardExistingOpenWorkMode}:`)) return; if (selectedPublishedChoiceMode && !name.startsWith(`standard selected root ${selectedPublishedChoiceMode}:`)) return; if (selectedStandardExistingCompleteMode && !name.startsWith(`standard existing complete ${selectedStandardExistingCompleteMode}:`)) return; if (selectedStandardExistingOpenMode && !name.startsWith(`standard existing open ${selectedStandardExistingOpenMode}:`)) return; if (process.argv.includes("--cycle-plan-select-native-only") && !name.startsWith("cycle plan selection native files:")) return; if (selectedCanonicalPlanSelectionMode && !name.startsWith(`cycle plan selection ${selectedCanonicalPlanSelectionMode}:`)) return; if (process.argv.includes("--canonical-plan-work-only") && !name.startsWith("canonical plan work files:")) return; if (selectedCanonicalPlanReadinessMode && !name.startsWith(`cycle plan readiness ${selectedCanonicalPlanReadinessMode}:`)) return; if (selectedCanonicalPlanAdoptionMode && !name.startsWith(`cycle plan adoption ${selectedCanonicalPlanAdoptionMode}:`)) return; if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
   if (process.argv.includes("--native-human-port-only") && !name.startsWith("native human port:")) return;
+  if (process.argv.includes("--native-answer-only") && !name.startsWith("native answer:")) return;
   if (process.argv.includes("--bpmn-control-only") && !name.startsWith("explicit pinned host scenario drives XML")) return;
   if (process.argv.includes("--native-permission-profile-only") && !name.startsWith("explicit pinned host scenario drives XML")
     && !name.startsWith("typed native permission null defaults")
@@ -3526,6 +3528,104 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(refused.status, 1); assert.equal(JSON.parse(refused.stdout).first_failure, "PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED");
     assert.match(refused.stderr, /PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED/);
     assert.deepEqual(fs.readdirSync(f.dirs.control), []);
+  });
+  await check("native answer: retain bounded refusal evidence and preserve acceptance with the production session adapter", async () => {
+    for (const fault of ["none", "json", "schema", "semantics", "storage", "budget", "escaped-limit"]) {
+      const f = fixture(), records = [], model = JSON.parse(fs.readFileSync(f.configuration.model.path));
+      const contract = "standard-drift-report.v1", context = "c".repeat(64), bindings = { original_objective: "Scoped work" };
+      const answer = { outcome: "completed", summary: "Final answer only", report: {
+        contract_version: contract, context_sha256: context, original_objective: "Scoped work", current_objective: "Scoped work",
+        drift_level: "none", objective_changed: false, changes: [], keep: [], discard: [],
+        split_recommendation: { new_cycle: false, new_branch: false, change_request_required: false, impact: "none" },
+        recommendation: "continue", rationale: "No deviation observed", evidence_refs: [{ ref: "fixture:report", sha256: "a".repeat(64) }] } };
+      if (["schema", "storage", "budget"].includes(fault)) answer.report.rationale = "";
+      if (fault === "semantics") answer.report.changes = ["Unexpected deviation"];
+      const finalText = fault === "json" ? "{PRIVATE_INVALID_JSON" : fault === "escaped-limit" ? "\u0000".repeat(65536) : JSON.stringify(answer);
+      const t = transport(f, { answerText: finalText });
+      const sessions = createAgenticCodexSessions({ native: f.configuration.native, targetRoot: f.configuration.target_root,
+        productRoot: f.dirs.product, controlRoot: path.join(f.dirs.control, "case"), rpcFactory: t.rpcFactory,
+        evidence: { async retain(kind, value, options) {
+          records.push({ kind, value: structuredClone(value), options });
+          if (["storage", "budget"].includes(fault) && kind === "native-answer-rejected")
+            throw Object.assign(Error("private storage failure"), { code: fault === "storage" ? "ENOSPC" : "PROCESS_EXECUTION_STORAGE_LIMIT" });
+          return { ref: "fixture/" + kind, sha256: shadowHash(value) };
+        }, diagnostic() {} }, budget: { maxTurnMs: 1000, remainingBytes: () => 1000000, response() {} } });
+      try {
+        const session = await sessions.open({ role: model.roles[0], policy: model.policies.find(row => row.id === "work"),
+          input: { developer_instructions: "Common fixture authority" }, deadline: Date.now() + 60000 });
+        const execute = () => session.run({ instruction: "Assess without effects", request_sha256: "b".repeat(64),
+          output_contract: contract, output_context_sha256: context, output_bindings: bindings });
+        if (fault === "none") {
+          assert.equal((await execute()).outcome, "completed");
+          assert.deepEqual(records.find(row => row.kind === "native-result").value.answer, answer);
+          assert.equal(records.some(row => row.kind === "native-answer-rejected"), false);
+        } else {
+          const code = fault === "semantics" ? "STANDARD_DRIFT_REPORT_INCONSISTENT" : "PROCESS_SESSION_ANSWER_INVALID";
+          await assert.rejects(execute(), { code });
+          const retained = records.find(row => row.kind === "native-answer-rejected");
+          assert.equal(retained.options.failureCode, code);
+          assert.equal(retained.value.code, code);
+          assert.equal(retained.value.validation.stage, ["json", "escaped-limit"].includes(fault) ? "json_parse" : fault === "semantics" ? "report_semantics" : "schema");
+          assert.equal(Buffer.from(retained.value.answer_base64, "base64").toString(), finalText);
+          assert.equal(retained.value.answer_sha256, sha(finalText));
+          assert.equal(retained.value.answer_bytes, Buffer.byteLength(finalText));
+          assert.equal(retained.value.answer_schema_sha256, shadowHash(nativeActivityAnswerSchema(contract, context, bindings)));
+          assert(Buffer.byteLength(JSON.stringify(retained.value)) < 100000);
+          assert.equal(records.some(row => row.kind === "native-result"), false);
+          assert(!JSON.stringify(retained.value.validation).includes("PRIVATE_INVALID_JSON"));
+        }
+        assert(!JSON.stringify(records).includes("private command/output must not be retained"));
+        assert.equal(t.calls.filter(row => row.method === "turn/start").length, 1);
+      } finally { assert.equal((await sessions.close()).closed, true); }
+    }
+  });
+  await check("native answer: full bound constraints reach the turn with matching prompt evidence", async () => {
+    let prompt;
+    const f = mixedFixture("files", { drift: true, answer({ params }) {
+      prompt = params.input[0].text;
+      const observed = JSON.parse(prompt.split("\n").at(-1));
+      const contract = "standard-drift-report.v1", bindings = nativeActivityOutputBindings(contract, observed.context);
+      assert(prompt.includes(nativeActivityAnswerInstructions(contract, observed.context_sha256, bindings)));
+      const objective = observed.context.original_objective;
+      return { outcome: "completed", summary: "Current diagnostic", report: {
+        contract_version: contract, context_sha256: observed.context_sha256, original_objective: objective, current_objective: objective,
+        drift_level: "none", objective_changed: false, changes: [], keep: [], discard: [],
+        split_recommendation: { new_cycle: false, new_branch: false, change_request_required: false, impact: "none" },
+        recommendation: "continue", rationale: "No deviation observed", evidence_refs: observed.evidence_refs } };
+    } });
+    f.sessionMode = "COMMITTING";
+    const auth = await bootstrapMixed(f);
+    const result = await f.open().step({ write: true, authorization: auth });
+    assert.equal(result.journal_phase, "closed", JSON.stringify(result));
+    assert.equal(f.t.calls.filter(row => row.method === "turn/start").length, 1);
+    const inputs = fs.readdirSync(f.dirs.control, { recursive: true }).filter(name => name.endsWith("-activity-input.json"))
+      .map(name => JSON.parse(fs.readFileSync(path.join(f.dirs.control, name))));
+    assert.equal(inputs.length, 1); assert.equal(inputs[0].instruction_sha256, shadowHash(prompt));
+    assert(f.t.sessions.every(session => session.closed));
+  });
+  await check("native answer: rejected evidence cannot replace the first composition failure or grant a result", async () => {
+    for (const fault of ["none", "disk", "budget"]) {
+      const f = fixture(), original = fs.writeFileSync;
+      if (fault === "disk") fs.writeFileSync = function(file, ...args) {
+        if (String(file).endsWith("-native-answer-rejected.json")) throw Object.assign(Error("fixture full disk"), { code: "ENOSPC" });
+        return original.call(this, file, ...args);
+      };
+      try {
+        const { result, calls, sessions } = await run(f, { answer() {
+          if (fault === "budget") put(f.dirs.control, "case/refusal-storage-pressure.bin", Buffer.alloc(11 * 1024 * 1024));
+          return { outcome: "not-an-outcome", summary: "Invalid fixture response" };
+        } });
+        // Budget exhaustion during buffered notification capture predates
+        // answer validation and must keep that earlier storage refusal.
+        assert.equal(result.first_failure, fault === "budget" ? "PROCESS_EXECUTION_STORAGE_LIMIT" : "PROCESS_SESSION_ANSWER_INVALID");
+        assert.equal(result.status, "FAILED"); assert.equal(result.native_parent_closure.closed, true);
+        assert.equal(calls.filter(row => row.method === "turn/start").length, 1);
+        assert(sessions.every(session => session.closed));
+        const files = fs.readdirSync(path.join(f.dirs.control, "case"));
+        assert(!files.some(name => name.endsWith("-native-result.json")));
+        assert.equal(files.some(name => name.endsWith("-native-answer-rejected.json")), fault === "none");
+      } finally { fs.writeFileSync = original; }
+    }
   });
   await check("abort during pre-turn observation and exhausted deadline prohibit turn/start", async () => {
     for (const expired of [false, true]) {

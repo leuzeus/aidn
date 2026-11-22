@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
+import { validateJsonSchema, validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import { assertStandardCyclePlan } from "../../src/core/workflow/standard-cycle-planning.mjs";
 import { CYCLE_PREWORK_CONTEXT_MAX_BYTES, assertStandardCyclePreworkSelection, assertStandardCyclePreworkEvaluation, assertStandardCyclePreworkSubject, assertStandardCyclePreworkReport, observeStandardCyclePrework } from "../../src/core/workflow/standard-cycle-prework.mjs";
 import { checkShadowJson, shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
 import { nativeActivityOutputSupported, nativeActivityOutputSkill, nativeActivityOutputInstructions, nativeActivityOutputBindings,
-  nativeActivityAnswerSchema, assertNativeActivityAnswer } from "../../src/core/workflow/native-activity-output.mjs";
+  nativeActivityAnswerSchema, nativeActivityTransportSchema, nativeActivityAnswerInstructions, assertNativeActivityAnswer } from "../../src/core/workflow/native-activity-output.mjs";
 import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
 import { verifyStandardCyclePreworkAuthorityFixtures } from "./standard-cycle-prework-authority-fixture-lib.mjs";
 
@@ -168,6 +168,32 @@ test("the wrapped Native context never rewrites the business planning context or
     invalid(() => observeStandardCyclePrework({ subject: n.s, report: n.r, contextSha256: n.contextSha256, proposalContextSha256, evidenceRefs: refs }));
   assert.equal(JSON.stringify(n.plan), before);
 });
+test("producer receives full bound constraints and schema refusals identify safe-prose fields", () => {
+  const n = nativeCase(), answer = structuredClone(n.answer);
+  const full = nativeActivityAnswerSchema(PREWORK, n.contextSha256, n.bindings);
+  const wire = nativeActivityTransportSchema(PREWORK, n.contextSha256, n.bindings);
+  const instructions = nativeActivityAnswerInstructions(PREWORK, n.contextSha256, n.bindings);
+  assert.deepEqual(JSON.parse(instructions.split("\n").at(-1)), full);
+  assert(Buffer.byteLength(instructions) < 32768);
+  for (const value of ["Implement value >= lower && value <= upper", "x".repeat(2001)]) {
+    answer.report.proposal.scope[0] = value;
+    const root = schema => ({ $schema: "http://json-schema.org/draft-07/schema#", $id: "aidn://contracts/workflow-definition/native-answer-fixture.v1", ...schema });
+    assert.deepEqual(validateJsonSchema(answer, root(wire), "$", { contractKind: "workflow-definition" }), []);
+    assert.throws(() => assertNativeActivityAnswer(answer, PREWORK, n.contextSha256, n.bindings), error => {
+      assert.equal(error.code, "PROCESS_SESSION_ANSWER_INVALID");
+      assert.equal(error.native_answer_validation.stage, "schema");
+      assert(error.native_answer_validation.issues.some(issue => issue.startsWith("$.report.proposal.scope[0]:")));
+      assert(!JSON.stringify(error.native_answer_validation).includes(value));
+      return true;
+    });
+  }
+  answer.report.proposal.scope[0] = n.answer.report.proposal.scope[0];
+  answer.report.proposal["PRIVATE_UNDECLARED_KEY"] = "private value";
+  assert.throws(() => assertNativeActivityAnswer(answer, PREWORK, n.contextSha256, n.bindings), error => {
+    assert(!JSON.stringify(error.native_answer_validation).includes("PRIVATE_UNDECLARED_KEY")); return true;
+  });
+});
+
 test("current Native bindings reject a different origin, subject, report context or proposal identity", () => {
   const n = nativeCase();
   for (const mutate of [r => { r.context_sha256 = H; }, r => { r.subject_sha256 = H; },

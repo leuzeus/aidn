@@ -38,6 +38,15 @@ including lengths, item bounds, patterns, bindings and cross-field rules. The
 transport schema is derived for the current request and grants no authority.
 Canonical report schemas, retained receipts and acceptance rules stay the same.
 
+The per-turn instructions also carry the complete bound schema, including
+constraints the provider format omits. Prompt provenance covers those exact
+instructions. Schema values remain data and confer no authority. A captured
+answer refused by the host is retained as a bounded private diagnostic when
+storage permits, with its validation stage, digests and original final text.
+That evidence cannot be consumed as an accepted result, trigger a retry or
+authorize an effect. Retention failure preserves the original refusal. This
+does not reclassify earlier Native failures whose rejected answers are absent.
+
 For a Native R05 diagnosis, the request binds `original_objective` to the
 canonical context. The actor receives the host's rules for comparing objective
 text, classifying deviations and reporting the corresponding recommendation
