@@ -35,7 +35,7 @@
     "process_plan_sha256": "36f4c2f6ea632e3ee319fc338b50a7ce6ee58eef94b6e3d9ed51254d933ea677",
     "collection": "PASS",
     "qualification_payload_sha256": "8b8ac0a85fba3a19b6e4a52229ad91576936ad1d209f5059f9e6476c3a34e358",
-    "signed_boundary": "UNAVAILABLE",
+    "signed_boundary": "PASS",
     "process_observations": [
       {
         "case": "filesystem_access",
@@ -70,10 +70,43 @@
         "termination": "confirmed",
         "active_processes": 0
       }
-    ]
+    ],
+    "native_availability": true,
+    "signed_qualification_sha256": "0eef06d8a31e2b5f8ec60ce8661fbc7e0c4a1fa2a83d9d68875f0f9db47a6380",
+    "validation_profile_sha256": "d6fc6baada4accbd9dc1d446ec709fd8f9a10d0b0c13552de5422f4335c2faec"
   },
   "public_full_nominal": "SKIP",
   "windows_installed_nominal": "SKIP",
   "p0_go": false,
-  "complete_standard_workflow": false
+  "complete_standard_workflow": false,
+  "public_entry": {
+    "status": "PASS",
+    "candidate": "edd5dd2294d0a3ecbb84caeee530799657e71403",
+    "instance_id": "standard-vertical-pr201",
+    "workflow_configuration_sha256": "189de3ef012a1a927b42fbb3bf6f0e8d75f14c87229b3e31e700326228ac3727",
+    "profile_sha256": "d6fc6baada4accbd9dc1d446ec709fd8f9a10d0b0c13552de5422f4335c2faec",
+    "initialized": true
+  },
+  "session_admission": {
+    "preparation_refusal": "START_SESSION_MAPPING_MISSING",
+    "blocked_receipts": 3,
+    "physical_effects_on_refusal": [
+      "no_effect",
+      "no_effect",
+      "no_effect"
+    ],
+    "resumed_on_original_source_commit": true,
+    "status": "PASS",
+    "branch_preparation": {
+      "preview_refusal": "STANDARD_SESSION_BRANCH_ALREADY_EXISTS",
+      "action": "preserved the unused local seed ref under another name",
+      "remote_write": false
+    },
+    "session_initialization_record_sha256": "35d8b45a3538e7296812deb985e2347fa0d378fef4736b2d250602e7d5e5f775"
+  },
+  "last_human_question": {
+    "type": "standard-mode-question.v1",
+    "session": "S001",
+    "action_sha256": "48e575acb77366c4909f716367830f9e3d6458329b1ad50c536c9eaffbad2c23"
+  }
 }
