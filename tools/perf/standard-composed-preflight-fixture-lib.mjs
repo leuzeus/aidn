@@ -38,7 +38,9 @@ const callSites = new Map([
 
 // Test planning only. Synthetic receipts/control/assignments never authenticate
 // a human, native producer, provider or effect. Routing uses the execution reducer.
-export function preflightStandardComposedFixture({ model, scenario, stop = "component_complete", cycleEntry = "fresh", cycleObjective = "Synthetic fixture budget planning" }) {
+export function preflightStandardComposedFixture({ model, scenario, stop = "component_complete", cycleEntry = "fresh", cycleObjective = "Synthetic fixture budget planning", diagnosisRequests = 0, freshRecovery = false }) {
+  if (typeof freshRecovery !== "boolean") fail("STANDARD_FIXTURE_RECOVERY_INVALID");
+  if (!Number.isSafeInteger(diagnosisRequests) || diagnosisRequests < 0 || diagnosisRequests > 31) fail("STANDARD_FIXTURE_DIAGNOSIS_COUNT_INVALID");
   if (!["fresh", "owned_open"].includes(cycleEntry) || cycleEntry === "owned_open" && scenario?.mode !== "COMMITTING") fail("STANDARD_FIXTURE_CYCLE_ENTRY_INVALID");
   const nominalPostMerge = stop === "nominal_post_merge_complete";
   const fullCorrection = scenario?.contract_version === "fixture-standard-composed-scenario.v3";
@@ -65,7 +67,7 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
   const initial = { instanceId: "budget-preflight", scopeId: "synthetic-fixture", model, policyPins: agenticPolicyPins(model), facts: {},
     parameters: { session: { session_id: "S001", session_branch: "S001-standard", objective: "Synthetic fixture budget planning" },
       cycle: { cycle_id: "C001", cycle_type: "feature", title: "standard-prefix", objective: cycleObjective } } };
-  let state = createAgenticProcess(initial), serial = 0, deferred = false, interrupted = false;
+  let state = createAgenticProcess(initial), serial = 0, deferred = false, interrupted = false, diagnosisCount = 0;
   const native = [], operations = [], checkpoints = [], callTransitions = [], verificationInputs = [];
   const operationInputs = new Map(), syntheticWitnesses = new Map(), sourceOperations = [], advancedByNode = new Map();
   const emit = value => { state = advanceAgenticProcess(state, { event_id: "preflight-" + ++serial, ...value }); };
@@ -124,10 +126,11 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
       const verificationLeaf = model.model_id === "aidn-standard" &&
         ["final_validation", "verification_enter", "correction_final_validation", "correction_verification_enter"].includes(label);
       const correctiveFinalizer = node.binding_ref === "drift_check_finalize"
-        && callSites.get(site?.node_id)?.model_id === "aidn-standard-corrective-drift";
+        && (callSites.get(site?.node_id)?.model_id === "aidn-standard-corrective-drift" || node.id === "cycle_drift_finalize");
       const sourceLeaf = ["aidn-standard-owned-entry", "aidn-standard-selected-entry", "aidn-standard-cycle-preparation", "aidn-standard-canonical-verification",
         "aidn-standard-fresh-cycle-entry", "aidn-standard-fresh-cycle-checkpoint"]
-        .includes(callSites.get(site?.node_id)?.model_id) || ["cycle_execution_source_select", "cycle_context_refresh"].includes(node.binding_ref);
+        .includes(callSites.get(site?.node_id)?.model_id) || ["cycle_execution_source_select", "cycle_context_refresh"].includes(node.binding_ref)
+        || ["cycle_drift_evaluate", "cycle_drift_finalize"].includes(node.id);
       const resolution = verificationLeaf || correctiveFinalizer || sourceLeaf
         ? resolveProcessFrameInput({ instance: state, cursor, occurrenceId: frame.occurrence_id, readOperation: id => syntheticWitnesses.get(id) }) : null;
       const intent = opIntent(frame, node, resolution ? shadowHash(resolution.input) : H);
@@ -182,9 +185,16 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         if (fullCorrection && node.id === "session_pr_correction_decide") facts = { session_pr_correction_cycle_requested: true };
         if (node.binding_ref === "drift_completion_select") facts = { drift_diagnosis_requested: !operations.includes("closure_drift_finalize"), drift_completion_review_required: false, drift_completion_reviewed: operations.includes("closure_drift_finalize") };
         if (node.binding_ref === "drift_followup_select") {
-          const objective = site?.node_id === "cycle_drift_finalize" ? cycleObjective !== initial.parameters.session.objective
+          const objective = site?.node_id === "cycle_drift_finalize" || node.id === "cycle_drift_select" ? cycleObjective !== initial.parameters.session.objective
             : fullCorrection && callSites.get(site?.node_id)?.model_id === "aidn-standard-corrective-drift";
-          facts = { drift_route_ready: !objective, drift_followup_review_required: objective, drift_objective_review_required: objective };
+          facts = { drift_route_ready: !objective, drift_followup_review_required: objective, drift_objective_review_required: objective,
+            drift_diagnosis_requested: false, drift_check_completed: false };
+          if (freshRecovery && node.id === "cycle_drift_select") Object.assign(facts, {
+            drift_route_ready: false, drift_followup_review_required: true, drift_objective_review_required: false });
+        }
+        if (node.binding_ref === "drift_recovery_decision") {
+          const diagnose = (site?.node_id === "cycle_drift_finalize" || node.id === "cycle_drift_decide") && diagnosisCount++ < diagnosisRequests;
+          facts = { drift_route_ready: !diagnose, drift_diagnosis_requested: diagnose, drift_check_completed: false };
         }
         if (node.binding_ref === "drift_check_finalize") facts = { drift_check_completed: true };
         if (node.binding_ref === "cycle_close_finalize") facts = { cycle_close_completed: true, cycle_retained: scenario.closure === "retain" };

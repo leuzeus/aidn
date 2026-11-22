@@ -555,7 +555,7 @@ nodes.find(row => row.id === "correction_cycle").children.push(...correctionRoot
 
 // Fresh and corrective checkpoints both need the objective review when their
 // accepted Native diagnosis is clean but the gate detects differing goals.
-for (const id of ["cycle_drift_finalize", "correction_cycle_drift_finalize", "correction_closure_drift_finalize",
+for (const id of ["correction_cycle_drift_finalize", "correction_closure_drift_finalize",
   "correction_promotion_drift_finalize", "correction_session_closure_drift_finalize"]) {
   const call = nodes.find(row => row.id === id);
   if (call?.kind !== "operation" || call.binding_ref !== "drift_check_finalize") throw Error("STANDARD_CHECKPOINT_DRIFT_SITE_CHANGED");
@@ -780,6 +780,27 @@ const freshCheckpointRef = freshCall("fresh_checkpoint", "aidn-standard-fresh-cy
     ...operation(null, "evaluation_operation_id", "cycle_drift_evaluate") });
 for (const row of inputs) for (const field of Object.values(row.fields)) if (movedFreshNames.has(field.node_id))
   throw Error("STANDARD_FRESH_CALL_UNDECLARED_RETURN");
+
+// Keep the evaluation and its consumers in one iteration. A confirmed opinion
+// reaches the real finalizer and checkpoint once; a requested diagnosis creates
+// a new Native occurrence and cannot reuse the old evaluation or opinion.
+const freshParent = nodes.find(row => row.id === "fresh_cycle");
+const freshDriftSteps = ["cycle_drift_report", "cycle_drift_evaluate", "cycle_drift_finalize", "fresh_checkpoint"];
+const freshDriftStart = freshParent.children.indexOf(freshDriftSteps[0]);
+if (freshDriftStart < 0 || freshParent.children.slice(freshDriftStart).join() !== freshDriftSteps.join())
+  throw Error("STANDARD_FRESH_DIAGNOSIS_ORDER_CHANGED");
+freshParent.children.splice(freshDriftStart, freshDriftSteps.length, "cycle_drift_loop");
+node("cycle_drift_loop", "loop", { child: "cycle_drift_iteration", until: "drift_check_completed", max_iterations: 32 });
+seq("cycle_drift_iteration", ["cycle_drift_report", "cycle_drift_evaluate", "cycle_drift_select", "cycle_drift_objective_route", "cycle_drift_outcome"]);
+op("cycle_drift_select", "drift_followup_select", operation(null, "evaluation_operation_id", "cycle_drift_evaluate"));
+xor("cycle_drift_objective_route", [["review", "cycle_drift_decide", "drift_objective_review_required"], ["nominal", "cycle_drift_aligned", null]]);
+op("cycle_drift_decide", "drift_recovery_decision", operation(null, "evaluation_operation_id", "cycle_drift_evaluate"));
+seq("cycle_drift_aligned", []);
+xor("cycle_drift_outcome", [["ready", "cycle_drift_checkpoint_ready", "drift_route_ready"],
+  ["diagnose", "cycle_drift_diagnosis_requested", "drift_diagnosis_requested"], ["unresolved", "cycle_drift_unresolved", null]]);
+op("cycle_drift_unresolved", "drift_check_finalize", operation(null, "evaluation_operation_id", "cycle_drift_evaluate"));
+seq("cycle_drift_checkpoint_ready", ["cycle_drift_finalize", "fresh_checkpoint"]);
+seq("cycle_drift_diagnosis_requested", []);
 
 const policy = (id, assurance_profile, allowed_permissions, independent_review = false) => ({ id, version: 1, assurance_profile, mode: "COMMITTING",
   independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });

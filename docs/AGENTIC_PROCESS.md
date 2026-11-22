@@ -348,6 +348,11 @@ activity-ID contract, including the longest loop and collection suffixes. The
 model loader refuses an oversized possible path before resource assignment;
 paths are never shortened or hashed into an ambiguous identity.
 
+The v2 model admits at most 288 nodes per component. STANDARD's fresh-cycle
+diagnosis loop uses 266 root nodes so its human choice and routing facts remain
+in the same scope as the next Native occurrence. V1 retains its 128-node bound;
+the depth, child, loop, expanded-occurrence and Native budget limits still apply.
+
 Cancellation already requested at entry, or received during the asynchronous
 pre-turn observation, prohibits a new model turn. Exhausted deadlines also
 refuse before turn/start. If storage becomes unobservable, the partial stdout

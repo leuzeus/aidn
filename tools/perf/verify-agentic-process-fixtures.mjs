@@ -112,6 +112,28 @@ await check("G06/G07: OR joins only selected flows, but waits for all selected w
   two = completed(two, "root/flow-0"); assert.equal(inspect(two).status, "RUNNING");
   assert.deepEqual(inspect(two).ready, ["root/flow-2"]);
 });
+await check("v2 node capacity admits 288 structured nodes and rejects 289", () => {
+  const schema = JSON.parse(fs.readFileSync(new URL("../../src/core/contracts/workflow-definition/agentic-process-model.v2.schema.json", import.meta.url)));
+  const bounded = size => {
+    const nodes = [{ id: "root", kind: "sequence", participant_ref: "delivery", children: [] }];
+    let leaves = size - 10;
+    for (let group = 0; group < 9; group++) {
+      const branch = { id: "group-" + group, kind: "sequence", participant_ref: "delivery", children: [] };
+      nodes[0].children.push(branch.id); nodes.push(branch);
+      for (let n = 0, count = Math.min(32, leaves); n < count; n++) {
+        const id = `leaf-${group}-${n}`; branch.children.push(id); nodes.push({ id, kind: "sequence", participant_ref: "delivery", children: [] }); leaves--;
+      }
+    }
+    return { contract_version: "agentic-process-model.v2", model_id: "capacity", revision: 1, participants: [{ id: "delivery" }],
+      roles: [], policies: [], operation_pins: {}, entry: "root", nodes };
+  };
+  const accepted = bounded(288), rejected = bounded(289);
+  assert.equal(accepted.nodes.length, 288); assert.equal(rejected.nodes.length, 289);
+  assert.deepEqual(validateJsonSchema(accepted, schema, "$", { contractKind: "workflow-definition" }), []);
+  assert.equal(inspect(initial(accepted)).status, "COMPLETED");
+  assert.ok(validateJsonSchema(rejected, schema, "$", { contractKind: "workflow-definition" }).length);
+  assert.throws(() => initial(rejected), { code: "PROCESS_MODEL_INVALID" });
+});
 await check("G08: unstructured shared OR child and cycles are explicitly refused", () => {
   const m = gateway("or"); m.nodes[0].branches[1].node_id = "task-0";
   assert.throws(() => initial(m), /PROCESS_NOT_STRUCTURED/);

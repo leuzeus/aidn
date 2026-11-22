@@ -55,7 +55,7 @@ export function compileProjectDiagram(root, row, targets, pins) {
   shape(process, ["id", "name", "isExecutable"], [], [...vertices, "sequenceFlow"]);
   const records = [], usedPins = new Map();
   function readNode(element, depth) {
-    if (depth > 16 || records.length >= 256) fail("BPMN_STRUCTURE_LIMIT", id(element));
+    if (depth > 16 || records.length >= 288) fail("BPMN_STRUCTURE_LIMIT", id(element));
     const nodeId = id(element)?.slice(2);
     if (!id(element)?.startsWith("N_") || !processId(nodeId)) fail("BPMN_ID_INVALID", id(element));
     const order = index(element, "order");

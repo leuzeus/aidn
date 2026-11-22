@@ -1335,6 +1335,15 @@ equivalent objectives, an accepted review of differing objectives and a deferred
 review. It verifies that the same evaluation reaches the checkpoint with one
 alignment question, that deferring the decision stops before finalization,
 and that an unconfirmed finalizer cannot reach the checkpoint.
+It also covers one or two `request_diagnosis` choices: each repeats the Native
+occurrence with a distinct evaluation, without recreating the cycle, finalizing
+the rejected alignment or increasing the original response allowance.
+Run `node tools/perf/verify-agentic-process-execution-fixtures.mjs
+--drift-objective-mismatch-only --drift-objective-fresh-diagnosis-only
+--retain-on-failure` for the real FILES host and physical checkpoint regression.
+The fixture uses the published loop, reopens at human boundaries, retains each
+choice once, and completes one finalizer/checkpoint on the second evaluation.
+Native and human ports are fixtures; this is not the genuine-actor campaign.
 Add `--drift-objective-checkpoint-only` with the published-checkpoint selector
 to isolate its positive route within the same execution bound. The direct
 refusal is verified by a separate execution.

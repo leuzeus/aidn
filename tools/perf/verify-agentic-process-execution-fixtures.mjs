@@ -8,6 +8,7 @@ import { createStandardReviewEventFixture } from "./standard-pr-review-event-fix
 import { verifyModeAnalysisExecution } from "./standard-mode-analysis-execution-fixture-lib.mjs";
 import { arrangeStandardReviewScenario, assertCapturedStandardReviewScenario, standardReviewScenarioAnswer } from "./standard-pr-review-scenario-fixture-lib.mjs";
 import { preflightStandardComposedFixture } from "./standard-composed-preflight-fixture-lib.mjs";
+import { attachFreshDiagnosisFixture, verifyFreshDiagnosisFixture } from "./standard-fresh-diagnosis-fixture-lib.mjs";
 import { composedCyclePlan, composedCycleValidationProfile, composedCorrectionChoice, prepareComposedNativeAnswer, composedTriageAnswer } from "./standard-composed-cycle-fixture-lib.mjs";
 import { observeComposedHost, loseCheckpointReceipt, loseCheckpointOwnerReleaseAck, verifyCorrectiveDriftCall } from "./standard-composed-observation-fixture-lib.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
@@ -590,7 +591,9 @@ function mixedFixture(stateMode = "files", options = {}) {
           : { decision_operation_id: { source: "operation_id", node_id: "decide" } } },
         { node_id: "action_executed", fields: {} }, { node_id: "action_cancelled", fields: {} },
       ] };
-      if (options.publishedCorrectiveDrift) {
+      if (options.publishedFreshDiagnosis) {
+        attachFreshDiagnosisFixture({ model, published: loadStandardWorkflowAssets().model, configuration: f.configuration });
+      } else if (options.publishedCorrectiveDrift) {
         const target = loadStandardWorkflowAssets().model.call_targets.find(row => row.model_id === "aidn-standard-corrective-drift");
         const { model: child, ...identity } = target;
         model.participants = child.participants;
@@ -757,6 +760,7 @@ function mixedFixture(stateMode = "files", options = {}) {
     : { analyze: "Analyze without writing.", review: "Review without correcting." };
   if (options.audit) f.configuration.instructions.audit_review = "Audit the final product and supplied checklist read-only; report uncertainty and leave all decisions and writes to the host.";
   if (options.rollbackRediagnosis) f.configuration.instructions = { closure_drift_report: f.configuration.instructions.analyze };
+  if (options.publishedFreshDiagnosis) f.configuration.instructions = { cycle_drift_report: f.configuration.instructions.analyze };
   if (options.objectiveCompletion) f.configuration.instructions.objective_drift = "Diagnose the exact terminal context read-only; the host retains decisions and completion effects.";
   if (options.rediagnosis) {
     const report = { ...model.nodes.find(row => row.id === "analyze"), id: "closure_drift_report" };
@@ -1548,8 +1552,10 @@ if (process.argv[2] === "--mixed-continue") {
             claim = composedCorrectionChoice(result.question, result.operation_id);
           } else if (["drift_recovery_decision", "drift_completion_decision"].includes(binding)) {
             const question = result.question, parent = state.cursor.occurrences.find(row => row.occurrence_id === frame.call_scope_id);
-            assert.equal(state.record.model.nodes.find(node => node.id === parent?.node_id)?.target?.model_id, "aidn-standard-corrective-drift");
-            if (parent.node_id !== "cycle_drift_finalize") assert.equal(fullCorrection, true);
+            if (frame.node_id !== "cycle_drift_decide") {
+              assert.equal(state.record.model.nodes.find(node => node.id === parent?.node_id)?.target?.model_id, "aidn-standard-corrective-drift");
+              assert.equal(fullCorrection, true);
+            }
             assert.equal(question.contract_version, "standard-drift-recovery-question.v2");
             assert.ok(question.choices.includes("confirm_alignment"));
             const beforeWait = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
@@ -1559,8 +1565,8 @@ if (process.argv[2] === "--mixed-continue") {
             claim = { contract_version: "human-drift-recovery-decision.v2", source_kind: "human", authority_id: "fixture_operator",
               source_event_id: "standard:" + ref, subject_sha256: shadowHash(question.review), question_sha256: shadowHash(question),
               choice: "confirm_alignment", rationale: binding === "drift_completion_decision"
-                ? `The fixture operator confirms the witnessed completion at ${parent.node_id}.`
-                : `The fixture operator reviews the current objectives at ${parent.node_id}.`,
+                ? `The fixture operator confirms the witnessed completion at ${frame.node_id}.`
+                : `The fixture operator reviews the current objectives at ${frame.node_id}.`,
               evidence_refs: [{ ref: "fixture:operator-corrective-drift", sha256: shadowHash(question.review) }] };
           } else if (binding === "session_branch_integration_decision") {
             assert.ok(runsPromotion); assert.ok(result.question.choices.includes("integrate-to-session"));
@@ -2404,7 +2410,9 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(context.context.git.other_changes.count, 0); assert.ok(context.evidence_refs.some(row => row.ref === "audit:parking-lot.md"));
     assert.notEqual(beforeRecord.record.instance_sha256, after.record.instance_sha256);
   });
-  if (process.argv.includes("--drift-objective-mismatch-only")) await check(process.argv.includes("--drift-objective-construction-only")
+  if (process.argv.includes("--drift-objective-fresh-diagnosis-only")) await check("drift objective mismatch: fresh diagnosis resumes the published loop before one confirmed checkpoint",
+    () => verifyFreshDiagnosisFixture({ finalizationFixture, bootstrapMixed, prepareCompletionCycle }));
+  if (process.argv.includes("--drift-objective-mismatch-only") && !process.argv.includes("--drift-objective-fresh-diagnosis-only")) await check(process.argv.includes("--drift-objective-construction-only")
     ? "drift objective mismatch: construction preflight builds both exact authorities without Native allocation"
     : process.argv.includes("--drift-objective-finalize-accept") ? "drift objective mismatch: exact accepted opinion reaches authenticated finalization and retained replay"
     : "drift objective mismatch: exact goals retain finalization refusal and prepare an authenticated signal review", async () => {
