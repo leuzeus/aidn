@@ -6,7 +6,7 @@
   "model_revision": 430,
   "backend": "Windows/PostgreSQL",
   "state_mode": "db-only",
-  "campaign_state": "RUNNING_PREWORK_ADMISSION",
+  "campaign_state": "FAILED_NATIVE_IMPLEMENTATION",
   "package_installation": "PASS",
   "source_installed_inventory": {
     "models": 16,
@@ -92,6 +92,14 @@
       "relational_link_projection_rows": 0,
       "proof_sha256": "aff2952e4bef2f2c25aa1f6dd59559058f54af1ed5f79a10c73e9906d6f5082e",
       "scope": "Canonical records and cycles table; no cross-checkout resume executed"
+    },
+    "two_checkouts_same_plan": {
+      "status": "PASS",
+      "same_plan": true,
+      "plan_sha256": "d497947f90a1bfca1402ab7f03835bdd1b49bff87b27a8336bab35ecb879b2b6",
+      "project_projection_present": false,
+      "peer_projection_present": false,
+      "scope": "read-only installed artifact retrieval; no peer workflow resume"
     }
   },
   "preparation_findings": [
@@ -135,9 +143,9 @@
     "scope": "session initialization, human mode receipt and mode application through the public STANDARD entry"
   },
   "native": {
-    "status": "PASS",
+    "status": "FAIL",
     "launched": true,
-    "responses": 5,
+    "responses": 7,
     "budget": {
       "configuration_sha256": "cba4ca805035feb11ee91f06a3b0a4f363d5b8e7cf1a6dffc8be995bc14d127b",
       "max_responses": 24,
@@ -189,7 +197,8 @@
             }
           ]
         },
-        "trace_sha256": "d3048ece18ceb396ffd08fa8534df209fb6fc27e8f02c60cc7b896a9e1c96b89"
+        "trace_sha256": "d3048ece18ceb396ffd08fa8534df209fb6fc27e8f02c60cc7b896a9e1c96b89",
+        "authorization_epoch": 1
       },
       {
         "generation": 2,
@@ -231,7 +240,8 @@
             }
           ]
         },
-        "trace_sha256": "adca474f73a4137535c0ee960823bb95f7b0ba8a6563ad5b6abce11b597c6116"
+        "trace_sha256": "adca474f73a4137535c0ee960823bb95f7b0ba8a6563ad5b6abce11b597c6116",
+        "authorization_epoch": 1
       },
       {
         "generation": 3,
@@ -273,7 +283,8 @@
             }
           ]
         },
-        "trace_sha256": "8175f6ce04f7d1f24349fff9e8105862342c7b88e33088d815464a2eded47141"
+        "trace_sha256": "8175f6ce04f7d1f24349fff9e8105862342c7b88e33088d815464a2eded47141",
+        "authorization_epoch": 1
       },
       {
         "generation": 4,
@@ -316,17 +327,57 @@
               "modelContextWindow": 475000
             }
           ]
-        }
+        },
+        "authorization_epoch": 2
+      },
+      {
+        "generation": 5,
+        "status": "FAIL",
+        "native_answer_outcome": "rejected",
+        "output_contract": "standard-cycle-task-work-report.v1",
+        "answer_sha256": "ef0e294fc0051dbdd3532fcf802e108217d53fd858356b6e2c49ae5b7fd1130f",
+        "process_status": "FAILED",
+        "first_failure": "PROCESS_REVIEW_REJECTED",
+        "journal_phase": "failed",
+        "active_processes": 0,
+        "responses": 2,
+        "bytes_retained": 1348742,
+        "storage_budget_debit_bytes": 1816729,
+        "canonical_payload_bytes_acknowledged": 467987,
+        "elapsed_since_authorization_ms": 895297,
+        "supervised_process_ms": 104066,
+        "trace_sha256": "d9361a9745832939b1e96f3cec116375e0f03019bb1556e119de8a23e2a56956",
+        "usage": {
+          "client_reported": true,
+          "billed_total": false,
+          "threads": [
+            {
+              "total": {
+                "totalTokens": 63071,
+                "inputTokens": 62951,
+                "cachedInputTokens": 31360,
+                "cacheWriteInputTokens": 0,
+                "outputTokens": 120,
+                "reasoningOutputTokens": 0
+              },
+              "last": {
+                "totalTokens": 31593,
+                "inputTokens": 31539,
+                "cachedInputTokens": 31360,
+                "cacheWriteInputTokens": 0,
+                "outputTokens": 54,
+                "reasoningOutputTokens": 0
+              },
+              "modelContextWindow": 475000
+            }
+          ]
+        },
+        "authorization_epoch": 2
       }
     ],
-    "next_activity": "canonical plan acceptance and implementation admission",
-    "budget_consumption": {
-      "known": true,
-      "responses": 5,
-      "bytes": 10844689
-    },
+    "next_activity": "diagnose the failed implementation before a new qualification attempt",
     "budget_consumption_scope": "Host allocation ledger from the public preview; individual worker storage debits exclude other retained host evidence and are not its replacement",
-    "timing_scope": "supervised_process_ms measures the observed Windows Job interval; elapsed_since_authorization_ms is cumulative campaign time and must not be summed across runs",
+    "timing_scope": "supervised_process_ms measures the observed Windows Job interval; elapsed_since_authorization_ms is cumulative within the authorization used by that run and must not be summed across runs",
     "renewal": {
       "candidate": "914f34e83607df7ae8beec256623a9b6251d3633",
       "status": "PASS",
@@ -363,9 +414,31 @@
           "grant_activated": false
         }
       ]
+    },
+    "first_failure": "PROCESS_REVIEW_REJECTED",
+    "confirmed_budget_prefix": {
+      "known": true,
+      "responses": 5,
+      "bytes": 10844689
+    },
+    "failed_attempt_accounting": {
+      "observed_responses": 2,
+      "worker_storage_debit_bytes": 1816729,
+      "allocation_reconciliation": "SKIP"
+    },
+    "post_failure_preview": {
+      "kind": "native_owner_retire",
+      "can_apply": true,
+      "requirements": [],
+      "native_started": false
+    },
+    "budget_consumption": {
+      "known": false,
+      "responses": null,
+      "bytes": null
     }
   },
-  "full_nominal": "SKIP",
+  "full_nominal": "FAIL",
   "installed_nominal": "SKIP",
   "same_session_resume": "SKIP",
   "p0_complete": false,
@@ -376,7 +449,7 @@
     "The pilot local observer is an accepted qualification exception; lot 2b independent interface proof remains open.",
     "The four Windows controls qualify the validator boundary, not the full STANDARD native workflow."
   ],
-  "report_checkpoint_at": "2026-11-22T22:51:31.369Z",
+  "report_checkpoint_at": "2026-11-22T23:14:51.860Z",
   "preserved_diagnosis": {
     "status": "PASS",
     "choice": "request_diagnosis",
@@ -454,5 +527,41 @@
     ],
     "tests_executed": false,
     "independent_final_audit": "SKIP"
+  },
+  "first_failed_transition": {
+    "generation": 5,
+    "activity": "cycle task implementation",
+    "trace_sha256": "d9361a9745832939b1e96f3cec116375e0f03019bb1556e119de8a23e2a56956",
+    "answer_sha256": "ef0e294fc0051dbdd3532fcf802e108217d53fd858356b6e2c49ae5b7fd1130f",
+    "outcome": "rejected",
+    "reported_reason": "GLOBAL_RUNTIME_ACCESS_DENIED",
+    "raw_tool_command": "UNAVAILABLE",
+    "raw_tool_output": "UNAVAILABLE",
+    "tool_metadata": {
+      "exit_code": 1,
+      "output_bytes": 32,
+      "output_sha256": "6e4dac2236fb359d2e62a741c6a16c3c09427f3e00c987641296326797f2afaa"
+    },
+    "product_verification": "not_executed",
+    "classification": "unclassified",
+    "original_tool_cause": "not independently established",
+    "product_files_unchanged": true,
+    "git_worktree_clean": true,
+    "active_processes": 0,
+    "retry": false
+  },
+  "diagnostic_observations": {
+    "scope": "fresh observations after the original failed Native activity",
+    "trusted_parent_session_start": "admitted",
+    "trusted_parent_backend": "postgres",
+    "trusted_parent_mode": "COMMITTING",
+    "trusted_parent_session": "S001",
+    "trusted_parent_cycle": "C001",
+    "trusted_parent_readiness": "READY",
+    "ambient_launcher_active_version": "0.18.0",
+    "frozen_package_version": "0.20.0",
+    "model_shell_database_credentials": "excluded by the Native shell environment policy",
+    "original_tool_command": "UNAVAILABLE",
+    "original_cause": "unclassified; these later observations do not reconstruct the original command"
   }
 }
