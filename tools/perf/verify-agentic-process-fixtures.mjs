@@ -8,7 +8,7 @@ import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { createAgenticCodexRpc } from "../../src/adapters/agents/agentic-codex-rpc.mjs";
 import { loadStandardWorkflowAssets } from "../../src/application/runtime/standard-workflow-composition.mjs";
-import { nativeActivityAnswerSchema, nativeActivityTransportSchema, nativeActivityOutputBindings, nativeActivityOutputInstructions, assertNativeActivityAnswer } from "../../src/core/workflow/native-activity-output.mjs";
+import { nativeActivityAnswerSchema, nativeActivityAnswerInstructions, nativeActivityTransportSchema, nativeActivityOutputBindings, nativeActivityOutputInstructions, assertNativeActivityAnswer } from "../../src/core/workflow/native-activity-output.mjs";
 import { assertAgenticProcessModel, agenticPolicyPins, agenticProcessCapabilities } from "../../src/core/workflow/agentic-process-model.mjs";
 import { createAgenticProcess, inspectAgenticProcess, advanceAgenticProcess, assertAgenticProcessInstance } from "../../src/core/workflow/agentic-process.mjs";
 import { createAgenticProcessService } from "../../src/application/runtime/agentic-process-service.mjs";
@@ -579,6 +579,8 @@ try {
       const wire = nativeActivityTransportSchema(contract, contract ? context : null);
       assert.equal(wire.type, "object");
       checkWire(wire);
+      const instructions = nativeActivityAnswerInstructions(contract, contract ? context : null);
+      assert.deepEqual(JSON.parse(instructions.split("\n").at(-1)), nativeActivityAnswerSchema(contract, contract ? context : null));
     }
     const contract = "standard-drift-report.v1";
     const full = nativeActivityAnswerSchema(contract, context).properties.report.anyOf[1];

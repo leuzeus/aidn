@@ -111,6 +111,19 @@ index lock. It also checks the closed resource contracts with controlled inputs.
 The result covers resource observation and revocation before publication.
 A full handoff journey, Native inference and live GitHub are separate results.
 
+For Native answer constraints and refusal evidence, run
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --native-answer-only`
+and `node tools/perf/verify-standard-cycle-prework-fixtures.mjs`. The session
+adapter uses an explicit RPC double: valid answers retain their normal result;
+invalid JSON, schema and semantics retain bounded private refusal evidence;
+disk and storage-budget failures preserve the first refusal and start no retry.
+The mixed FILES host verifies that the full bound schema reaches `turn/start`
+and its prompt hash matches retained provenance. The prework counterexample
+accepts code punctuation in the transport schema but refuses it in a safe-prose
+field of the complete schema, naming the field without echoing its value.
+These checks make no genuine Native call and do not establish the cause of
+an earlier live rejection whose answer was not retained.
+
 The catalog lists slower checks that are omitted from required admission.
 Their route and family results show `SKIP`. Run a relevant individual command
 during diagnosis. For agentic execution fixtures, select one scoped case
