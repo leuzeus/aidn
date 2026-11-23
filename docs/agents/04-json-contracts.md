@@ -1,5 +1,11 @@
 # 04 JSON Contracts
 
+Private `codex-validation-terminal.v2` adds bounded client stderr diagnostics to
+the existing local validation evidence. Its closed reader validates counters,
+controller digest, base64 tail and optional decoded text. V1 remains readable
+without conversion. Diagnostics grant no process closure, check verdict,
+reconciliation or retry authority and are not embedded in public CLI outputs.
+
 Native epoch closure `observed_at_ms` remains bound chronology/provenance.
 A consumer-added sixty-second ceiling does not override current scope/source
 checks and the original signed request, issuer and Native grant deadlines.

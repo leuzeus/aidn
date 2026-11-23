@@ -5,6 +5,7 @@ import { performance } from "node:perf_hooks";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../core/agents/agent-execution-contracts.mjs";
 import { assertAgentLocalPath } from "../../core/agents/agent-local-path-policy.mjs";
 import { createWindowsProcessTreeController } from "../agents/process-tree/windows-process-tree-controller.mjs";
+import { createCodexValidationStderr, assertCodexValidationDiagnostics } from "./codex-validation-diagnostics.mjs";
 
 const VERSION = "codex-sandbox-validation-configuration.v1";
 const MANAGED_VERSION = "codex-sandbox-validation-configuration.v2";
@@ -460,16 +461,18 @@ export function createCodexSandboxValidationJournal({ evidenceRoot, configuratio
     intentValid(intent, operationId);
     return { intent, evidence: await write(`${operationId}.intent.json`, intent) };
   }
-  async function record({ prepared, controller, membership, child }) {
+  async function record({ prepared, controller, membership, child, diagnostics = null }) {
     intentValid(prepared.intent, prepared.intent.operation_id);
     requireThat(exact(prepared.evidence, ["ref", "sha256", "bytes"]) && prepared.evidence.ref === `validation-boundary/${prepared.intent.operation_id}.intent.json`
       && HASH.test(prepared.evidence.sha256) && positive(prepared.evidence.bytes, 1024 * 1024), "SANDBOX_JOURNAL_INTENT_CHANGED");
     const reread = await readFile(path.join(evidenceRoot, prepared.evidence.ref), 1024 * 1024, undefined, true);
     requireThat(reread.sha256 === prepared.evidence.sha256 && reread.bytes === prepared.evidence.bytes
       && fingerprint(JSON.parse(reread.content)) === fingerprint(prepared.intent), "SANDBOX_JOURNAL_INTENT_CHANGED");
-    const value = { contract_version: "codex-validation-terminal.v1", operation_id: prepared.intent.operation_id, intent_sha256: prepared.evidence.sha256,
+    if (diagnostics !== null) assertCodexValidationDiagnostics(diagnostics, controller);
+    const value = { contract_version: diagnostics === null ? "codex-validation-terminal.v1" : "codex-validation-terminal.v2", operation_id: prepared.intent.operation_id, intent_sha256: prepared.evidence.sha256,
       configuration_sha256: configurationSha256, invocation_id: prepared.intent.invocation_id, request_sha256: prepared.intent.request_sha256,
-      termination_state: termination(prepared.intent, controller, membership), controller: structuredClone(controller), membership: structuredClone(membership), child: structuredClone(child), observed_at: new Date().toISOString() };
+      termination_state: termination(prepared.intent, controller, membership), controller: structuredClone(controller), membership: structuredClone(membership), child: structuredClone(child),
+      ...(diagnostics === null ? {} : { diagnostics: structuredClone(diagnostics) }), observed_at: new Date().toISOString() };
     return { terminal: value, evidence: await write(`${prepared.intent.operation_id}.terminal.json`, value) };
   }
   async function inspect() {
@@ -486,10 +489,12 @@ export function createCodexSandboxValidationJournal({ evidenceRoot, configuratio
         const terminalName = `${operationId}.terminal.json`;
         if (names.includes(terminalName)) {
           const closed = await readFile(path.join(directory, terminalName), 1024 * 1024, undefined, true); terminal = JSON.parse(closed.content);
-          requireThat(exact(terminal, ["contract_version", "operation_id", "intent_sha256", "configuration_sha256", "invocation_id", "request_sha256", "termination_state", "controller", "membership", "child", "observed_at"])
-            && terminal.contract_version === "codex-validation-terminal.v1" && terminal.operation_id === operationId && terminal.intent_sha256 === read.sha256
+          const diagnosticVersion = terminal.contract_version === "codex-validation-terminal.v2";
+          requireThat(exact(terminal, ["contract_version", "operation_id", "intent_sha256", "configuration_sha256", "invocation_id", "request_sha256", "termination_state", "controller", "membership", "child", "observed_at", ...(diagnosticVersion ? ["diagnostics"] : [])])
+            && (diagnosticVersion || terminal.contract_version === "codex-validation-terminal.v1") && terminal.operation_id === operationId && terminal.intent_sha256 === read.sha256
             && terminal.configuration_sha256 === configurationSha256 && terminal.invocation_id === intent.invocation_id && terminal.request_sha256 === intent.request_sha256
             && Number.isFinite(Date.parse(terminal.observed_at)) && terminal.termination_state === termination(intent, terminal.controller, terminal.membership), "SANDBOX_JOURNAL_TERMINAL_INVALID");
+          if (diagnosticVersion) assertCodexValidationDiagnostics(terminal.diagnostics, terminal.controller);
           terminalEvidence = reference(terminalName, closed.content);
         }
         operations.push({ operation_id: operationId, invocation_id: intent.invocation_id, request_sha256: intent.request_sha256,
@@ -592,13 +597,15 @@ export function createCodexSandboxValidationBoundary({ configuration, qualificat
     const stop = new AbortController(), abort = () => stop.abort(signal.reason); signal?.addEventListener("abort", abort, { once: true });
     const entry = { requestHash: input.request_sha256, stop, result: null, done: null }; active.set(input.invocation_id, entry);
     entry.done = (async () => {
-      const parser = createCodexValidationStreamParser(input); let protocolFailed = null;
+      const parser = createCodexValidationStreamParser(input), stderr = createCodexValidationStderr(); let protocolFailed = null;
       const observed = await controller.run({ ...launch, maxDurationMs: Math.max(1, Math.floor(remaining)) }, { signal: stop.signal, async onEvent(event) {
         if (event.type === "prepared") { await inspect({ cwd: input.cwd, signal: stop.signal }); requireThat(performance.now() - began < input.max_duration_ms, "SANDBOX_CANCELLED"); }
+        if (event.type === "stderr") stderr.consume(event.bytes);
         if (event.type === "stdout") { try { parser.consume(event.bytes); } catch (cause) { protocolFailed = cause.code; throw cause; } }
       } });
       let decoded; try { decoded = parser.finish(); } catch (cause) { protocolFailed ??= cause.code; }
-      const closed = await journal.record({ prepared: durable, controller: observed, membership: parser.observation(), child: decoded?.terminal ?? null });
+      const closed = await journal.record({ prepared: durable, controller: observed, membership: parser.observation(), child: decoded?.terminal ?? null,
+        diagnostics: { protocol_failure: protocolFailed, stderr: stderr.snapshot(observed) } });
       if (protocolFailed || observed.termination_state !== "confirmed" || observed.outcome !== "completed") {
         // A closed CLI alone is insufficient. A prepared frame attests that
         // BOTH trampoline and runner belonged to this exact outer Job before

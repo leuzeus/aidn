@@ -8,6 +8,8 @@ import { assertCodexSandboxValidationConfiguration, buildCodexSandboxValidationI
   usesCodexValidationAccessCheck, codexValidationObservationVersion,
   inspectCodexSandboxValidationConfiguration, assertCodexSandboxValidationLaunchSupported, createCodexValidationStreamParser, assertCodexSandboxProtectedBaseline, assertCodexCooperativeConcurrency } from "../../src/adapters/runtime/codex-sandbox-validation-boundary.mjs";
 import { createWindowsProcessTreeController } from "../../src/adapters/agents/process-tree/windows-process-tree-controller.mjs";
+import { createCodexValidationStderr as createCodexValidationProbeStderr } from "../../src/adapters/runtime/codex-validation-diagnostics.mjs";
+export { createCodexValidationProbeStderr };
 
 const CASES = ["filesystem", "network", "timeout", "cancel", "callback"];
 const SOURCE = path.join(import.meta.dirname, "codex-validation-native-probe.mjs");
@@ -113,23 +115,6 @@ async function listener(port, challenge) {
   } catch (cause) { for (const socket of sockets) socket.destroy(); server.close(); throw cause; }
 }
 
-// Retain only a bounded diagnostic tail locally. Full-stream totals and hash
-// remain those produced by the process controller, including undelivered bytes.
-export function createCodexValidationProbeStderr() {
-  const limit = 4096; let tail = Buffer.alloc(0), observed = 0;
-  return {
-    consume(bytes) { const chunk = Buffer.from(bytes); observed += chunk.length;
-      tail = chunk.length >= limit ? Buffer.from(chunk.subarray(-limit)) : Buffer.concat([tail, chunk]).subarray(-limit); },
-    snapshot(process) {
-      let text = null, offset = 0;
-      if (observed > tail.length) while (offset < Math.min(4, tail.length) && (tail[offset] & 0xc0) === 0x80) offset++;
-      try { text = new TextDecoder("utf-8", { fatal: true }).decode(tail.subarray(offset)); } catch { /* Exact bytes remain available below. */ }
-      return { total_bytes: process?.bytes?.stderr ?? null, sha256: process?.hashes?.stderr_sha256 ?? null,
-        observed_bytes: observed, retained_bytes: tail.length, truncated: (process?.bytes?.stderr ?? observed) > tail.length,
-        tail_base64: tail.toString("base64"), tail_utf8: text };
-    },
-  };
-}
 // The framed controller retains cumulative child stdout. Consume each complete
 // JSONL observation once, including when transport chunks split or join lines.
 export function createCodexValidationObservationReader() {
