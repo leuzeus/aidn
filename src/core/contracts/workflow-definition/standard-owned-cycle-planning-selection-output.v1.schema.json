@@ -1,0 +1,287 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-owned-cycle-planning-selection-output.v1",
+  "x-aidn-contract-version": "standard-owned-cycle-planning-selection-output.v1",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "operation_ref",
+        "outcome",
+        "effect_status",
+        "facts",
+        "observations",
+        "evidence_refs"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "standard-owned-cycle-planning-selection-output.v1"
+        },
+        "operation_ref": {
+          "const": "cycle_owned_planning_select"
+        },
+        "outcome": {
+          "const": "completed"
+        },
+        "effect_status": {
+          "const": "no_effect"
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "owned_cycle_planning_required"
+          ],
+          "properties": {
+            "owned_cycle_planning_required": {
+              "type": "boolean"
+            }
+          }
+        },
+        "observations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entry_operation_id",
+            "entry_sha256",
+            "scope_sha256",
+            "session_id",
+            "cycle_id",
+            "cycle_path",
+            "cycle_state",
+            "planning_context_sha256",
+            "canonical_sha256",
+            "canonical",
+            "templates",
+            "head",
+            "product_sha256",
+            "planning_required",
+            "implementation_authorized"
+          ],
+          "properties": {
+            "entry_operation_id": {
+              "type": "string",
+              "pattern": "^op_[a-f0-9]{40}$"
+            },
+            "entry_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "scope_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "session_id": {
+              "type": "string",
+              "pattern": "^S[0-9]{3,6}$"
+            },
+            "cycle_id": {
+              "type": "string",
+              "pattern": "^C[0-9]{3,6}$"
+            },
+            "cycle_path": {
+              "type": "string",
+              "pattern": "^cycles/C[0-9]{3,6}-[A-Za-z0-9._-]+$",
+              "maxLength": 192
+            },
+            "cycle_state": {
+              "enum": [
+                "OPEN",
+                "IMPLEMENTING",
+                "VERIFYING"
+              ]
+            },
+            "planning_context_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonical_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonical": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path",
+                  "sha256",
+                  "metadata_sha256"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 192
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "metadata_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "templates": {
+              "type": "array",
+              "maxItems": 3,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path",
+                  "sha256",
+                  "metadata_sha256"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 192
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "metadata_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "head": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "product_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "planning_required": {
+              "type": "boolean"
+            },
+            "implementation_authorized": {
+              "const": false
+            }
+          }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "maxItems": 67,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ref",
+              "sha256"
+            ],
+            "properties": {
+              "ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "operation_ref",
+        "outcome",
+        "effect_status",
+        "facts",
+        "observations",
+        "evidence_refs"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "standard-owned-cycle-planning-selection-output.v1"
+        },
+        "operation_ref": {
+          "const": "cycle_owned_planning_select"
+        },
+        "outcome": {
+          "const": "blocked"
+        },
+        "effect_status": {
+          "const": "no_effect"
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {}
+        },
+        "observations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reason_code"
+          ],
+          "properties": {
+            "reason_code": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+            }
+          }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "maxItems": 0,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ref",
+              "sha256"
+            ],
+            "properties": {
+              "ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

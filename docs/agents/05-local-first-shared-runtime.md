@@ -411,6 +411,21 @@ Controlled Git context reads set `diff.autoRefreshIndex=false` per invocation al
 
 ## Owned entry to canonical progress
 
+An admitted owned OPEN cycle with untouched scaffold planning documents can
+select the ordinary fresh-prework chain through `cycle_owned_planning_select`.
+The fixed host compares canonical plan, audit and traceability bytes with the
+current templates and requires unfrozen, not-ready status. An existing
+integration-only choice cannot select fresh planning. The host reobserves the
+accepted entry, content and metadata, scope, backend, product and process around
+awaits. Partial planning is never replaced on a parser failure. Current DoR,
+plan-record and phase effects retain their grants, owners and CAS checks.
+
+This allows a new process instance with current implementation pins to continue
+the same canonical session and cycle before their plan was recorded. It does
+not migrate an old process instance or rewrite its decisions, receipts, Native
+accounting or UNKNOWN effects. The selector stays in the existing operation
+journal; it introduces no state table or shared synchronization method.
+
 An unambiguous owned cycle can supply its accepted `cycle_entry_admit` identity to the separate read-only `cycle_owned_resume_admit` adapter. This preserves ordinary entry and avoids requiring the selected-cycle H/activation/checkpoint sequence for a cycle already owned in the current context. The selected source retains that full sequence and its physical checkpoint rules.
 
 The owned source reuses current canonical/backend/metadata/process ownership checks and the progress projector. Its current Git diff/status and product scope are observed through the existing controlled context reader and fenced before/after awaited reads. Uncommitted current progress is DATA, not a reason to invent a checkpoint or fresh work receipt. Canonical choice history can retain `integration_only` intent; it provides no H authentication or effect permission. All unfinished work still needs current DoR, the existing separately granted implementation entry and specific Native write admission. Complete data keeps imported and current task IDs separate through product observation, checks and audit. No new authority, store, shared synchronization or elapsed-age rule is introduced.
@@ -418,7 +433,7 @@ The owned source reuses current canonical/backend/metadata/process ownership che
 
 ## Published phase and work-source routing
 
-The root retains its existing R01 context-refresh and fresh-creation preconditions. An unambiguous owned cycle enters a deterministic call for actual entry and typed progress admission. Ambiguous/reported entry follows the existing H decision and accepted record/checkpoint/activation/selected-context/focus chain. Deferred, rejected and cancelled H receipts retain the common reducer wait/stop semantics. No extra human approval or elapsed-age rule is introduced.
+The root retains its existing R01 context-refresh and fresh-creation preconditions. An unambiguous owned cycle enters a deterministic call for actual entry, untouched-scaffold selection and, when planning already exists, typed progress admission. The caller then uses the existing prework chain for an unplanned cycle. Ambiguous/reported entry follows the existing H decision and accepted record/checkpoint/activation/selected-context/focus chain. Deferred, rejected and cancelled H receipts retain the common reducer wait/stop semantics. No extra human approval or elapsed-age rule is introduced.
 
 A deterministic preparation call selects the accepted planning source and performs current DoR/implementation entry only when needed. Its typed return names the original planning operation. The root then selects the actual accepted phase identity and routes unfinished tasks through the existing Native task loop. Complete canonical DATA reaches a trusted current-product snapshot, actual machine checks and current verification before audit. Imported and current work stay separate; no synthetic task advance, writer receipt or progress ID is created. Corrective cycles use their own implementation entry.
 

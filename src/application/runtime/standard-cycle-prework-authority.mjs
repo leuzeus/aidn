@@ -3,11 +3,14 @@ import { assertStandardCyclePlan } from "../../core/workflow/standard-cycle-plan
 import { CYCLE_PREWORK_CONTRACT, CYCLE_PREWORK_CONTEXT_MAX_BYTES, assertStandardCyclePreworkSelection, assertStandardCyclePreworkEvaluation,
   observeStandardCyclePrework, assertStandardCyclePreworkWitness } from "../../core/workflow/standard-cycle-prework.mjs";
 import { evaluateStandardCyclePlan } from "./standard-cycle-plan-context.mjs";
+import { ownedCanonicalResumeEntry, assertOwnedCanonicalResumeInput } from "../../core/workflow/standard-owned-cycle-resume.mjs";
+import { ownedCyclePlanningSelectOperation, ownedPlanningScaffoldNames, isOwnedCyclePlanningScaffold,
+  assertOwnedCyclePlanningSelection } from "../../core/workflow/standard-owned-cycle-planning.mjs";
 
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const freshBindings = ["cycle_initialize", "spike_cycle_initialize", "session_pr_correction_cycle_initialize"];
 const canonicalBindings = ["cycle_plan_adopt", "cycle_owned_resume_admit", "cycle_canonical_resume_admit"];
-const origins = [...freshBindings, ...canonicalBindings];
+const origins = [...freshBindings, ...canonicalBindings, ownedCyclePlanningSelectOperation];
 
 // Capabilities come only from the fixed process authority. Neither authored
 // process data nor a Native report can supply a reader, principal or grant.
@@ -31,6 +34,48 @@ export function createStandardCyclePreworkAuthority({ active, readCurrent, readA
     const accepted = readAccepted(instance, intent.operation_id, intent.binding_ref), output = accepted.output;
     if (output.outcome !== "completed") fail("STANDARD_PREWORK_ACCEPTED_ORIGIN_REQUIRED");
     return { ...accepted, binding: intent.binding_ref };
+  }
+  async function selectOwnedPlanning(instance, input, options = {}) {
+    assertOwnedCanonicalResumeInput(input); current(instance, options);
+    const source = readAccepted(instance, input.entry_operation_id, "cycle_entry_admit"),
+      entry = { entry_operation_id: input.entry_operation_id, entry_sha256: shadowHash(source.record), input: source.record.preview.input, output: source.output };
+    const { selected, entry: requested, observed: admitted } = ownedCanonicalResumeEntry(entry, input);
+    const scope = observeScope(), binding = artifacts.describe(), observed = await observeContext();
+    current(instance, options);
+    const context = observed.context, { metadata_pins, ...planningContext } = context;
+    if (context.mode !== "COMMITTING" || context.session_id !== requested.session_id || context.cycle_id !== selected.cycle_id
+      || context.cycle_path !== selected.cycle_path || context.branch !== selected.branch || context.cycle_state !== selected.state
+      || admitted.scope_sha256 !== shadowHash(scope) || context.product_sha256 !== readProductSha256())
+      fail("STANDARD_OWNED_PLANNING_CONTEXT_CHANGED");
+    const names = context.documents.map(row => {
+      if (!row.ref.startsWith("audit:")) fail("STANDARD_OWNED_PLANNING_CONTEXT_CHANGED");
+      return row.ref.slice(6);
+    });
+    const rows = artifacts.readMany(names, { required: names, includeMetadata: true }), pin = ({ path, sha256, metadata_sha256 }) => ({ path, sha256, metadata_sha256 });
+    if (!Array.isArray(metadata_pins) || metadata_pins.length !== rows.length
+      || rows.some((row, index) => row.path !== names[index] || row.sha256 !== context.documents[index].sha256
+        || metadata_pins[index].ref !== context.documents[index].ref || metadata_pins[index].sha256 !== row.metadata_sha256)
+      || admitted.canonical.some(row => !rows.some(actual => actual.path === row.path && actual.sha256 === row.sha256 && actual.metadata_sha256 === row.metadata_sha256)))
+      fail("STANDARD_OWNED_PLANNING_CONTEXT_CHANGED");
+    const templateNames = context.cycle_state === "OPEN" ? ownedPlanningScaffoldNames.map(name => `cycles/TEMPLATE_${name}.md`) : [];
+    const templates = artifacts.readMany(templateNames, { required: templateNames, includeMetadata: true });
+    const required = isOwnedCyclePlanningScaffold(context, templates), canonical = rows.map(pin);
+    const output = assertOwnedCyclePlanningSelection({ contract_version: "standard-owned-cycle-planning-selection-output.v1",
+      operation_ref: ownedCyclePlanningSelectOperation, outcome: "completed", effect_status: "no_effect",
+      facts: { owned_cycle_planning_required: required }, observations: {
+        entry_operation_id: input.entry_operation_id, entry_sha256: entry.entry_sha256, scope_sha256: shadowHash(scope),
+        session_id: context.session_id, cycle_id: context.cycle_id, cycle_path: context.cycle_path, cycle_state: context.cycle_state,
+        planning_context_sha256: shadowHash(planningContext), canonical_sha256: shadowHash(canonical), canonical,
+        templates: templates.map(pin), head: context.head, product_sha256: context.product_sha256,
+        planning_required: required, implementation_authorized: false },
+      evidence_refs: [...canonical, ...templates].map(row => ({ ref: "audit:" + row.path, sha256: row.sha256 })) });
+    const after = await observeContext(); current(instance, options);
+    if (after.context_sha256 !== observed.context_sha256 || shadowHash(scope) !== shadowHash(observeScope())
+      || shadowHash(binding) !== shadowHash(artifacts.describe()) || context.product_sha256 !== readProductSha256()
+      || entry.entry_sha256 !== shadowHash(readAccepted(instance, input.entry_operation_id, "cycle_entry_admit").record)
+      || shadowHash(templates.map(pin)) !== shadowHash(artifacts.readMany(templateNames, { required: templateNames, includeMetadata: true }).map(pin)))
+      fail("STANDARD_OWNED_PLANNING_CONTEXT_CHANGED");
+    return output;
   }
   async function observe(instance, options = {}) {
     current(instance, options);
@@ -67,6 +112,15 @@ export function createStandardCyclePreworkAuthority({ active, readCurrent, readA
       complete = completed.length === proposal.tasks.length;
       if (!complete && source.binding !== "cycle_plan_adopt" && details.work_intent !== "continue_implementation")
         fail("STANDARD_CANONICAL_RESUME_INTEGRATION_ONLY");
+    } else if (source.binding === ownedCyclePlanningSelectOperation) {
+      assertOwnedCyclePlanningSelection(source.output);
+      const currentSelection = await selectOwnedPlanning(instance, source.record.preview.input, options);
+      current(instance, options);
+      if (source.output.facts.owned_cycle_planning_required !== true || source.output.effect_status !== "no_effect"
+        || shadowHash(currentSelection) !== shadowHash(source.output) || context.cycle_state !== "OPEN"
+        || source.output.observations.planning_context_sha256 !== shadowHash(planningContext)
+        || source.output.observations.canonical_sha256 !== shadowHash(rows.map(({ path, sha256, metadata_sha256 }) => ({ path, sha256, metadata_sha256 }))))
+        fail("STANDARD_OWNED_PLANNING_SOURCE_CHANGED");
     } else {
       const plan = source.record.preview.prepared?.plan;
       const inner = source.binding === "cycle_initialize" ? plan : plan?.inner?.plan;
@@ -184,5 +238,5 @@ export function createStandardCyclePreworkAuthority({ active, readCurrent, readA
     if (shadowHash(fresh) !== shadowHash(retained.output)) fail("STANDARD_PREWORK_EVALUATION_CHANGED");
     return witnessFrom(retained);
   }
-  return Object.freeze({ select: async instance => (await observe(instance)).selection, prepareActivity, evaluate, accepted, readEvaluation, witness, assertWitness, canonicalWitness });
+  return Object.freeze({ selectOwnedPlanning, select: async instance => (await observe(instance)).selection, prepareActivity, evaluate, accepted, readEvaluation, witness, assertWitness, canonicalWitness });
 }

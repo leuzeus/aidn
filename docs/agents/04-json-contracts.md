@@ -852,6 +852,17 @@ Validation and verification forward a private assertion tied to their own local 
 
 ## Private owned-cycle progress source
 
+The read-only `cycle_owned_planning_select` uses the existing closed
+`standard-owned-cycle-resume-input.v1` entry reference and emits
+`standard-owned-cycle-planning-selection-output.v1`. Its accepted current entry,
+canonical content and metadata, templates, scope, HEAD and product identify an
+owned OPEN cycle whose planning documents still match the initialized scaffold.
+Only that case selects a fresh proposal through the existing prework chain.
+The prework selection's origin vocabulary includes this explicit operation;
+`fresh_cycle` describes fresh planning here, not session or cycle creation.
+The output grants no implementation permission. A modified or partial plan
+continues to canonical admission and its existing explicit refusals.
+
 The separate `cycle_owned_resume_admit` binding accepts the closed `standard-owned-cycle-resume-input.v1` entry-operation identity. Its protected reader requires an accepted current-process `cycle_entry_admit` result for one unambiguous owned cycle. The original selected-focus input/output and H/checkpoint chain keep their contracts. The owned output uses its own closed `standard-owned-cycle-resume-output.v1` with `entry_operation_id` and `entry_sha256`; an entry is never labelled as a focus checkpoint.
 
 Current canonical phase, ordered task prefix, metadata, context, branch/session ownership and DoR remain observed. Existing Process cycle choice sections are canonical DATA used to retain an integration-only restriction, including when the transaction originally focused a different reported cycle. They authenticate no human and supply no current work, validation or Native receipt. Unknown or inconsistent declared choice material refuses interpretation.

@@ -152,11 +152,14 @@ op("cycle_entry", "cycle_entry_admit", { session_id: { source: "operation_input"
 // An ordinary owned cycle needs no carryover H/checkpoint chain. The root's
 // existing cycle_refresh_before already derives its active-cycle digest.
 const ownedNodeStart = nodes.length, ownedInputStart = inputs.length;
-seq("owned_entry", ["entry", "resume"]);
+seq("owned_entry", ["entry", "planning_select", "planning_route"]);
 const ownedSession = { session_id: { source: "parameter", key: "session_id", path: [] } };
 op("entry", "cycle_entry_admit", { ...ownedSession, cycle_id: { source: "literal", value: null } });
+op("planning_select", "cycle_owned_planning_select", operation(null, "entry_operation_id", "entry"));
+xor("planning_route", [["unplanned", "planning_pending", "owned_cycle_planning_required"], ["canonical", "resume", null]]);
+seq("planning_pending", []);
 op("resume", "cycle_owned_resume_admit", operation(null, "entry_operation_id", "entry"));
-const ownedNodes = nodes.splice(ownedNodeStart), ownedTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-owned-entry", revision: 1,
+const ownedNodes = nodes.splice(ownedNodeStart), ownedTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-owned-entry", revision: 2,
   participants: [{ id: "project" }], roles: [], policies: [], entry: "owned_entry", nodes: ownedNodes, operation_pins: pinsFor(ownedNodes),
   call_interface: { parameters: { session_id: "string" }, returns: {} },
   data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session_id"], inputs: inputs.splice(ownedInputStart) } };

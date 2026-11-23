@@ -484,6 +484,9 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   async function selectCyclePrework(instance, input) {
     assertStandardOperationInput("cycle_prework_select", input); return prework.select(instance);
   }
+  async function selectOwnedCyclePlanning(instance, input) {
+    assertStandardOperationInput("cycle_owned_planning_select", input); return prework.selectOwnedPlanning(instance, input);
+  }
   async function evaluateCyclePrework(instance, input) {
     assertStandardOperationInput("cycle_prework_evaluate", input); return prework.evaluate(instance, input);
   }
@@ -1151,5 +1154,5 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     readNativeActivity: readPreworkNativeActivity,
   });
   return Object.freeze({ profile: "standard-mixed.v1", rollbackProductScope, observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, authenticateOperationHost, inspectDiagnostic, observeNativeDiagnostic, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
-    verifyNativeHumanSource, admitNativeActivity, selectCyclePrework, evaluateCyclePrework, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, selectCycleExecutionSource, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCanonicalResumeProduct, observeCycleVerificationContext, observeDriftContext, modelSource: source });
+    verifyNativeHumanSource, admitNativeActivity, selectOwnedCyclePlanning, selectCyclePrework, evaluateCyclePrework, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, selectCycleExecutionSource, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCanonicalResumeProduct, observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

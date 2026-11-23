@@ -106,7 +106,7 @@ export async function executeCanonicalPreworkFixture(f, authorization) {
 
 // One current read-only actor for the owned-source entry fixture. Controller/RPC
 // are identified doubles; origin, Native context, journals and DoR use real ports.
-export function createOwnedPreworkNativeFixture({ targetRoot, base, model, signingKey }) {
+export function createOwnedPreworkNativeFixture({ targetRoot, base, model, signingKey, freshProposalFor = null }) {
   const hash = bytes => createHash("sha256").update(bytes).digest("hex");
   const dirs = { product: path.join(targetRoot, "product"), control: path.join(base, "control"), review: path.join(base, "review"), home: path.join(base, "native") };
   for (const name of ["control", "review", "home"]) fs.mkdirSync(dirs[name], { recursive: true });
@@ -128,8 +128,9 @@ export function createOwnedPreworkNativeFixture({ targetRoot, base, model, signi
   actor.role.skills = ["cycle-create"];
   configuration.skills["cycle-create"] = pin("native-prework-cycle-create.md", fs.readFileSync(new URL("../../scaffold/codex/aidn-cycle-create/SKILL.md", import.meta.url)));
   const t = transport(f, { readOnlyAnswer: true, answer({ params }) { const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
-    assert.equal(observed.context.subject.kind, "canonical_plan");
-    return { outcome: "completed", summary: "Controlled current initial audit of owned canonical DATA", report: preworkPlanningReport(observed, null) }; } });
+    assert.equal(observed.context.subject.kind, freshProposalFor ? "fresh_cycle" : "canonical_plan");
+    return { outcome: "completed", summary: "Controlled current initial audit of owned canonical DATA",
+      report: preworkPlanningReport(observed, freshProposalFor ? freshProposalFor(preworkPlanningContext(observed)) : null) }; } });
   const controllerFactory = () => ({ async checkAvailability() { return { available: true }; }, async run(request, { onEvent }) {
     f.launches = (f.launches ?? 0) + 1; const sent = JSON.parse(request.stdin); let native;
     const allocationAuthority = createNativeAllocationWorkerAuthority({ configuration, authorization: sent.authorization, admission: sent.allocation, readProductSha256: () => native.preview().product_sha256 });

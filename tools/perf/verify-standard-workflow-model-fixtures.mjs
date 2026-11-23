@@ -23,6 +23,8 @@ function reject(name, mutate, code) { test(name, () => { const input = fresh(); 
 for (const relative of ["src/application/install/project-activation-service.mjs", "src/core/gating/fallback-history-policy.mjs", "src/core/contracts/workflow-definition/standard-workflow-catalog.v4.schema.json", "src/core/contracts/workflow-definition/standard-workflow-catalog.v5.schema.json", "src/core/contracts/workflow-definition/standard-cycle-entry-observation-output.v1.schema.json",
   "src/application/runtime/standard-canonical-cycle-resume.mjs", "src/core/workflow/standard-canonical-cycle-resume.mjs", "src/core/workflow/standard-owned-cycle-resume.mjs",
   "src/core/workflow/standard-cycle-source-selection.mjs",
+  "src/core/workflow/standard-owned-cycle-planning.mjs",
+  "src/core/contracts/workflow-definition/standard-owned-cycle-planning-selection-output.v1.schema.json",
   "src/application/runtime/standard-cycle-prework-authority.mjs",
   "src/core/workflow/standard-cycle-prework.mjs",
   "src/core/contracts/workflow-definition/standard-workflow-catalog.v7.schema.json",
