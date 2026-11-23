@@ -6442,6 +6442,21 @@ The focused `--drift-git-readonly-only --retain-always` selector runs the existi
 Interpret each result against its exact source, argv and retained receipts. Preserve original failed or uncertain attempts separately from later corrections, including Native bounds, consumption and pending ownership. Closed processes alone do not admit an uncertain effect or release its owner. The complete manifest retains all existing command order and its final nominal case when these maintained component cases are added.
 
 
+## Owned cycle before plan recording
+
+`node tools/perf/verify-standard-owned-planning-fixtures.mjs` checks the closed
+read-only contract, exact scaffold selection, rejection of partial replacement
+and source/owner/backend/metadata/product/process changes across awaits. It
+also checks that an accepted selection can supply the fresh prework subject.
+
+`node tools/perf/verify-standard-owned-planning-host-fixtures.mjs --mode=db-only`
+uses real canonical initialization, journals, plan recording, DoR and phase
+ports, with a controlled Native wire. A new instance continues the existing
+session and cycle, preserves an earlier accepted entry and instance, and changes
+no product or branch. DB-only here uses SQLite. `--mode=files` is available for
+historical storage parity; PostgreSQL, a real model, process-tree supervision,
+the public journey and the installed archive require separate qualification.
+
 ## Owned canonical progress source components
 
 Run `node tools/perf/verify-standard-owned-cycle-resume-fixtures.mjs --contracts-only` for the closed entry-only source and output schemas, preserved selected input, ordinary/integration-only intent, all three phase descriptors, working-progress context fencing and inconsistent/foreign source refusals. These pure checks perform no host, H or Native execution.

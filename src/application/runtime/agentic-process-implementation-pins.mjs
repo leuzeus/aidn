@@ -246,6 +246,8 @@ const files = [
   "src/core/contracts/workflow-definition/standard-canonical-cycle-resume-observe-output.v1.schema.json",
   "src/core/workflow/standard-canonical-cycle-resume.mjs",
   "src/core/workflow/standard-owned-cycle-resume.mjs",
+  "src/core/workflow/standard-owned-cycle-planning.mjs",
+  "src/core/contracts/workflow-definition/standard-owned-cycle-planning-selection-output.v1.schema.json",
   "src/application/runtime/standard-canonical-cycle-resume.mjs",
   "src/core/workflow/standard-cycle-source-selection.mjs",
   "src/core/contracts/workflow-definition/standard-cycle-entry-choice-checkpoint-plan.v2.schema.json",

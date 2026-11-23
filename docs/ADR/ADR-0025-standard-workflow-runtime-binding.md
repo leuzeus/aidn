@@ -1,5 +1,24 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Owned cycle continuation before plan recording, 2026-11-22
+
+An admitted existing COMMITTING cycle may be OPEN because its first plan was
+never recorded. The owned-entry component now selects that case explicitly
+before attempting canonical plan projection. Only exact canonical scaffold
+plan, audit and traceability bytes, together with unfrozen, not-ready status,
+permit fresh planning. The fixed host reauthenticates the current accepted
+entry and reobserves content, metadata, templates, scope, backend, process and
+product. A partial or modified plan keeps the canonical path and its refusals.
+
+The existing prework producer, evaluation, record, DoR and phase operations
+remain responsible for their separate evidence and effects. This path creates
+neither a session nor a cycle. A new process instance can use the same canonical
+objects after implementation pins change; prior instances, accepted decisions,
+receipts, uncertain effects and Native consumption remain unchanged. There is
+no implicit migration, grant, synchronization or new persistence authority.
+Fixtures and a targeted continuation do not replace final same-candidate public
+and installed-archive qualification.
+
 ## Human decision profiles
 
 A human-decision-question.v1 names the subject and its digest, an explicit

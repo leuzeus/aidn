@@ -18,6 +18,7 @@ import { cycleEntrySelectedFocusOperation } from "../../core/workflow/standard-c
 import { cycleEntryFocusCheckpointOperation } from "../../core/workflow/standard-cycle-entry-focus-checkpoint.mjs";
 import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation, ownedCanonicalCycleResumeAdmitOperation } from "../../core/workflow/standard-canonical-cycle-resume.mjs";
 import { cycleExecutionSourceSelectOperation } from "../../core/workflow/standard-cycle-source-selection.mjs";
+import { ownedCyclePlanningSelectOperation } from "../../core/workflow/standard-owned-cycle-planning.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { operationJournalId } from "../../core/workflow/process-operation-journal.mjs";
 import { assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
@@ -88,6 +89,9 @@ export function createStandardOperationProvider({
     }],
     [ownedCanonicalCycleResumeAdmitOperation, async ({ state, input, occurrenceId }) => {
       return await ownedResumeAdmission?.(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_OWNED_RESUME_AUTHORITY_REQUIRED");
+    }],
+    [ownedCyclePlanningSelectOperation, async ({ state, input }) => {
+      return await processAuthority?.selectOwnedCyclePlanning?.(state.record, input) ?? fail("STANDARD_OWNED_PLANNING_AUTHORITY_REQUIRED");
     }],
     [canonicalCycleResumeObserveOperation, async ({ state, input }) => {
       return await processAuthority?.observeCanonicalResumeProduct?.(state.record, input) ?? fail("STANDARD_CANONICAL_RESUME_PRODUCT_AUTHORITY_REQUIRED");
@@ -632,6 +636,9 @@ export function createStandardOperationProvider({
     }],
     [ownedCanonicalCycleResumeAdmitOperation, async ({ state, record }) => {
       return await ownedResumeAdmission?.(state.record, record.preview.input, record.operation_id) ?? fail("STANDARD_OWNED_RESUME_AUTHORITY_REQUIRED");
+    }],
+    [ownedCyclePlanningSelectOperation, async ({ state, record }) => {
+      return await processAuthority?.selectOwnedCyclePlanning?.(state.record, record.preview.input) ?? fail("STANDARD_OWNED_PLANNING_AUTHORITY_REQUIRED");
     }],
     [canonicalCycleResumeObserveOperation, async ({ state, record }) => {
       return await processAuthority?.observeCanonicalResumeProduct?.(state.record, record.preview.input) ?? fail("STANDARD_CANONICAL_RESUME_PRODUCT_AUTHORITY_REQUIRED");

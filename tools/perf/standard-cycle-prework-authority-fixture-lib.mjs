@@ -6,7 +6,7 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 const H = "a".repeat(64), op = digit => "op_" + digit.repeat(40);
 const clone = value => structuredClone(value);
 const failure = error => /^(?:STANDARD_PREWORK|STANDARD_CANONICAL_RESUME|STANDARD_EFFECT_OWNER|FIXTURE_)/.test(error.code ?? "");
-function fixture(proposalFor, { canonical = false, complete = false, integrationOnly = false } = {}) {
+export function createPreworkAuthorityFixture(proposalFor, { canonical = false, complete = false, integrationOnly = false } = {}) {
   const state = { allowed: true, owner: false, nativeReservation: true, instanceSha: H, product: "b".repeat(64), head: "c".repeat(40),
     backend: "files", scope: "d".repeat(64), afterObserve: null, nativeReads: 0 };
   const instance = { instance_id: "prework-fixture", instance_sha256: H, events: [] };
@@ -16,6 +16,7 @@ function fixture(proposalFor, { canonical = false, complete = false, integration
     allowed_product_files: ["product/app.mjs"], documents: ["SPEC.md", "cycles/C001-feature-prework/status.md"].map(path =>
       ({ ref: "audit:" + path, content: "Fixture source " + path, sha256: shadowHash("Fixture source " + path) })) };
   const rows = planning.documents.map(row => ({ path: row.ref.slice(6), sha256: row.sha256, metadata_sha256: H }));
+  const templateRows = [];
   const evidenceRefs = planning.documents.map(({ ref, sha256 }) => ({ ref, sha256 }));
   const proposal = proposalFor({ context: planning, context_sha256: shadowHash(planning), evidence_refs: evidenceRefs });
   const observed = () => {
@@ -40,7 +41,7 @@ function fixture(proposalFor, { canonical = false, complete = false, integration
     readCurrent: () => ({ instance_sha256: state.instanceSha }), readProductSha256: () => state.product,
     observeScope: () => ({ scope_sha256: state.scope, head: state.head }),
     artifacts: { ownerPending: () => state.owner, describe: () => ({ backend: state.backend }),
-      readMany: names => names.map(name => clone(rows.find(row => row.path === name))) },
+      readMany: names => names.map(name => clone([...rows, ...templateRows].find(row => row.path === name))) },
     readAccepted(_instance, id, binding) {
       const value = records.get(id);
       if (!value || value.record.intent.binding_ref !== binding) throw Object.assign(Error("FIXTURE_ACCEPTED_SOURCE_REQUIRED"), { code: "FIXTURE_ACCEPTED_SOURCE_REQUIRED" });
@@ -76,9 +77,10 @@ function fixture(proposalFor, { canonical = false, complete = false, integration
         reference: { ref: "execution/fixture/native-result.json", sha256: shadowHash(report) } } };
     return prepared;
   }
-  return { authority, instance, state, rows, records, planning, proposal, observed, select, capture, retain,
+  return { authority, instance, state, rows, templateRows, evidenceRefs, records, planning, proposal, observed, select, capture, retain,
     native: () => native, input: () => clone(activityInput) };
 }
+const fixture = createPreworkAuthorityFixture;
 
 export async function verifyStandardCyclePreworkAuthorityFixtures(proposalFor) {
   const names = [], test = async (name, fn) => { await fn(); names.push(name); console.log("PASS " + name); };
