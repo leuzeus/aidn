@@ -185,7 +185,7 @@
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "Deliver a bounded validation-launch reconciliation/continuation at the retained work boundary; do not repeat the product check until UNKNOWN is reconciled. The repaired validator profile is available and reviewed.",
+  "next_required": "Deliver the explicit compatible continuation at retained task work, preserving the original instance and decisions. Reuse the qualified repaired validator; the recovery record does not authorize passing validation or copying old receipts.",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-23T06:36:59.687Z",
+  "updated_at": "2026-11-23T15:39:39.014Z",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -494,6 +494,44 @@
     "old_workflow_preview": "WAITING_RECONCILIATION",
     "canonical_product_retry_count": 0,
     "old_unknown_reconciled": false,
+    "complete_standard_workflow": false
+  },
+  "validation_launch_recovery": {
+    "status": "PASS",
+    "scope": "Installed public historical recovery of the retained validation launch; no validation success or workflow continuation",
+    "candidate": "ce2803429b90dff460085a7ef9edca60f0fcfd24",
+    "archive_sha256": "4c6dcdd74ca69fa2666b01d34620abc05966f1e6e11fbd301040b9da71d39225",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/214",
+    "catalog_revision": 440,
+    "operation_id": "op_db22bc4c951bfde10a9794d744c8e2a8bf847843",
+    "record_sha256": "ed6d7a9f0532517c611b54e031e5c60fdfc516e2e2892e7c07fd92e5084e399a",
+    "attempts": 1,
+    "original_history_preserved": true,
+    "original_operation_receipt_effect_status": "unknown",
+    "original_instance_preserved": true,
+    "validation_command_status": "not_started",
+    "physical_owner_archived": true,
+    "resource_fence": "released",
+    "process_observations": [
+      {
+        "observed_at": "2026-11-23T15:37:39.652Z",
+        "active_count": 0,
+        "complete": true
+      },
+      {
+        "observed_at": "2026-11-23T15:37:41.408Z",
+        "active_count": 0,
+        "complete": true
+      }
+    ],
+    "repeat_execution_writes": 0,
+    "model_calls": 0,
+    "manual_signatures": 0,
+    "product_validation_executed": false,
+    "workflow_resumed": false,
+    "governance_admission": "PASS",
+    "gate_families": "PASS",
+    "perf_kpi": "PASS",
     "complete_standard_workflow": false
   }
 }
