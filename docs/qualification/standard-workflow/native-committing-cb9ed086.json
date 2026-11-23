@@ -1,0 +1,130 @@
+{
+  "candidate": "cb9ed086ea426c7644d1f18a2c10a8ac1c500a78",
+  "archive_sha256": "610afb3ad7640a6dfd0ad6820307d08cf71b2fcc330027775509921e9b349cb3",
+  "predecessor": "914f34e83607df7ae8beec256623a9b6251d3633",
+  "correction_pr": "https://github.com/leuzeus/aidn/pull/207",
+  "model_revision": 430,
+  "backend": "Windows/PostgreSQL",
+  "state_mode": "db-only",
+  "campaign_state": "APPLYING_COMMITTING",
+  "scenario": "Fresh candidate replay in an isolated qualification workspace; no predecessor canonical session or decision receipt was imported",
+  "package_installation": "PASS",
+  "source_installed_inventory": {
+    "models": 16,
+    "provider_bindings": 131,
+    "implementation_files": 689,
+    "implementation_sha256": "932d62c66dd3646033afdd4fb2bc0cfa17285a2e5ecaf675afa2abe4557785a6"
+  },
+  "github_provider_identity": "PASS",
+  "native_hooks": {
+    "expected": 2,
+    "observed": 2,
+    "status": "PASS"
+  },
+  "cycle_validation": {
+    "host_material_check": "PASS",
+    "configuration_sha256": "ad264ba40228039b8dd28f1b34b8c441433412eac23fe5d16f4d79636e766e29",
+    "process_plan_sha256": "7ceba5f8941753a863226ef0ec1ade8ab4787a1183888a68643abc0278972f32",
+    "case_limit_ms": 60000,
+    "cases": [
+      {
+        "id": "filesystem_access",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 10622,
+        "active_processes": 0,
+        "companion_active_processes": 0,
+        "sha256": "5252234f5c0055173d3f39e7d3e5e2756a82c06676f0d78aa9b4dbe99b552ca9"
+      },
+      {
+        "id": "timeout",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 8346,
+        "active_processes": 0,
+        "sha256": "caa089d10e63172e16bbd39de48396b99119c14ea15cf57c0134e271c9df162b"
+      },
+      {
+        "id": "cancel",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 6215,
+        "active_processes": 0,
+        "sha256": "1775c6413b35cd8ffb38201c608a856d6d13ddeafceb4f0715bd022470d0746b"
+      },
+      {
+        "id": "callback",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 6073,
+        "active_processes": 0,
+        "sha256": "f247f2cae106209b752b360125cf7afaf1a419bb4bfc38c41ec5ad4b45a36c79"
+      }
+    ],
+    "review": "PASS",
+    "review_evidence_sha256": "bc5381e00b5b810af4a4e9a82dd36a84d91fe175c71d45d9ba9a1f6e6f682140",
+    "qualification_sha256": "2357d60ff367070bd8491e3008da7b19b7435e7213f8b8bd4a8e78f41077a6bb",
+    "profile_sha256": "8945c5690eee206f25bdbd531afaf0f3cbcd8f4d6d93a538292889801746d9b1",
+    "manual_signature_steps": 0,
+    "original_author_identity_assurance": "operator-accepted-local-history-observation; independent original-author proof remains open",
+    "scope": "Validator boundary only; product validation has not executed"
+  },
+  "canonical_storage": {
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "two_checkouts_same_bootstrap": {
+      "status": "PASS",
+      "canonical_artifacts": 35,
+      "peer_import": false,
+      "scope": "Two installed checkouts read the same canonical bootstrap inventory; no session resume has run yet"
+    },
+    "bootstrap_import": "Explicit installation import of 35 current scaffold documents; no historical session or cycle migration"
+  },
+  "preparation_findings": [
+    {
+      "reason": "SANDBOX_ACCESS_OBSERVER_INVALID",
+      "phase": "preparation",
+      "controls_executed": 0,
+      "native_calls": 0,
+      "repair": "Build the observer from the frozen installed package inside the current supervisor",
+      "resolved": true
+    },
+    {
+      "reason": "Qualification plan prepared before Codex folder trust",
+      "phase": "preparation",
+      "controls_executed": 0,
+      "native_calls": 0,
+      "changed_resource": "profile_config",
+      "original_plan_sha256": "9cb1ce816561320c617c24d6377548f02f07dd9b0cd4fc7f2560d25bdd18ba66",
+      "current_plan_sha256": "7ceba5f8941753a863226ef0ec1ade8ab4787a1183888a68643abc0278972f32",
+      "repair": "Preserve both plans, require trusted hooks before freezing, then obtain the new exact agreement",
+      "resolved": true
+    }
+  ],
+  "native": {
+    "status": "SKIP",
+    "launched": false,
+    "responses": 0
+  },
+  "full_nominal": "SKIP",
+  "installed_nominal": "SKIP",
+  "same_session_resume": "SKIP",
+  "p0_complete": false,
+  "limitations": [
+    "The local chat observer is an accepted pilot exception, not independent proof of the original author; lot 2b remains open.",
+    "The predecessor Native implementation failure remains unchanged; instruction fixtures do not prove the original tool cause or genuine-model behavior.",
+    "A fresh candidate replay is not resumption of the predecessor workspace."
+  ],
+  "report_checkpoint_at": "2026-11-23T00:01:09.658Z",
+  "signed_mode": {
+    "status": "PASS",
+    "choice": "COMMITTING",
+    "operation_id": "op_6ee8321d6a13833c0dcdc85eb78730af5edc87f3",
+    "receipt_id": "receipt_6ee8321d6a13833c0dcdc85eb78730af5edc87f3",
+    "accepted_results": 1,
+    "tampered_choice_refused": true,
+    "same_receipt_on_redelivery": true,
+    "cold_process_receipt_recovery": "PASS",
+    "new_mode_questions": 0,
+    "manual_signature_steps": 0,
+    "proof_sha256": "18dd2d5ab890e545f0ae949f85872181a74ab510efa067a026ad0b0c77254249",
+    "evidence_class": "operator-accepted-local-history-observation",
+    "independent_original_author_proof": false
+  }
+}
