@@ -5381,3 +5381,30 @@ set, without importing old resources or falsely assigning them the new scope.
 Independent review still requires its separate fresh read-only session. Native
 budgets are not renewed by this entry, and accepted mode/alignment decisions are
 not asked again. This targeted continuation is not a full single-candidate P0 run.
+
+### Retained verification before independent audit
+
+`retained_verification` is a second bounded entry for a completed single-task
+`retained_validation` origin whose audit selection is accepted while its cycle
+is VERIFYING. It names that selection and a protected, hash-bound original
+configuration. It does not generalize arbitrary version migration or recursively
+import another retained-verification instance.
+
+The private reader authenticates the original history with its own model,
+bindings and signing key. It requires settled operations and closed or explicitly
+reconciled Native allocations, then rechecks the task-progress/verification
+bridge, original audit selection and exact current product and context. The
+current audit selection reads the genuine validator evidence through the
+current qualified profile. Any changed source, unsettled effect, foreign owner,
+changed provider/model/controller or stale verification refuses before an audit
+session opens. Diagnostic authentication is selected only by this private reader;
+normal execution of an old model still requires current binding pins.
+
+A new technical instance retains the proof in an ordinary operation journal,
+skips mode, planning, implementation and validation, and requests a fresh
+independent auditor. Prior contributor identities supplement current exclusions.
+The auditor's result and subsequent decisions belong to the new instance; the
+original validation and verification receipts stay attributed to their origin.
+Closure rechecks that same historical machine evidence. No original record,
+UNKNOWN, budget or deadline is rewritten. This adds no storage concept or
+backend requirement and does not establish final P0 completion.

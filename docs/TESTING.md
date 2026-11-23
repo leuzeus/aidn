@@ -7905,3 +7905,17 @@ Native actors or historical recovery evidence. Recheck the retained installed
 source in read-only mode, then exercise the public entry, current validator,
 canonical progression and audit separately on the frozen candidate. Record
 source/installed execution and retained UNKNOWN history separately from final P0.
+
+For the subsequent VERIFYING-to-audit continuation, run
+`node tools/perf/verify-standard-retained-verification-fixtures.mjs` (also loaded
+by the retained-validation fixture gate). It checks closed entry/proof contracts,
+phase/product/contributor refusals, fixed provider routing, and the published
+reducer path directly to independent audit. These pure fixtures do not exercise
+the historical source reader or real Native execution. Separately compare the
+read-only reader with preserved source evidence, including the original Native
+reconciliation, then exercise the installed public entry on that same owned
+session/cycle. Require unchanged historical instances, product and canonical
+business state, retained contributor exclusions and the same machine-evidence
+and audit-context hashes. Record source, installed-entry and actual audit results
+separately. Only the private historical reader may authenticate old binding pins;
+execution of an old instance must continue to refuse changed implementation.

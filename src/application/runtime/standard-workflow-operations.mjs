@@ -149,6 +149,8 @@ const files = [
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
 function implementation() {
   const refs = [
+    new URL("standard-retained-verification-source.mjs", import.meta.url),
+    new URL("../../core/workflow/standard-retained-verification.mjs", import.meta.url),
     new URL("standard-retained-validation-source.mjs", import.meta.url),
     new URL("../../core/workflow/standard-retained-validation.mjs", import.meta.url),
     new URL("../../core/workflow/standard-validation-native-layout.mjs", import.meta.url), new URL("standard-validation-profile-layout.mjs", import.meta.url),
@@ -269,7 +271,9 @@ new URL("standard-cycle-implementation.mjs", import.meta.url), new URL("../../co
     new URL("../../core/contracts/workflow-definition/standard-workflow-entry-selection-output.v1.schema.json", import.meta.url));
   for (const name of ["standard-retained-validation-entry.v1", "standard-retained-validation-pins.v1", "standard-retained-validation-proof.v1",
     "standard-retained-validation-admission-output.v1", "standard-work-phase-selection-output.v1", "standard-retained-task-work-input.v1",
-    "standard-retained-task-work-output.v1", "standard-workflow-entry-selection-output.v2"])
+    "standard-retained-task-work-output.v1", "standard-workflow-entry-selection-output.v2",
+    "standard-retained-verification-entry.v1", "standard-retained-verification-proof.v1", "standard-retained-verification-admission-output.v1",
+    "standard-work-phase-selection-output.v2", "standard-workflow-entry-selection-output.v3"])
     refs.push(new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url));
   refs.push(new URL("../../core/workflow/standard-owned-cycle-planning.mjs", import.meta.url),
     new URL("../../core/contracts/workflow-definition/standard-owned-cycle-planning-selection-output.v1.schema.json", import.meta.url));
@@ -388,9 +392,10 @@ const definitions = [
   ["cycle_readiness_evaluate", "start-session", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-cycle-readiness-evaluate-input.v1", "deterministic", "standard-cycle-readiness-output.v1"],
   ["cycle_implementation_enter", "cycle-create", "mutating", ["SPEC-R03", "SPEC-R04"], "standard-cycle-implementation-enter-input.v1", "deterministic", "standard-cycle-readiness-output.v1"],
   ["context_reload", "context-reload", "read-only", ["SPEC-R01", "SPEC-R11"], "standard-empty-input.v1"],
-  ["workflow_entry_select", "context-reload", "read-only", ["SPEC-R01", "SPEC-R02", "SPEC-R03", "SPEC-R05"], "standard-empty-input.v1", "deterministic", "standard-workflow-entry-selection-output.v2"],
+  ["workflow_entry_select", "context-reload", "read-only", ["SPEC-R01", "SPEC-R02", "SPEC-R03", "SPEC-R05"], "standard-empty-input.v1", "deterministic", "standard-workflow-entry-selection-output.v3"],
+  ["cycle_retained_verification_admit", "cycle-close", "read-only", ["SPEC-R03", "SPEC-R04", "SPEC-R07"], "standard-empty-input.v1", "deterministic", "standard-retained-verification-admission-output.v1"],
   ["cycle_retained_validation_admit", "start-session", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-empty-input.v1", "deterministic", "standard-retained-validation-admission-output.v1"],
-  ["cycle_work_phase_select", "start-session", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-empty-input.v1", "deterministic", "standard-work-phase-selection-output.v1"],
+  ["cycle_work_phase_select", "start-session", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-empty-input.v1", "deterministic", "standard-work-phase-selection-output.v2"],
   ["cycle_retained_task_work_observe", "start-session", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-retained-task-work-input.v1", "deterministic", "standard-retained-task-work-output.v1"],
   ["session_admit", "start-session", "read-only", ["SPEC-R01", "SPEC-R04"], "standard-empty-input.v1"],
   ["session_entry_admit", "start-session", "read-only", ["SPEC-R01", "SPEC-R04"], "standard-session-entry-input.v1", "deterministic", "standard-session-entry-output.v1"],

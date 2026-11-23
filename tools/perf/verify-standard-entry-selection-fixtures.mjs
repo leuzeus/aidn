@@ -12,7 +12,7 @@ const continuation={source_instance_id:"prior",source_instance_sha256:"a".repeat
   completion_operation_id:null,completion_sha256:null,alignment_sha256:null,gate_sha256:"c".repeat(64)};
 await check("entry selection is closed, read-only and supplies no initialization facts",()=>{
   const normal=selectStandardEntry({});assertStandardEntrySelection(normal);assertStandardOperationOutput(normal);
-  assert.deepEqual(normal.facts,{owned_cycle_continuation_requested:false,retained_validation_requested:false});assert.equal(normal.observations.admission,null);
+  assert.deepEqual(normal.facts,{owned_cycle_continuation_requested:false,retained_validation_requested:false,retained_verification_requested:false});assert.equal(normal.observations.admission,null);
   assertStandardOperationInput("workflow_entry_select",{});
   assert.throws(()=>assertStandardOperationInput("workflow_entry_select",{owned_cycle_continuation_requested:true}));
   const schema=JSON.parse(fs.readFileSync(new URL("../../src/core/contracts/workflow-definition/standard-workflow-entry-selection-output.v1.schema.json",import.meta.url)));

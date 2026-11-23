@@ -284,7 +284,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     const selected = accepted(plan.input.decision_operation_id, "cycle_closure_decision");
     const question = human.question(selected.record), decision = human.captured(selected.record).source;
     const audit = accepted(selected.record.preview.prepared.plan.audit_operation_id, "cycle_audit_evaluate");
-    const physical = processAuthority.readCycleCloseValidation(instance, audit.record.preview.input), evidence = await cycleValidation.readResult(physical);
+    const physical = await processAuthority.readCycleCloseValidation(instance, audit.record.preview.input), evidence = await cycleValidation.readResult(physical);
     const report = physical.native.authenticated.report, machine = physical.machine;
     if (shadowHash({ question, decision, report }) !== plan.decision_material_sha256 || question.review.audit_output_sha256 !== shadowHash(audit.output)
       || question.review.report_sha256 !== shadowHash(report) || closed.output.effect_status !== "confirmed" || closed.output.facts.cycle_terminal_recorded !== true

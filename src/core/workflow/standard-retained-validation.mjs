@@ -5,6 +5,7 @@ import { assertWorkProductSnapshot } from "./standard-cycle-work.mjs";
 import entry from "../contracts/workflow-definition/standard-retained-validation-entry.v1.schema.json" with { type: "json" };
 import proofSchema from "../contracts/workflow-definition/standard-retained-validation-proof.v1.schema.json" with { type: "json" };
 import phase from "../contracts/workflow-definition/standard-retained-validation-admission-output.v1.schema.json" with { type: "json" };
+import selectionV2 from "../contracts/workflow-definition/standard-work-phase-selection-output.v2.schema.json" with { type: "json" };
 import selection from "../contracts/workflow-definition/standard-work-phase-selection-output.v1.schema.json" with { type: "json" };
 import work from "../contracts/workflow-definition/standard-retained-task-work-output.v1.schema.json" with { type: "json" };
 import input from "../contracts/workflow-definition/standard-retained-task-work-input.v1.schema.json" with { type: "json" };
@@ -46,7 +47,7 @@ export function assertRetainedValidationOutput(value) {
     valid(value, phase); assertRetainedValidationProof(value.observations.proof);
     if (value.observations.proof_sha256 !== H(value.observations.proof)) fail("STANDARD_RETAINED_VALIDATION_PROOF_INVALID");
   } else if (value?.operation_ref === workPhaseSelect) {
-    valid(value, selection);
+    valid(value, value.contract_version === "standard-work-phase-selection-output.v2" ? selectionV2 : selection);
     if (Object.values(value.facts).filter(Boolean).length !== 1) fail("STANDARD_RETAINED_VALIDATION_CONTRACT_INVALID");
   } else if (value?.operation_ref === retainedTaskWork) {
     valid(value, work); assertWorkProductSnapshot(value.observations.product_snapshot);
