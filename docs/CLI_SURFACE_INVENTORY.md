@@ -336,7 +336,14 @@ finalization; `--verify` retains its read-only verification behavior.
     An explicit `standard-workflow-execution.v1` configuration selects the
     published STANDARD catalog/model and the common mixed host. Its `execution`
     supplies project/native pins and roots; the host supplies the model, skills,
-    typed activity outputs and implementation pins. Save the returned `preview`
+    typed activity outputs and implementation pins. If `validation_profile` is
+    supplied, its pinned profile and boundary configuration are read before host
+    creation. Windows
+    validation snapshot/scratch and sandboxed executable paths must not be
+    below Native denied roots; a conflicting layout returns
+    `STANDARD_VALIDATION_NATIVE_READ_CONFLICT` without starting a workflow or
+    repairing permissions. This check does not qualify the validator.
+    Save the returned `preview`
     object for each action. The optional `parameters.entry_point` is `session`
     by default. `{ "kind": "owned_cycle", "checkpoint_operation_id": "op_<40 hex>" }`
     requires an existing unambiguous OPEN COMMITTING cycle owned by
