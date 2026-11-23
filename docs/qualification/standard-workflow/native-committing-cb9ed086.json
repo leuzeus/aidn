@@ -6,7 +6,7 @@
   "model_revision": 430,
   "backend": "Windows/PostgreSQL",
   "state_mode": "db-only",
-  "campaign_state": "WAITING_ALIGNMENT_AFTER_REQUESTED_DIAGNOSIS",
+  "campaign_state": "FAILED_NATIVE_PREWORK",
   "scenario": "Fresh candidate replay in an isolated qualification workspace; no predecessor canonical session or decision receipt was imported",
   "package_installation": "PASS",
   "source_installed_inventory": {
@@ -128,10 +128,10 @@
     }
   ],
   "native": {
-    "status": "PASS",
-    "scope": "The three completed diagnostic activities only; planning, implementation and the full nominal remain unqualified",
+    "status": "FAIL",
+    "scope": "Three diagnostics completed; the fourth Native activity failed during initial planning and audit report validation. Implementation and product tests did not execute.",
     "launched": true,
-    "responses": 3,
+    "responses": 5,
     "activities": [
       {
         "generation": 1,
@@ -207,10 +207,39 @@
           }
         ],
         "usage_scope": "latest observed cumulative snapshot per thread; not a billed total"
+      },
+      {
+        "generation": 4,
+        "status": "FAIL",
+        "output_contract": "standard-cycle-prework-report.v1",
+        "answer_sha256": "028aa0efcfb59d9a1f5b6751bbd67144d925f8d844adb16467eb86a452012ca8",
+        "answer_bytes": 8658,
+        "first_failure": "STANDARD_PREWORK_REPORT_INVALID",
+        "journal_phase": "failed",
+        "active_processes": 0,
+        "responses": 2,
+        "storage_budget_debit_bytes": 3248978,
+        "supervised_process_ms": 138004,
+        "trace_sha256": "15aa2fe87854a19ec79c1396e5347ba370251e64391cbd48f6dfdd5e0d277b4c",
+        "thread_usage": [
+          {
+            "thread_sha256": "73755d835490f7f166d0bc7bb414075ba361670d7ec4289f12b6f60dcbb6bb91",
+            "counters": {
+              "totalTokens": 78176,
+              "inputTokens": 75829,
+              "cachedInputTokens": 37760,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 2347,
+              "reasoningOutputTokens": 47
+            }
+          }
+        ],
+        "usage_scope": "latest observed cumulative snapshot per thread; not a billed total"
       }
-    ]
+    ],
+    "responses_scope": "Observed responses; failed allocation accounting remains unreconciled"
   },
-  "full_nominal": "SKIP",
+  "full_nominal": "FAIL",
   "installed_nominal": "SKIP",
   "same_session_resume": "SKIP",
   "p0_complete": false,
@@ -219,7 +248,7 @@
     "The predecessor Native implementation failure remains unchanged; instruction fixtures do not prove the original tool cause or genuine-model behavior.",
     "A fresh candidate replay is not resumption of the predecessor workspace."
   ],
-  "report_checkpoint_at": "2026-11-23T00:32:01.869Z",
+  "report_checkpoint_at": "2026-11-23T01:13:54.665Z",
   "signed_mode": {
     "status": "PASS",
     "choice": "COMMITTING",
@@ -259,11 +288,67 @@
     "evidence_class": "operator-accepted-local-history-observation",
     "independent_original_author_proof": false
   },
-  "pending_alignment": {
-    "status": "SKIP",
-    "reason": "Awaiting the human choice on the new report",
+  "alignment": {
+    "status": "PASS",
+    "choice": "confirm_alignment",
     "operation_id": "op_ee8e0c6a502982452613286e4a44d543bb603ac9",
+    "receipt_id": "receipt_ee8e0c6a502982452613286e4a44d543bb603ac9",
     "question_sha256": "de9c7e4cc78667cd79e9eb60c7979b6d4216b94d174974764fdd154c65749879",
-    "subject_sha256": "3766b8ad64dd585fc31d8d60c115c500a2c432d4e910ba11bdcfdd37d1b83ce8"
-  }
+    "accepted_results": 1,
+    "tampered_choice_refused": true,
+    "same_receipt_on_redelivery": true,
+    "cold_process_receipt_recovery": "PASS",
+    "manual_signature_steps": 0,
+    "clarification_exchanges": 1,
+    "answer_form": "Free-text confirmation after an explicit alignment clarification",
+    "evidence_class": "operator-accepted-local-history-observation",
+    "independent_original_author_proof": false,
+    "physical_checkpoint": {
+      "candidate": "cb9ed086ea426c7644d1f18a2c10a8ac1c500a78",
+      "backend": "postgres",
+      "state_mode": "db-only",
+      "status": "PASS",
+      "operation_id": "op_c9aa5e1d5dc4bd26c78b7a92a5ac905edf954248",
+      "receipt_id": "receipt_c9aa5e1d5dc4bd26c78b7a92a5ac905edf954248",
+      "accepted_results": 1,
+      "evaluation_operation_id": "op_aae76f60f3d77af2722bd7ec686d0185ff2b51da",
+      "output_sha256": "c73740e4a70141335ddd51629f86f77ece328183b14a438c60c9246b6a408493",
+      "canonical_report_sha256": "5e499ddb7a1752d0c7d83b6a2389d009e78305d545679722080dbdeda18b4549",
+      "same_report_from_two_checkouts": true,
+      "authenticated_alignment_used": true,
+      "raw_evidence_sha256": "116406148bafa17b0bbe7f6fdb1bdeffe32f4a0068e42fc61626b7856a655a75"
+    }
+  },
+  "usability_observations": [
+    {
+      "scope": "Alignment question",
+      "observation": "The user asked whether the pending choice concerned the work mode or another diagnosis. A clarification identified alignment as the only pending choice, followed by one free-text confirmation.",
+      "manual_signature_steps": 0,
+      "product_followup": "Lot 2b must make the business decision explicit in the interface and retain an independently verifiable response."
+    }
+  ],
+  "first_failure": {
+    "code": "STANDARD_PREWORK_REPORT_INVALID",
+    "phase": "Native initial planning and audit answer validation",
+    "original_answer_preserved": true,
+    "validation_stage": "report_semantics",
+    "retained_issues": [],
+    "exact_answer_schema": "PASS",
+    "plan_schema": "PASS",
+    "missing_required_rule": {
+      "audit": "intent",
+      "rule": "SPEC-R03"
+    },
+    "foreign_rules": [],
+    "diagnosis": "The intent judgement omitted SPEC-R03. A local in-memory copy with this reference passed the same pure checks; that copy was never submitted or accepted as a judgement.",
+    "product_tests": "not_executed",
+    "product_diff": "unchanged",
+    "retry_executed": false
+  },
+  "secondary_observation": {
+    "phase": "Read-only recovery preview",
+    "reason": "NATIVE_OWNER_DISPOSITION_UNPROVEN_EFFECTS",
+    "scope": "Closure was observed but the failed allocation was not retired or reconciled. This refusal does not replace the first Native report failure."
+  },
+  "next_action": "Deliver a targeted producer-guidance and refusal-diagnostic correction, freeze its merged candidate, then replay the complete P0 scenario."
 }
