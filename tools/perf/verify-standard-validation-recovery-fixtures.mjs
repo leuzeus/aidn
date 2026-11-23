@@ -44,6 +44,8 @@ function arena() {
   const observed = () => ({ instance: { instance_id: "fixture", instance_sha256: hash, scope_id: hash, model_sha256: hash }, record: { operation_id: id },
     capsule: {}, native: {}, work: {}, profile: {}, snapshot: [], startup: {}, context: { authority_sha256: hash, context_sha256: hash },
     owner: { lease: { resource_fence: originalFence }, lock: { sha256: hash, retired }, fence: readFence() },
+    processes: [0, 1].map(() => ({ contract_version: "codex-validation-process-observation.v1", platform: "win32", host: "fixture",
+      observed_at: "2026-01-01T00:00:00.000Z", complete: true, image_names: ["codex-command-runner.exe", "aidn-validation-trampoline.exe"], matching_pids: [], active_count: 0 })),
     assertStable() { if (drift) throw Object.assign(Error("DRIFT"), { code: "DRIFT" }); } });
   function writer(boundary = async () => {}, changes = {}) {
     worker++; owners.add(worker); const self = worker;
@@ -116,5 +118,13 @@ await check("public runner rejects forged fields and incompatible inputs without
     }
     assert.deepEqual(fs.readdirSync(root), ["request.json"]);
   } finally { assert.equal(path.dirname(root), fs.realpathSync(os.tmpdir())); assert(path.basename(root).startsWith("aidn-recovery-cli-")); fs.rmSync(root, { recursive: true, force: true }); }
+});
+await check("retained process observations are closed, empty and tied to the recovery host", async () => {
+  const a = arena(), w = a.writer(), p = await w.preview(); await w.execute({ expectPlan: p.action_sha256 });
+  for (const alter of [row => { row.host = "other"; }, row => { row.active_count = 1; }, row => { row.matching_pids = [42]; },
+    row => { row.complete = false; }, row => { row.image_names = []; }, row => { row.observed_at = "invalid"; }]) {
+    const bad = structuredClone(a.read().record); alter(bad.attempts[0].process_observations[0]);
+    assert.throws(() => assertValidationLaunchRecoveryRecord(bad), { code: "STANDARD_VALIDATION_RECOVERY_RECORD_INVALID" });
+  }
 });
 console.log(JSON.stringify({ status: "PASS", checks: checks.length, proof_class: "controlled-recovery-ports", native: "SKIP", physical_windows_retirement: "SKIP" }));

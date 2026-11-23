@@ -67,7 +67,7 @@ export function createValidationRecoveryWriter({ request, signer, store, fence, 
       const before = observed.owner.fence;
       const intention = fence.prepareAcquire({ expectedSha256: before.content_sha256 });
       const attempt = { process_identity: intention.record.process_identity, fence_intention: intention,
-        lease: null, retirement: null, released_fence: null };
+        process_observations: observed.processes, lease: null, retirement: null, released_fence: null };
       await boundary("before_intent"); permit();
       save({ contract_version: "standard-validation-launch-recovery-record.v1", operation_id: id, request_sha256: requestSha,
         implementation_sha256: implementationSha256, evidence: validationLaunchRecoveryEvidence(observed), phase: "pending",

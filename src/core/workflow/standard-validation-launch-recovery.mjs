@@ -14,7 +14,9 @@ export function assertValidationLaunchRecoveryRecord(value) {
   const same = (a, b) => H(a) === H(b);
   for (const attempt of value.attempts) {
     const proposed = attempt.fence_intention.record;
-    if (proposed.state !== "held" || !same(proposed.process_identity, attempt.process_identity)
+    if (attempt.process_observations.some(row => row.host !== attempt.process_identity.host || !Number.isFinite(Date.parse(row.observed_at)))
+      || Date.parse(attempt.process_observations[0].observed_at) > Date.parse(attempt.process_observations[1].observed_at)
+      || proposed.state !== "held" || !same(proposed.process_identity, attempt.process_identity)
       || attempt.lease && (!same(attempt.lease.record, proposed) || attempt.lease.previous_sha256 !== attempt.fence_intention.previous_sha256)
       || attempt.retirement && (!attempt.lease || attempt.retirement.lock_sha256 !== value.evidence.lock_sha256)
       || attempt.released_fence && (!attempt.retirement || !same(attempt.released_fence.record, releasedValidationRecoveryFence(proposed))))

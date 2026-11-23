@@ -5326,6 +5326,8 @@ Explicit execution binds the fresh preview hash and appends a separate signed
 `standard-validation-launch-recovery-record.v1` under the existing operation
 journal authority, in the selected canonical backend. The durable attempt names
 its proposed fence before CAS. The writer transfers only the exact authenticated
+fence after retaining both complete empty process observations in the signed
+attempt; these observations remain evidence, never permission. It transfers the
 fence of a terminated owner, archives the exact physical lock with its witness,
 records retirement, releases its fence and records completion. Every boundary
 is restartable from the retained attempt and exact current fence; a live or

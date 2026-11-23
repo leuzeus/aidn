@@ -39,6 +39,8 @@ if (child) {
         const lock = inspectInterruptedReopenLock(config.root, id, origin.intention, origin.lease, { allowRetired: Boolean(owned) });
         return { instance: { instance_id: "fixture", instance_sha256: hash, scope_id: hash, model_sha256: hash }, record: { operation_id: id },
           capsule: {}, native: {}, work: {}, profile: {}, snapshot: [], startup: {}, context: { authority_sha256: hash, context_sha256: hash },
+          processes: [0, 1].map(() => ({ contract_version: "codex-validation-process-observation.v1", platform: "win32", host: os.hostname(),
+            observed_at: "2026-01-01T00:00:00.000Z", complete: true, image_names: ["codex-command-runner.exe", "aidn-validation-trampoline.exe"], matching_pids: [], active_count: 0 })),
           owner: { ...origin, fence: current, lock }, assertStable() {} };
       }, retire: ({ observed, dispositionLease, assertPermit }) => retireInterruptedReopenLock({ targetRoot: config.root, operationId: id,
         intention: origin.intention, originalLease: origin.lease, fence, dispositionLease, expectedLockSha256: observed.owner.lock.sha256, assertPermit, write: true }),

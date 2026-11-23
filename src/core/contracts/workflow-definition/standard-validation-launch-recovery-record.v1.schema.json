@@ -137,7 +137,8 @@
           "fence_intention",
           "lease",
           "retirement",
-          "released_fence"
+          "released_fence",
+          "process_observations"
         ],
         "properties": {
           "process_identity": {
@@ -462,6 +463,59 @@
                 "type": "null"
               }
             ]
+          },
+          "process_observations": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "contract_version",
+                "platform",
+                "host",
+                "observed_at",
+                "complete",
+                "image_names",
+                "matching_pids",
+                "active_count"
+              ],
+              "properties": {
+                "contract_version": {
+                  "const": "codex-validation-process-observation.v1"
+                },
+                "platform": {
+                  "const": "win32"
+                },
+                "host": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "observed_at": {
+                  "type": "string",
+                  "minLength": 20,
+                  "maxLength": 32
+                },
+                "complete": {
+                  "const": true
+                },
+                "image_names": {
+                  "const": [
+                    "codex-command-runner.exe",
+                    "aidn-validation-trampoline.exe"
+                  ]
+                },
+                "matching_pids": {
+                  "type": "array",
+                  "maxItems": 0
+                },
+                "active_count": {
+                  "const": 0
+                }
+              }
+            }
           }
         }
       }
