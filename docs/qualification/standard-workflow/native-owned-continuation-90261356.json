@@ -185,7 +185,7 @@
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "Retain and diagnose first validation UNKNOWN, prove its reconciliation before any retry, then continue validation and independent audit; final P0 remains open",
+  "next_required": "Deliver a bounded validation-launch reconciliation/continuation at the retained work boundary; do not repeat the product check until UNKNOWN is reconciled. The repaired validator profile is available and reviewed.",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-23T06:20:18.495Z",
+  "updated_at": "2026-11-23T06:36:59.687Z",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -433,7 +433,9 @@
       "pull_request": 213,
       "head_sha": "f0b3d8293957a726ae187aba3c62bd93d7773568",
       "local_checks": "PASS",
-      "retained_public_entry": "PASS"
+      "retained_public_entry": "PASS",
+      "merge_sha": "cf84e7e5ea7f4310152a5d8f15cbe0227963d7db",
+      "ci": "PASS"
     },
     "old_unknown_reconciled": false,
     "canonical_retry_count": 0,
@@ -441,5 +443,57 @@
     "manually_changed_permissions": false,
     "native_model_calls": 0,
     "next_required": "Qualify disjoint validation work paths and implement or establish admissible same-occurrence reconciliation before any product retry."
+  },
+  "validation_layout_qualification": {
+    "status": "PASS",
+    "scope": "Installed validator qualification in disjoint work directories, after Native deny ACLs were already present",
+    "candidate": "cf84e7e5ea7f4310152a5d8f15cbe0227963d7db",
+    "archive_sha256": "c358a4d78bdc964e8660ef40f26da0492594cf9ad6d91c52d71b9a495719fc97",
+    "configuration_sha256": "4d52e96373dc827102c05a16363783918508f8c60f8b26b1717943b6a4fe7a79",
+    "plan_sha256": "f494aee32b24e2102e1a5c0f501397d11263c9467c2722e5514dbd7b4128becf",
+    "cases": [
+      {
+        "id": "filesystem_access",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 10824,
+        "active_processes": 0,
+        "companion_active_processes": 0,
+        "sha256": "f6656f3a05e52b8fa22b2ab953c3ecc2e70d47080cd6447ae087b0fe91effb2e"
+      },
+      {
+        "id": "timeout",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 8483,
+        "active_processes": 0,
+        "sha256": "faf8e76dcba2e3d01dbbe191a855112e9bf16e969267b49f01d575b0b37453b5"
+      },
+      {
+        "id": "cancel",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 6199,
+        "active_processes": 0,
+        "sha256": "ccb17296e6f8a7c7b49ed3d85cf2d35816140ca9227f4581bd24cea7ea9aa5e2"
+      },
+      {
+        "id": "callback",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 6260,
+        "active_processes": 0,
+        "sha256": "1cb08223453be09aaf95318e15363a16e4ee1e71883b91f9680674b329fa7569"
+      }
+    ],
+    "review_accepted": true,
+    "attestation_sha256": "1f4bc0012e4b364097cb2c7a62e0f3bc115284708243fe63bcf84448511d8a97",
+    "qualification_sha256": "1a0ca5d7bf863afd08ee064efee7e92332995860c5cb7f6152b8c700fcf8ec62",
+    "profile_sha256": "fa3f8a1a8dae75e4024a55b96ea68bfc7692b7466fa74cf8f0a908a5ff4aa91b",
+    "review_evidence_class": "operator-accepted-local-history-observation",
+    "independent_original_author_proof": false,
+    "manual_signatures": 0,
+    "model_calls": 0,
+    "old_workflow_configuration_unchanged": true,
+    "old_workflow_preview": "WAITING_RECONCILIATION",
+    "canonical_product_retry_count": 0,
+    "old_unknown_reconciled": false,
+    "complete_standard_workflow": false
   }
 }
