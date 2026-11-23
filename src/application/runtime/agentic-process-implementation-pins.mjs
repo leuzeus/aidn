@@ -6,6 +6,7 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 // their separately retained build-lock/installed-version pins. npm distributions
 // exclude package-lock.json; direct code pins must use distributed assets only.
 const files = [
+  "src/adapters/runtime/codex-validation-diagnostics.mjs",
   "src/application/workflow/workflow-evaluations.mjs", "package/catalogs/workflow-evaluations.v1.json",
   "src/application/workflow/standard-human-decision-profiles.mjs", "src/core/workflow/human-decision.mjs",
   "src/core/contracts/workflow-definition/human-decision-question.v1.schema.json",

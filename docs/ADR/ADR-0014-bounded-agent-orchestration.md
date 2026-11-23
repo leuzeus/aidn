@@ -37,6 +37,23 @@ acceptance contracts before process or persistence implementations are added.
 
 ## Decision
 
+### Private validation launch diagnostics (2026-11-23 amendment)
+
+The production validation boundary retains the client's bounded stderr tail in
+`codex-validation-terminal.v2`, including failures before the trampoline's
+prepared frame. The private record binds at most 4096 raw bytes, their decoded
+text when valid, observed/full-stream counters, the controller's full-stream
+digest and the protocol failure code. Qualification and runtime share the same
+capture implementation. Raw diagnostics remain in local evidence; public
+workflow outputs do not embed them.
+
+The reader validates these fields and still accepts v1 records without changing
+their bytes or meaning. Diagnostics cannot establish process membership,
+termination, a check verdict or permission to retry. A closed client without
+exact child membership remains `unknown` and blocks another boundary launch.
+Recovering an earlier missing diagnostic or reconciling that operation requires
+separate evidence and is not supplied by this change.
+
 ### Cooperative Codex execution (2026-09-28 amendment)
 
 `agent-execution-plan.v2` explicitly selects

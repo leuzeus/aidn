@@ -390,6 +390,13 @@ performance, Native execution and installed-archive qualification.
 
 ## Reviewed public validation client artifact, 2026-11-12
 
+The sandbox-boundary fixture also verifies private v2 runtime launch diagnostics:
+split stderr delivery, a 4096-byte tail, partial delivery, UTF-8 boundaries,
+counter/digest/text corruption, immutable restart reads and historical v1 reads.
+A failed client without child membership remains unknown even when its outer
+Job is closed. These portable cases do not launch Codex, reconcile a prior
+unknown operation or qualify a native validator.
+
 The sandbox-boundary fixture checks both the historical app artifact and the
 exact public Windows x64 artifact of the reviewed Codex source. V1/V2 retain
 their refusals. V3/V4 admit only qualification probes; an unsigned or absent
