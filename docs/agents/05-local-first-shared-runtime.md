@@ -411,6 +411,20 @@ Controlled Git context reads set `diff.autoRefreshIndex=false` per invocation al
 
 ## Owned entry to canonical progress
 
+The public `entry_point` object (`kind: owned_cycle`, `checkpoint_operation_id`)
+starts a new technical instance on an already owned OPEN canonical COMMITTING
+cycle. The checkpoint locator resolves through the selected canonical backend.
+An authenticated read-only operation requires current cycle-entry admission,
+the original accepted checkpoint, matching project/backend, branch, HEAD,
+product and business document/metadata pins, and a current R05 gate before
+routing past session startup. A retained alignment is verified against its
+original independent Human source and physical completion. Source processes
+with unconfirmed operations or Native allocations refuse; no UNKNOWN is reset.
+The ordinary cycle context refresh and subsequent admission still run. Existing
+mode, session/cycle identities and branch remain canonical; this path fabricates
+no Human receipt and migrates no previous instance. It adds no authority store,
+backend fallback, implicit projection, expiry rule or shared synchronization.
+
 An admitted owned OPEN cycle with untouched scaffold planning documents can
 select the ordinary fresh-prework chain through `cycle_owned_planning_select`.
 The fixed host compares canonical plan, audit and traceability bytes with the

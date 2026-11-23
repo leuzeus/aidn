@@ -191,6 +191,7 @@ import { cycleEntryFocusCheckpointOperation, assertFocusCheckpointInput, assertF
 import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation, ownedCanonicalCycleResumeAdmitOperation, assertCanonicalResumeInput, assertCanonicalResumeObserveInput, assertCanonicalResumeOutput, assertCanonicalResumeObserveOutput } from "./standard-canonical-cycle-resume.mjs";
 import { assertOwnedCanonicalResumeInput, assertOwnedCanonicalResumeOutput } from "./standard-owned-cycle-resume.mjs";
 import { ownedCyclePlanningSelectOperation, assertOwnedCyclePlanningSelection } from "./standard-owned-cycle-planning.mjs";
+import { workflowEntrySelectOperation, assertStandardEntrySelection } from "./standard-workflow-entry-selection.mjs";
 import driftCycleInput from "../contracts/workflow-definition/standard-drift-cycle-initialize-input.v1.schema.json" with { type: "json" };
 import driftCycleOutput from "../contracts/workflow-definition/standard-drift-cycle-output.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
@@ -209,6 +210,10 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (operation === workflowEntrySelectOperation) {
+    if (checkShadowJson(value) || validateJsonSchema(value, empty, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
+    return value;
+  }
   if (operation === "cycle_prework_evaluate") return assertStandardOperationInput("cycle_plan_evaluate", value);
   if (operation === cycleExecutionSourceSelectOperation) return assertStandardOperationInput("cycle_readiness_evaluate", value);
   if (operation === cycleEntryChoiceActivationOperation) return assertCycleChoiceActivationInput(value);
@@ -356,6 +361,7 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-workflow-entry-selection-output.v1") return assertStandardEntrySelection(value);
   if (value?.contract_version === "standard-handoff-git-output.v1") return assertHandoffGitOutput(value);
   if (["standard-handoff-summary-output.v1", "standard-handoff-prepare-output.v1", "standard-handoff-admission-output.v1"].includes(value?.contract_version)) return assertHandoffPreparationOutput(value);
   if (value?.contract_version === "standard-handoff-resource-operation-output.v1") return assertHandoffResourceOperationOutput(value);

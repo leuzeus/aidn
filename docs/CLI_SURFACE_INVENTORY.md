@@ -337,7 +337,18 @@ finalization; `--verify` retains its read-only verification behavior.
     published STANDARD catalog/model and the common mixed host. Its `execution`
     supplies project/native pins and roots; the host supplies the model, skills,
     typed activity outputs and implementation pins. Save the returned `preview`
-    object and apply it with `--action-file <file> --execute --expect-plan <sha256>`.
+    object for each action. The optional `parameters.entry_point` is `session`
+    by default. `{ "kind": "owned_cycle", "checkpoint_operation_id": "op_<40 hex>" }`
+    requires an existing unambiguous OPEN COMMITTING cycle owned by
+    `parameters.session.session_id` in the configured canonical store. Its
+    accepted checkpoint, physical completion, current business/product pins
+    and current R05 gate must still agree; retained alignment is authenticated.
+    A new technical instance then rejoins the cycle context refresh, current
+    entry admission and planning/work chain, preserving the session, cycle and
+    branch. It does not rerun session setup, ask for the mode again or migrate
+    old instance receipts. Missing ownership or unresolved effects refuse.
+    Apply the returned `preview`
+    object with `--action-file <file> --execute --expect-plan <sha256>`.
     Each invocation admits one exact action. A Native allocation that returns a
     failed result with a matching authenticated journal and confirmed process
     tree closure keeps the first failure in `result.details.first_failure`.

@@ -19,6 +19,7 @@ import { cycleEntryFocusCheckpointOperation } from "../../core/workflow/standard
 import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation, ownedCanonicalCycleResumeAdmitOperation } from "../../core/workflow/standard-canonical-cycle-resume.mjs";
 import { cycleExecutionSourceSelectOperation } from "../../core/workflow/standard-cycle-source-selection.mjs";
 import { ownedCyclePlanningSelectOperation } from "../../core/workflow/standard-owned-cycle-planning.mjs";
+import { workflowEntrySelectOperation, standardEntryPoint, selectStandardEntry } from "../../core/workflow/standard-workflow-entry-selection.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { operationJournalId } from "../../core/workflow/process-operation-journal.mjs";
 import { assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
@@ -45,9 +46,24 @@ export function createStandardOperationProvider({
     sessionPrMergeEffect, sessionPrOpen, sessionPrPremerge, sessionPrRecord, sessionPrRedeliveryPush,
     sessionPrReply, sessionPrResolution, sessionPrReview, sessionPrReviewContent,
     sessionPrReviewReceiver, sessionPrUpdatePush, sessionPrecloseCheckpoint, sessionPush, snapshot,
-    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent,
+    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent, entryContinuation,
 }) {
+  async function selectEntry(state) {
+    const instance = state.record, parameters = instance.initial_parameters ?? {};
+    const assertCurrent = () => {
+      if (current(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail("STANDARD_ENTRY_PROCESS_CHANGED");
+    };
+    assertCurrent();
+    const admission = standardEntryPoint(parameters) === "owned_cycle"
+      ? await operations.admitCycleEntry({ contract_version: "standard-cycle-entry-input.v1", session_id: parameters.session?.session_id, cycle_id: null }) : null;
+    assertCurrent();
+    const continuation = admission?.outcome === "completed" && admission.facts.cycle_entry_resume_allowed
+      ? await (entryContinuation?.(instance, parameters, admission) ?? fail("STANDARD_ENTRY_CONTINUATION_AUTHORITY_REQUIRED")) : null;
+    assertCurrent();
+    return selectStandardEntry(parameters, admission, continuation);
+  }
   const previews = new Map([
+    [workflowEntrySelectOperation, async ({ state }) => selectEntry(state)],
     ["baseline_promotion_checkpoint", async ({ state, input, occurrenceId }) => {
       return await baselinePromotionCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PROMOTION_CHECKPOINT_AUTHORITY_REQUIRED");
     }],
@@ -358,6 +374,7 @@ export function createStandardOperationProvider({
     }],
   ]);
   const observations = new Map([
+    [workflowEntrySelectOperation, async ({ state }) => selectEntry(state)],
     [handoffResourceOperation, async ({ resourceCapture }) => {
       return resourceCapture.output;
     }],

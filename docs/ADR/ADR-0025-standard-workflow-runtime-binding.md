@@ -1,5 +1,32 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Public entry on an existing owned cycle, 2026-11-22
+
+The optional STANDARD parameter `entry_point` defaults to `session`. The closed
+object `{ "kind": "owned_cycle", "checkpoint_operation_id": "op_<40 hex>" }`
+requests one bounded continuation: an owned COMMITTING cycle still OPEN after
+its accepted creation checkpoint. The locator selects a canonical journal,
+never an implementation, key path or authority. The host verifies its original
+MAC, accepted process history, physical checkpoint event, exact project/backend,
+HEAD, branch, product and the checkpoint's fifteen business document/metadata
+pins. A missing proof, changed subject, other phase, foreign ownership, active
+Native allocation or unresolved effect refuses. Initial facts remain host-owned.
+
+The R05 alignment, when present, is verified through the original accepted
+evaluation, independent Human source, report and physical completion event.
+The current gate rechecks intent, scope, integrity and repair signals. Derived
+`RUNTIME-STATE.md` refreshes do not replace those business pins or renew the
+decision. This transition does not loosen the general R05 context fingerprint
+or admit other cross-version continuations. Session setup remains the default.
+
+The published graph branches only around session setup and its preflight. Both
+paths join the existing mode/cycle route. The owned path rereads cycle context
+and entry admission, then uses the same planning, DoR, work and delivery ports.
+It does not create a session/cycle or copy decisions and receipts from another
+instance. Retained business decisions remain attached to their original subjects;
+later Human decisions and Native use keep their own current authorization.
+This is a new technical instance, not migration or resumption of an old model.
+
 ## Owned cycle continuation before plan recording, 2026-11-22
 
 An admitted existing COMMITTING cycle may be OPEN because its first plan was

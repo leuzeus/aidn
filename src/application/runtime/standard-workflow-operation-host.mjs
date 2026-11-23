@@ -1,6 +1,7 @@
 import { createOperationProviderRegistry } from "../workflow/operation-provider-registry.mjs";
 import { assertOperationReliability, assertRetryBudget, assertWaitDeadline } from "../../core/workflow/operation-reliability.mjs";
 import { createStandardOperationProvider } from "./standard-operation-provider.mjs";
+import { createStandardOwnedEntryContinuation } from "./standard-owned-entry-continuation.mjs";
 import { createStandardDriftRoute } from "./standard-drift-route.mjs";
 import { assertObjectiveReview } from "../../core/workflow/standard-drift-objective-review.mjs";
 import { createStandardSpikeConversion } from "./standard-spike-conversion.mjs";
@@ -163,7 +164,7 @@ function controlCheckpoint(instance, eventId) {
 // Fixed local business adapters plus the common reducer/store. This host owns
 // neither model routing nor human decisions. Signing/authorization capabilities
 // must come from a trusted outer host, never authored JSON or a model tool.
-export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, reconciliationConfiguration = null, dispositionSource = null, nativeOwnerDispositionSource = null, nativeReconciliationSource = null, nativeAuthorizationSource = null, handoffResourceSource = null, handoffNativeHistory = null }, { validationBoundaryFactory, dispatchCheckpoint, nativeOwnerDispositionBoundary, nativeReconciliationBoundary, handoffPublicationBoundary } = {}) {
+export function createStandardWorkflowOperationHost({ targetRoot, environment = process.env, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, reconciliationConfiguration = null, dispositionSource = null, nativeOwnerDispositionSource = null, nativeReconciliationSource = null, nativeAuthorizationSource = null, handoffResourceSource = null, handoffNativeHistory = null }, { validationBoundaryFactory, dispatchCheckpoint, nativeOwnerDispositionBoundary, nativeReconciliationBoundary, handoffPublicationBoundary } = {}) {
   if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.authenticate !== "function"
     || typeof processAuthority.authenticateOperationHost !== "function")) fail("STANDARD_HOST_CONFIGURATION_INVALID");
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
@@ -1553,6 +1554,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     return { operation_id: record.operation_id, intent_sha256: shadowHash(record.intent),
       disposition_receipt_sha256: shadowHash(result.receipt) };
   }
+  const entryContinuation = processAuthority ? createStandardOwnedEntryContinuation({ targetRoot, environment, humanSource,
+    observeScope: () => operations.observeScope(), observeProduct: () => processAuthority.observeProduct(),
+    readCurrent: id => current(id).record }) : null;
   const providers = createOperationProviderRegistry([createStandardOperationProvider({
     baselinePromotion, baselinePromotionCheckpoint, baselinePromotionHook, canonicalPlanAdoption,
     canonicalResumeAdmission, changeRequest, checkpointCompletion, checksMayObserveMerge,
@@ -1563,7 +1567,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     decisionInput, driftFinalization, driftRoute, evaluateAudit, evaluateAuditSelection,
     evaluateValidation, externalDisposition, fail, handoffGitCheckpoint, handoffPreparation,
     handoffPublication, handoffResourceObservation, mergeObservationInput, now, objectiveCompletion,
-    operations, ownedResumeAdmission, postMerge, postMergeDecision, prCorrectionCheckpoint,
+    operations, ownedResumeAdmission, postMerge, postMergeDecision, prCorrectionCheckpoint, entryContinuation,
     prCorrectionCycle, prCorrectionReopen, prCorrectionReview, prIncidentClose, prTriage,
     predecessorFor, pretriageRoute, processAuthority, promotionReview, recovery, recoveryCycle,
     recoveryCycleSubject, recoveryDecision, retained, reviewEffects, rollback, selectCompletedClose,

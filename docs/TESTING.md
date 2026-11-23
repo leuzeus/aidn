@@ -6444,6 +6444,20 @@ Interpret each result against its exact source, argv and retained receipts. Pres
 
 ## Owned cycle before plan recording
 
+`node tools/perf/verify-standard-entry-selection-fixtures.mjs` checks the closed
+public-entry selection, default setup, typed refusals and process changes around
+the actual admission port. Its provider callbacks are identified doubles.
+`node tools/perf/verify-standard-owned-entry-public-fixtures.mjs --mode=db-only`
+uses the public CLI, real canonical SQLite setup, an actual legacy drift hook
+and a receipted host checkpoint to reach the planning Native wait on the same
+session, cycle and branch. It asks no mode question, starts no model, preserves
+the product and original instance, and rejects changed parameters, missing
+checkpoint proof, unsupported phase, changed HEAD/product/canonical intent,
+origin key replacement and missing physical event. The legacy hook is a fixture
+prerequisite; this does not qualify a genuine Native R05 or Human interaction.
+The ordinary entry fixture separately checks the default session path. Neither
+fixture qualifies genuine actors, PostgreSQL or an installed archive.
+
 `node tools/perf/verify-standard-owned-planning-fixtures.mjs` checks the closed
 read-only contract, exact scaffold selection, rejection of partial replacement
 and source/owner/backend/metadata/product/process changes across awaits. It

@@ -8,6 +8,7 @@ import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { agenticProcessImplementationPins } from "./agentic-process-implementation-pins.mjs";
 import { iterateAgenticProcessSimulation } from "../../core/workflow/agentic-process-simulation.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
+import { standardEntryPoint } from "../../core/workflow/standard-workflow-entry-selection.mjs";
 import { processFrameNode } from "../../core/workflow/process-call-model.mjs";
 import { externalMergeControlRef } from "../../core/workflow/standard-pr-external-merge.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
@@ -36,6 +37,7 @@ export function standardWorkflowControlOccurrence(state) {
 // request can inject an actor, authority callback or controller implementation.
 export function resolveStandardWorkflowConfiguration(request) {
   if (checkShadowJson(request) || validateJsonSchema(request, requestSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_ENTRY_CONFIGURATION_INVALID");
+  standardEntryPoint(request.parameters);
   const assets = loadStandardWorkflowAssets();
   const execution = structuredClone(request.execution);
   if (["model", "skills", "activity_outputs", "implementation_sha256", "control_scenario"].some(key => Object.hasOwn(execution, key))) fail("STANDARD_ENTRY_HOST_FIELD_FORBIDDEN");
@@ -44,7 +46,7 @@ export function resolveStandardWorkflowConfiguration(request) {
   const configuration = { ...execution, instructions: execution.instructions ?? {}, contract_version: "agentic-process-execution.v1", model: pin(path.join(packageRoot, STANDARD_WORKFLOW_MODEL_PATH)), skills,
     activity_outputs: Object.fromEntries(assets.catalog.activities.map(row => [row.node_id, row.output_contract])),
     implementation_sha256: agenticProcessImplementationPins().sha256 };
-  return { configuration, parameters: structuredClone(request.parameters), modelSource: assets.source, validationProfile: request.validation_profile ?? null };
+  return { configuration, parameters: { ...structuredClone(request.parameters), entry_point: structuredClone(request.parameters.entry_point ?? "session") }, modelSource: assets.source, validationProfile: request.validation_profile ?? null };
 }
 
 export async function runStandardWorkflowEntry({ request, actionFile = null, preparedAction = null, decisionSource = null, controlSource = null, observation = null,

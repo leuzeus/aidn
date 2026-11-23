@@ -46,7 +46,11 @@ const native = (id, role_ref, policy_ref, output_contract, skill_ids, rule_refs)
 };
 const xor = (id, choices) => node(id, "xor", { branches: choices.map(([flow_id, node_id, condition]) => ({ flow_id, node_id, condition })) });
 
-seq("standard", ["startup", "mode_preflight", "session_start_finalize", "mode_route", "cycle_work_route"]);
+seq("standard", ["entry_select", "startup_route", "mode_route", "cycle_work_route"]);
+op("entry_select", "workflow_entry_select");
+xor("startup_route", [["owned", "owned_startup_inapplicable", "owned_cycle_continuation_requested"], ["session", "session_startup", null]]);
+seq("owned_startup_inapplicable", []);
+seq("session_startup", ["startup", "mode_preflight", "session_start_finalize"]);
 xor("cycle_work_route", [["requested", "cycle_work", "cycle_work_requested"], ["analysis", "cycle_work_inapplicable", null]]);
 seq("cycle_work_inapplicable", []);
 // Reuse the authored session setup through the common call engine. Native
@@ -837,7 +841,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...completeRef, model: completeTarget },
     freshEntryRef, freshCheckpointRef,
   ],
-  data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session", "cycle"], inputs } };
+  data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session", "cycle", "entry_point"], inputs } };
 // Session creation is conditional inside the pinned setup call. Later work
 // binds the requested identity, authenticated again by the root admission.
 for (const input of inputs) for (const field of Object.values(input.fields)) {
