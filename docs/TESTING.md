@@ -6497,7 +6497,18 @@ to exercise the production session adapter with a controlled transport: the
 rule guidance reaches the turn, the original rejected answer and semantic
 diagnostic are retained, no successful result is emitted, the product stays
 unchanged and the adapter closes. These cases use no real model and do not
-replace a fresh candidate replay of the failed Native campaign.
+replace targeted replay of the failed activity with a real actor or final
+source/archive qualification on one frozen candidate.
+
+The same selectors cover a fresh proposal that omits `audit:SPEC.md` while
+both initial audits cite it. Standalone and wrapped plan answers refuse with
+the same typed reason and an exact field diagnostic, without inserting a
+reference. The production session adapter retains the original bytes, emits
+no success and closes its controlled transport. Host evaluation still rejects
+foreign reference names and changed hashes. Historical structural readers
+and canonical audit-only answers retain their acceptance. Replaying preserved
+inputs against these pure boundaries is a targeted regression; it does not
+resume the live instance or replace final source/archive qualification.
 
 
 The same prework fixture command checks the registered Native answer schema

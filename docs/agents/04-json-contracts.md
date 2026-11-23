@@ -884,6 +884,16 @@ private Native refusal evidence names their field paths without modifying the
 answer or changing the accepted report shape. A reference alone is no proof of
 a completed judgement.
 
+Fresh Native plan answers also enforce the host's existing requirement that
+the proposal's own `evidence_refs` include `audit:SPEC.md`. References in the
+two audit judgements do not satisfy that separate requirement. Standalone plan
+and fresh prework instructions name the required reference from the shared
+source constant. A missing reference retains `STANDARD_CYCLE_PLAN_EVIDENCE_INVALID`
+and a field-specific private refusal diagnostic before Native completion.
+The host still rechecks every reference and digest against current evidence.
+Historical structural readers and canonical audit-only answers keep their
+existing acceptance; no old proposal or producer answer is modified.
+
 
 The fixed Native answer-schema registry also recognizes the prework report.
 Its source-provided bindings pin report context, subject and origin; fresh

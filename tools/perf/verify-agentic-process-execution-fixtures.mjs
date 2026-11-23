@@ -3579,40 +3579,57 @@ if (process.argv[2] === "--mixed-continue") {
       } finally { assert.equal((await sessions.close()).closed, true); }
     }
   });
-  await check("native answer: a missing prework rule retains the original answer and a field-specific refusal", async () => {
-    const f = fixture(), records = [], model = JSON.parse(fs.readFileSync(f.configuration.model.path));
-    const contract = "standard-cycle-prework-report.v1", context = "c".repeat(64);
-    const bindings = { kind: "audit_canonical_plan", subject_sha256: "d".repeat(64), origin_operation_id: "op_" + "e".repeat(40), proposal: null };
-    const audit = rules => ({ verdict: "passed", rationale: "Current judgement against the supplied canonical source", rule_refs: rules,
-      evidence_refs: [{ ref: "fixture:spec", sha256: "a".repeat(64) }], findings: [], questions: [] });
-    const answer = { outcome: "completed", summary: "Current canonical assessment", report: {
-      contract_version: contract, context_sha256: context, ...bindings,
-      audits: { intent: audit(["SPEC-R04", "SPEC-R05"]), architecture: audit(["SPEC-R04", "SPEC-R11"]) } } };
-    const finalText = JSON.stringify(answer), t = transport(f, { answerText: finalText });
-    const sessions = createAgenticCodexSessions({ native: f.configuration.native, targetRoot: f.configuration.target_root,
-      productRoot: f.dirs.product, controlRoot: path.join(f.dirs.control, "case"), rpcFactory: t.rpcFactory,
-      evidence: { async retain(kind, value, options) { records.push({ kind, value: structuredClone(value), options });
-        return { ref: "fixture/" + kind, sha256: shadowHash(value) }; }, diagnostic() {} },
-      budget: { maxTurnMs: 1000, remainingBytes: () => 1000000, response() {} } });
-    try {
-      const session = await sessions.open({ role: model.roles[0], policy: model.policies.find(row => row.id === "work"),
-        input: { developer_instructions: "Common fixture authority" }, deadline: Date.now() + 60000 });
-      await assert.rejects(() => session.run({ instruction: nativeActivityOutputInstructions(contract), request_sha256: "b".repeat(64),
-        output_contract: contract, output_context_sha256: context, output_bindings: bindings }), { code: "STANDARD_PREWORK_REPORT_INVALID" });
-      const retained = records.find(row => row.kind === "native-answer-rejected");
-      assert.equal(retained.value.code, "STANDARD_PREWORK_REPORT_INVALID");
-      assert.deepEqual(retained.value.validation, { stage: "report_semantics", issues: ["$.report.audits.intent.rule_refs: must include SPEC-R03"] });
-      assert.equal(Buffer.from(retained.value.answer_base64, "base64").toString(), finalText);
-      assert.equal(retained.value.answer_sha256, sha(finalText));
-      assert.equal(retained.value.answer_bytes, Buffer.byteLength(finalText));
-      assert.equal(records.some(row => row.kind === "native-result"), false);
-      const turns = t.calls.filter(row => row.method === "turn/start");
-      assert.equal(turns.length, 1);
-      assert(turns[0].params.input[0].text.includes("audits.intent.rule_refs must include SPEC-R03"));
-      assert(turns[0].params.input[0].text.includes("audits.architecture.rule_refs must include SPEC-R04"));
-      assert.equal(fs.readFileSync(path.join(f.dirs.product, "app.mjs"), "utf8"), "export const value = 1;\n");
-    } finally { assert.equal((await sessions.close()).closed, true); }
-    assert(t.sessions.every(session => session.closed));
+  await check("native answer: missing prework rule or plan evidence retains the original answer and a field-specific refusal", async () => {
+    for (const fault of ["audit_rule", "plan_evidence"]) {
+      const f = fixture(), records = [], model = JSON.parse(fs.readFileSync(f.configuration.model.path));
+      const contract = "standard-cycle-prework-report.v1", context = "c".repeat(64);
+      const bindings = { kind: "audit_canonical_plan", subject_sha256: "d".repeat(64), origin_operation_id: "op_" + "e".repeat(40), proposal: null };
+      const audit = rules => ({ verdict: "passed", rationale: "Current judgement against the supplied canonical source", rule_refs: rules,
+        evidence_refs: [{ ref: "audit:SPEC.md", sha256: "a".repeat(64) }], findings: [], questions: [] });
+      const answer = { outcome: "completed", summary: "Current canonical assessment", report: {
+        contract_version: contract, context_sha256: context, ...bindings,
+        audits: { intent: audit(["SPEC-R04", "SPEC-R05"]), architecture: audit(["SPEC-R04", "SPEC-R11"]) } } };
+      let code = "STANDARD_PREWORK_REPORT_INVALID", issue = "$.report.audits.intent.rule_refs: must include SPEC-R03";
+      if (fault === "plan_evidence") {
+        const planning = { session_id: "S001", cycle_id: "C001", cycle_type: "feature", mode: "COMMITTING",
+          original_objective: "Update the scoped product", allowed_product_files: ["product/app.mjs"] };
+        const proposal = cyclePlanProposal({ context_sha256: "f".repeat(64), context: planning,
+          evidence_refs: [{ ref: "audit:brief.md", sha256: "a".repeat(64) }] });
+        proposal.evidence_refs = [{ ref: "audit:brief.md", sha256: "a".repeat(64) }];
+        bindings.kind = "propose_plan";
+        bindings.proposal = Object.fromEntries(["context_sha256", "session_id", "cycle_id", "cycle_type", "objective"].map(key => [key, proposal[key]]));
+        answer.report.kind = "propose_plan"; answer.report.proposal = proposal;
+        answer.report.audits.intent.rule_refs = ["SPEC-R03"];
+        code = "STANDARD_CYCLE_PLAN_EVIDENCE_INVALID";
+        issue = "$.report.proposal.evidence_refs: must include audit:SPEC.md";
+      }
+      const finalText = JSON.stringify(answer), t = transport(f, { answerText: finalText });
+      const sessions = createAgenticCodexSessions({ native: f.configuration.native, targetRoot: f.configuration.target_root,
+        productRoot: f.dirs.product, controlRoot: path.join(f.dirs.control, "case"), rpcFactory: t.rpcFactory,
+        evidence: { async retain(kind, value, options) { records.push({ kind, value: structuredClone(value), options });
+          return { ref: "fixture/" + kind, sha256: shadowHash(value) }; }, diagnostic() {} },
+        budget: { maxTurnMs: 1000, remainingBytes: () => 1000000, response() {} } });
+      try {
+        const session = await sessions.open({ role: model.roles[0], policy: model.policies.find(row => row.id === "work"),
+          input: { developer_instructions: "Common fixture authority" }, deadline: Date.now() + 60000 });
+        await assert.rejects(() => session.run({ instruction: nativeActivityOutputInstructions(contract), request_sha256: "b".repeat(64),
+          output_contract: contract, output_context_sha256: context, output_bindings: bindings }), { code });
+        const retained = records.find(row => row.kind === "native-answer-rejected");
+        assert.equal(retained.value.code, code);
+        assert.deepEqual(retained.value.validation, { stage: "report_semantics", issues: [issue] });
+        assert.equal(Buffer.from(retained.value.answer_base64, "base64").toString(), finalText);
+        assert.equal(retained.value.answer_sha256, sha(finalText));
+        assert.equal(retained.value.answer_bytes, Buffer.byteLength(finalText));
+        assert.equal(records.some(row => row.kind === "native-result"), false);
+        const turns = t.calls.filter(row => row.method === "turn/start");
+        assert.equal(turns.length, 1);
+        assert(turns[0].params.input[0].text.includes("audits.intent.rule_refs must include SPEC-R03"));
+        assert(turns[0].params.input[0].text.includes("audits.architecture.rule_refs must include SPEC-R04"));
+        assert(turns[0].params.input[0].text.includes("report.proposal.evidence_refs must include audit:SPEC.md"));
+        assert.equal(fs.readFileSync(path.join(f.dirs.product, "app.mjs"), "utf8"), "export const value = 1;\n");
+      } finally { assert.equal((await sessions.close()).closed, true); }
+      assert(t.sessions.every(session => session.closed));
+    }
   });
   await check("native answer: hosted activity scope reaches reused work and isolated review without credential or hook bypass", async () => {
     const agentsText = fs.readFileSync(new URL("../../scaffold/root/AGENTS.md", import.meta.url), "utf8").replace(/\r\n/g, "\n").trim();

@@ -4715,6 +4715,16 @@ Guidance and validator share the mapping, with no new approval, automatic
 repair or relaxed acceptance criterion. Controlled regressions do not prove
 that a genuine Native actor will satisfy the contract on a new candidate.
 
+Fresh planning guidance also names the proposal's own mandatory `audit:SPEC.md`
+reference. The Native answer boundary and the deterministic plan evaluator use
+the same required-reference guard; the latter retains its independent current
+name-and-digest membership check. An audit's reference is not copied into the
+proposal. An invalid producer answer is retained with the original typed code
+and a bounded field diagnostic before completion. This moves an existing
+fresh-plan refusal earlier without changing historical plan readers, canonical
+audit-only assessment, grants or effect admission. Instructions also state the
+existing task, traceability, usage and adaptive-plan constraints.
+
 
 The Native answer registry supports these closed reports with current context,
 subject and origin bindings. Fresh planning preserves a distinct business
