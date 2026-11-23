@@ -94,7 +94,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
   // Fresh and corrective R05 share the target's finalizer binding.
-  assert.equal(assets.catalog.bindings.length, 222); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 223); assert.equal(assets.catalog.activities.length, 23);
   assert.deepEqual(assets.catalog.bindings.filter(row => row.model_ref?.model_id === "aidn-standard-mode-handoff")
     .map(row => [row.node_id, row.binding.id]).sort(), [
       ["mode_handoff_decide", "mode_work_continue_decision"], ["mode_handoff_summary", "handoff_summary_prepare"],
@@ -696,7 +696,7 @@ test("published cycle entry preserves creation preconditions and separates owned
     { flow_id: "canonical", node_id: "prework_record_inapplicable", condition: null }]);
   assert.equal(node("cycle_drift_report").kind, "activity");
   assert.equal(assets.model.nodes.filter(row => row.kind === "activity").length, 23);
-  assert.equal(assets.model.nodes.length, 266); assert.ok(assets.model.nodes.length <= 288);
+  assert.equal(assets.model.nodes.length, 270); assert.ok(assets.model.nodes.length <= 288);
 });
 test("catalog v7 declares typed initial audits while the closed v4-v6 formats retain their scopes", () => {
   assert.deepEqual(validateJsonSchema(assets.catalog, catalogSchemaV7, "$", { contractKind: "workflow-definition" }), []);
@@ -763,8 +763,15 @@ const targetRow = input => input.catalog.bindings.find(row => row.model_ref);
 test("the composed entry reuses authored session setup and rereads canonical mode in the root", () => {
   const startup = loadStandardWorkflowStartupAssets().model;
   const setup = assets.model.call_targets.find(target => target.model_id === "aidn-standard-session-setup");
-  assert.ok(setup); assert.deepEqual(assets.model.nodes.find(node => node.id === assets.model.entry).children.slice(0, 5),
+  assert.ok(setup); assert.deepEqual(assets.model.nodes.find(node => node.id === "session_startup").children,
     ["context_reload", "session_setup", "session_admit", "mode_preflight", "session_start_finalize"]);
+  assert.deepEqual(assets.model.nodes.find(node => node.id === assets.model.entry).children,
+    ["entry_select", "startup_route", "mode_route", "cycle_work_route"]);
+  assert.equal(assets.model.nodes.find(node => node.id === "entry_select").binding_ref, "workflow_entry_select");
+  assert.deepEqual(assets.model.nodes.find(node => node.id === "startup_route").branches,
+    [{flow_id:"owned",node_id:"owned_startup_inapplicable",condition:"owned_cycle_continuation_requested"},
+      {flow_id:"session",node_id:"session_startup",condition:null}]);
+  assert.deepEqual(assets.model.nodes.find(node => node.id === "owned_startup_inapplicable").children, []);
   const expected = structuredClone(startup.nodes).filter(node => !["context_reload", "session_start_finalize"].includes(node.id));
   const entry = expected.find(node => node.id === "startup"); entry.id = "session_setup";
   entry.children = entry.children.filter(id => !["context_reload", "session_start_finalize"].includes(id));
@@ -813,8 +820,8 @@ test("the ordinary loader authenticates the two final-verification operations fo
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV6, "#", { contractKind: "workflow-definition" }), []);
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV7, "#", { contractKind: "workflow-definition" }), []);
   const input = fresh(), loaded = assets;
-  assert.equal(loaded.model.nodes.length, 266);
-  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 133);
+  assert.equal(loaded.model.nodes.length, 270);
+  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 134);
   assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 89);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
   assert.equal(loaded.model.call_targets.length, 15);
@@ -960,12 +967,12 @@ rejectFixture("STANDARD v3 refuses a repinned embedded event before it can reach
 }, "STANDARD_EMBEDDED_EVENT_UNSUPPORTED");
 test("execution and simulation start the same model and reducer with the same durable identity", () => {
   const options = { instanceId: "standard-composition-fixture", model: assets.model, scopeId: "offline-composition", policyPins: agenticPolicyPins(assets.model), facts: {},
-    parameters: { session: { session_id: "S900", session_branch: "session/example", objective: "Disposable composition qualification" },
+    parameters: { entry_point: "session", session: { session_id: "S900", session_branch: "session/example", objective: "Disposable composition qualification" },
       cycle: { cycle_id: "C900", cycle_type: "FEATURE", title: "Example", objective: "Example" } } };
   const instance = createAgenticProcess(options), cursor = inspectAgenticProcess(instance);
   const simulation = simulateAgenticProcess({ ...options, events: [] });
   assert.equal(simulation.trace.at(-1).instance_sha256, instance.instance_sha256);
-  assert.equal(cursor.occurrences.find(row => row.status === "READY").node_id, "context_reload");
+  assert.equal(cursor.occurrences.find(row => row.status === "READY").node_id, "entry_select");
   assert.equal(instance.events.length, 0);
 });
 test("optional continuation is structural and requests no dummy context operation or native activity", () => {

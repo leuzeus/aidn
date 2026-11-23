@@ -49,6 +49,12 @@ The classification keeps automation from confusing output format with write perm
   `workflow-dashboard` is preview-only until `--serve` explicitly opens
   its foreground loopback listener. Both clients use the same admissions.
   A STANDARD execution configuration selects the published mixed composition.
+  Its optional `parameters.entry_point` object with `kind: owned_cycle` and
+  `checkpoint_operation_id` requests an unchanged OPEN cycle's accepted
+  checkpoint and current canonical admission before joining planning. This is a routing request,
+  not permission to create a session/cycle, replace planning or start Native.
+  The default `session` route keeps session setup. A changed entry parameter
+  cannot reuse a retained instance. Both routes use the same exact actions.
   Its saved action-file plus execute/expect-plan admits one exact action;
   preparing a durable host key and initializing an instance are separate actions.
   A pinned call entry or return uses that same exact-action consent boundary.

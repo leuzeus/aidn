@@ -55,7 +55,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
   // need no execution composition; any later native use still calls read().
   if (processModels(model).every(component => component.nodes.filter(node => node.kind === "operation").every(node => bindings.has(node.binding_ref)
     && component.operation_pins[node.binding_ref] === shadowHash(bindings.get(node.binding_ref))))) nativeHost();
-  const operations = createStandardWorkflowOperationHost({ targetRoot: configuration.target_root, model, modelSource, readSigningKey,
+  const operations = createStandardWorkflowOperationHost({ targetRoot: configuration.target_root, model, modelSource, readSigningKey, environment,
     authorize, humanSource, controlSource, processAuthority, now, validationProfile, sessionPushPort, sessionPullRequestPort, sessionReviewPort, sessionReviewEventPort,
     reconciliationConfiguration: configuration, dispositionSource, nativeOwnerDispositionSource, nativeReconciliationSource, nativeAuthorizationSource,
     handoffResourceSource, handoffNativeHistory: () => nativeHost().inspectClosureEvidence() }, { validationBoundaryFactory, nativeOwnerDispositionBoundary, nativeReconciliationBoundary, handoffPublicationBoundary });

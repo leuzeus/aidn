@@ -260,6 +260,9 @@ new URL("standard-cycle-implementation.mjs", import.meta.url), new URL("../../co
     "../../core/workflow/standard-owned-cycle-resume.mjs"]) refs.push(new URL(name, import.meta.url));
   for (const name of ["standard-canonical-cycle-resume", "standard-canonical-cycle-resume-observe", "standard-owned-cycle-resume"])
     for (const kind of ["input", "output"]) refs.push(new URL(`../../core/contracts/workflow-definition/${name}-${kind}.v1.schema.json`, import.meta.url));
+  refs.push(new URL("../../core/workflow/standard-workflow-entry-selection.mjs", import.meta.url),
+    new URL("standard-owned-entry-continuation.mjs", import.meta.url),
+    new URL("../../core/contracts/workflow-definition/standard-workflow-entry-selection-output.v1.schema.json", import.meta.url));
   refs.push(new URL("../../core/workflow/standard-owned-cycle-planning.mjs", import.meta.url),
     new URL("../../core/contracts/workflow-definition/standard-owned-cycle-planning-selection-output.v1.schema.json", import.meta.url));
   for (const name of ["../../core/workflow/standard-cycle-source-selection.mjs",
@@ -377,6 +380,7 @@ const definitions = [
   ["cycle_readiness_evaluate", "start-session", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-cycle-readiness-evaluate-input.v1", "deterministic", "standard-cycle-readiness-output.v1"],
   ["cycle_implementation_enter", "cycle-create", "mutating", ["SPEC-R03", "SPEC-R04"], "standard-cycle-implementation-enter-input.v1", "deterministic", "standard-cycle-readiness-output.v1"],
   ["context_reload", "context-reload", "read-only", ["SPEC-R01", "SPEC-R11"], "standard-empty-input.v1"],
+  ["workflow_entry_select", "context-reload", "read-only", ["SPEC-R01", "SPEC-R02", "SPEC-R03", "SPEC-R05"], "standard-empty-input.v1", "deterministic", "standard-workflow-entry-selection-output.v1"],
   ["session_admit", "start-session", "read-only", ["SPEC-R01", "SPEC-R04"], "standard-empty-input.v1"],
   ["session_entry_admit", "start-session", "read-only", ["SPEC-R01", "SPEC-R04"], "standard-session-entry-input.v1", "deterministic", "standard-session-entry-output.v1"],
   ["cycle_entry_observe", "start-session", "read-only", ["SPEC-R01", "SPEC-R03", "SPEC-R06", "SPEC-R07"], "standard-cycle-entry-input.v1", "deterministic", "standard-cycle-entry-observation-output.v1"],

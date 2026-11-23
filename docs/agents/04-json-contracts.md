@@ -852,6 +852,20 @@ Validation and verification forward a private assertion tied to their own local 
 
 ## Private owned-cycle progress source
 
+The published `workflow_entry_select` operation takes the existing closed empty
+input and reads the instance's immutable `parameters.entry_point`, defaulting
+to `session`. Its closed `standard-workflow-entry-selection-output.v1` records
+either normal setup or an actual current owned-cycle admission and its closed
+continuation evidence. The owned selector is the exact object with `kind` and
+`checkpoint_operation_id`. Its host reader requires an unchanged OPEN cycle,
+an authenticated accepted creation checkpoint, current business/product pins,
+physical completion and a current R05 gate. The output names the original
+instance/checkpoint, their hashes, optional completion/alignment hashes and
+current gate hash. No caller-supplied continuation evidence is consumed.
+The nested admission retains its content/metadata evidence and grants no implementation.
+The host still refuses caller-supplied initial facts. Invalid selectors fail at
+configuration resolution, and changed parameters cannot resume an instance.
+
 The read-only `cycle_owned_planning_select` uses the existing closed
 `standard-owned-cycle-resume-input.v1` entry reference and emits
 `standard-owned-cycle-planning-selection-output.v1`. Its accepted current entry,
