@@ -5299,3 +5299,44 @@ cover diagnosis, cold reopening, the subsequent alignment and one physical
 checkpoint. Their Native and human ports are fixtures. Genuine actors, the
 installed archive, corrective diagnosis branches and full STANDARD completion
 remain independently qualified; this change does not close those requirements.
+
+## Bounded historical validation launch recovery
+
+The public workflow runner accepts a separate
+`standard-validation-launch-recovery.v1` request. The resolved historical
+execution and validation profile are pinned inputs, not executable historical
+package code. The reader authenticates the original instance, UNKNOWN operation,
+accepted work, closed Native allocations, dispatch, project/backend authority,
+Git/document/product context and unchanged snapshot. It reconstructs the bounded
+single-check countdown only when both complete request and launcher hashes match.
+
+Recognition is restricted to the existing reviewed Windows client registry and
+the exact bounded logon error emitted before command startup. Supervisor journal
+witnesses must remain outside the product, within the original Native denied
+roots. These local observations are distinct from the original signed operation
+receipt; the new recovery record seals their current interpretation. The retained
+outer Job proof must report closure. Two fresh complete OS observations must find no matching
+runner or trampoline; any matching process, opaque observation or changed witness
+refuses. Process absence alone grants no closure. The fixed reviewed source is
+Codex commit `0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807`, specifically the CLI
+`debug_sandbox.rs` error path and `runner_client.rs` logon-before-send path.
+No other error code, unreviewed client or arbitrary operator assertion qualifies.
+
+Explicit execution binds the fresh preview hash and appends a separate signed
+`standard-validation-launch-recovery-record.v1` under the existing operation
+journal authority, in the selected canonical backend. The durable attempt names
+its proposed fence before CAS. The writer transfers only the exact authenticated
+fence after retaining both complete empty process observations in the signed
+attempt; these observations remain evidence, never permission. It transfers the
+fence of a terminated owner, archives the exact physical lock with its witness,
+records retirement, releases its fence and records completion. Every boundary
+is restartable from the retained attempt and exact current fence; a live or
+unresolved recovery owner refuses. Previous attempts, operation results and the
+original instance remain intact. Completed replay only returns historical proof.
+
+This disposition establishes that the sandbox check did not start and that its
+local owner has been retired. It neither passes product validation nor resumes
+the old model. A compatible continuation must consume this proof explicitly and
+run current validation. No global pin relaxation, implicit receipt migration,
+manual key ceremony or synthetic successful operation result is introduced.
+Native allocation budgets and accepted business decisions remain unchanged.

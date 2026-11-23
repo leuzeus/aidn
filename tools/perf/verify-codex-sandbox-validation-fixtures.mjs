@@ -736,6 +736,7 @@ await check("closed CLI without exact child membership remains indeterminate in 
   assert.equal((await journal.inspect()).operations[0].recovery_required, true);
 });
 await (await import("./codex-validation-diagnostics-fixture-lib.mjs")).verifyCodexValidationDiagnostics({ check, root });
+await (await import("./codex-validation-startup-recovery-fixture-lib.mjs")).verifyCodexValidationStartupRecovery({ check, fixture: cooperativeFixture });
 } finally {
   await check("owned fixture cleanup", () => {
     const resolved = fs.realpathSync(root), temp = fs.realpathSync(os.tmpdir());

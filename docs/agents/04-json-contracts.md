@@ -1242,3 +1242,12 @@ existing blocked/no_effect handoff output with its fixed no-effect confirmation
 reason. At most one terminal controller receipt is retained at index zero.
 Historical v1-v4 contracts and readers stay separate. Data alone grants no
 permission and matching beforeimages alone do not prove original non-execution.
+
+The separate historical validation recovery route uses
+`standard-validation-launch-recovery.v1`, its closed plan/result contracts and
+the signed `standard-validation-launch-recovery-record.v1` in the existing
+operation-journal authority. The public `runtime-workflow-run.v1` envelope is
+unchanged. A result distinguishes a reconciled non-start from validation success
+and workflow resumption; both latter claims remain false. The original UNKNOWN
+operation and instance are immutable. Preview supplies no write authority; only
+explicit execution of the exact current preview can append a recovery attempt.

@@ -7,6 +7,7 @@ import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuratio
 import { createPublicAgentRunLifecycle } from "./agent-run-public-composition.mjs";
 import { parseAgentRunArguments } from "./agent-run-lifecycle-service.mjs";
 import { runStandardWorkflowEntry } from "./standard-workflow-entry.mjs";
+import { runStandardValidationRecoveryEntry } from "./standard-validation-recovery-entry.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const codeOf = cause => /^[A-Z][A-Z0-9_]{0,100}$/.test(cause?.code ?? cause?.message ?? "") ? cause.code ?? cause.message : "WORKFLOW_RUN_UNAVAILABLE";
@@ -47,6 +48,16 @@ export async function runProjectWorkflow({ targetRoot, engine, configuration, au
     }
     if (plan || syncRelay) fail("WORKFLOW_RUN_AGENTIC_ARGUMENT_CONFLICT");
     const config = readAgentRunFile(path.resolve(configuration), { maxBytes: 1048576 }).value;
+    if (config.contract_version === "standard-validation-launch-recovery.v1") {
+      if (authorization || actionFile || preparedAction !== null || decisionSource || controlSource || observation)
+        fail("WORKFLOW_RUN_VALIDATION_RECOVERY_ARGUMENT_CONFLICT");
+      if (agentRunPhysicalPath(config.target_root, { directory: true }) !== root) fail("WORKFLOW_RUN_TARGET_CHANGED");
+      if (execute) output.dry_run = false;
+      const value = await runStandardValidationRecoveryEntry({ request: config, execute, expectPlan });
+      if (execute) { output.result = value.result; output.written = value.result.written; }
+      else { output.preview = value.preview; output.action_sha256 = value.action_sha256; output.can_apply = value.can_apply; }
+      return output;
+    }
     if (config.contract_version === "standard-workflow-execution.v1") {
       if (agentRunPhysicalPath(config.execution?.target_root, { directory: true }) !== root) fail("WORKFLOW_RUN_TARGET_CHANGED");
       const consent = authorization ? readAgentRunFile(path.resolve(authorization), { maxBytes: 16384 }).value : null;
@@ -86,6 +97,7 @@ export async function runProjectWorkflow({ targetRoot, engine, configuration, au
     output.can_apply = false;
     if (output.result.status !== "COMPLETED") output.errors.push(output.result.first_failure ?? "WORKFLOW_RUN_INCOMPLETE");
   } catch (cause) {
+    if (cause?.recovery_written === true) output.written = true;
     output.errors.push(codeOf(cause)); output.can_apply = false;
     if (!output.dry_run) output.warnings.push("WORKFLOW_RUN_OUTCOME_UNCERTAIN_INSPECT_BEFORE_RETRY");
   }

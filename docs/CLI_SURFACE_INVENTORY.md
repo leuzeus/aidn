@@ -343,6 +343,20 @@ finalization; `--verify` retains its read-only verification behavior.
     below Native denied roots; a conflicting layout returns
     `STANDARD_VALIDATION_NATIVE_READ_CONFLICT` without starting a workflow or
     repairing permissions. This check does not qualify the validator.
+    A separate `standard-validation-launch-recovery.v1` configuration selects
+    the bounded historical Windows launch recovery. It names `target_root`,
+    `instance_id`, `operation_id`, and pinned `original_configuration` (the
+    resolved execution) and `validation_profile` references. Preview authenticates
+    the retained occurrence and current context without writing. Explicit
+    `--execute --expect-plan <sha256>` records a separate disposition and retires
+    the exact abandoned local owner. No authorization/action/decision/control
+    file can substitute evidence in this route. It recognizes only the reviewed
+    client failure before sandbox command startup, with the outer Job closed
+    and fresh complete child-runner observations. Other cases refuse.
+    The original UNKNOWN receipt and instance remain unchanged. The result
+    reports `reconciled_not_started`, never a passing validation or resumed
+    workflow. A completed replay returns its retained result without writing;
+    continuation requires a separate compatible entry and current validation.
     Save the returned `preview`
     object for each action. The optional `parameters.entry_point` is `session`
     by default. `{ "kind": "owned_cycle", "checkpoint_operation_id": "op_<40 hex>" }`

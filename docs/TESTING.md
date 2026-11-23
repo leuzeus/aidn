@@ -7853,3 +7853,23 @@ without Git mutation. A new ordinary action then requires a different intent
 and current grant, exactly one real Git commit, unchanged original capsule and
 Native allocations, and exact replay/SIM. Source/provider/H/Native doubles remain
 identified; this component does not prove installed or genuine-actor behavior.
+
+## Historical validation launch recovery
+
+For the bounded Windows startup recovery, run
+`node tools/perf/verify-codex-sandbox-validation-fixtures.mjs` and
+`node tools/perf/verify-standard-validation-recovery-fixtures.mjs`. The first
+recognizes only reviewed pre-command logon failure and refuses twelve contradictory
+witnesses. The second uses controlled persistence/process ports to exercise exact
+preview, signed evidence, active-owner refusal, subject drift, completed replay
+and nine interruption boundaries, retaining prior attempts and one retirement.
+It is included in the existing agent-run-lifecycle gate.
+
+Run `node tools/perf/verify-standard-validation-recovery-storage-fixtures.mjs --mode=db-only`
+for actual child-process termination, SQLite CAS, exact physical lock archival
+and restart at intent, acquired fence, archived lock and released fence. The same
+script accepts `--mode=dual` and `--mode=files` for their persistence/projection
+semantics. It uses fixture history and cannot prove historical Windows launch
+evidence, real Native work or PostgreSQL execution. Public pilot preview, actual
+reconciliation, compatible workflow continuation, installed archive and P0 retain
+separate verdicts. Never count `reconciled_not_started` as a passing product test.
