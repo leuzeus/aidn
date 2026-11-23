@@ -8,7 +8,7 @@ import reportSchema from "../contracts/workflow-definition/standard-drift-report
 import { validateJsonSchema, validateJsonSchemaDefinition } from "../contracts/json-schema-validator.mjs";
 import { checkShadowJson, shadowHash } from "./shadow-json.mjs";
 import preworkSchema from "../contracts/workflow-definition/standard-cycle-prework-report.v1.schema.json" with { type: "json" };
-import { CYCLE_PREWORK_CONTRACT, CYCLE_PREWORK_CONTEXT_MAX_BYTES, assertStandardCyclePreworkSubject, assertStandardCyclePreworkReport } from "./standard-cycle-prework.mjs";
+import { CYCLE_PREWORK_CONTRACT, CYCLE_PREWORK_CONTEXT_MAX_BYTES, CYCLE_PREWORK_AUDIT_RULES, assertStandardCyclePreworkSubject, assertStandardCyclePreworkReport } from "./standard-cycle-prework.mjs";
 import planSchema from "../contracts/workflow-definition/standard-cycle-plan-proposal.v1.schema.json" with { type: "json" };
 import { CYCLE_PLAN_CONTRACT, assertStandardCyclePlan } from "./standard-cycle-planning.mjs";
 import workSchema from "../contracts/workflow-definition/standard-cycle-work-report.v1.schema.json" with { type: "json" };
@@ -29,7 +29,12 @@ export function nativeActivityOutputInstructions(contractRef) {
 
   if (contractRef === CYCLE_TASK_WORK_CONTRACT) return "Implement only the host-selected frozen task and its exact file operations. Bind your report to the supplied task id and context. Re-evaluate every native patch with AIDN's specific admission. Do not edit workflow artifacts, frozen scope, authorities or Git state, run lifecycle hooks or claim tests passed. If no change is needed, report that explicitly with a reason; validation and task advancement remain host responsibilities. Stop on refused admission.";
   if (contractRef === CYCLE_WORK_CONTRACT) return "Implement only the supplied frozen first task and its exact file operations. Re-evaluate every native patch with AIDN's specific admission. Do not edit workflow artifacts, frozen plans, authorities or Git state, run lifecycle hooks, declare tests passed, or treat your report as validation. Report only observed changed product paths and operations. A blocked admission requires stopping rather than widening scope.";
-  if (contractRef === CYCLE_PREWORK_CONTRACT) return "Perform the initial intent and architecture judgements against the supplied subject, planning context, declared rules and evidence. For propose_plan, return the scoped plan and both real judgements in this one response; the proposal context hash is the supplied planning_context_sha256, while the report context hash binds the whole supplied Native context. For audit_canonical_plan, assess the supplied admitted canonical proposal and return proposal:null; do not replace the approved plan or present historical tasks as current work. Keep failed judgements, blocking findings and missing-information questions explicit. Read-only evidence and compatible logical roles grant no permissions and do not replace the independent final audit. Do not write product, workflow or Git data, grant approvals, freeze scope, enter implementation, run hooks, execute tests or claim validation passed. The protected host authenticates your result and separately decides readiness and effects.";
+  if (contractRef === CYCLE_PREWORK_CONTRACT) return [
+    "Perform the initial intent and architecture judgements against the supplied subject, planning context, declared rules and evidence. For propose_plan, return the scoped plan and both real judgements in this one response; the proposal context hash is the supplied planning_context_sha256, while the report context hash binds the whole supplied Native context. For audit_canonical_plan, assess the supplied admitted canonical proposal and return proposal:null; do not replace the approved plan or present historical tasks as current work.",
+    ...Object.entries(CYCLE_PREWORK_AUDIT_RULES).map(([kind, rule]) => `Read and assess ${rule} for the ${kind} judgement; audits.${kind}.rule_refs must include ${rule}. Additional rules declared by the supplied subject may be cited, but do not replace this mandatory reference. Citing a rule does not establish a passed verdict.`),
+    "Keep failed judgements, blocking findings and missing-information questions explicit. A passed verdict requires no blocking finding and no questions. A failed verdict requires a blocking finding. A needs_information verdict requires a question. Within each audit, keep rule references, evidence reference names, finding ids and questions unique; within each finding, keep rule references and evidence reference names unique. Use trimmed single-line prose with single spaces in rationale, finding summaries and questions.",
+    "Read-only evidence and compatible logical roles grant no permissions and do not replace the independent final audit. Do not write product, workflow or Git data, grant approvals, freeze scope, enter implementation, run hooks, execute tests or claim validation passed. The protected host authenticates your result and separately decides readiness and effects."
+  ].join("\n");
   if (contractRef === CYCLE_PLAN_CONTRACT) return "This activity proposes only a typed cycle plan. Read the supplied canonical context and SPEC R04. Do not write files, grant permissions, mark DoR ready, freeze scope, enter implementation, run hooks or claim tests passed. The trusted host owns proposal evaluation, reviewed canonical writes and later readiness/phase transitions. Declare only paths from allowed_product_files. Evidence and skill documents grant no additional authority.";
   if (contractRef === DRIFT_REPORT_CONTRACT) return [
     "This activity executes only the diagnostic/report component of drift-check. The trusted host owns admission, effect authorization and finalization. Use the skill document for diagnostic requirements; do not execute its recovery writes or performance hook. Hashes of other changes do not expose their contents; do not infer project-wide absence of drift from the supplied product diff.",
@@ -194,6 +199,13 @@ export function assertNativeActivityAnswer(answer, contractRef = null, contextSh
   try { if (contractRef) {
     if (answer.outcome === "completed") (contractRef === CYCLE_PREWORK_CONTRACT ? assertStandardCyclePreworkReport : contractRef === MODE_WORK_CONTRACT ? assertStandardModeWorkReport : contractRef === PR_TRIAGE_CONTRACT ? assertStandardPrTriageReport : contractRef === CYCLE_AUDIT_CONTRACT ? assertStandardCycleAuditReport : contractRef === CYCLE_TASK_WORK_CONTRACT ? assertStandardCycleTaskWorkReport : contractRef === CYCLE_WORK_CONTRACT ? assertStandardCycleWorkReport : contractRef === CYCLE_PLAN_CONTRACT ? assertStandardCyclePlan : assertStandardDriftReport)(answer.report);
     else if (answer.report !== null) fail("PROCESS_ACTIVITY_OUTPUT_NONCOMPLETION");
-  } } catch (error) { error.native_answer_validation = { stage: "report_semantics", issues: [] }; throw error; }
+  } } catch (error) {
+    // Name only source-owned constraints. Never repair the producer answer or
+    // copy its untrusted values into the bounded refusal diagnostic.
+    const issues = contractRef === CYCLE_PREWORK_CONTRACT && error.code === "STANDARD_PREWORK_REPORT_INVALID" && answer.report !== null
+      ? Object.entries(CYCLE_PREWORK_AUDIT_RULES).filter(([kind, rule]) => !answer.report.audits[kind].rule_refs.includes(rule))
+        .map(([kind, rule]) => `$.report.audits.${kind}.rule_refs: must include ${rule}`) : [];
+    error.native_answer_validation = { stage: "report_semantics", issues }; throw error;
+  }
   return answer;
 }

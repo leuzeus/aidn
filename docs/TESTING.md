@@ -6487,6 +6487,18 @@ Run `node tools/perf/verify-standard-cycle-prework-fixtures.mjs` for the pure in
 
 This scope calls no Native/Human provider, authenticates no authority, executes no host effect and connects no published route. Current Native producer, readiness/fence, actual root, backend and installed qualifications remain separate required work. The original plan and all old FAIL/UNKNOWN attempts are unchanged.
 
+The prework fixtures also exercise both fresh and canonical Native answers
+with a mandatory intent or architecture rule omitted. Each refusal identifies
+the missing field and rule, and the answer remains byte-for-byte unchanged.
+Valid additional declared rules remain accepted. The producer instructions
+state the same mandatory mapping. Run
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --native-answer-only`
+to exercise the production session adapter with a controlled transport: the
+rule guidance reaches the turn, the original rejected answer and semantic
+diagnostic are retained, no successful result is emitted, the product stays
+unchanged and the adapter closes. These cases use no real model and do not
+replace a fresh candidate replay of the failed Native campaign.
+
 
 The same prework fixture command checks the registered Native answer schema
 and exact source bindings, including a whole-context hash distinct from the

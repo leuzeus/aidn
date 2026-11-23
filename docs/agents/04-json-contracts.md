@@ -875,6 +875,15 @@ Private standard-cycle-prework-subject.v1 and standard-cycle-prework-report.v1 d
 
 These pure readers confer no source authenticity or implementation permission. The fixed host must authenticate accepted Native provenance and reobserve its actual subject around awaited reads before current readiness or effects. Historical v1 planning is never converted into an audit receipt. The runtime producer and published model remain separate implementation/qualification boundaries.
 
+The existing semantic rule mapping requires `SPEC-R03` in intent audit rule
+references and `SPEC-R04` in architecture audit rule references. Other rules
+declared by the subject may be included as well. Native activity instructions
+state these requirements from the same source mapping as the validator.
+Missing mandatory references retain `STANDARD_PREWORK_REPORT_INVALID`; the
+private Native refusal evidence names their field paths without modifying the
+answer or changing the accepted report shape. A reference alone is no proof of
+a completed judgement.
+
 
 The fixed Native answer-schema registry also recognizes the prework report.
 Its source-provided bindings pin report context, subject and origin; fresh

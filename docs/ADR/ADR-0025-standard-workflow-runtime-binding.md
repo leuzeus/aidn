@@ -4705,6 +4705,16 @@ Compatible initial judgements may share an eligible Native planning response; th
 
 The pure validator requires separate intent/architecture verdicts and registered evidence, rejects missing, contradictory, stale or foreign material and preserves failed versus information-needed outcomes. It authenticates no Native or human source and grants no phase, work or validation authority. The fixed application host, current readiness/effect fences, durable producer linkage and published IR integration are required follow-up implementation; this data component alone does not close ACT-10 or full STANDARD qualification. No new store, shared table, authority principal or preparation-age rule is added.
 
+The Native producer receives the validator's existing mandatory rule mapping:
+intent cites `SPEC-R03`, architecture cites `SPEC-R04`, and additional subject
+rules remain admissible. Its instructions require actual assessment before a
+verdict and explain the existing verdict, uniqueness and prose constraints.
+A missing mandatory reference remains a refusal and is identified by field
+path in bounded private evidence; the original answer remains unchanged.
+Guidance and validator share the mapping, with no new approval, automatic
+repair or relaxed acceptance criterion. Controlled regressions do not prove
+that a genuine Native actor will satisfy the contract on a new candidate.
+
 
 The Native answer registry supports these closed reports with current context,
 subject and origin bindings. Fresh planning preserves a distinct business
