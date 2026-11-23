@@ -149,6 +149,7 @@ const files = [
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
 function implementation() {
   const refs = [
+    new URL("../../core/workflow/standard-validation-native-layout.mjs", import.meta.url), new URL("standard-validation-profile-layout.mjs", import.meta.url),
     new URL("../../adapters/runtime/codex-validation-diagnostics.mjs", import.meta.url),
     new URL("standard-operation-provider.mjs", import.meta.url),
     new URL("../workflow/operation-provider-registry.mjs", import.meta.url),

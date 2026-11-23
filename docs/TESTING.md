@@ -390,6 +390,13 @@ performance, Native execution and installed-archive qualification.
 
 ## Reviewed public validation client artifact, 2026-11-12
 
+The entry-selection fixture includes Windows validation/Native layout refusals:
+snapshot and scratch ancestors, sandboxed executables, case/separator and dot
+normalization, control/home roots, sibling and drive distinctions. A public
+entry test supplies pinned files and verifies refusal before authority/provider
+or workflow creation, with unchanged local bytes. This is a portable declaration
+check; it does not launch a sandbox, modify ACLs or prove live access.
+
 The sandbox-boundary fixture also verifies private v2 runtime launch diagnostics:
 split stderr delivery, a 4096-byte tail, partial delivery, UTF-8 boundaries,
 counter/digest/text corruption, immutable restart reads and historical v1 reads.

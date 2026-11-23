@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { loadStandardWorkflowAssets, createStandardWorkflowExecution, STANDARD_WORKFLOW_MODEL_PATH } from "./standard-workflow-composition.mjs";
 import { createStandardHostAuthority } from "../../adapters/runtime/standard-host-authority.mjs";
 import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
+import { assertStandardValidationProfileLayout } from "./standard-validation-profile-layout.mjs";
 import { agenticProcessImplementationPins } from "./agentic-process-implementation-pins.mjs";
 import { iterateAgenticProcessSimulation } from "../../core/workflow/agentic-process-simulation.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
@@ -38,6 +39,7 @@ export function standardWorkflowControlOccurrence(state) {
 export function resolveStandardWorkflowConfiguration(request) {
   if (checkShadowJson(request) || validateJsonSchema(request, requestSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_ENTRY_CONFIGURATION_INVALID");
   standardEntryPoint(request.parameters);
+  assertStandardValidationProfileLayout({ execution: request.execution, profileRef: request.validation_profile });
   const assets = loadStandardWorkflowAssets();
   const execution = structuredClone(request.execution);
   if (["model", "skills", "activity_outputs", "implementation_sha256", "control_scenario"].some(key => Object.hasOwn(execution, key))) fail("STANDARD_ENTRY_HOST_FIELD_FORBIDDEN");

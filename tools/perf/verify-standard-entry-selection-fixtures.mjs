@@ -51,4 +51,5 @@ await check("the fixed provider reads the pinned parameters and rechecks process
   revision=record.instance_sha256;record.initial_parameters={};change=false;
   assert.equal((await operation.prepare({state:{record},input:{}})).facts.owned_cycle_continuation_requested,false);assert.equal(calls,2);
 });
+await (await import("./standard-validation-layout-fixture-lib.mjs")).verifyStandardValidationLayout({check});
 console.log(JSON.stringify({status:"PASS",checks:checks.length,scope:"ENTRY_SELECTION_CONTRACT_AND_CONTROLLED_PROVIDER",native_calls:0,public_cli:"NOT_RUN",p0:false}));

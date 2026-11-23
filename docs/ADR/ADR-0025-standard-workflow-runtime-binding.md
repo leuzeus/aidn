@@ -2518,6 +2518,19 @@ validation, task advancement, review, closure and exception routes.
 
 ### Deterministic validation of observed code
 
+The public STANDARD entry reads a supplied pinned validation profile and its
+boundary configuration before constructing its authority or workflow host.
+For a Windows boundary, the snapshot, scratch and sandboxed executable paths
+cannot be inside a Native denied root, control root or home. Scratch also
+cannot contain one of those roots. Windows uses a shared sandbox group, so a
+deny-read ancestor from the Native activity can prevent the later validator
+from starting even though an earlier isolated qualification passed.
+`STANDARD_VALIDATION_NATIVE_READ_CONFLICT` identifies the conflicting role and
+root index. Preparation must choose disjoint validation work paths; the host
+does not remove a protection or repair ACLs. The check is a necessary layout
+condition, not native qualification, a full filesystem-access observation or
+reconciliation of a previous effect. No profile or historical record is changed.
+
 `cycle_validation_execute` consumes the accepted `cycle_work_evaluate` identity
 from IR data links. The actual source authority authenticates the signed
 operation and native evidence, then rechecks current product, canonical context
