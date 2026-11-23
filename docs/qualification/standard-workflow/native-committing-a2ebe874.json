@@ -6,7 +6,7 @@
   "model_revision": 431,
   "backend": "Windows/PostgreSQL",
   "state_mode": "db-only",
-  "campaign_state": "ALIGNMENT_ACCEPTED",
+  "campaign_state": "BLOCKED_PREWORK_EVALUATION",
   "scenario": "Fresh candidate replay in an isolated qualification workspace; no predecessor canonical session or decision receipt was imported",
   "execution_origin": "Source CLI with the frozen installed pilot and validation profile",
   "package_installation": "PASS",
@@ -160,10 +160,10 @@
   },
   "native": {
     "status": "PASS",
-    "scope": "Three Native diagnostics completed and closed; initial planning, implementation and product validation remain unqualified at this checkpoint.",
+    "scope": "Three diagnostics and one initial planning/audit actor completed with closed journals and zero processes; the subsequent deterministic plan evaluation refused the proposal.",
     "launched": true,
-    "responses": 3,
-    "responses_scope": "Observed responses in completed generations; the original finite grant remains in force.",
+    "responses": 5,
+    "responses_scope": "Observed responses in completed Native generations; no retry or renewed grant after the deterministic refusal",
     "activities": [
       {
         "generation": 1,
@@ -242,10 +242,36 @@
           }
         ],
         "usage_scope": "latest observed cumulative snapshot per thread; not a billed total"
+      },
+      {
+        "generation": 4,
+        "status": "PASS",
+        "output_contract": "standard-cycle-prework-report.v1",
+        "answer_sha256": "935d2899d84f3275120fd6d7ec072c41d3d3c6fc5dab1a02162743847cec0dfb",
+        "answer_hash_scope": "Retained native-result artifact including its answer envelope",
+        "active_processes": 0,
+        "responses": 2,
+        "storage_budget_debit_bytes": 3450827,
+        "supervised_process_ms": 138414,
+        "trace_sha256": "6c4d8c3d56f3bc58d83dbe942e846a336d4ebbf44e960ee5f24567c6907c70ce",
+        "thread_usage": [
+          {
+            "thread_sha256": "3e6ba8c2e59e172a985201b5917a799a1dcd1a271496e8aaf42286ff806ee54d",
+            "counters": {
+              "totalTokens": 78524,
+              "inputTokens": 76250,
+              "cachedInputTokens": 37760,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 2274,
+              "reasoningOutputTokens": 41
+            }
+          }
+        ],
+        "usage_scope": "latest observed cumulative snapshot per thread; not a billed total"
       }
     ]
   },
-  "full_nominal": "SKIP",
+  "full_nominal": "FAIL",
   "installed_nominal": "SKIP",
   "same_session_resume": "SKIP",
   "p0_complete": false,
@@ -254,7 +280,7 @@
     "The predecessor first failure is retained unchanged; targeted regressions do not prove genuine-model compliance.",
     "A fresh candidate replay is not resumption of the predecessor workspace."
   ],
-  "report_checkpoint_at": "2026-11-23T02:18:55.710Z",
+  "report_checkpoint_at": "2026-11-23T02:34:08.763Z",
   "requested_diagnosis": {
     "status": "PASS",
     "choice": "request_diagnosis",
@@ -284,11 +310,30 @@
     "manual_signature_steps": 0,
     "answer_form": "Structured reply identifying the exact displayed question",
     "evidence_class": "operator-accepted-local-history-observation",
-    "independent_original_author_proof": false
+    "independent_original_author_proof": false,
+    "physical_checkpoint": {
+      "candidate": "a2ebe87487291550bf2283da8bbd0f18158be5d1",
+      "backend": "postgres",
+      "state_mode": "db-only",
+      "status": "PASS",
+      "operation_id": "op_16f94c0ddb8395b6d672b42608092972c7b018fa",
+      "receipt_id": "receipt_16f94c0ddb8395b6d672b42608092972c7b018fa",
+      "accepted_results": 1,
+      "evaluation_operation_id": "op_f96a8da782ee29ab07e8aef0e4fc3641891fd144",
+      "output_sha256": "ccc35d982c1e57ca0cd4f7179d514c9267fe0ca054014b96188eb5e6899d1459",
+      "canonical_report_sha256": "db9e5901ef77f4ebbbc77951cf157993c25ff037b1c930e618b867182040bd9d",
+      "same_report_from_two_checkouts": true,
+      "authenticated_alignment_used": true,
+      "raw_evidence_sha256": "7a49ccdbdd66f5e00d04e5a587bbd2fc50d902eb8285dd11e718abfbb8cc2a4b",
+      "observed_at": "2026-11-23T02:21:36.648Z"
+    }
   },
   "prework_contract_replay": {
-    "status": "SKIP",
-    "reason": "The initial planning and audit actor has not completed on this candidate yet"
+    "status": "PASS",
+    "intent_required_rule": "SPEC-R03",
+    "architecture_required_rule": "SPEC-R04",
+    "answer_sha256": "935d2899d84f3275120fd6d7ec072c41d3d3c6fc5dab1a02162743847cec0dfb",
+    "scope": "A real actor supplied both mandatory audit rules and the Native report contract passed; this is not the later plan evaluation result"
   },
   "product_before_planning": {
     "status": "PASS",
@@ -298,5 +343,23 @@
       "70d900458b5b7a6306428a95ffa50a7a397154e9f4bc0e4fa5bdd9168a4eef9f"
     ],
     "observation_scope": "Physical product bytes compared with the Git seed before planning; this observation executes no product test"
+  },
+  "first_failure": {
+    "operation": "cycle_prework_evaluate",
+    "operation_id": "op_2c92943a53a012b23b0f3c9745a697ed12f07f68",
+    "reason_code": "STANDARD_CYCLE_PLAN_EVIDENCE_INVALID",
+    "outcome": "blocked",
+    "effect_status": "no_effect",
+    "receipt_id": "receipt_2c92943a53a012b23b0f3c9745a697ed12f07f68",
+    "trace_sha256": "181204c09c1c769a0509155d10c89cf7ebacab797c10e4ade4ee10077e500c6b",
+    "journal_sha256": "cf678a452396c7f123e90506ab583d6e857c12c40bd6433ef823387785c76978",
+    "missing_proposal_reference": "audit:SPEC.md",
+    "all_proposal_references_match_supplied_evidence": true,
+    "both_audits_already_cite_spec": true,
+    "original_answer_unchanged": true,
+    "product_files_unchanged": true,
+    "product_tests": "not_executed",
+    "diagnosis": "Adding the supplied SPEC reference to an in-memory clone passes the same pure evaluator; no judgement or live report was changed or submitted",
+    "retry": "not_executed"
   }
 }
