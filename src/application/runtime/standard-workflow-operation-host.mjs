@@ -852,7 +852,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     readEvaluation: (instance, input, options) => readValidationEvaluation(instance, input, "cycle_verification_enter", options),
     observeContext: () => processAuthority.observeCycleVerificationContext(), readCurrent: id => current(id).record }) : null;
   const cycleTaskAdvance = processAuthority ? createStandardCycleTaskAdvance({ targetRoot, now,
-    readEvaluation: (instance, input) => readValidationEvaluation(instance, input, "cycle_task_advance"),
+    readEvaluation: (instance, input, options) => readValidationEvaluation(instance, input, "cycle_task_advance", options),
     observeContext: () => processAuthority.observeCycleReadinessContext(), readCurrent: id => current(id).record }) : null;
   const recoveryCycle = processAuthority ? createStandardDriftCycle({ targetRoot, operations, now,
     readSource: (instance, operation, input) => cycleRecoverySource(instance, operation, input),

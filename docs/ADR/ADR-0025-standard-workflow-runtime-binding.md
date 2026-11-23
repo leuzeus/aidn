@@ -2620,6 +2620,13 @@ CAS. The ordered task list gains checked markers and a progress record; the
 frozen scope JSON remains unchanged. Partial writes or missing projections
 retain unknown effects and their owner instead of authorizing another task.
 
+Locked task advancement passes a private assertion of its own live effect
+owner through validation reobservation to the retained-work reader. A bare
+preview still refuses an unsettled owner. The assertion is rechecked after
+awaited reads and authorization and before each write; it cannot be supplied
+in request data. Ownership lost before writing refuses with no effect, while
+loss after a conditional write retains the unknown result and committed prefix.
+
 PostgreSQL reads task advancement material in separate batches at preview,
 locked re-preparation, preimage and postimage checks. Each batch binds content
 and metadata in request order and keeps the same scope, freshness, and CAS
