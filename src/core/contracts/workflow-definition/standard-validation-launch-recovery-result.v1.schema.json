@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-validation-launch-recovery-result.v1",
+  "x-aidn-contract-version": "standard-validation-launch-recovery-result.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_id",
+    "instance_id",
+    "record_sha256",
+    "status",
+    "written",
+    "original_history_preserved",
+    "validation_passed",
+    "workflow_resumed",
+    "native_started"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-validation-launch-recovery-result.v1"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "instance_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,95}$"
+    },
+    "record_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "status": {
+      "const": "reconciled_not_started"
+    },
+    "written": {
+      "type": "boolean"
+    },
+    "original_history_preserved": {
+      "const": true
+    },
+    "validation_passed": {
+      "const": false
+    },
+    "workflow_resumed": {
+      "const": false
+    },
+    "native_started": {
+      "const": false
+    }
+  }
+}
