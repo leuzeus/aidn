@@ -6,7 +6,7 @@
   "model_revision": 430,
   "backend": "Windows/PostgreSQL",
   "state_mode": "db-only",
-  "campaign_state": "RUNNING_CYCLE_DIAGNOSIS",
+  "campaign_state": "WAITING_ALIGNMENT_AFTER_REQUESTED_DIAGNOSIS",
   "scenario": "Fresh candidate replay in an isolated qualification workspace; no predecessor canonical session or decision receipt was imported",
   "package_installation": "PASS",
   "source_installed_inventory": {
@@ -129,9 +129,9 @@
   ],
   "native": {
     "status": "PASS",
-    "scope": "Completed startup activity only; the campaign remains in progress",
+    "scope": "The three completed diagnostic activities only; planning, implementation and the full nominal remain unqualified",
     "launched": true,
-    "responses": 1,
+    "responses": 3,
     "activities": [
       {
         "generation": 1,
@@ -145,12 +145,65 @@
         "trace_sha256": "dae2b01d5e33b54ebcf46499a282bdd47a099d0095b3212a129d32f4dcc20a27",
         "thread_usage": [
           {
-            "totalTokens": 29724,
-            "inputTokens": 28616,
-            "cachedInputTokens": 0,
-            "cacheWriteInputTokens": 0,
-            "outputTokens": 1108,
-            "reasoningOutputTokens": 30
+            "thread_sha256": "405026eae7c4ed710e6024c2c579cad90c2f8d4589c38988704d9b84b86e3ee8",
+            "counters": {
+              "totalTokens": 29724,
+              "inputTokens": 28616,
+              "cachedInputTokens": 0,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 1108,
+              "reasoningOutputTokens": 30
+            }
+          }
+        ],
+        "usage_scope": "latest observed cumulative snapshot per thread; not a billed total"
+      },
+      {
+        "generation": 2,
+        "status": "PASS",
+        "output_contract": "standard-drift-report.v1",
+        "answer_sha256": "5a464208538ca2cb78b7a9dff642cba29973c015859915135172fc561e2e92ee",
+        "active_processes": 0,
+        "responses": 1,
+        "storage_budget_debit_bytes": 2456930,
+        "supervised_process_ms": 115570,
+        "trace_sha256": "63a02f2b6194b60e5c8b6fb672234a3a1a88e6f800bcda9a5aabe8f4aacc9603",
+        "thread_usage": [
+          {
+            "thread_sha256": "7f1620b55d9d46699f1eb7e89064463b7ba36749a92d2fc0c4852e35e48860eb",
+            "counters": {
+              "totalTokens": 32629,
+              "inputTokens": 31121,
+              "cachedInputTokens": 0,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 1508,
+              "reasoningOutputTokens": 37
+            }
+          }
+        ],
+        "usage_scope": "latest observed cumulative snapshot per thread; not a billed total"
+      },
+      {
+        "generation": 3,
+        "status": "PASS",
+        "output_contract": "standard-drift-report.v1",
+        "answer_sha256": "f8497d9b6749ee314aabb6f5bc9b7ffc96afc8f719eb64c23c87497c75c570cf",
+        "active_processes": 0,
+        "responses": 1,
+        "storage_budget_debit_bytes": 2465730,
+        "supervised_process_ms": 117133,
+        "trace_sha256": "c76b7c889a610801e4986031f2d0f6893a1e13cf130542fe513e73052b3ac296",
+        "thread_usage": [
+          {
+            "thread_sha256": "e669b579ff99c6436bf1beb428ee7336b2779ab291796a41d2fa0094c9bbf169",
+            "counters": {
+              "totalTokens": 32635,
+              "inputTokens": 31119,
+              "cachedInputTokens": 0,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 1516,
+              "reasoningOutputTokens": 0
+            }
           }
         ],
         "usage_scope": "latest observed cumulative snapshot per thread; not a billed total"
@@ -166,7 +219,7 @@
     "The predecessor Native implementation failure remains unchanged; instruction fixtures do not prove the original tool cause or genuine-model behavior.",
     "A fresh candidate replay is not resumption of the predecessor workspace."
   ],
-  "report_checkpoint_at": "2026-11-23T00:20:01.287Z",
+  "report_checkpoint_at": "2026-11-23T00:32:01.869Z",
   "signed_mode": {
     "status": "PASS",
     "choice": "COMMITTING",
@@ -191,5 +244,26 @@
     "max_turn_ms": 600000,
     "duration_ms": 3600000,
     "manual_signature_steps": 0
+  },
+  "requested_diagnosis": {
+    "status": "PASS",
+    "choice": "request_diagnosis",
+    "operation_id": "op_ee957ec9f99665976097926d42e328a7a0c6f1e8",
+    "receipt_id": "receipt_ee957ec9f99665976097926d42e328a7a0c6f1e8",
+    "accepted_results": 1,
+    "tampered_choice_refused": true,
+    "same_receipt_on_redelivery": true,
+    "cold_process_receipt_recovery": "PASS",
+    "repeated_human_questions": 0,
+    "manual_signature_steps": 0,
+    "evidence_class": "operator-accepted-local-history-observation",
+    "independent_original_author_proof": false
+  },
+  "pending_alignment": {
+    "status": "SKIP",
+    "reason": "Awaiting the human choice on the new report",
+    "operation_id": "op_ee8e0c6a502982452613286e4a44d543bb603ac9",
+    "question_sha256": "de9c7e4cc78667cd79e9eb60c7979b6d4216b94d174974764fdd154c65749879",
+    "subject_sha256": "3766b8ad64dd585fc31d8d60c115c500a2c432d4e910ba11bdcfdd37d1b83ce8"
   }
 }
