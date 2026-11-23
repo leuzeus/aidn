@@ -350,5 +350,11 @@
     "reason": "NATIVE_OWNER_DISPOSITION_UNPROVEN_EFFECTS",
     "scope": "Closure was observed but the failed allocation was not retired or reconciled. This refusal does not replace the first Native report failure."
   },
-  "next_action": "Deliver a targeted producer-guidance and refusal-diagnostic correction, freeze its merged candidate, then replay the complete P0 scenario."
+  "next_action": "Complete the fresh P0 replay on the merged candidate; this failed attempt is preserved.",
+  "targeted_correction": {
+    "pull_request": "https://github.com/leuzeus/aidn/pull/208",
+    "merged_candidate": "a2ebe87487291550bf2283da8bbd0f18158be5d1",
+    "scope": "Explicit mandatory prework rule guidance and field-specific refusal evidence; original answer and acceptance criteria unchanged",
+    "regressions": "PASS; controlled transport only"
+  }
 }
