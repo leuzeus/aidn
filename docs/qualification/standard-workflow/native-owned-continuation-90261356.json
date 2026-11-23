@@ -9,7 +9,7 @@
   "backend": "postgres",
   "state_mode": "db-only",
   "status": "PASS",
-  "scope": "Installed public entry continues the retained owned OPEN session/cycle to its Native planner wait",
+  "scope": "Installed public continuation on the retained PostgreSQL cycle through genuine Native planning, canonical plan recording, readiness and implementation entry",
   "method": "A new technical instance continues the same canonical business session and cycle; the original technical instance remains immutable",
   "strategy": 1,
   "strategy_complete": false,
@@ -168,18 +168,27 @@
   "consumption": {
     "historical_responses": 6,
     "historical_bytes": 13295681,
-    "new_native_responses": 0,
+    "new_native_responses": 2,
     "old_authorizations_expired": true,
-    "unused_authorization_transferred": false
+    "unused_authorization_transferred": false,
+    "new_native_storage_debit_bytes": 3041195,
+    "total_responses": 8,
+    "total_debit_bytes": 16336876,
+    "current_grant": {
+      "max_responses": 18,
+      "max_bytes": 53813183,
+      "remaining_responses": 16,
+      "remaining_bytes": 50771988
+    }
   },
   "human_channel": {
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "Authorize a finite Native budget on the frozen continuation configuration, execute real planning, observe plan recording and the next admission",
-  "genuine_native_planning": "SKIP",
-  "plan_recording": "SKIP",
-  "following_admission": "SKIP",
+  "next_required": "Continue real task implementation, qualified validation and independent audit before delivery; broader continuation strategies and final P0 runs remain open",
+  "genuine_native_planning": "PASS",
+  "plan_recording": "PASS",
+  "following_admission": "PASS",
   "full_nominal": "SKIP",
   "same_candidate_recovery": "SKIP",
   "installed_full_nominal": "SKIP",
@@ -190,5 +199,122 @@
     "Strategies 2 and broader 3 remain open; no lossy projection or receipt migration was introduced."
   ],
   "private_observation_sha256": "65184cc1158cef1951d0a06ad17dbe49b60238c97b8a467c9be15f489cb6cb80",
-  "observed_at": "2026-11-23T05:10:59.863Z"
+  "observed_at": "2026-11-23T05:10:59.863Z",
+  "strategy_first_slice_complete": true,
+  "real_planning": {
+    "status": "PASS",
+    "cycle_state": "IMPLEMENTING",
+    "previous_instance_unchanged": true,
+    "branch_and_head_unchanged": true,
+    "product_unchanged_before_implementation": true,
+    "canonical_plan_matches_native_content": true,
+    "context_sha256": "4baba9dc8ae277d59c0b28bdf8a708f43daf431ba091826c43a130f28e5f345c",
+    "documents": [
+      {
+        "name": "status.md",
+        "sha256": "e2814dda2c18eaea426e06d05e9a969a089e879419922657924339f942228dd0"
+      },
+      {
+        "name": "brief.md",
+        "sha256": "0319d2f7dd151055bf24a6f7c33b3fcd475667bcb28da7726366ff517ba6944c"
+      },
+      {
+        "name": "plan.md",
+        "sha256": "62d0a65541b0483b24c5ca5679e24eb8f56506d7f021a44540857e97dc56db39"
+      },
+      {
+        "name": "change-requests.md",
+        "sha256": "56bc6e595e62acd23f2e6423df548d85e9d08343a7710805b146c1ff41beeb33"
+      },
+      {
+        "name": "hypotheses.md",
+        "sha256": "33eb61fc72efab0619f389c17bd8e197ca0fc8ef75aa43d1902ae669d82bc881"
+      },
+      {
+        "name": "audit-spec.md",
+        "sha256": "b7243dda5ced9332bbe7663501e60174a2eebfb3a96f05acb2e3fce6421759e5"
+      },
+      {
+        "name": "traceability.md",
+        "sha256": "0595ea2169ed69c9fdd8cec8ece752dfe40666c8525172abc7d91ac5e6396c0d"
+      },
+      {
+        "name": "decisions.md",
+        "sha256": "1bc46d41b6d61fdbd29c4b221741927459bc468d98002795762d8f0d6febc8f0"
+      }
+    ],
+    "operations": [
+      {
+        "binding": "cycle_prework_evaluate",
+        "journal_sha256": "fff02600aeb0a21453a92c25d0757d44b178a397da5f546ef4fb4517ab53be67",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_plan_record",
+        "journal_sha256": "ab6232d4df1cc71c499c6a1d5b3fef504f08693986c1f5be97ec5ea902e14373",
+        "outcome": "completed",
+        "effect_status": "confirmed"
+      },
+      {
+        "binding": "cycle_readiness_evaluate",
+        "journal_sha256": "cd99d6d1d577e333b047b8367e4fc9c74d1871b95ace77464441d1caf6b482b6",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_implementation_enter",
+        "journal_sha256": "ac41b4cec71fc05b0e620d274226834e18b98f1e29a635de41d6d8eb7538eb1b",
+        "outcome": "completed",
+        "effect_status": "confirmed"
+      }
+    ],
+    "native": {
+      "status": "PASS",
+      "generation": 1,
+      "answer_sha256": "abf9ac146fa045d7b4398f6d7777ce5f3acfff0e89ff05aa111123ef69d2af71",
+      "entry_result_sha256": "5bf4460c65798e1b8cb5ff4b4dd8d4799241f1d0e0552cb817add96c13ddf2d9",
+      "responses": 2,
+      "bytes_retained": 2726653,
+      "storage_budget_debit_bytes": 3041195,
+      "consumption": {
+        "snapshots": [
+          {
+            "total": {
+              "totalTokens": 79058,
+              "inputTokens": 76695,
+              "cachedInputTokens": 38016,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 2363,
+              "reasoningOutputTokens": 59
+            },
+            "last": {
+              "totalTokens": 40771,
+              "inputTokens": 38501,
+              "cachedInputTokens": 38016,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 2270,
+              "reasoningOutputTokens": 52
+            },
+            "modelContextWindow": 475000
+          }
+        ],
+        "aggregation": "latest observed cumulative snapshot per thread; not a billed total",
+        "incomplete_turns_may_be_unknown": true
+      },
+      "closure": {
+        "method": "windows-job-object",
+        "active_processes": 0,
+        "started_at": "2026-11-23T05:13:25.1585228Z",
+        "observed_at": "2026-11-23T05:15:57.0184950Z"
+      }
+    },
+    "proposed_tasks": 1,
+    "completed_tasks": 0,
+    "mode_questions": 0,
+    "alignment_questions": 0,
+    "manual_signatures": 0,
+    "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
+  },
+  "updated_at": "2026-11-23T05:22:28.240Z"
 }

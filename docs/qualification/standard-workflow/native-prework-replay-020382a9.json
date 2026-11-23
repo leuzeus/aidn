@@ -186,8 +186,10 @@
     ],
     "report": "native-owned-continuation-90261356.json",
     "status": "PASS",
-    "scope": "Installed public entry continues the retained owned OPEN session/cycle to its Native planner wait",
-    "genuine_native_planning": "SKIP",
-    "p0_complete": false
+    "scope": "Installed public continuation on the retained PostgreSQL cycle through genuine Native planning, canonical plan recording, readiness and implementation entry",
+    "genuine_native_planning": "PASS",
+    "p0_complete": false,
+    "plan_recording": "PASS",
+    "following_admission": "PASS"
   }
 }
