@@ -64,6 +64,10 @@ export function assertNativeReconciliationGrant(value, request) {
     || closure.observed_at_ms < request.prepared_at_ms
     || value.consumption.storage_debit_bytes < request.minimum_consumption.storage_debit_bytes)
     fail('NATIVE_RECONCILIATION_GRANT_UNBOUND');
+  // A zero-response worker can still seal its empty usage observation. Keep
+  // that exact digest through reconciliation instead of dropping its evidence.
+  if (!post && value.consumption.native_usage_sha256 !== request.minimum_consumption.native_usage_sha256)
+    fail('NATIVE_RECONCILIATION_CONSUMPTION_CHANGED');
   if (post) {
     const minimum = request.minimum_consumption, actual = value.consumption;
     consumption(actual, 'NATIVE_RECONCILIATION_CONSUMPTION_CHANGED');

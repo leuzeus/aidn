@@ -3944,13 +3944,18 @@ if (process.argv[2] === "--mixed-continue") {
     const { result, sessions } = await run(f);
     assert.equal(result.first_failure, "WORKFLOW_INSTANCE_LOCK_RECONCILIATION_REQUIRED"); assert.equal(sessions.length, 0);
   });
-  await check("only trusted runtime/admission hosts receive PostgreSQL credentials; no model shell, review, pins or configuration contain them", async () => {
+  await check("worker persistence: trusted host home and credentials stay outside model shells and reviews", async () => {
     const f = fixture(); persistenceFixture(f, "postgres", "db-only");
-    const env = { ...f.environment, PGPASSWORD: "fixture-password", PGSSLMODE: "require", NODE_OPTIONS: "--bad-injection" };
+    const hostHome = path.join(f.configuration.control_root, "fixture-host-home");
+    const env = { ...f.environment, AIDN_STANDARD_HOST_HOME: hostHome, PGPASSWORD: "fixture-password", PGSSLMODE: "require", NODE_OPTIONS: "--bad-injection" };
     const pin = agenticProcessPersistence({ targetRoot: f.configuration.target_root, env });
     const workerEnv = createAgenticProcessWorkerEnvironment({ targetRoot: f.configuration.target_root, expectedBinding: pin.binding_sha256, env });
     assert.equal(workerEnv.AIDN_TEST_DB, env.AIDN_TEST_DB); assert.equal(workerEnv.PGPASSWORD, "fixture-password");
     assert.equal(workerEnv.PGSSLMODE, "require"); assert.equal(workerEnv.NODE_OPTIONS, undefined);
+    assert.equal(workerEnv.AIDN_STANDARD_HOST_HOME, hostHome);
+    assert.equal(createCodexHostEnvironment(workerEnv).AIDN_STANDARD_HOST_HOME, undefined);
+    for (const invalid of ["", "relative", "invalid\0home", 42]) assert.throws(() => createAgenticProcessWorkerEnvironment({
+      targetRoot: f.configuration.target_root, expectedBinding: pin.binding_sha256, env: { ...env, AIDN_STANDARD_HOST_HOME: invalid } }), /HOST_HOME_INVALID/);
     assert.equal(createCodexHostEnvironment(workerEnv).AIDN_TEST_DB, undefined); assert.equal(createCodexHostEnvironment(workerEnv).PGPASSWORD, undefined);
     assert.doesNotMatch(JSON.stringify(pin), /fixture-password|fixture:fixture/);
     assert.throws(() => createAgenticProcessWorkerEnvironment({ targetRoot: f.configuration.target_root, expectedBinding: "a".repeat(64), env }), /PERSISTENCE_CHANGED/);
@@ -3964,6 +3969,7 @@ if (process.argv[2] === "--mixed-continue") {
       async checkAvailability() { return { available: true }; },
       async run(request, { onEvent }) {
         captured = request; assert.equal(request.env.AIDN_TEST_DB, env.AIDN_TEST_DB); assert.equal(request.env.NODE_OPTIONS, undefined);
+        assert.equal(request.env.AIDN_STANDARD_HOST_HOME, hostHome);
         assert.doesNotMatch(request.stdin, /fixture-password|fixture:fixture/);
         const spec = JSON.parse(request.stdin); assert.equal(spec.persistenceBinding, pin.binding_sha256);
         await onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify({ contract_version: "agentic-process-execution-result.v1", status: "COMPLETED",
