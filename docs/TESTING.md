@@ -918,6 +918,13 @@ re-preparation and a separate postimage after CAS. Retain a metadata-only
 change, a stale plan or context, and any partial write as distinct outcomes.
 An isolated observation or transition is insufficient for a nominal verdict.
 
+The task-progress validity fixture also exercises a retained-work reader that
+requires the current writer's private owner assertion. A foreign owner must
+refuse before reading work; owner loss during source reobservation or current
+authorization must leave zero writes. Loss after the first conditional write
+must retain UNKNOWN and the committed prefix. These controlled-port checks do
+not establish a live Native audit or an installed continuation.
+
 For the PostgreSQL cycle validation subject, compare the complete selected
 plan and work result with individual authenticated reads. Check an altered
 journal and altered native evidence, and verify that another subject read

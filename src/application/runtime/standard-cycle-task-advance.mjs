@@ -39,10 +39,12 @@ export function createStandardCycleTaskAdvance({ targetRoot, readEvaluation, obs
       fail("STANDARD_CANONICAL_BACKEND_CONFLICT");
     return rows;
   }
-  async function prepare(instance, input, preparedAt, acquired = false) {
+  async function prepare(instance, input, preparedAt, acquired = false, assertOwner = null) {
     assertStandardOperationInput("cycle_task_advance", input);
     if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
-    const verified = await readEvaluation(instance, input), context = verified.context, cyclePath = context.cycle_path;
+    assertOwner?.();
+    const verified = await readEvaluation(instance, input, assertOwner === null ? {} : { assertOwner }), context = verified.context, cyclePath = context.cycle_path;
+    assertOwner?.();
     const source = verified.source, selected = source.task_selection, task = source.work.output.observations.task;
     if (!selected || source.progress_operation_id || selected.complete || selected.task?.id !== task.id || selected.ordinal !== selected.completed_task_ids.length + 1
       || selected.implementation_operation_id !== source.work.output.observations.implementation_operation_id || selected.scope_sha256 !== source.work.output.observations.scope_sha256
@@ -84,12 +86,17 @@ export function createStandardCycleTaskAdvance({ targetRoot, readEvaluation, obs
           fail("STANDARD_TASK_PROGRESS_EXPLICIT_EFFECT_REQUIRED");
       } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
+        // This capability belongs to this live owner, never to authored JSON.
+        const assertOwner = () => artifacts.assertLocalEffectOwner(expectPlan);
         try {
-          const fresh = await prepare(instance, plan.input, plan.prepared_at_ms, true);
+          assertOwner();
+          const fresh = await prepare(instance, plan.input, plan.prepared_at_ms, true, assertOwner);
+          assertOwner();
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_PREVIEW_CHANGED");
-          await assertAuthorized();
+          await assertAuthorized(); assertOwner();
           if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256
             || (await observeContext()).context_sha256 !== plan.context_sha256) fail("STANDARD_TASK_PROGRESS_SOURCE_STALE");
+          assertOwner();
           const preimages = postgresMaterial(plan.changes.map(row => row.path));
           for (const [index, row] of plan.changes.entries()) {
             const current = preimages?.[index] ?? artifacts.read(row.path);
@@ -101,8 +108,8 @@ export function createStandardCycleTaskAdvance({ targetRoot, readEvaluation, obs
         } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         const committed = [], metadata = [];
         try {
-          for (const change of plan.changes) { metadata.push(artifacts.compareAndSwapPreservingMetadata(change).metadata_sha256); committed.push(change.path); }
-          const projection = artifacts.project(committed);
+          for (const change of plan.changes) { assertOwner(); metadata.push(artifacts.compareAndSwapPreservingMetadata(change).metadata_sha256); committed.push(change.path); }
+          const projection = artifacts.project(committed); assertOwner();
           const postimages = postgresMaterial(committed);
           for (const [index, change] of plan.changes.entries()) {
             const current = postimages?.[index] ?? artifacts.read(change.path);
@@ -110,7 +117,7 @@ export function createStandardCycleTaskAdvance({ targetRoot, readEvaluation, obs
               fail("STANDARD_TASK_PROGRESS_POSTCONDITION_FAILED");
           }
           for (const [index, file] of projections(plan.changes).entries()) if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== plan.changes[index].after_sha256) fail("STANDARD_TASK_PROGRESS_PROJECTION_UNCONFIRMED");
-          const after = await observeContext();
+          const after = await observeContext(); assertOwner();
           if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || boundary(after.context, plan.cycle_path) !== plan.boundary_sha256) fail("STANDARD_TASK_PROGRESS_POSTCONDITION_FAILED");
           return { contract_version: "standard-cycle-task-output.v1", operation_ref: "cycle_task_advance", outcome: "completed", effect_status: "confirmed",
             facts: { cycle_task_advanced: true, cycle_tasks_finished: plan.finished }, observations: { evaluation_operation_id: plan.input.evaluation_operation_id,
