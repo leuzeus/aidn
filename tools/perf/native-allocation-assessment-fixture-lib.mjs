@@ -69,7 +69,8 @@ export async function retainFailedNativeAllocationFixture({ mode, retained, root
   const reserved = signer.seal({ contract_version: 'native-allocation-journal.v1', journal_id: journalId, instance_id: instance.instance_id,
     scope_id: instance.scope_id, model_sha256: instance.model_sha256, revision: 1, allocations: [allocation] });
   store.compareAndSwap(reserved, null);
-  const state = { contract_version: 'native-host-state.v1', authority_id: 'synthetic_retained', instance, parent_closed: parentClosed, resources: [], results: [], native_usage: null };
+  const nativeUsage = { thread_counters: [], aggregation: 'latest observed cumulative snapshot per thread; not a billed total', incomplete_turns_may_be_unknown: true };
+  const state = { contract_version: 'native-host-state.v1', authority_id: 'synthetic_retained', instance, parent_closed: parentClosed, resources: [], results: [], native_usage: nativeUsage };
   const evidence = { state, responses_observed: 0, response_sha256: [], authorized_budget_sha256: allocation.authorization_sha256, authorized_limits: limits,
     resume_authority: 'NOT_ESTABLISHED_SUPERVISOR_AND_AUTHENTICATED_JOURNAL_REQUIRED' };
   const checkpoint = path.join(configuration.control_root, instance.instance_id, '00001-native-host-state.json');
@@ -81,7 +82,7 @@ export async function retainFailedNativeAllocationFixture({ mode, retained, root
     tree_proof_sha256: H(closure.process_tree), tree_closed: true, owned_status: 'FAILED', first_failure: closure.first_failure,
     checkpoint: { path: checkpoint, sha256: sha(fs.readFileSync(checkpoint)), state_sha256: H(state), instance_sha256: instance.instance_sha256 },
     closure_ref: { path: closureFile, sha256: sha(fs.readFileSync(closureFile)) },
-    consumption: { responses_observed: 0, response_sha256: [], storage_debit_bytes: 7, native_usage_sha256: null } }] });
+    consumption: { responses_observed: 0, response_sha256: [], storage_debit_bytes: 7, native_usage_sha256: H(nativeUsage) } }] });
   store.compareAndSwap(failed, store.read(journalId).content_sha256);
   const returned = { contract_version: 'journaled-native-allocation-result.v1', owned_result: closure, journal_id: journalId, generation: 1,
     journal_phase: 'failed', journal_sha256: H(failed), status: 'FAILED', first_failure: closure.first_failure, retry: false };

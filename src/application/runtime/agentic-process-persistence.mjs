@@ -3,6 +3,7 @@ import { createCodexHostEnvironment, CODEX_STARTUP_ENVIRONMENT_PROFILES } from "
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { processFail as fail } from "../../core/workflow/agentic-process-model.mjs";
 import { readActivation } from "../install/project-activation-service.mjs";
+import path from "node:path";
 
 function selection(targetRoot, env) {
   const selected = resolveEffectiveRuntimePersistence({ targetRoot, env });
@@ -37,13 +38,21 @@ export function createAgenticProcessWorkerEnvironment({ targetRoot, expectedBind
   const { selected, globalRuntime, binding } = selection(targetRoot, env);
   if (shadowHash(binding) !== expectedBinding) fail("PROCESS_EXECUTION_PERSISTENCE_CHANGED");
   const worker = createCodexHostEnvironment(env);
+  // The supervised worker authenticates retained STANDARD origins with their
+  // own host keys. This private host location must survive that process hop;
+  // createCodexHostEnvironment still excludes it from every model transport.
+  if (env.AIDN_STANDARD_HOST_HOME !== undefined) {
+    const home = env.AIDN_STANDARD_HOST_HOME;
+    if (typeof home !== "string" || !path.isAbsolute(home) || home.includes("\0")) fail("PROCESS_EXECUTION_HOST_HOME_INVALID");
+    worker.AIDN_STANDARD_HOST_HOME = home;
+  }
   if (globalRuntime) worker.AIDN_HOME = globalRuntime.home; // verified install receipt, not an unrelated environment home
   for (const key of ["AIDN_RUNTIME_PERSISTENCE_BACKEND", "AIDN_RUNTIME_PERSISTENCE_CONNECTION_REF"])
     if (typeof env[key] === "string") worker[key] = env[key];
   if (selected.backend === "postgres") {
     const key = selected.connectionRef.slice(4);
     const forbidden = new Set([...CODEX_STARTUP_ENVIRONMENT_PROFILES.worker, "NODE_OPTIONS", "NODE_PATH",
-      "AIDN_HOME", "AIDN_RUNTIME_PERSISTENCE_BACKEND", "AIDN_RUNTIME_PERSISTENCE_CONNECTION_REF"].map(name => name.toUpperCase()));
+      "AIDN_HOME", "AIDN_STANDARD_HOST_HOME", "AIDN_RUNTIME_PERSISTENCE_BACKEND", "AIDN_RUNTIME_PERSISTENCE_CONNECTION_REF"].map(name => name.toUpperCase()));
     if (forbidden.has(key.toUpperCase())) fail("PROCESS_EXECUTION_PERSISTENCE_ENVIRONMENT_UNSAFE");
     if (typeof env[key] !== "string" || !env[key].trim() || env[key].includes("\0")) fail("PROCESS_EXECUTION_PERSISTENCE_CONNECTION_UNAVAILABLE");
     for (const [name, value] of Object.entries(env)) {

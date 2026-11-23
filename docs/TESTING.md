@@ -4823,6 +4823,13 @@ closure proof, a new allocation grant or a general resume qualification.
 
 ### Standard cycle audit components
 
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --worker-only`
+also checks that the trusted supervised worker receives the protected STANDARD
+host home needed to authenticate retained origins. The model transport still
+excludes that location and database credentials. Invalid host-home paths refuse.
+These process and environment fixtures use a controlled Native transport; they
+do not establish a real independent audit on an installed archive.
+
 `node tools/perf/verify-standard-cycle-audit-fixtures.mjs` checks typed report
 coverage and semantic refusals. `node tools/perf/verify-standard-workflow-inventory-fixtures.mjs`
 checks complete canonical presence, redirection refusal and DB-only behavior.
@@ -6776,6 +6783,13 @@ entry, post-assignment effect, real resource termination or workflow resume.
 Original required command argv/order and finite Native grants remain unchanged.
 
 ## Native no-assignment reconciliation producer candidate
+
+The no-assignment request and grant also accept the digest of an empty worker
+usage observation. Zero responses and an empty response list remain required.
+The grant must preserve the exact retained usage digest, including historical
+null values; replacing or erasing it refuses. Embedded journal, receipt, record
+and public-action schemas enforce the same rule. The kernel covers both forms;
+the producer fixture uses a sealed empty observation as the actual worker does.
 
 The original three Native dispatch provenance commands also run the private
 producer fixture. The same argv and required-case order remain unchanged.
