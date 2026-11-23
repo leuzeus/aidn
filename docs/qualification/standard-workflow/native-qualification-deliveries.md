@@ -15,7 +15,7 @@ The interface records the user's choice and produces the proof in the background
 | Lot | Delivery and qualification |
 | --- | --- |
 | 1 | Freeze the candidate and archive, prepare the private pilot and record host capabilities. Prepare an isolated PostgreSQL database shared by two pilot checkouts. |
-| 2a | Stabilize the real Windows COMMITTING workflow on shared PostgreSQL using the [targeted correction loop](#targeted-corrections-and-final-qualification), then run the complete public journey through independent audit, pull request, review, merge and synchronization on the frozen candidate. Read the session and its cycle from the second checkout and verify the Git and provider effects. Record the human capture channel. [Campaign PR](https://github.com/leuzeus/aidn/pull/197) |
+| 2a | Stabilize the real Windows COMMITTING workflow on shared PostgreSQL using the [targeted correction loop](#targeted-corrections-and-final-qualification) and evaluate the [cycle continuation strategies](#cycle-continuation-strategies) from the blocked boundary. Then run the complete public journey through independent audit, pull request, review, merge and synchronization on the frozen candidate. Read the session and its cycle from the second checkout and verify the Git and provider effects. Record the human capture channel. [Campaign PR](https://github.com/leuzeus/aidn/pull/197) |
 | 2b | Deliver a product PR to `dev` for the authenticated interface, background proof and submission to the host. Exercise one live decision and its receipt. Route the change as ASSURED because it crosses the human authority boundary. |
 | 3 | Qualify cold resume on PostgreSQL, capability and independence refusals, and reconciliation of an interrupted effect. Verify the same instance, one accepted decision and one physical effect. |
 | 4 | Install the same frozen archive in a clean Windows client. Repeat the PostgreSQL nominal and cold resume with the authenticated interface. Publish the Windows/PostgreSQL P0 verdict for that candidate and archive digest. |
@@ -45,6 +45,67 @@ This is the campaign strategy, not a claim that arbitrary cross-version instance
 For a fresh Windows pilot, observe both installed hooks as enabled and trusted in a real thread before preparing the validator plan for approval. On revision 425, trusting the project updated the client configuration included in the plan. Its previous fingerprint was stale before the first control ran. [Windows preparation report](native-committing-c79bf0d7.json)
 
 Candidate `914f34e8` starts the PostgreSQL/db-only campaign after [PR #206](https://github.com/leuzeus/aidn/pull/206). The four Windows validator controls and their local chat review passed. Both installed checkouts read the same 44 canonical artifacts and one S001 under a stable project scope. COMMITTING was accepted once and its receipt recovered in a new process. Fresh installation created the database schema without canonical project rows: the first public preview refusal is retained, followed by an explicit import of the 35 untouched bootstrap artifacts into the empty scope. No historical session was migrated. Cross-checkout resumption, the full nominal, installed replay and independent interface proof remain open. [PostgreSQL campaign report](native-committing-914f34e8.json)
+
+## Cycle continuation strategies
+
+This addition separates experiments, implementation decisions and qualification. The strategies below are proposed work, not delivered capabilities or a blanket migration authorization. Evaluate the smallest useful slice first; later slices must not delay the current targeted correction.
+
+The retained `020382a9` report establishes the immediate boundary: entry admits the owned OPEN cycle, then canonical plan projection refuses `STANDARD_CANONICAL_PLAN_UNREPRESENTABLE`. The genuine Native correction replay passed in isolation; `live_instance_resumed` remains false in the original campaign report. The current owned-plan path expects representable planning documents. The projector also requires an exact rendering match, so one generic refusal covers several causes. [Targeted replay](native-prework-replay-020382a9.json) · [Original campaign](native-committing-a2ebe874.json) · [Canonical projection](../../../src/core/workflow/standard-canonical-plan-projection.mjs)
+
+### Strategy 1: select the continuation from observed progress
+
+Test whether current canonical data and authenticated operation history identify the earliest unfinished admissible step. Lifecycle state alone is insufficient: OPEN can mean untouched planning templates or an existing plan awaiting readiness. The selector must also observe the cycle owner, work intent, task progress, pending decisions and unresolved effects.
+
+Start with the owned OPEN cycle whose planning documents are untouched templates. Reuse the bounded correction already in progress rather than create a competing implementation. Compare it with the existing canonical-plan path using the same inputs. The expected next action is planning on the same session, cycle and branch, with no new cycle creation. A partial or changed plan must not be treated as an empty template or silently replaced. Integration-only intent must not gain planning or implementation permission.
+
+The first implementation decision is GO only when controlled-host tests preserve the existing planned-cycle path and pass the negative cases relevant to that entry: partial planning, changed source, foreign ownership, integration-only intent and an unresolved effect owner. After delivery, qualify the exact public entry on the retained PostgreSQL cycle with a genuine Native actor, then observe plan recording and the following admission. An isolated evaluator PASS does not qualify this continuation. Extend to interrupted planning, completed task prefixes and verification only as separate tested slices in lots 3 and 8.
+
+### Strategy 2: diagnose and recover plan representation failures
+
+First prototype a read-only diagnosis that distinguishes untouched templates, partial planning, unsupported document shape, conflicting task progress and changed canonical source. It should identify the relevant artifact or field, the expected next step and which prerequisite is invalid. It must read the configured authority; a stale local projection cannot repair the database implicitly.
+
+Compare two approaches on the same corpus:
+
+- Keep strict admission and give a precise diagnosis with an explicit, separately admitted repair path where needed. This is the first implementation candidate because it preserves current acceptance semantics.
+- Add a versioned lossless projection for explicitly supported presentation variants. Probe LF/CRLF, a final blank line, extra sections, duplicate task IDs, reordered or missing tasks, changed write scope and retained verification history. Presentation tolerance is acceptable only if all semantic content and provenance are preserved; unknown content must remain visible and cannot be discarded to obtain a valid plan.
+
+A tolerant projection receives GO only if the comparison shows fewer false refusals with zero acceptance of the altered-scope, progress-conflict and unknown-content counterexamples. Otherwise retain strict admission and deliver only the useful diagnosis. Neither variant rewrites raw hashes, accepted receipts or canonical documents during preview. Any later repair uses explicit write intent, current content/metadata comparison and its own effect evidence. A new structured canonical plan store would require a separate authority/migration decision; it is not a prerequisite for this experiment. [Current plan contract and renderer](../../../src/core/workflow/standard-cycle-planning.mjs)
+
+### Strategy 3: qualify compatibility across runtime updates
+
+Distinguish a cold restart of the same compatible instance from a new technical instance continuing the same business session and cycle. Prototype an explicit comparison of retained and current model, implementation, policy, backend/scope, Git HEAD, provider/binding and decision subjects. Classify each retained prerequisite as reusable, requiring revalidation or incompatible, with the dependency that explains the classification. Equal version labels or an unchanged high-level objective do not establish compatibility.
+
+Use disposable instances first. Compare an unchanged package restart, a compatible declared reader change, an unsupported schema/model transition, a changed decision subject, revoked authority and an unresolved dispatched effect. If a supported transition needs a new instance, keep the old instance immutable and link the continuation to its actual origin. Importing historical task progress as data must not invent current validation or Native-work receipts. Retain consumed Native budget and original applicable grant limits.
+
+GO is limited to individually tested transitions for which the public host authenticates the retained evidence, revalidates affected prerequisites and refuses all incompatible cases before effect. No generic upgrade bypass is implied. The existing same-instance path remains preferred when admitted; an unsupported transition retains its refusal and uses the targeted replay strategy. A product implementation crossing these identity or authority boundaries uses ASSURED and the smallest corresponding contract/ADR updates. [Instance authority](../../../src/application/runtime/agentic-process-service.mjs) · [Implementation binding](../../../src/application/runtime/agentic-process-execution-composition.mjs)
+
+### Shared experiments and implementation order
+
+Create reproducible cases from retained redacted inputs, with an expected next operation and expected physical effects declared before each experiment. First characterize the frozen baseline, then compare a disposable prototype on the identical corpus. Controlled ports establish routing and contract behavior; genuine Native and provider checks remain separate. Publish an evidence-based GO or NO-GO for each slice before promoting its prototype into product code. Existing authorizations still apply; this technical decision adds no new operator signing ceremony.
+
+| Boundary or variation | Required observation |
+| --- | --- |
+| Owned OPEN cycle, untouched templates | Planning continues with the same project, session, cycle and branch; zero duplicate creations. |
+| Partial plan or failed plan recording | Preserve existing bytes and metadata; explain the missing evidence. Reconcile any dispatched write before deciding whether to retry. |
+| Valid plan with a presentation-only variation | Diagnosis identifies the variation. Any proposed tolerant reader preserves the complete meaning and historical raw bytes. |
+| IMPLEMENTING with a completed task prefix | Authenticate retained progress, select the first unfinished task and obtain current admission; no repeated accepted task effect. |
+| VERIFYING with historical results | Preserve those results as history and obtain the current evidence actually required; no inferred audit or closure. |
+| Human answer captured or already accepted | Cold recovery consumes the same answer once and recovers its receipt; zero repeated questions for an unchanged valid subject and zero manual signing steps. |
+| Effect dispatched, confirmation missing | Keep UNKNOWN and its owner until supported reconciliation resolves that exact occurrence; independently observe at most one physical effect. |
+| Another session owns the cycle, or intent is integration-only | No direct work continuation or permission expansion; identify the owner or permitted intent. |
+| Second checkout, stale projection, unavailable database or changed scope | Read the configured authority, retain identity where valid, and refuse unavailable or wrong-scope continuation without creating replacement state. |
+| Changed HEAD, provider, policy, binding or decision subject | Identify the affected prerequisite; reject stale evidence before effect. A genuinely new human subject is presented once with its reason. |
+
+Use PostgreSQL for the shared-project cases and SQLite without PostgreSQL for local continuation. Preserve the supported dual and db-only projection behavior. Run the small deterministic regressions in PR admission; keep database, real actors, interruption campaigns and installed-package measurements in separate bounded reports.
+
+The delivery order is:
+
+1. **Lot 2a, current correction:** finish and qualify Strategy 1 for an owned unplanned cycle. Preserve the existing correction's ownership and evidence.
+2. **Lots 2a/3, separate product PR if conclusive:** implement Strategy 2 diagnostics; add presentation tolerance only if its own experiment passes. Do not make a broad parser rewrite a dependency of the nominal run.
+3. **Lots 3/5/8, separate product PRs per supported transition if conclusive:** implement the necessary Strategy 3 handoffs and extend Strategy 1 to later boundaries. Same-instance cold resume remains a distinct lot 3 requirement.
+4. **Lots 4/10:** replay the selected capabilities from the final installed archive, including both operating systems where available. Keep the final full-run requirement in the preceding section.
+
+For each comparison retain candidate/archive digests, canonical identity and backend, predecessor/continuation instance IDs, the failed boundary, reused and invalidated evidence, next operation, original failure and new verdict. Measure repeated steps, human answers and extra signing actions, Native calls/tokens when observable, duration and independently observed effects. Report unavailable token counts as unknown. Success requires correct continuation with zero unauthorized effects, duplicate creations, silent data loss or repeated unchanged human questions; reduced time or calls alone is insufficient. Keep PASS, FAIL, SKIP and UNAVAILABLE separate. The experiments in this section remain SKIP until their reports exist; the referenced historical results keep their narrower scopes.
 
 ## Acceptance evidence for lots 2b–4
 
