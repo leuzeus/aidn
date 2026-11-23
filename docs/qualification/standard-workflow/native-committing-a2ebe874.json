@@ -361,5 +361,13 @@
     "product_tests": "not_executed",
     "diagnosis": "Adding the supplied SPEC reference to an in-memory clone passes the same pure evaluator; no judgement or live report was changed or submitted",
     "retry": "not_executed"
+  },
+  "targeted_correction": {
+    "candidate": "020382a90184496d375629983a502103f694cf72",
+    "correction_pr": 209,
+    "report": "native-prework-replay-020382a9.json",
+    "status": "PASS",
+    "scope": "one isolated real Native prework replay and pure deterministic evaluation",
+    "live_instance_resumed": false
   }
 }
