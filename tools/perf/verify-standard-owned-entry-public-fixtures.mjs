@@ -98,6 +98,7 @@ const eventPath=path.join(root,".aidn/runtime/perf/workflow-events.ndjson"),even
 await assert.rejects(reader(subject,request.parameters,admission),/EVENT_CHANGED/);fs.writeFileSync(eventPath,eventBytes);refused.push("missing physical checkpoint");
 const document=artifacts.read("SPEC.md");await artifacts.withLocalEffectOwner(shadowHash({fixture:"changed-owned-entry-intent"}),async()=>{
   artifacts.compareAndSwap({path:document.path,before_sha256:document.sha256,after:document.content+"\nChanged fixture intent\n"});
+  return { effect_status: "confirmed" };
 });
 await assert.rejects(reader(subject,request.parameters,admission),/DOCUMENT_CHANGED/);refused.push("changed canonical intent");
 const report={status:"PASS",mode,proof_class:"REAL_PUBLIC_CLI_TO_NATIVE_WAIT",bindings,same_session:true,same_cycle:true,same_branch:true,previous_instance_unchanged:true,
