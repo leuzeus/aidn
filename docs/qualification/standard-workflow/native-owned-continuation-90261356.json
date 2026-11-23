@@ -185,7 +185,7 @@
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "Receive current Native authorization for the conserved budget, run the fresh independent read-only auditor, then continue through explicit closure and delivery decisions. Final source/recovery/archive qualification on one stable candidate remains required for P0.",
+  "next_required": "Activate an applicable exact Native grant for the corrected installed candidate, run the fresh independent read-only auditor, then continue through actual closure and delivery decisions. Do not replay mode, alignment, implementation or validation. Final one-candidate source/recovery/archive P0 remains required.",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-23T17:02:36.210Z",
+  "updated_at": "2026-11-23T18:24:23.748Z",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -811,5 +811,141 @@
       "reason": "Current explicit Native envelope requested in the chat after the earlier envelope expired"
     },
     "complete_standard_workflow": false
+  },
+  "audit_launch_recovery": {
+    "status": "PASS",
+    "scope": "Real zero-response audit-launch failure, owner retirement and installed application-port accounting reconciliation",
+    "original_candidate": "07b345f36147c3cd00fe5cf4ba12b992d5843ad2",
+    "original_archive_sha256": "f11c3dea73da55a7b6daacc53f2d0587e1cf7a383118ad5be70f13417d5ce360",
+    "first_attempt": {
+      "status": "FAIL",
+      "stage": "activity_output_context",
+      "public_code": "PROCESS_EXECUTION_FAILED",
+      "diagnostic_code": "STANDARD_HOST_HOME_REQUIRED",
+      "native_sessions": 0,
+      "native_responses": 0,
+      "storage_debit_bytes": 175493,
+      "active_processes": 0
+    },
+    "second_refusal": {
+      "status": "FAIL",
+      "code": "NATIVE_RECONCILIATION_REQUEST_INVALID",
+      "reason": "Sealed empty Native usage digest refused by the zero-response request schema"
+    },
+    "correction_pr": "https://github.com/leuzeus/aidn/pull/217",
+    "candidate": "9f9101de74e793f86a956f163588ce0636a5b93d",
+    "archive_sha256": "7cbcf4d5dfb12e36bacec8587c5a3c2f7d257e64c32b492aa13c6545918e6b3c",
+    "merge_sha": "a03c5562224c07b02a622a3fb9fe38a08847a30f",
+    "owner_retirement": "PASS",
+    "allocation_reconciliation": "allocation_reconciliation_confirmed",
+    "reconciliation_entry": "installed application recovery port",
+    "original_failure_preserved": true,
+    "original_allocations_unchanged": true,
+    "original_instance_unchanged": true,
+    "product_unchanged": true,
+    "real_closure_observation": "Windows Job and current OS process discovery; no Native session was allocated",
+    "original_unknown_validation_unchanged": true,
+    "consumption": {
+      "responses": 0,
+      "bytes": 175493,
+      "refund": false
+    },
+    "native_calls": 0,
+    "manual_signatures": 0,
+    "private_observation_sha256": "fd743bfb6e65647458b6fa6b78d65a0093b359f247a50fa554aafbc9ae9fb6f6",
+    "p0": false
+  },
+  "retained_verification_continuation": {
+    "status": "PASS",
+    "scope": "Installed public continuation of the same owned VERIFYING cycle to independent-audit authorization",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/218",
+    "merge_sha": "eaf6932998984a3e5c471f478bb72a8d54f7d260",
+    "candidate": "6e3db287e359508b648621e21f8a86d2335b264e",
+    "archive_sha256": "1f9da123f1698ce532c397d4df66d63e9181b75beb6c727ce561a3a6338033ab",
+    "catalog_revision": 448,
+    "configuration_sha256": "320dd3dbbe8fd4267031bff045ec9eadc3600bd6e44e80e4883d4306a3367e51",
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "new_technical_instance": true,
+    "source_context_sha256": "eebb3a9f1c6697ce060f324b6d78bb179c5a4693b7b47fd52bb5dcef68cb1abb",
+    "prototype_verdict": "GO_TECHNICAL_READONLY",
+    "source_reader": "PASS",
+    "source_refusals": [
+      "source digest",
+      "audit identity",
+      "criteria binding",
+      "validation digest"
+    ],
+    "original_validator_evidence": "passed",
+    "current_entry": "retained_verification",
+    "reused": [
+      "Owned canonical session and cycle",
+      "COMMITTING and accepted alignment",
+      "Implemented product and completed validation",
+      "Authenticated progression and VERIFYING transition",
+      "Both historical contributor identities"
+    ],
+    "operations": [
+      {
+        "binding": "workflow_entry_select",
+        "operation_id": "op_3f2550b155f8979ec1aa660eaa927a7b912e388c",
+        "journal_sha256": "022d458da84d88b4befbc94c8d766e4f5cb1fc05517ffc574db88688f476eb06",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_retained_verification_admit",
+        "operation_id": "op_74a278d88bdf0884c8a71c4d8f975eed23981988",
+        "journal_sha256": "2803fcef709a05af13fea5db2fd1ad7d390e68fcdea8f7ef6e1049af63cd8a7e",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_work_phase_select",
+        "operation_id": "op_54b9e208d4075b037511921647fada100713c390",
+        "journal_sha256": "25d7e849e63b6b1fb468a81a1f65f4b7b7f3b4a331fa8478a075fe70a28417af",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_audit_select",
+        "operation_id": "op_957a604943d020efc44eb9169a8dd0db5dfe8092",
+        "journal_sha256": "84ca8c8a8148dfa3589fe07208b19ef0bd5c6f37081d5459c3693545b79585b9",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      }
+    ],
+    "original_instances_and_receipts_unchanged": true,
+    "business_state_unchanged": true,
+    "product_unchanged": true,
+    "mode_questions": 0,
+    "alignment_questions": 0,
+    "validation_replays": 0,
+    "native_calls": 0,
+    "manual_signatures": 0,
+    "pure_contract_provider_reducer_checks": 14,
+    "governance_admission": "PASS",
+    "perf_kpi": "PASS",
+    "native_audit": {
+      "status": "SKIP",
+      "reason": "Awaiting applicable exact Native authorization for the corrected candidate"
+    },
+    "worker_environment_preflight": "PASS",
+    "operation_history_authenticated": true,
+    "canonical_sources": [
+      "postgres"
+    ],
+    "native_allocation_absent": true,
+    "private_observation_sha256": "a56b0ba8ddf1d62cc6b9d995be0ee9341919c2f62201d7938d9a0ce4058628b0",
+    "complete_standard_workflow": false
+  },
+  "current_native_balance": {
+    "consumed_responses": 12,
+    "consumed_bytes": 18531412,
+    "remaining_responses": 12,
+    "remaining_bytes": 48577452,
+    "prior_deadline_utc": "2026-11-23T18:22:00.211Z",
+    "new_authorization": "NOT_ACTIVATED",
+    "counter_reset": false
   }
 }
