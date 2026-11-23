@@ -58,7 +58,7 @@ import { createGithubPrOpenTransportFixture } from "./github-pr-open-fixture-lib
 import { createLocalWorkflowSessionPush } from "../../src/adapters/runtime/local-workflow-session-push.mjs";
 import { createStandardWorkflowMixedHost } from "../../src/application/runtime/standard-workflow-mixed-composition.mjs";
 import { createStandardProcessAuthority } from "../../src/application/runtime/standard-process-authority.mjs";
-import { assertNativeActivityAnswer, nativeActivityAnswerSchema, nativeActivityAnswerInstructions, nativeActivityOutputBindings, assertStandardDriftReport } from "../../src/core/workflow/native-activity-output.mjs";
+import { assertNativeActivityAnswer, nativeActivityAnswerSchema, nativeActivityAnswerInstructions, nativeActivityOutputInstructions, nativeActivityOutputBindings, assertStandardDriftReport } from "../../src/core/workflow/native-activity-output.mjs";
 import { evaluateStandardDriftReport, readStandardDriftContext } from "../../src/application/runtime/standard-drift-report.mjs";
 import { runReloadCheckUseCase } from "../../src/application/runtime/reload-check-use-case.mjs";
 import { createStandardDriftFinalization } from "../../src/application/runtime/standard-drift-finalization.mjs";
@@ -3578,6 +3578,41 @@ if (process.argv[2] === "--mixed-continue") {
         assert.equal(t.calls.filter(row => row.method === "turn/start").length, 1);
       } finally { assert.equal((await sessions.close()).closed, true); }
     }
+  });
+  await check("native answer: a missing prework rule retains the original answer and a field-specific refusal", async () => {
+    const f = fixture(), records = [], model = JSON.parse(fs.readFileSync(f.configuration.model.path));
+    const contract = "standard-cycle-prework-report.v1", context = "c".repeat(64);
+    const bindings = { kind: "audit_canonical_plan", subject_sha256: "d".repeat(64), origin_operation_id: "op_" + "e".repeat(40), proposal: null };
+    const audit = rules => ({ verdict: "passed", rationale: "Current judgement against the supplied canonical source", rule_refs: rules,
+      evidence_refs: [{ ref: "fixture:spec", sha256: "a".repeat(64) }], findings: [], questions: [] });
+    const answer = { outcome: "completed", summary: "Current canonical assessment", report: {
+      contract_version: contract, context_sha256: context, ...bindings,
+      audits: { intent: audit(["SPEC-R04", "SPEC-R05"]), architecture: audit(["SPEC-R04", "SPEC-R11"]) } } };
+    const finalText = JSON.stringify(answer), t = transport(f, { answerText: finalText });
+    const sessions = createAgenticCodexSessions({ native: f.configuration.native, targetRoot: f.configuration.target_root,
+      productRoot: f.dirs.product, controlRoot: path.join(f.dirs.control, "case"), rpcFactory: t.rpcFactory,
+      evidence: { async retain(kind, value, options) { records.push({ kind, value: structuredClone(value), options });
+        return { ref: "fixture/" + kind, sha256: shadowHash(value) }; }, diagnostic() {} },
+      budget: { maxTurnMs: 1000, remainingBytes: () => 1000000, response() {} } });
+    try {
+      const session = await sessions.open({ role: model.roles[0], policy: model.policies.find(row => row.id === "work"),
+        input: { developer_instructions: "Common fixture authority" }, deadline: Date.now() + 60000 });
+      await assert.rejects(() => session.run({ instruction: nativeActivityOutputInstructions(contract), request_sha256: "b".repeat(64),
+        output_contract: contract, output_context_sha256: context, output_bindings: bindings }), { code: "STANDARD_PREWORK_REPORT_INVALID" });
+      const retained = records.find(row => row.kind === "native-answer-rejected");
+      assert.equal(retained.value.code, "STANDARD_PREWORK_REPORT_INVALID");
+      assert.deepEqual(retained.value.validation, { stage: "report_semantics", issues: ["$.report.audits.intent.rule_refs: must include SPEC-R03"] });
+      assert.equal(Buffer.from(retained.value.answer_base64, "base64").toString(), finalText);
+      assert.equal(retained.value.answer_sha256, sha(finalText));
+      assert.equal(retained.value.answer_bytes, Buffer.byteLength(finalText));
+      assert.equal(records.some(row => row.kind === "native-result"), false);
+      const turns = t.calls.filter(row => row.method === "turn/start");
+      assert.equal(turns.length, 1);
+      assert(turns[0].params.input[0].text.includes("audits.intent.rule_refs must include SPEC-R03"));
+      assert(turns[0].params.input[0].text.includes("audits.architecture.rule_refs must include SPEC-R04"));
+      assert.equal(fs.readFileSync(path.join(f.dirs.product, "app.mjs"), "utf8"), "export const value = 1;\n");
+    } finally { assert.equal((await sessions.close()).closed, true); }
+    assert(t.sessions.every(session => session.closed));
   });
   await check("native answer: hosted activity scope reaches reused work and isolated review without credential or hook bypass", async () => {
     const agentsText = fs.readFileSync(new URL("../../scaffold/root/AGENTS.md", import.meta.url), "utf8").replace(/\r\n/g, "\n").trim();

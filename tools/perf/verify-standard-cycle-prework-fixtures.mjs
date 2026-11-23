@@ -194,6 +194,38 @@ test("producer receives full bound constraints and schema refusals identify safe
   });
 });
 
+test("prework producer receives mandatory audit rules and missing references remain explicit refusals", () => {
+  const instructions = nativeActivityOutputInstructions(PREWORK);
+  for (const canonical of [false, true]) {
+    const n = nativeCase(canonical);
+    const schema = { $schema: "http://json-schema.org/draft-07/schema#",
+      $id: "aidn://contracts/workflow-definition/prework-rule-fixture.v1",
+      ...nativeActivityAnswerSchema(PREWORK, n.contextSha256, n.bindings) };
+    for (const [kind, required, other] of [["intent", "SPEC-R03", "SPEC-R04"], ["architecture", "SPEC-R04", "SPEC-R03"]]) {
+      const answer = structuredClone(n.answer);
+      answer.report.audits[kind].rule_refs = [other];
+      const original = JSON.stringify(answer);
+      assert.deepEqual(validateJsonSchema(answer, schema, "$", { contractKind: "workflow-definition" }), []);
+      assert.throws(() => assertNativeActivityAnswer(answer, PREWORK, n.contextSha256, n.bindings), error => {
+        assert.equal(error.code, "STANDARD_PREWORK_REPORT_INVALID");
+        assert.deepEqual(error.native_answer_validation, { stage: "report_semantics",
+          issues: [`$.report.audits.${kind}.rule_refs: must include ${required}`] });
+        return true;
+      });
+      assert.equal(JSON.stringify(answer), original, "Refusal must not insert a reference into the producer answer");
+      assert(instructions.includes(`audits.${kind}.rule_refs must include ${required}`));
+    }
+    assertNativeActivityAnswer(n.answer, PREWORK, n.contextSha256, n.bindings);
+    assert.throws(() => assertNativeActivityAnswer({ ...n.answer, report: null }, PREWORK, n.contextSha256, n.bindings), error => {
+      assert.equal(error.code, "STANDARD_PREWORK_REPORT_INVALID");
+      assert.deepEqual(error.native_answer_validation, { stage: "report_semantics", issues: [] }); return true;
+    });
+  }
+  const s = subject(); s.rule_refs.push("SPEC-R05", "SPEC-R11");
+  const r = report(s); r.audits.intent.rule_refs.push("SPEC-R04", "SPEC-R05"); r.audits.architecture.rule_refs.push("SPEC-R11");
+  assert.equal(observe(r, s).outcome, "passed", "Additional declared rules remain valid alongside the mandatory references");
+});
+
 test("current Native bindings reject a different origin, subject, report context or proposal identity", () => {
   const n = nativeCase();
   for (const mutate of [r => { r.context_sha256 = H; }, r => { r.subject_sha256 = H; },
