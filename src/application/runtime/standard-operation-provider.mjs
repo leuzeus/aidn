@@ -20,6 +20,7 @@ import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperatio
 import { cycleExecutionSourceSelectOperation } from "../../core/workflow/standard-cycle-source-selection.mjs";
 import { ownedCyclePlanningSelectOperation } from "../../core/workflow/standard-owned-cycle-planning.mjs";
 import { workflowEntrySelectOperation, standardEntryPoint, selectStandardEntry } from "../../core/workflow/standard-workflow-entry-selection.mjs";
+import { retainedValidationAdmit, retainedTaskWork, workPhaseSelect } from "../../core/workflow/standard-retained-validation.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { operationJournalId } from "../../core/workflow/process-operation-journal.mjs";
 import { assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
@@ -54,15 +55,19 @@ export function createStandardOperationProvider({
       if (current(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail("STANDARD_ENTRY_PROCESS_CHANGED");
     };
     assertCurrent();
-    const admission = standardEntryPoint(parameters) === "owned_cycle"
+    const point = standardEntryPoint(parameters), admission = point !== "session"
       ? await operations.admitCycleEntry({ contract_version: "standard-cycle-entry-input.v1", session_id: parameters.session?.session_id, cycle_id: null }) : null;
     assertCurrent();
     const continuation = admission?.outcome === "completed" && admission.facts.cycle_entry_resume_allowed
-      ? await (entryContinuation?.(instance, parameters, admission) ?? fail("STANDARD_ENTRY_CONTINUATION_AUTHORITY_REQUIRED")) : null;
+      ? await (point === "retained_validation" ? processAuthority.retainedValidationEntry(instance, parameters, admission)
+        : entryContinuation?.(instance, parameters, admission) ?? fail("STANDARD_ENTRY_CONTINUATION_AUTHORITY_REQUIRED")) : null;
     assertCurrent();
     return selectStandardEntry(parameters, admission, continuation);
   }
   const previews = new Map([
+    [retainedValidationAdmit, async ({ state }) => processAuthority.admitRetainedValidation(state.record)],
+    [workPhaseSelect, async ({ state }) => processAuthority.selectWorkPhase(state.record)],
+    [retainedTaskWork, async ({ state, input }) => processAuthority.observeRetainedTaskWork(state.record, input)],
     [workflowEntrySelectOperation, async ({ state }) => selectEntry(state)],
     ["baseline_promotion_checkpoint", async ({ state, input, occurrenceId }) => {
       return await baselinePromotionCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PROMOTION_CHECKPOINT_AUTHORITY_REQUIRED");
@@ -374,6 +379,9 @@ export function createStandardOperationProvider({
     }],
   ]);
   const observations = new Map([
+    [retainedValidationAdmit, async ({ state }) => processAuthority.admitRetainedValidation(state.record)],
+    [workPhaseSelect, async ({ state }) => processAuthority.selectWorkPhase(state.record)],
+    [retainedTaskWork, async ({ state, record }) => processAuthority.observeRetainedTaskWork(state.record, record.preview.input)],
     [workflowEntrySelectOperation, async ({ state }) => selectEntry(state)],
     [handoffResourceOperation, async ({ resourceCapture }) => {
       return resourceCapture.output;

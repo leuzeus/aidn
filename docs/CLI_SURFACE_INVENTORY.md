@@ -974,3 +974,30 @@ branch, a STANDARD PR opening record requires the origin instance's accepted
 R09 completion. The check verifies the source HEAD against the protected
 remote and can use that measurement when the origin tracking ref is stale.
 It uses the existing upstream diagnostic and performs no fetch or ref update.
+
+The STANDARD `runtime workflow-run --configuration` request also accepts an
+explicit retained validation entry in its parameters:
+
+```json
+{
+  "entry_point": {
+    "kind": "retained_validation",
+    "recovery_operation_id": "op_1111111111111111111111111111111111111111",
+    "original_configuration": {
+      "path": "/private/original-resolved-execution.json",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  }
+}
+```
+
+The ordinary request still supplies the same session/cycle, current execution
+configuration and qualified validation profile. Use a new technical instance ID.
+The entry requires the actual completed signed launch recovery, original closed
+Native history and unchanged single-task work. The original configuration is
+pinned data, not a selected executable. Protect its path and the historical
+control/review roots in the new Native configuration. Changed business inputs,
+provider/model or process controller require a separately qualified continuation.
+Preview remains read-only; every effect uses the existing exact action execution.
+This entry retains COMMITTING and starts at current validation without another
+planning or implementation activity. It does not renew Native authorization.

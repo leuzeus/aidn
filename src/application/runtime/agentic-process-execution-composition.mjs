@@ -393,7 +393,8 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       const sessions = createAgenticCodexSessions({ native: { ...config.native,
         protected_roots: [...new Set([...(config.native.protected_roots ?? []), controlRoot])] }, targetRoot, productRoot, controlRoot: output, evidence, budget,
         governanceEnvironment: storeEnvironment, ...(rpcFactory ? { rpcFactory } : {}) });
-      const host = createAgenticProcessExecutionHost({ sessionFactory: sessions, inputs, evidence, deadline: workDeadline, retainedState: admitted?.history ?? null });
+      const host = createAgenticProcessExecutionHost({ sessionFactory: sessions, inputs, evidence, deadline: workDeadline, retainedState: admitted?.history ?? null,
+        readPriorContributors: processAuthority?.retainedContributors ? instance => processAuthority.retainedContributors(instance) : null });
       const profile = buildAgentProfile({ id: "codex-agentic-session", label: "Owned Codex session", defaultRole: "coordinator", roles: AGENT_ROLES });
       const guardedStore = { ...store, compareAndSwap(instance, expected) {
         readAuthority();

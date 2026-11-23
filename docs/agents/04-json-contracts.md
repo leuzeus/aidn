@@ -1251,3 +1251,13 @@ unchanged. A result distinguishes a reconciled non-start from validation success
 and workflow resumption; both latter claims remain false. The original UNKNOWN
 operation and instance are immutable. Preview supplies no write authority; only
 explicit execution of the exact current preview can append a recovery attempt.
+
+Retained single-task validation uses closed `standard-retained-validation-*`
+entry, pins, proof and admission contracts, `standard-retained-task-work-*`
+input/output and `standard-work-phase-selection-output.v1`.
+`standard-workflow-entry-selection-output.v2` adds the explicit retained branch;
+v1 remains readable in authenticated history. Historical producer identities and
+current operation identities stay distinct. A retained work observation supplies
+no current Native result, implementation permission or validation success. The
+proof pins the complete context digest while carrying only its bounded summary;
+full documents remain at their canonical authorities.
