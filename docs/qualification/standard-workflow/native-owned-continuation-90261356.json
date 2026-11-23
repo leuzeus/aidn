@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-23T05:45:27.778Z",
+  "updated_at": "2026-11-23T06:20:18.495Z",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -411,5 +411,35 @@
     "effect_owner_pending": true,
     "interpretation": "Outer Job closure alone does not establish closure of an unobserved sandbox child. The original receipt and owner are retained; no retry was dispatched.",
     "private_observation_sha256": "59e8d2ceac2c741f59c6b8a4ea138a2df9d1348b3aa6c248c5895d7b4b16d3df"
+  },
+  "validation_startup_diagnostic": {
+    "status": "FAIL",
+    "scope": "One separately authorized timeout probe; no model or product-test call",
+    "plan_sha256": "33d84ca7a0fb45b7142b3a0081f111e32cf39dc052283c087220e3c8748077df",
+    "case_id": "timeout",
+    "qualification_status": "FAIL",
+    "diagnostic": "NATIVE_PROBE_CHILD_NOT_OBSERVED",
+    "stderr_bytes": 60,
+    "stderr_sha256": "311e9558202ebec4a3b65aafe3c51105be36d778c26cde6b0ae7e2746d037356",
+    "error": "windows sandbox failed: CreateProcessWithLogonW failed: 267",
+    "first_failure_stderr_hash_match": true,
+    "interpretation": "The validation working directory was below a Native protected root with an inherited deny-read ACL for the shared Windows sandbox group. The isolated probe reproduced the exact retained startup stderr. This is a launcher failure, not a failed product test.",
+    "diagnosis_evidence_sha256": "52a6e6956d12861113f6e7d3b05614f9779c3e7202095965de24855a7be29511",
+    "diagnostics_fix": {
+      "pull_request": 212,
+      "merge_sha": "3767621524358606c5ae0a199a7253a1be4aac2c"
+    },
+    "layout_preflight_fix": {
+      "pull_request": 213,
+      "head_sha": "f0b3d8293957a726ae187aba3c62bd93d7773568",
+      "local_checks": "PASS",
+      "retained_public_entry": "PASS"
+    },
+    "old_unknown_reconciled": false,
+    "canonical_retry_count": 0,
+    "effect_owner_pending": true,
+    "manually_changed_permissions": false,
+    "native_model_calls": 0,
+    "next_required": "Qualify disjoint validation work paths and implement or establish admissible same-occurrence reconciliation before any product retry."
   }
 }
