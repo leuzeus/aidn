@@ -1,7 +1,7 @@
 import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.mjs";
 import { readStandardDriftContext } from "./standard-drift-report.mjs";
 import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifact-parser-lib.mjs";
-import { assertStandardCyclePlan } from "../../core/workflow/standard-cycle-planning.mjs";
+import { assertStandardCyclePlan, assertStandardCyclePlanRequiredEvidence } from "../../core/workflow/standard-cycle-planning.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { parseSessionMetadata } from "../../lib/workflow/session-context-lib.mjs";
 import path from "node:path";
@@ -32,8 +32,8 @@ export function evaluateStandardCyclePlan(authenticated, observed) {
   const proposal = assertStandardCyclePlan(authenticated.report), context = observed.context;
   if (proposal.context_sha256 !== observed.context_sha256 || proposal.session_id !== context.session_id || proposal.cycle_id !== context.cycle_id
     || proposal.cycle_type !== context.cycle_type || proposal.objective !== context.original_objective) fail("STANDARD_CYCLE_PLAN_SOURCE_STALE");
-  if (!proposal.evidence_refs.some(row => row.ref === "audit:SPEC.md")
-    || proposal.evidence_refs.some(ref => !observed.evidence_refs.some(row => row.ref === ref.ref && row.sha256 === ref.sha256))) fail("STANDARD_CYCLE_PLAN_EVIDENCE_INVALID");
+  assertStandardCyclePlanRequiredEvidence(proposal);
+  if (proposal.evidence_refs.some(ref => !observed.evidence_refs.some(row => row.ref === ref.ref && row.sha256 === ref.sha256))) fail("STANDARD_CYCLE_PLAN_EVIDENCE_INVALID");
   for (const task of proposal.tasks) if (task.intent !== (context.mode === "COMMITTING" ? "implementation" : "exploration")
     || task.paths.some(row => !context.allowed_product_files.includes(row.path))) fail("STANDARD_CYCLE_PLAN_SCOPE_NOT_ADMITTED");
   return { contract_version: "standard-cycle-planning-output.v1", operation_ref: "cycle_plan_evaluate", outcome: "completed", effect_status: "no_effect",

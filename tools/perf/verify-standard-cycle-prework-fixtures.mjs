@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { validateJsonSchema, validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import { assertStandardCyclePlan } from "../../src/core/workflow/standard-cycle-planning.mjs";
+import { evaluateStandardCyclePlan } from "../../src/application/runtime/standard-cycle-plan-context.mjs";
 import { CYCLE_PREWORK_CONTEXT_MAX_BYTES, assertStandardCyclePreworkSelection, assertStandardCyclePreworkEvaluation, assertStandardCyclePreworkSubject, assertStandardCyclePreworkReport, observeStandardCyclePrework } from "../../src/core/workflow/standard-cycle-prework.mjs";
 import { checkShadowJson, shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
@@ -136,10 +137,10 @@ test("malformed current evidence and rules outside the declared subject refuse w
 });
 
 const PREWORK = "standard-cycle-prework-report.v1";
-function nativeCase(canonical = false) {
+function nativeCase(canonical = false, planSource = proposal) {
   const s = subject(canonical), planning = { contract_version: "standard-cycle-plan-context.v1", session_id: s.session_id,
     cycle_id: s.cycle_id, cycle_path: s.cycle_path, cycle_type: "feature", original_objective: proposal.objective };
-  const plan = { ...structuredClone(proposal), context_sha256: canonical ? proposal.context_sha256 : shadowHash(planning) };
+  const plan = { ...structuredClone(planSource), context_sha256: canonical ? planSource.context_sha256 : shadowHash(planning) };
   if (canonical) s.proposal_sha256 = shadowHash(plan);
   const context = { subject: s, planning_context: planning, planning_context_sha256: shadowHash(planning) };
   const contextSha256 = shadowHash(context), r = { ...report(s, plan), context_sha256: contextSha256 };
@@ -224,6 +225,51 @@ test("prework producer receives mandatory audit rules and missing references rem
   const s = subject(); s.rule_refs.push("SPEC-R05", "SPEC-R11");
   const r = report(s); r.audits.intent.rule_refs.push("SPEC-R04", "SPEC-R05"); r.audits.architecture.rule_refs.push("SPEC-R11");
   assert.equal(observe(r, s).outcome, "passed", "Additional declared rules remain valid alongside the mandatory references");
+});
+
+test("fresh Native plans require their own SPEC evidence even when both audits cite it", () => {
+  const PLAN = "standard-cycle-plan-proposal.v1";
+  for (const contract of [PREWORK, PLAN]) {
+    const n = nativeCase(), plan = structuredClone(n.plan);
+    plan.evidence_refs = [{ ref: "audit:brief.md", sha256: H }];
+    const answer = contract === PREWORK ? { ...n.answer, report: { ...n.r, proposal: plan } }
+      : { outcome: "completed", summary: "Scoped plan proposal", report: plan };
+    const contextSha256 = contract === PREWORK ? n.contextSha256 : plan.context_sha256;
+    const bindings = contract === PREWORK ? n.bindings : nativeActivityOutputBindings(PLAN,
+      { ...n.context.planning_context, original_objective: plan.objective });
+    const original = JSON.stringify(answer), field = contract === PREWORK ? "$.report.proposal.evidence_refs" : "$.report.evidence_refs";
+    assertStandardCyclePlan(plan); // Historical structural readers retain their existing acceptance.
+    assert.throws(() => assertNativeActivityAnswer(answer, contract, contextSha256, bindings), error => {
+      assert.equal(error.code, "STANDARD_CYCLE_PLAN_EVIDENCE_INVALID");
+      assert.deepEqual(error.native_answer_validation, { stage: "report_semantics", issues: [`${field}: must include audit:SPEC.md`] });
+      return true;
+    });
+    assert.equal(JSON.stringify(answer), original);
+    assert(nativeActivityOutputInstructions(contract).includes(`${field.slice(2)} must include audit:SPEC.md`));
+  }
+});
+
+test("required plan evidence does not replace exact source membership or its digest", () => {
+  const p = structuredClone(proposal), authenticated = { report: p, reference: { ref: "fixture:native", sha256: H } };
+  const observed = { context_sha256: H, evidence_refs: refs, context: { session_id: p.session_id, cycle_id: p.cycle_id,
+    cycle_type: p.cycle_type, original_objective: p.objective, mode: "COMMITTING", allowed_product_files: ["product/app.mjs"] } };
+  assert.equal(evaluateStandardCyclePlan(authenticated, observed).outcome, "completed");
+  for (const evidence of [[{ ref: "audit:brief.md", sha256: H }], [{ ref: "audit:SPEC.md", sha256: "b".repeat(64) }],
+    [...refs, { ref: "audit:foreign.md", sha256: H }]]) {
+    p.evidence_refs = evidence;
+    assert.throws(() => evaluateStandardCyclePlan(authenticated, observed), { code: "STANDARD_CYCLE_PLAN_EVIDENCE_INVALID" });
+  }
+});
+
+test("canonical audit and historical plan readers do not add fresh proposal evidence", () => {
+  const historical = structuredClone(proposal); historical.evidence_refs = [{ ref: "audit:brief.md", sha256: H }];
+  const n = nativeCase(true, historical), original = JSON.stringify(n.plan);
+  assertStandardCyclePlan(n.plan);
+  assertNativeActivityAnswer(n.answer, PREWORK, n.contextSha256, n.bindings);
+  assert.equal(observeStandardCyclePrework({ subject: n.s, report: n.r, contextSha256: n.contextSha256,
+    canonicalProposal: n.plan, evidenceRefs: refs }).outcome, "passed");
+  assert.equal(n.answer.report.proposal, null);
+  assert.equal(JSON.stringify(n.plan), original);
 });
 
 test("current Native bindings reject a different origin, subject, report context or proposal identity", () => {
