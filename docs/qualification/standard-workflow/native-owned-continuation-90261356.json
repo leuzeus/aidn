@@ -185,7 +185,7 @@
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "Qualify the targeted task-owner correction from retained work using the current candidate pins, preserve both prior technical instances and test receipts, then continue to verification and independent audit. Full source/recovery/archive P0 remains separate.",
+  "next_required": "Receive current Native authorization for the conserved budget, run the fresh independent read-only auditor, then continue through explicit closure and delivery decisions. Final source/recovery/archive qualification on one stable candidate remains required for P0.",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-23T16:49:06.894Z",
+  "updated_at": "2026-11-23T17:02:36.210Z",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -654,7 +654,7 @@
     "diagnosis": "Task advancement omitted its live-owner assertion during retained-work reobservation in the writer and host composition",
     "correction_pull_request": "https://github.com/leuzeus/aidn/pull/216",
     "correction_candidate": "07b345f36147c3cd00fe5cf4ba12b992d5843ad2",
-    "corrective_installed_qualification": "SKIP",
+    "corrective_installed_qualification": "PASS",
     "native_audit": "SKIP"
   },
   "closed_native_accounting": {
@@ -665,5 +665,151 @@
     "source": "Retained earlier campaign accounting plus final signed closed allocation storage debits",
     "new_allocation_count": 0,
     "grant_expired": true
+  },
+  "task_owner_corrective_replay": {
+    "status": "PASS",
+    "scope": "Installed targeted continuation through real product validation, task progress, VERIFYING and independent-audit selection; Native audit has not run",
+    "candidate": "07b345f36147c3cd00fe5cf4ba12b992d5843ad2",
+    "archive_sha256": "f11c3dea73da55a7b6daacc53f2d0587e1cf7a383118ad5be70f13417d5ce360",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/216",
+    "merge_sha": "8236dff1e2208499fceaa97e66d87dadc39d39e8",
+    "catalog_revision": 443,
+    "configuration_sha256": "1b800c54564d5d0137179b378f95955b79a119480c7396505e4c621577e86ac7",
+    "model_sha256": "36e4c3e13461bced324990ee396dbb91a651d2b858483e0d332f4dbb7c805989",
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "new_technical_instance": true,
+    "original_instances_and_receipts_unchanged": true,
+    "session_unchanged": true,
+    "same_canonical_cycle": true,
+    "same_branch": true,
+    "product_unchanged": true,
+    "cycle_state": "VERIFYING",
+    "canonical_postimages_verified": 5,
+    "canonical_postimage_source": "postgres",
+    "effect_owner_pending": false,
+    "replayed_preconditions": [
+      "Current technical instance and source bindings",
+      "Retained-work authentication and task selection",
+      "Current validation receipt for changed execution/model pins"
+    ],
+    "reused": [
+      "Canonical session and owned cycle",
+      "Accepted COMMITTING and alignment",
+      "Original Native work and contributor identities",
+      "Qualified validator and signed review"
+    ],
+    "operations": [
+      {
+        "binding": "workflow_entry_select",
+        "operation_id": "op_5023c5922fecfad5b5fa1356af506956c3cdc80d",
+        "journal_sha256": "3a85a4540c3de2a4c9f874abf1e9cbbb6cfcf8d81e42ebdcbe27b788570face0",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_retained_validation_admit",
+        "operation_id": "op_510d2554f6de689615e07958e483449dcba94c8a",
+        "journal_sha256": "c5d3ca7f2812f7a21d55c19f1aa9c803dc0a8760d5c06d7699932a16c3d8434b",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_work_phase_select",
+        "operation_id": "op_ef5538abd88f52d94633f1d9d390d084d3f35946",
+        "journal_sha256": "efcf4f4e3a61b1c0ad4c5ed7e8ffe33f0ecc222c6fa3efe9cca027f91050782b",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_task_select",
+        "operation_id": "op_85cc7f9f0b6ff2bcd28107c3d3471b08f761e9b3",
+        "journal_sha256": "eecd601c304321e1c528846bf4b4da10c2e1e88a6a6f7cd7633c5a5696fe22ed",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_retained_task_work_observe",
+        "operation_id": "op_6c36e04b60fc80e51339404864468a8fc2d51748",
+        "journal_sha256": "e591468bfbea2bd497a707cac27cfd185769f49e3116247b256caa5bd3460f9d",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_validation_execute",
+        "operation_id": "op_f87288a2286e6b3a17cb4530306b2243165e74d9",
+        "journal_sha256": "4cdbafa8429324d74273459d90ca4f7fc5b9d8c087f27983967f17519c83ec6d",
+        "outcome": "completed",
+        "effect_status": "confirmed"
+      },
+      {
+        "binding": "cycle_validation_evaluate",
+        "operation_id": "op_0725c126072ba662e1ee06d92841bd8b9b8580a3",
+        "journal_sha256": "a74a4cb3ac955dc317df6552d56deb60dec25c2f3b8d276bc42b3abc7bef0f28",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_task_advance",
+        "operation_id": "op_42f3a82a5953efefa1d72abf2c6352e0b1e94631",
+        "journal_sha256": "d19486c0eb6531d3a02c4b870e832ef143c61e45813e11d854b63dd612482320",
+        "outcome": "completed",
+        "effect_status": "confirmed"
+      },
+      {
+        "binding": "cycle_validation_evaluate",
+        "operation_id": "op_2f956880bcd990cffb9e88b6f9d72cda20e5f4d9",
+        "journal_sha256": "a20bc687f68ddf0b01e4c9c2ffb02c969765981a2ef5aa6e86d2689c818ddb3b",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_verification_enter",
+        "operation_id": "op_67490170640e6ec8098d43cdcbcb3242a8cd8a0c",
+        "journal_sha256": "26948eee959fe7e98c3a54024a4230a849af13890c02b4fe31ebe6d7e326b743",
+        "outcome": "completed",
+        "effect_status": "confirmed"
+      },
+      {
+        "binding": "cycle_audit_select",
+        "operation_id": "op_ca5a1c8b1976e7bbbbb713829787e122bc706b3e",
+        "journal_sha256": "fec6cd4cf8b0115c21cafcdba02a4083d72f360b805d42f586c9175fcf7a49bd",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      }
+    ],
+    "validation": {
+      "status": "PASS",
+      "manifest_sha256": "4b246a4d1b587d2ec31391593b88b439b1c63f538c27638b33032bdb2525fe43",
+      "product_sha256": "ed1fc8275ab99e7cd4e571b0419fbc2b57928bf93710b4d1da8709b956510c1a",
+      "proof_class": "native",
+      "witness_hashes_verified": true,
+      "checks": [
+        {
+          "test_ref": "TEST-001",
+          "status": "passed",
+          "exit_code": 0,
+          "termination_state": "confirmed",
+          "controller_active_processes": 0,
+          "child_active_processes": 0
+        }
+      ]
+    },
+    "controlled_task_progress_checks": 20,
+    "controlled_retained_continuation_checks": 17,
+    "composed_two_task_sqlite_db_only": "PASS",
+    "composed_transport": "controlled_native_wire",
+    "governance_admission": "PASS",
+    "gate_families": "PASS",
+    "perf_kpi": "PASS",
+    "native_model_calls": 0,
+    "manual_signatures": 0,
+    "new_mode_questions": 0,
+    "new_alignment_questions": 0,
+    "native_audit": {
+      "status": "SKIP",
+      "reason": "Current explicit Native envelope requested in the chat after the earlier envelope expired"
+    },
+    "complete_standard_workflow": false
   }
 }
