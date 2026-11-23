@@ -1,0 +1,194 @@
+{
+  "candidate": "90261356953b3e15d4d9cd61e357102ed9004b0b",
+  "archive_sha256": "c73345bc46d45e8aec1ef4f73247d1a9ee7f02ba464a97d764be4ba872710e30",
+  "model_revision": 437,
+  "correction_prs": [
+    210,
+    211
+  ],
+  "backend": "postgres",
+  "state_mode": "db-only",
+  "status": "PASS",
+  "scope": "Installed public entry continues the retained owned OPEN session/cycle to its Native planner wait",
+  "method": "A new technical instance continues the same canonical business session and cycle; the original technical instance remains immutable",
+  "strategy": 1,
+  "strategy_complete": false,
+  "technical_decisions": [
+    {
+      "pr": 210,
+      "candidate": "0ca48011550b3c63deb19ea62be3222cb31e724c",
+      "verdict": "GO",
+      "scope": "Owned OPEN untouched-scaffold planning selector",
+      "evidence": "Controlled-host db-only planning/evaluation/recording/DoR/IMPLEMENTING and refusal cases; no genuine Native execution claimed"
+    },
+    {
+      "pr": 211,
+      "head": "54be133914edfe7ce5036eb04df69be76030a446",
+      "verdict": "GO",
+      "scope": "Bounded public checkpoint entry for the unchanged owned OPEN cycle",
+      "evidence": "Public SQLite/db-only fixture, seven negative cases, ordinary startup/recovery regressions and read-only retained PostgreSQL checkpoint prototype"
+    }
+  ],
+  "comparison": {
+    "baseline_candidate": "020382a90184496d375629983a502103f694cf72",
+    "baseline_entry": "resume_cycle",
+    "baseline_plan_projection": "STANDARD_CANONICAL_PLAN_UNREPRESENTABLE",
+    "baseline_reason": "Untouched initial planning documents were routed into existing canonical-plan projection",
+    "rejected_prototype": "Duplicating a shared suffix inside exclusive branches was not structurally valid; no effect or historical state was changed",
+    "delivered_selection": "Authenticate the checkpoint, reevaluate current R05 signals, then select planning from current canonical state"
+  },
+  "public_continuation": {
+    "status": "PASS",
+    "installed_cli": true,
+    "previous_instance_unchanged": true,
+    "source_instance_sha256": "84b5779f416e1a088a5db927a7e0f35e9a84ce3355389793c50621c7f96b2e63",
+    "new_instance_sha256": "eea2b9cace51f6a382aa11fc444d1cd6ed1efde8e86243913014b5541ef58c9e",
+    "checkpoint": {
+      "source_instance_sha256": "84b5779f416e1a088a5db927a7e0f35e9a84ce3355389793c50621c7f96b2e63",
+      "checkpoint_operation_id": "op_73cbfca3974e9727fde4e0a7f911e88091582a01",
+      "checkpoint_sha256": "5f8070113cedabf0f159dc23e9001af94c938727bebcdd7d68a74238c4148165",
+      "completion_operation_id": "op_16f94c0ddb8395b6d672b42608092972c7b018fa",
+      "completion_sha256": "894ce141f5ae5d9d86ed8ef2e0435ff2e143a22e592f1edbe443aed5bd9628ca",
+      "alignment_sha256": "9019760fe23eae4d3a4d4f65b9c0204f55e6f2d6bb0a9d218f4c077b4cd40f33",
+      "gate_sha256": "081f7f33430028b37742e7de417ec42aac780d5ed15c09d9cf48bcefedff6a43"
+    },
+    "accepted_mode_and_alignment_reused": true,
+    "bindings": [
+      {
+        "binding": "workflow_entry_select",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "journal_sha256": "b2e0a471d0f2dc5b42b769003a2fe3981d4caf390be09b94088f5d2789929220"
+      },
+      {
+        "binding": "cycle_context_refresh",
+        "outcome": "completed",
+        "effect_status": "confirmed",
+        "journal_sha256": "f391be0f86d44513a3f86448ece5b4d47295ce04bf9545050e8660c621bd0bf0"
+      },
+      {
+        "binding": "cycle_entry_observe",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "journal_sha256": "0a430238c855b402d7891e2f73d266cd35c3aa295aaa1f5f770d41d6fecabf9c"
+      },
+      {
+        "binding": "cycle_entry_admit",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "journal_sha256": "547e9c3ae5460dde749a8a68bf21e997b25772c94d5fbcfd085cbc9934d82fee"
+      },
+      {
+        "binding": "cycle_owned_planning_select",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "journal_sha256": "04e0fe2622147c208cad11e58597b23a9ad68653539cdd47c8c2a79d3eb19d37"
+      },
+      {
+        "binding": "cycle_prework_select",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "journal_sha256": "f27c2d66b05e77da68519722304443dce1f4f3c9a51a70fb0291db1031352dd1"
+      }
+    ],
+    "waiting": "native",
+    "mode_questions": 0,
+    "manual_signatures": 0,
+    "native_calls": 0,
+    "effect_owner_pending": false,
+    "canonical_session_and_cycle_preserved": true
+  },
+  "validation": {
+    "public_owned_fixture": "PASS",
+    "negative_cases": [
+      "missing checkpoint",
+      "unsupported phase",
+      "changed product",
+      "changed HEAD",
+      "changed origin key",
+      "missing physical checkpoint",
+      "changed canonical intent"
+    ],
+    "ordinary_public_entry": "PASS",
+    "ordinary_cli_calls": 43,
+    "resource_recovery_fixture": "PASS",
+    "revocation_before_epoch_cas_refused": true,
+    "source_failure_deadline_dispatch_debits_preserved": true,
+    "other_checks": [
+      {
+        "name": "entry selection/contracts",
+        "count": 5,
+        "status": "PASS"
+      },
+      {
+        "name": "published composition",
+        "count": 69,
+        "status": "PASS"
+      },
+      {
+        "name": "startup/implementation pins",
+        "count": 57,
+        "status": "PASS"
+      },
+      {
+        "name": "binding inputs",
+        "count": 6,
+        "boundaries": 85,
+        "status": "PASS"
+      },
+      {
+        "name": "docs references, Markdown contracts, CLI inventory, sensitivity and diff check",
+        "status": "PASS"
+      }
+    ],
+    "governance_route": {
+      "contract": "governance-route.v1",
+      "lane": "ASSURED",
+      "status": "PASS"
+    },
+    "ci": {
+      "head": "54be133914edfe7ce5036eb04df69be76030a446",
+      "governance_run": 45114851962,
+      "status": "PASS",
+      "perf_run": 45113720305,
+      "perf_status": "PASS"
+    }
+  },
+  "preparation": {
+    "validator_reused": true,
+    "validator_controls_reexecuted": false,
+    "public_key_identity_preserved": true,
+    "public_key_encoding_correction": "A new local profile copy supplies DER/SPKI bytes expected by the boundary instead of PEM bytes",
+    "initial_preview_refusal": "PROCESS_EXECUTION_PROTECTED_ROOT_INVALID",
+    "initial_refusal_cause": "Preparation added a seventeenth protected root",
+    "corrected_before_instance_creation": true,
+    "all_original_protected_roots_preserved": true,
+    "old_requests_and_receipts_preserved": true
+  },
+  "consumption": {
+    "historical_responses": 6,
+    "historical_bytes": 13295681,
+    "new_native_responses": 0,
+    "old_authorizations_expired": true,
+    "unused_authorization_transferred": false
+  },
+  "human_channel": {
+    "manual_signatures": 0,
+    "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
+  },
+  "next_required": "Authorize a finite Native budget on the frozen continuation configuration, execute real planning, observe plan recording and the next admission",
+  "genuine_native_planning": "SKIP",
+  "plan_recording": "SKIP",
+  "following_admission": "SKIP",
+  "full_nominal": "SKIP",
+  "same_candidate_recovery": "SKIP",
+  "installed_full_nominal": "SKIP",
+  "p0_complete": false,
+  "limitations": [
+    "This is one bounded cross-instance entry, not a general model/policy/implementation migration.",
+    "The same retained pilot and approved hooks are reused; this is not the final clean-client archive qualification.",
+    "Strategies 2 and broader 3 remain open; no lossy projection or receipt migration was introduced."
+  ],
+  "private_observation_sha256": "65184cc1158cef1951d0a06ad17dbe49b60238c97b8a467c9be15f489cb6cb80",
+  "observed_at": "2026-11-23T05:10:59.863Z"
+}

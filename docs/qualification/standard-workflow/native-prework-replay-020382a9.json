@@ -177,5 +177,17 @@
     "This isolated actor result is not submitted to the historical instance; old receipts and UNKNOWN are untouched.",
     "Passing the blocked planning boundary does not establish implementation, product tests, independent final audit or delivery."
   ],
-  "observed_at": "2026-11-23T03:08:48.323Z"
+  "observed_at": "2026-11-23T03:08:48.323Z",
+  "targeted_continuation": {
+    "candidate": "90261356953b3e15d4d9cd61e357102ed9004b0b",
+    "correction_prs": [
+      210,
+      211
+    ],
+    "report": "native-owned-continuation-90261356.json",
+    "status": "PASS",
+    "scope": "Installed public entry continues the retained owned OPEN session/cycle to its Native planner wait",
+    "genuine_native_planning": "SKIP",
+    "p0_complete": false
+  }
 }
