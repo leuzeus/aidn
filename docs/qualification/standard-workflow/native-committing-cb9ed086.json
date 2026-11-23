@@ -6,7 +6,7 @@
   "model_revision": 430,
   "backend": "Windows/PostgreSQL",
   "state_mode": "db-only",
-  "campaign_state": "APPLYING_COMMITTING",
+  "campaign_state": "RUNNING_CYCLE_DIAGNOSIS",
   "scenario": "Fresh candidate replay in an isolated qualification workspace; no predecessor canonical session or decision receipt was imported",
   "package_installation": "PASS",
   "source_installed_inventory": {
@@ -74,7 +74,37 @@
       "peer_import": false,
       "scope": "Two installed checkouts read the same canonical bootstrap inventory; no session resume has run yet"
     },
-    "bootstrap_import": "Explicit installation import of 35 current scaffold documents; no historical session or cycle migration"
+    "bootstrap_import": "Explicit installation import of 35 current scaffold documents; no historical session or cycle migration",
+    "two_checkouts_same_session": {
+      "status": "PASS",
+      "canonical_session_count": 1,
+      "mode": "COMMITTING",
+      "canonical_content_sha256": "60a9c277063e4f54181c9458690a906b1942ed96fcb9d599fd5db1ef150eba28",
+      "peer_import": false,
+      "scope": "Independent installed CLI reads of the same canonical session; no workflow execution or resumption in the peer checkout"
+    },
+    "two_checkouts_same_cycle_ownership": {
+      "status": "PASS",
+      "session_owner": "S001",
+      "attached_cycles_contains_cycle": true,
+      "same_session_and_cycle_records": true,
+      "artifact_hashes": [
+        {
+          "role": "session",
+          "sha256": "71f63ae802242e7eedbaab2ec9fbf3716ecbac982a97aba270526056c9879147"
+        },
+        {
+          "role": "brief",
+          "sha256": "2af69a89d8b1add109c05d0f23f1a3a0cfcd8d1eb508f72ad86add03d2c901c2"
+        },
+        {
+          "role": "status",
+          "sha256": "4739680d5df6dc980127416017741cee47569dc4023815d29b6276cf8235a28b"
+        }
+      ],
+      "evidence_sha256": "4b689f9fb242f5ddc5c389f518b2265c0bc7840c1d0b34a45c30d1b801169b6b",
+      "scope": "Independent installed CLI reads from two checkouts; peer workflow execution and resumption remain untested"
+    }
   },
   "preparation_findings": [
     {
@@ -98,9 +128,34 @@
     }
   ],
   "native": {
-    "status": "SKIP",
-    "launched": false,
-    "responses": 0
+    "status": "PASS",
+    "scope": "Completed startup activity only; the campaign remains in progress",
+    "launched": true,
+    "responses": 1,
+    "activities": [
+      {
+        "generation": 1,
+        "status": "PASS",
+        "output_contract": "standard-drift-report.v1",
+        "answer_sha256": "48a5eb875068c8d9bb2e200e0d291faef82094f0413815c3e80adf3357b79575",
+        "active_processes": 0,
+        "responses": 1,
+        "storage_budget_debit_bytes": 2146799,
+        "supervised_process_ms": 109455,
+        "trace_sha256": "dae2b01d5e33b54ebcf46499a282bdd47a099d0095b3212a129d32f4dcc20a27",
+        "thread_usage": [
+          {
+            "totalTokens": 29724,
+            "inputTokens": 28616,
+            "cachedInputTokens": 0,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 1108,
+            "reasoningOutputTokens": 30
+          }
+        ],
+        "usage_scope": "latest observed cumulative snapshot per thread; not a billed total"
+      }
+    ]
   },
   "full_nominal": "SKIP",
   "installed_nominal": "SKIP",
@@ -111,7 +166,7 @@
     "The predecessor Native implementation failure remains unchanged; instruction fixtures do not prove the original tool cause or genuine-model behavior.",
     "A fresh candidate replay is not resumption of the predecessor workspace."
   ],
-  "report_checkpoint_at": "2026-11-23T00:01:09.658Z",
+  "report_checkpoint_at": "2026-11-23T00:20:01.287Z",
   "signed_mode": {
     "status": "PASS",
     "choice": "COMMITTING",
@@ -125,6 +180,16 @@
     "manual_signature_steps": 0,
     "proof_sha256": "18dd2d5ab890e545f0ae949f85872181a74ab510efa067a026ad0b0c77254249",
     "evidence_class": "operator-accepted-local-history-observation",
-    "independent_original_author_proof": false
+    "independent_original_author_proof": false,
+    "applied_in_canonical_session": true
+  },
+  "native_authorization": {
+    "status": "PASS",
+    "configuration_sha256": "bbd98059d1df0adf561ac5ecce3cd3f1f13221d4f24db92a5d7bdecebf16fba9",
+    "max_responses": 24,
+    "max_bytes": 67108864,
+    "max_turn_ms": 600000,
+    "duration_ms": 3600000,
+    "manual_signature_steps": 0
   }
 }
