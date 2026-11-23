@@ -1001,3 +1001,15 @@ provider/model or process controller require a separately qualified continuation
 Preview remains read-only; every effect uses the existing exact action execution.
 This entry retains COMMITTING and starts at current validation without another
 planning or implementation activity. It does not renew Native authorization.
+
+For an already verified retained-validation instance, the same public request
+accepts `entry_point.kind: retained_verification`, `audit_operation_id` naming
+its accepted audit selection, and `original_configuration` with the path/hash
+of that instance's resolved execution configuration. Use a new technical
+instance ID for the same owned session and VERIFYING cycle. This bounded entry
+rechecks the original validation/progression/verification chain and current
+product/context, then starts at independent audit. It does not rerun validation
+or replace its original receipts. A failed Native allocation must have its
+closure and accounting reconciled first. Normal exact execution, protected
+source paths, current qualified profile and applicable Native budget remain
+required; preview grants no execution or renewal.

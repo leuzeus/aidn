@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "./verify-standard-retained-verification-fixtures.mjs";
 import fs from "node:fs";
 import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
 import { ownedResumeSourceContractFixture } from "./standard-owned-cycle-resume-contract-fixture-lib.mjs";
@@ -89,7 +90,7 @@ await check("retained model route reaches validation without mode, planning or i
       authority_id: "synthetic", scope_id: instance.scope_id, instance_id: instance.instance_id, instance_sha256: instance.instance_sha256,
       model_sha256: instance.model_sha256, occurrence_id: occurrence.occurrence_id, instance_revision: instance.revision };
     instance = advanceAgenticProcess(instance, { event_id: "intent-" + index, kind: "operation_intent", occurrence_id: occurrence.occurrence_id, intent });
-    const facts = index === 0 ? entryFacts : index === 2 ? { cycle_work_retained_validation: true, cycle_work_tasks_pending: false, cycle_work_product_ready: false } : {};
+    const facts = index === 0 ? entryFacts : index === 2 ? { cycle_work_retained_validation: true, cycle_work_retained_verification: false, cycle_work_tasks_pending: false, cycle_work_product_ready: false } : {};
     instance = advanceAgenticProcess(instance, { event_id: "result-" + index, kind: "operation_result", occurrence_id: occurrence.occurrence_id,
       receipt: { contract_version: "process-operation-receipt.v1", receipt_id: "synthetic-result-" + index, operation_id: intent.operation_id,
         intent_sha256: H(intent), authority_id: "synthetic", outcome: "completed", effect_status: "no_effect", output_sha256: digest, facts, evidence_refs: [{ ref: "fixture:synthetic", sha256: digest }] } });

@@ -48,8 +48,9 @@ const xor = (id, choices) => node(id, "xor", { branches: choices.map(([flow_id, 
 
 seq("standard", ["entry_select", "startup_route", "mode_preparation_route", "cycle_work_route"]);
 op("entry_select", "workflow_entry_select");
-xor("mode_preparation_route", [["retained", "retained_preparation_inapplicable", "retained_validation_requested"], ["ordinary", "mode_route", null]]);
+xor("mode_preparation_route", [["verified", "retained_verification_preparation_inapplicable", "retained_verification_requested"], ["retained", "retained_preparation_inapplicable", "retained_validation_requested"], ["ordinary", "mode_route", null]]);
 seq("retained_preparation_inapplicable", []);
+seq("retained_verification_preparation_inapplicable", []);
 xor("startup_route", [["owned", "owned_startup_inapplicable", "owned_cycle_continuation_requested"], ["session", "session_startup", null]]);
 seq("owned_startup_inapplicable", []);
 seq("session_startup", ["startup", "mode_preflight", "session_start_finalize"]);
@@ -413,11 +414,13 @@ const preparationNodes = nodes.splice(preparationNodeStart), preparationTarget =
 const preparationRef = pinTarget(preparationTarget);
 node("work_prepare", "call", { target: preparationRef }); inputs.push({ node_id: "work_prepare", fields: {} });
 op("phase_select", "cycle_execution_source_select", { record_operation_id: { source: "call_output", node_id: "work_prepare", path: ["record_operation_id"] } });
-xor("work_preparation_route", [["retained", "retained_admit", "retained_validation_requested"], ["ordinary", "ordinary_work_preparation", null]]);
+xor("work_preparation_route", [["verified", "retained_verification_admit", "retained_verification_requested"], ["retained", "retained_admit", "retained_validation_requested"], ["ordinary", "ordinary_work_preparation", null]]);
 seq("ordinary_work_preparation", ["work_prepare", "phase_select"]);
 op("retained_admit", "cycle_retained_validation_admit");
+op("retained_verification_admit", "cycle_retained_verification_admit");
+seq("retained_verification_ready", []);
 op("work_phase_select", "cycle_work_phase_select");
-xor("initial_task_route", [["retained", "retained_validation", "cycle_work_retained_validation"], ["pending", "task_loop", "cycle_work_tasks_pending"], ["complete", "canonical_verification", "cycle_work_product_ready"]]);
+xor("initial_task_route", [["verified", "retained_verification_ready", "cycle_work_retained_verification"], ["retained", "retained_validation", "cycle_work_retained_validation"], ["pending", "task_loop", "cycle_work_tasks_pending"], ["complete", "canonical_verification", "cycle_work_product_ready"]]);
 node("task_loop", "loop", { child: "task_iteration", until: "cycle_tasks_finished", max_iterations: 32 });
 seq("task_iteration", ["task_select", "implement", "work_evaluate", "validate", "task_validation", "task_advance", "task_route"]);
 const implementationSource = () => ({ implementation_operation_id: { source: "operation_output", node_id: "work_phase_select", path: ["observations", "implementation_operation_id"] } });

@@ -1,3 +1,4 @@
+import { retainedVerificationAdmit } from "../../core/workflow/standard-retained-verification.mjs";
 import { standardOperationReliability } from "../workflow/installed-operation-reliability.mjs";
 import { prIncidentCloseOperation } from "../../core/workflow/standard-pr-incident-close.mjs";
 import { handoffResourceOperation } from "../../core/workflow/standard-handoff-resource-operation.mjs";
@@ -59,12 +60,13 @@ export function createStandardOperationProvider({
       ? await operations.admitCycleEntry({ contract_version: "standard-cycle-entry-input.v1", session_id: parameters.session?.session_id, cycle_id: null }) : null;
     assertCurrent();
     const continuation = admission?.outcome === "completed" && admission.facts.cycle_entry_resume_allowed
-      ? await (point === "retained_validation" ? processAuthority.retainedValidationEntry(instance, parameters, admission)
+      ? await (point === "retained_verification" ? processAuthority.retainedVerificationEntry(instance, parameters, admission) : point === "retained_validation" ? processAuthority.retainedValidationEntry(instance, parameters, admission)
         : entryContinuation?.(instance, parameters, admission) ?? fail("STANDARD_ENTRY_CONTINUATION_AUTHORITY_REQUIRED")) : null;
     assertCurrent();
     return selectStandardEntry(parameters, admission, continuation);
   }
   const previews = new Map([
+    [retainedVerificationAdmit, async ({ state }) => processAuthority.admitRetainedVerification(state.record)],
     [retainedValidationAdmit, async ({ state }) => processAuthority.admitRetainedValidation(state.record)],
     [workPhaseSelect, async ({ state }) => processAuthority.selectWorkPhase(state.record)],
     [retainedTaskWork, async ({ state, input }) => processAuthority.observeRetainedTaskWork(state.record, input)],
@@ -379,6 +381,7 @@ export function createStandardOperationProvider({
     }],
   ]);
   const observations = new Map([
+    [retainedVerificationAdmit, async ({ state }) => processAuthority.admitRetainedVerification(state.record)],
     [retainedValidationAdmit, async ({ state }) => processAuthority.admitRetainedValidation(state.record)],
     [workPhaseSelect, async ({ state }) => processAuthority.selectWorkPhase(state.record)],
     [retainedTaskWork, async ({ state, record }) => processAuthority.observeRetainedTaskWork(state.record, record.preview.input)],

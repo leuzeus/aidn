@@ -1,3 +1,4 @@
+import { retainedVerificationAdmit, assertRetainedVerificationInput, assertRetainedVerificationOutput } from "./standard-retained-verification.mjs";
 import spikeReviewInput from "../contracts/workflow-definition/standard-spike-review-input.v1.schema.json" with { type: "json" };
 import spikeExperimentInput from "../contracts/workflow-definition/standard-spike-experiment-input.v1.schema.json" with { type: "json" };
 import spikeExperimentOutput from "../contracts/workflow-definition/standard-spike-experiment-admission-output.v1.schema.json" with { type: "json" };
@@ -211,6 +212,7 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (operation === retainedVerificationAdmit) return assertRetainedVerificationInput(value);
   if ([retainedValidationAdmit, retainedTaskWork, workPhaseSelect].includes(operation)) return assertRetainedValidationInput(operation, value);
   if (operation === workflowEntrySelectOperation) {
     if (checkShadowJson(value) || validateJsonSchema(value, empty, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
@@ -363,7 +365,8 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
-  if (["standard-workflow-entry-selection-output.v1", "standard-workflow-entry-selection-output.v2"].includes(value?.contract_version)) return assertStandardEntrySelection(value);
+  if (["standard-workflow-entry-selection-output.v1", "standard-workflow-entry-selection-output.v2", "standard-workflow-entry-selection-output.v3"].includes(value?.contract_version)) return assertStandardEntrySelection(value);
+  if (value?.operation_ref === retainedVerificationAdmit) return assertRetainedVerificationOutput(value);
   if ([retainedValidationAdmit, retainedTaskWork, workPhaseSelect].includes(value?.operation_ref)) return assertRetainedValidationOutput(value);
   if (value?.contract_version === "standard-handoff-git-output.v1") return assertHandoffGitOutput(value);
   if (["standard-handoff-summary-output.v1", "standard-handoff-prepare-output.v1", "standard-handoff-admission-output.v1"].includes(value?.contract_version)) return assertHandoffPreparationOutput(value);
