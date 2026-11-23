@@ -7873,3 +7873,14 @@ semantics. It uses fixture history and cannot prove historical Windows launch
 evidence, real Native work or PostgreSQL execution. Public pilot preview, actual
 reconciliation, compatible workflow continuation, installed archive and P0 retain
 separate verdicts. Never count `reconciled_not_started` as a passing product test.
+
+For the bounded continuation after launch recovery, run
+`node tools/perf/verify-standard-retained-validation-fixtures.mjs`. It checks the
+closed proof/entry contracts, changed task/product/session/scope refusals, fixed
+provider routing, the published reducer path to validation with no Native work,
+and historical contributor exclusion before a fresh review session opens. These
+controlled checks are part of agent-run-lifecycle. They do not qualify real
+Native actors or historical recovery evidence. Recheck the retained installed
+source in read-only mode, then exercise the public entry, current validator,
+canonical progression and audit separately on the frozen candidate. Record
+source/installed execution and retained UNKNOWN history separately from final P0.

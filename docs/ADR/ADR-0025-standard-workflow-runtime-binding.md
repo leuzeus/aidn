@@ -5340,3 +5340,37 @@ the old model. A compatible continuation must consume this proof explicitly and
 run current validation. No global pin relaxation, implicit receipt migration,
 manual key ceremony or synthetic successful operation result is introduced.
 Native allocation budgets and accepted business decisions remain unchanged.
+
+### Retained work after a recovered validation launch
+
+`parameters.entry_point.kind=retained_validation` names the completed launch
+recovery operation and the pinned original resolved configuration. It starts a
+new technical instance for the same owned COMMITTING session/cycle. The original
+instance, UNKNOWN receipt and recovery record remain immutable. This bounded
+transition supports one implemented task with no accepted task advance, an
+IMPLEMENTING cycle and an unchanged product/plan/branch. Multi-task progress,
+integration-only intent, foreign ownership, missing recovery, active owners and
+changed criteria, provider/model or controller refuse before validation.
+
+The historical reader uses the private diagnostic authentication path and the
+original signing key, model, bindings and closed Native checkpoints. It rechecks
+the original task work with the current pure evaluator. Historical configuration
+is data; no old package module is loaded. Normal execution of the historical model
+continues to require current implementation pins. The source configuration and
+historical evidence roots must be protected from the new Native actors.
+
+The current entry receipt retains the proof digest. Three deterministic bindings
+admit that exact source, select the phase and observe retained task work. Their
+closed contracts distinguish the original Native producer from a current activity;
+they grant no implementation or validation success. Current validation, task
+advance and verification receive current operation receipts. After a legitimate
+progress transition, its existing causal chain governs the new context; the
+unchanged historical records and product remain pinned. No facts or Native events
+are imported into the new instance.
+
+The execution host receives prior contributor identities through a private reader
+before opening a Native session. They supplement the current review exclusion
+set, without importing old resources or falsely assigning them the new scope.
+Independent review still requires its separate fresh read-only session. Native
+budgets are not renewed by this entry, and accepted mode/alignment decisions are
+not asked again. This targeted continuation is not a full single-candidate P0 run.

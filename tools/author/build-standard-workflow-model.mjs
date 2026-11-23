@@ -46,8 +46,10 @@ const native = (id, role_ref, policy_ref, output_contract, skill_ids, rule_refs)
 };
 const xor = (id, choices) => node(id, "xor", { branches: choices.map(([flow_id, node_id, condition]) => ({ flow_id, node_id, condition })) });
 
-seq("standard", ["entry_select", "startup_route", "mode_route", "cycle_work_route"]);
+seq("standard", ["entry_select", "startup_route", "mode_preparation_route", "cycle_work_route"]);
 op("entry_select", "workflow_entry_select");
+xor("mode_preparation_route", [["retained", "retained_preparation_inapplicable", "retained_validation_requested"], ["ordinary", "mode_route", null]]);
+seq("retained_preparation_inapplicable", []);
 xor("startup_route", [["owned", "owned_startup_inapplicable", "owned_cycle_continuation_requested"], ["session", "session_startup", null]]);
 seq("owned_startup_inapplicable", []);
 seq("session_startup", ["startup", "mode_preflight", "session_start_finalize"]);
@@ -189,7 +191,7 @@ const choiceNodes = nodes.splice(choiceNodeStart), choiceTarget = { contract_ver
 const choiceRef = pinTarget(choiceTarget);
 node("selected_cycle", "call", { target: choiceRef });
 inputs.push({ node_id: "selected_cycle", fields: operation(null, "entry_operation_id", "cycle_entry_observe") });
-seq("cycle_work", ["work_prepare", "phase_select", "initial_task_route",
+seq("cycle_work", ["work_preparation_route", "work_phase_select", "initial_task_route",
   "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "cycle_terminal_checkpoint", "close_finalize", "promotion_eligibility", "session_preclose_checkpoint", "session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize", "session_delivery_checkpoint", "session_branch_integration_decide", "session_branch_integrate", "session_pr_delivery"]);
 seq("session_pr_delivery", ["session_pr_admit", "session_push", "session_pr_open", "session_pr_record", "session_pr_checkpoint", "session_pr_update_push", "session_pr_review_observe", "session_pr_review_capture", "session_pr_review_event_route", "session_pr_pretriage_route"]);
 op("session_pr_review_observe", "session_pr_review_content_observe", operation("session_pr_review_observe", "update_operation_id", "session_pr_update_push"));
@@ -411,10 +413,14 @@ const preparationNodes = nodes.splice(preparationNodeStart), preparationTarget =
 const preparationRef = pinTarget(preparationTarget);
 node("work_prepare", "call", { target: preparationRef }); inputs.push({ node_id: "work_prepare", fields: {} });
 op("phase_select", "cycle_execution_source_select", { record_operation_id: { source: "call_output", node_id: "work_prepare", path: ["record_operation_id"] } });
-xor("initial_task_route", [["pending", "task_loop", "cycle_work_tasks_pending"], ["complete", "canonical_verification", "cycle_work_product_ready"]]);
+xor("work_preparation_route", [["retained", "retained_admit", "retained_validation_requested"], ["ordinary", "ordinary_work_preparation", null]]);
+seq("ordinary_work_preparation", ["work_prepare", "phase_select"]);
+op("retained_admit", "cycle_retained_validation_admit");
+op("work_phase_select", "cycle_work_phase_select");
+xor("initial_task_route", [["retained", "retained_validation", "cycle_work_retained_validation"], ["pending", "task_loop", "cycle_work_tasks_pending"], ["complete", "canonical_verification", "cycle_work_product_ready"]]);
 node("task_loop", "loop", { child: "task_iteration", until: "cycle_tasks_finished", max_iterations: 32 });
 seq("task_iteration", ["task_select", "implement", "work_evaluate", "validate", "task_validation", "task_advance", "task_route"]);
-const implementationSource = () => ({ implementation_operation_id: { source: "operation_output", node_id: "phase_select", path: ["observations", "implementation_operation_id"] } });
+const implementationSource = () => ({ implementation_operation_id: { source: "operation_output", node_id: "work_phase_select", path: ["observations", "implementation_operation_id"] } });
 op("task_select", "cycle_task_select", implementationSource());
 native("implement", "implementer", "implementation", "standard-cycle-task-work-report.v1", [], ["SPEC-R03", "SPEC-R04", "SPEC-R06"]);
 inputs.push({ node_id: "implement", fields: operation("implement", "task_operation_id", "task_select") });
@@ -442,6 +448,16 @@ node("final_verification", "call", { target: verificationRef });
 inputs.push({ node_id: "final_verification", fields: {
   ...operation(null, "validation_operation_id", "validate"), ...operation(null, "progress_operation_id", "task_advance"),
 } });
+// One recovered single-task boundary. Retain historical Native authorship;
+// validation, progress and verification all receive new current receipts.
+seq("retained_validation", ["retained_task_select", "retained_work", "retained_validate", "retained_evaluate", "retained_advance", "retained_verify"]);
+op("retained_task_select", "cycle_task_select", implementationSource());
+op("retained_work", "cycle_retained_task_work_observe", { ...implementationSource(), ...operation(null, "task_operation_id", "retained_task_select") });
+op("retained_validate", "cycle_validation_execute", operation(null, "work_operation_id", "retained_work"));
+op("retained_evaluate", "cycle_validation_evaluate", operation(null, "validation_operation_id", "retained_validate"));
+op("retained_advance", "cycle_task_advance", operation(null, "evaluation_operation_id", "retained_evaluate"));
+node("retained_verify", "call", { target: verificationRef });
+inputs.push({ node_id: "retained_verify", fields: { ...operation(null, "validation_operation_id", "retained_validate"), ...operation(null, "progress_operation_id", "retained_advance") } });
 // Complete canonical DATA gets a trusted present-product observation and fresh
 // checks, with no synthetic task advance, writer result or progress identity.
 const completeNodeStart = nodes.length, completeInputStart = inputs.length;
@@ -549,7 +565,7 @@ for (const id of correctionNodes) {
   if (input) {
     const next = structuredClone(input); next.node_id = copy.id;
     for (const [key, field] of Object.entries(next.fields)) {
-      if (field.source === "operation_output" && field.node_id === "phase_select")
+      if (field.source === "operation_output" && field.node_id === "work_phase_select")
         next.fields[key] = { source: "operation_id", node_id: "correction_implementation_enter" };
       else if (field.node_id) field.node_id = correctionName(field.node_id);
     }
