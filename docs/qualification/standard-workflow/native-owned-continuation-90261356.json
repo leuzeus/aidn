@@ -185,7 +185,7 @@
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "Deliver the explicit compatible continuation at retained task work, preserving the original instance and decisions. Reuse the qualified repaired validator; the recovery record does not authorize passing validation or copying old receipts.",
+  "next_required": "Qualify the targeted task-owner correction from retained work using the current candidate pins, preserve both prior technical instances and test receipts, then continue to verification and independent audit. Full source/recovery/archive P0 remains separate.",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-23T15:39:39.014Z",
+  "updated_at": "2026-11-23T16:49:06.894Z",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -533,5 +533,137 @@
     "gate_families": "PASS",
     "perf_kpi": "PASS",
     "complete_standard_workflow": false
+  },
+  "retained_validation_continuation": {
+    "status": "PASS",
+    "scope": "Installed compatible continuation through real product validation and accepted machine evaluation; task advancement and Native audit not qualified",
+    "candidate": "ea10b535518c450adea9d04cf4e96b15d01012ce",
+    "archive_sha256": "f20579f547c453013fbbd3937798b3bf9d65f91a3b4c05294b0607d4fe8a4ea4",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/215",
+    "merge_sha": "eda06d75cd42511a9eac5c39d33e224180aac9e0",
+    "catalog_revision": 442,
+    "configuration_sha256": "7539689736afeec89270869e5b73254bccf4fcdd55b8020bebd837b02feb3fc8",
+    "model_sha256": "15992ce61b441dbb942139f7d0f72f700a913c38beefea378e9a9afe80d1338e",
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "new_technical_instance": true,
+    "same_canonical_session": true,
+    "same_canonical_cycle": true,
+    "same_branch": true,
+    "original_instance_and_unknown_preserved": true,
+    "product_unchanged": true,
+    "accepted_operations": [
+      {
+        "binding": "workflow_entry_select",
+        "operation_id": "op_b24ddfadf26279f2e33e04f14ebb356c5c9cdb32",
+        "journal_sha256": "fb92c319bfb7082370471185ee78b6eacbe1f91ec2f1267b418939fc863359e3",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_retained_validation_admit",
+        "operation_id": "op_c312b202d924bfd46d755748c39b9625407e18dc",
+        "journal_sha256": "acafbdf7cccee4625e712c131604359c51e21dee2d3f96306a18c5f38d3af92c",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_work_phase_select",
+        "operation_id": "op_349f8490f09e2409e2b583500c578d8927efe640",
+        "journal_sha256": "0a7e5bd1b9c58f3e67726fa992581bf7646cc40dec433b771bcaff6c2ab68172",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_task_select",
+        "operation_id": "op_5bd65e1c3cabd2d9d774a9267df1b2876fcb66d1",
+        "journal_sha256": "7c07d0c42df2744faaf1aa33e6ede2265a0864c6659661a91cca4582bccbc16f",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_retained_task_work_observe",
+        "operation_id": "op_a12d91516bf9ef3b7fb1521472b4e3bf1319ce17",
+        "journal_sha256": "2f0820e82bb89c6533c367b772ac30207e6dc2ab77508111f06f01410eaa486f",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_validation_execute",
+        "operation_id": "op_39677a0d9f4cfe2180925532a58f1e74b7768800",
+        "journal_sha256": "fca0a2439c6e364659a03070de6e07cb8b5d75498bbc9b7e013474d40283b6fd",
+        "outcome": "completed",
+        "effect_status": "confirmed"
+      },
+      {
+        "binding": "cycle_validation_evaluate",
+        "operation_id": "op_7a995c1ca058c8fd7015855d59aeb9d6632afad5",
+        "journal_sha256": "8dcc6a9144186bba474aa9c9f36c47c3330ce09c3a57b82aa3ab7e6e1c7100e3",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      }
+    ],
+    "validation": {
+      "status": "PASS",
+      "operation_id": "op_39677a0d9f4cfe2180925532a58f1e74b7768800",
+      "manifest_sha256": "43bf3ce44e3559907075816050c74a18344f9876748693ef201db10be1f41ec8",
+      "product_sha256": "ed1fc8275ab99e7cd4e571b0419fbc2b57928bf93710b4d1da8709b956510c1a",
+      "proof_class": "native",
+      "witness_hashes_verified": true,
+      "checks": [
+        {
+          "test_ref": "TEST-001",
+          "status": "passed",
+          "exit_code": 0,
+          "termination_state": "confirmed",
+          "controller_active_processes": 0,
+          "child_active_processes": 0
+        }
+      ]
+    },
+    "preparation_correction": {
+      "status": "PASS",
+      "first_preview": "WORKFLOW_RUN_UNAVAILABLE",
+      "cause": "PEM bytes supplied to a DER SPKI byte port",
+      "same_ed25519_key": true,
+      "original_profile_sha256": "fa3f8a1a8dae75e4024a55b96ea68bfc7692b7466fa74cf8f0a908a5ff4aa91b",
+      "current_profile_sha256": "92177151ec0271ab5c4da9f1d338fcdfd3e12a21469dc5a22f31c1bc0ebcc99a",
+      "qualification_sha256": "1a0ca5d7bf863afd08ee064efee7e92332995860c5cb7f6152b8c700fcf8ec62",
+      "new_qualification_signature": false
+    },
+    "prior_contributors_retained": 2,
+    "new_mode_questions": 0,
+    "new_alignment_questions": 0,
+    "manual_signatures": 0,
+    "native_model_calls": 0,
+    "gate_families": "PASS",
+    "governance_admission": "PASS",
+    "perf_kpi": "PASS",
+    "complete_standard_workflow": false
+  },
+  "retained_task_advance_refusal": {
+    "status": "FAIL",
+    "candidate": "ea10b535518c450adea9d04cf4e96b15d01012ce",
+    "operation_id": "op_aea3142229dd1c5b1ca5344c0f3328b65d527e24",
+    "journal_sha256": "fc92fda6c62eb974aa1e2162fff786f1782933f1a5276af90cdc63a431734b29",
+    "reason_code": "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED",
+    "outcome": "blocked",
+    "effect_status": "no_effect",
+    "canonical_progress_writes": 0,
+    "effect_owner_pending": false,
+    "diagnosis": "Task advancement omitted its live-owner assertion during retained-work reobservation in the writer and host composition",
+    "correction_pull_request": "https://github.com/leuzeus/aidn/pull/216",
+    "correction_candidate": "07b345f36147c3cd00fe5cf4ba12b992d5843ad2",
+    "corrective_installed_qualification": "SKIP",
+    "native_audit": "SKIP"
+  },
+  "closed_native_accounting": {
+    "responses": 12,
+    "bytes": 18355919,
+    "remaining_responses": 12,
+    "remaining_bytes": 48752945,
+    "source": "Retained earlier campaign accounting plus final signed closed allocation storage debits",
+    "new_allocation_count": 0,
+    "grant_expired": true
   }
 }
