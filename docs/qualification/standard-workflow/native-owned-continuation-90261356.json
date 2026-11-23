@@ -8,8 +8,8 @@
   ],
   "backend": "postgres",
   "state_mode": "db-only",
-  "status": "PASS",
-  "scope": "Installed public continuation on the retained PostgreSQL cycle through genuine Native planning, canonical plan recording, readiness and implementation entry",
+  "status": "FAIL",
+  "scope": "Installed public continuation through genuine planning and implementation; first validation dispatch remains UNKNOWN",
   "method": "A new technical instance continues the same canonical business session and cycle; the original technical instance remains immutable",
   "strategy": 1,
   "strategy_complete": false,
@@ -168,24 +168,24 @@
   "consumption": {
     "historical_responses": 6,
     "historical_bytes": 13295681,
-    "new_native_responses": 2,
+    "new_native_responses": 6,
     "old_authorizations_expired": true,
     "unused_authorization_transferred": false,
-    "new_native_storage_debit_bytes": 3041195,
-    "total_responses": 8,
-    "total_debit_bytes": 16336876,
+    "new_native_storage_debit_bytes": 5048630,
+    "total_responses": 12,
+    "total_debit_bytes": 18344311,
     "current_grant": {
       "max_responses": 18,
       "max_bytes": 53813183,
-      "remaining_responses": 16,
-      "remaining_bytes": 50771988
+      "remaining_responses": 12,
+      "remaining_bytes": 48764553
     }
   },
   "human_channel": {
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "Continue real task implementation, qualified validation and independent audit before delivery; broader continuation strategies and final P0 runs remain open",
+  "next_required": "Retain and diagnose first validation UNKNOWN, prove its reconciliation before any retry, then continue validation and independent audit; final P0 remains open",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -316,5 +316,100 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-23T05:22:28.240Z"
+  "updated_at": "2026-11-23T05:45:27.778Z",
+  "real_implementation": {
+    "status": "PASS",
+    "native": {
+      "generation": 2,
+      "status": "PASS",
+      "answer_sha256": "0d6ceb8b03670e0f0167b97ca2f2a677fa9d0442d488f69c5c90da7b2d228dbc",
+      "entry_result_sha256": "f055442e32b7c2423f25c7fc599f5c3afc07f53f501bc30ddd4020eb0ca43b50",
+      "responses": 4,
+      "bytes_retained": 1652398,
+      "storage_budget_debit_bytes": 2007435,
+      "consumption": {
+        "snapshots": [
+          {
+            "total": {
+              "totalTokens": 131340,
+              "inputTokens": 130446,
+              "cachedInputTokens": 96640,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 894,
+              "reasoningOutputTokens": 35
+            },
+            "last": {
+              "totalTokens": 33651,
+              "inputTokens": 33442,
+              "cachedInputTokens": 32896,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 209,
+              "reasoningOutputTokens": 0
+            },
+            "modelContextWindow": 475000
+          }
+        ],
+        "aggregation": "latest observed cumulative snapshot per thread; not a billed total",
+        "incomplete_turns_may_be_unknown": true
+      },
+      "closure": {
+        "method": "windows-job-object",
+        "active_processes": 0,
+        "started_at": "2026-11-23T05:24:47.2518758Z",
+        "observed_at": "2026-11-23T05:27:07.2493207Z"
+      }
+    },
+    "product_file_count": 2,
+    "product_sha256": "b4ee8e768f6ce2a5fe8c0f1d2d981f395c52d891eb9eebcb182bb2ff69fec502",
+    "work_evaluation": {
+      "binding": "cycle_task_work_evaluate",
+      "journal_sha256": "2a949bac2610d71464fb010891b1d55bf2c6580d23c5fe42ace8a04cc97040cb",
+      "outcome": "completed",
+      "effect_status": "no_effect"
+    },
+    "test_verdict": "NOT_RUN",
+    "completed_tasks": 0,
+    "previous_instance_unchanged": true,
+    "mode_questions": 0,
+    "alignment_questions": 0,
+    "manual_signatures": 0
+  },
+  "first_validation": {
+    "status": "FAIL",
+    "operation_ref": "cycle_validation_execute",
+    "operation_id": "op_db22bc4c951bfde10a9794d744c8e2a8bf847843",
+    "journal_sha256": "10c019b0f6f2f01ffa96a9618c10cf7cffe9a036db6b666ee8ee27ebef6b9f53",
+    "outcome": "reconciliation_required",
+    "effect_status": "unknown",
+    "reason_code": "STANDARD_VALIDATION_STOP_UNCONFIRMED",
+    "boundary_operation_id": "c116c61f1783bc29e6b121414201ee640bd2f9457a2250f9b74e9ae549062ecd",
+    "request_sha256": "eda1035bd14cff4ea6240d10be53f50dc04e4b878c2d2f741690ee3e19124f77",
+    "configuration_sha256": "af1f505c847eb8ce564f8518835d382dcb14ec454087de70c33106d33c5ce945",
+    "boundary_termination": "unknown",
+    "client_outcome": "failed",
+    "client_exit_code": 1,
+    "outer_job_termination": "confirmed",
+    "outer_job_active_processes": 0,
+    "child_membership_observed": false,
+    "child_terminal_observed": false,
+    "stderr_bytes": 60,
+    "stderr_sha256": "311e9558202ebec4a3b65aafe3c51105be36d778c26cde6b0ae7e2746d037356",
+    "stderr_text_retained": false,
+    "evidence": [
+      {
+        "sha256": "3d0857c566ebd22c2d2859a39217c0de0f7f77d9188a702c7700e3f76757cd01",
+        "bytes": 574
+      },
+      {
+        "sha256": "7a6fe98da529e8837cf2a6de3768e442331e1ecfdc41ad903dd23f3f1d8a47db",
+        "bytes": 2355
+      }
+    ],
+    "tests_passed": false,
+    "retry_count": 0,
+    "reconciled": false,
+    "effect_owner_pending": true,
+    "interpretation": "Outer Job closure alone does not establish closure of an unobserved sandbox child. The original receipt and owner are retained; no retry was dispatched.",
+    "private_observation_sha256": "59e8d2ceac2c741f59c6b8a4ea138a2df9d1348b3aa6c248c5895d7b4b16d3df"
+  }
 }
