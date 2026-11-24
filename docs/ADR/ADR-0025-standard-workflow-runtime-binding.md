@@ -5687,3 +5687,26 @@ to repeat the old operation. Finishing the session requires a separately admitte
 continuation; this bounded recovery route allocates no model and asks no new
 Human decision. Any close event, partial canonical write, unknown suffix, changed
 subject or active/unavailable scoped process refuses recovery.
+
+## Retained session checkpoint continuation
+
+A completed `standard-session-close-recovery.v1` disposition permits a bounded
+`retained_session_checkpoint` entry in a new technical instance. Its source is
+the four-operation retained-session-closure history: accepted entry, confirmed
+writer, confirmed checkpoint and returned UNKNOWN hook. The fixed reader pins
+and authenticates that history, the dispatch, Native journal and signed recovery,
+then authenticates the original Human choice, start run and R05 chain. It admits
+only unchanged checkpoint-only events, run identity and canonical preimages with
+no unsettled owner. It never edits the original instance or receipt.
+
+The new route skips the Human, writer and checkpoint and prepares the corrected
+hook under its ordinary current authority. The host selects the historical IDs;
+public finalizer input v2 is empty. Nominal routes likewise select their latest
+accepted checkpoint. The ordinary writer/checkpoint pair becomes a pinned call
+without changing effect order or increasing the 288-node root limit. Entry
+selection v9 declares the new route; historical v1-v8 outputs remain readable.
+After admission, immutable historical reads remain available to verify the close
+and delivery without requiring preimages that the accepted hook has changed.
+The existing operation journal and recovery record remain the authorities; no
+new persisted business concept, permission or migration is introduced. This
+bounded continuation is not a general cross-version resume or a full-run proof.

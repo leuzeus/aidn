@@ -48,7 +48,7 @@ export function createStandardOperationProvider({
     sessionPrMergeEffect, sessionPrOpen, sessionPrPremerge, sessionPrRecord, sessionPrRedeliveryPush,
     sessionPrReply, sessionPrResolution, sessionPrReview, sessionPrReviewContent,
     sessionPrReviewReceiver, sessionPrUpdatePush, sessionPrecloseCheckpoint, sessionPush, snapshot,
-    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent, entryContinuation, retainedClosureEntry, retainedCompletionEntry, prepareCycleCloseRecord, prepareSessionCloseRecord,
+    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent, entryContinuation, retainedClosureEntry, retainedCompletionEntry, prepareCycleCloseRecord, prepareSessionCloseRecord, prepareSessionCloseHook,
 }) {
   async function selectEntry(state) {
     const instance = state.record, parameters = instance.initial_parameters ?? {};
@@ -57,6 +57,10 @@ export function createStandardOperationProvider({
     };
     assertCurrent();
     const point = standardEntryPoint(parameters);
+    if (point === 'retained_session_checkpoint') {
+      const continuation = await processAuthority.retainedSessionCheckpointEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
     if (point === 'retained_session_closure') {
       const continuation = await processAuthority.retainedSessionClosureEntry(instance, parameters); assertCurrent();
       return selectStandardEntry(parameters, null, continuation);
@@ -156,7 +160,7 @@ export function createStandardOperationProvider({
       return await rollback?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");
     }],
     ["session_close_finalize", async ({ state, input, occurrenceId }) => {
-      return await sessionCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED");
+      return await prepareSessionCloseHook?.(state.record, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED");
     }],
     ["session_pr_checkpoint", async ({ state, input, occurrenceId }) => {
       return await sessionPrCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED");

@@ -8072,3 +8072,16 @@ archival and four interrupted recovery boundaries. The same fixture accepts
 `--mode=files` and `--mode=dual`. Its business history is synthetic. Historical
 PostgreSQL recovery, installed behavior and continuation to delivery require
 separate pilot evidence. A successful recovery does not close the session.
+
+## Retained session checkpoint continuation
+
+Run `node tools/perf/verify-standard-retained-session-checkpoint-fixtures.mjs`
+for closed recovery/checkpoint references, missing proof rejection, provider
+revision fencing and the published reducer route directly to the final hook.
+The ordinary retained-closure fixture enters its writer/checkpoint call first;
+composition fixtures retain corrective ordering and the unchanged root bound.
+These cases are included in retained-closure fixtures. They do not prove a real
+historical source or finalization. Qualify the reader against preserved signed
+history, including changed bindings, recovery, owner and canonical preimages;
+then exercise the public installed route and verify the physical close event,
+canonical state, Git checkpoint and unchanged old UNKNOWN independently.

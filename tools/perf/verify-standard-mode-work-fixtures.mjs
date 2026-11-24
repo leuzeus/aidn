@@ -35,7 +35,8 @@ test("versioned mode output binds every authenticated choice to its exact routin
 });
 test("cycle work routing uses authenticated intent without claiming a recorded plan", () => {
   const route = model.nodes.find(row => row.id === "cycle_work_route");
-  assert.equal(route.branches[0].condition, "cycle_work_requested");
+  assert.equal(route.branches.find(row => row.node_id === "cycle_work").condition, "cycle_work_requested");
+  assert.equal(route.branches[0].condition, "retained_session_closure_requested");
   assert.equal(model.nodes.find(row => row.id === "exploring_after_analysis").branches[0].condition, "mode_work_spike_requested");
   const execution = { contract_version: "standard-spike-experiment-admission-output.v3", operation_ref: "spike_experiment_execution_admit",
     outcome: "completed", effect_status: "no_effect", observations: {}, facts: { spike_experiment_execution_admitted: true, cycle_work_requested: true }, evidence_refs: [] };

@@ -99,7 +99,7 @@ import deliveryInput from "../contracts/workflow-definition/standard-session-del
 import deliveryOutput from "../contracts/workflow-definition/standard-session-delivery-checkpoint-output.v1.schema.json" with { type: "json" };
 import precloseInput from "../contracts/workflow-definition/standard-session-preclose-checkpoint-input.v1.schema.json" with { type: "json" };
 import precloseOutput from "../contracts/workflow-definition/standard-session-preclose-checkpoint-output.v1.schema.json" with { type: "json" };
-import sessionCloseHookInput from "../contracts/workflow-definition/standard-session-close-hook-input.v1.schema.json" with { type: "json" };
+import sessionCloseHookInput from "../contracts/workflow-definition/standard-session-close-hook-input.v2.schema.json" with { type: "json" };
 import sessionCloseHookOutput from "../contracts/workflow-definition/standard-session-close-hook-output.v1.schema.json" with { type: "json" };
 import sessionCloseCheckpointInput from "../contracts/workflow-definition/standard-session-close-checkpoint-input.v1.schema.json" with { type: "json" };
 import sessionCloseCheckpointOutput from "../contracts/workflow-definition/standard-session-close-checkpoint-output.v1.schema.json" with { type: "json" };
@@ -370,7 +370,7 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
-  if (["standard-workflow-entry-selection-output.v1", "standard-workflow-entry-selection-output.v2", "standard-workflow-entry-selection-output.v3", "standard-workflow-entry-selection-output.v4", "standard-workflow-entry-selection-output.v5", 'standard-workflow-entry-selection-output.v6', 'standard-workflow-entry-selection-output.v7', 'standard-workflow-entry-selection-output.v8'].includes(value?.contract_version)) return assertStandardEntrySelection(value);
+  if (["standard-workflow-entry-selection-output.v1", "standard-workflow-entry-selection-output.v2", "standard-workflow-entry-selection-output.v3", "standard-workflow-entry-selection-output.v4", "standard-workflow-entry-selection-output.v5", 'standard-workflow-entry-selection-output.v6', 'standard-workflow-entry-selection-output.v7', 'standard-workflow-entry-selection-output.v8', 'standard-workflow-entry-selection-output.v9'].includes(value?.contract_version)) return assertStandardEntrySelection(value);
   if (value?.operation_ref === retainedVerificationAdmit) return assertRetainedVerificationOutput(value);
   if ([retainedValidationAdmit, retainedTaskWork, workPhaseSelect].includes(value?.operation_ref)) return assertRetainedValidationOutput(value);
   if (value?.contract_version === "standard-handoff-git-output.v1") return assertHandoffGitOutput(value);

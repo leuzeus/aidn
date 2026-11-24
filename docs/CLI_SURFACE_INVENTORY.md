@@ -997,6 +997,17 @@ execution still requires the ordinary exact action and explicit `--execute`.
 This route adds no Human signature, Native budget, receipt migration or implicit
 effect. It does not authorize branch integration or provider merge.
 
+After a completed checkpoint-only recovery, `retained_session_checkpoint` names
+`recovery_operation_id` and the protected `original_configuration` reference.
+The fixed reader authenticates the signed recovery, failed dispatch, accepted
+writer/checkpoint and their original Human/R05 chain. It checks the unchanged
+canonical preimages and runtime event suffix before admitting a new technical
+instance directly to the corrected hook. No old result is replaced. Later
+history reads retain authentication after the new hook changes the session.
+The finalizer takes no caller-authored operation IDs; the host selects the
+accepted checkpoint from the current instance or that bounded retained chain.
+Delivery and integration remain separately authorized operations.
+
 The final session hook reads objective completion through its fixed host
 authority. Its preview refuses an unresolved gate before dispatch; the real
 checkpoint rechecks it. No CLI field supplies an alignment opinion or disables

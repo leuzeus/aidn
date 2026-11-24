@@ -154,12 +154,12 @@ test("correction promotion and session reclosure use new cycle, R05, human and d
   for (const [node, field, source] of [
     ["promotion_decide", "closure_operation_id", "close_finalize"], ["session_preclose_checkpoint", "closure_operation_id", "close_finalize"],
     ["session_closure_decide", "admission_operation_id", "session_close_admit"], ["session_closure_decide", "drift_evaluation_operation_id", "session_closure_drift_evaluate"],
-    ["session_close_finalize", "record_operation_id", "session_close_record"],
-    ["session_close_finalize", "checkpoint_operation_id", "session_close_checkpoint"], ["session_delivery_checkpoint", "finalization_operation_id", "session_close_finalize"],
+    ["session_delivery_checkpoint", "finalization_operation_id", "session_close_finalize"],
     ["session_branch_integration_decide", "closure_operation_id", "close_finalize"], ["session_branch_integration_decide", "delivery_operation_id", "session_delivery_checkpoint"],
     ["session_branch_integrate", "decision_operation_id", "session_branch_integration_decide"]]) {
     assert.deepEqual(fields("correction_" + node)[field], { source: "operation_id", node_id: "correction_" + source });
   }
+  assert.deepEqual(fields("correction_session_close_finalize"), {});
   assert.equal(assets.model.nodes.find(row => row.id === "correction_session_start_finalize").binding_ref, "session_start_finalize");
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);
 });
@@ -703,7 +703,7 @@ test("published cycle entry preserves creation preconditions and separates owned
     { flow_id: "canonical", node_id: "prework_record_inapplicable", condition: null }]);
   assert.equal(node("cycle_drift_report").kind, "activity");
   assert.equal(assets.model.nodes.filter(row => row.kind === "activity").length, 23);
-  assert.equal(assets.model.nodes.length, 286); assert.ok(assets.model.nodes.length <= 288);
+  assert.equal(assets.model.nodes.length, 287); assert.ok(assets.model.nodes.length <= 288);
 });
 test("catalog v7 declares typed initial audits while the closed v4-v6 formats retain their scopes", () => {
   assert.deepEqual(validateJsonSchema(assets.catalog, catalogSchemaV7, "$", { contractKind: "workflow-definition" }), []);
@@ -839,11 +839,11 @@ test("the ordinary loader authenticates the two final-verification operations fo
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV6, "#", { contractKind: "workflow-definition" }), []);
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV7, "#", { contractKind: "workflow-definition" }), []);
   const input = fresh(), loaded = assets;
-  assert.equal(loaded.model.nodes.length, 286);
-  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 135);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 99);
+  assert.equal(loaded.model.nodes.length, 287);
+  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 133);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 101);
   const target = loaded.model.call_targets.find(row => row.model_id === 'aidn-standard-final-verification'), { model: child, ...identity } = target;
-  assert.equal(loaded.model.call_targets.length, 19);
+  assert.equal(loaded.model.call_targets.length, 20);
   assert.equal(child.model_id, "aidn-standard-final-verification");
   assert.deepEqual(identity, processModelIdentity(child));
   const retainedValidation = loaded.model.call_targets.find(row => row.model_id === 'aidn-standard-retained-validation').model;

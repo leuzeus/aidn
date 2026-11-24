@@ -363,7 +363,7 @@ op("session_branch_integration_decide", "session_branch_integration_decision", {
 op("session_branch_integrate", "session_branch_integrate", operation("session_branch_integrate", "decision_operation_id", "session_branch_integration_decide"));
 op("session_delivery_checkpoint", "session_delivery_checkpoint", operation("session_delivery_checkpoint", "finalization_operation_id", "session_close_finalize"));
 op("session_preclose_checkpoint", "session_preclose_checkpoint", operation("session_preclose_checkpoint", "closure_operation_id", "close_finalize"));
-op("session_close_finalize", "session_close_finalize", { ...operation("session_close_finalize", "record_operation_id", "session_close_record"), ...operation("session_close_finalize", "checkpoint_operation_id", "session_close_checkpoint") });
+op("session_close_finalize", "session_close_finalize");
 op("session_close_checkpoint", "session_close_checkpoint", operation("session_close_checkpoint", "record_operation_id", "session_close_record"));
 op("session_close_record", "session_close_record");
 op("session_close_admit", "session_close_admit", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] } });
@@ -637,9 +637,7 @@ seq("session_closure", ["session_closure_decide", "session_close_record", "sessi
 op("session_closure_decide", "session_closure_decision", Object.fromEntries(modeClosureParameters.map(key => [key, { source: "parameter", key, path: [] }])));
 op("session_close_record", "session_close_record");
 op("session_close_checkpoint", "session_close_checkpoint", operation(null, "record_operation_id", "session_close_record"));
-op("session_close_finalize", "session_close_finalize", {
-  ...operation(null, "record_operation_id", "session_close_record"),
-  ...operation(null, "checkpoint_operation_id", "session_close_checkpoint") });
+op("session_close_finalize", "session_close_finalize");
 const modeClosureNodes = nodes.splice(modeClosureStart);
 const modeClosureTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-mode-session-closure", revision: 1,
   participants: [{ id: "project" }], roles: [], policies: [], entry: "session_closure", nodes: modeClosureNodes,
@@ -916,6 +914,27 @@ seq('session_delivery_work', sessionSuffix); seq('session_delivery_inapplicable'
 sessionSuffix.splice(sessionSuffix.indexOf('session_branch_integration_decide'), 0, 'session_completion_select');
 op('session_completion_select', 'cycle_close_completed_select');
 inputs.find(row => row.node_id === 'session_branch_integration_decide').fields.closure_operation_id.node_id = 'session_completion_select';
+// A reconciled historical checkpoint proceeds straight to the corrected hook.
+sessionSuffix.splice(0, 2, 'session_close_preparation_route');
+xor('session_close_preparation_route', [['retained', 'session_checkpoint_retained_ready', 'retained_session_checkpoint_requested'], ['ordinary', 'session_close_prepare', null]]);
+seq('session_checkpoint_retained_ready', []);
+seq('session_close_prepare', ['session_close_record', 'session_close_checkpoint']);
+// Preserve the ordinary writer/checkpoint as a bounded deterministic call.
+const sessionPreparationNames = new Set(['session_close_prepare', 'session_close_record', 'session_close_checkpoint']);
+const sessionPreparationNodes = nodes.filter(row => sessionPreparationNames.has(row.id));
+const sessionPreparationInputs = inputs.filter(row => sessionPreparationNames.has(row.node_id));
+for (const row of sessionPreparationInputs) for (const field of Object.values(row.fields)) {
+  if (field.node_id && !sessionPreparationNames.has(field.node_id)) throw Error('STANDARD_SESSION_PREPARATION_INPUT_CHANGED');
+}
+for (let i = nodes.length - 1; i >= 0; i--) if (sessionPreparationNames.has(nodes[i].id)) nodes.splice(i, 1);
+for (let i = inputs.length - 1; i >= 0; i--) if (sessionPreparationNames.has(inputs[i].node_id)) inputs.splice(i, 1);
+const sessionPreparationTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-session-close-preparation', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'session_close_prepare', nodes: sessionPreparationNodes,
+  operation_pins: pinsFor(sessionPreparationNodes), call_interface: { parameters: {}, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [], inputs: sessionPreparationInputs } };
+const sessionPreparationRef = pinTarget(sessionPreparationTarget);
+node('session_close_prepare', 'call', { target: sessionPreparationRef });
+inputs.push({ node_id: 'session_close_prepare', fields: {} });
 // Preserve the deterministic validation sequence as a call, within the existing
 // root-size bound. Its only external input is the selected implementation ID.
 const validationNames = new Set(['retained_validation', ...nodes.find(row => row.id === 'retained_validation').children]);
@@ -952,6 +971,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...policy("exploring_planning", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" }, policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
     policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
   operation_pins: pinsFor(nodes), call_targets: [
+    { ...sessionPreparationRef, model: sessionPreparationTarget },
     { ...preparationGroupRef, model: preparationGroupTarget },
     { ...promotionFinishRef, model: promotionFinishTarget },
     { ...retainedValidationRef, model: retainedValidationTarget },

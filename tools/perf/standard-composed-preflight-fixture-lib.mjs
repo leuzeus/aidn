@@ -1,3 +1,4 @@
+import { selectStandardEntry } from '../../src/core/workflow/standard-workflow-entry-selection.mjs';
 import { createAgenticProcess, advanceAgenticProcess, inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
 import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
 import { evaluateAgentReuse, fingerprintAgentReuse } from "../../src/core/agents/agent-reuse-policy.mjs";
@@ -65,7 +66,7 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
     || !(targetLabels.includes(interruption.node_id) || model.nodes.some(n => n.id === interruption.node_id && ["operation", "activity"].includes(n.kind)))
     || !["blocked", "deferred", "rejected", "failed", "cancelled"].includes(interruption.outcome))) fail("STANDARD_FIXTURE_SCENARIO_INVALID");
   const initial = { instanceId: "budget-preflight", scopeId: "synthetic-fixture", model, policyPins: agenticPolicyPins(model), facts: {},
-    parameters: { session: { session_id: "S001", session_branch: "S001-standard", objective: "Synthetic fixture budget planning" },
+    parameters: { ...(model.data_bindings.parameter_keys.includes("entry_point") ? { entry_point: "session" } : {}), session: { session_id: "S001", session_branch: "S001-standard", objective: "Synthetic fixture budget planning" },
       cycle: { cycle_id: "C001", cycle_type: "feature", title: "standard-prefix", objective: cycleObjective } } };
   let state = createAgenticProcess(initial), serial = 0, deferred = false, interrupted = false, diagnosisCount = 0;
   const native = [], operations = [], checkpoints = [], callTransitions = [], verificationInputs = [];
@@ -170,6 +171,7 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         if (node.binding_ref === "spike_conversion_admit") facts = { mode_work_spike_requested: false };
         if (node.binding_ref === "mode_work_observe") facts = { mode_work_report_complete: true, mode_analysis_completed: false, mode_analysis_loop_complete: true };
         if (node.binding_ref === "mode_work_evaluate") facts = { mode_analysis_completed: true };
+        if (node.binding_ref === "workflow_entry_select") facts = selectStandardEntry(initial.parameters).facts;
         if (node.binding_ref === "mode_decision") facts = { mode_committing: scenario.mode === "COMMITTING", mode_thinking: scenario.mode === "THINKING", mode_exploring: scenario.mode === "EXPLORING", cycle_work_requested: scenario.mode === "COMMITTING" };
         if (node.binding_ref === "cycle_prework_select") facts = { cycle_prework_required: true };
         if (node.binding_ref === "cycle_prework_evaluate") facts = { cycle_prework_passed: true, cycle_plan_available: true,
