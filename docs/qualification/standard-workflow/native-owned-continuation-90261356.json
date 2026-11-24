@@ -185,7 +185,7 @@
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "Complete the authorized current R05 review, verify the final closure hook, then continue the same session at the next public boundary. Keep the old acknowledged Human decision and every old instance immutable. Final full same-candidate P0 remains open.",
+  "next_required": "Deliver the targeted promotion provenance correction and its bounded continuation from the completed cycle. Keep the old closure, R05 decisions, original instance and Native accounting immutable. The first public promotion preview refusal is retained. Full same-candidate P0 remains open.",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-24T02:44:45.310Z",
+  "updated_at": "2026-11-24T03:14:14.876Z",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -1304,7 +1304,7 @@
     "superseded_by": "1a3cbeb7fc5cf3493667903e8bcb883ca077bfc5"
   },
   "retained_closure_continuation": {
-    "status": "PASS_TERMINAL_RECORD_AND_CHECKPOINT",
+    "status": "PASS_CYCLE_CLOSE_COMPLETED",
     "pull_request": "https://github.com/leuzeus/aidn/pull/223",
     "candidate": "1a3cbeb7fc5cf3493667903e8bcb883ca077bfc5",
     "merge_sha": "3de69b9b476ab644c8a02051c7b3f79d89c45a51",
@@ -1397,7 +1397,7 @@
     "governance_route": "ASSURED",
     "governance_admission": "PASS",
     "perf_kpi": "PASS",
-    "actual_close": "TERMINAL_RECORDED_FINALIZATION_PENDING",
+    "actual_close": "PASS",
     "complete_standard_workflow": false,
     "terminal_observation": {
       "status": "PASS",
@@ -1437,21 +1437,85 @@
       }
     },
     "next_boundary": {
-      "kind": "native",
-      "purpose": "R05 completion review before final hook",
-      "configuration_sha256": "40b840815351688690cf56f876bcfed966289f5c8637e506817449be0b689f62",
-      "consent": "observed_from_chat",
-      "manual_signatures": 0,
-      "limits": {
-        "responses": 8,
-        "bytes": 42063882,
-        "max_turn_ms": 600000,
-        "duration_from_activation_ms": 3600000
-      },
-      "previous_consumption": {
-        "responses": 16,
-        "bytes": 25044982
+      "status": "FAIL",
+      "operation": "baseline_promotion_decision",
+      "phase": "preview",
+      "error": "PROCESS_JOURNAL_NOT_AUTHENTICATED",
+      "business_effect_dispatched": false,
+      "private_first_failure_sha256": "a95e6cf0d6a5915274853ac5493cc1981666935e476a62478fc54974707906af",
+      "cause": "The promotion reader opens the retained Human journal with the current instance signing key after the terminal reader has already authenticated its original provenance.",
+      "prototype": {
+        "status": "PASS",
+        "kind": "read_only_private_module",
+        "same_actual_closure": true,
+        "new_questions": 0,
+        "manual_signatures": 0,
+        "old_instances_unchanged": true,
+        "current_instance_unchanged": true,
+        "business_unchanged": true,
+        "native_unchanged": true,
+        "evidence_sha256": "757c893e6ab339cf20b5e2659d103cdfbff0eb1e2baaa06c0048f50cbb0a429d",
+        "public_continuation": false
       }
+    },
+    "r05": {
+      "status": "PASS",
+      "native_responses": 1,
+      "storage_debit_bytes": 2609406,
+      "worker_storage_debit_bytes": 2603617,
+      "elapsed_global_ms": 97374,
+      "journal_sha256": "2adc3b4695e8629c2114fda59b7cbd70d5494253fa4e7e2f46aa2e2a189d1f43",
+      "active_processes": 0,
+      "report_verdict": "none",
+      "recommendation": "continue",
+      "current_signal": "objective_delta",
+      "human_confirmation": {
+        "status": "PASS",
+        "choice": "confirm_alignment",
+        "operation_id": "op_7caf36a3a2584d41cf2792e6cf9d8d0f6a23ba7c",
+        "receipt_id": "receipt_7caf36a3a2584d41cf2792e6cf9d8d0f6a23ba7c",
+        "question_sha256": "748ebca0943e3b631fbb15c514e056bc2f1e17baa5a5cf882ee38941692d159a",
+        "results": 1,
+        "same_receipt_on_redelivery": true,
+        "manual_signatures": 0,
+        "independent_original_author_proof": false,
+        "private_evidence_sha256": "7422a95c7dc02b171469e6cdc01bae6c081f771bcbf45dcd0911624ef688b2c2"
+      },
+      "finalization": {
+        "operation_id": "op_da7d1c7b40168a97ce0e629d1e4d132bcaa04e63",
+        "effect_status": "confirmed",
+        "outcome": "completed"
+      },
+      "remaining_native_budget": {
+        "responses": 7,
+        "bytes": 39454476,
+        "deadline_utc": "2026-11-24T03:44:14.975Z"
+      },
+      "native_evidence_sha256": "ab546004da8b4d4eac3d297a9da01728697a1a2c64a7a22c96e128f2e63ca814",
+      "finalization_evidence_sha256": "fbbfe87f59717da1440df14054f810798d387309e27b11d7eb1c3424f5028e58",
+      "no_second_completion_question": true
+    },
+    "final_hook": {
+      "status": "PASS",
+      "canonical_backend": "postgres",
+      "state_mode": "db-only",
+      "cycle_state": "DONE",
+      "context_sha256": "f522a2fa22e497edc5da7b21c9d6c133f6a99941b2a575a77dc44200ebf9b0c1",
+      "head": "6871af7521940cd0498f831a82291b0c8a318138",
+      "worktree_clean": true,
+      "owner_pending": false,
+      "operation_id": "op_33072aa2229c82e02bd914118d7d01c82ae57744",
+      "outcome": "completed",
+      "effect_status": "confirmed",
+      "facts": {
+        "cycle_close_completed": true,
+        "cycle_retained": true
+      },
+      "receipt_id": "receipt_33072aa2229c82e02bd914118d7d01c82ae57744",
+      "receipt_question_unchanged": true,
+      "private_finalization_evidence_sha256": "4cd0b6417ab92fd8475109ddac95ea3d97f8747182158a0261e3ee6fff23a2f5",
+      "physical_closure_evidence_verified": true,
+      "physical_reader_evidence_sha256": "757c893e6ab339cf20b5e2659d103cdfbff0eb1e2baaa06c0048f50cbb0a429d"
     }
   }
 }
