@@ -1306,3 +1306,12 @@ current VERIFYING subject. It neither claims terminal effects nor replaces the
 original source. `standard-cycle-close-input.v2` is empty: the fixed host selects
 the accepted current or explicitly retained decision. The v1 decision locator
 remains the internal plan input and a readable historical schema.
+
+## Session checkpoint-only recovery
+
+`standard-session-close-recovery.v1` and its closed record/plan/result contracts
+add a bounded historical reconciliation route. The signed recovery is derived
+operation-journal evidence and retains all original UNKNOWN history. It reports
+`reconciled_checkpoint_only`, with session_closed/workflow_resumed/native_started
+false. Embedded process observations preserve their limited scope and grant no
+business effect. No new canonical information concept is introduced.

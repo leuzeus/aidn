@@ -8057,3 +8057,18 @@ decision, provider, authority, product scope and evidence protection. Then run
 the frozen public source/installed entry and check canonical effects separately.
 Preserve original instances, the first failed acceptance, Human inbox and Native
 accounting. No branch of this test claims a complete STANDARD run.
+
+## Historical session-hook recovery
+
+Run `node tools/perf/verify-standard-session-recovery-fixtures.mjs` for closed
+contracts, the three-event checkpoint-only boundary, exact plans, forged evidence,
+active recovery owners, subject drift and nine interrupted writer boundaries.
+Controlled ports distinguish durable recovery from session closure. These checks
+are included in process-operation fixtures.
+
+Run `node tools/perf/verify-standard-session-recovery-storage-fixtures.mjs --mode=db-only`
+for real child-process exit, live scoped process samples, SQLite CAS, exact lock
+archival and four interrupted recovery boundaries. The same fixture accepts
+`--mode=files` and `--mode=dual`. Its business history is synthetic. Historical
+PostgreSQL recovery, installed behavior and continuation to delivery require
+separate pilot evidence. A successful recovery does not close the session.

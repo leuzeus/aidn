@@ -7,6 +7,7 @@ import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuratio
 import { createPublicAgentRunLifecycle } from "./agent-run-public-composition.mjs";
 import { parseAgentRunArguments } from "./agent-run-lifecycle-service.mjs";
 import { runStandardWorkflowEntry } from "./standard-workflow-entry.mjs";
+import { runStandardSessionRecoveryEntry } from "./standard-session-recovery-entry.mjs";
 import { runStandardValidationRecoveryEntry } from "./standard-validation-recovery-entry.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
@@ -48,6 +49,16 @@ export async function runProjectWorkflow({ targetRoot, engine, configuration, au
     }
     if (plan || syncRelay) fail("WORKFLOW_RUN_AGENTIC_ARGUMENT_CONFLICT");
     const config = readAgentRunFile(path.resolve(configuration), { maxBytes: 1048576 }).value;
+    if (config.contract_version === "standard-session-close-recovery.v1") {
+      if (authorization || actionFile || preparedAction !== null || decisionSource || controlSource || observation)
+        fail("WORKFLOW_RUN_SESSION_RECOVERY_ARGUMENT_CONFLICT");
+      if (agentRunPhysicalPath(config.target_root, { directory: true }) !== root) fail("WORKFLOW_RUN_TARGET_CHANGED");
+      if (execute) output.dry_run = false;
+      const value = await runStandardSessionRecoveryEntry({ request: config, execute, expectPlan });
+      if (execute) { output.result = value.result; output.written = value.result.written; }
+      else { output.preview = value.preview; output.action_sha256 = value.action_sha256; output.can_apply = value.can_apply; }
+      return output;
+    }
     if (config.contract_version === "standard-validation-launch-recovery.v1") {
       if (authorization || actionFile || preparedAction !== null || decisionSource || controlSource || observation)
         fail("WORKFLOW_RUN_VALIDATION_RECOVERY_ARGUMENT_CONFLICT");

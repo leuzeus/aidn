@@ -191,3 +191,11 @@ and one genuine current-controller blocked/no-effect result at index zero.
 The immutable original running capsule is not rewritten. Separate acceptance
 permits a fresh operation intention under the existing reducer; no new record
 concept, backend, projection, shared capability or Native allocation is added.
+
+## Session recovery evidence
+
+Checkpoint-only session recovery belongs to `process_operation_journal` and is
+stored by the same canonical FILES/SQLite/PostgreSQL record-store authority. Its
+signed attempts retain exact original scope, configuration, journals, physical
+event/run/document digests and lock/fence identity. It does not rewrite session
+state, historical operation results, Human decisions or Native accounting.

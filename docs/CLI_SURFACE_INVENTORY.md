@@ -343,6 +343,16 @@ finalization; `--verify` retains its read-only verification behavior.
     below Native denied roots; a conflicting layout returns
     `STANDARD_VALIDATION_NATIVE_READ_CONFLICT` without starting a workflow or
     repairing permissions. This check does not qualify the validator.
+    A `standard-session-close-recovery.v1` configuration names `target_root`,
+    `instance_id`, `operation_id` and the pinned resolved `original_configuration`.
+    It previews only the bounded returned final-hook failure with unchanged
+    canonical preimages, original start run and exactly three checkpoint events.
+    `--execute --expect-plan` archives the authenticated abandoned owner and
+    records a separate `reconciled_checkpoint_only` disposition. Old UNKNOWN
+    receipts and instance remain immutable; session closure and workflow
+    continuation remain false. Authorization/action/decision/control inputs
+    cannot substitute evidence. Completed replay is inert. Ambiguous business
+    postimages, additional close events and active/unavailable processes refuse.
     A separate `standard-validation-launch-recovery.v1` configuration selects
     the bounded historical Windows launch recovery. It names `target_root`,
     `instance_id`, `operation_id`, and pinned `original_configuration` (the
