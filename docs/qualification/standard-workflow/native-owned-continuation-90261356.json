@@ -185,7 +185,7 @@
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "Present the actual installed host closure question and consume the human reply once through the accepted local chat observer. Continue from closure to session delivery. Preserve original histories and Native balance. Final same-candidate full source, recovery and installed-archive qualification remains required for GO P0.",
+  "next_required": "Complete the authorized current R05 review, verify the final closure hook, then continue the same session at the next public boundary. Keep the old acknowledged Human decision and every old instance immutable. Final full same-candidate P0 remains open.",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-24T01:13:38.080Z",
+  "updated_at": "2026-11-24T02:44:45.310Z",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -1211,9 +1211,247 @@
       "reason": "Missing integration merge ancestry",
       "resolution": "Merged integration ancestry; candidate and final PR head have identical source trees; final admission PASS"
     },
-    "actual_closure_decision": "NOT_YET_OBSERVED",
+    "actual_closure_decision": "PASS_RECORDED_ONCE_RECEIPT_ACCEPTANCE_FAILED",
     "cycle_close": "NOT_YET_EXERCISED",
     "session_delivery": "NOT_YET_EXERCISED",
     "complete_standard_workflow": false
+  },
+  "closure_receipt_acceptance": {
+    "status": "FAIL",
+    "candidate": "202c249470d1449fe5412949a19ed232edba0c8b",
+    "archive_sha256": "7345ba19e22d7677e8f54b034e01e3045c3e48d115448c2003b67c9c74bf50a6",
+    "configuration_sha256": "51f9d20efdb3bd5e35027e15e18ddeddb882f93f1b8dc354d0137fb257550c2d",
+    "stage": "accept_completed_closure_receipt",
+    "reason_code": "PROCESS_OPERATION_AUTHORITY_TIMEOUT",
+    "operation_id": "op_c6e71b464a49e5020bf4626fd2e47a4eb9aa287c",
+    "question_sha256": "98abab6b4b7fda47bf49a20443f1603769e4aa4c4460f6c696bed1eda74c5d01",
+    "choice": "retain",
+    "human_results": 1,
+    "instance_receipt_accepted": false,
+    "public_cli_reproduction": true,
+    "manual_signatures": 0,
+    "native_calls": 0,
+    "original_history_unchanged": true,
+    "business_unchanged": true,
+    "private_evidence_sha256": "36ef719fd215232686353521a5bff881a834a8a9fc9e508de98b018cbc511b0e",
+    "timing_samples_ms": [
+      14289,
+      11985
+    ],
+    "correction": {
+      "pull_request": "https://github.com/leuzeus/aidn/pull/222",
+      "head": "1165e383cee22cba437426dd93cd9b4282754685",
+      "merge_sha": "1034627c4dff2eb370d2d41aac0315ff9ba1cf72",
+      "governance_admission": "PASS",
+      "perf_kpi": "PASS",
+      "prototype": {
+        "status": "PASS",
+        "kind": "isolated_readonly_held_cas",
+        "evidence_sha256": "abe1d8ba3fad7e045d0e0f769b3aab81ccdf46ed6fcc77f32d0a0d6d490b3579",
+        "canonical_writes": 0,
+        "native_calls": 0
+      },
+      "public_closure": "NOT_YET_EXERCISED"
+    }
+  },
+  "retained_closure_preparation": {
+    "status": "PASS_DRAFT_SOURCE_PREVIEW_SUPERSEDED",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/223",
+    "candidate": "a81fe148710b32b7784168ab7a1903ba57c1aa17",
+    "archive_sha256": "74ac185016492571568ac9e366c76cd8b183bead1ef844d94f0389c83b85d9df",
+    "catalog_revision": 455,
+    "prototype": {
+      "status": "PASS",
+      "canonical_writes": 0,
+      "native_calls": 0,
+      "source_evidence_sha256": "8a5f2544a077e377bf2e54111d7e617fdb004d12f365165b028d4b98c4e97539",
+      "negative_cases": [
+        {
+          "name": "altered original configuration",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_CONFIGURATION_CHANGED"
+        },
+        {
+          "name": "different original boundary",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_BOUNDARY_CHANGED"
+        },
+        {
+          "name": "cancelled read",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_CANCELLED"
+        },
+        {
+          "name": "untrusted ownership claim",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_OWNER_UNSETTLED"
+        },
+        {
+          "name": "changed validation checks",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_VALIDATION_CHANGED"
+        }
+      ],
+      "negative_evidence_sha256": "d42f32f83bd2b6624a302966cc15492c5844c53fdff01f3b734bef7ccf968ed3"
+    },
+    "user_decision_preserved": true,
+    "new_closure_questions": 0,
+    "manual_signatures": 0,
+    "public_source": "PASS",
+    "public_installed": "SKIP_SUPERSEDED_BEFORE_INSTALLED_TEST",
+    "actual_close": "NOT_YET_EXERCISED",
+    "complete_standard_workflow": false,
+    "superseded_by": "1a3cbeb7fc5cf3493667903e8bcb883ca077bfc5"
+  },
+  "retained_closure_continuation": {
+    "status": "PASS_TERMINAL_RECORD_AND_CHECKPOINT",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/223",
+    "candidate": "1a3cbeb7fc5cf3493667903e8bcb883ca077bfc5",
+    "merge_sha": "3de69b9b476ab644c8a02051c7b3f79d89c45a51",
+    "archive_sha256": "233bf3264bf412395746ff7732abae91a7ff5359ea2549a7844874f0540fb52a",
+    "catalog_revision": 456,
+    "technical_instance": "new_instance_same_owned_session_and_cycle",
+    "original_closure_receipt": "unchanged_unaccepted_original_observed_as_retained_source",
+    "user_decision_preserved": true,
+    "new_closure_questions": 0,
+    "manual_signatures": 0,
+    "new_native_calls": 0,
+    "source_and_installed": [
+      {
+        "status": "PASS",
+        "mode": "source",
+        "candidate": "1a3cbeb7fc5cf3493667903e8bcb883ca077bfc5",
+        "archive_sha256": "233bf3264bf412395746ff7732abae91a7ff5359ea2549a7844874f0540fb52a",
+        "configuration_sha256": "79d89f8c9dab7e9bc14579cae9a6a33c3b699eca004d678548967f7607d32076",
+        "instance_sha256": "1f647ecb562d8d7273019909aa903ffcdce052001f1747fdda5cef1b80bccd31",
+        "stage": "public_retained_decision_to_close_preview",
+        "canonical_backend": "postgres",
+        "state_mode": "db-only",
+        "original_history_unchanged": true,
+        "business_unchanged": true,
+        "product_unchanged": true,
+        "native_calls": 0,
+        "manual_signatures": 0,
+        "new_closure_questions": 0,
+        "private_evidence_sha256": "0d37af683f087c0182240c3066be452eb0d400f33a8fe29bb33878df2ad846b5"
+      },
+      {
+        "status": "PASS",
+        "mode": "installed",
+        "candidate": "1a3cbeb7fc5cf3493667903e8bcb883ca077bfc5",
+        "archive_sha256": "233bf3264bf412395746ff7732abae91a7ff5359ea2549a7844874f0540fb52a",
+        "configuration_sha256": "40b840815351688690cf56f876bcfed966289f5c8637e506817449be0b689f62",
+        "instance_sha256": "c79e433f75e41b9bffa68cc9488c4536ef6eb5d74d614bf85dfae3788a92cba6",
+        "stage": "public_retained_decision_to_close_preview",
+        "canonical_backend": "postgres",
+        "state_mode": "db-only",
+        "original_history_unchanged": true,
+        "business_unchanged": true,
+        "product_unchanged": true,
+        "native_calls": 0,
+        "manual_signatures": 0,
+        "new_closure_questions": 0,
+        "private_evidence_sha256": "69481727e1d583ba01613efa2e799f5f2618c73bae95951363e0cce896d9ab89"
+      }
+    ],
+    "recorded_source_probe": {
+      "status": "PASS",
+      "same_proof_as_fresh_reader": true,
+      "private_evidence_sha256": "765f8ae8ed028ab43c02cbb3e4856bcd672fb4c7a5b0a265e0a9f7a4255a2873",
+      "negative_evidence_sha256": "d42f32f83bd2b6624a302966cc15492c5844c53fdff01f3b734bef7ccf968ed3",
+      "negative_cases": [
+        {
+          "name": "altered original configuration",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_CONFIGURATION_CHANGED"
+        },
+        {
+          "name": "different original boundary",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_BOUNDARY_CHANGED"
+        },
+        {
+          "name": "cancelled read",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_CANCELLED"
+        },
+        {
+          "name": "untrusted ownership claim",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_OWNER_UNSETTLED"
+        },
+        {
+          "name": "changed validation checks",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_VALIDATION_CHANGED"
+        }
+      ]
+    },
+    "checks": {
+      "retained_closure": 23,
+      "retained_audit": 13,
+      "retained_verification": 14,
+      "model_authority": 57,
+      "sqlite_db_only_terminal_and_final_hook_component": 7
+    },
+    "governance_route": "ASSURED",
+    "governance_admission": "PASS",
+    "perf_kpi": "PASS",
+    "actual_close": "TERMINAL_RECORDED_FINALIZATION_PENDING",
+    "complete_standard_workflow": false,
+    "terminal_observation": {
+      "status": "PASS",
+      "canonical_backend": "postgres",
+      "state_mode": "db-only",
+      "cycle_state": "DONE",
+      "head": "6871af7521940cd0498f831a82291b0c8a318138",
+      "instance_sha256": "ba39129a116e3570b72de7af5189db2a2813ff618fa83afbc1b5d68f08bc8138",
+      "context_sha256": "3b7abe94008d795852f9be78552d93f996aa930dd3f823ba50a4bccc4ae03149",
+      "effects": [
+        {
+          "binding": "cycle_close_record",
+          "operation_id": "op_bc2bab5f48a896c601887c3ee64abb11118bddaa",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "confirmed",
+          "accepted": true
+        },
+        {
+          "binding": "cycle_terminal_checkpoint",
+          "operation_id": "op_2a25fefecc47f57e44103665d9310e38b114a8b7",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "confirmed",
+          "accepted": true
+        }
+      ],
+      "original_history_unchanged": true,
+      "product_unchanged": true,
+      "new_closure_questions": 0,
+      "manual_signatures": 0,
+      "owner_pending": false,
+      "private_evidence_sha256": "3b17ed4b0e9f88d8fa93aa69db15d4c1e452ea6abcaec6fe5583cc4090b5defc",
+      "independent_git_observation": {
+        "head": "6871af7521940cd0498f831a82291b0c8a318138",
+        "worktree_clean": true
+      }
+    },
+    "next_boundary": {
+      "kind": "native",
+      "purpose": "R05 completion review before final hook",
+      "configuration_sha256": "40b840815351688690cf56f876bcfed966289f5c8637e506817449be0b689f62",
+      "consent": "observed_from_chat",
+      "manual_signatures": 0,
+      "limits": {
+        "responses": 8,
+        "bytes": 42063882,
+        "max_turn_ms": 600000,
+        "duration_from_activation_ms": 3600000
+      },
+      "previous_consumption": {
+        "responses": 16,
+        "bytes": 25044982
+      }
+    }
   }
 }
