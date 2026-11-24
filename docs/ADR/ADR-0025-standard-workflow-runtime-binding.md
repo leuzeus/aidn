@@ -5555,3 +5555,31 @@ authentication. No new signature ceremony, Native allocation, budget reset,
 canonical concept or persistence backend is introduced. Source probes, public
 entry, Human capture and later effects must be qualified separately.
 Current pre-effect closure inspection retains all its VERIFYING checks.
+
+### Retained objective agreement after completion
+
+A clean promotion diagnosis can still encounter the lexical `objective_delta`
+signal for the same session and cycle goals. The retained-completion host may
+reuse the original Human alignment opinion only when there is no newer local
+drift decision. Its owning reader authenticates the original protected
+configuration, signed journals, accepted Human inbox, source authority, saved
+Native context, canonical report and exact physical R05 event. It does not
+rebuild the old question using current documents or search behind a later
+nominal finalizer for a more convenient opinion.
+
+The projection requires the same OPEN session and attached owned DONE cycle,
+exact objectives, COMMITTING mode, branch, HEAD and product, plus the current
+complete clean Native diagnosis. Disposition v2 explicitly separates that new
+evaluation from the unchanged original opinion, completion anchor and scope.
+Finalize-plan v4 reauthenticates this proof at the effect boundary and retains
+the existing owner, CAS, current grant, other-signal and physical-event checks.
+The completion reader also requires the fixed retained-source capability.
+Revocation, changed objectives, foreign ownership, product/HEAD changes, new
+drift, missing witnesses and malformed source data refuse.
+
+This is a bounded authority extension of `retained_completion`; it creates no
+Human receipt, renewed timestamp, Native allocation or canonical concept.
+Existing historical plans and receipts remain unchanged. A new technical
+instance after a refusal later in promotion needs a separately authenticated
+continuation for its already recorded promotion; this change does not import
+that history or make the old refused occurrence executable with new bindings.

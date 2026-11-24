@@ -209,6 +209,13 @@ Missing proof and actual objective, scope, integrity or repair signals still
 require the drift check. Retained timestamps are provenance, while current
 authorization, issuer expiry, context, ownership and CAS remain separate checks.
 
+For an explicitly retained completed cycle, a later clean diagnosis may reuse
+the authenticated objective agreement from that cycle's physical R05 completion.
+The session, cycle, ownership, exact objectives, branch, HEAD and product must
+still match. The new evaluation and the original signed opinion remain separate
+in the proof. Current source authority, fresh diagnosis, other drift signals and
+effect authorization are rechecked; a changed subject requires a new decision.
+
 Drift is any deviation from:
 - the current baseline
 - the stated goal of the active cycle

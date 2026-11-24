@@ -169,9 +169,16 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.authenticate !== "function"
     || typeof processAuthority.authenticateOperationHost !== "function")) fail("STANDARD_HOST_CONFIGURATION_INVALID");
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
+  async function readObjectiveAlignment(instance, input, verified) {
+    const ownDecision = instance.events.some(event => event.kind === 'operation_intent'
+      && ['drift_recovery_decision', 'drift_completion_decision'].includes(event.intent.binding_ref));
+    if (!ownDecision && instance.initial_parameters?.entry_point?.kind === 'retained_completion')
+      return processAuthority.readRetainedObjectiveAlignment(instance, input, verified, retainedClosureOptions());
+    return objectiveDisposition.read(instance, input, verified);
+  }
   const driftFinalization = processAuthority ? createStandardDriftFinalization({ targetRoot, now,
     readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
-    readObjectiveAlignment: (instance, input, verified) => objectiveDisposition.read(instance, input, verified),
+    readObjectiveAlignment,
     readCurrent: id => current(id).record }) : null;
   const driftRoute = processAuthority ? createStandardDriftRoute({ targetRoot,
     authenticate: instance => processAuthority.authenticate(instance),
@@ -1047,6 +1054,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     readDisposition: (instance, input, verified) => objectiveDisposition.read(instance, input, verified),
     readHistoricalDisposition: (instance, input, verified, id) => objectiveDisposition.readHistorical(instance, input, verified, id),
     readRenewedDisposition: (instance, input, verified, anchor) => objectiveDisposition.readRenewed(instance, input, verified, anchor),
+    readRetainedDisposition: readObjectiveAlignment,
     readCurrent: id => current(id).record,
     readReport: name => artifacts.read(name, { required: true }),
     readEvent: ({ file, offset }) => {
