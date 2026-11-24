@@ -7937,3 +7937,13 @@ identity fields, owner/hash, physical content, a byte-identical replacement,
 extra hard links and absence refuse. The live-owner check must still reject the
 same metadata-only change. These filesystem fixtures are separate from the
 signed retirement/reconciliation history checks and genuine Native qualification.
+
+Run `node tools/perf/verify-standard-retained-audit-fixtures.mjs` for the bounded
+post-audit continuation contracts, fixed provider selection, stale-instance and
+foreign-proof refusals, and the authored route from entry directly to current
+audit evaluation. It is included through retained-verification fixtures. These
+pure cases do not authenticate a real historical auditor. Qualify the private
+reader separately against retained evidence and negative source/binding cases,
+then exercise the frozen public source and installed entry. Keep original
+blocked receipts and Native accounting unchanged. Reaching human closure review
+does not establish closure, delivery or full P0.

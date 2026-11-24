@@ -237,7 +237,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
         audit_context_sha256: material.context_sha256, validation }, evidence_refs: material.context.evidence_refs };
   }
   async function inspectAudit(instance, input) {
-    const native = processAuthority.readCycleAuditActivity(instance, input), current = await auditSource(instance, native.selection.record.preview.input);
+    const native = await processAuthority.readCycleAuditActivity(instance, input), current = await auditSource(instance, native.selection.record.preview.input);
     const { audit_operation_id: selectionId, input_resolution: resolution, ...baseContext } = native.context;
     if (shadowHash(baseContext) !== current.material.context_sha256 || current.material.context_sha256 !== native.selection.output.observations.audit_context_sha256
       || current.bridge.verification.record.operation_id !== native.selection.output.observations.verification_operation_id) fail("STANDARD_AUDIT_CONTEXT_STALE");

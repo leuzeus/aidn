@@ -48,9 +48,8 @@ const xor = (id, choices) => node(id, "xor", { branches: choices.map(([flow_id, 
 
 seq("standard", ["entry_select", "startup_route", "mode_preparation_route", "cycle_work_route"]);
 op("entry_select", "workflow_entry_select");
-xor("mode_preparation_route", [["verified", "retained_verification_preparation_inapplicable", "retained_verification_requested"], ["retained", "retained_preparation_inapplicable", "retained_validation_requested"], ["ordinary", "mode_route", null]]);
+xor("mode_preparation_route", [["retained", "retained_preparation_inapplicable", "retained_preparation_requested"], ["ordinary", "mode_route", null]]);
 seq("retained_preparation_inapplicable", []);
-seq("retained_verification_preparation_inapplicable", []);
 xor("startup_route", [["owned", "owned_startup_inapplicable", "owned_cycle_continuation_requested"], ["session", "session_startup", null]]);
 seq("owned_startup_inapplicable", []);
 seq("session_startup", ["startup", "mode_preflight", "session_start_finalize"]);
@@ -192,8 +191,10 @@ const choiceNodes = nodes.splice(choiceNodeStart), choiceTarget = { contract_ver
 const choiceRef = pinTarget(choiceTarget);
 node("selected_cycle", "call", { target: choiceRef });
 inputs.push({ node_id: "selected_cycle", fields: operation(null, "entry_operation_id", "cycle_entry_observe") });
-seq("cycle_work", ["work_preparation_route", "work_phase_select", "initial_task_route",
-  "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "cycle_terminal_checkpoint", "close_finalize", "promotion_eligibility", "session_preclose_checkpoint", "session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize", "session_delivery_checkpoint", "session_branch_integration_decide", "session_branch_integrate", "session_pr_delivery"]);
+seq("cycle_work", ["audit_preparation_route", "audit_evaluate", "closure_decide", "close_record", "cycle_terminal_checkpoint", "close_finalize", "promotion_eligibility", "session_preclose_checkpoint", "session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize", "session_delivery_checkpoint", "session_branch_integration_decide", "session_branch_integrate", "session_pr_delivery"]);
+xor("audit_preparation_route", [["retained", "retained_audit_ready", "retained_audit_requested"], ["fresh", "audit_produce", null]]);
+seq("retained_audit_ready", []);
+seq("audit_produce", ["work_preparation_route", "work_phase_select", "initial_task_route", "audit_select", "audit_review"]);
 seq("session_pr_delivery", ["session_pr_admit", "session_push", "session_pr_open", "session_pr_record", "session_pr_checkpoint", "session_pr_update_push", "session_pr_review_observe", "session_pr_review_capture", "session_pr_review_event_route", "session_pr_pretriage_route"]);
 op("session_pr_review_observe", "session_pr_review_content_observe", operation("session_pr_review_observe", "update_operation_id", "session_pr_update_push"));
 const firstCaptureNode = nodes.length;
@@ -478,7 +479,7 @@ node("canonical_verification", "call", { target: completeRef }); inputs.push({ n
 op("audit_select", "cycle_audit_select", implementationSource());
 native("audit_review", "auditor", "audit", "standard-cycle-audit-report.v1", ["cycle-close"], ["SPEC-R04", "SPEC-R06"]);
 inputs.push({ node_id: "audit_review", fields: operation("audit_review", "audit_operation_id", "audit_select") });
-op("audit_evaluate", "cycle_audit_evaluate", occurrence("audit_review"));
+op("audit_evaluate", "cycle_audit_evaluate");
 op("closure_decide", "cycle_closure_decision", operation("closure_decide", "audit_operation_id", "audit_evaluate"));
 op("close_record", "cycle_close_record", operation("close_record", "decision_operation_id", "closure_decide"));
 op("cycle_terminal_checkpoint", "cycle_terminal_checkpoint", operation("cycle_terminal_checkpoint", "closure_operation_id", "close_record"));

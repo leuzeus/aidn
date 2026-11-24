@@ -60,7 +60,7 @@ export function createStandardOperationProvider({
       ? await operations.admitCycleEntry({ contract_version: "standard-cycle-entry-input.v1", session_id: parameters.session?.session_id, cycle_id: null }) : null;
     assertCurrent();
     const continuation = admission?.outcome === "completed" && admission.facts.cycle_entry_resume_allowed
-      ? await (point === "retained_verification" ? processAuthority.retainedVerificationEntry(instance, parameters, admission) : point === "retained_validation" ? processAuthority.retainedValidationEntry(instance, parameters, admission)
+      ? await (point === "retained_audit" ? processAuthority.retainedAuditEntry(instance, parameters, admission) : point === "retained_verification" ? processAuthority.retainedVerificationEntry(instance, parameters, admission) : point === "retained_validation" ? processAuthority.retainedValidationEntry(instance, parameters, admission)
         : entryContinuation?.(instance, parameters, admission) ?? fail("STANDARD_ENTRY_CONTINUATION_AUTHORITY_REQUIRED")) : null;
     assertCurrent();
     return selectStandardEntry(parameters, admission, continuation);

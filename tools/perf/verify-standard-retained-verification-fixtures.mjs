@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "./verify-standard-retained-audit-fixtures.mjs";
 import fs from "node:fs";
 import { shadowHash as H } from "../../src/core/workflow/shadow-json.mjs";
 import { assertRetainedVerificationEntry, assertRetainedVerificationProof, assertRetainedVerificationInput,
