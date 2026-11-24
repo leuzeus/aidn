@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 import {createAgenticProcessService} from '../../src/application/runtime/agentic-process-service.mjs';
+import {createStandardSessionClosureReview} from '../../src/application/runtime/standard-session-closure-review.mjs';
 import {createAgenticProcessStore} from '../../src/adapters/runtime/agentic-process-store.mjs';
 import {createArtifactStore} from '../../src/adapters/runtime/artifact-store.mjs';
 import {shadowHash as H} from '../../src/core/workflow/shadow-json.mjs';
@@ -35,6 +36,25 @@ async function fixture(){
 }
 async function check(name,fn){await fn();checks++;console.log('PASS '+name);}
 try{
+ await check('session closure reconstruction may outlast source authentication while stale HEAD and R05 still refuse acceptance',async()=>{
+  for(const changed of ['none','head','r05']){
+   const f=await fixture(),op=n=>'op_'+n.repeat(40),input={contract_version:'standard-session-closure-review-input.v1',admission_operation_id:op('a'),drift_evaluation_operation_id:op('b'),drift_finalization_operation_id:op('c')};
+   const source={admission:{operation_id:op('a'),session_id:'S001',output:{facts:{session_close_admission_satisfied:true}}},
+    evaluation:{operation_id:op('b'),output:{facts:{drift_present:false,drift_context_complete:true,drift_recovery_required:false}}},
+    finalization:{operation_id:op('c'),output:{facts:{drift_check_completed:true},observations:{evaluation_operation_id:op('b')}}},
+    current:{session_id:'S001',session_path:'sessions/S001.md',mode:'COMMITTING',branch:'C001-feature-example',session_branch:'S001-example',head:'a'.repeat(40),
+     context_sha256:digest,scope_sha256:digest,documents:['sessions/S001.md','CURRENT-STATE.md','snapshots/context-snapshot.md'].map(p=>({ref:'audit:'+p,sha256:digest,metadata_sha256:digest})),open_cycles:[],session_close_gate_satisfied:false,admission_allowed:true}};
+   let slow=false,authenticated=false;
+   const review=createStandardSessionClosureReview({readSource:async()=>{if(slow){assert.equal(authenticated,true);await delay(120);}return structuredClone(source);}});
+   const prepared=await review.prepare(f.waiting.record,input),receiptBefore=H(f.state.receipt);slow=true;f.state.verify=()=>{authenticated=true;};
+   if(changed==='head')source.current.head='b'.repeat(40);
+   if(changed==='r05')source.finalization.output.facts.drift_check_completed=false;
+   const accept=()=>f.open(({instance})=>review.assertFresh(instance,prepared.plan)).acceptOperation(f.args);
+   if(changed==='none'){const result=await accept();assert.equal(result.cursor.status,'COMPLETED');assert.equal(result.record.events.filter(e=>e.kind==='operation_result').length,1);}
+   else{await assert.rejects(accept,{code:changed==='head'?'STANDARD_SESSION_CLOSURE_REVIEW_CHANGED':'STANDARD_SESSION_CLOSURE_ACCEPTED_SOURCE_REQUIRED'});assert.equal(f.store.read('fixture').record.instance_sha256,f.waiting.record.instance_sha256);}
+   assert.equal(H(f.state.receipt),receiptBefore);
+  }
+ });
  await check('slow local subject reconstruction finishes after bounded authentication and before one durable receipt',async()=>{
   const f=await fixture(),order=[];f.state.verify=()=>{order.push('authenticated');};
   const accepted=await f.open(async({instance,intent,receipt})=>{order.push('guard');assert.equal(instance.instance_sha256,f.waiting.record.instance_sha256);assert.deepEqual(intent,f.state.intent);assert.deepEqual(receipt,f.state.receipt);

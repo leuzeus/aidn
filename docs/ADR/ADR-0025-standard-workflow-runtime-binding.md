@@ -5473,6 +5473,13 @@ data. This separates source liveness from local domain validation without
 increasing the authority timeout or weakening closure freshness. Historical
 model pins and decisions are not migrated by this change.
 
+Session closure uses this same guard for its complete admission, R05 physical
+proof and canonical session subject. Source authentication keeps its five-second
+bound; the two former reconstructions inside that callback are removed. The
+local guard still rejects a changed subject, journal or instance before the
+receipt event can be accepted. A timed-out, already receipted Human choice is
+retained; this change alone grants no cross-version execution of its old model.
+
 ### Retained closure decision before terminal effects
 
 `retained_closure` names a completed, acknowledged Human retention receipt that
