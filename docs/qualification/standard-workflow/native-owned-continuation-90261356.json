@@ -185,7 +185,7 @@
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "The accepted promotion and scoped objective alignment were reused; its final hook completed on PostgreSQL without a new Human question. Continue the current session-closing boundary, then private PR review/merge and post-merge synchronization. Preserve old histories and Native counters. Full same-candidate source, recovery and installed-archive P0 remains open.",
+  "next_required": "Admit a targeted continuation from the retained session checkpoint, execute the corrected final hook, then continue private delivery. Keep the signed close choice, immutable UNKNOWN/recovery history and Native counters. S001 is not yet closed. Full same-candidate source/recovery/archive P0 remains open.",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-24T05:27:07.328Z",
+  "updated_at": "2026-11-24T19:02:01.255Z",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -1918,5 +1918,255 @@
       "owner_pending": false,
       "private_evidence_sha256": "1f2fc998a00ad60633ea555c26b48ad3f9480f8dc972ce88704f5188ee457d34"
     }
+  },
+  "session_closure_continuation": {
+    "status": "FAIL_SESSION_CLOSURE_RECEIPT_ACCEPTANCE",
+    "candidate": "a07a5864d1238d1d35f18b390230e6d9b28e64ef",
+    "archive_sha256": "787daa1f31ebfc137e6a8ebd30cc2aea4cc0934772a5984cccbaa3234a382e12",
+    "configuration_sha256": "4ecbd49aaaf2bc11519628898ce18ebed0d36a2e750dd0dea6fc8adcf538e60e",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "native": {
+      "status": "PASS",
+      "responses": 1,
+      "output_bytes": 2791507,
+      "closed": true,
+      "active_processes": 0,
+      "drift": "none",
+      "context_complete": true,
+      "recommendation": "continue",
+      "private_evidence_sha256": "2cbfac293e9dac4e4bfeb7b69046b19936cd332278d3593b120bcbbc4cd1fc01"
+    },
+    "consent": {
+      "evidence_class": "operator-accepted-local-history-observation",
+      "independent_original_author_proof": false,
+      "manual_signature_steps": 0,
+      "private_evidence_sha256": "4b666805427c1b4101fe84f9f0f043a3876b52ce2eac5038f6233b9b7d848cc9"
+    },
+    "budget": {
+      "cumulative": {
+        "responses": 19,
+        "bytes": 33206500
+      },
+      "remaining": {
+        "responses": 5,
+        "bytes": 33902364
+      },
+      "deadline": "2026-11-24T18:12:02.350Z"
+    },
+    "original_history_unchanged": true,
+    "product_unchanged": true,
+    "manual_signatures": 0,
+    "complete_standard_workflow": false,
+    "drift_finalization": {
+      "status": "PASS",
+      "operation_id": "op_995145ca754e9da648d6c35893a8999c8733f1b5",
+      "outcome": "completed",
+      "effect_status": "confirmed",
+      "owner_pending": false,
+      "private_evidence_sha256": "c7f31b80dcbe7f0aa5014a605b6412c9f47f36c2e8781a5e3aea683a7e8a1e51"
+    },
+    "next_boundary": {
+      "kind": "operation",
+      "binding": "session_closure_decision",
+      "requirements": [],
+      "errors": []
+    },
+    "physical_observation": {
+      "status": "PASS",
+      "candidate": "a07a5864d1238d1d35f18b390230e6d9b28e64ef",
+      "canonical_backend": "postgres",
+      "state_mode": "db-only",
+      "operation_id": "op_995145ca754e9da648d6c35893a8999c8733f1b5",
+      "report_sha256": "c88e2e8827aeae6fe9ac23cce1bff82bf65eddca65b51658a06ede610dbc8ed7",
+      "event_sha256": "7558ff6865dcd17ce049db16bcf694fa9421afa05b4727d5f25a2310ea0ed354",
+      "event_offset": 8735,
+      "event_count": 1,
+      "original_alignment_reused": true,
+      "original_alignment_timestamp_preserved": true,
+      "owner_pending": false,
+      "private_evidence_sha256": "7136782b106cae1502629621d5549865aef896cce6e8923078bab968c2f0f465"
+    },
+    "human_closure": {
+      "status": "FAIL",
+      "operation_id": "op_bb8ac83fa9005999226baf171c687bebffae0155",
+      "question_sha256": "a59c7e4f3187946c797744d667878e4c55cef3c7b23129969470ccc4c72a895d",
+      "choices": [
+        "close",
+        "refused",
+        "deferred",
+        "cancelled"
+      ],
+      "manual_signatures": 0,
+      "response_received": true,
+      "choice": "close",
+      "receipt_count": 1,
+      "receipt_outcome": "completed",
+      "effect_status": "no_effect",
+      "process_accepted": false,
+      "reason_code": "PROCESS_OPERATION_AUTHORITY_TIMEOUT",
+      "private_evidence_sha256": "f0cf324162db8ce37cf47e7808f51bf6f341c0df1c677c377537f9a67f5b96db"
+    },
+    "correction": {
+      "pull_request": 228,
+      "commit": "bb6cb3acc72fe4d2f1c27eaa403ea9ef5dd50c0a",
+      "merged": true
+    }
+  },
+  "retained_session_closure": {
+    "status": "PARTIAL_SESSION_WRITER_CHECKPOINT_PASS_FINAL_HOOK_UNKNOWN",
+    "pull_request": 229,
+    "candidate": "ea9b0fc7c63de67ff27bb11ca1e570cd672b5b0c",
+    "archive_sha256": "a6103342f515742e532973dc134db9c9b020a969984e0bfb8256169e50e2a61b",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "source_and_installed": {
+      "status": "PASS",
+      "source_proof_sha256": "63d1a7c5abb4e9e569adf74551f2e8ca404ef4d51e05c018a96026d9739afe85",
+      "installed_proof_sha256": "4d98d80cd48f7e17e98072137ad5575eb34f536a6a3c8e74634558f2c8fcd92e",
+      "original_history_unchanged": true,
+      "product_unchanged": true,
+      "business_effects": 0,
+      "manual_signatures": 0,
+      "new_questions": 0,
+      "native_calls": 0
+    },
+    "retained_response": {
+      "operation_id": "op_bb8ac83fa9005999226baf171c687bebffae0155",
+      "choice": "close",
+      "original_receipt_unchanged": true,
+      "original_process_receipt_still_unaccepted": true,
+      "new_human_response": false
+    },
+    "reader_prototype": {
+      "status": "PASS",
+      "private_evidence_sha256": "39dc0e16d863152d3a4b9d6c7fae719021cf02124e2ba393c313e0051b308c46"
+    },
+    "refusals": {
+      "status": "PASS",
+      "checks": [
+        "original configuration bytes",
+        "start configuration bytes",
+        "different decision",
+        "missing start",
+        "provider model",
+        "criteria",
+        "authority",
+        "product scope",
+        "controller",
+        "unprotected old evidence"
+      ],
+      "private_evidence_sha256": "4de41dd483584a5c863ae101bf988dbf513a97121f812f688470eb16dc3fc8fa"
+    },
+    "complete_standard_workflow": false,
+    "current_boundary": {
+      "status": "FAIL",
+      "kind": "operation",
+      "binding": "session_close_finalize",
+      "requirements": [],
+      "errors": [],
+      "owner_pending": true,
+      "head": "6871af7521940cd0498f831a82291b0c8a318138",
+      "git_clean": true,
+      "private_evidence_sha256": "f76044c7beb1473e5ac08c414fda350178634b92ee28530a59e7e2d06baf0f18"
+    },
+    "operations": [
+      {
+        "binding": "workflow_entry_select",
+        "operation_id": "op_0a7e1ee96938800936b674978c59c5e312c35d09",
+        "phase": "receipted",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "accepted": true
+      },
+      {
+        "binding": "session_close_record",
+        "operation_id": "op_76c9c854bf229dc5682f579fcc5b57e2c5fcfd58",
+        "phase": "receipted",
+        "outcome": "completed",
+        "effect_status": "confirmed",
+        "accepted": true
+      },
+      {
+        "binding": "session_close_checkpoint",
+        "operation_id": "op_62905349957ac5edf5ce2279afd1dae86863d513",
+        "phase": "receipted",
+        "outcome": "completed",
+        "effect_status": "confirmed",
+        "accepted": true
+      },
+      {
+        "binding": "session_close_finalize",
+        "operation_id": "op_eb2ffa6523c76b6e939d63f59a7dbb11d82b7e56",
+        "phase": "receipted",
+        "outcome": "reconciliation_required",
+        "effect_status": "unknown",
+        "accepted": true
+      }
+    ],
+    "final_hook_diagnostic": {
+      "status": "PASS_READ_ONLY_DIAGNOSIS",
+      "operation_id": "op_eb2ffa6523c76b6e939d63f59a7dbb11d82b7e56",
+      "unknown_preserved": true,
+      "owner_pending": true,
+      "start_run_present": true,
+      "physical_close_event_count": 0,
+      "canonical_preimages_unchanged": true,
+      "gate_signals": [
+        "objective_delta"
+      ],
+      "private_evidence_sha256": "9807c6f8ab38f743be8e8b573f352eb225a4d35c9d669a78a9aae350016df642"
+    }
+  },
+  "session_hook_objective_fix": {
+    "pull_request": 230,
+    "merge_sha": "b082da2c32a5c0af06b1a998a32373d3ff11da13",
+    "status": "PASS_COMPONENT_AND_AUTHENTICATED_READER",
+    "reader_checks": 14,
+    "sqlite_ordinary_checks": 20,
+    "sqlite_objective_checks": 21,
+    "files_objective_checks": 21,
+    "private_prototype_sha256": "13781b8c8e2313cc86ad089199425ea8291671f1fe699564c3cc9f93f4513ce3",
+    "live_hook_after_fix": "SKIP"
+  },
+  "session_hook_recovery": {
+    "pull_request": 231,
+    "merge_sha": "57e7a16acab46af4aaf1b10978f5140716abdd29",
+    "candidate": "ac1bca5cdf2229634ed71ffd80e919818f0a0cd7",
+    "archive_sha256": "ccec65cde1e8ae166d96f08c54fde43c24724116e0d17800831107da7d50cf7e",
+    "status": "PASS_INSTALLED_POSTGRES_CHECKPOINT_ONLY_RECOVERY",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "operation_id": "op_eb2ffa6523c76b6e939d63f59a7dbb11d82b7e56",
+    "recovery_sha256": "7373546dc11f06f9ff3760114ab82c3088655e539ad06311bfc93565f1769642",
+    "private_evidence_sha256": "8e16a8c4ce284b1247814530befa4f3bb975d8d003421b8fe5364da10cd57402",
+    "original_history_unchanged": true,
+    "original_unknown_preserved": true,
+    "physical_business_state_unchanged": true,
+    "owner_pending": false,
+    "recovery_attempts": 1,
+    "completed_replay": {
+      "status": "PASS",
+      "written": false,
+      "record_unchanged": true,
+      "private_evidence_sha256": "c3f4ae6188d9b374c34d2917584c3c6e9e8f0d49d7ce107765b6e45673a599c3"
+    },
+    "session_closed": false,
+    "workflow_resumed": false,
+    "native_calls": 0,
+    "new_questions": 0,
+    "manual_signatures": 0,
+    "process_observer_gap": {
+      "status": "OPEN",
+      "explicit_target_preview": "FAIL",
+      "reason": "The Windows console host owned by the observing CLI is included as its descendant. Supported cwd target resolution passes with the same canonical scope and configuration checks; discovery is unchanged.",
+      "private_observation_sha256": "ba5ca9234dc5ba4c45abeeb499bb972ccac716398b3ee7ae5238088950cdd04a"
+    },
+    "checks": {
+      "controlled": 17,
+      "sqlite_storage_restart": 4,
+      "files_storage_restart": 4
+    },
+    "full_same_candidate_P0": "SKIP"
   }
 }
