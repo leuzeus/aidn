@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {execFileSync} from 'node:child_process';
+import {createStandardSessionBranchIntegration} from '../../src/application/runtime/standard-session-branch-integration.mjs';
 import {setTimeout as delay} from 'node:timers/promises';
 import {createAgenticProcessService} from '../../src/application/runtime/agentic-process-service.mjs';
 import {createStandardSessionClosureReview} from '../../src/application/runtime/standard-session-closure-review.mjs';
@@ -32,7 +34,7 @@ async function fixture(){
  state.receipt={contract_version:'process-operation-receipt.v1',receipt_id:'fixture-receipt',operation_id:state.intent.operation_id,intent_sha256:H(state.intent),authority_id:state.intent.authority_id,
   outcome:'completed',effect_status:'no_effect',output_sha256:digest,facts:{retained:true},evidence_refs:[{ref:'fixture:human',sha256:digest}]};
  const args={instanceId:'fixture',expectedSha256:waiting.record.instance_sha256,occurrenceId:'root',eventId:'accepted',receiptId:state.receipt.receipt_id,write:true};
- return{state,store,open,args,waiting};
+ return{targetRoot,state,store,open,args,waiting};
 }
 async function check(name,fn){await fn();checks++;console.log('PASS '+name);}
 try{
@@ -53,6 +55,26 @@ try{
    if(changed==='none'){const result=await accept();assert.equal(result.cursor.status,'COMPLETED');assert.equal(result.record.events.filter(e=>e.kind==='operation_result').length,1);}
    else{await assert.rejects(accept,{code:changed==='head'?'STANDARD_SESSION_CLOSURE_REVIEW_CHANGED':'STANDARD_SESSION_CLOSURE_ACCEPTED_SOURCE_REQUIRED'});assert.equal(f.store.read('fixture').record.instance_sha256,f.waiting.record.instance_sha256);}
    assert.equal(H(f.state.receipt),receiptBefore);
+  }
+ });
+ await check('integration reconstructs real Git after authentication; changed HEAD or canonical subject preserves the pending receipt',async()=>{
+  for(const changed of ['none','head','document']){
+   const f=await fixture(),git=(...args)=>execFileSync('git',['-C',f.targetRoot,...args],{encoding:'utf8',windowsHide:true,stdio:['pipe','pipe','pipe']}).trim();
+   git('init','-b','S001-example');git('config','user.email','fixture@example.invalid');git('config','user.name','Fixture');
+   fs.writeFileSync(path.join(f.targetRoot,'.gitignore'),'.aidn/\n');fs.writeFileSync(path.join(f.targetRoot,'product.txt'),'one\n');git('add','.');git('commit','-m','session');
+   git('switch','-c','C001-feature-example');fs.writeFileSync(path.join(f.targetRoot,'product.txt'),'two\n');git('add','.');git('commit','-m','cycle');
+   const head=git('rev-parse','HEAD'),target=git('rev-parse','S001-example'),op=n=>'op_'+n.repeat(40),input={contract_version:'standard-session-branch-integration-review-input.v1',delivery_operation_id:op('a'),closure_operation_id:op('b')};
+   const source={session_id:'S001',session_path:'sessions/S001.md',cycle_id:'C001',cycle_path:'cycles/C001-feature-example/status.md',source_branch:'C001-feature-example',target_branch:'S001-example',
+    delivery_operation_id:op('a'),delivery_output_sha256:digest,closure_operation_id:op('b'),closure_output_sha256:digest,material_sha256:digest,delivery_head:head,
+    documents:['sessions/S001.md','cycles/C001-feature-example/status.md','CURRENT-STATE.md','snapshots/context-snapshot.md'].map(p=>({ref:'audit:'+p,sha256:digest,metadata_sha256:digest}))};
+   let slow=false,authenticated=false;
+   const review=createStandardSessionBranchIntegration({targetRoot:f.targetRoot,readSource:async()=>{if(slow){assert(authenticated);await delay(120);}return structuredClone(source);},readDecision:async()=>null,readCurrent:()=>f.waiting.record});
+   const prepared=await review.prepareDecision(f.waiting.record,input),receiptBefore=H(f.state.receipt);slow=true;
+   f.state.verify=()=>{authenticated=true;if(changed==='head')git('commit','--allow-empty','-m','changed');if(changed==='document')source.documents[0].sha256='b'.repeat(64);};
+   const accept=()=>f.open(({instance})=>review.assertFresh(instance,prepared.plan)).acceptOperation(f.args);
+   if(changed==='none'){const result=await accept();assert.equal(result.cursor.status,'COMPLETED');assert.equal(result.record.events.filter(e=>e.kind==='operation_result').length,1);}
+   else{await assert.rejects(accept,{code:changed==='head'?'STANDARD_SESSION_INTEGRATION_REVIEW_INVALID':'STANDARD_SESSION_INTEGRATION_REVIEW_CHANGED'});assert.equal(f.store.read('fixture').record.instance_sha256,f.waiting.record.instance_sha256);}
+   assert.equal(H(f.state.receipt),receiptBefore);assert.equal(git('rev-parse','S001-example'),target);assert.equal(git('branch','--show-current'),'C001-feature-example');
   }
  });
  await check('slow local subject reconstruction finishes after bounded authentication and before one durable receipt',async()=>{
