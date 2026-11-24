@@ -8104,3 +8104,10 @@ PostgreSQL journal reader and public installed delivery remain local pilot
 checks; fixture success alone does not qualify them. Run
 `node tools/perf/verify-standard-retained-session-delivery-fixtures.mjs` for this
 focused boundary and the composition fixtures for the ordinary/corrective graph.
+
+The session branch integration authority fixtures also exercise its fixed
+retained-cycle capability: historical closure can supply the integration
+subject without adding events to the current instance; wrong closure/terminal
+IDs, question subject, proof digest and missing status history refuse. The
+actual retained audit/validation/promotion chain is a separate read-only local
+pilot probe, not a fixture claim.

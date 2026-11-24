@@ -96,5 +96,21 @@ try {
       reset(); sibling(); edit(); await assert.rejects(service.readSource(instance, input));
     }
   });
+  await test('retained cycle capability authenticates historical closure without importing current-instance events', async () => {
+    const originalEvents=structuredClone(instance.events);instance.events=[];
+    const terminal={record_operation_id:op('c'),plan:records.get(op('c')).record.preview.prepared.plan,output:records.get(op('c')).output,
+      closure_question:{operation_id:op('d'),review:{cycle_id:'C001'}}};
+    const history={closed:records.get(op('b')),terminal,material_sha256:H,records:[records.get(op('b'))]};
+    history.records[0].record.intent={operation_id:op('b'),binding_ref:'cycle_close_finalize'};
+    const retainedService=createStandardSessionBranchIntegrationAuthority({targetRoot:root,
+      readAcceptedOperation:(_,id)=>{assert.equal(id,op('a'));return records.get(id);},readDeliverySource:async()=>structuredClone(final),readRetainedCycle:async()=>history});
+    const result=await retainedService.readSource(instance,input);assert.equal(result.cycle_id,'C001');assert.deepEqual(instance.events,[]);
+    for(const mutate of [h=>h.closed.record.operation_id=op('e'),h=>h.terminal.record_operation_id=op('e'),h=>h.terminal.closure_question.operation_id=op('e'),h=>h.terminal.closure_question.review.cycle_id='C999',h=>h.material_sha256=null,h=>h.records=[]]){
+      const changed=structuredClone(history);mutate(changed);
+      const refused=createStandardSessionBranchIntegrationAuthority({targetRoot:root,readAcceptedOperation:(_,id)=>records.get(id),readDeliverySource:async()=>structuredClone(final),readRetainedCycle:async()=>changed});
+      await assert.rejects(refused.readSource(instance,input));
+    }
+    instance.events=originalEvents;
+  });
   console.log(JSON.stringify({ status: 'PASS', checks, canonical_files: 'ACTUAL', accepted_journal_and_R07_capabilities: 'FIXTURE', actual_hook_or_git_integration: 'NOT_RUN', native: 'NOT_RUN', installed_archive: 'NOT_RUN' }));
 } finally { const real = fs.realpathSync(root); assert.equal(path.dirname(real), temporary); assert.ok(path.basename(real).startsWith('aidn-integration-authority-')); fs.rmSync(real, { recursive: true, force: true }); }

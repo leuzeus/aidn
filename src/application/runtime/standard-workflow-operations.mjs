@@ -156,6 +156,7 @@ function implementation() {
     new URL('standard-retained-completion-source.mjs', import.meta.url),
     new URL('standard-retained-promotion-source.mjs', import.meta.url),
     new URL('standard-retained-session-closure-source.mjs', import.meta.url),
+    new URL('standard-retained-session-cycle-history.mjs', import.meta.url),
     new URL('standard-retained-session-delivery-source.mjs', import.meta.url),
     new URL('session-delivery-metadata-admission.mjs', import.meta.url),
     new URL('../../core/workflow/standard-retained-session-delivery.mjs', import.meta.url),

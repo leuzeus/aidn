@@ -1,3 +1,4 @@
+import { readRetainedSessionCycleHistory as readSessionCycleHistory } from './standard-retained-session-cycle-history.mjs';
 import { createRetainedSessionDeliverySource } from './standard-retained-session-delivery-source.mjs';
 import { retainedSessionDeliveryContinuation } from '../../core/workflow/standard-retained-session-delivery.mjs';
 import { createRetainedSessionCheckpointSource } from './standard-retained-session-checkpoint-source.mjs';
@@ -1514,6 +1515,12 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const retained = await readRetainedCompletion(instance, options, true);
     return retained.alignment === null ? null : retainObjectiveAlignment(retained.alignment, input, verified);
   }
+  async function readRetainedSessionCycleHistory(instance, { readValidation } = {}) {
+    const source = await readRetainedSessionDelivery(instance);
+    const history = await readSessionCycleHistory({ configuration, environment, createAuthority: createStandardProcessAuthority, source, readValidation });
+    if (shadowHash((await readRetainedSessionDelivery(instance)).proof) !== shadowHash(source.proof)) fail('STANDARD_SESSION_INTEGRATION_HISTORY_CHANGED');
+    return history;
+  }
   async function retainedSessionDeliveryEntry(instance, parameters) {
     authenticate(instance);
     const source = await retainedSessionDeliverySource.inspect(parameters.entry_point);
@@ -1734,6 +1741,6 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     readNativeActivity: readPreworkNativeActivity,
   });
   return Object.freeze({ profile: "standard-mixed.v1", rollbackProductScope, observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, authenticateOperationHost, inspectDiagnostic, observeNativeDiagnostic, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
-    verifyNativeHumanSource, admitNativeActivity, retainedSessionDeliveryEntry, readRetainedSessionDelivery, retainedSessionCheckpointEntry, readRetainedSessionCheckpoint, retainedSessionClosureEntry, readRetainedSessionClosure, retainedAuditEntry, retainedClosureEntry, retainedCompletionEntry, readRetainedCompletion, retainedPromotionEntry, readRetainedPromotion, readRetainedObjectiveAlignment, readRecordedDriftEvaluation, readRetainedClosureDecision, readRecordedClosureDecision, readRecordedCycleAudit, readRecordedCycleValidation, inspectRetainedCycleAudit, retainedVerificationEntry, admitRetainedVerification, retainedValidationEntry, admitRetainedValidation, selectWorkPhase, observeRetainedTaskWork, retainedContributors,
+    verifyNativeHumanSource, admitNativeActivity, readRetainedSessionCycleHistory, retainedSessionDeliveryEntry, readRetainedSessionDelivery, retainedSessionCheckpointEntry, readRetainedSessionCheckpoint, retainedSessionClosureEntry, readRetainedSessionClosure, retainedAuditEntry, retainedClosureEntry, retainedCompletionEntry, readRetainedCompletion, retainedPromotionEntry, readRetainedPromotion, readRetainedObjectiveAlignment, readRecordedDriftEvaluation, readRetainedClosureDecision, readRecordedClosureDecision, readRecordedCycleAudit, readRecordedCycleValidation, inspectRetainedCycleAudit, retainedVerificationEntry, admitRetainedVerification, retainedValidationEntry, admitRetainedValidation, selectWorkPhase, observeRetainedTaskWork, retainedContributors,
     selectOwnedCyclePlanning, selectCyclePrework, evaluateCyclePrework, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, inspectRetainedCycleTaskWork, readCycleValidationExecution, readCycleVerificationExecution, inspectRetainedCycleVerification, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, selectCycleExecutionSource, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCanonicalResumeProduct, observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }
