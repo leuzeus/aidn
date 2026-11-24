@@ -185,7 +185,7 @@
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "The accepted baseline promotion is recorded on PostgreSQL and its Git checkpoint is confirmed with no_change. Run the promotion R05 actor and final hook, then session closure, private PR review/merge and post-merge synchronization. Preserve the first refusal and original histories. Full same-candidate source, recovery and installed-archive P0 remains open.",
+  "next_required": "Preserve the promotion R05 refusal. Deliver and qualify the bounded continuation from the already recorded promotion and its clean Native evaluation, reusing the still-admissible original alignment. Then finish promotion, session closure, private PR review/merge and post-merge synchronization. No old receipt, UNKNOWN or Native counter may be reset. Full same-candidate source, recovery and installed-archive P0 remains open.",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-24T04:01:15.502Z",
+  "updated_at": "2026-11-24T04:33:23.875Z",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -1647,16 +1647,58 @@
       "product_unchanged": true,
       "new_closure_questions": 0,
       "manual_signatures": 0,
-      "promotion_hook": "PENDING",
+      "promotion_hook": "BLOCKED_BEFORE_FINALIZATION",
       "private_evidence_sha256": "bdca5b0e86799ae82faa9b9d5162cadcea9d24c716906aba32af29e37f1e8ddb"
     },
     "complete_standard_workflow": false,
     "next_boundary": {
-      "kind": "native",
-      "requirements": [
-        "EXPLICIT_EXECUTION_AUTHORIZATION_REQUIRED"
-      ],
-      "native_responses_used_on_this_candidate": 0
+      "kind": "retained_promotion_continuation_required",
+      "native_responses_used_on_this_candidate": 1,
+      "campaign_responses_used": 18,
+      "remaining_responses": 6,
+      "remaining_output_bytes": 36693871
+    },
+    "promotion_r05": {
+      "status": "PASS_NATIVE_DIAGNOSIS_FAIL_FINALIZATION",
+      "candidate": "198b4dbc67a521b94369ab1ea44971463d781d2d",
+      "native": {
+        "responses": 1,
+        "output_bytes": 2760605,
+        "active_processes": 0,
+        "closed": true,
+        "drift": "none",
+        "context_complete": true,
+        "private_evidence_sha256": "41a797c86f5701b4ba4fe12eb9fa4cd8e2500faa63c33bad0a7f86bc3095eaad"
+      },
+      "first_refusal": {
+        "operation_id": "op_27b2230d12842eab07df32adc63cb1c9b264ac05",
+        "outcome": "blocked",
+        "effect_status": "no_effect",
+        "reason_code": "STANDARD_DRIFT_GATE_BLOCKED",
+        "signal": "objective_delta",
+        "private_evidence_sha256": "305948a60d04416448b7995f9b9a98dfaa5963752cab2c84e51be5b7136b9ca1"
+      },
+      "original_alignment_preserved": true,
+      "new_questions": 0,
+      "manual_signatures": 0
+    },
+    "objective_reuse_prototype": {
+      "status": "PASS_PREPARATION_ONLY",
+      "candidate": "cb309014ff87f8b732c9c9d72da6b5b071fa30f8",
+      "pr": 226,
+      "technical_verdict": "GO_SCOPED_REUSE_PREPARATION",
+      "negative_scope_cases": 7,
+      "scope_fixture_checks": 19,
+      "effect_fence_checks": 28,
+      "completion_checks": 49,
+      "original_human_authenticated": true,
+      "physical_completion_authenticated": true,
+      "new_questions": 0,
+      "manual_signatures": 0,
+      "model_calls": 0,
+      "business_effects": 0,
+      "public_continuation": "NOT_RUN",
+      "private_evidence_sha256": "6100b215ad1f8f80c5b26bcc1c317d9a1e7f36d35061fdbce00356e80ce0dc11"
     }
   }
 }
