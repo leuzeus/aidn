@@ -2256,5 +2256,38 @@
       "diagnosis": "The current integration reader uses the current technical instance journal authority for a cycle finalized under an earlier retained instance. Historical cycle/promotion capabilities are not wired at this boundary."
     },
     "full_same_candidate_P0": "SKIP"
+  },
+  "retained_session_integration_authority": {
+    "status": "PASS_INSTALLED_INTEGRATION_PREVIEW",
+    "candidate": "04bd30eba320da2f36375df0919f9230c4f8cb63",
+    "archive_sha256": "87c683717d9682e9ce13e438f3c29582846a08dc9fae2e9a92ee375cc9c0156e",
+    "instance": "standard-session-integration-pr235",
+    "instance_sha256": "10c4ffe68e121ea28968fb335e8f349ab992b71eada15f2bd89b5c0849bf9e6e",
+    "delivery_operation_id": "op_7e24b06e933c30f290e8df730cf429bbf77b4940",
+    "delivery_journal_sha256": "fafcd90f3befab73b23eb14194e7484b30f1bfac3ca2e0f0850fcfd31ace1d8f",
+    "delivery_output_sha256": "f1119f31573e6877dd2b6c5bfc034d7496248cae6781f22176ec61a41ba96cfb",
+    "effect_status": "no_effect",
+    "canonical_documents_unchanged": true,
+    "old_journals_unchanged": true,
+    "old_instances_unchanged": true,
+    "git_head": "6871af7521940cd0498f831a82291b0c8a318138",
+    "git_clean": true,
+    "physical_close_event_count": 1,
+    "no_reclose": true,
+    "native_calls": 0,
+    "new_questions": 0,
+    "manual_signatures": 0,
+    "pull_request": 235,
+    "merge_sha": "994b4e476f6f6f1bee10cbab50cc2041d384ac05",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "physical_evidence_sha256": "358be837578a84d2f6719b2ac5f9c3525e13db0ae42a8e3cd3755dfad436c2aa",
+    "preview_sha256": "17a62c6a459c90021bbe9e246de9f2483e63ae16e319a266371ef42742ad0aed",
+    "integration_can_apply": true,
+    "integration_effect": "NOT_DISPATCHED",
+    "human_integration_decision": "PENDING",
+    "old_delivery_receipt_preserved": true,
+    "replayed_prerequisite": "A new technical instance with changed implementation bindings revalidated its deterministic no-effect delivery predecessor; session closure, Human choices, product, audit and Native activities were not repeated.",
+    "full_same_candidate_P0": "SKIP"
   }
 }
