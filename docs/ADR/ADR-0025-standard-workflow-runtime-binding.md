@@ -5514,4 +5514,13 @@ their authorized terminal transition. The terminal checkpoint and completion
 hook still verify the actual owning session, cycle, product and canonical
 postimages, current admission, owner and CAS. This historical reader admits no
 new closure, imports no receipt and cannot be selected through operation JSON.
+
+The terminal reader returns the original closure question only after this
+writer/material verification, for both ordinary and retained decisions. The
+promotion authority consumes that private verified result rather than opening
+the historical Human journal under the successor instance's key. It still
+requires the accepted current final closure, the matching question/decision and
+cycle identities, and the correlated physical checkpoint event. This supplies
+closure provenance, not a promotion choice or permission. Baseline promotion
+continues to require its own explicit Human decision and current admission.
 Current pre-effect closure inspection retains all its VERIFYING checks.
