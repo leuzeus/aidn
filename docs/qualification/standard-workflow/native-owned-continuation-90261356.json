@@ -2356,7 +2356,7 @@
     "governance_admission": "PASS",
     "perf_kpi": "PASS",
     "full_same_candidate_P0": "SKIP",
-    "delivery": "IN_PROGRESS",
+    "delivery": "PRIVATE_PR_OPEN_CONFIRMED",
     "delivery_provider_preparation": {
       "initial_preview": "FAIL",
       "reason_code": "STANDARD_SESSION_PUSH_TRANSPORT_REQUIRED",
@@ -2371,6 +2371,68 @@
       "private_evidence_sha256": "81a6c05669d6d6639d8691c97785f8449d1c05fa81e2c954924728dccccd1767",
       "native_calls": 0,
       "remote_writes": 0
+    }
+  },
+  "retained_session_pr_delivery": {
+    "candidate": "ca0745101f4944bc252b36cbf057dba7aae88e46",
+    "archive_sha256": "d68653e8e126ab133d29967d6317e04f77411b8bda39b853051d3d80a3a4e155",
+    "status": "PASS_PUSH_AND_OPEN",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "instance": "standard-retained-integration-pr237",
+    "instance_sha256": "a395a1de2cd5592f5a0d1afc48f94e6f5987804f228b17f62b1fba2fd28e4058",
+    "push": {
+      "operation_id": "op_9aec998f62e7f675fb8534aaff81346b854cb60f",
+      "journal_sha256": "ee023ef982836a0dec1c8bff27bb7136dcae43c3466e1334f7928578d6b536ca",
+      "outcome": "completed",
+      "effect_status": "confirmed",
+      "accepted": true
+    },
+    "open": {
+      "operation_id": "op_acbaf9330c761ac77d1165eec44c7741cebe963d",
+      "journal_sha256": "4bfff0ee2e2880562c21a7e56138dec8e1989dfa9f8093ce49c8eccaf793a452",
+      "outcome": "completed",
+      "effect_status": "confirmed",
+      "accepted": true
+    },
+    "remote_ref_verified": true,
+    "private_pull_request_number": 1,
+    "pull_request_state": "OPEN",
+    "remote_head": "6871af7521940cd0498f831a82291b0c8a318138",
+    "product_ci": "PASS",
+    "remote_observation_sha256": "3169417896d1e3aaef7048773ef97a38a4ed7f44cd98b64dd649aca506211c8a",
+    "operation_observation_sha256": "4acab034acb6f6c2b51686e7cbaa43037d0db7d1dbab20accd3b13cbcfa244dd",
+    "next": {
+      "status": "FAIL_PREVIEW",
+      "operation": "session_pr_record",
+      "reason_code": "PROCESS_JOURNAL_NOT_AUTHENTICATED",
+      "effect": "NOT_DISPATCHED",
+      "owner_pending": false,
+      "evidence_sha256": "733762ca0e00740853608b0b00049655b4d0bcad75807c08c937993bf7c3ad14"
+    },
+    "native_calls": 0,
+    "new_questions": 0,
+    "manual_signatures": 0,
+    "full_same_candidate_P0": "SKIP",
+    "targeted_correction": {
+      "pull_request": 238,
+      "candidate": "c80a090293af5d532a9d1c72d3e14e1fd57a6ac0",
+      "entry_point": "retained_session_pr_open",
+      "historical_reader_prototype": {
+        "status": "GO_READ_ONLY_PROTOTYPE",
+        "evidence_sha256": "9adba8c97b4884be8599b3c22ec15f4a50df1bfbe666dfd14e8df5c7c0a4402d"
+      },
+      "entry_prototype": {
+        "status": "GO_READ_ONLY_PROTOTYPE",
+        "evidence_sha256": "4c8c31809b95face33d499eb17fab01f4cd7c652094cfa67792a592dafe4f8c8",
+        "lineage_count": 11,
+        "elapsed_ms": 59124
+      },
+      "canonical_writes": 0,
+      "remote_writes": 0,
+      "native_calls": 0,
+      "installed_continuation": "NOT_RUN",
+      "full_same_candidate_P0": "SKIP"
     }
   }
 }
