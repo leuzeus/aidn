@@ -5472,3 +5472,46 @@ is a host-composed function, never a capability selected by serialized process
 data. This separates source liveness from local domain validation without
 increasing the authority timeout or weakening closure freshness. Historical
 model pins and decisions are not migrated by this change.
+
+### Retained closure decision before terminal effects
+
+`retained_closure` names a completed, acknowledged Human retention receipt that
+has not yet been accepted by its original `retained_audit` instance. The original
+configuration is protected data, pinned both by the locator and by every signed
+operation snapshot. The original model and journal signatures authenticate the
+history; they cannot authorize execution of that old model with new code.
+
+The fixed reader requires one final closure intention, a single completed
+no-effect retention result, no active Native allocation and settled earlier
+operations. It verifies the original inbox and question, rechecks the original
+independent audit, qualified machine evidence and exact current owned VERIFYING
+cycle. A changed configuration, product, subject, decision or pending owner
+refuses. No new answer, signature, inbox claim or synthetic Human receipt is
+created. The original instance and every old result remain unchanged.
+
+The current entry records a proof digest under its ordinary operation journal.
+The root skips audit evaluation and Human capture only for this admitted entry.
+The ordinary review pair is a pinned call; its deterministic/Human order remains
+unchanged. Inlining the sequential delivery group preserves the 288-node root
+bound. `cycle_close_record` v2 has empty input: the host selects the latest
+accepted current decision, or this explicitly retained source if no current
+decision exists. V1 remains readable as historical data and as the internal
+close-plan subject. Current closure still requires its own grant, owner, CAS and
+postconditions; entry proof is neither a terminal result nor skill completion.
+
+During the close writer's fresh pre-effect observation, the private reader may
+receive that writer's exact synchronous owner assertion. It propagates only
+through the retained verification chain and is rechecked across awaits. JSON
+cannot assert ownership; ordinary inspection still refuses a pending owner.
+This adds no canonical concept, store, backend requirement or budget renewal.
+
+After an accepted confirmed terminal writer, the fixed host uses a separate
+historical evidence reader. It authenticates the unchanged original instances,
+journals, inbox, independent Native report and qualified validation files, and
+matches the entry proof and exact decision material carried by that writer.
+It does not require the former VERIFYING documents to remain current after
+their authorized terminal transition. The terminal checkpoint and completion
+hook still verify the actual owning session, cycle, product and canonical
+postimages, current admission, owner and CAS. This historical reader admits no
+new closure, imports no receipt and cannot be selected through operation JSON.
+Current pre-effect closure inspection retains all its VERIFYING checks.

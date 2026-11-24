@@ -481,7 +481,7 @@ native("audit_review", "auditor", "audit", "standard-cycle-audit-report.v1", ["c
 inputs.push({ node_id: "audit_review", fields: operation("audit_review", "audit_operation_id", "audit_select") });
 op("audit_evaluate", "cycle_audit_evaluate");
 op("closure_decide", "cycle_closure_decision", operation("closure_decide", "audit_operation_id", "audit_evaluate"));
-op("close_record", "cycle_close_record", operation("close_record", "decision_operation_id", "closure_decide"));
+op("close_record", "cycle_close_record");
 op("cycle_terminal_checkpoint", "cycle_terminal_checkpoint", operation("cycle_terminal_checkpoint", "closure_operation_id", "close_record"));
 op("close_finalize", "cycle_close_finalize", operation("close_finalize", "closure_operation_id", "close_record"));
 xor("promotion_eligibility", [["retained", "promotion_choice", "cycle_retained"], ["not_retained", "promotion_inapplicable", null]]);
@@ -829,6 +829,29 @@ op("cycle_drift_unresolved", "drift_check_finalize", operation(null, "evaluation
 seq("cycle_drift_checkpoint_ready", ["cycle_drift_finalize", "fresh_checkpoint"]);
 seq("cycle_drift_diagnosis_requested", []);
 
+// Keep ordinary audit evaluation and Human capture together. The root can skip
+// this call only after its retained-closure entry authenticates the old decision.
+const closureReviewNames = new Set(['audit_evaluate', 'closure_decide']);
+const closureReviewNodes = nodes.filter(row => closureReviewNames.has(row.id));
+const closureReviewInputs = inputs.filter(row => closureReviewNames.has(row.node_id));
+for (let i = nodes.length - 1; i >= 0; i--) if (closureReviewNames.has(nodes[i].id)) nodes.splice(i, 1);
+for (let i = inputs.length - 1; i >= 0; i--) if (closureReviewNames.has(inputs[i].node_id)) inputs.splice(i, 1);
+const closureReviewTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-cycle-closure-review', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'review',
+  nodes: [{ id: 'review', kind: 'sequence', participant_ref: 'project', children: ['audit_evaluate', 'closure_decide'] }, ...closureReviewNodes],
+  operation_pins: pinsFor(closureReviewNodes), call_interface: { parameters: {}, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [], inputs: closureReviewInputs } };
+const closureReviewRef = pinTarget(closureReviewTarget);
+const closureParent = nodes.find(row => row.id === 'cycle_work'), closureAt = closureParent.children.indexOf('audit_evaluate');
+if (closureParent.children.slice(closureAt, closureAt + 2).join() !== 'audit_evaluate,closure_decide') throw Error('STANDARD_CLOSURE_REVIEW_ORDER_CHANGED');
+closureParent.children.splice(closureAt, 2, 'closure_review_route');
+xor('closure_review_route', [['retained', 'closure_retained_ready', 'retained_closure_requested'], ['ordinary', 'closure_review', null]]);
+seq('closure_retained_ready', []); node('closure_review', 'call', { target: closureReviewRef }); inputs.push({ node_id: 'closure_review', fields: {} });
+// Inline a purely sequential delivery group; preserve its leaves and order and
+// keep the existing 288-node root bound without altering any old model.
+const deliveryGroup = nodes.find(row => row.id === 'session_pr_delivery'), deliveryAt = closureParent.children.indexOf(deliveryGroup.id);
+closureParent.children.splice(deliveryAt, 1, ...deliveryGroup.children); nodes.splice(nodes.indexOf(deliveryGroup), 1);
+
 const policy = (id, assurance_profile, allowed_permissions, independent_review = false) => ({ id, version: 1, assurance_profile, mode: "COMMITTING",
   independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });
 const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard", revision: 1,
@@ -846,6 +869,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...policy("exploring_planning", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" }, policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
     policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
   operation_pins: pinsFor(nodes), call_targets: [
+    { ...closureReviewRef, model: closureReviewTarget },
     { ...verificationRef, model: verificationTarget },
     { ...prReviewRef, model: prReviewTarget },
     { ...pretriageRef, model: pretriageTarget },

@@ -91,7 +91,9 @@ try {
     risk_acceptances: [], evidence_refs: [{ ref: "fixture:operator", sha256: H }] };
   const instance = { instance_id: "fixture", instance_sha256: H }, input = { decision_operation_id: op };
   let fixtureTime = Date.now() - (agedPlan ? 86400000 : 0); const authorityReads = [];
-  const writer = createStandardCycleCloseRecord({ targetRoot: root, now: agedPlan || ["slow-authority", "expired"].includes(selected) ? () => fixtureTime : Date.now, readDecision: async () => {
+  const writer = createStandardCycleCloseRecord({ targetRoot: root, now: agedPlan || ["slow-authority", "expired"].includes(selected) ? () => fixtureTime : Date.now, readDecision: async (_instance, _input, { assertCurrentOwner } = {}) => {
+    if (assertCurrentOwner) { assert.equal(artifacts.ownerPending(), true); assert.equal(assertCurrentOwner(), undefined); }
+    else assert.equal(artifacts.ownerPending(), false);
     authorityReads.push("decision"); if (selected === "slow-authority") fixtureTime += 100000;
     return { question, decision, report };
   }, observeContext, readCurrent: () => instance });

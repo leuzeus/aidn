@@ -43,6 +43,14 @@ export function createRetainedVerificationSource({ configuration, environment, c
       original_instance_sha256: instance.instance_sha256, original_configuration_sha256: H(execution),
       native_journal_sha256: H(native), audit_operation_id: selection.operation_id, audit_journal_sha256: H(selection) } };
   }
+  function assertPinned(entry, proof) {
+    const current = capture(entry).pins;
+    require(H(current) === H(Object.fromEntries(Object.keys(current).map(key => [key, proof[key]]))));
+    for (const kind of ["verification", "evaluation", "validation"]) {
+      const record = journals.read(proof[kind + "_operation_id"]).record;
+      require(record && H(record) === proof[kind + "_journal_sha256"]);
+    }
+  }
   return Object.freeze({
     async inspect(entry, { assertCurrentOwner = null } = {}) {
       const before = capture(entry), { instance, execution, selection, readKey } = before;
@@ -61,13 +69,18 @@ export function createRetainedVerificationSource({ configuration, environment, c
         product_sha256: retained.product_sha256, proposal_sha256: H(bridge.source.proposal), contributors: retained.contributors });
       return { proof, bridge };
     },
-    assertPinned(entry, proof) {
-      const current = capture(entry).pins;
-      require(H(current) === H(Object.fromEntries(Object.keys(current).map(key => [key, proof[key]]))));
-      for (const kind of ["verification", "evaluation", "validation"]) {
-        const record = journals.read(proof[kind + "_operation_id"]).record;
-        require(record && H(record) === proof[kind + "_journal_sha256"]);
-      }
+    // Historical evidence only. The terminal consumer separately authenticates
+    // the accepted closure writer and its current canonical postimages.
+    readRecordedValidation(entry, proof) {
+      assertRetainedVerificationProof(proof); assertPinned(entry, proof);
+      const before = capture(entry), { instance, execution, selection, readKey } = before;
+      const product = () => readAgenticProductSnapshot(execution.product_root, execution.product_files);
+      const authority = createAuthority({ configuration: execution, model: instance.model, modelSource: selection.preview.snapshot.model_source,
+        readSigningKey: readKey, readProductSnapshot: product, readProductSha256: () => H(product()), environment });
+      const source = authority.readRecordedCycleValidation(instance, proof);
+      assertPinned(entry, proof); require(H(capture(entry).pins) === H(before.pins));
+      return source;
     },
+    assertPinned,
   });
 }
