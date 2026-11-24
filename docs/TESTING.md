@@ -5580,6 +5580,21 @@ transport and make no session-close, full-model or archive claim.
 
 ### Session closure decision and R05 physical authority
 
+`node tools/perf/verify-session-close-objective-fixtures.mjs` checks the
+session-close reader's pinned R05 output, actual event bytes, report, unchanged
+documents and the writer's causal content/metadata transition for v3/v4
+completion. Its accepted-source capabilities are fixture inputs. It is also
+included in the short process-operation fixture.
+
+Add `--objective-completion` to
+`node tools/perf/verify-standard-session-close-record-fixtures.mjs --mode=db-only --checkpoint --final-hook --delivery-checkpoint`
+to exercise a terminal owned cycle whose objective wording differs from the
+session. Missing and wrong opinions refuse without events or owner acquisition;
+the exact controlled reader reaches the actual hook and delivery. Repeat with
+files when changing Git projection behavior. This component uses injected
+source authority; authenticated PostgreSQL pilot evidence and UNKNOWN recovery
+remain separate qualifications.
+
 `node tools/perf/verify-standard-session-closure-history-fixtures.mjs` checks the
 private v2 record/completion contracts, repeated pure reopen/reclosure, exact old
 body preservation, legacy compatibility, fresh question binding, current and
