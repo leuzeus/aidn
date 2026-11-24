@@ -339,8 +339,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     readHistoricalCompletion: instance => objectiveCompletion.review(instance),
     readRecorded: readAcceptedTerminalRecord, observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
   async function selectCompletedClose(instance) {
-    if (instance.initial_parameters?.entry_point?.kind === 'retained_session_closure') {
-      const source = await processAuthority.readRetainedSessionClosure(instance);
+    if (['retained_session_closure', 'retained_session_checkpoint'].includes(instance.initial_parameters?.entry_point?.kind)) {
+      const source = instance.initial_parameters.entry_point.kind === 'retained_session_checkpoint'
+        ? (await processAuthority.readRetainedSessionCheckpoint(instance)).historical : await processAuthority.readRetainedSessionClosure(instance);
       return source.records[1].results[0].output;
     }
     if (['retained_completion', 'retained_promotion'].includes(instance.initial_parameters?.entry_point?.kind)) {
@@ -532,6 +533,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   const sessionPrecloseCheckpoint = processAuthority ? createStandardSessionPrecloseCheckpoint({ targetRoot, now, readSource: readSessionPrecloseSource,
     readCurrent: id => current(id).record }) : null;
   async function readSessionCloseHookSource(instance, input) {
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_session_checkpoint') {
+      const h = await processAuthority.readRetainedSessionCheckpoint(instance);
+      if (input.record_operation_id !== h.proof.record_operation_id || input.checkpoint_operation_id !== h.proof.checkpoint_operation_id)
+        fail('STANDARD_RETAINED_SESSION_CHECKPOINT_SOURCE_CHANGED');
+      return { ...h.source, objective_completion: readSessionCloseObjectiveCompletion({ artifacts, recorded: h.recorded, finalization: h.finalization }) };
+    }
+
     const recorded = await readAcceptedSessionCloseRecord(instance, input), review = recorded.question.review;
     const checkpoint = acceptedForPromotion(instance, input.checkpoint_operation_id, "session_close_checkpoint", "STANDARD_SESSION_CLOSE_CHECKPOINT_REQUIRED");
     const cp = checkpoint.record.preview.prepared.plan, source = await readSessionCheckpointSource(instance, input);
@@ -550,12 +558,25 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   }
   const sessionCloseHook = processAuthority ? createStandardSessionCloseHook({ targetRoot, now, readSource: readSessionCloseHookSource,
     readCurrent: id => current(id).record }) : null;
+  async function prepareSessionCloseHook(instance, operationId) {
+    const h = instance.initial_parameters?.entry_point?.kind === 'retained_session_checkpoint'
+      ? await processAuthority.readRetainedSessionCheckpoint(instance) : null;
+    const checkpointId = h?.proof.checkpoint_operation_id ?? instance.events.findLast(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'session_close_checkpoint')?.intent.operation_id;
+    if (!checkpointId) fail('STANDARD_SESSION_CLOSE_CHECKPOINT_REQUIRED');
+    const checkpoint = h?.checkpoint ?? acceptedForPromotion(instance, checkpointId, 'session_close_checkpoint');
+    return sessionCloseHook.prepare(instance, { record_operation_id: checkpoint.record.preview.prepared.plan.input.record_operation_id,
+      checkpoint_operation_id: checkpointId }, operationId);
+  }
   async function readSessionDeliverySource(instance, input) {
     const closed = acceptedForPromotion(instance, input.finalization_operation_id, "session_close_finalize", "STANDARD_SESSION_DELIVERY_FINALIZATION_REQUIRED");
     const plan = closed.record.preview.prepared.plan, output = closed.output, observed = output.observations;
     if (output.effect_status !== "confirmed" || output.facts.session_close_completed !== true || plan.operation_id !== input.finalization_operation_id
       || observed.run_id !== plan.run_id || observed.event_file !== ".aidn/runtime/perf/workflow-events.ndjson") fail("STANDARD_SESSION_DELIVERY_FINALIZATION_REQUIRED");
-    const checkpoint = acceptedForPromotion(instance, plan.input.checkpoint_operation_id, "session_close_checkpoint");
+    const h = instance.initial_parameters?.entry_point?.kind === 'retained_session_checkpoint'
+      ? await processAuthority.readRetainedSessionCheckpoint(instance) : null;
+    if (h && (h.proof.checkpoint_operation_id !== plan.input.checkpoint_operation_id || h.proof.record_operation_id !== plan.input.record_operation_id))
+      fail('STANDARD_SESSION_DELIVERY_CHECKPOINT_REQUIRED');
+    const checkpoint = h?.checkpoint ?? acceptedForPromotion(instance, plan.input.checkpoint_operation_id, "session_close_checkpoint");
     if (checkpoint.output.facts.session_close_checkpoint_completed !== true || checkpoint.output.observations.record_operation_id !== plan.input.record_operation_id
       || (checkpoint.output.observations.git?.commit_sha ?? checkpoint.output.observations.git?.head) !== plan.head) fail("STANDARD_SESSION_DELIVERY_CHECKPOINT_REQUIRED");
     const bytes = readAgentRunFile(agentRunPhysicalPath(path.join(artifacts.root, observed.event_file)), { json: false, maxBytes: 4194304 }).value;
@@ -1671,7 +1692,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   const providers = createOperationProviderRegistry([createStandardOperationProvider({
     baselinePromotion, baselinePromotionCheckpoint, baselinePromotionHook, canonicalPlanAdoption,
     canonicalResumeAdmission, changeRequest, checkpointCompletion, checksMayObserveMerge,
-    closureReview, current, cycleCloseHook, cycleCloseRecord, prepareCycleCloseRecord, prepareSessionCloseRecord, retainedClosureEntry, retainedCompletionEntry, cycleEntryChoiceActivation,
+    closureReview, current, cycleCloseHook, cycleCloseRecord, prepareCycleCloseRecord, prepareSessionCloseRecord, prepareSessionCloseHook, retainedClosureEntry, retainedCompletionEntry, cycleEntryChoiceActivation,
     cycleEntryChoiceCheckpoint, cycleEntryChoiceContext, cycleEntryChoiceRecord,
     cycleEntryFocusCheckpoint, cycleEntrySelectedCheckpoint, cycleEntrySelectedFocus,
     cycleImplementation, cyclePlanRecord, cycleTaskAdvance, cycleValidation, cycleVerification,
