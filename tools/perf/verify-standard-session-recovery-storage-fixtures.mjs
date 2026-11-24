@@ -38,10 +38,13 @@ if (child) {
         const current = fence.read(), owned = recovery && sessionRecoveryOwnsFence(recovery, current.record);
         assert(owned || H(current.record) === H(origin.lease.resource_fence));
         const lock = inspectInterruptedReopenLock(config.root, id, origin.intention, origin.lease, { allowRetired: Boolean(owned) });
+        const observation = createLocalHandoffProcessDiscovery({ targetRoot: config.root, controlRoot: config.root,
+          nativeExecutable: process.execPath, ownerIdentities: [origin.lease.resource_fence.process_identity] }).observe();
+        assert(observation.stable && observation.samples.every(row => !row.processes.length && !row.unavailable.length),
+          'fixture process observation not empty: ' + JSON.stringify(observation));
         return { instance: { instance_id: "fixture", instance_sha256: hash, scope_id: hash, model_sha256: hash }, record: { operation_id: id },
           capsule: {}, native: null, records: [], execution: {}, historical: { proof: {} }, physical: { events_sha256: hash, run_file_sha256: hash, documents: [] }, context: { authority_sha256: hash, context_sha256: hash },
-          processes: [createLocalHandoffProcessDiscovery({ targetRoot: config.root, controlRoot: config.root,
-            nativeExecutable: process.execPath, ownerIdentities: [origin.lease.resource_fence.process_identity] }).observe()],
+          processes: [observation],
           owner: { ...origin, fence: current, lock }, assertStable() {} };
       }, retire: ({ observed, dispositionLease, assertPermit }) => retireInterruptedReopenLock({ targetRoot: config.root, operationId: id,
         intention: origin.intention, originalLease: origin.lease, fence, dispositionLease, expectedLockSha256: observed.owner.lock.sha256, assertPermit, write: true }),
@@ -74,7 +77,7 @@ if (child) {
       assert.deepEqual({ record: store.read(id).content_sha256, archive: H(inspectInterruptedReopenLock(root, id, origin.intention, origin.lease, { allowRetired: true }).identity), fence: fence.read().content_sha256 }, before);
       console.log("PASS real process restart at " + crash + " (" + mode + ")");
     }
-    console.log(JSON.stringify({ status: "PASS", checks: 4, mode, proof_class: "real-process-storage-and-lock-fixture", validation_startup: "SKIP", native: "SKIP" }));
+    console.log(JSON.stringify({ status: "PASS", checks: 4, mode, proof_class: "real-process-storage-and-lock-fixture", session_closure: "SKIP", native: "SKIP" }));
   } finally {
     for (const root of [...owned, temporary]) {
       assert(path.dirname(root) === fs.realpathSync(os.tmpdir()) && /^aidn-(standard-ports|session-recovery)-/.test(path.basename(root)));
