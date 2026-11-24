@@ -8031,3 +8031,14 @@ reader separately against retained evidence and negative source/binding cases,
 then exercise the frozen public source and installed entry. Keep original
 blocked receipts and Native accounting unchanged. Reaching human closure review
 does not establish closure, delivery or full P0.
+
+Run `node tools/perf/verify-standard-retained-session-closure-fixtures.mjs` for
+the closed retained-session contracts, provider revision fence and published
+reducer route directly to the close writer. It is included through the retained
+closure fixtures. These cases use constructed source proofs and do not prove
+historical authentication or a real closure. Qualify the fixed reader separately
+against a local-only pilot corpus, including changed configuration, start source,
+decision, provider, authority, product scope and evidence protection. Then run
+the frozen public source/installed entry and check canonical effects separately.
+Preserve original instances, the first failed acceptance, Human inbox and Native
+accounting. No branch of this test claims a complete STANDARD run.

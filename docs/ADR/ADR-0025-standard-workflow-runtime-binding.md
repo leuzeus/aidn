@@ -5617,3 +5617,34 @@ The existing work-preparation sequence is an explicit pinned call with the same
 leaves and no added input or return. Root capacity remains at most 288 nodes.
 Full source and installed continuation, later business effects and same-candidate
 STANDARD completion remain separately qualified evidence.
+
+### Receipted session closure continuation
+
+`retained_session_closure` supports a retained-promotion instance at its first
+session-close decision: its nine-operation prefix must be settled, with exactly
+one completed/no-effect close response that was recorded but not accepted. The
+source configuration, signed journals, Human inbox and closed Native history
+remain immutable. The original session-start execution is separately pinned and
+authenticated. Its run file and unique start event must still identify the open
+run before the close writer can be prepared.
+
+The fixed source re-evaluates the retained R05 against current canonical state,
+verifies its physical report/event and reconstructs the exact original question.
+Changed HEAD, scope, documents, decision, authority, model provider, execution
+binding, unprotected evidence and unsettled Native history refuse. The source
+is checked again before the ordinary writer acquires its effect owner. Subsequent
+checkpoint/finalizer readers authenticate the retained decision material against
+the accepted writer and exact canonical postimages; they do not apply the old
+preimage check after their own confirmed effect.
+
+Entry selection v8 records this derived proof and skips the settled prefix.
+Session-close input v2 is empty: the fixed host selects the latest own decision
+or this exact retained decision. The original v1 input in writer plans remains
+unchanged. No old result is adopted or migrated. The existing close writer,
+Git checkpoint, final hook and delivery checkpoint keep their grants and fences.
+A separate completion selector precedes branch integration. Delivery, integration,
+provider review and full STANDARD completion still require their own evidence.
+
+The deterministic retained-validation sequence becomes a pinned call with its
+single existing implementation ID input. Its leaves and ordering are unchanged;
+the root remains within 288 nodes and all Native activities remain at the root.

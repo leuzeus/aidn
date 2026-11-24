@@ -978,6 +978,15 @@ It uses the existing upstream diagnostic and performs no fetch or ref update.
 The STANDARD `runtime workflow-run --configuration` request also accepts an
 explicit retained validation entry in its parameters:
 
+The bounded `retained_session_closure` entry also supports a receipted, unaccepted
+session-close decision after recorded promotion. Its parameters name the exact
+`decision_operation_id`, `original_configuration` and `start_configuration`, the
+latter two as protected `{ "path": "…", "sha256": "…" }` file references. Preview
+authenticates the unchanged decision, original start run and current R05 subject;
+execution still requires the ordinary exact action and explicit `--execute`.
+This route adds no Human signature, Native budget, receipt migration or implicit
+effect. It does not authorize branch integration or provider merge.
+
 ```json
 {
   "entry_point": {
