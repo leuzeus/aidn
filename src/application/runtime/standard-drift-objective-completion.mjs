@@ -3,6 +3,7 @@ import { artifactContentHash } from "../../core/workflow/artifact-compare-swap.m
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import { assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
 import planSchema from "../../core/contracts/workflow-definition/standard-drift-finalize-plan.v3.schema.json" with { type: "json" };
+import retainedPlanSchema from "../../core/contracts/workflow-definition/standard-drift-finalize-plan.v4.schema.json" with { type: "json" };
 
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const eventFile = ".aidn/runtime/perf/workflow-events.ndjson";
@@ -13,7 +14,7 @@ const timestamp = value => Number.isSafeInteger(value) && value >= 0;
 // This is deliberately distinct from consuming an accepted opinion: a closure
 // also needs an accepted, still-current, physically witnessed completion.
 export function createStandardObjectiveCompletion({ readOperation, readEvaluation, readDisposition,
-  readCurrent, readReport, readEvent, readHistoricalDisposition = null, readRenewedDisposition = null }) {
+  readCurrent, readReport, readEvent, readHistoricalDisposition = null, readRenewedDisposition = null, readRetainedDisposition = null }) {
   if ([readOperation, readEvaluation, readDisposition, readCurrent, readReport, readEvent].some(value => typeof value !== "function"))
     fail("STANDARD_OBJECTIVE_COMPLETION_AUTHORITY_REQUIRED");
   async function inspect(instance, historical = false, evaluationOperationId = null) {
@@ -27,9 +28,10 @@ export function createStandardObjectiveCompletion({ readOperation, readEvaluatio
       // Historical finalizers do not imply a retained alignment opinion. Never
       // search backwards past the latest finalizer to reuse an older v3 result.
       const nominal = ["standard-drift-finalize-plan.v1", "standard-drift-finalize-plan.v2"].includes(plan?.contract_version);
+      const retained = plan?.contract_version === 'standard-drift-finalize-plan.v4';
       if (nominal && evaluationOperationId === null) return null;
       if (!nominal && (!timestamp(plan?.prepared_at_ms) || !timestamp(plan?.objective_alignment?.prepared_at_ms)
-        || validateJsonSchema(plan, planSchema, "$", { contractKind: "workflow-definition" }).length))
+        || validateJsonSchema(plan, retained ? retainedPlanSchema : planSchema, "$", { contractKind: "workflow-definition" }).length))
         fail("STANDARD_OBJECTIVE_COMPLETION_PLAN_INVALID");
       const result = record.results.at(-1), receipt = result?.receipt, output = assertStandardOperationOutput(result?.output);
       if (record.operation_id !== id || plan.operation_id !== id || record.intent.binding_ref !== "drift_check_finalize"
@@ -55,7 +57,9 @@ export function createStandardObjectiveCompletion({ readOperation, readEvaluatio
       if (current.context_sha256 !== plan.context_sha256 || current.evaluation_sha256 !== plan.evaluation_sha256
         || current.context.branch !== plan.branch || current.context.head !== plan.head)
         fail("STANDARD_OBJECTIVE_COMPLETION_CONTEXT_CHANGED");
-      const disposition = await (historical
+      const disposition = await (retained
+        ? (typeof readRetainedDisposition === 'function' ? readRetainedDisposition(instance, plan.input, current) : fail('STANDARD_RETAINED_OBJECTIVE_AUTHORITY_REQUIRED'))
+        : historical
         ? (typeof readHistoricalDisposition === "function" ? readHistoricalDisposition(instance, plan.input, current, alignment.decision_operation_id) : fail("STANDARD_OBJECTIVE_COMPLETION_HISTORICAL_AUTHORITY_REQUIRED"))
         : readDisposition(instance, plan.input, current));
       if (shadowHash(disposition) !== shadowHash(alignment)) fail("STANDARD_OBJECTIVE_COMPLETION_DISPOSITION_CHANGED");

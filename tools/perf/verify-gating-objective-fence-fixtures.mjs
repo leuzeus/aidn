@@ -189,6 +189,41 @@ try {
     assert.equal(owners, 1); assert.equal(effects, 0); assert.equal(reads, 3);
     pass(`finalizer ${scenario}: no report CAS, projection or hook`);
   }
+  for (const scenario of ['retained-nominal', 'retained-revoked']) {
+    const rows = new Map(); let verificationCount = 0;
+    const alignmentV2 = { contract_version: 'standard-drift-objective-disposition.v2', decision_operation_id: op,
+      evaluation_operation_id: op, evaluation_sha256: H, context_sha256: H, session_id: 'S001', cycle_id: 'C001',
+      ...objectives, prepared_at_ms: alignment.prepared_at_ms, source: { disposition: structuredClone(alignment),
+        completion: { operation_id: op, receipt_sha256: H, plan_sha256: H, output_sha256: H, alignment_sha256: shadowHash(alignment), report_sha256: H, event_sha256: H, event_offset: 0 },
+        scope: { instance_id: 'fixture_origin', scope_id: H, configuration_sha256: H, session_id: 'S001', cycle_id: 'C001', product_sha256: H, branch: 'fixture', head: 'a'.repeat(40) } } };
+    const physical = path.join(root, '.aidn/runtime/perf/workflow-events.ndjson');
+    fs.mkdirSync(path.dirname(physical), { recursive: true }); fs.writeFileSync(physical, prefix);
+    globalThis.objectiveFenceFixture = { observe: async () => observations(), artifacts: {
+      root, describe: () => ({ state_mode: 'files' }), ownerPending: () => false,
+      read: name => rows.get(name) ?? { sha256: null }, withLocalEffectOwner: async (_plan, callback) => callback(),
+      compareAndSwap: change => { assert.equal(rows.has(change.path), false); rows.set(change.path, { content: change.after, sha256: change.after_sha256 }); }, project: () => {},
+    } };
+    const instance = { instance_id: 'fixture_retained', instance_sha256: H };
+    const port = createStandardDriftFinalization({ targetRoot: root, readCurrent: () => instance,
+      readObjectiveAlignment: async () => {
+        verificationCount++; if (scenario === 'retained-revoked' && verificationCount > 1) throw Error('fixture retained source revoked');
+        return structuredClone(alignmentV2);
+      }, readEvaluation: async () => ({ context: { contract_version: 'standard-drift-context.v2', mode: 'COMMITTING', branch: 'fixture', head: 'a'.repeat(40) },
+        context_sha256: H, evaluation_sha256: H, output: { facts: { drift_present: false, drift_context_complete: true, drift_recovery_required: false }, observations: { report: {}, producer: {} } } }) });
+    const prepared = await port.prepare(instance, { evaluation_operation_id: op }, op);
+    assert.equal(prepared.can_apply, true); assert.equal(prepared.plan.contract_version, 'standard-drift-finalize-plan.v4');
+    const apply = () => port.apply(instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized: () => {} });
+    if (scenario === 'retained-revoked') {
+      await assert.rejects(apply(), /retained source revoked/); assert.equal(rows.size, 0); assert.deepEqual(fs.readFileSync(physical), prefix);
+    } else {
+      const result = await apply(); assert.equal(result.outcome, 'completed', JSON.stringify(result)); assert.equal(result.effect_status, 'confirmed');
+      assert.equal(result.facts.drift_check_completed, true); assert.equal(rows.size, 1); assert(verificationCount >= 4);
+      const bytes = fs.readFileSync(physical); assert.deepEqual(bytes.subarray(0, prefix.length), prefix);
+      const event = JSON.parse(bytes.subarray(prefix.length)); assert.equal(event.event, 'drift_check_completed');
+      assert.equal(event.objective_alignment_sha256, shadowHash(alignmentV2)); assert.deepEqual(prepared.plan.objective_alignment.source.disposition, alignment);
+    }
+    pass('v4 finalizer ' + scenario + ': original opinion preserved and current effect fenced');
+  }
   console.log(JSON.stringify({ status: "PASS", checks, proof: "production-effect-fences-with-delayed-observation-and-artifact-doubles",
     canonical_storage: "NOT_RUN", human: "NOT_RUN", native: "NOT_RUN", complete_standard: false }));
   completed = true;

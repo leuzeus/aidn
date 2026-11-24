@@ -1,5 +1,11 @@
 # 04 JSON Contracts
 
+`standard-drift-objective-disposition.v2` separates an authenticated retained
+opinion and physical completion from the current evaluation. Finalize-plan v4
+uses this closed proof only for COMMITTING and preserves the original source
+bytes and timestamp. V1 dispositions and v1-v3 plans remain readable. JSON alone
+cannot provide the owning source capability or effect authority.
+
 `standard-retained-completion-entry.v1` and its closed proof bind a settled
 historical closure at the first promotion boundary. Entry selection v6 separates
 this DONE-cycle route from active-cycle resumption; completion selection v2

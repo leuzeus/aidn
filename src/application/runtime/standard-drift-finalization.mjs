@@ -14,11 +14,13 @@ import { validateJsonSchema } from "../../core/contracts/json-schema-validator.m
 import planSchema from "../../core/contracts/workflow-definition/standard-drift-finalize-plan.v1.schema.json" with { type: "json" };
 import planSchemaV2 from "../../core/contracts/workflow-definition/standard-drift-finalize-plan.v2.schema.json" with { type: "json" };
 import planSchemaV3 from "../../core/contracts/workflow-definition/standard-drift-finalize-plan.v3.schema.json" with { type: "json" };
+import planSchemaV4 from "../../core/contracts/workflow-definition/standard-drift-finalize-plan.v4.schema.json" with { type: "json" };
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const eventRelative = ".aidn/runtime/perf/workflow-events.ndjson";
-const schemaFor = plan => plan?.contract_version === "standard-drift-finalize-plan.v3" ? planSchemaV3 : plan?.contract_version === "standard-drift-finalize-plan.v2" ? planSchemaV2 : planSchema;
-const planMode = plan => ["standard-drift-finalize-plan.v2", "standard-drift-finalize-plan.v3"].includes(plan.contract_version) ? plan.mode : "COMMITTING";
+const schemaFor = plan => plan?.contract_version === "standard-drift-finalize-plan.v4" ? planSchemaV4 : plan?.contract_version === "standard-drift-finalize-plan.v3" ? planSchemaV3 : plan?.contract_version === "standard-drift-finalize-plan.v2" ? planSchemaV2 : planSchema;
+const hasAlignment = plan => ["standard-drift-finalize-plan.v3", "standard-drift-finalize-plan.v4"].includes(plan.contract_version);
+const planMode = plan => ["standard-drift-finalize-plan.v2", "standard-drift-finalize-plan.v3", "standard-drift-finalize-plan.v4"].includes(plan.contract_version) ? plan.mode : "COMMITTING";
 const emit = (outcome, effect_status, observations, facts = {}, evidence_refs = []) => assertStandardOperationOutput({
   contract_version: "standard-drift-output.v1", operation_ref: "drift_check_finalize", outcome, effect_status, observations, facts, evidence_refs });
 export async function observeStandardDriftGate(artifacts, mode, { requireIntentSignals = false } = {}) {
@@ -59,7 +61,8 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
       context_sha256: verified.context_sha256, report: result.observations.report, producer: result.observations.producer,
       ...(alignment === null ? {} : { objective_alignment: alignment }) };
     const after = `# Drift report\n\ncontract_version: critical-markdown-v1\nid: drift-${operationId}\ntype: drift_report\nowner: aidn-drift-check\nsteward: project-maintainer\nprivacy_classification: project-internal\nretention_policy: retain-with-process-instance\nsource_of_truth: agentic_process_instance\nsource_mode: ${artifacts.describe().state_mode}\nlifecycle_status: retained\nupdated_at: ${new Date(preparedAt).toISOString()}\n\n\`\`\`json\n${JSON.stringify(body, null, 2)}\n\`\`\`\n`;
-    const plan = { contract_version: alignment === null ? "standard-drift-finalize-plan.v2" : "standard-drift-finalize-plan.v3", mode, operation_id: operationId, input, prepared_at_ms: preparedAt,
+    const plan = { contract_version: alignment === null ? "standard-drift-finalize-plan.v2"
+      : alignment.contract_version === 'standard-drift-objective-disposition.v2' ? "standard-drift-finalize-plan.v4" : "standard-drift-finalize-plan.v3", mode, operation_id: operationId, input, prepared_at_ms: preparedAt,
       context_sha256: verified.context_sha256, evaluation_sha256: verified.evaluation_sha256, branch: verified.context.branch, head: verified.context.head,
       report: { path: reportPath, before_sha256: null, after, after_sha256: artifactContentHash(after) }, gate_constraints: constraints,
       ...(alignment === null ? {} : { objective_alignment: alignment }) };
@@ -78,7 +81,7 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
         const assertContext = async () => {
           const current = await readEvaluation(instance, plan.input);
           if (current.context_sha256 !== plan.context_sha256 || current.evaluation_sha256 !== plan.evaluation_sha256) fail("STANDARD_DRIFT_CONTEXT_CHANGED");
-          if (plan.contract_version === "standard-drift-finalize-plan.v3") {
+          if (hasAlignment(plan)) {
             if (typeof readObjectiveAlignment !== "function" || shadowHash(await readObjectiveAlignment(instance, plan.input, current)) !== shadowHash(plan.objective_alignment))
               fail("STANDARD_DRIFT_OBJECTIVE_ALIGNMENT_CHANGED");
           }
@@ -104,7 +107,7 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
           await assertContext(); await assertAuthorized(); assertCurrent();
           const runId = "process_drift_" + plan.operation_id;
           const hookStarted = now();
-          if (plan.contract_version === "standard-drift-finalize-plan.v3") {
+          if (hasAlignment(plan)) {
             // The ordinary CLI hook cannot acquire this capability. This owned
             // invocation uses its same production evaluator/event writer, with
             // live verification of the accepted disposition at the effect fence.
@@ -136,7 +139,7 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
           if (matches.length !== 1 || event.event !== "drift_check_completed" || event.skill !== "drift-check" || event.result !== "ok"
             || event.mode !== planMode(plan) || event.branch !== plan.branch || event.ts !== payload.ts
             || !Number.isFinite(Date.parse(event.ts)) || Date.parse(event.ts) < hookStarted || Date.parse(event.ts) > now()) fail("STANDARD_DRIFT_HOOK_UNCONFIRMED");
-          if (plan.contract_version === "standard-drift-finalize-plan.v3" && (event.objective_alignment_sha256 !== shadowHash(plan.objective_alignment)
+          if (hasAlignment(plan) && (event.objective_alignment_sha256 !== shadowHash(plan.objective_alignment)
             || shadowHash(payload.objective_alignment) !== shadowHash(plan.objective_alignment))) fail("STANDARD_DRIFT_OBJECTIVE_ALIGNMENT_CHANGED");
           if (artifacts.read(plan.report.path).sha256 !== plan.report.after_sha256) fail("STANDARD_DRIFT_REPORT_CHANGED");
           return emit("completed", "confirmed", { operation_id: plan.operation_id, report_path: plan.report.path, report_sha256: plan.report.after_sha256,

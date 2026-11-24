@@ -7,6 +7,10 @@ entry records their finite proof digest; it creates no canonical concept or
 receipt migration. Canonical session ownership and cycle state remain in the
 configured artifact backend, including optional PostgreSQL and local SQLite.
 
+Reused objective agreement is derived evidence in that same operation journal.
+It references the unchanged Human decision and witnessed completion, alongside
+the new evaluation. It adds no decision, inbox claim, canonical concept or store.
+
 ## Purpose
 
 AIDN governs information concepts, not just files.

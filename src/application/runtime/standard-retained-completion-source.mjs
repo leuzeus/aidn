@@ -13,6 +13,7 @@ import { createStandardBaselinePromotionAuthority } from './standard-baseline-pr
 import { createRetainedClosureSource } from './standard-retained-closure-source.mjs';
 import { analyzeStructuredArtifact } from '../../lib/workflow/structured-artifact-parser-lib.mjs';
 import { createLocalGitAdapter } from '../../adapters/runtime/local-git-adapter.mjs';
+import { readRetainedObjectiveCompletion } from './standard-retained-objective-completion.mjs';
 
 const require = (value, code = 'STANDARD_RETAINED_COMPLETION_SOURCE_CHANGED') => {
   if (!value) throw Object.assign(Error(code), { code });
@@ -117,7 +118,15 @@ export function createRetainedCompletionSource({ configuration, environment, cre
       session_id: closure.session_id, cycle_id: closure.cycle_id, cycle_path: closure.cycle_path, product_sha256: initialProduct });
     require(!signal?.aborted && H(capture(entry).pins) === H(before.pins) && H(product()) === initialProduct
       && H(authority.inspectDiagnostic(instance).journal) === H(diagnostic.journal));
-    return { proof, closure, closed, terminal, checkpoint, instance, records: before.records };
+    return { proof, closure, closed, terminal, checkpoint, instance, records: before.records,
+      native_allocation_count: diagnostic.journal.allocations.length };
   }
-  return Object.freeze({ inspect: (entry, options) => read(entry, options, true), readRecorded: (entry, options) => read(entry, options, false) });
+  return Object.freeze({ inspect: (entry, options) => read(entry, options, true), readRecorded: (entry, options) => read(entry, options, false),
+    async readObjectiveAlignment(entry, options) {
+      const source = await read(entry, options, false), before = capture(entry);
+      require(before.instance.instance_sha256 === source.proof.original_instance_sha256);
+      const alignment = await readRetainedObjectiveCompletion({ source, configuration: before.execution, environment });
+      require(H(capture(entry).pins) === H(before.pins), 'STANDARD_RETAINED_OBJECTIVE_SOURCE_CHANGED');
+      return { alignment, proof: source.proof };
+    } });
 }

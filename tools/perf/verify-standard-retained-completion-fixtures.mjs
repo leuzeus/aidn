@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import './verify-standard-retained-objective-fixtures.mjs';
 import fs from 'node:fs';
 import { assertRetainedCompletionEntry, assertRetainedCompletionProof, retainedCompletionContinuation } from '../../src/core/workflow/standard-retained-completion.mjs';
 import { standardEntryPoint, selectStandardEntry } from '../../src/core/workflow/standard-workflow-entry-selection.mjs';

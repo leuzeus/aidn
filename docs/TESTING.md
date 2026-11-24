@@ -1,5 +1,22 @@
 # Testing Guide
 
+## Retained objective agreement after cycle completion
+
+`tools/perf/verify-standard-retained-objective-fixtures.mjs` checks the closed
+scope projection, preservation of original opinion bytes, and refusal of foreign
+or changed session/cycle, ownership, objectives, branch, HEAD, product, diagnosis
+and completion links. It runs with the retained-completion fixture family.
+The gating objective-fence suite exercises v4 report/event finalization and
+revocation before effects. The objective-completion fixture uses real temporary
+report/event bytes to check the retained-source capability and cold witness
+reads. Their authority and artifact ports are fixtures, not live-user evidence.
+
+A separate read-only local pilot probe authenticates the original Human source,
+Native context and physical completion and compares a v4 preparation with the
+preserved blocked occurrence on the same current evaluation. It performs no
+business effect or model call. Installed continuation after a recorded promotion,
+later effects and full same-candidate qualification remain separate evidence.
+
 ## Workflow incident information and source template
 
 `npm run perf:verify-metadata-policy` checks the source incident template against
