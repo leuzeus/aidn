@@ -2289,5 +2289,34 @@
     "old_delivery_receipt_preserved": true,
     "replayed_prerequisite": "A new technical instance with changed implementation bindings revalidated its deterministic no-effect delivery predecessor; session closure, Human choices, product, audit and Native activities were not repeated.",
     "full_same_candidate_P0": "SKIP"
+  },
+  "session_integration_acceptance_timeout": {
+    "status": "FAIL",
+    "candidate": "04bd30eba320da2f36375df0919f9230c4f8cb63",
+    "archive_sha256": "87c683717d9682e9ce13e438f3c29582846a08dc9fae2e9a92ee375cc9c0156e",
+    "stage": "integration decision receipt acceptance",
+    "reason_code": "PROCESS_OPERATION_AUTHORITY_TIMEOUT",
+    "classification": "product_failure",
+    "operation_id": "op_9067df513b956b54ddd2c870977d39071217aaaf",
+    "journal_sha256": "b3a5003fba357ed529f7791733c804b140ecfcd6662eb6476d615d3b6b153343",
+    "choice": "integrate-to-session",
+    "results": 1,
+    "receipt_accepted": false,
+    "integration_dispatched": false,
+    "business_state_unchanged": true,
+    "manual_signatures": 0,
+    "native_calls": 0,
+    "evidence_class": "operator-accepted-local-history-observation",
+    "independent_original_author_proof": false,
+    "private_evidence_sha256": "4ffc767cf7a368e2c6d84a8e35d7ada3380ab1fb3e24c9068bc2bc0e1246fa06",
+    "correction": {
+      "pull_request": 236,
+      "head": "94dcba1b67885d9fca19d187d7e3d6bad093bda6",
+      "merge_sha": "bd78770fa24f7a3c34508b4b6295d0053a83914c",
+      "governance_admission": "PASS",
+      "perf_kpi": "PASS",
+      "guard_fixture_checks": 8,
+      "complete_standard_workflow": false
+    }
   }
 }
