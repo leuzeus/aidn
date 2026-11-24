@@ -5666,3 +5666,24 @@ provider review and full STANDARD completion still require their own evidence.
 The deterministic retained-validation sequence becomes a pinned call with its
 single existing implementation ID input. Its leaves and ordering are unchanged;
 the root remains within 288 nodes and all Native activities remain at the root.
+
+## Historical session-hook checkpoint-only recovery
+
+The separate `standard-session-close-recovery.v1` route recognizes a returned
+UNKNOWN at a retained session's final hook only when the signed prefix, old
+configuration, original Human receipt and Native history authenticate; current
+canonical documents and metadata are still the hook preimages; the original
+start run is present; and the event suffix is exactly gating/reload/checkpoint
+without a session-close event. Current process discovery must report two empty,
+stable samples over configured target/control markers, retained owners and their
+descendants. This is scoped observation, not global process closure.
+
+Explicit execute/expect-plan retains a separately authenticated recovery record
+under the operation-journal authority, acquires a new resource fence and archives
+the exact abandoned lock. Attempts survive interruption. Old receipts, instance,
+telemetry and business state are immutable. The result is
+`reconciled_checkpoint_only`, never `no_effect`, a closed session or permission
+to repeat the old operation. Finishing the session requires a separately admitted
+continuation; this bounded recovery route allocates no model and asks no new
+Human decision. Any close event, partial canonical write, unknown suffix, changed
+subject or active/unavailable scoped process refuses recovery.
