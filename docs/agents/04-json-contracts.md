@@ -1,5 +1,12 @@
 # 04 JSON Contracts
 
+`standard-retained-completion-entry.v1` and its closed proof bind a settled
+historical closure at the first promotion boundary. Entry selection v6 separates
+this DONE-cycle route from active-cycle resumption; completion selection v2
+returns the authenticated closure and terminal checkpoint identities. Historical
+contracts remain readable. These are derived operation-journal evidence, not
+new canonical stores, imported receipts, promotion decisions or Native grants.
+
 `standard-retained-audit-entry.v1` and `standard-retained-audit-proof.v1` bind a
 completed historical Native audit to its blocked evaluation and original
 configuration, instance, allocation journal and verification proof. Entry

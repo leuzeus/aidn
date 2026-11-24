@@ -852,6 +852,25 @@ seq('closure_retained_ready', []); node('closure_review', 'call', { target: clos
 const deliveryGroup = nodes.find(row => row.id === 'session_pr_delivery'), deliveryAt = closureParent.children.indexOf(deliveryGroup.id);
 closureParent.children.splice(deliveryAt, 1, ...deliveryGroup.children); nodes.splice(nodes.indexOf(deliveryGroup), 1);
 
+// A settled completion enters after the actual final hook. It must not repeat
+// any terminal effect or R05 question. The selector authenticates the original
+// completion and Git receipt under the exact admitted historical source.
+const completedAt = closureParent.children.indexOf('close_completed_select');
+const completionPrefix = closureParent.children.splice(0, completedAt, 'cycle_completion_route');
+xor('cycle_completion_route', [['completed', 'retained_completion_ready', 'retained_completion_requested'], ['ordinary', 'cycle_completion_work', null]]);
+seq('retained_completion_ready', []); seq('cycle_completion_work', completionPrefix);
+const promotionCheckpointInput = inputs.find(row => row.node_id === 'promotion_checkpoint');
+promotionCheckpointInput.fields.terminal_checkpoint_operation_id = { source: 'operation_output', node_id: 'close_completed_select', path: ['observations', 'terminal_checkpoint_operation_id'] };
+// Regroup a purely sequential corrective path, preserving leaf order while
+// retaining both the 288-node root and 32-child sequence bounds.
+const corrective = nodes.find(row => row.id === 'correction_cycle');
+for (const id of ['correction_cycle_drift', 'correction_closure_drift', 'correction_session_closure_drift', 'correction_pr_redelivery']) {
+  const wrapper = nodes.find(row => row.id === id), index = corrective.children.indexOf(id);
+  if (wrapper?.kind !== 'sequence' || index < 0) throw Error('STANDARD_COMPLETION_WRAPPER_CHANGED');
+  corrective.children.splice(index, 1, ...wrapper.children); nodes.splice(nodes.indexOf(wrapper), 1);
+}
+const correctiveTail = corrective.children.splice(21); corrective.children.push('correction_tail'); seq('correction_tail', correctiveTail);
+
 const policy = (id, assurance_profile, allowed_permissions, independent_review = false) => ({ id, version: 1, assurance_profile, mode: "COMMITTING",
   independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });
 const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard", revision: 1,

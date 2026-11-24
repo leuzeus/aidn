@@ -84,9 +84,9 @@ function atBoundary(spec) {
     let output = {};
     if (readsOutput) {
       assert.equal(source.binding_ref, 'cycle_close_completed_select');
-      output = { contract_version: 'standard-cycle-close-selection-output.v1', operation_ref: source.binding_ref,
+      output = { contract_version: 'standard-cycle-close-selection-output.v2', operation_ref: source.binding_ref,
         outcome: 'completed', effect_status: 'no_effect', facts: {}, evidence_refs: [],
-        observations: { closure_operation_id: 'op_' + 'e'.repeat(40), receipt_sha256: H, output_sha256: H } };
+        observations: { closure_operation_id: 'op_' + 'e'.repeat(40), terminal_checkpoint_operation_id: 'op_' + 'f'.repeat(40), receipt_sha256: H, output_sha256: H } };
     }
     const occurrence_id = inspectAgenticProcess(instance).ready[0];
     const intent = { contract_version: 'process-operation-intent.v1', operation_id: 'op_' + (++serial).toString(16).padStart(40, '0'),

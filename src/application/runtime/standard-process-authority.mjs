@@ -6,6 +6,8 @@ import auditInputV1 from "../../core/contracts/workflow-definition/standard-cycl
 import { createRetainedAuditSource } from "./standard-retained-audit-source.mjs";
 import { createRetainedClosureSource } from "./standard-retained-closure-source.mjs";
 import { retainedClosureContinuation } from "../../core/workflow/standard-retained-closure.mjs";
+import { createRetainedCompletionSource } from './standard-retained-completion-source.mjs';
+import { retainedCompletionContinuation } from '../../core/workflow/standard-retained-completion.mjs';
 import { createNativeReconciliationHistoryReader } from "./native-reconciliation-history.mjs";
 import { createRetainedValidationSource } from "./standard-retained-validation-source.mjs";
 import { retainedValidationAdmit, retainedTaskWork, workPhaseSelect, retainedValidationPins, assertRetainedValidationOutput, assertRetainedValidationProof } from "../../core/workflow/standard-retained-validation.mjs";
@@ -103,6 +105,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   const retainedVerificationSource = createRetainedVerificationSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedAuditSource = createRetainedAuditSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedClosureSource = createRetainedClosureSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedCompletionSource = createRetainedCompletionSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const nativeReconciliationHistory = createNativeReconciliationHistoryReader({ ...options, configuration, signer, artifacts, environment });
   const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, source: humanSource, projectionRequired: false });
   function read() {
@@ -1450,6 +1453,24 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     return retainedClosureContinuation(proof);
   }
   const readRetainedClosureDecision = (instance, input, options) => readRetainedClosureSource(instance, input, options, false);
+  async function retainedCompletionEntry(instance, parameters, options) {
+    authenticate(instance);
+    const source = await retainedCompletionSource.inspect(parameters.entry_point, options);
+    if (parameters.session.session_id !== source.proof.session_id || parameters.cycle?.cycle_id !== source.proof.cycle_id
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_COMPLETION_FOCUS_CHANGED');
+    return retainedCompletionContinuation(source.proof);
+  }
+  async function readRetainedCompletion(instance, options) {
+    authenticate(instance);
+    const entries = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+    if (instance.initial_parameters?.entry_point?.kind !== 'retained_completion' || entries.length !== 1) fail('STANDARD_RETAINED_COMPLETION_ENTRY_REQUIRED');
+    const selected = acceptedOperation(instance, entries[0].intent.operation_id, 'workflow_entry_select');
+    const source = await retainedCompletionSource.readRecorded(instance.initial_parameters.entry_point, options);
+    if (selected.output.facts.retained_completion_requested !== true || selected.output.observations.entry_point !== 'retained_completion'
+      || shadowHash(selected.output.observations.continuation) !== shadowHash(retainedCompletionContinuation(source.proof))
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_COMPLETION_SOURCE_CHANGED');
+    return source;
+  }
   const readRecordedClosureDecision = (instance, input, options) => readRetainedClosureSource(instance, input, options, true);
   async function readRetainedClosureSource(instance, input, options, recorded) {
     authenticate(instance);
@@ -1597,6 +1618,6 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     readNativeActivity: readPreworkNativeActivity,
   });
   return Object.freeze({ profile: "standard-mixed.v1", rollbackProductScope, observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, authenticateOperationHost, inspectDiagnostic, observeNativeDiagnostic, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
-    verifyNativeHumanSource, admitNativeActivity, retainedAuditEntry, retainedClosureEntry, readRetainedClosureDecision, readRecordedClosureDecision, readRecordedCycleAudit, readRecordedCycleValidation, inspectRetainedCycleAudit, retainedVerificationEntry, admitRetainedVerification, retainedValidationEntry, admitRetainedValidation, selectWorkPhase, observeRetainedTaskWork, retainedContributors,
+    verifyNativeHumanSource, admitNativeActivity, retainedAuditEntry, retainedClosureEntry, retainedCompletionEntry, readRetainedCompletion, readRetainedClosureDecision, readRecordedClosureDecision, readRecordedCycleAudit, readRecordedCycleValidation, inspectRetainedCycleAudit, retainedVerificationEntry, admitRetainedVerification, retainedValidationEntry, admitRetainedValidation, selectWorkPhase, observeRetainedTaskWork, retainedContributors,
     selectOwnedCyclePlanning, selectCyclePrework, evaluateCyclePrework, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, inspectRetainedCycleTaskWork, readCycleValidationExecution, readCycleVerificationExecution, inspectRetainedCycleVerification, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, selectCycleExecutionSource, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCanonicalResumeProduct, observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

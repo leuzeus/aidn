@@ -1,5 +1,12 @@
 # 03 Information Governance
 
+Retained completed-cycle provenance remains derived evidence in the current
+process operation journal. The original instance, operation receipts, Human
+inbox and Native allocations stay under their original authorities. A successor
+entry records their finite proof digest; it creates no canonical concept or
+receipt migration. Canonical session ownership and cycle state remain in the
+configured artifact backend, including optional PostgreSQL and local SQLite.
+
 ## Purpose
 
 AIDN governs information concepts, not just files.
