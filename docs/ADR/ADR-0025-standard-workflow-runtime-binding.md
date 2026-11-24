@@ -1,5 +1,23 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## R05 evidence at the session final hook, 2026-11-24
+
+The session finalizer passes the accepted R05 objective completion through a
+fixed host capability into its actual checkpoint. The signed session-close
+question pins that R05 output; the accepted report writer and finite Git
+checkpoint account for the intervening changes. Unchanged review documents
+retain their content and metadata pins, while the three writer paths must match
+their authenticated postimages. The R05 report and exact physical event remain
+required. No CLI flag or model input supplies an alignment opinion.
+
+The finalizer first evaluates the gate without emitting events. Missing or
+changed completion refuses before ownership or hook dispatch; the actual
+checkpoint repeats the existing gate with the same verified capability and
+live effect authority. The public close-session script uses the same use case
+without a completion capability. R05 age, other signals, constraints and runtime
+strictness remain enforced. This change does not settle historical UNKNOWN
+effects or authorize replay of a consumed start run.
+
 ## Public entry on an existing owned cycle, 2026-11-22
 
 The optional STANDARD parameter `entry_point` defaults to `session`. The closed

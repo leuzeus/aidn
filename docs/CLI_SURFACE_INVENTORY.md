@@ -987,6 +987,11 @@ execution still requires the ordinary exact action and explicit `--execute`.
 This route adds no Human signature, Native budget, receipt migration or implicit
 effect. It does not authorize branch integration or provider merge.
 
+The final session hook reads objective completion through its fixed host
+authority. Its preview refuses an unresolved gate before dispatch; the real
+checkpoint rechecks it. No CLI field supplies an alignment opinion or disables
+R05, and an existing UNKNOWN still requires separate reconciliation.
+
 ```json
 {
   "entry_point": {

@@ -70,6 +70,7 @@ import { createStandardSessionPrCheckpoint } from "./standard-session-pr-checkpo
 import { createStandardSessionPrUpdatePush } from "./standard-session-pr-update-push.mjs";
 import { createStandardSessionBranchIntegration } from "./standard-session-branch-integration.mjs";
 import { createStandardSessionBranchIntegrationAuthority } from "./standard-session-branch-integration-authority.mjs";
+import { readSessionCloseObjectiveCompletion } from './session-close-objective-completion.mjs';
 import { createStandardSessionPrRecord } from "./standard-session-pr-record.mjs";
 import { createStandardSessionPrRecordAuthority } from "./standard-session-pr-record-authority.mjs";
 import { createStandardSessionPrOpen } from "./standard-session-pr-open.mjs";
@@ -538,10 +539,14 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     if ((!startId && !recorded.historical) || cp.input.record_operation_id !== input.record_operation_id || cp.source_sha256 !== shadowHash(source)) fail("STANDARD_SESSION_CLOSE_CHECKPOINT_REQUIRED");
     const start = recorded.historical?.started ?? acceptedForPromotion(instance, startId, "session_start_finalize", "STANDARD_SESSION_CLOSE_START_REQUIRED");
     if (start.record.preview.input.session_id !== review.session_id) fail("STANDARD_SESSION_CLOSE_START_REQUIRED");
+    const historicalFinal = recorded.historical?.records.find(row => row.operation_id === review.drift_finalization_operation_id);
+    const finalization = historicalFinal ? { record: historicalFinal, output: historicalFinal.results[0].output }
+      : acceptedForPromotion(instance, review.drift_finalization_operation_id, 'drift_check_finalize');
+    const objectiveCompletion = readSessionCloseObjectiveCompletion({ artifacts, recorded, finalization });
     return { record_operation_id: input.record_operation_id, checkpoint_operation_id: input.checkpoint_operation_id,
       session_id: review.session_id, session_path: review.session_path, mode: review.mode, branch: review.branch,
       record_plan_sha256: shadowHash(recorded.plan), record_output_sha256: shadowHash(recorded.recorded.output),
-      start_output: start.output, checkpoint_output: checkpoint.output };
+      start_output: start.output, checkpoint_output: checkpoint.output, objective_completion: objectiveCompletion };
   }
   const sessionCloseHook = processAuthority ? createStandardSessionCloseHook({ targetRoot, now, readSource: readSessionCloseHookSource,
     readCurrent: id => current(id).record }) : null;

@@ -145,6 +145,7 @@ const files = [
   ...["standard-workflow-execution.v1", "standard-workflow-action.v1", "standard-workflow-entry-result.v1", "standard-workflow-call-action.v1", "standard-workflow-call-result.v1", "standard-workflow-native-action.v1", "standard-workflow-native-result.v1", "standard-workflow-native-action.v2", "standard-workflow-native-result.v2"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
   "standard-workflow-mixed-composition.mjs", "standard-process-authority.mjs", "standard-process-inputs.mjs", "standard-drift-report.mjs", "standard-drift-git.mjs", "standard-drift-finalization.mjs",
   "standard-session-mode-operations.mjs", "skill-hook-use-case.mjs", "gating-evaluate-use-case.mjs", "workflow-hook-use-case.mjs", "checkpoint-use-case.mjs",
+  "close-session-hook-use-case.mjs", "session-close-objective-completion.mjs",
   "standard-session-pr-merge-observe.mjs", "standard-session-pr-review-source.mjs", "standard-session-pr-review-effects.mjs", "standard-workflow-human-decisions.mjs", "standard-workflow-control-inbox.mjs", "standard-session-pr-review-control-source.mjs",
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
 function implementation() {
