@@ -2986,6 +2986,15 @@ It does not use the standard business adapters. The native-only composition also
 the operation profile before allocation. These checks do not qualify the
 standard workflow or native/installed mixed-host execution.
 
+The same operation fixture includes `verify-operation-commit-guard-fixtures.mjs`.
+Its SQLite/db-only cases distinguish a slow fixed local pre-commit guard from a
+bounded source authority, reject unauthenticated and timed-out sources before
+the guard, preserve the waiting receipt on stale context or cancellation, and
+prove that a competing acceptance appends only one result. Serialized operation
+arguments cannot replace the host guard. These component checks do not prove
+the real STANDARD closure path, PostgreSQL or an installed archive. A retained
+receipt prototype that holds CAS is read-only evidence, not closure success.
+
 The required agentic-process gate also runs
 `tools/perf/verify-workflow-engine-fixtures.mjs`: direct JSON creation defaults to
 the structured engine through the common composition, console and actual public

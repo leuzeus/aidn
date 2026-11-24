@@ -12,8 +12,9 @@ import { readAgenticProcessStoreInspection } from "../../adapters/runtime/agenti
 // Host-composed trusted ports, never modules/attestations selected by a model.
 // This service records admission and accepted results; it launches no executor.
 export function createAgenticProcessService({ store, readAuthority, readBinding, assignmentAuthority, resultAuthority, operationAuthority, controlAuthority,
-  adapters, roster, adapterHealth, now = Date.now, authorityTimeoutMs = 1000 }) {
+  operationCommitGuard = null, adapters, roster, adapterHealth, now = Date.now, authorityTimeoutMs = 1000 }) {
   if (!Number.isSafeInteger(authorityTimeoutMs) || authorityTimeoutMs < 1 || authorityTimeoutMs > 5000) fail("PROCESS_AUTHORITY_TIMEOUT_INVALID");
+  if (operationCommitGuard !== null && typeof operationCommitGuard !== "function") fail("PROCESS_OPERATION_COMMIT_GUARD_INVALID");
   function current(instanceId, expectedSha256) {
     const previous = store.read(instanceId);
     if (!previous.record) fail("PROCESS_INSTANCE_NOT_FOUND");
@@ -193,7 +194,7 @@ export function createAgenticProcessService({ store, readAuthority, readBinding,
       });
       return commit(advanceAgenticProcess(previous.record, { kind: "operation_intent", event_id: eventId, occurrence_id: occurrenceId, intent }), previous, write, expectedResultSha256);
     },
-    async acceptOperation({ instanceId, expectedSha256, occurrenceId, eventId, receiptId, write = false, expectedResultSha256 = null }) {
+    async acceptOperation({ instanceId, expectedSha256, occurrenceId, eventId, receiptId, write = false, expectedResultSha256 = null, signal }) {
       if (!processId(eventId) || !processId(receiptId)) fail("PROCESS_OPERATION_REQUEST_INVALID");
       const previous = current(instanceId, expectedSha256), { frame } = operationFrame(previous.record, occurrenceId);
       const retained = previous.record.events.find(row => row.event_id === eventId);
@@ -209,6 +210,17 @@ export function createAgenticProcessService({ store, readAuthority, readBinding,
           || proof.intent_sha256 !== shadowHash(frame.operation.intent) || proof.receipt_sha256 !== shadowHash(observed)) fail("PROCESS_OPERATION_RESULT_NOT_AUTHENTICATED");
         return observed;
       });
+      // Domain reconstruction belongs to the fixed local host. It can involve
+      // many bounded canonical reads and must finish after source authentication,
+      // before the reducer/CAS. It cannot replace the authenticated receipt or
+      // supply facts. External authority callbacks retain their separate timeout.
+      if (operationCommitGuard !== null) {
+        if (signal?.aborted) fail("PROCESS_OPERATION_COMMIT_ABORTED");
+        await operationCommitGuard({ instance: structuredClone(previous.record), intent: structuredClone(frame.operation.intent),
+          receipt: structuredClone(receipt), signal });
+        if (signal?.aborted) fail("PROCESS_OPERATION_COMMIT_ABORTED");
+        current(instanceId, expectedSha256);
+      }
       return commit(advanceAgenticProcess(previous.record, { kind: "operation_result", event_id: eventId, occurrence_id: occurrenceId, receipt }), previous, write, expectedResultSha256);
     },
     async deliverControl({ instanceId, expectedSha256, occurrenceId, eventId, deliveryId, write = false, expectedResultSha256 = null }) {
