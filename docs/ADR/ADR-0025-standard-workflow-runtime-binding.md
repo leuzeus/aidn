@@ -5455,3 +5455,20 @@ This route skips mode, work, validation and the Native auditor. It grants no
 closure or risk acceptance; the next actual closure question still requires
 the human decision. Later corrective work follows its ordinary fresh audit
 route. Budgets are not transferred or renewed by this deterministic entry.
+
+### Closure receipt authentication and commit
+
+Receipt source authentication retains the common five-second authority bound.
+Reconstructing the current closure subject can require several canonical reads
+through a retained audit and verification chain. The fixed STANDARD host performs
+that reconstruction after authentication, in a local pre-commit guard, rather
+than inside the external authority callback. The guard cannot supply or replace
+a receipt, facts, permissions or an authorization.
+
+Before the ordinary reducer/CAS, closure admission rechecks the exact signed
+review, operation journal, instance and current authority. Cancellation, changed
+source material or a concurrent receipt acceptance refuses the write. The guard
+is a host-composed function, never a capability selected by serialized process
+data. This separates source liveness from local domain validation without
+increasing the authority timeout or weakening closure freshness. Historical
+model pins and decisions are not migrated by this change.

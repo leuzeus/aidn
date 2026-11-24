@@ -12,7 +12,7 @@ function model(version, count) {
     participants: [{ id: 'project' }], roles: structuredClone(standard.roles), policies: structuredClone(standard.policies),
     entry: nodes[0].id, nodes, ...(version === 2 ? { operation_pins: {} } : {}) };
 }
-for (const [version, limit] of [[1, 128], [2, 256]]) {
+for (const [version, limit] of [[1, 128], [2, 288]]) {
   const accepted = model(version, limit); assertAgenticProcessModel(accepted);
   assert.throws(() => assertAgenticProcessModel(model(version, limit + 1)), { code: 'PROCESS_MODEL_INVALID' });
   const options = { instanceId: 'capacity-v' + version, model: accepted, policyPins: agenticPolicyPins(accepted), scopeId: 'fixture' };
@@ -24,17 +24,17 @@ for (const [version, limit] of [[1, 128], [2, 256]]) {
 }
 
 // Exercise termination at the new bound, without any native activity or host.
-const complete = model(2, 256);
+const complete = model(2, 288);
 for (const row of complete.nodes) if (row.kind === 'activity') {
   row.kind = 'sequence'; row.children = []; delete row.role_ref; delete row.policy_ref;
 }
 const options = { instanceId: 'capacity-complete', model: complete, policyPins: agenticPolicyPins(complete), scopeId: 'fixture' };
 const state = createAgenticProcess(options), cursor = inspectAgenticProcess(structuredClone(state));
-assert.equal(cursor.status, 'COMPLETED'); assert.equal(cursor.occurrences.length, 256);
+assert.equal(cursor.status, 'COMPLETED'); assert.equal(cursor.occurrences.length, 288);
 assert.ok(cursor.occurrences.every(row => row.status === 'COMPLETED'));
 assert.equal(state.events.length, 0);
 const simulation = simulateAgenticProcess({ ...options, events: [] });
 assert.equal(simulation.trace.at(-1).cursor.status, 'COMPLETED');
 assert.equal(simulation.trace.at(-1).instance_sha256, state.instance_sha256);
-console.log('PASS v2: all 256 structural nodes complete and cold replay/simulation agree, zero native calls');
+console.log('PASS v2: all 288 structural nodes complete and cold replay/simulation agree, zero native calls');
 console.log(JSON.stringify({ status: 'PASS', checks: 3, evidence: 'bounded-structural-model-capacity-and-complete-control-only-replay', native_calls: 0, business_journey: 'NOT_RUN' }));

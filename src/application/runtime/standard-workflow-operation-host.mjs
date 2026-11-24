@@ -1185,7 +1185,6 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
         return { outcome: "verified", authority_id: receipt.authority_id, receipt_sha256: shadowHash(receipt), intent_sha256: shadowHash(intent) };
       }
       await verifyGrant(record, signal);
-      if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "spike_conversion_decision") await spike.assertFresh(instance, record.preview.input, record.preview.prepared);
       if (record.intent.binding_ref === "mode_work_continue_decision") processAuthority.assertModeWorkContinuationFresh(instance, record.preview.input, record.preview.prepared);
       if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(instance, record.preview.prepared.plan);
@@ -1206,7 +1205,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
           fail("STANDARD_PR_MERGE_CONSENT_EXPIRED");
         if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       }
-      if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(instance, record.preview.prepared.plan);
+      // Closure reconstructs its complete current audit in the fixed local
+      // commit guard, after this bounded Human/source authentication.
       if (record.intent.binding_ref === "spike_conversion_decision") await spike.assertFresh(instance, record.preview.input, record.preview.prepared);
       if (record.intent.binding_ref === "mode_work_continue_decision") processAuthority.assertModeWorkContinuationFresh(instance, record.preview.input, record.preview.prepared);
       if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(instance, record.preview.prepared.plan);
@@ -1228,7 +1228,17 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
       return { outcome: "verified", authority_id: delivery.authority_id, delivery_sha256: shadowHash(delivery) };
     },
   } : undefined;
-  service = createAgenticProcessService({ store, readAuthority, operationAuthority: authority, controlAuthority, now, authorityTimeoutMs: 5000 });
+  service = createAgenticProcessService({ store, readAuthority, operationAuthority: authority, controlAuthority, now, authorityTimeoutMs: 5000,
+    async operationCommitGuard({ instance, intent, receipt, signal }) {
+      if (intent.binding_ref !== "cycle_closure_decision") return;
+      const record = retained(intent.operation_id).record;
+      if (shadowHash(record.intent) !== shadowHash(intent) || !record.results.some(row => shadowHash(row.receipt) === shadowHash(receipt)))
+        fail("PROCESS_OPERATION_RESULT_NOT_AUTHENTICATED");
+      await closureReview.assertFresh(instance, record.preview.prepared.plan);
+      if (signal?.aborted) fail("PROCESS_OPERATION_COMMIT_ABORTED");
+      if (shadowHash(retained(intent.operation_id).record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
+      if (current(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail("PROCESS_REVISION_CONFLICT");
+    } });
   const current = id => {
     const value = service.inspect(id);
     if (processAuthority) {
@@ -2039,7 +2049,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
         if (shadowHash(retained(id).record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
       }
       return disposition.withReceiptAcceptance(id, () => service.acceptOperation({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256, occurrenceId: record.intent.occurrence_id,
-        eventId: "result_" + id.slice(3) + (index ? "_" + index : ""), receiptId: receipt.receipt_id, write: true }), { signal });
+        eventId: "result_" + id.slice(3) + (index ? "_" + index : ""), receiptId: receipt.receipt_id, write: true, signal }), { signal });
     },
     readPrIncidentClosureEvidence: request => prIncidentEvidence.read(request),
     readJournal: id => structuredClone(retained(id).record),
