@@ -3032,7 +3032,11 @@ SQLite reducer and controlled source capabilities. A local reconstruction longer
 than the source-authentication timeout may complete; a changed HEAD or missing
 R05 completion still preserves the waiting instance and original receipt. These
 cases exercise acceptance ordering, not the complete STANDARD host or a real
-Human source.
+Human source. Integration cases also compose the production branch review with
+real temporary Git refs and SQLite receipt acceptance. Slow reconstruction
+succeeds after authentication, while HEAD or canonical-subject changes during
+that authentication preserve the receipt and waiting instance. They do not
+integrate a branch or qualify the historical source chain or installed host.
 
 `verify-standard-retained-closure-fixtures.mjs`, included by the retained
 verification fixture, checks the closed retained-choice proof, malformed and

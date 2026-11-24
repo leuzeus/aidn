@@ -5498,6 +5498,14 @@ local guard still rejects a changed subject, journal or instance before the
 receipt event can be accepted. A timed-out, already receipted Human choice is
 retained; this change alone grants no cross-version execution of its old model.
 
+Session-branch integration uses the same local commit guard. The current Git,
+canonical session/cycle and retained closure/delivery chain are reconstructed
+after bounded Human authentication, then the journal and instance are rechecked
+before CAS. The two previous reconstructions inside the five-second callback
+are removed. This changes neither consent scope nor the integration effect
+preconditions. A receipted decision remains immutable on timeout; resumption
+across implementation versions still requires an explicit compatible entry.
+
 ### Retained closure decision before terminal effects
 
 `retained_closure` names a completed, acknowledged Human retention receipt that
