@@ -7,7 +7,7 @@ const fail = code => { throw Object.assign(Error(code), { code }); };
 // The capability verifies actual accepted host receipts. Historical postimage
 // hashes remain immutable; the writer compares them before advancing its own
 // canonical postimages. Physical closure/provider evidence stays live.
-export function createStandardSessionPrRecordAuthority({ targetRoot, readAcceptedOperation, pullRequestPort }) {
+export function createStandardSessionPrRecordAuthority({ targetRoot, readAcceptedOperation, readHistoryOperations, pullRequestPort }) {
   if (typeof readAcceptedOperation !== 'function' || typeof pullRequestPort?.prepare !== 'function') fail('STANDARD_PR_RECORD_AUTHORITY_REQUIRED');
   const artifacts = createStandardWorkflowArtifacts({ targetRoot });
   function physical(observed, expectedEvent, expectedRun, branch) {
@@ -21,14 +21,19 @@ export function createStandardSessionPrRecordAuthority({ targetRoot, readAccepte
     return { offset, sha256: shadowHash(event) };
   }
   function readHistory(instance, input) {
-    const open = readAcceptedOperation(instance, input.open_operation_id, 'session_pr_open', 'STANDARD_PR_RECORD_OPEN_REQUIRED');
-    const push = readAcceptedOperation(instance, open.record.preview.input.push_operation_id, 'session_push');
-    const admit = readAcceptedOperation(instance, push.record.preview.input.admission_operation_id, 'session_pr_admit');
-    const integration = readAcceptedOperation(instance, admit.record.preview.input.integration_operation_id, 'session_branch_integrate');
+    const accepted = readHistoryOperations ? readHistoryOperations(instance, input) : readAcceptedOperation;
+    const open = accepted(instance, input.open_operation_id, 'session_pr_open', 'STANDARD_PR_RECORD_OPEN_REQUIRED');
+    const push = accepted(instance, open.record.preview.input.push_operation_id, 'session_push');
+    const admit = accepted(instance, push.record.preview.input.admission_operation_id, 'session_pr_admit');
+    const integration = accepted(instance, admit.record.preview.input.integration_operation_id, 'session_branch_integrate');
     const review = integration.record.preview.prepared.plan.review;
-    const delivery = readAcceptedOperation(instance, review.delivery_operation_id, 'session_delivery_checkpoint');
-    const final = readAcceptedOperation(instance, delivery.record.preview.input.finalization_operation_id, 'session_close_finalize');
-    const closed = readAcceptedOperation(instance, review.closure_operation_id, 'cycle_close_finalize');
+    const delivery = accepted(instance, review.delivery_operation_id, 'session_delivery_checkpoint');
+    const finalId = delivery.record.preview.prepared?.plan?.input?.finalization_operation_id;
+    if (!/^op_[a-f0-9]{40}$/.test(finalId ?? '')
+      || delivery.record.preview.input.finalization_operation_id !== undefined && delivery.record.preview.input.finalization_operation_id !== finalId
+      || delivery.output.observations.finalization_operation_id !== finalId) fail('STANDARD_PR_RECORD_DELIVERY_REQUIRED');
+    const final = accepted(instance, finalId, 'session_close_finalize');
+    const closed = accepted(instance, review.closure_operation_id, 'cycle_close_finalize');
     const sources = [open, push, admit, integration, delivery, final, closed];
     if (sources.some(row => row.output.outcome !== 'completed' || !['confirmed', 'no_effect'].includes(row.output.effect_status))
       || open.output.facts.session_pr_open_confirmed !== true || push.output.facts.session_remote_head_confirmed !== true
@@ -49,6 +54,7 @@ export function createStandardSessionPrRecordAuthority({ targetRoot, readAccepte
     const { open, sources, events, review, link, documents } = readHistory(instance, input);
     const provider = await pullRequestPort.prepare(open.record.preview.prepared.plan.provider.plan.request, open.record.operation_id);
     if (!provider.can_apply || shadowHash(provider.plan) !== provider.plan_sha256 || shadowHash(provider.plan.observed.existing) !== shadowHash(link)) fail('STANDARD_PR_RECORD_REMOTE_CHANGED');
+    if (shadowHash(readHistory(instance, input)) !== shadowHash({ open, sources, events, review, link, documents })) fail('STANDARD_PR_RECORD_HISTORY_CHANGED');
     return { open_operation_id: input.open_operation_id, session_id: review.session_id, session_path: review.session_path, pull_request: link, documents,
       material_sha256: shadowHash({ sources: sources.map(row => ({ operation_id: row.record.operation_id, output_sha256: shadowHash(row.output) })), events, provider_sha256: provider.plan_sha256 }) };
   } });

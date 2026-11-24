@@ -615,6 +615,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   const usesRetainedIntegration = instance => instance.initial_parameters?.entry_point?.kind === 'retained_session_integration'
     && !instance.events.some(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'session_branch_integration_decision');
   const retainedSessionIntegrationEntry = (instance, parameters) => processAuthority.retainedSessionIntegrationEntry(instance, parameters, retainedClosureOptions());
+  const retainedSessionPrOpenEntry = (instance, parameters) => processAuthority.retainedSessionPrOpenEntry(instance, parameters, retainedClosureOptions());
   const integrationAuthority = ordinaryIntegrationAuthority && { async readSource(instance, input) {
     if (!usesRetainedIntegration(instance)) return ordinaryIntegrationAuthority.readSource(instance, input);
     const source = await processAuthority.readRetainedSessionIntegration(instance, retainedClosureOptions());
@@ -679,10 +680,27 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
       return { push_operation_id: input.push_operation_id, output: selected.output, admission: admission.output,
         admission_source_sha256: shadowHash(admission) };
     } }) : null;
+  function readPrHistoryOperations(instance) {
+    const retained = instance.initial_parameters?.entry_point?.kind === 'retained_session_pr_open'
+      ? processAuthority.readRetainedSessionPrOpen(instance) : null;
+    return (_instance, id, binding, code) => {
+      if (instance.events.some(row => row.kind === 'operation_intent' && row.intent.operation_id === id))
+        return acceptedForPromotion(instance, id, binding, code);
+      if (retained) return retained.lookup(id, binding);
+      return acceptedForPromotion(instance, id, binding, code);
+    };
+  }
   const sessionPrRecordAuthority = sessionPrOpen ? createStandardSessionPrRecordAuthority({ targetRoot,
-    readAcceptedOperation: acceptedForPromotion, pullRequestPort: sessionPullRequestPort }) : null;
+    readAcceptedOperation: acceptedForPromotion, readHistoryOperations: readPrHistoryOperations, pullRequestPort: sessionPullRequestPort }) : null;
   const sessionPrRecord = sessionPrRecordAuthority ? createStandardSessionPrRecord({ targetRoot, now,
     readSource: (instance, input) => sessionPrRecordAuthority.readSource(instance, input), readCurrent: id => current(id).record }) : null;
+  async function prepareSessionPrRecord(instance) {
+    const selected = instance.events.findLast(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'session_pr_open');
+    const id = selected?.intent.operation_id ?? (instance.initial_parameters?.entry_point?.kind === 'retained_session_pr_open'
+      ? processAuthority.readRetainedSessionPrOpen(instance).open.record.operation_id : null);
+    if (!id) fail('STANDARD_PR_RECORD_OPEN_REQUIRED');
+    return sessionPrRecord.prepare(instance, { contract_version: 'standard-session-pr-record-input.v1', open_operation_id: id });
+  }
   const sessionPrSuccessor = sessionPrRecordAuthority ? createStandardSessionPrSuccessorAuthority({ targetRoot,
     readAcceptedOperation: acceptedForPromotion, historyAuthority: sessionPrRecordAuthority }) : null;
   const sessionPrCheckpoint = sessionPrSuccessor ? createStandardSessionPrCheckpoint({ targetRoot, now,
@@ -1722,7 +1740,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   const providers = createOperationProviderRegistry([createStandardOperationProvider({
     baselinePromotion, baselinePromotionCheckpoint, baselinePromotionHook, canonicalPlanAdoption,
     canonicalResumeAdmission, changeRequest, checkpointCompletion, checksMayObserveMerge,
-    closureReview, current, cycleCloseHook, cycleCloseRecord, prepareCycleCloseRecord, prepareSessionCloseRecord, prepareSessionCloseHook, prepareSessionDeliveryCheckpoint, prepareSessionBranchIntegration, retainedSessionIntegrationEntry, retainedClosureEntry, retainedCompletionEntry, cycleEntryChoiceActivation,
+    closureReview, current, cycleCloseHook, cycleCloseRecord, prepareCycleCloseRecord, prepareSessionCloseRecord, prepareSessionCloseHook, prepareSessionDeliveryCheckpoint, prepareSessionBranchIntegration, prepareSessionPrRecord, retainedSessionPrOpenEntry, retainedSessionIntegrationEntry, retainedClosureEntry, retainedCompletionEntry, cycleEntryChoiceActivation,
     cycleEntryChoiceCheckpoint, cycleEntryChoiceContext, cycleEntryChoiceRecord,
     cycleEntryFocusCheckpoint, cycleEntrySelectedCheckpoint, cycleEntrySelectedFocus,
     cycleImplementation, cyclePlanRecord, cycleTaskAdvance, cycleValidation, cycleVerification,

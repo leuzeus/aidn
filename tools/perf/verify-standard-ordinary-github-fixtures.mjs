@@ -74,6 +74,8 @@ const output = value => ({ status: 0, stdout: typeof value === "string" ? value 
 const providerTransport = {
   runGithub() { assert.fail("unexpected synchronous GitHub transport"); },
   runRemoteGit() { assert.fail("unexpected remote Git transport"); },
+  async runGithubResolution() { assert.fail("unexpected resolution transport"); },
+  async runGithubMerge() { assert.fail("unexpected merge transport"); },
   async runGithubReply(binary, args, options) {
     assert.equal(binary, binding.gh.path);
     assert.equal(options.cwd, dirs.host);

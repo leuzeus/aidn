@@ -8125,3 +8125,15 @@ signature themselves. Common Human/HMAC tests, the historical reader on a local
 pilot and installed execution provide distinct evidence; none is implied by
 these fixtures. Ordinary delivery, checkpoint and closure selectors also enter
 the new pinned call where applicable, preserving their next actual operation.
+
+The retained-closure family also runs
+`verify-standard-retained-session-pr-open-fixtures.mjs`. It checks the closed
+contracts, exact settled five-operation boundary, foreign/extra/unaccepted or
+UNKNOWN operations, fixed provider CAS and the published route to PR recording
+without repeated integration, push, opening, Human or Native operations. These
+pure fixtures do not authenticate historical signatures. The source reader on
+an actual preserved journal and installed execution remain separate pilot
+evidence. PR record authority fixtures reject history changed during provider
+observation and verify finalizer identity from the signed delivery plan when
+the public input is empty. Canonical writer and successor fixtures verify
+their own new postimages, independently of the historical close proof.

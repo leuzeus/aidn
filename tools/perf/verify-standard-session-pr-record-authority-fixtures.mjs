@@ -19,22 +19,43 @@ const records = new Map([
   [id('2'), record('2', 'session_push', { admission_operation_id: id('3') }, {}, { facts: { session_remote_head_confirmed: true }, observations: { git: { remote_head: oid } } })],
   [id('3'), record('3', 'session_pr_admit', { integration_operation_id: id('4') }, {}, { effect_status: 'no_effect' })],
   [id('4'), record('4', 'session_branch_integrate', {}, { plan: { review: { delivery_operation_id: id('5'), closure_operation_id: id('7'), session_id: 'S001', session_path: 'sessions/S001.md', source_branch: branch, target_branch: link.head_branch, documents: docs } } }, {})],
-  [id('5'), record('5', 'session_delivery_checkpoint', { finalization_operation_id: id('6') }, {}, {})],
+  [id('5'), record('5', 'session_delivery_checkpoint', { finalization_operation_id: id('6') }, { plan: { input: { finalization_operation_id: id('6') } } }, { observations: { finalization_operation_id: id('6') } })],
   [id('6'), record('6', 'session_close_finalize', {}, { plan: { session_id: 'S001', run_id: 'fixture_final' } }, { facts: { session_close_completed: true }, observations: observation(finalEvent, Buffer.byteLength(prefix)) })],
   [id('7'), record('7', 'cycle_close_finalize', {}, {}, { facts: { cycle_close_completed: true }, observations: { ...observation(cycleEvent, 0), target_state: 'DONE' } })],
 ]);
-let observed = link, lookups = 0;
+let observed = link, lookups = 0, duringObservation = null;
 const authority = createStandardSessionPrRecordAuthority({ targetRoot: root, readAcceptedOperation(_instance, operationId, binding) {
   lookups++; const selected = records.get(operationId); assert.equal(selected?.record.intent.binding_ref, binding); return structuredClone(selected);
-}, pullRequestPort: { prepare() { const plan = { observed: { existing: observed } }; return { can_apply: true, plan, plan_sha256: shadowHash(plan) }; } } });
+}, pullRequestPort: { prepare() { duringObservation?.(); const plan = { observed: { existing: observed } }; return { can_apply: true, plan, plan_sha256: shadowHash(plan) }; } } });
 let checks = 0; const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + name); }, instance = { instance_id: 'fixture' }, input = { open_operation_id: id('1') };
 try {
   await test('historical accepted chain and actual physical closure events produce immutable predecessor hashes', async () => {
-    const source = await authority.readSource(instance, input); assert.equal(lookups, 7); assert.deepEqual(source.documents.map(row => row.path), ['sessions/S001.md', 'CURRENT-STATE.md', 'snapshots/context-snapshot.md']);
+    const source = await authority.readSource(instance, input); assert.equal(lookups, 14); assert.deepEqual(source.documents.map(row => row.path), ['sessions/S001.md', 'CURRENT-STATE.md', 'snapshots/context-snapshot.md']);
     assert.equal(source.open_operation_id, id('1')); assert.equal(source.documents[0].sha256, H);
   });
   await test('provider head and PR identity changes refuse lifecycle recording', async () => {
     observed = { ...link, head_oid: 'c'.repeat(40) }; await assert.rejects(authority.readSource(instance, input), { code: 'STANDARD_PR_RECORD_REMOTE_CHANGED' }); observed = link;
+  });
+  await test('historical material changed during provider observation is rejected', async () => {
+    const final = records.get(id('6'));
+    duringObservation = () => { final.output.extra = 'changed'; };
+    await assert.rejects(authority.readSource(instance, input), { code: 'STANDARD_PR_RECORD_HISTORY_CHANGED' });
+    duringObservation = null; delete final.output.extra;
+  });
+  await test('host-selected delivery input retains its finalizer in the signed plan', async () => {
+    const delivery = records.get(id('5')), previous = delivery.record.preview.input;
+    delivery.record.preview.input = {};
+    const source = await authority.readSource(instance, input); assert.equal(source.session_id, 'S001');
+    delivery.record.preview.input = previous;
+  });
+  await test('contradictory delivery plan and output references refuse before lookup', async () => {
+    const delivery = records.get(id('5')), plan = delivery.record.preview.prepared.plan;
+    plan.input.finalization_operation_id = id('8');
+    await assert.rejects(authority.readSource(instance, input), { code: 'STANDARD_PR_RECORD_DELIVERY_REQUIRED' });
+    plan.input.finalization_operation_id = id('6');
+    delivery.output.observations.finalization_operation_id = id('8');
+    await assert.rejects(authority.readSource(instance, input), { code: 'STANDARD_PR_RECORD_DELIVERY_REQUIRED' });
+    delivery.output.observations.finalization_operation_id = id('6');
   });
   await test('changed physical event bytes cannot be replaced by CLOSED or DONE markers', async () => {
     fs.writeFileSync(file, bytes.replace('checkpoint_summary', 'checkpoint_forgery')); await assert.rejects(authority.readSource(instance, input)); fs.writeFileSync(file, bytes);
