@@ -2431,8 +2431,91 @@
       "canonical_writes": 0,
       "remote_writes": 0,
       "native_calls": 0,
-      "installed_continuation": "NOT_RUN",
+      "installed_continuation": "PASS_RECORD_CHECKPOINT_CONFIRMED_HEAD",
       "full_same_candidate_P0": "SKIP"
     }
+  },
+  "retained_session_pr_record_continuation": {
+    "status": "PASS_RECORD_CHECKPOINT_CONFIRMED_HEAD",
+    "pull_request": 238,
+    "merged_sha": "9a6f1e0ba05787b28503dd56133ee041a1de5813",
+    "candidate": "c80a090293af5d532a9d1c72d3e14e1fd57a6ac0",
+    "archive_sha256": "ee9f420b416cbe9c9a0875a87c7048bd8c7970c6039d86c36d4f4433f556badc",
+    "entry_point": "retained_session_pr_open",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "instance_id": "standard-pr-delivery-pr238",
+    "instance_sha256": "2aa474cc5eaf9fc312ecc5223f208fb6555895835640d811b479b54723cc9f18",
+    "operations": [
+      {
+        "binding": "workflow_entry_select",
+        "operation_id": "op_7998a4f91869109a09039794ad7577bb0067c1bd",
+        "journal_sha256": "73786983b27f72ae80365fde28cf549f31c1025e17c86d771f55e650d4e4f8da",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "accepted": true
+      },
+      {
+        "binding": "session_pr_record",
+        "operation_id": "op_e5afddcbe75f88f456b027da0237e14da1216d19",
+        "journal_sha256": "f9fe9a56049e9fcb4deba9ff6a10caaa9c063f09039729121f7992fa50aaecbb",
+        "outcome": "completed",
+        "effect_status": "confirmed",
+        "accepted": true
+      },
+      {
+        "binding": "session_pr_checkpoint",
+        "operation_id": "op_160a53b8684368c7413df77eb2676527df8c43e3",
+        "journal_sha256": "fcd6c9ad3a0549f670464878e0bab756710a93118e3e17fca7dc30081fd5ceaf",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "accepted": true
+      },
+      {
+        "binding": "session_pr_update_push",
+        "operation_id": "op_2f62aa5c291b751ed2d00fba4df5e37b6d91a8ba",
+        "journal_sha256": "47dd8373bf2702c1457cf03e260c199b5fb3a4e62e3c8aa45b2115e4f18a5ce3",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "accepted": true
+      },
+      {
+        "binding": "session_pr_review_content_observe",
+        "operation_id": "op_c24c06a476f8e922f35df7205c004c94afed68f0",
+        "journal_sha256": "cdccecf18975ed4c0fe9ea9bd24aabc1a8e3086a9419c4616db101a8279f1f7e",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "accepted": true
+      }
+    ],
+    "canonical_postimages_verified": true,
+    "canonical_postimage_count": 3,
+    "physical_evidence_sha256": "bc04eeeb90b00f08c73d9d3c843dadd1cc34648aae3fb49733e37b26f183f5d5",
+    "remote_observation_sha256": "6b5a72bdf5ee09d5022add6ef240233326bbcb0e1d981e965df3901debced21c",
+    "remote_head": "6871af7521940cd0498f831a82291b0c8a318138",
+    "product_ci": "PASS",
+    "repeated_integration": 0,
+    "repeated_pr_open": 0,
+    "new_physical_push": 0,
+    "original_histories_unchanged": true,
+    "new_questions": 0,
+    "manual_signatures": 0,
+    "native_calls": 0,
+    "review": {
+      "status": "WAITING_FOR_EXTERNAL_REVIEW",
+      "content_observation": "PASS",
+      "durable_wait_evidence_sha256": "919383a43c5a2900270f4eb2ed9c0e747ec993657c13962f5d7b581c355344ee",
+      "request_sent": true,
+      "request_result_sha256": "95affbaabe9db8cad2a06b458c5124f9ee91986aba779e5a9f1fe5aaac746222",
+      "latest_remote_evidence_sha256": "be97f718f38afcd1751ba1520dee995879d09654b9ae22c702ddd2e9df92ce8d",
+      "provider_review_count": 0,
+      "reviewer_repository_access": "UNAVAILABLE_IN_CONNECTED_INSTALLATION",
+      "selected_repository_inventory_checked": true,
+      "browser_settings": "AUTHENTICATION_REQUIRED",
+      "configuration_change_applied": false
+    },
+    "merge": "NOT_RUN",
+    "post_merge_sync": "NOT_RUN",
+    "full_same_candidate_P0": "SKIP"
   }
 }
