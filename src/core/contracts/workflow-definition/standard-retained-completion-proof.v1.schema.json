@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "original_instance_id",
+    "original_instance_sha256",
+    "original_configuration_sha256",
+    "journals_sha256",
+    "native_journal_sha256",
+    "closure_output_sha256",
+    "question_sha256",
+    "retained_closure_proof_sha256",
+    "product_sha256",
+    "closure_operation_id",
+    "terminal_operation_id",
+    "checkpoint_operation_id",
+    "session_id",
+    "cycle_id",
+    "cycle_path"
+  ],
+  "properties": {
+    "original_instance_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96
+    },
+    "original_instance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "original_configuration_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "journals_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "native_journal_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "closure_output_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "question_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "retained_closure_proof_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "product_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "closure_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "terminal_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "checkpoint_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{3,6}$"
+    },
+    "cycle_id": {
+      "type": "string",
+      "pattern": "^C[0-9]{3,6}$"
+    },
+    "cycle_path": {
+      "type": "string",
+      "pattern": "^cycles/C[0-9]{3,6}-[A-Za-z0-9_-]+$"
+    }
+  },
+  "$id": "aidn://contracts/workflow-definition/standard-retained-completion-proof.v1",
+  "x-aidn-contract-version": "standard-retained-completion-proof.v1"
+}

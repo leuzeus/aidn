@@ -260,6 +260,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   const closureReview = processAuthority ? createStandardCycleClosureReview({ readAudit: readAcceptedAudit }) : null;
   const retainedClosureOptions = options => ({ ...options, readValidation: source => cycleValidation.readResult(source) });
   const retainedClosureEntry = (instance, parameters, admission) => processAuthority.retainedClosureEntry(instance, parameters, admission, retainedClosureOptions());
+  const retainedCompletionEntry = (instance, parameters) => processAuthority.retainedCompletionEntry(instance, parameters, retainedClosureOptions());
+  const retainedCompletion = instance => processAuthority.readRetainedCompletion(instance, retainedClosureOptions());
   async function readAcceptedClosureDecision(instance, input, options = {}) {
     if (instance.initial_parameters?.entry_point?.kind === 'retained_closure'
       && !instance.events.some(row => row.kind === 'operation_intent' && row.intent.operation_id === input.decision_operation_id))
@@ -285,6 +287,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     return cycleCloseRecord.prepare(instance, { decision_operation_id: id });
   }
   async function readAcceptedTerminalRecord(instance, input) {
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_completion') {
+      const source = await retainedCompletion(instance);
+      if (input.closure_operation_id !== source.terminal.record_operation_id) fail('STANDARD_RETAINED_COMPLETION_SOURCE_CHANGED');
+      return source.terminal;
+    }
     function accepted(id, binding) {
       const record = retained(id).record, result = record.results.at(-1);
       const latest = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === binding).at(-1);
@@ -319,7 +326,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     readObjectiveCompletion: instance => objectiveCompletion.read(instance),
     readHistoricalCompletion: instance => objectiveCompletion.review(instance),
     readRecorded: readAcceptedTerminalRecord, observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
-  function selectCompletedClose(instance) {
+  async function selectCompletedClose(instance) {
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_completion') {
+      const source = await retainedCompletion(instance), record = source.closed.record;
+      return assertStandardOperationOutput({ contract_version: 'standard-cycle-close-selection-output.v2', operation_ref: 'cycle_close_completed_select',
+        outcome: 'completed', effect_status: 'no_effect', facts: {}, evidence_refs: [], observations: { closure_operation_id: record.operation_id,
+          receipt_sha256: shadowHash(record.results[0].receipt), output_sha256: shadowHash(source.closed.output), terminal_checkpoint_operation_id: source.checkpoint.record.operation_id } });
+    }
     const intent = instance.events.findLast(event => event.kind === "operation_intent" && event.intent.binding_ref === "cycle_close_finalize")?.intent;
     if (!intent) fail("STANDARD_CYCLE_CLOSE_ACCEPTED_COMPLETION_REQUIRED");
     const record = retained(intent.operation_id).record, result = record.results.at(-1), output = assertStandardOperationOutput(result?.output);
@@ -329,9 +342,12 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
       || result.receipt.output_sha256 !== shadowHash(output)
       || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt))
       || current(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail("STANDARD_CYCLE_CLOSE_ACCEPTED_COMPLETION_REQUIRED");
-    return assertStandardOperationOutput({ contract_version: "standard-cycle-close-selection-output.v1", operation_ref: "cycle_close_completed_select",
+    const checkpointId = instance.events.findLast(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'cycle_terminal_checkpoint')?.intent.operation_id;
+    const checkpoint = acceptedForPromotion(instance, checkpointId, 'cycle_terminal_checkpoint');
+    if (checkpoint.record.preview.input.closure_operation_id !== record.preview.prepared.plan.input.closure_operation_id) fail('STANDARD_CYCLE_CLOSE_ACCEPTED_COMPLETION_REQUIRED');
+    return assertStandardOperationOutput({ contract_version: "standard-cycle-close-selection-output.v2", operation_ref: "cycle_close_completed_select",
       outcome: "completed", effect_status: "no_effect", facts: {}, evidence_refs: [],
-      observations: { closure_operation_id: intent.operation_id, receipt_sha256: shadowHash(result.receipt), output_sha256: shadowHash(output) } });
+      observations: { closure_operation_id: intent.operation_id, receipt_sha256: shadowHash(result.receipt), output_sha256: shadowHash(output), terminal_checkpoint_operation_id: checkpointId } });
   }
   function acceptedForPromotion(instance, id, binding, reason = "STANDARD_PROMOTION_ACCEPTED_SOURCE_REQUIRED") {
     const record = retained(id).record, result = record.results.at(-1);
@@ -427,7 +443,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   // Commit only their authenticated latest business postimages before asking
   // R05 to assess the session. Do not suppress its scope/integrity signals.
   async function readSessionPrecloseSource(instance, input) {
-    const closed = acceptedForPromotion(instance, input.closure_operation_id, "cycle_close_finalize", "STANDARD_SESSION_PRECLOSE_CLOSURE_REQUIRED");
+    const historical = instance.initial_parameters?.entry_point?.kind === 'retained_completion' ? await retainedCompletion(instance) : null;
+    const closed = historical?.closed ?? acceptedForPromotion(instance, input.closure_operation_id, "cycle_close_finalize", "STANDARD_SESSION_PRECLOSE_CLOSURE_REQUIRED");
+    if (closed.record.operation_id !== input.closure_operation_id) fail('STANDARD_SESSION_PRECLOSE_CLOSURE_REQUIRED');
     const closePlan = closed.record.preview.prepared.plan, terminal = await readAcceptedTerminalRecord(instance, closePlan.input);
     const sessionId = closePlan.scope.session_id, cycleId = closePlan.scope.cycle_id;
     const selected = artifacts.sessions().filter(row => row.session_id === sessionId);
@@ -456,10 +474,16 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     const fixed = [selected[0].path, "CURRENT-STATE.md", "RUNTIME-STATE.md", "snapshots/context-snapshot.md", "baseline/current.md", "baseline/history.md", "index.md"];
     const ownedPaths = owned.map(row => row.path.slice(0, -10));
     const { approved, journals } = collectStandardSessionCheckpointPostimages({ instance, readRetained: retained, fixed, ownedPaths });
+    if (historical) {
+      const previous = collectStandardSessionCheckpointPostimages({ instance: historical.instance, fixed, ownedPaths,
+        readRetained: id => { const record = historical.records.find(row => row.operation_id === id); if (!record) fail('STANDARD_RETAINED_COMPLETION_SOURCE_CHANGED'); return { record }; } });
+      for (const [name, hash] of previous.approved) if (!approved.has(name)) approved.set(name, hash);
+      journals.unshift(...previous.journals);
+    }
     const prior = instance.events.filter(row => row.kind === "operation_result" && row.receipt.outcome === "completed")
       .map(row => retained(row.receipt.operation_id).record).filter(row => ["cycle_terminal_checkpoint", "baseline_promotion_checkpoint"].includes(row.intent.binding_ref)).at(-1);
-    if (!prior) fail("STANDARD_SESSION_PRECLOSE_CHECKPOINT_REQUIRED");
-    const checkpoint = acceptedForPromotion(instance, prior.operation_id, prior.intent.binding_ref);
+    if (!prior && !historical) fail("STANDARD_SESSION_PRECLOSE_CHECKPOINT_REQUIRED");
+    const checkpoint = prior ? acceptedForPromotion(instance, prior.operation_id, prior.intent.binding_ref) : historical.checkpoint;
     const git = checkpoint.output.observations.git, head = git?.commit_sha ?? git?.head;
     if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(head ?? "") || checkpoint.output.effect_status !== "confirmed")
       fail("STANDARD_SESSION_PRECLOSE_CHECKPOINT_REQUIRED");
@@ -813,6 +837,12 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     } }, { handoff: true });
   const promotionAuthority = processAuthority ? createStandardBaselinePromotionAuthority({ targetRoot,
     readAcceptedOperation: acceptedForPromotion, readTerminalRecord: readAcceptedTerminalRecord,
+    readRetainedClosure: async (instance, input) => {
+      if (instance.initial_parameters?.entry_point?.kind !== 'retained_completion') return null;
+      const source = await retainedCompletion(instance);
+      if (input.closure_operation_id !== source.closure.operation_id) fail('STANDARD_RETAINED_COMPLETION_SOURCE_CHANGED');
+      return { ...source.closure, instance_id: instance.instance_id, scope_id: instance.scope_id };
+    },
     human: { question: record => human.question(record), captured: record => human.captured(record) } }) : null;
   const baselinePromotion = processAuthority ? createStandardBaselinePromotion({ targetRoot, now,
     readRequest: (instance, input) => promotionAuthority.readRequest(instance, input),
@@ -830,9 +860,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   }
   async function readAcceptedPromotionCheckpointSource(instance, input) {
     const promoted = await readAcceptedBaselineRecord(instance, { record_operation_id: input.record_operation_id });
-    const closure = acceptedForPromotion(instance, input.closure_operation_id, "cycle_close_finalize"), closedPlan = closure.record.preview.prepared.plan;
-    const checkpoint = acceptedForPromotion(instance, input.terminal_checkpoint_operation_id, "cycle_terminal_checkpoint"), checkpointPlan = checkpoint.record.preview.prepared.plan;
+    const historical = instance.initial_parameters?.entry_point?.kind === 'retained_completion' ? await retainedCompletion(instance) : null;
+    const closure = historical?.closed ?? acceptedForPromotion(instance, input.closure_operation_id, "cycle_close_finalize"), closedPlan = closure.record.preview.prepared.plan;
+    const checkpoint = historical?.checkpoint ?? acceptedForPromotion(instance, input.terminal_checkpoint_operation_id, "cycle_terminal_checkpoint"), checkpointPlan = checkpoint.record.preview.prepared.plan;
     if (promoted.plan.request.closure_operation_id !== input.closure_operation_id
+      || closure.record.operation_id !== input.closure_operation_id || checkpoint.record.operation_id !== input.terminal_checkpoint_operation_id
       || closedPlan.input.closure_operation_id !== checkpointPlan.input.closure_operation_id
       || checkpointPlan.cycle_id !== promoted.plan.request.cycle_id || checkpointPlan.cycle_path !== promoted.plan.request.cycle_path
       || closure.output.effect_status !== "confirmed" || closure.output.facts.cycle_close_completed !== true || closure.output.facts.cycle_retained !== true
@@ -1249,11 +1281,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   } : undefined;
   service = createAgenticProcessService({ store, readAuthority, operationAuthority: authority, controlAuthority, now, authorityTimeoutMs: 5000,
     async operationCommitGuard({ instance, intent, receipt, signal }) {
-      if (intent.binding_ref !== "cycle_closure_decision") return;
+      if (!['cycle_closure_decision', 'baseline_promotion_decision'].includes(intent.binding_ref)) return;
       const record = retained(intent.operation_id).record;
       if (shadowHash(record.intent) !== shadowHash(intent) || !record.results.some(row => shadowHash(row.receipt) === shadowHash(receipt)))
         fail("PROCESS_OPERATION_RESULT_NOT_AUTHENTICATED");
-      await closureReview.assertFresh(instance, record.preview.prepared.plan);
+      await (intent.binding_ref === 'cycle_closure_decision' ? closureReview : promotionReview).assertFresh(instance, record.preview.prepared.plan);
       if (signal?.aborted) fail("PROCESS_OPERATION_COMMIT_ABORTED");
       if (shadowHash(retained(intent.operation_id).record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
       if (current(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail("PROCESS_REVISION_CONFLICT");
@@ -1589,7 +1621,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   const providers = createOperationProviderRegistry([createStandardOperationProvider({
     baselinePromotion, baselinePromotionCheckpoint, baselinePromotionHook, canonicalPlanAdoption,
     canonicalResumeAdmission, changeRequest, checkpointCompletion, checksMayObserveMerge,
-    closureReview, current, cycleCloseHook, cycleCloseRecord, prepareCycleCloseRecord, retainedClosureEntry, cycleEntryChoiceActivation,
+    closureReview, current, cycleCloseHook, cycleCloseRecord, prepareCycleCloseRecord, retainedClosureEntry, retainedCompletionEntry, cycleEntryChoiceActivation,
     cycleEntryChoiceCheckpoint, cycleEntryChoiceContext, cycleEntryChoiceRecord,
     cycleEntryFocusCheckpoint, cycleEntrySelectedCheckpoint, cycleEntrySelectedFocus,
     cycleImplementation, cyclePlanRecord, cycleTaskAdvance, cycleValidation, cycleVerification,

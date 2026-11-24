@@ -9,9 +9,14 @@ const fail = code => { throw Object.assign(Error(code), { code }); };
 // select or implement one of these readers. readTerminalRecord also returns the
 // closure question authenticated against that writer's decision material. Its
 // Human journal may belong to a retained origin with a different signing key.
-export function createStandardBaselinePromotionAuthority({ targetRoot, readAcceptedOperation, readTerminalRecord, human }) {
+export function createStandardBaselinePromotionAuthority({ targetRoot, readAcceptedOperation, readTerminalRecord, human, readRetainedClosure = null }) {
   if ([readAcceptedOperation, readTerminalRecord, human?.question, human?.captured].some(value => typeof value !== "function")) fail("STANDARD_PROMOTION_SOURCE_AUTHORITY_REQUIRED");
   async function readClosure(instance, input) {
+    if (readRetainedClosure !== null) {
+      if (typeof readRetainedClosure !== 'function') fail('STANDARD_PROMOTION_SOURCE_AUTHORITY_REQUIRED');
+      const source = await readRetainedClosure(instance, input);
+      if (source !== null) return source;
+    }
     const closed = await readAcceptedOperation(instance, input.closure_operation_id, "cycle_close_finalize"), plan = closed.record.preview.prepared.plan;
     const recorded = await readTerminalRecord(instance, plan.input);
     const question = recorded.closure_question;

@@ -5523,4 +5523,35 @@ requires the accepted current final closure, the matching question/decision and
 cycle identities, and the correlated physical checkpoint event. This supplies
 closure provenance, not a promotion choice or permission. Baseline promotion
 continues to require its own explicit Human decision and current admission.
+
+### Retained completed cycle at the promotion boundary
+
+`retained_completion` names one confirmed final closure in a settled
+`retained_closure` origin. Its last accepted operation must select that exact
+completion, before any promotion question. A new technical instance preserves
+the original project, session, cycle and product. The protected original
+configuration, complete accepted journal prefix, closed Native allocations,
+original retention proof, qualified validation, physical final-hook event and
+terminal Git receipt are authenticated under their original authorities.
+
+Entry additionally requires the current owned DONE cycle, its OPEN session and
+explicit `attached_cycles` membership, COMMITTING mode, unchanged branch/HEAD,
+clean checkout, exact latest canonical writer postimages and no pending owner.
+The signed entry retains a digest of this finite source. Subsequent historical
+reads authenticate that same immutable source; current promotion and session
+ports independently check their own subjects and postimages after permitted
+effects. They do not require pre-effect documents to remain unchanged forever.
+The reader never executes an old model with new bindings or imports old receipt
+events. A changed history, binding, product, owner or source refuses.
+
+The published route skips terminal writes and the already completed R05, then
+selects the historical closure and checkpoint for the current promotion review.
+Selection v2 retains both identities; v1 stays readable. Entry-selection v6 adds
+this completed-cycle branch separately from active-cycle work resumption.
+The corrective sequence is regrouped without changing its leaf order, keeping
+the existing node and child bounds. Promotion acceptance rechecks its complete
+current subject in the fixed local commit guard after bounded Human-source
+authentication. No new signature ceremony, Native allocation, budget reset,
+canonical concept or persistence backend is introduced. Source probes, public
+entry, Human capture and later effects must be qualified separately.
 Current pre-effect closure inspection retains all its VERIFYING checks.

@@ -3013,6 +3013,19 @@ probed against the same retained proof and physical validation evidence; it is
 not a fresh VERIFYING admission. Current terminal postimages remain checked by
 the checkpoint and final-hook component fixtures.
 
+`verify-standard-retained-completion-fixtures.mjs`, included by the retained
+verification fixture, validates the closed completed-cycle entry and source
+proof, rejects missing provenance and authored answers/permissions, and checks
+that the provider does not misclassify a DONE cycle as resumable active work.
+The published model reaches the promotion question through two read-only
+operations, without terminal writes, a new retention question or Native work.
+Its closure/checkpoint references remain distinct. These synthetic receipts
+do not authenticate a real origin or prove public entry. A private source probe
+must separately verify the original configuration, settled journal prefix,
+closed Native tree, original Human/audit/validation evidence, physical event,
+current session ownership and canonical/Git postimages. Public and installed
+continuation, promotion effects and final P0 remain separate evidence.
+
 The required agentic-process gate also runs
 `tools/perf/verify-workflow-engine-fixtures.mjs`: direct JSON creation defaults to
 the structured engine through the common composition, console and actual public

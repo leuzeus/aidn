@@ -48,7 +48,7 @@ export function createStandardOperationProvider({
     sessionPrMergeEffect, sessionPrOpen, sessionPrPremerge, sessionPrRecord, sessionPrRedeliveryPush,
     sessionPrReply, sessionPrResolution, sessionPrReview, sessionPrReviewContent,
     sessionPrReviewReceiver, sessionPrUpdatePush, sessionPrecloseCheckpoint, sessionPush, snapshot,
-    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent, entryContinuation, retainedClosureEntry, prepareCycleCloseRecord,
+    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent, entryContinuation, retainedClosureEntry, retainedCompletionEntry, prepareCycleCloseRecord,
 }) {
   async function selectEntry(state) {
     const instance = state.record, parameters = instance.initial_parameters ?? {};
@@ -56,7 +56,12 @@ export function createStandardOperationProvider({
       if (current(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail("STANDARD_ENTRY_PROCESS_CHANGED");
     };
     assertCurrent();
-    const point = standardEntryPoint(parameters), admission = point !== "session"
+    const point = standardEntryPoint(parameters);
+    if (point === 'retained_completion') {
+      const continuation = await retainedCompletionEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
+    const admission = point !== "session"
       ? await operations.admitCycleEntry({ contract_version: "standard-cycle-entry-input.v1", session_id: parameters.session?.session_id, cycle_id: null }) : null;
     assertCurrent();
     const continuation = admission?.outcome === "completed" && admission.facts.cycle_entry_resume_allowed
