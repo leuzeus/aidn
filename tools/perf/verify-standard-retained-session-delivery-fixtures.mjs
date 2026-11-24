@@ -1,3 +1,4 @@
+import { resolveProcessCallData } from '../../src/core/workflow/process-call-data.mjs';
 import { admitSessionDeliveryMetadata } from '../../src/application/runtime/session-delivery-metadata-admission.mjs';
 import { artifactContentHash, artifactMetadataHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
 import { sessionClosePaths } from '../../src/core/workflow/standard-session-close-render.mjs';
@@ -55,10 +56,16 @@ await check('published reducer reaches the delivery checkpoint without a new Hum
   instance=advanceAgenticProcess(instance,{event_id:'accepted',kind:'operation_result',occurrence_id:occurrence,
     receipt:{contract_version:'process-operation-receipt.v1',receipt_id:'fixture-receipt',operation_id:entryId,intent_sha256:H(intent),authority_id:'fixture',
       outcome:'completed',effect_status:'no_effect',output_sha256:H(output),facts:output.facts,evidence_refs:[{ref:'fixture:entry',sha256:H(output)}]}});
+  let calls=0;
+  for (;;) {
+    const waiting=inspectAgenticProcess(instance).occurrences.find(row=>row.wait_reason==='call_entry');if(!waiting)break;
+    assert(calls<3);const data=resolveProcessCallData({instance,cursor:inspectAgenticProcess(instance),occurrenceId:waiting.occurrence_id,returning:false,readOperation:()=>{throw Error('unexpected source');}});
+    instance=advanceAgenticProcess(instance,{event_id:'prepare-call-'+(++calls),kind:'call_enter',occurrence_id:waiting.occurrence_id,...data});
+  }
   const cursor=inspectAgenticProcess(instance),frame=cursor.occurrences.find(row=>row.occurrence_id===cursor.ready[0]);
   assert.equal(processFrameNode(model,frame).binding_ref,'session_delivery_checkpoint');
   assert.deepEqual(resolveProcessOperationInput({instance,occurrenceId:frame.occurrence_id}).input,{});
-  assert.equal(instance.events.length,2);assert(model.nodes.length<=288);
+  assert.equal(instance.events.length,2+calls);assert(model.nodes.length<=288);
 });
 await check('all new contracts use supported closed schema vocabulary',()=>{
   for(const name of ['standard-retained-session-delivery-entry.v1','standard-retained-session-delivery-proof.v1','standard-workflow-entry-selection-output.v10','standard-session-delivery-checkpoint-input.v2']){

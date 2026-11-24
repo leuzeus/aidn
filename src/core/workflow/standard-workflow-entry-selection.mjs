@@ -1,3 +1,5 @@
+import schemaV11 from '../contracts/workflow-definition/standard-workflow-entry-selection-output.v11.schema.json' with { type: 'json' };
+import { assertRetainedSessionIntegrationEntry } from './standard-retained-session-integration.mjs';
 import schemaV10 from '../contracts/workflow-definition/standard-workflow-entry-selection-output.v10.schema.json' with { type: 'json' };
 import { assertRetainedSessionDeliveryEntry } from './standard-retained-session-delivery.mjs';
 import schemaV9 from '../contracts/workflow-definition/standard-workflow-entry-selection-output.v9.schema.json' with { type: 'json' };
@@ -26,6 +28,11 @@ export const workflowEntrySelectOperation = "workflow_entry_select";
 export function standardEntryPoint(parameters = {}) {
   const value = Object.hasOwn(parameters, "entry_point") ? parameters.entry_point : "session";
   if (value === "session") return value;
+  if (value?.kind === 'retained_session_integration') {
+    assertRetainedSessionIntegrationEntry(value);
+    if (!/^S[0-9]{3,6}$/.test(parameters.session?.session_id ?? '')) fail('STANDARD_ENTRY_SESSION_REQUIRED');
+    return value.kind;
+  }
   if (value?.kind === 'retained_session_delivery') {
     assertRetainedSessionDeliveryEntry(value);
     if (!/^S[0-9]{3,6}$/.test(parameters.session?.session_id ?? '')) fail('STANDARD_ENTRY_SESSION_REQUIRED');
@@ -62,10 +69,10 @@ export function standardEntryPoint(parameters = {}) {
   return value.kind;
 }
 export function assertStandardEntrySelection(value) {
-  if (checkShadowJson(value) || validateJsonSchema(value, value?.contract_version === 'standard-workflow-entry-selection-output.v10' ? schemaV10 : value?.contract_version === 'standard-workflow-entry-selection-output.v9' ? schemaV9 : value?.contract_version === 'standard-workflow-entry-selection-output.v8' ? schemaV8 : value?.contract_version === 'standard-workflow-entry-selection-output.v7' ? schemaV7 : value?.contract_version === 'standard-workflow-entry-selection-output.v6' ? schemaV6 : value?.contract_version === "standard-workflow-entry-selection-output.v5" ? schemaV5 : value?.contract_version === "standard-workflow-entry-selection-output.v4" ? schemaV4 : value?.contract_version === "standard-workflow-entry-selection-output.v3" ? schemaV3 : value?.contract_version === "standard-workflow-entry-selection-output.v2" ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length)
+  if (checkShadowJson(value) || validateJsonSchema(value, value?.contract_version === 'standard-workflow-entry-selection-output.v11' ? schemaV11 : value?.contract_version === 'standard-workflow-entry-selection-output.v10' ? schemaV10 : value?.contract_version === 'standard-workflow-entry-selection-output.v9' ? schemaV9 : value?.contract_version === 'standard-workflow-entry-selection-output.v8' ? schemaV8 : value?.contract_version === 'standard-workflow-entry-selection-output.v7' ? schemaV7 : value?.contract_version === 'standard-workflow-entry-selection-output.v6' ? schemaV6 : value?.contract_version === "standard-workflow-entry-selection-output.v5" ? schemaV5 : value?.contract_version === "standard-workflow-entry-selection-output.v4" ? schemaV4 : value?.contract_version === "standard-workflow-entry-selection-output.v3" ? schemaV3 : value?.contract_version === "standard-workflow-entry-selection-output.v2" ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length)
     fail("STANDARD_ENTRY_SELECTION_INVALID");
   if (value.outcome !== "completed") return value;
-  if (['retained_completion', 'retained_promotion', 'retained_session_closure', 'retained_session_checkpoint', 'retained_session_delivery'].includes(value.observations.entry_point)) return value;
+  if (['retained_completion', 'retained_promotion', 'retained_session_closure', 'retained_session_checkpoint', 'retained_session_delivery', 'retained_session_integration'].includes(value.observations.entry_point)) return value;
   const owned = ["owned_cycle", "retained_validation", "retained_verification", "retained_audit", "retained_closure"].includes(value.observations.entry_point), entry = value.observations.admission;
   if (owned !== value.facts.owned_cycle_continuation_requested || owned !== (entry !== null)
     || owned && (entry.outcome !== "completed" || entry.effect_status !== "no_effect"
@@ -79,10 +86,19 @@ export function assertStandardEntrySelection(value) {
 }
 export function selectStandardEntry(parameters, admission = null, continuation = null) {
   const point = standardEntryPoint(parameters), owned = point !== "session";
+  if (point === 'retained_session_integration') {
+    if (admission !== null || continuation?.decision_operation_id !== parameters.entry_point.decision_operation_id) fail('STANDARD_ENTRY_CONTINUATION_REQUIRED');
+    return assertStandardEntrySelection({ contract_version: 'standard-workflow-entry-selection-output.v11', operation_ref: workflowEntrySelectOperation,
+      outcome: 'completed', effect_status: 'no_effect', facts: { retained_session_integration_requested: true, retained_session_delivery_requested: false, retained_session_checkpoint_requested: false, owned_cycle_continuation_requested: true, retained_preparation_requested: true,
+        retained_validation_requested: false, retained_verification_requested: false, retained_audit_requested: false, retained_closure_requested: false,
+        retained_completion_requested: false, retained_promotion_requested: false, retained_session_closure_requested: true,
+        session_closure_requested: true, mode_committing: true, mode_thinking: false, mode_exploring: false, cycle_work_requested: true, cycle_retained: true },
+      observations: { entry_point: point, admission: null, continuation }, evidence_refs: [] });
+  }
   if (point === 'retained_session_delivery') {
     if (admission !== null || continuation?.finalization_operation_id !== parameters.entry_point.finalization_operation_id) fail('STANDARD_ENTRY_CONTINUATION_REQUIRED');
-    return assertStandardEntrySelection({ contract_version: 'standard-workflow-entry-selection-output.v10', operation_ref: workflowEntrySelectOperation,
-      outcome: 'completed', effect_status: 'no_effect', facts: { retained_session_delivery_requested: true, retained_session_checkpoint_requested: false, owned_cycle_continuation_requested: true, retained_preparation_requested: true,
+    return assertStandardEntrySelection({ contract_version: 'standard-workflow-entry-selection-output.v11', operation_ref: workflowEntrySelectOperation,
+      outcome: 'completed', effect_status: 'no_effect', facts: { retained_session_integration_requested: false, retained_session_delivery_requested: true, retained_session_checkpoint_requested: false, owned_cycle_continuation_requested: true, retained_preparation_requested: true,
         retained_validation_requested: false, retained_verification_requested: false, retained_audit_requested: false, retained_closure_requested: false,
         retained_completion_requested: false, retained_promotion_requested: false, retained_session_closure_requested: true,
         session_closure_requested: true, mode_committing: true, mode_thinking: false, mode_exploring: false, cycle_work_requested: true, cycle_retained: true },
@@ -90,8 +106,8 @@ export function selectStandardEntry(parameters, admission = null, continuation =
   }
   if (point === 'retained_session_checkpoint') {
     if (admission !== null || continuation?.recovery_operation_id !== parameters.entry_point.recovery_operation_id) fail('STANDARD_ENTRY_CONTINUATION_REQUIRED');
-    return assertStandardEntrySelection({ contract_version: 'standard-workflow-entry-selection-output.v10', operation_ref: workflowEntrySelectOperation,
-      outcome: 'completed', effect_status: 'no_effect', facts: { retained_session_delivery_requested: false, retained_session_checkpoint_requested: true, owned_cycle_continuation_requested: true, retained_preparation_requested: true,
+    return assertStandardEntrySelection({ contract_version: 'standard-workflow-entry-selection-output.v11', operation_ref: workflowEntrySelectOperation,
+      outcome: 'completed', effect_status: 'no_effect', facts: { retained_session_integration_requested: false, retained_session_delivery_requested: false, retained_session_checkpoint_requested: true, owned_cycle_continuation_requested: true, retained_preparation_requested: true,
         retained_validation_requested: false, retained_verification_requested: false, retained_audit_requested: false, retained_closure_requested: false,
         retained_completion_requested: false, retained_promotion_requested: false, retained_session_closure_requested: true,
         session_closure_requested: true, mode_committing: true, mode_thinking: false, mode_exploring: false, cycle_work_requested: true, cycle_retained: true },
@@ -99,8 +115,8 @@ export function selectStandardEntry(parameters, admission = null, continuation =
   }
   if (point === 'retained_session_closure') {
     if (admission !== null || continuation?.decision_operation_id !== parameters.entry_point.decision_operation_id) fail('STANDARD_ENTRY_CONTINUATION_REQUIRED');
-    return assertStandardEntrySelection({ contract_version: 'standard-workflow-entry-selection-output.v10', operation_ref: workflowEntrySelectOperation,
-      outcome: 'completed', effect_status: 'no_effect', facts: { retained_session_delivery_requested: false, retained_session_checkpoint_requested: false, owned_cycle_continuation_requested: true, retained_preparation_requested: true,
+    return assertStandardEntrySelection({ contract_version: 'standard-workflow-entry-selection-output.v11', operation_ref: workflowEntrySelectOperation,
+      outcome: 'completed', effect_status: 'no_effect', facts: { retained_session_integration_requested: false, retained_session_delivery_requested: false, retained_session_checkpoint_requested: false, owned_cycle_continuation_requested: true, retained_preparation_requested: true,
         retained_validation_requested: false, retained_verification_requested: false, retained_audit_requested: false, retained_closure_requested: false,
         retained_completion_requested: false, retained_promotion_requested: false, retained_session_closure_requested: true,
         session_closure_requested: true, mode_committing: true, mode_thinking: false, mode_exploring: false, cycle_work_requested: true, cycle_retained: true },
@@ -111,8 +127,8 @@ export function selectStandardEntry(parameters, admission = null, continuation =
     if (admission !== null || (retainedPromotion
       ? continuation?.failed_finalization_operation_id !== parameters.entry_point.failed_finalization_operation_id
       : continuation?.closure_operation_id !== parameters.entry_point.closure_operation_id)) fail('STANDARD_ENTRY_CONTINUATION_REQUIRED');
-    return assertStandardEntrySelection({ contract_version: 'standard-workflow-entry-selection-output.v10', operation_ref: workflowEntrySelectOperation,
-      outcome: 'completed', effect_status: 'no_effect', facts: { retained_session_delivery_requested: false, retained_session_checkpoint_requested: false, owned_cycle_continuation_requested: true, retained_preparation_requested: true,
+    return assertStandardEntrySelection({ contract_version: 'standard-workflow-entry-selection-output.v11', operation_ref: workflowEntrySelectOperation,
+      outcome: 'completed', effect_status: 'no_effect', facts: { retained_session_integration_requested: false, retained_session_delivery_requested: false, retained_session_checkpoint_requested: false, owned_cycle_continuation_requested: true, retained_preparation_requested: true,
         retained_validation_requested: false, retained_verification_requested: false, retained_audit_requested: false, retained_closure_requested: false,
         retained_completion_requested: true, retained_promotion_requested: retainedPromotion, retained_session_closure_requested: false, mode_committing: true, mode_thinking: false, mode_exploring: false, cycle_work_requested: true, cycle_retained: true },
       observations: { entry_point: point, admission: null, continuation }, evidence_refs: [] });
@@ -122,7 +138,7 @@ export function selectStandardEntry(parameters, admission = null, continuation =
       fail("STANDARD_ENTRY_SELECTION_INVALID");
     if (admission.outcome !== "completed" || admission.facts.cycle_entry_resume_allowed !== true) {
       const reason = admission.observations.reason_code;
-      return assertStandardEntrySelection({ contract_version: "standard-workflow-entry-selection-output.v10", operation_ref: workflowEntrySelectOperation,
+      return assertStandardEntrySelection({ contract_version: "standard-workflow-entry-selection-output.v11", operation_ref: workflowEntrySelectOperation,
         outcome: "blocked", effect_status: "no_effect", facts: {}, observations: { reason_code: /^[A-Z][A-Z0-9_]{0,127}$/.test(reason ?? "") ? reason : "STANDARD_OWNED_CYCLE_REQUIRED" }, evidence_refs: [] });
     }
     if (!admission.observations.canonical.some(row => row.path === `sessions/${parameters.session.session_id}.md`)) fail("STANDARD_ENTRY_SESSION_CHANGED");
@@ -131,9 +147,9 @@ export function selectStandardEntry(parameters, admission = null, continuation =
       : point === "retained_audit" ? continuation.failed_evaluation_operation_id !== parameters.entry_point.failed_evaluation_operation_id
       : point === "retained_verification" ? continuation.audit_operation_id !== parameters.entry_point.audit_operation_id : continuation.recovery_operation_id !== parameters.entry_point.recovery_operation_id)) fail("STANDARD_ENTRY_CONTINUATION_REQUIRED");
   }
-  return assertStandardEntrySelection({ contract_version: "standard-workflow-entry-selection-output.v10",
+  return assertStandardEntrySelection({ contract_version: "standard-workflow-entry-selection-output.v11",
     operation_ref: workflowEntrySelectOperation, outcome: "completed", effect_status: "no_effect",
-    facts: owned ? { retained_session_delivery_requested: false, retained_session_checkpoint_requested: false, retained_session_closure_requested: false, retained_promotion_requested: false, retained_completion_requested: false, retained_preparation_requested: point.startsWith("retained_"), owned_cycle_continuation_requested: true, mode_committing: true, mode_thinking: false,
-      mode_exploring: false, cycle_work_requested: true, retained_validation_requested: point === "retained_validation", retained_verification_requested: point === "retained_verification", retained_audit_requested: ["retained_audit", "retained_closure"].includes(point), retained_closure_requested: point === "retained_closure" } : { retained_session_delivery_requested: false, retained_session_checkpoint_requested: false, retained_session_closure_requested: false, retained_promotion_requested: false, retained_completion_requested: false, retained_preparation_requested: false, owned_cycle_continuation_requested: false, retained_validation_requested: false, retained_verification_requested: false, retained_audit_requested: false, retained_closure_requested: false },
+    facts: owned ? { retained_session_integration_requested: false, retained_session_delivery_requested: false, retained_session_checkpoint_requested: false, retained_session_closure_requested: false, retained_promotion_requested: false, retained_completion_requested: false, retained_preparation_requested: point.startsWith("retained_"), owned_cycle_continuation_requested: true, mode_committing: true, mode_thinking: false,
+      mode_exploring: false, cycle_work_requested: true, retained_validation_requested: point === "retained_validation", retained_verification_requested: point === "retained_verification", retained_audit_requested: ["retained_audit", "retained_closure"].includes(point), retained_closure_requested: point === "retained_closure" } : { retained_session_integration_requested: false, retained_session_delivery_requested: false, retained_session_checkpoint_requested: false, retained_session_closure_requested: false, retained_promotion_requested: false, retained_completion_requested: false, retained_preparation_requested: false, owned_cycle_continuation_requested: false, retained_validation_requested: false, retained_verification_requested: false, retained_audit_requested: false, retained_closure_requested: false },
     observations: { entry_point: point, admission, ...(owned ? { continuation } : {}) }, evidence_refs: admission?.evidence_refs ?? [] });
 }

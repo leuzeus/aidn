@@ -1,3 +1,4 @@
+import './verify-standard-retained-session-integration-fixtures.mjs';
 import './verify-standard-retained-session-delivery-fixtures.mjs';
 import './verify-standard-retained-session-checkpoint-fixtures.mjs';
 import assert from 'node:assert/strict';

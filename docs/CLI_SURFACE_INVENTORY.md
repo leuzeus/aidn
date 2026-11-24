@@ -1071,3 +1071,17 @@ promotion through a fixed historical reader. It does not authenticate an old
 cycle journal with the new instance's key or import its receipts. Current
 canonical owners, branches and postimages remain required, and integration
 still asks its own Human question before the separate Git effect.
+
+An acknowledged but unaccepted integration decision at the end of a
+`retained_session_delivery` instance can continue through
+`retained_session_integration`. Supply its protected original configuration
+reference and `decision_operation_id`. Only the exact four-operation prefix
+(entry, no-effect delivery, cycle selection, Human integration decision) is
+admitted. The historical receipt stays unaccepted in its original instance;
+the successor authenticates its capture and current subject, records derived
+proof, and proceeds to the ordinary integration effect without asking again.
+Any prior integration dispatch, unsettled owner, changed binding, canonical
+subject or Git preimage refuses. No Native grant transfers implicitly.
+Public integration input v2 is empty; the host selects the current accepted
+Human decision or this exact retained decision. Internal v1 effect plans retain
+the explicit decision identity and their ordinary grant/freshness checks.

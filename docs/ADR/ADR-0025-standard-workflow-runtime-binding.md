@@ -5778,3 +5778,27 @@ ownership, lifecycle and branch. A missing historical capability, foreign
 selection or unproved sibling still refuses. The later Human integration
 decision and Git effect remain separate; a retained cycle choice is not
 consent to integrate, push or merge.
+
+### Retained integration consent before the Git effect
+
+`retained_session_integration` covers one no-effect, acknowledged, durably
+receipted Human choice that timed out before acceptance in a retained-delivery
+instance. Its exact four-operation boundary has no integration dispatch or
+Native journal. The fixed reader authenticates original configuration, model,
+HMAC records, Human inbox/source, accepted delivery and selected cycle history.
+It reconstructs the canonical subject and compares the exact Git preimage
+before entry. Changed history, unsettled effects or a different subject refuse.
+
+The successor records derived journal proof and references the original choice;
+it neither accepts the receipt into the old instance nor fabricates a new Human
+answer. The same integration port still checks original consent, current Git,
+canonical data, grants and CAS around the physical transaction. Original
+instances, receipts, first failure and budget accounting remain immutable.
+This bounded profile does not admit arbitrary version migration or UNKNOWN
+integration. Post-dispatch uncertainty must be reconciled on its occurrence.
+
+Entry selection v11 adds the closed route; earlier versions remain readable.
+Public integration input v2 delegates decision selection to the fixed host.
+Internal v1 plans remain readable. The ordinary delivery/selection/H sequence
+is now a pinned call; close routing stays in the parent fact scope. The root
+remains within its existing 288-node limit. This does not establish full P0.

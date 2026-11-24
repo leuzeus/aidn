@@ -467,6 +467,13 @@ inventory still requires independent complete resource discovery and closure;
 absence of allocations is not a termination proof. V1/v2 schemas are unchanged.
 
 
+`standard-retained-session-integration-entry.v1` and its closed proof name an
+acknowledged, unaccepted integration choice at a settled retained-delivery
+boundary. Entry selection v11 and empty integration input v2 preserve original
+records and derive no new Human answer or Native authority. Internal v1 plans
+remain independently validated. This is derived journal evidence, not a new
+canonical store or generic receipt migration.
+
 ## Purpose
 
 Every stable public JSON output must have an explicit contract under `src/core/contracts/cli-output/`.

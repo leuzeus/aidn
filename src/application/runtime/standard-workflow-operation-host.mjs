@@ -608,13 +608,28 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     if (!finalizationId) fail('STANDARD_SESSION_DELIVERY_FINALIZATION_REQUIRED');
     return sessionDeliveryCheckpoint.prepare(instance, { finalization_operation_id: finalizationId }, operationId);
   }
-  const integrationAuthority = processAuthority ? createStandardSessionBranchIntegrationAuthority({ targetRoot,
+  const ordinaryIntegrationAuthority = processAuthority ? createStandardSessionBranchIntegrationAuthority({ targetRoot,
     readAcceptedOperation: acceptedForPromotion, readDeliverySource: readSessionDeliverySource,
     readRetainedCycle: instance => instance.initial_parameters?.entry_point?.kind === 'retained_session_delivery'
       ? processAuthority.readRetainedSessionCycleHistory(instance, retainedClosureOptions()) : null }) : null;
+  const usesRetainedIntegration = instance => instance.initial_parameters?.entry_point?.kind === 'retained_session_integration'
+    && !instance.events.some(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'session_branch_integration_decision');
+  const retainedSessionIntegrationEntry = (instance, parameters) => processAuthority.retainedSessionIntegrationEntry(instance, parameters, retainedClosureOptions());
+  const integrationAuthority = ordinaryIntegrationAuthority && { async readSource(instance, input) {
+    if (!usesRetainedIntegration(instance)) return ordinaryIntegrationAuthority.readSource(instance, input);
+    const source = await processAuthority.readRetainedSessionIntegration(instance, retainedClosureOptions());
+    if (input.delivery_operation_id !== source.canonical.delivery_operation_id || input.closure_operation_id !== source.canonical.closure_operation_id)
+      fail('STANDARD_RETAINED_SESSION_INTEGRATION_SUBJECT_CHANGED');
+    return source.canonical;
+  } };
   const sessionBranchIntegration = integrationAuthority ? createStandardSessionBranchIntegration({ targetRoot, now,
     readSource: (instance, input) => integrationAuthority.readSource(instance, input), readCurrent: id => current(id).record,
     async readDecision(instance, input) {
+      if (usesRetainedIntegration(instance)) {
+        const source = await processAuthority.readRetainedSessionIntegration(instance, retainedClosureOptions());
+        if (input.decision_operation_id !== source.record.operation_id) fail('STANDARD_RETAINED_SESSION_INTEGRATION_DECISION_REQUIRED');
+        return { decision_operation_id: input.decision_operation_id, choice: source.decision.choice, source_sha256: shadowHash(source.decision), plan: source.plan };
+      }
       const selected = acceptedForPromotion(instance, input.decision_operation_id, "session_branch_integration_decision", "STANDARD_SESSION_INTEGRATION_DECISION_REQUIRED");
       await verifyHumanRecord(selected.record);
       const capture = human.captured(selected.record), question = human.question(selected.record), output = selected.output;
@@ -624,6 +639,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
       return { decision_operation_id: input.decision_operation_id, choice: capture.source.choice,
         source_sha256: shadowHash(capture.source), plan: selected.record.preview.prepared.plan };
     } }) : null;
+  async function prepareSessionBranchIntegration(instance, operationId) {
+    const selected = instance.events.findLast(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'session_branch_integration_decision');
+    const id = selected?.intent.operation_id ?? (usesRetainedIntegration(instance)
+      ? (await processAuthority.readRetainedSessionIntegration(instance, retainedClosureOptions())).record.operation_id : null);
+    if (!id) fail('STANDARD_SESSION_INTEGRATION_DECISION_REQUIRED');
+    return sessionBranchIntegration.prepare(instance, { contract_version: 'standard-session-branch-integrate-input.v1', decision_operation_id: id }, operationId);
+  }
   async function readSessionIntegration(instance, input) {
       const selected = acceptedForPromotion(instance, input.integration_operation_id, "session_branch_integrate", "STANDARD_SESSION_PR_INTEGRATION_REQUIRED");
       const plan = selected.record.preview.prepared.plan;
@@ -1700,7 +1722,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   const providers = createOperationProviderRegistry([createStandardOperationProvider({
     baselinePromotion, baselinePromotionCheckpoint, baselinePromotionHook, canonicalPlanAdoption,
     canonicalResumeAdmission, changeRequest, checkpointCompletion, checksMayObserveMerge,
-    closureReview, current, cycleCloseHook, cycleCloseRecord, prepareCycleCloseRecord, prepareSessionCloseRecord, prepareSessionCloseHook, prepareSessionDeliveryCheckpoint, retainedClosureEntry, retainedCompletionEntry, cycleEntryChoiceActivation,
+    closureReview, current, cycleCloseHook, cycleCloseRecord, prepareCycleCloseRecord, prepareSessionCloseRecord, prepareSessionCloseHook, prepareSessionDeliveryCheckpoint, prepareSessionBranchIntegration, retainedSessionIntegrationEntry, retainedClosureEntry, retainedCompletionEntry, cycleEntryChoiceActivation,
     cycleEntryChoiceCheckpoint, cycleEntryChoiceContext, cycleEntryChoiceRecord,
     cycleEntryFocusCheckpoint, cycleEntrySelectedCheckpoint, cycleEntrySelectedFocus,
     cycleImplementation, cyclePlanRecord, cycleTaskAdvance, cycleValidation, cycleVerification,

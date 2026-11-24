@@ -8115,3 +8115,13 @@ subject without adding events to the current instance; wrong closure/terminal
 IDs, question subject, proof digest and missing status history refuse. The
 actual retained audit/validation/promotion chain is a separate read-only local
 pilot probe, not a fixture claim.
+
+The retained-closure family includes
+`verify-standard-retained-session-integration-fixtures.mjs`: closed entry/proof,
+malformed and foreign historical boundaries, UNKNOWN or accepted decision
+refusal, provider CAS across awaits, and the published reducer route directly
+to integration with an empty public input. Pure boundary checks authenticate no
+signature themselves. Common Human/HMAC tests, the historical reader on a local
+pilot and installed execution provide distinct evidence; none is implied by
+these fixtures. Ordinary delivery, checkpoint and closure selectors also enter
+the new pinned call where applicable, preserving their next actual operation.

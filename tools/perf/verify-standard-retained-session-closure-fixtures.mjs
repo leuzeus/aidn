@@ -51,14 +51,16 @@ await check('published reducer reaches the close writer without a new Human ques
   instance=advanceAgenticProcess(instance,{event_id:'accepted',kind:'operation_result',occurrence_id:occurrence,
     receipt:{contract_version:'process-operation-receipt.v1',receipt_id:'fixture-receipt',operation_id:entryId,intent_sha256:H(intent),authority_id:'fixture',
       outcome:'completed',effect_status:'no_effect',output_sha256:H(output),facts:output.facts,evidence_refs:[{ref:'fixture:entry',sha256:H(output)}]}});
-  const waiting=inspectAgenticProcess(instance).occurrences.find(row=>row.wait_reason==='call_entry');
-  assert(waiting);
-  const data=resolveProcessCallData({instance,cursor:inspectAgenticProcess(instance),occurrenceId:waiting.occurrence_id,returning:false,readOperation:()=>{throw Error('unexpected source');}});
-  instance=advanceAgenticProcess(instance,{event_id:'prepare-call',kind:'call_enter',occurrence_id:waiting.occurrence_id,...data});
+  let calls=0;
+  for (;;) {
+    const waiting=inspectAgenticProcess(instance).occurrences.find(row=>row.wait_reason==='call_entry');if(!waiting)break;
+    assert(calls<3);const data=resolveProcessCallData({instance,cursor:inspectAgenticProcess(instance),occurrenceId:waiting.occurrence_id,returning:false,readOperation:()=>{throw Error('unexpected source');}});
+    instance=advanceAgenticProcess(instance,{event_id:'prepare-call-'+(++calls),kind:'call_enter',occurrence_id:waiting.occurrence_id,...data});
+  }
   const cursor=inspectAgenticProcess(instance),frame=cursor.occurrences.find(row=>row.occurrence_id===cursor.ready[0]);
   assert.equal(processFrameNode(model,frame).binding_ref,'session_close_record');
   assert.deepEqual(resolveProcessOperationInput({instance,occurrenceId:frame.occurrence_id}).input,{});
-  assert.equal(instance.events.length,3);assert(model.nodes.length<=288);
+  assert.equal(instance.events.length,2+calls);assert(model.nodes.length<=288);
 });
 await check('all new contracts use supported closed schema vocabulary',()=>{
   for(const name of ['standard-retained-session-closure-entry.v1','standard-retained-session-closure-proof.v1','standard-workflow-entry-selection-output.v8','standard-session-close-input.v2']){
