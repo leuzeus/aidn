@@ -1,5 +1,20 @@
 # Testing Guide
 
+## Recorded promotion continuation
+
+`tools/perf/verify-standard-retained-promotion-fixtures.mjs` checks closed entry
+proofs and drives the published reducer through the retained finalization call
+to session preclosure. Its receipts are synthetic; it runs in the existing
+retained-completion fixture family. Source readers and installed execution
+require separate evidence.
+
+`node tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs --mode=db-only --final-hook --promotion-checkpoint --keep-cycle-branch --objective-completion --retained-record`
+exercises the real local SQLite promotion hook with a controlled historical
+record capability. Missing, foreign, revoked or changed source proofs must
+produce no checkpoint call or canonical/event change; the nominal hook must
+retain the original record request and physically finalize once. This does not
+authenticate a real user or establish PostgreSQL or full-workflow qualification.
+
 ## Retained objective agreement after cycle completion
 
 `tools/perf/verify-standard-retained-objective-fixtures.mjs` checks the closed

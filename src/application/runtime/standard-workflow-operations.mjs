@@ -153,6 +153,8 @@ function implementation() {
     new URL("standard-retained-audit-source.mjs", import.meta.url),
     new URL("standard-retained-closure-source.mjs", import.meta.url),
     new URL('standard-retained-completion-source.mjs', import.meta.url),
+    new URL('standard-retained-promotion-source.mjs', import.meta.url),
+    new URL('../../core/workflow/standard-retained-promotion.mjs', import.meta.url),
     new URL('../../core/workflow/standard-retained-completion.mjs', import.meta.url),
     new URL("../../core/workflow/standard-retained-closure.mjs", import.meta.url),
     new URL("../../core/workflow/standard-retained-audit.mjs", import.meta.url),
@@ -285,6 +287,7 @@ new URL("standard-cycle-implementation.mjs", import.meta.url), new URL("../../co
     "standard-work-phase-selection-output.v2", "standard-workflow-entry-selection-output.v3", "standard-workflow-entry-selection-output.v4",
     "standard-retained-audit-entry.v1", "standard-retained-audit-proof.v1", "standard-cycle-audit-evaluate-input.v2",
     "standard-retained-closure-entry.v1", "standard-retained-closure-proof.v1", "standard-workflow-entry-selection-output.v5", "standard-cycle-close-input.v2",
+    'standard-retained-promotion-entry.v1', 'standard-retained-promotion-proof.v1', 'standard-workflow-entry-selection-output.v7', 'standard-baseline-promotion-hook-plan.v2',
     'standard-retained-completion-entry.v1', 'standard-retained-completion-proof.v1', 'standard-workflow-entry-selection-output.v6', 'standard-cycle-close-selection-output.v2'])
     refs.push(new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url));
   refs.push(new URL("../../core/workflow/standard-owned-cycle-planning.mjs", import.meta.url),
@@ -404,7 +407,7 @@ const definitions = [
   ["cycle_readiness_evaluate", "start-session", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-cycle-readiness-evaluate-input.v1", "deterministic", "standard-cycle-readiness-output.v1"],
   ["cycle_implementation_enter", "cycle-create", "mutating", ["SPEC-R03", "SPEC-R04"], "standard-cycle-implementation-enter-input.v1", "deterministic", "standard-cycle-readiness-output.v1"],
   ["context_reload", "context-reload", "read-only", ["SPEC-R01", "SPEC-R11"], "standard-empty-input.v1"],
-  ["workflow_entry_select", "context-reload", "read-only", ["SPEC-R01", "SPEC-R02", "SPEC-R03", "SPEC-R05"], "standard-empty-input.v1", "deterministic", "standard-workflow-entry-selection-output.v6"],
+  ["workflow_entry_select", "context-reload", "read-only", ["SPEC-R01", "SPEC-R02", "SPEC-R03", "SPEC-R05"], "standard-empty-input.v1", "deterministic", "standard-workflow-entry-selection-output.v7"],
   ["cycle_retained_verification_admit", "cycle-close", "read-only", ["SPEC-R03", "SPEC-R04", "SPEC-R07"], "standard-empty-input.v1", "deterministic", "standard-retained-verification-admission-output.v1"],
   ["cycle_retained_validation_admit", "start-session", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-empty-input.v1", "deterministic", "standard-retained-validation-admission-output.v1"],
   ["cycle_work_phase_select", "start-session", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-empty-input.v1", "deterministic", "standard-work-phase-selection-output.v2"],

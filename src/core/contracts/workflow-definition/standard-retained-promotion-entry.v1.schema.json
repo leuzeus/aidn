@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-retained-promotion-entry.v1",
+  "x-aidn-contract-version": "standard-retained-promotion-entry.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "failed_finalization_operation_id",
+    "original_configuration"
+  ],
+  "properties": {
+    "kind": {
+      "const": "retained_promotion"
+    },
+    "original_configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "failed_finalization_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    }
+  }
+}

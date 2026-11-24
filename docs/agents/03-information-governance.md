@@ -11,6 +11,11 @@ Reused objective agreement is derived evidence in that same operation journal.
 It references the unchanged Human decision and witnessed completion, alongside
 the new evaluation. It adds no decision, inbox claim, canonical concept or store.
 
+Recorded-promotion continuation likewise derives its finite proof from the
+original operation and Native journals. Its accepted record and first refusal
+remain owned by the original instance; PostgreSQL or SQLite still owns the
+canonical baseline, history, session and cycle.
+
 ## Purpose
 
 AIDN governs information concepts, not just files.

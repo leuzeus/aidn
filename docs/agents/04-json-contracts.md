@@ -1,5 +1,11 @@
 # 04 JSON Contracts
 
+`standard-retained-promotion-entry.v1` and its closed proof name a settled
+no-effect promotion R05 refusal, original accepted record/checkpoint and saved
+Native evaluation. Entry selection v7 keeps that continuation separate from
+v1-v6. Promotion-hook plan v2 names the original record proof without rewriting
+its request or granting an effect. Historical v1 hook plans remain readable.
+
 `standard-drift-objective-disposition.v2` separates an authenticated retained
 opinion and physical completion from the current evaluation. Finalize-plan v4
 uses this closed proof only for COMMITTING and preserves the original source
