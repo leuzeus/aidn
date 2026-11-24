@@ -150,6 +150,7 @@ const files = [
 function implementation() {
   const refs = [
     new URL("standard-retained-verification-source.mjs", import.meta.url),
+    new URL("retained-audit-native-owner.mjs", import.meta.url),
     new URL("../../core/workflow/standard-retained-verification.mjs", import.meta.url),
     new URL("standard-retained-validation-source.mjs", import.meta.url),
     new URL("../../core/workflow/standard-retained-validation.mjs", import.meta.url),

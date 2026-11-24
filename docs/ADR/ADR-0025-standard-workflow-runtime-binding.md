@@ -5408,3 +5408,13 @@ original validation and verification receipts stay attributed to their origin.
 Closure rechecks that same historical machine evidence. No original record,
 UNKNOWN, budget or deadline is rewritten. This adds no storage concept or
 backend requirement and does not establish final P0 completion.
+
+During the retained audit's trusted-worker preparation, the current Native
+dispatch already owns the effect fence. Historical reads accept that owner only
+through a private synchronous assertion of its exact authenticated reservation,
+running signed dispatch, live parent, physical lock and canonical fence. The
+assertion runs again after awaited historical reads. Generic entry/diagnostic
+reads still refuse any pending owner. Foreign, returned, stale or substituted
+owners cannot use this path; it grants no effect, ownership transfer, closure,
+allocation or budget renewal. Read-only preparation without the owner held does
+not qualify this boundary.

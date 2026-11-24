@@ -1,4 +1,5 @@
 import { createRetainedVerificationSource } from "./standard-retained-verification-source.mjs";
+import { createRetainedAuditNativeOwnerAssertion } from "./retained-audit-native-owner.mjs";
 import { retainedVerificationAdmit, assertRetainedVerificationOutput, retainedVerificationContinuation } from "../../core/workflow/standard-retained-verification.mjs";
 import { createNativeReconciliationHistoryReader } from "./native-reconciliation-history.mjs";
 import { createRetainedValidationSource } from "./standard-retained-validation-source.mjs";
@@ -1069,7 +1070,12 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     retainedVerificationSource.assertPinned(verificationEntry(instance), proof); return phase;
   }
   async function retainedVerificationBridge(instance, phaseId, auth = {}, productSha256) {
-    const phase = acceptedRetainedVerification(instance, phaseId, auth), retained = await retainedVerificationSource.inspect(verificationEntry(instance));
+    const phase = acceptedRetainedVerification(instance, phaseId, auth);
+    const assertCurrentOwner = nativeReservation && auth.reservation === nativeReservation
+      ? createRetainedAuditNativeOwnerAssertion({ configuration, instance, reservation: nativeReservation, signer, artifacts,
+        readJournal: () => allocations.read(nativeJournalId(instance)).record,
+        readInstance: () => instances.read(instance.instance_id).record, readAuthority: read }) : null;
+    const retained = await retainedVerificationSource.inspect(verificationEntry(instance), { assertCurrentOwner });
     if (shadowHash(retained.proof) !== phase.output.observations.proof_sha256
       || retained.proof.product_sha256 !== (productSha256 ?? readProductSha256?.())) fail("STANDARD_RETAINED_VERIFICATION_SOURCE_CHANGED");
     return retained.bridge;
@@ -1295,13 +1301,16 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     }
     return readCycleVerificationHistory(instance, input, auth, productSha256);
   }
-  async function inspectRetainedCycleVerification(instance, selectionId) {
+  async function inspectRetainedCycleVerification(instance, selectionId, { assertCurrentOwner = null } = {}) {
     // Bounded to the existing single-task retained-validation origin. Only this
     // private reader chooses historical authentication; execution never does.
     if (instance.initial_parameters?.entry_point?.kind !== "retained_validation") fail("STANDARD_RETAINED_VERIFICATION_ORIGIN_UNSUPPORTED");
     const history = authenticateHistory(instance, {}, true), product = currentProductSnapshot();
     const stable = () => {
-      if (instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256 || artifacts.ownerPending()
+      if (assertCurrentOwner !== null) {
+        if (typeof assertCurrentOwner !== "function" || assertCurrentOwner() !== undefined) fail("STANDARD_PROCESS_AUDIT_OWNER_CHANGED");
+      } else if (artifacts.ownerPending()) fail("STANDARD_RETAINED_VERIFICATION_SOURCE_CHANGED");
+      if (instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256
         || shadowHash(currentProductSnapshot()) !== shadowHash(product)) fail("STANDARD_RETAINED_VERIFICATION_SOURCE_CHANGED");
     };
     stable();
