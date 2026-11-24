@@ -185,7 +185,7 @@
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "Deliver the targeted promotion provenance correction and its bounded continuation from the completed cycle. Keep the old closure, R05 decisions, original instance and Native accounting immutable. The first public promotion preview refusal is retained. Full same-candidate P0 remains open.",
+  "next_required": "The accepted baseline promotion is recorded on PostgreSQL and its Git checkpoint is confirmed with no_change. Run the promotion R05 actor and final hook, then session closure, private PR review/merge and post-merge synchronization. Preserve the first refusal and original histories. Full same-candidate source, recovery and installed-archive P0 remains open.",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-24T03:14:14.876Z",
+  "updated_at": "2026-11-24T04:01:15.502Z",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -1516,6 +1516,147 @@
       "private_finalization_evidence_sha256": "4cd0b6417ab92fd8475109ddac95ea3d97f8747182158a0261e3ee6fff23a2f5",
       "physical_closure_evidence_verified": true,
       "physical_reader_evidence_sha256": "757c893e6ab339cf20b5e2659d103cdfbff0eb1e2baaa06c0048f50cbb0a429d"
+    }
+  },
+  "retained_completion_continuation": {
+    "status": "PASS_PUBLIC_PROMOTION_REVIEW",
+    "provenance_fix": {
+      "pr": 224,
+      "candidate": "bf3ccf0a6a4734e8200188e27401edfa6f06b1a0",
+      "merge_commit": "95923028dfeb7bc2cb75044d53e8625db4a96c5c",
+      "governance_admission": "PASS",
+      "perf_kpi": "PASS"
+    },
+    "entry_delivery": {
+      "pr": 225,
+      "candidate": "198b4dbc67a521b94369ab1ea44971463d781d2d",
+      "merge_commit": "bdff9cc5646ee81a8e2946437ff159becb85eefb",
+      "archive_sha256": "a2a85e9dcfe2fc6cc8396975e27ef776d1473a60024c2ea1fdcd5fa2cf5ba2cc",
+      "catalog_revision": 461,
+      "governance_route": "ASSURED",
+      "governance_admission": "PASS",
+      "perf_kpi": "PASS"
+    },
+    "runs": [
+      {
+        "status": "PASS",
+        "mode": "source",
+        "candidate": "198b4dbc67a521b94369ab1ea44971463d781d2d",
+        "archive_sha256": "a2a85e9dcfe2fc6cc8396975e27ef776d1473a60024c2ea1fdcd5fa2cf5ba2cc",
+        "configuration_sha256": "242d8d7650d5cbaf910334b92b85c6cd7c26a8d0039d6b0ff12add73b84b5c3e",
+        "instance_sha256": "93ee6ee7137f5363f262ee7ae9b3e866d6aec33dab0307db9b7abad97a110530",
+        "stage": "public_completed_cycle_to_promotion_review",
+        "canonical_backend": "postgres",
+        "state_mode": "db-only",
+        "original_history_unchanged": true,
+        "business_unchanged": true,
+        "product_unchanged": true,
+        "native_calls": 0,
+        "manual_signatures": 0,
+        "new_closure_questions": 0,
+        "private_evidence_sha256": "f0f1de71e7242ca8480ab8c8828c80812492a46643d5a322c22e4f3887490038"
+      },
+      {
+        "status": "PASS",
+        "mode": "installed",
+        "candidate": "198b4dbc67a521b94369ab1ea44971463d781d2d",
+        "archive_sha256": "a2a85e9dcfe2fc6cc8396975e27ef776d1473a60024c2ea1fdcd5fa2cf5ba2cc",
+        "configuration_sha256": "d0ce1d5e6d412f58e66b939faed786626c3335f5999286ced3a81311dbe2a833",
+        "instance_sha256": "6a1647e9d352ccea4b250de1e43138752e5d73f6653672b7498b2b26ae19b276",
+        "stage": "public_completed_cycle_to_promotion_review",
+        "canonical_backend": "postgres",
+        "state_mode": "db-only",
+        "original_history_unchanged": true,
+        "business_unchanged": true,
+        "product_unchanged": true,
+        "native_calls": 0,
+        "manual_signatures": 0,
+        "new_closure_questions": 0,
+        "private_evidence_sha256": "b2e0b194c84a271471919de610170a545f2f08c1c21051802f5e628d4faf7322"
+      }
+    ],
+    "source_probe": {
+      "status": "PASS",
+      "negative_cases": 4,
+      "private_evidence_sha256": "c3112c8bbaa8caed056fe076f1ced5729ba24dcd83e28eb2b28574849b90c95d"
+    },
+    "checks": {
+      "completion_routing": 9,
+      "retained_closure": 23,
+      "baseline_authority": 9,
+      "model_authority": 57,
+      "binding_input_checks": 6,
+      "binding_input_boundaries": 91,
+      "composition": 69,
+      "documentation": "PASS",
+      "sensitivity": "PASS"
+    },
+    "human_promotion": {
+      "status": "PASS",
+      "choice": "promote",
+      "operation_id": "op_ee70ce7e5390067178e027c4900fc1494d258a2e",
+      "receipt_id": "receipt_ee70ce7e5390067178e027c4900fc1494d258a2e",
+      "question_sha256": "4bc380a80577f32ffd1fc480d42df3a322107bbc2429286f8d1297139f33a2a8",
+      "results": 1,
+      "same_receipt_on_redelivery": true,
+      "manual_signatures": 0,
+      "independent_original_author_proof": false,
+      "private_evidence_sha256": "b909c68212cf96a262813126ea0ca63d0f5f7921ccb5bdbf4e966895745865ef"
+    },
+    "promotion_effect": {
+      "status": "PASS_RECORD_AND_CHECKPOINT",
+      "effects": [
+        {
+          "binding": "baseline_promotion_decision",
+          "operation_id": "op_ee70ce7e5390067178e027c4900fc1494d258a2e",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "no_effect",
+          "accepted": true
+        },
+        {
+          "binding": "baseline_promotion_record",
+          "operation_id": "op_9d6fce525ad1498679def84df4e26d006e5f2254",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "confirmed",
+          "accepted": true
+        },
+        {
+          "binding": "baseline_promotion_checkpoint",
+          "operation_id": "op_478f4537858421d1fc06fbc210cac5dfbc4c4f1e",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "confirmed",
+          "accepted": true
+        }
+      ],
+      "baseline_sha256": "5c6b5b1b119bc606bcc894fa441a3667fdd0754e1082ae83bba3f82b6711bec3",
+      "history_sha256": "146275af2526cdfaf6d0a2970361298b80ee798f03428629d73eb6404468b94e",
+      "canonical_backend": "postgres",
+      "state_mode": "db-only",
+      "cycle_state": "DONE",
+      "head": "6871af7521940cd0498f831a82291b0c8a318138",
+      "git_checkpoint": {
+        "status": "no_change",
+        "head": "6871af7521940cd0498f831a82291b0c8a318138",
+        "effect_status": "no_effect"
+      },
+      "owner_pending": false,
+      "original_history_unchanged": true,
+      "product_unchanged": true,
+      "new_closure_questions": 0,
+      "manual_signatures": 0,
+      "promotion_hook": "PENDING",
+      "private_evidence_sha256": "bdca5b0e86799ae82faa9b9d5162cadcea9d24c716906aba32af29e37f1e8ddb"
+    },
+    "complete_standard_workflow": false,
+    "next_boundary": {
+      "kind": "native",
+      "requirements": [
+        "EXPLICIT_EXECUTION_AUTHORIZATION_REQUIRED"
+      ],
+      "native_responses_used_on_this_candidate": 0
     }
   }
 }
