@@ -185,7 +185,7 @@
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "Deliver the bounded archived-witness correction and a compatible continuation from the retained genuine audit. Preserve the blocked receipt and original model; do not rerun the actor or replay mode, alignment, implementation or validation by default. Continue to the actual human closure question. Final same-candidate source/recovery/archive P0 remains required.",
+  "next_required": "Present the actual installed host closure question and consume the human reply once through the accepted local chat observer. Continue from closure to session delivery. Preserve original histories and Native balance. Final same-candidate full source, recovery and installed-archive qualification remains required for GO P0.",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-24T00:40:56.130Z",
+  "updated_at": "2026-11-24T01:13:38.080Z",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -1111,7 +1111,7 @@
     "business_state_unchanged": true,
     "product_unchanged": true,
     "private_observation_sha256": "074039ad51fd80fb6b7ec46612f041a18f4a9259e5dac7dd8fc2298e68e78c7a",
-    "correction_status": "targeted_readonly_prototype_passed_not_yet_delivered",
+    "correction_status": "delivered_as_220_and_221_original_refusal_preserved",
     "prototype": {
       "status": "PASS",
       "public_continuation": false,
@@ -1120,5 +1120,100 @@
       "blocking_findings": 0,
       "evidence_sha256": "880871110fef1f30241a335a5c9a86cfc29b7786d4caa98ba66c0123fb39733d"
     }
+  },
+  "retired_witness_metadata_correction": {
+    "status": "PASS",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/220",
+    "head": "8261d8fdc6cb089e09b3fe582850cc5ba4b69344",
+    "merge_sha": "294148f59448358168a0aef8513104bb4db6b2fd",
+    "scope": "Historical retired witness validates exact authenticated owner bytes and stable physical identity; later ctime-only metadata changes no longer invalidate an already retired witness.",
+    "original_retirement_records_unchanged": true,
+    "live_owner_full_identity_unchanged": true,
+    "checks": {
+      "native_provenance_and_reconciliation": 103,
+      "new_physical_witness_cases": 13,
+      "model_authority": 57,
+      "audit": 9,
+      "closure": 7
+    },
+    "governance_route": "ASSURED",
+    "governance_admission": "PASS",
+    "perf_kpi": "PASS"
+  },
+  "retained_audit_continuation": {
+    "status": "PASS_TARGETED_CONTINUATION",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/221",
+    "candidate": "202c249470d1449fe5412949a19ed232edba0c8b",
+    "head": "4bfeec635b812be4d9290f2ec6fbef540c75a683",
+    "merge_sha": "8c8867b93eb0851fecb03bd278d4800e3a288a45",
+    "candidate_and_head_tree": "e638bfe4d3198ca16d277cf22cf46fe475b3663c",
+    "archive_sha256": "7345ba19e22d7677e8f54b034e01e3045c3e48d115448c2003b67c9c74bf50a6",
+    "catalog_revision": 452,
+    "technical_instance": "new_instance_same_owned_session_and_cycle",
+    "scope": "Authenticate the retained genuine independent audit and its validation chain, then evaluate it through the current public entry without rerunning the actor.",
+    "prior_failed_evaluation_unchanged": true,
+    "original_native_accounting_unchanged": true,
+    "new_native_authorization": false,
+    "validation_replays": 0,
+    "mode_questions": 0,
+    "alignment_questions": 0,
+    "manual_signatures": 0,
+    "source_and_installed": [
+      {
+        "status": "PASS",
+        "mode": "source",
+        "candidate": "202c249470d1449fe5412949a19ed232edba0c8b",
+        "archive_sha256": "7345ba19e22d7677e8f54b034e01e3045c3e48d115448c2003b67c9c74bf50a6",
+        "configuration_sha256": "b3464f427f46f2819873c428e930e32032b03b0f8566cac44f4593c88bcb32e9",
+        "instance_sha256": "788938f0d35f8a955808cc4e37ca674a0d954e23548c92f1e50f5dafedce14e0",
+        "stage": "public_retained_audit_to_human_closure_review",
+        "canonical_backend": "postgres",
+        "state_mode": "db-only",
+        "original_history_unchanged": true,
+        "business_unchanged": true,
+        "product_unchanged": true,
+        "native_calls": 0,
+        "manual_signatures": 0,
+        "private_observation_sha256": "669552704b34c9804b9d5bee749e61953de0163fb3120a7d8097ee9419fc933b"
+      },
+      {
+        "status": "PASS",
+        "mode": "installed",
+        "candidate": "202c249470d1449fe5412949a19ed232edba0c8b",
+        "archive_sha256": "7345ba19e22d7677e8f54b034e01e3045c3e48d115448c2003b67c9c74bf50a6",
+        "configuration_sha256": "51f9d20efdb3bd5e35027e15e18ddeddb882f93f1b8dc354d0137fb257550c2d",
+        "instance_sha256": "48f8e33982a91be93c2fc595c53462147f0954c47380f16065e1257bd3992979",
+        "stage": "public_retained_audit_to_human_closure_review",
+        "canonical_backend": "postgres",
+        "state_mode": "db-only",
+        "original_history_unchanged": true,
+        "business_unchanged": true,
+        "product_unchanged": true,
+        "native_calls": 0,
+        "manual_signatures": 0,
+        "private_observation_sha256": "c340147aefbfd3aaf621e002458f591363e417506c7ba31f42a89e6477ef4cce"
+      }
+    ],
+    "checks": {
+      "new_retained_audit": 13,
+      "retained_verification": 14,
+      "retained_validation": 17,
+      "model_authority": 57,
+      "entry_selection": 7,
+      "audit": 9,
+      "closure_review": 7
+    },
+    "governance_route": "ASSURED",
+    "governance_admission": "PASS",
+    "perf_kpi": "PASS",
+    "ci_branch_policy": {
+      "initial_status": "FAIL",
+      "reason": "Missing integration merge ancestry",
+      "resolution": "Merged integration ancestry; candidate and final PR head have identical source trees; final admission PASS"
+    },
+    "actual_closure_decision": "NOT_YET_OBSERVED",
+    "cycle_close": "NOT_YET_EXERCISED",
+    "session_delivery": "NOT_YET_EXERCISED",
+    "complete_standard_workflow": false
   }
 }
