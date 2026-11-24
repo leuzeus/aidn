@@ -64,12 +64,16 @@ export function retireNativeOwnerLock({ targetRoot, dispatchId, intention, origi
 }
 
 // Historical admission may run while a later legitimate writer owns effects.lock.
-// Observe only the retained old archive, against its exact signed witness.
-export function inspectRetiredNativeOwnerWitness({ targetRoot, dispatchId, originalLease, expectedLockSha256, expectedIdentitySha256 }) {
+// The caller authenticates the original lease and completed retirement receipt.
+// ctime describes metadata changes (including Windows sandbox ACL refreshes),
+// not persistent file identity. As at rename, retain every other identity field
+// and the exact signed owner bytes. The original retirement digest remains
+// historical evidence; never rewrite it to match a later observation.
+// Live-owner and in-flight retirement checks above still compare full identity.
+export function inspectRetiredNativeOwnerWitness({ targetRoot, dispatchId, originalLease, expectedLockSha256 }) {
   const found = read(path.join(targetRoot, nativeRetiredOwnerRelativePath(dispatchId)));
-  if (!found || !/^[a-f0-9]{64}$/.test(expectedLockSha256 ?? '') || !/^[a-f0-9]{64}$/.test(expectedIdentitySha256 ?? '')
+  if (!found || !/^[a-f0-9]{64}$/.test(expectedLockSha256 ?? '')
     || found.sha256 !== expectedLockSha256 || H(found.value) !== H(originalLease?.owner)
-    || H(stableIdentity(found.identity)) !== H(stableIdentity(originalLease?.physical_identity ?? {}))
-    || H(found.identity) !== expectedIdentitySha256) fail('NATIVE_OWNER_RETIRED_WITNESS_CHANGED');
+    || H(stableIdentity(found.identity)) !== H(stableIdentity(originalLease?.physical_identity ?? {}))) fail('NATIVE_OWNER_RETIRED_WITNESS_CHANGED');
   return { sha256: found.sha256, identity_sha256: H(found.identity) };
 }
