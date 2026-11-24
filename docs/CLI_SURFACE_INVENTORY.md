@@ -1085,3 +1085,14 @@ subject or Git preimage refuses. No Native grant transfers implicitly.
 Public integration input v2 is empty; the host selects the current accepted
 Human decision or this exact retained decision. Internal v1 effect plans retain
 the explicit decision identity and their ordinary grant/freshness checks.
+
+`retained_session_pr_open` continues the exact settled five-operation prefix
+of a retained-integration instance through the existing opened PR. Supply the
+protected `original_configuration` path/hash and `open_operation_id`. Admission
+authenticates the original authorities, conserved integration choice, physical
+integration, canonical postimages and current provider identity/head. Its next
+operation is `session_pr_record`; it neither reintegrates nor pushes or opens
+another PR. Original journals remain immutable. Public PR record input v2 is
+empty; the fixed host selects the accepted current opening or this admitted
+historical opening. Internal v1 plans retain explicit references. No Native
+budget, review verdict or consent to merge is implied.

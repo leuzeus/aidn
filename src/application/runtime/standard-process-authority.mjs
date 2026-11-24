@@ -1,4 +1,6 @@
 import { createRetainedSessionIntegrationSource } from './standard-retained-session-integration-source.mjs';
+import { createRetainedSessionPrOpenSource } from './standard-retained-session-pr-open-source.mjs';
+import { retainedSessionPrOpenContinuation } from '../../core/workflow/standard-retained-session-pr-open.mjs';
 import { retainedSessionIntegrationContinuation } from '../../core/workflow/standard-retained-session-integration.mjs';
 import { readRetainedSessionCycleHistory as readSessionCycleHistory } from './standard-retained-session-cycle-history.mjs';
 import { createRetainedSessionDeliverySource } from './standard-retained-session-delivery-source.mjs';
@@ -121,6 +123,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   const retainedSessionCheckpointSource = createRetainedSessionCheckpointSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedSessionDeliverySource = createRetainedSessionDeliverySource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedSessionIntegrationSource = createRetainedSessionIntegrationSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedSessionPrOpenSource = createRetainedSessionPrOpenSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedSessionClosureSource = createRetainedSessionClosureSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedPromotionSource = createRetainedPromotionSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const nativeReconciliationHistory = createNativeReconciliationHistoryReader({ ...options, configuration, signer, artifacts, environment });
@@ -1524,6 +1527,24 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (shadowHash((await readRetainedSessionDelivery(instance)).proof) !== shadowHash(source.proof)) fail('STANDARD_SESSION_INTEGRATION_HISTORY_CHANGED');
     return history;
   }
+  async function retainedSessionPrOpenEntry(instance, parameters, options) {
+    authenticate(instance);
+    const retained = await retainedSessionPrOpenSource.inspect(parameters.entry_point, options);
+    if (retained.proof.session_id !== parameters.session?.session_id || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail('STANDARD_RETAINED_SESSION_PR_OPEN_FOCUS_CHANGED');
+    return retainedSessionPrOpenContinuation(retained.proof);
+  }
+  function readRetainedSessionPrOpen(instance) {
+    authenticate(instance);
+    const entries = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+    if (instance.initial_parameters?.entry_point?.kind !== 'retained_session_pr_open' || entries.length !== 1) fail('STANDARD_RETAINED_SESSION_PR_OPEN_ENTRY_REQUIRED');
+    const selected = acceptedOperation(instance, entries[0].intent.operation_id, 'workflow_entry_select');
+    const retained = retainedSessionPrOpenSource.readRecorded(instance.initial_parameters.entry_point);
+    if (selected.output.facts.retained_session_pr_open_requested !== true || selected.output.observations.entry_point !== 'retained_session_pr_open'
+      || shadowHash(selected.output.observations.continuation) !== shadowHash(retainedSessionPrOpenContinuation(retained.proof))
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_SESSION_PR_OPEN_SOURCE_CHANGED');
+    return retained;
+  }
   async function retainedSessionIntegrationEntry(instance, parameters, options) {
     authenticate(instance);
     const source = await retainedSessionIntegrationSource.inspect(parameters.entry_point, options);
@@ -1762,6 +1783,6 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     readNativeActivity: readPreworkNativeActivity,
   });
   return Object.freeze({ profile: "standard-mixed.v1", rollbackProductScope, observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, authenticateOperationHost, inspectDiagnostic, observeNativeDiagnostic, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
-    verifyNativeHumanSource, admitNativeActivity, readRetainedSessionCycleHistory, retainedSessionIntegrationEntry, readRetainedSessionIntegration, retainedSessionDeliveryEntry, readRetainedSessionDelivery, retainedSessionCheckpointEntry, readRetainedSessionCheckpoint, retainedSessionClosureEntry, readRetainedSessionClosure, retainedAuditEntry, retainedClosureEntry, retainedCompletionEntry, readRetainedCompletion, retainedPromotionEntry, readRetainedPromotion, readRetainedObjectiveAlignment, readRecordedDriftEvaluation, readRetainedClosureDecision, readRecordedClosureDecision, readRecordedCycleAudit, readRecordedCycleValidation, inspectRetainedCycleAudit, retainedVerificationEntry, admitRetainedVerification, retainedValidationEntry, admitRetainedValidation, selectWorkPhase, observeRetainedTaskWork, retainedContributors,
+    verifyNativeHumanSource, admitNativeActivity, readRetainedSessionCycleHistory, retainedSessionPrOpenEntry, readRetainedSessionPrOpen, retainedSessionIntegrationEntry, readRetainedSessionIntegration, retainedSessionDeliveryEntry, readRetainedSessionDelivery, retainedSessionCheckpointEntry, readRetainedSessionCheckpoint, retainedSessionClosureEntry, readRetainedSessionClosure, retainedAuditEntry, retainedClosureEntry, retainedCompletionEntry, readRetainedCompletion, retainedPromotionEntry, readRetainedPromotion, readRetainedObjectiveAlignment, readRecordedDriftEvaluation, readRetainedClosureDecision, readRecordedClosureDecision, readRecordedCycleAudit, readRecordedCycleValidation, inspectRetainedCycleAudit, retainedVerificationEntry, admitRetainedVerification, retainedValidationEntry, admitRetainedValidation, selectWorkPhase, observeRetainedTaskWork, retainedContributors,
     selectOwnedCyclePlanning, selectCyclePrework, evaluateCyclePrework, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, inspectRetainedCycleTaskWork, readCycleValidationExecution, readCycleVerificationExecution, inspectRetainedCycleVerification, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, selectCycleExecutionSource, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCanonicalResumeProduct, observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

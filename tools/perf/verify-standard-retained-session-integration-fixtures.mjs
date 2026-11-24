@@ -1,3 +1,4 @@
+import { resolveProcessCallData } from '../../src/core/workflow/process-call-data.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { assertRetainedSessionIntegrationBoundary, assertRetainedSessionIntegrationEntry, assertRetainedSessionIntegrationProof, retainedSessionIntegrationContinuation } from '../../src/core/workflow/standard-retained-session-integration.mjs';
@@ -59,10 +60,13 @@ await check('published reducer reaches integration without a new Human question 
   instance=advanceAgenticProcess(instance,{event_id:'accepted',kind:'operation_result',occurrence_id:occurrence,
     receipt:{contract_version:'process-operation-receipt.v1',receipt_id:'fixture-receipt',operation_id:entryId,intent_sha256:H(intent),authority_id:'fixture',
       outcome:'completed',effect_status:'no_effect',output_sha256:H(output),facts:output.facts,evidence_refs:[{ref:'fixture:entry',sha256:H(output)}]}});
+  const waiting=inspectAgenticProcess(instance).occurrences.find(row=>row.wait_reason==='call_entry');
+  assert(waiting);const call=resolveProcessCallData({instance,cursor:inspectAgenticProcess(instance),occurrenceId:waiting.occurrence_id,returning:false,readOperation:()=>{throw Error('unexpected source');}});
+  instance=advanceAgenticProcess(instance,{event_id:'opening-call',kind:'call_enter',occurrence_id:waiting.occurrence_id,...call});
   const cursor=inspectAgenticProcess(instance),frame=cursor.occurrences.find(row=>row.occurrence_id===cursor.ready[0]);
   assert.equal(processFrameNode(model,frame).binding_ref,'session_branch_integrate');
   assert.deepEqual(resolveProcessOperationInput({instance,occurrenceId:frame.occurrence_id}).input,{});
-  assert.equal(instance.events.length,2);assert(model.nodes.length<=288);
+  assert.equal(instance.events.length,3);assert(model.nodes.length<=288);
 });
 await check('all new contracts use supported closed schema vocabulary',()=>{
   for(const name of ['standard-retained-session-integration-entry.v1','standard-retained-session-integration-proof.v1','standard-workflow-entry-selection-output.v11','standard-session-branch-integrate-input.v2']){

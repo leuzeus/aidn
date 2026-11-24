@@ -1,5 +1,11 @@
 # 04 JSON Contracts
 
+STANDARD entry selection v12 adds the explicit `retained_session_pr_open`
+variant and its closed proof. All other successful variants set its request
+flag to false; historical v1-v11 outputs remain readable. PR record input v2 is
+empty: the fixed host selects the accepted current opening or the admitted
+retained opening. Historical v1 inputs and signed plan inputs stay readable.
+
 `standard-retained-session-closure-entry.v1` names a receipted, unaccepted close
 decision and its original execution plus the original session-start execution.
 Its closed proof and entry selection v8 preserve both histories and the Human

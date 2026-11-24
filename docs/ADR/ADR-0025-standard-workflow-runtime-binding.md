@@ -5802,3 +5802,32 @@ Public integration input v2 delegates decision selection to the fixed host.
 Internal v1 plans remain readable. The ordinary delivery/selection/H sequence
 is now a pinned call; close routing stays in the parent fact scope. The root
 remains within its existing 288-node limit. This does not establish full P0.
+
+### Recording an already opened PR after retained integration
+
+`retained_session_pr_open` admits only the settled five-operation prefix of a
+retained-integration instance: entry, integration, admission, push and PR open.
+Every receipt must be accepted by its original instance, with the required
+confirmed or no-effect status. Extra operations, UNKNOWN, pending owners or a
+Native allocation refuse. Admission authenticates the full original close and
+integration lineage, conserved Human response, physical integration, canonical
+postimages and live provider subject. A new technical instance starts at the
+ordinary PR record writer; it never repeats integration, push or opening.
+
+Historical journal readers use each original signing authority and pin the
+protected configurations, instances, journals, recovery and allocation history.
+The new accepted entry retains their digest. After admission, these immutable
+facts remain distinct from current canonical freshness: the PR writer and its
+successors own their new postimages. Requiring the old close postimages after
+an accepted PR write would reject the authorized progression. The reader is
+bounded to seven exact predecessors, not an arbitrary cross-instance lookup.
+It recaptures history after provider awaits and refuses any changed evidence.
+Delivery's finalizer identity comes from its signed plan and matching output;
+an empty public input cannot replace that reference.
+
+Entry selection v12 and closed entry/proof contracts keep older variants
+readable. Public PR record input v2 delegates selection to the fixed host;
+historical v1 and internal plans remain readable. Four deterministic opening
+operations move unchanged into a pinned call, keeping the root within 288 nodes.
+No canonical store, receipt migration, permission, Native renewal or complete
+qualification claim is introduced.

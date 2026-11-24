@@ -353,7 +353,7 @@ function callPrReview(id, triage) {
 callPrReview("session_pr_effects_pending", "session_pr_triage_evaluate");
 op("session_pr_checkpoint", "session_pr_checkpoint", operation("session_pr_checkpoint", "record_operation_id", "session_pr_record"));
 op("session_pr_update_push", "session_pr_update_push", operation("session_pr_update_push", "checkpoint_operation_id", "session_pr_checkpoint"));
-op("session_pr_record", "session_pr_record", operation("session_pr_record", "open_operation_id", "session_pr_open"));
+op("session_pr_record", "session_pr_record");
 op("session_pr_open", "session_pr_open", operation("session_pr_open", "push_operation_id", "session_push"));
 op("session_push", "session_push", operation("session_push", "admission_operation_id", "session_pr_admit"));
 op("session_pr_admit", "session_pr_admit", operation("session_pr_admit", "integration_operation_id", "session_branch_integrate"));
@@ -960,6 +960,24 @@ seq('session_integration_retained_ready', []);
 seq('session_integration_prepare', [ordinarySessionPreparation, 'session_delivery_prepare']);
 node('session_delivery_prepare', 'call', { target: integrationPreparationRef });
 inputs.push({ node_id: 'session_delivery_prepare', fields: {} });
+// A settled open PR skips this separately granted four-effect prefix. The
+// ordinary path retains integration/admission/push/open ordering inside a call.
+const prOpenChildren = sessionSuffix.splice(1, 4, 'session_pr_open_route');
+if (prOpenChildren.join(',') !== 'session_branch_integrate,session_pr_admit,session_push,session_pr_open') throw Error('STANDARD_PR_OPEN_PREFIX_CHANGED');
+const prOpenNames = new Set(prOpenChildren), prOpenNodes = nodes.filter(row => prOpenNames.has(row.id)), prOpenInputs = inputs.filter(row => prOpenNames.has(row.node_id));
+for (const row of prOpenInputs) for (const field of Object.values(row.fields)) if (field.node_id && !prOpenNames.has(field.node_id)) throw Error('STANDARD_PR_OPEN_INPUT_CHANGED');
+for (let i = nodes.length - 1; i >= 0; i--) if (prOpenNames.has(nodes[i].id)) nodes.splice(i, 1);
+for (let i = inputs.length - 1; i >= 0; i--) if (prOpenNames.has(inputs[i].node_id)) inputs.splice(i, 1);
+const prOpenTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-session-pr-opening', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'open',
+  nodes: [{ id: 'open', kind: 'sequence', participant_ref: 'project', children: prOpenChildren }, ...prOpenNodes],
+  operation_pins: pinsFor(prOpenNodes), call_interface: { parameters: {}, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [], inputs: prOpenInputs } };
+const prOpenRef = pinTarget(prOpenTarget);
+xor('session_pr_open_route', [['retained', 'session_pr_open_retained_ready', 'retained_session_pr_open_requested'], ['ordinary', 'session_pr_open_prepare', null]]);
+seq('session_pr_open_retained_ready', []);
+node('session_pr_open_prepare', 'call', { target: prOpenRef }); inputs.push({ node_id: 'session_pr_open_prepare', fields: {} });
+
 // Preserve the deterministic validation sequence as a call, within the existing
 // root-size bound. Its only external input is the selected implementation ID.
 const validationNames = new Set(['retained_validation', ...nodes.find(row => row.id === 'retained_validation').children]);
@@ -1015,7 +1033,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...choiceRef, model: choiceTarget },
     { ...preparationRef, model: preparationTarget },
     { ...completeRef, model: completeTarget },
-    freshEntryRef, freshCheckpointRef,
+    freshEntryRef, freshCheckpointRef, { ...prOpenRef, model: prOpenTarget },
   ],
   data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session", "cycle", "entry_point"], inputs } };
 // Session creation is conditional inside the pinned setup call. Later work

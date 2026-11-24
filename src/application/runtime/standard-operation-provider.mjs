@@ -48,7 +48,7 @@ export function createStandardOperationProvider({
     sessionPrMergeEffect, sessionPrOpen, sessionPrPremerge, sessionPrRecord, sessionPrRedeliveryPush,
     sessionPrReply, sessionPrResolution, sessionPrReview, sessionPrReviewContent,
     sessionPrReviewReceiver, sessionPrUpdatePush, sessionPrecloseCheckpoint, sessionPush, snapshot,
-    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent, entryContinuation, retainedClosureEntry, retainedCompletionEntry, prepareCycleCloseRecord, prepareSessionCloseRecord, prepareSessionCloseHook, prepareSessionDeliveryCheckpoint, prepareSessionBranchIntegration, retainedSessionIntegrationEntry,
+    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent, entryContinuation, retainedClosureEntry, retainedCompletionEntry, prepareCycleCloseRecord, prepareSessionCloseRecord, prepareSessionCloseHook, prepareSessionDeliveryCheckpoint, prepareSessionBranchIntegration, prepareSessionPrRecord, retainedSessionPrOpenEntry, retainedSessionIntegrationEntry,
 }) {
   async function selectEntry(state) {
     const instance = state.record, parameters = instance.initial_parameters ?? {};
@@ -57,6 +57,10 @@ export function createStandardOperationProvider({
     };
     assertCurrent();
     const point = standardEntryPoint(parameters);
+    if (point === 'retained_session_pr_open') {
+      const continuation = await retainedSessionPrOpenEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
     if (point === 'retained_session_integration') {
       const continuation = await retainedSessionIntegrationEntry(instance, parameters); assertCurrent();
       return selectStandardEntry(parameters, null, continuation);
@@ -274,7 +278,8 @@ export function createStandardOperationProvider({
       return await sessionPrReview?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED");
     }],
     ["session_pr_record", async ({ state, input }) => {
-      return await sessionPrRecord?.prepare(state.record, input) ?? fail("STANDARD_PR_RECORD_AUTHORITY_REQUIRED");
+      if (!input || Object.keys(input).length !== 0) fail("STANDARD_OPERATION_INPUT_INVALID");
+      return await prepareSessionPrRecord?.(state.record) ?? fail("STANDARD_PR_RECORD_AUTHORITY_REQUIRED");
     }],
     ["session_pr_open", async ({ state, input, occurrenceId }) => {
       return await sessionPrOpen?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_PR_OPEN_TRANSPORT_REQUIRED");
