@@ -7929,3 +7929,11 @@ authority, returned dispatches and replaced locks refuse. These checks use an
 identified allocation fixture under the production owner; they do not start a
 model. A reader-only probe before owner acquisition is insufficient evidence for
 the owned worker path. Keep that result separate from the actual Native audit.
+
+The same provenance gate exercises archived Native witnesses against actual
+filesystem metadata changes. A chmod round trip changes ctime while retaining
+the file and its owner bytes; historical observation must still pass. Changed
+identity fields, owner/hash, physical content, a byte-identical replacement,
+extra hard links and absence refuse. The live-owner check must still reject the
+same metadata-only change. These filesystem fixtures are separate from the
+signed retirement/reconciliation history checks and genuine Native qualification.

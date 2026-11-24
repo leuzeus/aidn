@@ -5418,3 +5418,14 @@ reads still refuse any pending owner. Foreign, returned, stale or substituted
 owners cannot use this path; it grants no effect, ownership transfer, closure,
 allocation or budget renewal. Read-only preparation without the owner held does
 not qualify this boundary.
+
+After confirmed Native owner retirement, historical admission authenticates the
+original lease, disposition receipt and archived owner bytes. The archived file
+must retain its device, inode, size, link count, mode and modification time.
+Its change time is an observation of metadata updates, including Windows sandbox
+ACL refreshes; it is not a persistent identity pin. The signed retirement digest
+remains immutable historical evidence. This comparison applies only to completed
+retirement history. Live ownership, in-flight retirement, read races, replaced
+files, changed bytes and resource fences retain their existing strict checks.
+The observer proves current retained evidence, not the absence of every past
+metadata or content-write event. It grants no resumption, write or Native budget.
