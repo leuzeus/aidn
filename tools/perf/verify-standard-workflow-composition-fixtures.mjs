@@ -94,7 +94,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
   // Fresh and corrective R05 share the target's finalizer binding.
-  assert.equal(assets.catalog.bindings.length, 234); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 235); assert.equal(assets.catalog.activities.length, 23);
   assert.deepEqual(assets.catalog.bindings.filter(row => row.model_ref?.model_id === "aidn-standard-mode-handoff")
     .map(row => [row.node_id, row.binding.id]).sort(), [
       ["mode_handoff_decide", "mode_work_continue_decision"], ["mode_handoff_summary", "handoff_summary_prepare"],
@@ -154,12 +154,12 @@ test("correction promotion and session reclosure use new cycle, R05, human and d
   for (const [node, field, source] of [
     ["promotion_decide", "closure_operation_id", "close_finalize"], ["session_preclose_checkpoint", "closure_operation_id", "close_finalize"],
     ["session_closure_decide", "admission_operation_id", "session_close_admit"], ["session_closure_decide", "drift_evaluation_operation_id", "session_closure_drift_evaluate"],
-    ["session_delivery_checkpoint", "finalization_operation_id", "session_close_finalize"],
     ["session_branch_integration_decide", "closure_operation_id", "close_finalize"], ["session_branch_integration_decide", "delivery_operation_id", "session_delivery_checkpoint"],
     ["session_branch_integrate", "decision_operation_id", "session_branch_integration_decide"]]) {
     assert.deepEqual(fields("correction_" + node)[field], { source: "operation_id", node_id: "correction_" + source });
   }
   assert.deepEqual(fields("correction_session_close_finalize"), {});
+  assert.deepEqual(fields("correction_session_delivery_checkpoint"), {});
   assert.equal(assets.model.nodes.find(row => row.id === "correction_session_start_finalize").binding_ref, "session_start_finalize");
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);
 });
@@ -538,11 +538,10 @@ test("preclose checkpoint is a granted deterministic Git effect before session a
 test("delivery checkpoint follows confirmed session finalization with no implied integration or PR", () => {
   const binding = assets.catalog.bindings.find(row => row.node_id === "session_delivery_checkpoint").binding;
   assert.equal(binding.executor_kind, "deterministic"); assert.equal(binding.effect_class, "mutating");
-  assert.equal(binding.input_contract, "standard-session-delivery-checkpoint-input.v1");
+  assert.equal(binding.input_contract, "standard-session-delivery-checkpoint-input.v2");
   const children = committingSteps();
-  assert.equal(children.indexOf("session_delivery_checkpoint"), children.indexOf("session_close_finalize") + 1);
-  assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_delivery_checkpoint").fields.finalization_operation_id,
-    { source: "operation_id", node_id: "session_close_finalize" });
+  assert.equal(children.indexOf("session_delivery_checkpoint"), children.indexOf("session_close_preparation_route") + 1);
+  assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_delivery_checkpoint").fields, {});
 });
 test("local integration has a separate explicit human subject and deterministic Git effect after delivery", () => {
   const children = committingSteps();
@@ -841,7 +840,7 @@ test("the ordinary loader authenticates the two final-verification operations fo
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 287);
   assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 133);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 101);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 102);
   const target = loaded.model.call_targets.find(row => row.model_id === 'aidn-standard-final-verification'), { model: child, ...identity } = target;
   assert.equal(loaded.model.call_targets.length, 20);
   assert.equal(child.model_id, "aidn-standard-final-verification");
