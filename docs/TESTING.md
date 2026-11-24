@@ -3027,6 +3027,13 @@ arguments cannot replace the host guard. These component checks do not prove
 the real STANDARD closure path, PostgreSQL or an installed archive. A retained
 receipt prototype that holds CAS is read-only evidence, not closure success.
 
+The guard fixture also composes the production session-closure review with the
+SQLite reducer and controlled source capabilities. A local reconstruction longer
+than the source-authentication timeout may complete; a changed HEAD or missing
+R05 completion still preserves the waiting instance and original receipt. These
+cases exercise acceptance ordering, not the complete STANDARD host or a real
+Human source.
+
 `verify-standard-retained-closure-fixtures.mjs`, included by the retained
 verification fixture, checks the closed retained-choice proof, malformed and
 foreign subjects, fixed provider dispatch and the published route to

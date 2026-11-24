@@ -1264,7 +1264,6 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
       await verifyGrant(record, signal);
       if (record.intent.binding_ref === "spike_conversion_decision") await spike.assertFresh(instance, record.preview.input, record.preview.prepared);
       if (record.intent.binding_ref === "mode_work_continue_decision") processAuthority.assertModeWorkContinuationFresh(instance, record.preview.input, record.preview.prepared);
-      if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(instance, record.preview.prepared.plan, { signal });
       // Cycle-choice H authentication is followed below by a full fresh subject
@@ -1286,7 +1285,6 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
       // commit guard, after this bounded Human/source authentication.
       if (record.intent.binding_ref === "spike_conversion_decision") await spike.assertFresh(instance, record.preview.input, record.preview.prepared);
       if (record.intent.binding_ref === "mode_work_continue_decision") processAuthority.assertModeWorkContinuationFresh(instance, record.preview.input, record.preview.prepared);
-      if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(instance, record.preview.prepared.plan, { signal });
       if (record.intent.binding_ref === cycleEntryChoiceOperation) await assertCycleEntryChoiceFresh(instance, record, signal);
@@ -1307,11 +1305,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   } : undefined;
   service = createAgenticProcessService({ store, readAuthority, operationAuthority: authority, controlAuthority, now, authorityTimeoutMs: 5000,
     async operationCommitGuard({ instance, intent, receipt, signal }) {
-      if (!['cycle_closure_decision', 'baseline_promotion_decision'].includes(intent.binding_ref)) return;
+      if (!['cycle_closure_decision', 'baseline_promotion_decision', 'session_closure_decision'].includes(intent.binding_ref)) return;
       const record = retained(intent.operation_id).record;
       if (shadowHash(record.intent) !== shadowHash(intent) || !record.results.some(row => shadowHash(row.receipt) === shadowHash(receipt)))
         fail("PROCESS_OPERATION_RESULT_NOT_AUTHENTICATED");
-      await (intent.binding_ref === 'cycle_closure_decision' ? closureReview : promotionReview).assertFresh(instance, record.preview.prepared.plan);
+      const review = intent.binding_ref === 'cycle_closure_decision' ? closureReview
+        : intent.binding_ref === 'baseline_promotion_decision' ? promotionReview : sessionClosureReview;
+      await review.assertFresh(instance, record.preview.prepared.plan);
       if (signal?.aborted) fail("PROCESS_OPERATION_COMMIT_ABORTED");
       if (shadowHash(retained(intent.operation_id).record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
       if (current(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail("PROCESS_REVISION_CONFLICT");
