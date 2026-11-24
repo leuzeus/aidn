@@ -7919,3 +7919,13 @@ business state, retained contributor exclusions and the same machine-evidence
 and audit-context hashes. Record source, installed-entry and actual audit results
 separately. Only the private historical reader may authenticate old binding pins;
 execution of an old instance must continue to refuse changed implementation.
+
+The retained audit's trusted worker reobserves the original evidence while its
+own Native dispatch holds the effect fence. Run
+`node tools/perf/verify-native-dispatch-provenance-fixtures.mjs db-only`
+for that ownership boundary: a signed live dispatch, exact reservation, physical
+lock and canonical fence must agree. Foreign owners, stale reservations, changed
+authority, returned dispatches and replaced locks refuse. These checks use an
+identified allocation fixture under the production owner; they do not start a
+model. A reader-only probe before owner acquisition is insufficient evidence for
+the owned worker path. Keep that result separate from the actual Native audit.

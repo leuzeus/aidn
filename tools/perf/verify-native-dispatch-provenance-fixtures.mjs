@@ -7,6 +7,7 @@ import os from 'node:os';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { assertNativeDispatchRecord, nativeDispatchId, nativeDispatchPath, nativeDispatchContextHash } from '../../src/core/workflow/native-dispatch-record.mjs';
+import { verifyRetainedAuditNativeOwner } from './retained-audit-native-owner-fixture-lib.mjs';
 import { nativeJournalId } from '../../src/core/workflow/native-allocation-journal.mjs';
 import { createOperationJournalSigner } from '../../src/core/workflow/process-operation-journal.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
@@ -130,6 +131,8 @@ if (contractsOnly) {
     const intent = { instance_id: 'case', [point === 'epoch_returned' ? 'epoch_request_sha256' : 'authorization_sha256']: H('controlled-intent') };
     const execute = () => port.withOwner(intent, async () => {
       callbacks++; assert.equal(artifacts.ownerPending(), true);
+      if (point === 'returned') verifyRetainedAuditNativeOwner({ configuration, instance: host.inspect('case').record,
+        signer, artifacts, authority: observed, journalId, intent, test });
       return point === 'unknown' ? { status: 'CONTROLLED_UNKNOWN_NO_NATIVE_RUN' } : { native_started: false, status: 'CONTROLLED_NO_NATIVE_EFFECT' };
     });
     if (point.startsWith('native_')) await assert.rejects(execute, { code: 'FIXTURE_NATIVE_OWNER_INTERRUPT' });

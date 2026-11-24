@@ -253,6 +253,7 @@ const files = [
   "src/application/runtime/standard-owned-entry-continuation.mjs",
   "src/application/runtime/standard-retained-validation-source.mjs",
   "src/application/runtime/standard-retained-verification-source.mjs",
+  "src/application/runtime/retained-audit-native-owner.mjs",
   "src/core/workflow/standard-retained-verification.mjs",
   "src/core/workflow/standard-retained-validation.mjs",
   ...["standard-retained-validation-entry.v1", "standard-retained-validation-pins.v1", "standard-retained-validation-proof.v1",
