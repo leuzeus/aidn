@@ -185,7 +185,7 @@
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "Preserve the promotion R05 refusal. Deliver and qualify the bounded continuation from the already recorded promotion and its clean Native evaluation, reusing the still-admissible original alignment. Then finish promotion, session closure, private PR review/merge and post-merge synchronization. No old receipt, UNKNOWN or Native counter may be reset. Full same-candidate source, recovery and installed-archive P0 remains open.",
+  "next_required": "The accepted promotion and scoped objective alignment were reused; its final hook completed on PostgreSQL without a new Human question. Continue the current session-closing boundary, then private PR review/merge and post-merge synchronization. Preserve old histories and Native counters. Full same-candidate source, recovery and installed-archive P0 remains open.",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-24T04:33:23.875Z",
+  "updated_at": "2026-11-24T05:27:07.328Z",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -1698,7 +1698,225 @@
       "model_calls": 0,
       "business_effects": 0,
       "public_continuation": "NOT_RUN",
-      "private_evidence_sha256": "6100b215ad1f8f80c5b26bcc1c317d9a1e7f36d35061fdbce00356e80ce0dc11"
+      "private_evidence_sha256": "6100b215ad1f8f80c5b26bcc1c317d9a1e7f36d35061fdbce00356e80ce0dc11",
+      "merge_commit": "0ee642a35ea51b0e76f2cf7a517c03fc4c7b75f6",
+      "governance_admission": "PASS",
+      "perf_kpi": "PASS"
+    }
+  },
+  "retained_promotion_continuation": {
+    "status": "PASS_RETAINED_PROMOTION_FINALIZATION",
+    "entry_delivery": {
+      "pr": 227,
+      "candidate": "a07a5864d1238d1d35f18b390230e6d9b28e64ef",
+      "pr_head": "37fe1976b59738505af4083bbeba61c18cc23899",
+      "pr_head_tree_identical": true,
+      "merged_tree_identical": true,
+      "git_tree_sha256": "52db8ab2fd46fbc5e95ed0a5e29bd0c5816cd733",
+      "merge_commit": "40978667c62fe1b7b5563aaebcd134c5aade4a84",
+      "archive_sha256": "787daa1f31ebfc137e6a8ebd30cc2aea4cc0934772a5984cccbaa3234a382e12",
+      "catalog_revision": 465,
+      "governance_route": "ASSURED",
+      "governance_admission": "PASS",
+      "perf_kpi": "PASS"
+    },
+    "runs": [
+      {
+        "status": "PASS",
+        "mode": "source",
+        "candidate": "a07a5864d1238d1d35f18b390230e6d9b28e64ef",
+        "archive_sha256": "787daa1f31ebfc137e6a8ebd30cc2aea4cc0934772a5984cccbaa3234a382e12",
+        "configuration_sha256": "0fa6f58212063f2093772dbfdb1c178560323d4424ecdaede2c1a9b8fc8ae77c",
+        "instance_sha256": "6a666a52464b5a048c082bbf5fbaac9e979b4b4de5b16d12ae85dfb0d19a7a53",
+        "stage": "public_recorded_promotion_to_r05_finalization",
+        "canonical_backend": "postgres",
+        "state_mode": "db-only",
+        "original_history_unchanged": true,
+        "business_unchanged": true,
+        "product_unchanged": true,
+        "native_calls": 0,
+        "new_questions": 0,
+        "manual_signatures": 0,
+        "private_evidence_sha256": "d85420b5bb977573a64cc5a6469f31dbc65be23d3b2e0ca4b60d50f7b8c026ff"
+      },
+      {
+        "status": "PASS",
+        "mode": "installed",
+        "candidate": "a07a5864d1238d1d35f18b390230e6d9b28e64ef",
+        "archive_sha256": "787daa1f31ebfc137e6a8ebd30cc2aea4cc0934772a5984cccbaa3234a382e12",
+        "configuration_sha256": "4ecbd49aaaf2bc11519628898ce18ebed0d36a2e750dd0dea6fc8adcf538e60e",
+        "instance_sha256": "f63f9ee315395b36179795ae4a36d707d5970caef1c0f2585aaa4c3fb629217c",
+        "stage": "public_recorded_promotion_to_r05_finalization",
+        "canonical_backend": "postgres",
+        "state_mode": "db-only",
+        "original_history_unchanged": true,
+        "business_unchanged": true,
+        "product_unchanged": true,
+        "native_calls": 0,
+        "new_questions": 0,
+        "manual_signatures": 0,
+        "private_evidence_sha256": "abd7854e7c88ba43150b6fbb4d1b492be8508c456f33daf71ebca2f6d2d548c3"
+      }
+    ],
+    "source_probe": {
+      "status": "PASS_READ_ONLY_BOUNDARY",
+      "negative_cases": 7,
+      "private_evidence_sha256": "f9cf91ba18a2da1b70978b11b756d6552954eaaaf976bfb7d9ac2bdffa940581"
+    },
+    "checks": {
+      "routing_and_contracts": 9,
+      "objective_scope": 19,
+      "retained_completion": 9,
+      "composition": 69,
+      "binding_inputs": 6,
+      "binding_input_boundaries": 91,
+      "sqlite_promotion_hook": 5,
+      "documentation": "PASS",
+      "policies": "PASS",
+      "sensitivity": "PASS"
+    },
+    "original_alignment_authenticated": true,
+    "original_promotion_authenticated": true,
+    "first_refusal_preserved": true,
+    "manual_signatures": 0,
+    "complete_standard_workflow": false,
+    "finalization": {
+      "status": "PASS",
+      "drift": {
+        "binding": "drift_check_finalize",
+        "operation_id": "op_a2577190a447fce90b57e5d107e321b974e5e542",
+        "phase": "receipted",
+        "outcome": "completed",
+        "effect_status": "confirmed",
+        "accepted": true,
+        "reason_code": null
+      },
+      "promotion": {
+        "binding": "baseline_promotion_finalize",
+        "operation_id": "op_a1f7b622bbf5a4057114231b59de5aca7033748e",
+        "phase": "receipted",
+        "outcome": "completed",
+        "effect_status": "confirmed",
+        "accepted": true,
+        "reason_code": null
+      },
+      "operations": [
+        {
+          "binding": "workflow_entry_select",
+          "operation_id": "op_470c20119ff289a213ba7979202a1045e0ba8c75",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "no_effect",
+          "accepted": true,
+          "reason_code": null
+        },
+        {
+          "binding": "cycle_close_completed_select",
+          "operation_id": "op_42991f1b5f96c67543d85685c8c5353734680070",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "no_effect",
+          "accepted": true,
+          "reason_code": null
+        },
+        {
+          "binding": "drift_check_finalize",
+          "operation_id": "op_a2577190a447fce90b57e5d107e321b974e5e542",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "confirmed",
+          "accepted": true,
+          "reason_code": null
+        },
+        {
+          "binding": "baseline_promotion_finalize",
+          "operation_id": "op_a1f7b622bbf5a4057114231b59de5aca7033748e",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "confirmed",
+          "accepted": true,
+          "reason_code": null
+        },
+        {
+          "binding": "session_preclose_checkpoint",
+          "operation_id": "op_0b6a5e85889e040505d05e7fd52d0f29bfea64f9",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "confirmed",
+          "accepted": true,
+          "reason_code": null
+        },
+        {
+          "binding": "session_close_admit",
+          "operation_id": "op_e14cc15bc3666149a6c17a4c0c22ab9d93c889fa",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "no_effect",
+          "accepted": true,
+          "reason_code": null
+        }
+      ],
+      "canonical_backend": "postgres",
+      "state_mode": "db-only",
+      "head": "6871af7521940cd0498f831a82291b0c8a318138",
+      "git_clean": true,
+      "owner_pending": false,
+      "original_history_unchanged": true,
+      "product_unchanged": true,
+      "new_questions": 0,
+      "manual_signatures": 0,
+      "native_calls": 0,
+      "private_evidence_sha256": "c878505dbf29fab15e269335b3d9553caea209ca6b86ae848ca13ea4c423309a",
+      "canonical_postimages": {
+        "current_sha256": "7c19fb339c06926e07df4d5553e3f57c753ebe9b65d6a4fe61c61aad7c84390e",
+        "baseline_sha256": "5063d2c102a3863e6cdc722df6788a103e1f602ff9107f0924057359caba7fa2",
+        "history_sha256": "788028c8105ae7f1ef4c9194879f62d135771d685bc12ae0b8c4c0326db9863a",
+        "one_promotion_entry": true,
+        "one_completion_confirmation": true
+      }
+    },
+    "next_boundary": {
+      "kind": "native",
+      "binding": null,
+      "requirements": [
+        "EXPLICIT_EXECUTION_AUTHORIZATION_REQUIRED"
+      ],
+      "errors": [],
+      "campaign_responses_used": 18,
+      "remaining_responses": 6,
+      "remaining_output_bytes": 36693871
+    },
+    "physical_observation": {
+      "status": "PASS",
+      "canonical_backend": "postgres",
+      "state_mode": "db-only",
+      "witnesses": [
+        {
+          "event": "drift_check_completed",
+          "run_id": "process_drift_op_a2577190a447fce90b57e5d107e321b974e5e542",
+          "sha256": "d641dbc51387b712839daf22bb60212be311759576ec0ef44336b73eba1b29af",
+          "matches": 1,
+          "offset": 6583
+        },
+        {
+          "event": "checkpoint_summary",
+          "run_id": "process_promote_a1f7b622bbf5a4057114231b59de5aca7033748e",
+          "sha256": "378fe645c67d6538cdebf1cff0ffd3cb3cbc315d8c0fa716ff090e3bc5524e71",
+          "matches": 1,
+          "offset": 8206
+        }
+      ],
+      "canonical_report_sha256": "a35e74654da0590ad6a50742d125bdbf9ead03af3f0542c7d1eb6d7d41f4a088",
+      "canonical_postimages": {
+        "baseline/current.md": "5063d2c102a3863e6cdc722df6788a103e1f602ff9107f0924057359caba7fa2",
+        "baseline/history.md": "788028c8105ae7f1ef4c9194879f62d135771d685bc12ae0b8c4c0326db9863a",
+        "snapshots/context-snapshot.md": "8f18317233ffd8003462b8bd6d45fdb91dd2822167ca6e7917c632f25380f159",
+        "index.md": "775ce7baa5e6e74f23da7629b01e7c0327336b85056aede0ba48fd5759933619",
+        "CURRENT-STATE.md": "7c19fb339c06926e07df4d5553e3f57c753ebe9b65d6a4fe61c61aad7c84390e"
+      },
+      "original_alignment_timestamp_preserved": true,
+      "owner_pending": false,
+      "private_evidence_sha256": "1f2fc998a00ad60633ea555c26b48ad3f9480f8dc972ce88704f5188ee457d34"
     }
   }
 }
