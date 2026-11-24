@@ -298,7 +298,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
       && !instance.events.some(row => row.kind === 'operation_intent' && row.intent.operation_id === plan.input.decision_operation_id)) {
       const verified = await processAuthority.readRecordedClosureDecision(instance, plan.input, retainedClosureOptions());
       assertRetainedClosureTerminalMaterial(plan, closed.output, verified);
-      return { record_operation_id: closed.record.operation_id, plan, output: closed.output };
+      return { record_operation_id: closed.record.operation_id, plan, output: closed.output, closure_question: verified.question };
     }
     const selected = accepted(plan.input.decision_operation_id, "cycle_closure_decision");
     const question = human.question(selected.record), decision = human.captured(selected.record).source;
@@ -310,7 +310,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
       || closed.output.facts.cycle_close_completed !== false || evidence.plan.product_sha256 !== machine.product_sha256 || evidence.plan.profile_sha256 !== machine.profile_sha256
       || evidence.manifest.status !== machine.status || shadowHash(evidence.checks) !== shadowHash(machine.checks)
       || shadowHash(evidence.evidence_refs) !== shadowHash(machine.evidence_refs)) fail("STANDARD_CYCLE_CLOSE_RECORDED_PROVENANCE_CHANGED");
-    return { record_operation_id: closed.record.operation_id, plan, output: closed.output };
+    return { record_operation_id: closed.record.operation_id, plan, output: closed.output, closure_question: question };
   }
   const terminalCheckpoint = processAuthority && processModels(model).some(component => component.nodes.some(node => node.binding_ref === "cycle_terminal_checkpoint"))
     ? createStandardCycleTerminalCheckpoint({ targetRoot, now, readRecorded: readAcceptedTerminalRecord,

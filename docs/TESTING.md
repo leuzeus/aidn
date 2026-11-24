@@ -5146,7 +5146,12 @@ Promotion request qualification uses three required agentic fixtures:
 fixed bindings and outcome separation; `verify-standard-baseline-human-fixtures.mjs`
 checks the actual signer/capture logic on memory plus files/dual/DB-only stores;
 `verify-standard-baseline-authority-fixtures.mjs` checks the real bounded event
-reader with a fixture accepted-journal capability. Human provider and completed
+reader with a fixture accepted-journal capability. It also checks a terminal
+reader carrying the authenticated original closure question when that Human
+journal belongs to a retained origin. The promotion reader must not reopen that
+journal using the current instance's signing key. Missing, foreign and changed
+question subjects still refuse, as do unaccepted closure sources and altered
+physical events. Human provider and completed
 closure remain fixture authorities in these component cases. They do not prove
 that the common cursor reached the bindings from a real preceding closure.
 The existing source-installed baseline port producers also exercise read-only
