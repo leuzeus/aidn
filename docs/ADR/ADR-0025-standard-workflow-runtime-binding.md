@@ -5429,3 +5429,29 @@ retirement history. Live ownership, in-flight retirement, read races, replaced
 files, changed bytes and resource fences retain their existing strict checks.
 The observer proves current retained evidence, not the absence of every past
 metadata or content-write event. It grants no resumption, write or Native budget.
+
+### Retained independent audit after a blocked evaluation
+
+`retained_audit` is bounded to a `retained_verification` origin whose latest
+accepted operation is `cycle_audit_evaluate`, blocked without effect by the
+archived-owner witness check. It names that operation and the protected original
+configuration. Every Native allocation must be closed, every operation settled,
+the original audit independent and non-contributing, and the same owned cycle
+still VERIFYING with unchanged product, plan and machine evidence. No original
+instance, failed receipt, checkpoint, consumption or decision is rewritten.
+
+The private historical reader authenticates original model/binding signatures,
+the completed Native result and its exact context, artifact snapshot and prior
+verification chain. Current entry binds the resulting proof to a new technical
+instance for the same session/cycle. Current `cycle_audit_evaluate` v2 input is
+empty: the fixed host selects the latest authenticated audit activity, or this
+explicitly admitted retained audit when no current activity exists. V1 remains
+readable as historical data. The current evaluator and qualified validation
+reader recheck the report before issuing a new receipt; the producer remains
+attributed to its original instance. Ordinary model implementation pins still
+apply and cannot be bypassed by a JSON option.
+
+This route skips mode, work, validation and the Native auditor. It grants no
+closure or risk acceptance; the next actual closure question still requires
+the human decision. Later corrective work follows its ordinary fresh audit
+route. Budgets are not transferred or renewed by this deterministic entry.

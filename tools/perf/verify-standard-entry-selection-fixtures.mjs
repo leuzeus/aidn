@@ -12,13 +12,13 @@ const continuation={source_instance_id:"prior",source_instance_sha256:"a".repeat
   completion_operation_id:null,completion_sha256:null,alignment_sha256:null,gate_sha256:"c".repeat(64)};
 await check("entry selection is closed, read-only and supplies no initialization facts",()=>{
   const normal=selectStandardEntry({});assertStandardEntrySelection(normal);assertStandardOperationOutput(normal);
-  assert.deepEqual(normal.facts,{owned_cycle_continuation_requested:false,retained_validation_requested:false,retained_verification_requested:false});assert.equal(normal.observations.admission,null);
+  assert.deepEqual(normal.facts,{owned_cycle_continuation_requested:false,retained_validation_requested:false,retained_verification_requested:false,retained_audit_requested:false,retained_preparation_requested:false});assert.equal(normal.observations.admission,null);
   assertStandardOperationInput("workflow_entry_select",{});
   assert.throws(()=>assertStandardOperationInput("workflow_entry_select",{owned_cycle_continuation_requested:true}));
   const schema=JSON.parse(fs.readFileSync(new URL("../../src/core/contracts/workflow-definition/standard-workflow-entry-selection-output.v1.schema.json",import.meta.url)));
   assert.deepEqual(validateJsonSchemaDefinition(schema,"#",{contractKind:"workflow-definition"}),[]);
 });
-await check("only the two named entry points are accepted",()=>{
+await check("session and owned entry forms reject unknown authored alternatives",()=>{
   for(const value of [null,true,{},"owned_cycle","continue","other",{...parameters.entry_point,approved:true}]){assert.throws(()=>standardEntryPoint({entry_point:value}),{code:"STANDARD_ENTRY_POINT_INVALID"});}
   assert.equal(standardEntryPoint({entry_point:"session"}),"session");assert.equal(standardEntryPoint(parameters),"owned_cycle");
 });

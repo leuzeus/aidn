@@ -1,5 +1,14 @@
 # 04 JSON Contracts
 
+`standard-retained-audit-entry.v1` and `standard-retained-audit-proof.v1` bind a
+completed historical Native audit to its blocked evaluation and original
+configuration, instance, allocation journal and verification proof. Entry
+selection v4 adds this bounded route and explicit preparation-skip facts;
+v1-v3 remain readable. Current audit-evaluation input v2 is empty and delegates
+selection to the fixed host. Its v1 occurrence reference remains historical
+data. These contracts grant no closure, resource ownership or Native renewal and
+introduce no canonical store. The current audit output retains its real producer.
+
 Private `codex-validation-terminal.v2` adds bounded client stderr diagnostics to
 the existing local validation evidence. Its closed reader validates counters,
 controller digest, base64 tail and optional decoded text. V1 remains readable
