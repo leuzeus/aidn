@@ -1053,3 +1053,15 @@ or replace its original receipts. A failed Native allocation must have its
 closure and accounting reconciled first. Normal exact execution, protected
 source paths, current qualified profile and applicable Native budget remain
 required; preview grants no execution or renewal.
+
+A confirmed close from a `retained_session_checkpoint` instance can continue via
+`retained_session_delivery` in a new technical instance. The entry supplies only
+the protected original configuration reference and finalization operation ID.
+The fixed reader authenticates both accepted operations and the retained
+checkpoint/recovery chain. For a legacy v1 database close, it admits only the
+default normative metadata profile as a **new current observation**, pinned in
+the accepted entry. It does not reconstruct missing historical metadata.
+Changed ownership, content, bindings, HEAD, unsettled effects or later metadata
+changes refuse continuation. No close hook or Human decision is replayed.
+The public delivery-checkpoint v2 input is empty: the host selects the accepted
+current or retained finalizer. Internal checkpoint plans keep their explicit ID.

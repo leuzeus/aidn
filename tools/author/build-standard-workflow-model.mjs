@@ -361,7 +361,7 @@ op("session_branch_integration_decide", "session_branch_integration_decision", {
   ...operation("session_branch_integration_decide", "delivery_operation_id", "session_delivery_checkpoint"),
   ...operation("session_branch_integration_decide", "closure_operation_id", "close_finalize") });
 op("session_branch_integrate", "session_branch_integrate", operation("session_branch_integrate", "decision_operation_id", "session_branch_integration_decide"));
-op("session_delivery_checkpoint", "session_delivery_checkpoint", operation("session_delivery_checkpoint", "finalization_operation_id", "session_close_finalize"));
+op("session_delivery_checkpoint", "session_delivery_checkpoint");
 op("session_preclose_checkpoint", "session_preclose_checkpoint", operation("session_preclose_checkpoint", "closure_operation_id", "close_finalize"));
 op("session_close_finalize", "session_close_finalize");
 op("session_close_checkpoint", "session_close_checkpoint", operation("session_close_checkpoint", "record_operation_id", "session_close_record"));
@@ -915,14 +915,14 @@ sessionSuffix.splice(sessionSuffix.indexOf('session_branch_integration_decide'),
 op('session_completion_select', 'cycle_close_completed_select');
 inputs.find(row => row.node_id === 'session_branch_integration_decide').fields.closure_operation_id.node_id = 'session_completion_select';
 // A reconciled historical checkpoint proceeds straight to the corrected hook.
-sessionSuffix.splice(0, 2, 'session_close_preparation_route');
-xor('session_close_preparation_route', [['retained', 'session_checkpoint_retained_ready', 'retained_session_checkpoint_requested'], ['ordinary', 'session_close_prepare', null]]);
-seq('session_checkpoint_retained_ready', []);
-seq('session_close_prepare', ['session_close_record', 'session_close_checkpoint']);
+sessionSuffix.splice(0, 3, 'session_close_preparation_route');
+xor('session_close_preparation_route', [['delivered', 'session_delivery_retained_ready', 'retained_session_delivery_requested'], ['retained', 'session_close_finalize', 'retained_session_checkpoint_requested'], ['ordinary', 'session_close_prepare', null]]);
+seq('session_delivery_retained_ready', []);
+seq('session_close_prepare', ['session_close_record', 'session_close_checkpoint', 'session_close_finalize']);
 // Preserve the ordinary writer/checkpoint as a bounded deterministic call.
 const sessionPreparationNames = new Set(['session_close_prepare', 'session_close_record', 'session_close_checkpoint']);
-const sessionPreparationNodes = nodes.filter(row => sessionPreparationNames.has(row.id));
-const sessionPreparationInputs = inputs.filter(row => sessionPreparationNames.has(row.node_id));
+const sessionPreparationNodes = [...nodes.filter(row => sessionPreparationNames.has(row.id)), structuredClone(nodes.find(row => row.id === 'session_close_finalize'))];
+const sessionPreparationInputs = [...inputs.filter(row => sessionPreparationNames.has(row.node_id)), structuredClone(inputs.find(row => row.node_id === 'session_close_finalize'))];
 for (const row of sessionPreparationInputs) for (const field of Object.values(row.fields)) {
   if (field.node_id && !sessionPreparationNames.has(field.node_id)) throw Error('STANDARD_SESSION_PREPARATION_INPUT_CHANGED');
 }

@@ -5728,3 +5728,28 @@ separate, explicitly qualified reanchoring path; ordinary delivery refuses with
 a session nor introduces such a reanchor, receipt migration, or permission.
 The regression uses the actual hook receipt and owning postimage reader; a
 fixture that injects fresh metadata at delivery cannot establish this claim.
+
+### Retained confirmed session delivery
+
+A separate `retained_session_delivery` entry handles the exact two-operation
+retained-checkpoint instance after its confirmed session finalizer. Historical
+configuration, model, instance, accepted journal MACs, recovery and original
+Human/R05 chain remain immutable. The fixed reader verifies the single close
+event, removed start run, closed canonical focus and current Git/owner state.
+
+For a legacy v1 database finalizer, missing metadata evidence is not synthesized.
+A fresh admission accepts only the existing default normative profile for the
+session, current state and context snapshot. Content must match the confirmed
+close evidence. Its metadata digests and evidence basis enter a new accepted
+entry proof; changes across awaits or before the delivery effect refuse. This
+read-only observation grants neither a metadata write nor a session reclose.
+Other metadata profiles refuse. Current v2 finalizers retain exact post-CAS
+metadata checks, without this legacy admission.
+
+The model routes retained delivery directly to the Git checkpoint, while the
+ordinary writer/checkpoint/finalizer remain a pinned call and checkpoint-only
+recovery still reaches the finalizer. Public delivery input v2 is empty; only
+the host supplies the authenticated finalizer ID to the unchanged internal
+checkpoint plan. Branch integration, PR review, merge and post-merge guarantees
+remain separate qualification boundaries. This entry proves a new technical
+continuation, not restart of the original instance or complete P0.

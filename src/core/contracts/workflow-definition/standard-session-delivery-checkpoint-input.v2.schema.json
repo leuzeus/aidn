@@ -1,0 +1,9 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-session-delivery-checkpoint-input.v2",
+  "x-aidn-contract-version": "standard-session-delivery-checkpoint-input.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [],
+  "properties": {}
+}

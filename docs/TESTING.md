@@ -8095,3 +8095,12 @@ hashes after writing, stale-hash refusal and explicit refusal of legacy DB
 receipts lacking those hashes. `--mode=files` preserves metadata-free legacy
 compatibility. Human/R05 source capabilities remain fixture inputs. This does
 not prove historical PostgreSQL reanchoring or continuation between candidates.
+
+The retained session delivery fixtures exercise the closed entry/proof, fixed
+provider and published reducer, including absence of a repeated Human/Native
+step. Metadata admission checks reject foreign classification, ownership and
+content, and bind a new digest when update metadata changes. The actual legacy
+PostgreSQL journal reader and public installed delivery remain local pilot
+checks; fixture success alone does not qualify them. Run
+`node tools/perf/verify-standard-retained-session-delivery-fixtures.mjs` for this
+focused boundary and the composition fixtures for the ordinary/corrective graph.
