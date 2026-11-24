@@ -185,7 +185,7 @@
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "Activate an applicable exact Native grant for the corrected installed candidate, run the fresh independent read-only auditor, then continue through actual closure and delivery decisions. Do not replay mode, alignment, implementation or validation. Final one-candidate source/recovery/archive P0 remains required.",
+  "next_required": "Deliver the bounded archived-witness correction and a compatible continuation from the retained genuine audit. Preserve the blocked receipt and original model; do not rerun the actor or replay mode, alignment, implementation or validation by default. Continue to the actual human closure question. Final same-candidate source/recovery/archive P0 remains required.",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-23T18:24:23.748Z",
+  "updated_at": "2026-11-24T00:40:56.130Z",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -940,12 +940,185 @@
     "complete_standard_workflow": false
   },
   "current_native_balance": {
-    "consumed_responses": 12,
-    "consumed_bytes": 18531412,
-    "remaining_responses": 12,
-    "remaining_bytes": 48577452,
-    "prior_deadline_utc": "2026-11-23T18:22:00.211Z",
-    "new_authorization": "NOT_ACTIVATED",
+    "consumed_responses": 16,
+    "consumed_bytes": 25044982,
+    "remaining_responses": 8,
+    "remaining_bytes": 42063882,
+    "candidate": "6cdd68154055d59b5c40d02e2dc0ea3ee337b60a",
+    "deadline_utc": "2026-11-24T01:23:20.826Z",
+    "configuration_sha256": "51f794d7652d003cca13866ca8ebac7a8ec13fb732a792874315e939f36fe6da",
+    "new_authorization": "ACTIVATED_FROM_OBSERVED_CHAT_CONSENT",
     "counter_reset": false
+  },
+  "audit_attempt_on_retained_verification": {
+    "status": "FAIL",
+    "candidate": "6e3db287e359508b648621e21f8a86d2335b264e",
+    "configuration_sha256": "320dd3dbbe8fd4267031bff045ec9eadc3600bd6e44e80e4883d4306a3367e51",
+    "stage": "activity_output_context",
+    "first_failure": "PROCESS_EXECUTION_FAILED",
+    "precise_refusal": "STANDARD_RETAINED_VERIFICATION_SOURCE_CHANGED",
+    "audit_actor": "NOT_STARTED",
+    "native_responses": 0,
+    "classification": "product_failure_in_native_preparation",
+    "product_under_audit": "NOT_EVALUATED",
+    "cause": "The historical reader rejected the current Native dispatch effect owner as a pending foreign effect.",
+    "same_inputs_after_owner_retirement": "PASS",
+    "same_audit_context": true,
+    "process_tree_closed": true,
+    "active_processes": 0,
+    "original_history_unchanged": true,
+    "business_state_unchanged": true,
+    "product_unchanged": true,
+    "manual_signatures": 0,
+    "owner_retirement": {
+      "status": "PASS",
+      "entry": "public CLI"
+    },
+    "reconciliation": {
+      "status": "PASS",
+      "entry": "installed application recovery port",
+      "receipt_sha256": "bfc8f899a593deeed67e3900fc2b03ddce7a9bb98dd2356f15c7e7c6013fba89",
+      "original_failure_preserved": true,
+      "original_allocations_unchanged": true,
+      "consumption": {
+        "responses_observed": 0,
+        "response_sha256": [],
+        "storage_debit_bytes": 162125,
+        "native_usage_sha256": "91ca8e4c9d4920fc23a8ca55b6a212898789e98f49becd8f6e7e6b3322aa2eae"
+      }
+    },
+    "private_failure_observation_sha256": "aefc19e94c41800944ed372a734e6434d9d012e41e810aeee4eac30ce9f6debf",
+    "private_diagnosis_sha256": "947a80d49f9222253a48f7249a0b50f508445f8fc8c57afef4940f5dc0bcd236"
+  },
+  "retained_audit_owner_correction": {
+    "status": "PASS_TARGETED_CONTINUATION",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/219",
+    "candidate": "6cdd68154055d59b5c40d02e2dc0ea3ee337b60a",
+    "merge_sha": "ab0aa4e6f100647983faba707c349a77245984a7",
+    "archive_sha256": "bdda0ad2acd4141f10c2187a303f78dd8a5513aa899929da2dbfc338ed4d8c62",
+    "catalog_revision": 449,
+    "configuration_sha256": "51f794d7652d003cca13866ca8ebac7a8ec13fb732a792874315e939f36fe6da",
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "technical_instance": "new_instance_same_owned_session_and_cycle",
+    "scope": "Authenticate the current Native owner during retained historical reads; no general pending-owner exemption.",
+    "controls": [
+      "exact signed reserved allocation",
+      "authenticated running dispatch",
+      "live original process",
+      "exact physical lock",
+      "current canonical resource fence",
+      "reobservation after awaited historical reads"
+    ],
+    "source_reader": "PASS",
+    "installed_public_entry": "PASS",
+    "worker_environment_preflight": "PASS",
+    "operations": [
+      {
+        "binding": "workflow_entry_select",
+        "operation_id": "op_1987ea513bfee973a563d5819719ad4731cae906",
+        "journal_sha256": "fc3eca9e1334e462413d35dcaa7a72b1dcc7ae0476a5bf8900266b908bbd009f",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_retained_verification_admit",
+        "operation_id": "op_096eb68ab02883e2bf4fda99cf7c7b8d553f53e5",
+        "journal_sha256": "9f1c4114465ffae5895623ffb252542c93050fac803bf52f28387b1b41a3ae3e",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_work_phase_select",
+        "operation_id": "op_18a066a7c9422ff6e0f8d13f045da4772b447447",
+        "journal_sha256": "ab375c32e4b5b79318fa64de3c6e706e9c0c13832993117e04f5254dadd97b02",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_audit_select",
+        "operation_id": "op_665ee4c888eb6dbf0713aeb92248ebd0d39926d8",
+        "journal_sha256": "96fda5d4f4efd89e9a68980a28c72ece77efeb9e0e445f9b88e1195ee8231eb2",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      }
+    ],
+    "original_instances_unchanged": true,
+    "prior_failed_audit_and_accounting_unchanged": true,
+    "business_state_unchanged": true,
+    "product_unchanged": true,
+    "source_context_sha256": "eebb3a9f1c6697ce060f324b6d78bb179c5a4693b7b47fd52bb5dcef68cb1abb",
+    "retained_contributors": 2,
+    "mode_questions": 0,
+    "alignment_questions": 0,
+    "validation_replays": 0,
+    "manual_signatures": 0,
+    "targeted_checks": {
+      "native_provenance_and_reconciliation_db_only": 90,
+      "new_retained_audit_owner_cases": 14,
+      "retained_verification": 14,
+      "retained_validation": 17,
+      "model_authority": 57,
+      "audit_context": 15,
+      "closure_review": 7
+    },
+    "validation_evidence": "Production canonical/physical ownership ports with an identified allocation fixture; genuine auditor execution is recorded separately below.",
+    "governance_route": "ASSURED",
+    "governance_admission": "PASS",
+    "perf_kpi": "PASS",
+    "native_audit": {
+      "status": "PASS",
+      "evidence": "genuine independent Native actor, separate fresh read-only context, authenticated by the original installed host",
+      "responses": 4,
+      "storage_debit_bytes": 6351445,
+      "process_tree_closed": true,
+      "active_processes": 0,
+      "report_sha256": "fb9fee18e37a45bef3e3f3708d03948dc0a04414779c2c83b4746ab52be5e52b",
+      "requirements_supported": 3,
+      "usages_supported": 3,
+      "informational_findings": 2,
+      "blocking_findings": 0,
+      "recommendation": "request_closure_review",
+      "private_observation_sha256": "7806369fe4c94b97f36752e2474c9c618a374851f4573f7b056201c3a3f6be73",
+      "authorizes_closure": false
+    },
+    "targeted_governance_audit": {
+      "profile": "TARGETED",
+      "attempt_outcome_integrity": "conformant",
+      "finding": "Reader-only preflight preceded acquisition and did not cover the owned worker boundary",
+      "scope": "same observed failure, bounded owner validation and unchanged provenance"
+    },
+    "private_observation_sha256": "0723a492d9ce31aea25211e46690d3ffd8269ade5a34c863aca951c9495875a2",
+    "complete_standard_workflow": false
+  },
+  "retained_audit_evaluation": {
+    "status": "FAIL",
+    "candidate": "6cdd68154055d59b5c40d02e2dc0ea3ee337b60a",
+    "operation_id": "op_75262701e422f84078912b94862d105afa050e21",
+    "journal_sha256": "eed63380328ad561c38c76d1d1bcd9cc67c87a9abd19a348b03cdc62f4721450",
+    "outcome": "blocked",
+    "effect_status": "no_effect",
+    "reason_code": "NATIVE_OWNER_RETIRED_WITNESS_CHANGED",
+    "classification": "product_failure_in_historical_witness_validation",
+    "audit_actor_result": "completed",
+    "historical_native_lock_bytes_unchanged": true,
+    "historical_native_lock_stable_identity_unchanged": true,
+    "changed_metadata_fields": [
+      "ctime_ns"
+    ],
+    "cause_boundary": "The archived retirement observer requires the old full change-time digest after a subsequent Native launch.",
+    "original_history_unchanged": true,
+    "business_state_unchanged": true,
+    "product_unchanged": true,
+    "private_observation_sha256": "074039ad51fd80fb6b7ec46612f041a18f4a9259e5dac7dd8fc2298e68e78c7a",
+    "correction_status": "targeted_readonly_prototype_passed_not_yet_delivered",
+    "prototype": {
+      "status": "PASS",
+      "public_continuation": false,
+      "canonical_writes": 0,
+      "native_calls": 0,
+      "blocking_findings": 0,
+      "evidence_sha256": "880871110fef1f30241a335a5c9a86cfc29b7786d4caa98ba66c0123fb39733d"
+    }
   }
 }
