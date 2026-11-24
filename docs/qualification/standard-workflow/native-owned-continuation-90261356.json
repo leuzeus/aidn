@@ -185,7 +185,7 @@
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "Admit a targeted continuation from the retained session checkpoint, execute the corrected final hook, then continue private delivery. Keep the signed close choice, immutable UNKNOWN/recovery history and Native counters. S001 is not yet closed. Full same-candidate source/recovery/archive P0 remains open.",
+  "next_required": "Correct and qualify session delivery metadata provenance from the retained CLOSED session; preserve its close event and original UNKNOWN. Then private branch integration/PR/review/merge/synchronization. Full frozen source, recovery and installed P0 remain required.",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-24T19:02:01.255Z",
+  "updated_at": "2026-11-24T19:34:06.995990+00:00",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -2166,6 +2166,51 @@
       "controlled": 17,
       "sqlite_storage_restart": 4,
       "files_storage_restart": 4
+    },
+    "full_same_candidate_P0": "SKIP"
+  },
+  "retained_session_checkpoint_continuation": {
+    "pull_request": 232,
+    "merge_sha": "d294182feb3264c7f4eb82df7619a6e130ff4c70",
+    "candidate": "7d9c6b924cfb43388c302bd0194c9ffec3f0d624",
+    "archive_sha256": "acb6bcf819aa6864bb5d1b7be343b9a287b78285a7c51f67a6c9dc4e5b723e64",
+    "status": "PASS_INSTALLED_POSTGRES_SESSION_CLOSE",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "source_reader_prototype": "PASS",
+    "installed_public_admission": "PASS",
+    "installed_reader_refusal_cases": 4,
+    "physical_verification_sha256": "dc57d659616f384a0218b147a359db92cc77408d1410138c68f793904991798c",
+    "admission_evidence_sha256": "e549522d58d695ca6b349656e07ba9d8a6890aae54d146adaa2c6ae1fed4b5f2",
+    "session_state": "CLOSED",
+    "session_closure_status": "completed",
+    "cycle_state": "DONE",
+    "baseline": "v0.3",
+    "event_sha256": "52b990e0da3d4f2f7af506163a4e9356d5891711864e2e280ef3e039fae1bd22",
+    "event_count": 1,
+    "start_run_file_removed": true,
+    "git_head": "6871af7521940cd0498f831a82291b0c8a318138",
+    "git_clean": true,
+    "owner_pending": false,
+    "original_history_unchanged": true,
+    "original_unknown_preserved": true,
+    "product_unchanged": true,
+    "new_questions": 0,
+    "manual_signatures": 0,
+    "native_calls": 0,
+    "operations": {
+      "finalize": {
+        "operation_id": "op_152b4b0de5ff6b0168913ed02bc271f9032df0ff",
+        "effect_status": "confirmed",
+        "output_sha256": "2b8ce5dc274b2bb1d1b52436240d235522be32c8fb2079cefe20880714141cdb"
+      }
+    },
+    "delivery_checkpoint": {
+      "status": "FAIL_PREVIEW",
+      "reason_code": "STANDARD_SESSION_DELIVERY_POSTIMAGE_CHANGED",
+      "physical_effect": "NOT_DISPATCHED",
+      "evidence_sha256": "6a97ea1930fac7f37a3385def8736315dcc757aec66ce1a2a899eecdef379855",
+      "diagnosis": "The reader compares post-close metadata to its pre-close hash. The confirmed hook changed updated_at but its v1 output retained content hashes without post-write metadata hashes. The current fixture supplied fresh metadata through an injected reader and did not exercise this host comparison."
     },
     "full_same_candidate_P0": "SKIP"
   }
