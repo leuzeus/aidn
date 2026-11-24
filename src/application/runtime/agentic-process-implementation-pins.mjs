@@ -316,6 +316,9 @@ const files = [
 ];
 files.push("src/core/contracts/workflow-definition/standard-workflow-catalog.v4.schema.json", "src/core/contracts/workflow-definition/standard-workflow-catalog.v5.schema.json", "src/core/contracts/workflow-definition/standard-workflow-catalog.v6.schema.json");
 files.push("src/application/runtime/canonical-handoff-projection.mjs", "src/application/runtime/standard-handoff-publication.mjs", "src/application/runtime/standard-handoff-operation.mjs", "src/core/workflow/standard-handoff-operation.mjs", "src/core/contracts/workflow-definition/standard-handoff-operation-plan.v1.schema.json", "src/core/contracts/workflow-definition/standard-handoff-operation-output.v1.schema.json", "src/core/workflow/standard-handoff-publication.mjs", "src/core/contracts/workflow-definition/standard-handoff-publication-input.v1.schema.json", "src/core/contracts/workflow-definition/standard-handoff-publication-plan.v1.schema.json", "src/core/contracts/workflow-definition/standard-handoff-publication-output.v1.schema.json", "src/application/runtime/handoff-packet-projector-use-case.mjs", "tools/runtime/project-handoff-packet.mjs", "tools/runtime/db-first-runtime-view-lib.mjs", "tools/perf/verify-current-state-consistency.mjs");
+files.push('src/application/runtime/standard-retained-session-integration-source.mjs', 'src/core/workflow/standard-retained-session-integration.mjs',
+  'src/core/contracts/workflow-definition/standard-retained-session-integration-entry.v1.schema.json', 'src/core/contracts/workflow-definition/standard-retained-session-integration-proof.v1.schema.json',
+  'src/core/contracts/workflow-definition/standard-workflow-entry-selection-output.v11.schema.json', 'src/core/contracts/workflow-definition/standard-session-branch-integrate-input.v2.schema.json');
 export function agenticProcessImplementationPins() {
   const source = files.map(name => {
     const data = fs.readFileSync(new URL(`../../../${name}`, import.meta.url));

@@ -360,7 +360,7 @@ op("session_pr_admit", "session_pr_admit", operation("session_pr_admit", "integr
 op("session_branch_integration_decide", "session_branch_integration_decision", {
   ...operation("session_branch_integration_decide", "delivery_operation_id", "session_delivery_checkpoint"),
   ...operation("session_branch_integration_decide", "closure_operation_id", "close_finalize") });
-op("session_branch_integrate", "session_branch_integrate", operation("session_branch_integrate", "decision_operation_id", "session_branch_integration_decide"));
+op("session_branch_integrate", "session_branch_integrate");
 op("session_delivery_checkpoint", "session_delivery_checkpoint");
 op("session_preclose_checkpoint", "session_preclose_checkpoint", operation("session_preclose_checkpoint", "closure_operation_id", "close_finalize"));
 op("session_close_finalize", "session_close_finalize");
@@ -935,6 +935,31 @@ const sessionPreparationTarget = { contract_version: 'agentic-process-model.v2',
 const sessionPreparationRef = pinTarget(sessionPreparationTarget);
 node('session_close_prepare', 'call', { target: sessionPreparationRef });
 inputs.push({ node_id: 'session_close_prepare', fields: {} });
+// The retained decision enters the ordinary integration effect directly. The
+// delivery/selection/H preparation is a fixed call with no caller input.
+// Existing close routing remains in its original fact scope.
+const integrationPreparationChildren = sessionSuffix.splice(1, sessionSuffix.indexOf('session_branch_integrate') - 1);
+const integrationPreparationNames = new Set(integrationPreparationChildren);
+const integrationPreparationNodes = nodes.filter(row => integrationPreparationNames.has(row.id));
+const integrationPreparationInputs = inputs.filter(row => integrationPreparationNames.has(row.node_id));
+for (const row of integrationPreparationInputs) for (const field of Object.values(row.fields)) {
+  if (field.node_id && !integrationPreparationNames.has(field.node_id)) throw Error('STANDARD_INTEGRATION_PREPARATION_INPUT_CHANGED');
+}
+for (let i = nodes.length - 1; i >= 0; i--) if (integrationPreparationNames.has(nodes[i].id)) nodes.splice(i, 1);
+for (let i = inputs.length - 1; i >= 0; i--) if (integrationPreparationNames.has(inputs[i].node_id)) inputs.splice(i, 1);
+const integrationPreparationTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-integration-preparation', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'integration_prepare',
+  nodes: [{ id: 'integration_prepare', kind: 'sequence', participant_ref: 'project', children: integrationPreparationChildren }, ...integrationPreparationNodes],
+  operation_pins: pinsFor(integrationPreparationNodes), call_interface: { parameters: {}, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [], inputs: integrationPreparationInputs } };
+const integrationPreparationRef = pinTarget(integrationPreparationTarget);
+const ordinarySessionPreparation = sessionSuffix.shift();
+sessionSuffix.unshift('session_integration_preparation_route');
+xor('session_integration_preparation_route', [['retained', 'session_integration_retained_ready', 'retained_session_integration_requested'], ['ordinary', 'session_integration_prepare', null]]);
+seq('session_integration_retained_ready', []);
+seq('session_integration_prepare', [ordinarySessionPreparation, 'session_delivery_prepare']);
+node('session_delivery_prepare', 'call', { target: integrationPreparationRef });
+inputs.push({ node_id: 'session_delivery_prepare', fields: {} });
 // Preserve the deterministic validation sequence as a call, within the existing
 // root-size bound. Its only external input is the selected implementation ID.
 const validationNames = new Set(['retained_validation', ...nodes.find(row => row.id === 'retained_validation').children]);
@@ -971,6 +996,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...policy("exploring_planning", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" }, policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
     policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
   operation_pins: pinsFor(nodes), call_targets: [
+    { ...integrationPreparationRef, model: integrationPreparationTarget },
     { ...sessionPreparationRef, model: sessionPreparationTarget },
     { ...preparationGroupRef, model: preparationGroupTarget },
     { ...promotionFinishRef, model: promotionFinishTarget },

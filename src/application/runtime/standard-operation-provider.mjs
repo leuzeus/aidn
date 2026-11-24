@@ -48,7 +48,7 @@ export function createStandardOperationProvider({
     sessionPrMergeEffect, sessionPrOpen, sessionPrPremerge, sessionPrRecord, sessionPrRedeliveryPush,
     sessionPrReply, sessionPrResolution, sessionPrReview, sessionPrReviewContent,
     sessionPrReviewReceiver, sessionPrUpdatePush, sessionPrecloseCheckpoint, sessionPush, snapshot,
-    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent, entryContinuation, retainedClosureEntry, retainedCompletionEntry, prepareCycleCloseRecord, prepareSessionCloseRecord, prepareSessionCloseHook, prepareSessionDeliveryCheckpoint,
+    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent, entryContinuation, retainedClosureEntry, retainedCompletionEntry, prepareCycleCloseRecord, prepareSessionCloseRecord, prepareSessionCloseHook, prepareSessionDeliveryCheckpoint, prepareSessionBranchIntegration, retainedSessionIntegrationEntry,
 }) {
   async function selectEntry(state) {
     const instance = state.record, parameters = instance.initial_parameters ?? {};
@@ -57,6 +57,10 @@ export function createStandardOperationProvider({
     };
     assertCurrent();
     const point = standardEntryPoint(parameters);
+    if (point === 'retained_session_integration') {
+      const continuation = await retainedSessionIntegrationEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
     if (point === 'retained_session_delivery') {
       const continuation = await processAuthority.retainedSessionDeliveryEntry(instance, parameters); assertCurrent();
       return selectStandardEntry(parameters, null, continuation);
@@ -285,7 +289,8 @@ export function createStandardOperationProvider({
       return await sessionBranchIntegration?.prepareDecision(state.record, input) ?? fail("STANDARD_SESSION_INTEGRATION_AUTHORITY_REQUIRED");
     }],
     ["session_branch_integrate", async ({ state, input, occurrenceId }) => {
-      return await sessionBranchIntegration?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_INTEGRATION_AUTHORITY_REQUIRED");
+      if (!input || Object.keys(input).length !== 0) fail("STANDARD_OPERATION_INPUT_INVALID");
+      return await prepareSessionBranchIntegration?.(state.record, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_INTEGRATION_AUTHORITY_REQUIRED");
     }],
     ["session_delivery_checkpoint", async ({ state, input, occurrenceId }) => {
       return await prepareSessionDeliveryCheckpoint?.(state.record, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_DELIVERY_AUTHORITY_REQUIRED");
