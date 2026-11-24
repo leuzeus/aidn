@@ -2213,5 +2213,48 @@
       "diagnosis": "The reader compares post-close metadata to its pre-close hash. The confirmed hook changed updated_at but its v1 output retained content hashes without post-write metadata hashes. The current fixture supplied fresh metadata through an injected reader and did not exercise this host comparison."
     },
     "full_same_candidate_P0": "SKIP"
+  },
+  "session_delivery_postimage_correction": {
+    "pull_request": 233,
+    "merge_sha": "9ac95616524135a34afb19a259c2c47563b6ea16",
+    "status": "PASS_TARGETED_FIXTURES",
+    "meaning": "Current v2 close receipts bind post-CAS metadata; ordinary legacy DB receipts continue to refuse missing historical metadata.",
+    "current_receipt_fixture_checks": 11
+  },
+  "retained_session_delivery_continuation": {
+    "status": "PASS_INSTALLED_DELIVERY_CHECKPOINT",
+    "candidate": "68c45fc660fe1508d0fd500725079bc9169418cb",
+    "archive_sha256": "98816d15a5f346fb11524e85e08bad100f260891856042ed5d9c6a9b2410f2bb",
+    "instance": "standard-session-delivery-pr234",
+    "instance_sha256": "2302bb8e6742995e830b831984ffa0c707296354ee417731475e68df2f704795",
+    "delivery_operation_id": "op_e2377ba9d80906d1122e3b994694f570fd09b0ae",
+    "delivery_journal_sha256": "b51e27f4da038ff50d69e5a8c333440e84795d55cd5040bbf31d62a1d002b78b",
+    "delivery_output_sha256": "d9af5dd7f258b040123f314ffd972aef58c1a8e5a86037482b1228b1bf1ebefb",
+    "effect_status": "no_effect",
+    "canonical_documents_unchanged": true,
+    "old_journals_unchanged": true,
+    "old_instances_unchanged": true,
+    "git_head": "6871af7521940cd0498f831a82291b0c8a318138",
+    "git_clean": true,
+    "physical_close_event_count": 1,
+    "no_reclose": true,
+    "native_calls": 0,
+    "new_questions": 0,
+    "manual_signatures": 0,
+    "pull_request": 234,
+    "merge_sha": "9ba73f0336cb48085353705a599d2ca858d14a0b",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "metadata_basis": "fresh_canonical_observation",
+    "historical_postwrite_metadata_reconstructed": false,
+    "physical_evidence_sha256": "c391ee59c3c7e14489a63f78ae36ac907beb39032071c563643ea9cd71421251",
+    "integration": {
+      "status": "FAIL_PREVIEW",
+      "reason_code": "PROCESS_JOURNAL_NOT_AUTHENTICATED",
+      "effect": "NOT_DISPATCHED",
+      "evidence_sha256": "4cff17d16a9b30379581430e2b2b4e48de931839cfb25a1bae613b3ea265937b",
+      "diagnosis": "The current integration reader uses the current technical instance journal authority for a cycle finalized under an earlier retained instance. Historical cycle/promotion capabilities are not wired at this boundary."
+    },
+    "full_same_candidate_P0": "SKIP"
   }
 }
