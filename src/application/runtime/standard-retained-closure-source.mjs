@@ -59,12 +59,12 @@ export function createRetainedClosureSource({ configuration, environment, create
     return { instance, execution, record, records, host, human, captured,
       pins: { instance: instance.instance_sha256, execution: H(execution), journals: records.map(row => H(row)), inbox: H(captured) } };
   }
-  return Object.freeze({ async inspect(entry, { readValidation, signal, assertCurrentOwner = null } = {}) {
+  async function inspectSource(entry, { readValidation, signal, assertCurrentOwner = null } = {}, recorded = false) {
     require(typeof readValidation === 'function', 'STANDARD_RETAINED_CLOSURE_VALIDATION_REQUIRED');
     const checkOwner = () => {
       require(!signal?.aborted, 'STANDARD_RETAINED_CLOSURE_CANCELLED');
       if (assertCurrentOwner !== null) require(typeof assertCurrentOwner === 'function' && assertCurrentOwner() === undefined, 'STANDARD_RETAINED_CLOSURE_OWNER_UNSETTLED');
-      else require(!artifacts.ownerPending(), 'STANDARD_RETAINED_CLOSURE_OWNER_UNSETTLED');
+      else if (!recorded) require(!artifacts.ownerPending(), 'STANDARD_RETAINED_CLOSURE_OWNER_UNSETTLED');
     };
     checkOwner();
     const before = capture(entry), { instance, execution, record, host, human, captured } = before;
@@ -76,17 +76,23 @@ export function createRetainedClosureSource({ configuration, environment, create
     await human.verifyCaptured(record, signal, { historical: true, acknowledged: true });
     const audit = before.records.find(row => row.operation_id === record.preview.prepared.plan.audit_operation_id);
     require(audit?.intent.binding_ref === 'cycle_audit_evaluate', 'STANDARD_RETAINED_CLOSURE_AUDIT_REQUIRED');
-    const retained = await createRetainedAuditSource({ configuration: execution, environment, createAuthority }).inspect(instance.initial_parameters.entry_point, { assertCurrentOwner });
-    const validation = await readValidation(retained.bridge.source), machine = retained.native.context.validation;
+    const auditSource = createRetainedAuditSource({ configuration: execution, environment, createAuthority });
+    const retained = recorded ? await auditSource.readRecorded(instance.initial_parameters.entry_point)
+      : await auditSource.inspect(instance.initial_parameters.entry_point, { assertCurrentOwner });
+    const source = recorded ? retained.source : retained.bridge.source;
+    const validation = await readValidation(source), machine = retained.native.context.validation;
     require(validation.plan.product_sha256 === machine.product_sha256 && validation.plan.profile_sha256 === machine.profile_sha256
       && validation.manifest.status === machine.status && H(validation.checks) === H(machine.checks) && H(validation.evidence_refs) === H(machine.evidence_refs),
     'STANDARD_RETAINED_CLOSURE_VALIDATION_CHANGED');
-    const material = authority.observeCycleAuditContext(retained.bridge, machine), native = retained.native;
+    const native = retained.native;
     const output = observeStandardCycleAudit({ report: native.authenticated.report, context: native.context, contextSha256: H(native.context),
       producer: native.authenticated.producer, evidenceRefs: [...native.evidence_refs, ...validation.evidence_refs] });
     require(H(output) === H(audit.results[0].output), 'STANDARD_RETAINED_CLOSURE_AUDIT_CHANGED');
-    const review = createStandardCycleClosureReview({ readAudit: async () => ({ native, current: { material }, record: audit, output }) });
-    await review.assertFresh(instance, record.preview.prepared.plan);
+    if (!recorded) {
+      const material = authority.observeCycleAuditContext(retained.bridge, machine);
+      const review = createStandardCycleClosureReview({ readAudit: async () => ({ native, current: { material }, record: audit, output }) });
+      await review.assertFresh(instance, record.preview.prepared.plan);
+    }
     const question = human.question(record), decision = captured.source;
     checkOwner(); require(H(capture(entry).pins) === H(before.pins) && H(product()) === initialProduct);
     const proof = assertRetainedClosureProof({ original_instance_id: instance.instance_id, original_instance_sha256: instance.instance_sha256,
@@ -94,6 +100,10 @@ export function createRetainedClosureSource({ configuration, environment, create
       question_sha256: H(question), source_sha256: H(decision), inbox_sha256: H(captured), audit_operation_id: audit.operation_id,
       audit_journal_sha256: H(audit), retained_audit_proof_sha256: H(retained.proof), context: retained.proof.context,
       product_sha256: initialProduct, report_sha256: H(native.authenticated.report), choice: decision.choice });
-    return { proof, question, decision, report: native.authenticated.report, native, source: retained.bridge.source };
-  } });
+    return { proof, question, decision, report: native.authenticated.report, native, source, audit_output: output };
+  }
+  return Object.freeze({ inspect: (entry, options) => inspectSource(entry, options, false),
+    // This never admits a fresh closure. Its consumer must authenticate the
+    // accepted writer and compare both this proof and its decision material.
+    readRecorded: (entry, options) => inspectSource(entry, options, true) });
 }

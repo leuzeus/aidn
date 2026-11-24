@@ -5504,3 +5504,14 @@ receive that writer's exact synchronous owner assertion. It propagates only
 through the retained verification chain and is rechecked across awaits. JSON
 cannot assert ownership; ordinary inspection still refuses a pending owner.
 This adds no canonical concept, store, backend requirement or budget renewal.
+
+After an accepted confirmed terminal writer, the fixed host uses a separate
+historical evidence reader. It authenticates the unchanged original instances,
+journals, inbox, independent Native report and qualified validation files, and
+matches the entry proof and exact decision material carried by that writer.
+It does not require the former VERIFYING documents to remain current after
+their authorized terminal transition. The terminal checkpoint and completion
+hook still verify the actual owning session, cycle, product and canonical
+postimages, current admission, owner and CAS. This historical reader admits no
+new closure, imports no receipt and cannot be selected through operation JSON.
+Current pre-effect closure inspection retains all its VERIFYING checks.

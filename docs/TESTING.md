@@ -3006,6 +3006,13 @@ not authenticate a real inbox or prove closure effects. Read-only source probes,
 current canonical owner/CAS behavior, public entry and installed evidence must
 be reported independently, with unexecuted stages marked separately.
 
+The terminal-material cases reject a different cycle or decision, changed audit
+or report, an unknown effect, premature skill completion and mismatched causal
+context or decision hashes. The historical terminal reader must separately be
+probed against the same retained proof and physical validation evidence; it is
+not a fresh VERIFYING admission. Current terminal postimages remain checked by
+the checkpoint and final-hook component fixtures.
+
 The required agentic-process gate also runs
 `tools/perf/verify-workflow-engine-fixtures.mjs`: direct JSON creation defaults to
 the structured engine through the common composition, console and actual public

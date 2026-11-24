@@ -1,4 +1,5 @@
 import { createOperationProviderRegistry } from "../workflow/operation-provider-registry.mjs";
+import { assertRetainedClosureTerminalMaterial } from "../../core/workflow/standard-retained-closure.mjs";
 import { assertOperationReliability, assertRetryBudget, assertWaitDeadline } from "../../core/workflow/operation-reliability.mjs";
 import { createStandardOperationProvider } from "./standard-operation-provider.mjs";
 import { createStandardOwnedEntryContinuation } from "./standard-owned-entry-continuation.mjs";
@@ -293,6 +294,12 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
       return { record, output: result.output };
     }
     const closed = accepted(input.closure_operation_id, "cycle_close_record"), plan = closed.record.preview.prepared.plan;
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_closure'
+      && !instance.events.some(row => row.kind === 'operation_intent' && row.intent.operation_id === plan.input.decision_operation_id)) {
+      const verified = await processAuthority.readRecordedClosureDecision(instance, plan.input, retainedClosureOptions());
+      assertRetainedClosureTerminalMaterial(plan, closed.output, verified);
+      return { record_operation_id: closed.record.operation_id, plan, output: closed.output };
+    }
     const selected = accepted(plan.input.decision_operation_id, "cycle_closure_decision");
     const question = human.question(selected.record), decision = human.captured(selected.record).source;
     const audit = accepted(selected.record.preview.prepared.plan.audit_operation_id, "cycle_audit_evaluate");

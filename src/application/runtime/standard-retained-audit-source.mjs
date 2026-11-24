@@ -39,21 +39,24 @@ export function createRetainedAuditSource({ configuration, environment, createAu
     return { instance, failed, execution, readKey, pins: { original_instance_id: instance.instance_id, original_instance_sha256: instance.instance_sha256,
       original_configuration_sha256: H(execution), native_journal_sha256: H(native), failed_evaluation_operation_id: failed.operation_id, failed_evaluation_journal_sha256: H(failed) } };
   }
-  return Object.freeze({
-    async inspect(entry, { assertCurrentOwner = null } = {}) {
+  async function inspectSource(entry, { assertCurrentOwner = null } = {}, recorded = false) {
       const before = capture(entry), { instance, execution, failed, readKey } = before;
       const product = () => readAgenticProductSnapshot(execution.product_root, execution.product_files);
       const authority = createAuthority({ configuration: execution, model: instance.model, modelSource: failed.preview.snapshot.model_source,
         readSigningKey: readKey, readProductSnapshot: product, readProductSha256: () => H(product()), environment });
-      const retained = await authority.inspectRetainedCycleAudit(instance, failed.operation_id, { assertCurrentOwner });
+      const retained = recorded ? await authority.readRecordedCycleAudit(instance, failed.operation_id)
+        : await authority.inspectRetainedCycleAudit(instance, failed.operation_id, { assertCurrentOwner });
       require(H(capture(entry).pins) === H(before.pins));
-      const context = Object.fromEntries(['session_id', 'cycle_id', 'cycle_path', 'branch', 'head', 'mode', 'cycle_state', 'product_sha256'].map(key => [key, retained.bridge.context[key]]));
+      const context = Object.fromEntries(['session_id', 'cycle_id', 'cycle_path', 'branch', 'head', 'mode', 'cycle_state', 'product_sha256'].map(key => [key, (recorded ? retained.context : retained.bridge.context)[key]]));
       require(context.session_id === instance.initial_parameters.session.session_id);
       const proof = assertRetainedAuditProof({ ...before.pins, context, product_sha256: H(product()),
         report_occurrence_id: failed.preview.input.report_occurrence_id, report_sha256: H(retained.native.authenticated.report),
         audit_context_sha256: H(retained.native.context), audit_operation_id: retained.native.selection.record.operation_id,
         audit_journal_sha256: H(retained.native.selection.record), verification_proof_sha256: H(retained.verification_proof) });
       return { proof, ...retained };
-    },
+  }
+  return Object.freeze({
+    inspect: (entry, options) => inspectSource(entry, options, false),
+    readRecorded: entry => inspectSource(entry, {}, true),
   });
 }

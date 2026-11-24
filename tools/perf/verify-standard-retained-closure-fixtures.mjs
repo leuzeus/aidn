@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { assertRetainedClosureEntry, assertRetainedClosureProof, retainedClosureContinuation } from '../../src/core/workflow/standard-retained-closure.mjs';
+import { assertRetainedClosureEntry, assertRetainedClosureProof, retainedClosureContinuation, assertRetainedClosureTerminalMaterial } from '../../src/core/workflow/standard-retained-closure.mjs';
 import { standardEntryPoint, selectStandardEntry } from '../../src/core/workflow/standard-workflow-entry-selection.mjs';
 import { assertStandardOperationInput, assertStandardOperationOutput } from '../../src/core/workflow/standard-operation-contracts.mjs';
 import { createStandardOperationProvider } from '../../src/application/runtime/standard-operation-provider.mjs';
@@ -77,4 +77,32 @@ await check('all new schemas use the closed supported vocabulary', () => {
     assert.deepEqual(validateJsonSchemaDefinition(schema, '#', { contractKind: 'workflow-definition' }), []);
   }
 });
-console.log(JSON.stringify({ status: 'PASS', checks, proof: 'retained-closure-contract-provider-routing', historical_reader: 'NOT_RUN', actual_close: 'NOT_RUN', native_calls: 0, p0: false }));
+function terminalFixture() {
+  const report = { verdict: 'fixture' }, audit_output = { verdict: 'fixture-audit' };
+  const question = { operation_id: decisionId, review: { audit_output_sha256: H(audit_output), report_sha256: H(report) } }, decision = { choice: 'retain' };
+  const verified = { proof, question, decision, report, audit_output };
+  const plan = { input: { decision_operation_id: decisionId }, cycle_path: context.cycle_path, target_state: 'DONE', context_sha256: digest,
+    decision_material_sha256: H({ question, decision, report }) };
+  const output = { operation_ref: 'cycle_close_record', outcome: 'completed', effect_status: 'confirmed',
+    facts: { cycle_terminal_recorded: true, cycle_close_completed: false }, observations: { decision_operation_id: decisionId, target_state: 'DONE',
+      causal_transition: { before_context_sha256: digest, decision_material_sha256: plan.decision_material_sha256 } } };
+  return structuredClone({ plan, output, verified });
+}
+await check('terminal continuation uses the retained question under its confirmed causal writer', () => {
+  const { plan, output, verified } = terminalFixture(); assertRetainedClosureTerminalMaterial(plan, output, verified);
+});
+for (const [name, change] of [
+  ['another decision', x => x.plan.input.decision_operation_id = entryId],
+  ['another cycle', x => x.plan.cycle_path = 'cycles/C002-feature-other'],
+  ['changed human choice', x => x.verified.decision.choice = 'drop'],
+  ['changed audit', x => x.verified.audit_output.verdict = 'changed'],
+  ['changed report', x => x.verified.report.verdict = 'changed'],
+  ['unconfirmed effect', x => x.output.effect_status = 'unknown'],
+  ['premature completion', x => x.output.facts.cycle_close_completed = true],
+  ['unrelated before-context', x => x.output.observations.causal_transition.before_context_sha256 = 'b'.repeat(64)],
+  ['unrelated decision material', x => x.output.observations.causal_transition.decision_material_sha256 = 'b'.repeat(64)],
+]) await check(name + ' cannot authorize terminal continuation', () => {
+  const fixture = terminalFixture(); change(fixture);
+  assert.throws(() => assertRetainedClosureTerminalMaterial(fixture.plan, fixture.output, fixture.verified), { code: 'STANDARD_CYCLE_CLOSE_RECORDED_PROVENANCE_CHANGED' });
+});
+console.log(JSON.stringify({ status: 'PASS', checks, proof: 'retained-closure-contract-provider-routing-terminal-provenance', historical_reader: 'NOT_RUN', actual_close: 'NOT_RUN', native_calls: 0, p0: false }));
