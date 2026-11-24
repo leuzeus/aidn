@@ -1006,7 +1006,12 @@ instance directly to the corrected hook. No old result is replaced. Later
 history reads retain authentication after the new hook changes the session.
 The finalizer takes no caller-authored operation IDs; the host selects the
 accepted checkpoint from the current instance or that bounded retained chain.
-Delivery and integration remain separately authorized operations.
+Delivery and integration remain separately authorized operations. The session-close
+receipt v2 retains the exact three content and metadata postimages. Delivery
+checks these post-write hashes, never pre-close metadata. Historical v1 receipts
+remain readable; a database-backed receipt without post-write metadata refuses
+with `STANDARD_SESSION_DELIVERY_METADATA_PROOF_REQUIRED`. The CLI cannot supply
+replacement hashes or rewrite a historical receipt.
 
 The final session hook reads objective completion through its fixed host
 authority. Its preview refuses an unresolved gate before dispatch; the real

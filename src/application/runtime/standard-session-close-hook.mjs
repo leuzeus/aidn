@@ -15,7 +15,7 @@ import { artifactContentHash } from "../../core/workflow/artifact-compare-swap.m
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import inputSchema from "../../core/contracts/workflow-definition/standard-session-close-hook-input.v1.schema.json" with { type: "json" };
 import planSchema from "../../core/contracts/workflow-definition/standard-session-close-hook-plan.v1.schema.json" with { type: "json" };
-import outputSchema from "../../core/contracts/workflow-definition/standard-session-close-hook-output.v1.schema.json" with { type: "json" };
+import outputSchema from "../../core/contracts/workflow-definition/standard-session-close-hook-output.v2.schema.json" with { type: "json" };
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length;
 const runtimeDir = fileURLToPath(new URL("../../../tools/perf/", import.meta.url));
@@ -99,7 +99,7 @@ export function createStandardSessionCloseHook({ targetRoot, readSource, readCur
       constraint_loop_required: observed.hook.payload?.constraint_loop_required === true };
     if (observed.sync) observed.sync = { ok: observed.sync.ok === true, skipped: observed.sync.skipped === true, reason: observed.sync.reason ?? null,
       payload_sha256: artifactContentHash(JSON.stringify(observed.sync)), fallback_full_used: observed.sync.fallback_full_used === true };
-    const value = { contract_version: "standard-session-close-hook-output.v1", operation_ref: "session_close_finalize", outcome, effect_status, observations: observed, facts, evidence_refs };
+    const value = { contract_version: "standard-session-close-hook-output.v2", operation_ref: "session_close_finalize", outcome, effect_status, observations: observed, facts, evidence_refs };
     if (!valid(value, outputSchema)) fail("STANDARD_SESSION_CLOSE_HOOK_OUTPUT_INVALID"); return value;
   }
   return Object.freeze({ prepare: (instance, input, id) => prepare(instance, input, id, now()),
@@ -173,7 +173,8 @@ export function createStandardSessionCloseHook({ targetRoot, readSource, readCur
             if (plan.state_mode !== "db-only" && readAgentRunFile(physical("docs/audit/" + row.path), { json: false, maxBytes: 1048576 }).sha256 !== row.after_sha256) fail("STANDARD_SESSION_CLOSE_COMPLETION_UNCONFIRMED");
           }
           if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_SESSION_CLOSE_HOOK_POSTCONDITION_FAILED");
-          return emit("completed", "confirmed", { hook, sync, event, event_offset: matches[0].offset, event_file: eventRelative, committed, run_id: plan.run_id },
+          return emit("completed", "confirmed", { hook, sync, event, event_offset: matches[0].offset, event_file: eventRelative, committed, run_id: plan.run_id,
+              postimages: changes.map((row, i) => ({ path: row.path, sha256: row.after_sha256, metadata_sha256: metadata[i] })) },
             { session_close_completed: true }, [{ ref: "aidn:session-close/" + plan.run_id, sha256: shadowHash(event) }, ...evidence,
               ...changes.map(row => ({ ref: "docs/audit/" + row.path, sha256: row.after_sha256 }))]);
         } catch (cause) { return emit("reconciliation_required", "unknown", { hook, sync, committed, reason_code: cause.code ?? "STANDARD_SESSION_CLOSE_HOOK_UNCONFIRMED",

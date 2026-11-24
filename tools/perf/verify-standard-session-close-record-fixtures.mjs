@@ -1,3 +1,4 @@
+import { readSessionDeliveryPostimages } from '../../src/application/runtime/session-delivery-postimages.mjs';
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
@@ -223,8 +224,15 @@ try {
           const names = finalPlan.plan.documents.map(row => row.path), parent = execFileSync("git", ["-C", root, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
           const eventFile = path.join(root, ".aidn/runtime/perf/workflow-events.ndjson"), eventBytes = fs.readFileSync(eventFile);
           const cacheFile = path.join(root, ".aidn/runtime/cache/reload-state.json"), cacheBytes = fs.readFileSync(cacheFile);
+          if(mode!=='files') assert(final.observations.postimages.some((row,i)=>row.metadata_sha256!==finalPlan.plan.documents[i].metadata_sha256));
+          const legacy = structuredClone(final); legacy.contract_version='standard-session-close-hook-output.v1'; delete legacy.observations.postimages;
+          if(mode!=='files') assert.throws(()=>readSessionDeliveryPostimages({artifacts,plan:finalPlan.plan,output:legacy}),{code:'STANDARD_SESSION_DELIVERY_METADATA_PROOF_REQUIRED'});
+          else assert.equal(readSessionDeliveryPostimages({artifacts,plan:finalPlan.plan,output:legacy}).length,3);
+          const stale=structuredClone(final); stale.observations.postimages[0].metadata_sha256='b'.repeat(64);
+          assert.throws(()=>readSessionDeliveryPostimages({artifacts,plan:finalPlan.plan,output:stale}),{code:'STANDARD_SESSION_DELIVERY_POSTIMAGE_CHANGED'});
+          pass('actual completion receipt binds post-write metadata; stale hashes and legacy DB receipts refuse');
           const source = { finalization_operation_id: id(9), session_id: "S001", session_path: "sessions/S001.md", branch: finalPlan.plan.branch, parent_head: parent,
-            material_sha256: shadowHash(final), postimages: names.map(name => ({ path: name, sha256: artifacts.read(name).sha256, metadata_sha256: artifacts.metadataHash(name) })) };
+            material_sha256: shadowHash(final), postimages: readSessionDeliveryPostimages({ artifacts, plan: finalPlan.plan, output: final }) };
           let deliveryClock = agedDelivery ? Date.now() - 86400000 : null;
           const port = createStandardSessionDeliveryCheckpoint({ targetRoot: root, readSource: async () => structuredClone(source), readCurrent: () => instance, now: () => deliveryClock ?? Date.now() });
           const deliveryId = "op_" + "d".repeat(40), input = { finalization_operation_id: id(9) }, preview = await port.prepare(instance, input, deliveryId);

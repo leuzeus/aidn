@@ -1,3 +1,4 @@
+import { readSessionDeliveryPostimages } from './session-delivery-postimages.mjs';
 import { createOperationProviderRegistry } from "../workflow/operation-provider-registry.mjs";
 import { assertRetainedClosureTerminalMaterial } from "../../core/workflow/standard-retained-closure.mjs";
 import { assertOperationReliability, assertRetryBudget, assertWaitDeadline } from "../../core/workflow/operation-reliability.mjs";
@@ -589,13 +590,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     const currentState = analyzeStructuredArtifact(artifacts.read("CURRENT-STATE.md", { required: true }).content).key_values;
     if (session.state !== "CLOSED" || session.session_closure_status !== "completed" || currentState.active_session !== plan.session_id
       || currentState.active_cycle !== "none" || currentState.session_closure_status !== "completed") fail("STANDARD_SESSION_DELIVERY_OWNER_CHANGED");
-    const names = sessionClosePaths(plan.session_path), postimages = names.map(name => {
-      const refs = output.evidence_refs.filter(row => row.ref === "docs/audit/" + name), prior = plan.documents.find(row => row.path === name);
-      if (refs.length !== 1 || !prior || artifacts.read(name, { required: true }).sha256 !== refs[0].sha256
-        || artifacts.metadataHash(name) !== prior.metadata_sha256) fail("STANDARD_SESSION_DELIVERY_POSTIMAGE_CHANGED");
-      return { path: name, sha256: refs[0].sha256, metadata_sha256: prior.metadata_sha256 };
-    });
-    if (shadowHash(observed.committed) !== shadowHash(names)) fail("STANDARD_SESSION_DELIVERY_POSTIMAGE_CHANGED");
+    const postimages = readSessionDeliveryPostimages({ artifacts, plan, output });
     return { finalization_operation_id: input.finalization_operation_id, session_id: plan.session_id, session_path: plan.session_path,
       branch: plan.branch, parent_head: plan.head, material_sha256: shadowHash({ finalization: output, checkpoint: checkpoint.output }), postimages };
   }
