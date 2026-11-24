@@ -48,7 +48,7 @@ export function createStandardOperationProvider({
     sessionPrMergeEffect, sessionPrOpen, sessionPrPremerge, sessionPrRecord, sessionPrRedeliveryPush,
     sessionPrReply, sessionPrResolution, sessionPrReview, sessionPrReviewContent,
     sessionPrReviewReceiver, sessionPrUpdatePush, sessionPrecloseCheckpoint, sessionPush, snapshot,
-    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent, entryContinuation, retainedClosureEntry, retainedCompletionEntry, prepareCycleCloseRecord,
+    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent, entryContinuation, retainedClosureEntry, retainedCompletionEntry, prepareCycleCloseRecord, prepareSessionCloseRecord,
 }) {
   async function selectEntry(state) {
     const instance = state.record, parameters = instance.initial_parameters ?? {};
@@ -57,6 +57,10 @@ export function createStandardOperationProvider({
     };
     assertCurrent();
     const point = standardEntryPoint(parameters);
+    if (point === 'retained_session_closure') {
+      const continuation = await processAuthority.retainedSessionClosureEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
     if (['retained_completion', 'retained_promotion'].includes(point)) {
       const continuation = await retainedCompletionEntry(instance, parameters); assertCurrent();
       return selectStandardEntry(parameters, null, continuation);
@@ -285,7 +289,7 @@ export function createStandardOperationProvider({
       return await sessionCloseCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CHECKPOINT_AUTHORITY_REQUIRED");
     }],
     ["session_close_record", async ({ state, input }) => {
-      return await sessionCloseRecord?.prepare(state.record, input) ?? fail("STANDARD_SESSION_CLOSE_AUTHORITY_REQUIRED");
+      return await prepareSessionCloseRecord(state.record);
     }],
     ["session_closure_decision", async ({ state, input }) => {
       return await sessionClosureReview?.prepare(state.record, input) ?? fail("STANDARD_SESSION_CLOSURE_AUTHORITY_REQUIRED");

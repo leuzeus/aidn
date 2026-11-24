@@ -365,7 +365,7 @@ op("session_delivery_checkpoint", "session_delivery_checkpoint", operation("sess
 op("session_preclose_checkpoint", "session_preclose_checkpoint", operation("session_preclose_checkpoint", "closure_operation_id", "close_finalize"));
 op("session_close_finalize", "session_close_finalize", { ...operation("session_close_finalize", "record_operation_id", "session_close_record"), ...operation("session_close_finalize", "checkpoint_operation_id", "session_close_checkpoint") });
 op("session_close_checkpoint", "session_close_checkpoint", operation("session_close_checkpoint", "record_operation_id", "session_close_record"));
-op("session_close_record", "session_close_record", operation("session_close_record", "decision_operation_id", "session_closure_decide"));
+op("session_close_record", "session_close_record");
 op("session_close_admit", "session_close_admit", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] } });
 op("session_closure_decide", "session_closure_decision", { contract_version: { source: "literal", value: "standard-session-closure-review-input.v1" },
   ...operation("session_closure_decide", "admission_operation_id", "session_close_admit"),
@@ -635,7 +635,7 @@ const modeClosureStart = nodes.length, modeClosureInputStart = inputs.length;
 const modeClosureParameters = ["admission_operation_id", "drift_evaluation_operation_id", "drift_finalization_operation_id"];
 seq("session_closure", ["session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize"]);
 op("session_closure_decide", "session_closure_decision", Object.fromEntries(modeClosureParameters.map(key => [key, { source: "parameter", key, path: [] }])));
-op("session_close_record", "session_close_record", operation(null, "decision_operation_id", "session_closure_decide"));
+op("session_close_record", "session_close_record");
 op("session_close_checkpoint", "session_close_checkpoint", operation(null, "record_operation_id", "session_close_record"));
 op("session_close_finalize", "session_close_finalize", {
   ...operation(null, "record_operation_id", "session_close_record"),
@@ -906,6 +906,35 @@ inputs.push({ node_id: 'retained_promotion_finish', fields: {
   evaluation_operation_id: { source: 'operation_id', node_id: 'entry_select' },
   record_operation_id: { source: 'operation_output', node_id: 'entry_select', path: ['observations', 'continuation', 'record_operation_id'] } } });
 
+// Retained session closure skips the settled prefix without importing events.
+const sessionSuffix = closureParent.children.splice(closureParent.children.indexOf('session_close_record'));
+nodes.find(row => row.id === 'cycle_work_route').branches.unshift({ flow_id: 'retained_session', node_id: 'session_close_retained_ready', condition: 'retained_session_closure_requested' });
+seq('session_close_retained_ready', []);
+nodes.find(row => row.id === 'standard').children.push('session_delivery_route');
+xor('session_delivery_route', [['committing', 'session_delivery_work', 'cycle_work_requested'], ['inapplicable', 'session_delivery_inapplicable', null]]);
+seq('session_delivery_work', sessionSuffix); seq('session_delivery_inapplicable', []);
+sessionSuffix.splice(sessionSuffix.indexOf('session_branch_integration_decide'), 0, 'session_completion_select');
+op('session_completion_select', 'cycle_close_completed_select');
+inputs.find(row => row.node_id === 'session_branch_integration_decide').fields.closure_operation_id.node_id = 'session_completion_select';
+// Preserve the deterministic validation sequence as a call, within the existing
+// root-size bound. Its only external input is the selected implementation ID.
+const validationNames = new Set(['retained_validation', ...nodes.find(row => row.id === 'retained_validation').children]);
+const validationNodes = nodes.filter(row => validationNames.has(row.id));
+const validationInputs = inputs.filter(row => validationNames.has(row.node_id));
+for (const row of validationInputs) for (const field of Object.values(row.fields)) {
+  if (field.node_id === 'work_phase_select') parameterField(field, 'implementation_operation_id');
+  else if (field.node_id && !validationNames.has(field.node_id)) throw Error('STANDARD_RETAINED_VALIDATION_INPUT_CHANGED');
+}
+for (let i = nodes.length - 1; i >= 0; i--) if (validationNames.has(nodes[i].id)) nodes.splice(i, 1);
+for (let i = inputs.length - 1; i >= 0; i--) if (validationNames.has(inputs[i].node_id)) inputs.splice(i, 1);
+const retainedValidationTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-retained-validation', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'retained_validation', nodes: validationNodes, operation_pins: pinsFor(validationNodes),
+  call_interface: { parameters: { implementation_operation_id: 'string' }, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: ['implementation_operation_id'], inputs: validationInputs } };
+const retainedValidationRef = pinTarget(retainedValidationTarget);
+node('retained_validation', 'call', { target: retainedValidationRef });
+inputs.push({ node_id: 'retained_validation', fields: { implementation_operation_id: { source: 'operation_output', node_id: 'work_phase_select', path: ['observations', 'implementation_operation_id'] } } });
+
 const policy = (id, assurance_profile, allowed_permissions, independent_review = false) => ({ id, version: 1, assurance_profile, mode: "COMMITTING",
   independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });
 const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard", revision: 1,
@@ -925,6 +954,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
   operation_pins: pinsFor(nodes), call_targets: [
     { ...preparationGroupRef, model: preparationGroupTarget },
     { ...promotionFinishRef, model: promotionFinishTarget },
+    { ...retainedValidationRef, model: retainedValidationTarget },
     { ...closureReviewRef, model: closureReviewTarget },
     { ...verificationRef, model: verificationTarget },
     { ...prReviewRef, model: prReviewTarget },

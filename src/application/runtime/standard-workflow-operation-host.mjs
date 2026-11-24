@@ -338,6 +338,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     readHistoricalCompletion: instance => objectiveCompletion.review(instance),
     readRecorded: readAcceptedTerminalRecord, observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
   async function selectCompletedClose(instance) {
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_session_closure') {
+      const source = await processAuthority.readRetainedSessionClosure(instance);
+      return source.records[1].results[0].output;
+    }
     if (['retained_completion', 'retained_promotion'].includes(instance.initial_parameters?.entry_point?.kind)) {
       const source = await retainedCompletion(instance), record = source.closed.record;
       return assertStandardOperationOutput({ contract_version: 'standard-cycle-close-selection-output.v2', operation_ref: 'cycle_close_completed_select',
@@ -411,16 +415,31 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     readAcceptedOperation: acceptedForPromotion, readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input, retainedClosureOptions()) }) : null;
   const sessionClosureReview = sessionClosureAuthority ? createStandardSessionClosureReview({ readSource: (instance, input) => sessionClosureAuthority.readSource(instance, input) }) : null;
   async function readAcceptedSessionClosureDecision(instance, input) {
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_session_closure'
+      && input.decision_operation_id === instance.initial_parameters.entry_point.decision_operation_id) {
+      const { question, decision } = await processAuthority.readRetainedSessionClosure(instance, { fresh: true });
+      return { question, decision };
+    }
     const selected = acceptedForPromotion(instance, input.decision_operation_id, "session_closure_decision", "STANDARD_SESSION_CLOSE_DECISION_REQUIRED");
     await sessionClosureReview.assertFresh(instance, selected.record.preview.prepared.plan);
     return { question: human.question(selected.record), decision: human.captured(selected.record).source };
   }
   const sessionCloseRecord = processAuthority ? createStandardSessionCloseRecord({ targetRoot, now,
     readDecision: readAcceptedSessionClosureDecision, readCurrent: id => current(id).record }) : null;
-  function readAcceptedSessionCloseRecord(instance, input) {
+  async function prepareSessionCloseRecord(instance) {
+    const selected = instance.events.findLast(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'session_closure_decision');
+    const id = selected?.intent.operation_id ?? (instance.initial_parameters?.entry_point?.kind === 'retained_session_closure' ? instance.initial_parameters.entry_point.decision_operation_id : null);
+    if (!id) fail('STANDARD_SESSION_CLOSE_DECISION_REQUIRED');
+    return sessionCloseRecord.prepare(instance, { decision_operation_id: id });
+  }
+  async function readAcceptedSessionCloseRecord(instance, input) {
     const recorded = acceptedForPromotion(instance, input.record_operation_id, "session_close_record", "STANDARD_SESSION_CLOSE_RECORDED_SOURCE_REQUIRED");
-    const plan = recorded.record.preview.prepared.plan, selected = acceptedForPromotion(instance, plan.input.decision_operation_id, "session_closure_decision");
-    const question = human.question(selected.record), decision = human.captured(selected.record).source;
+    const plan = recorded.record.preview.prepared.plan;
+    const historical = instance.initial_parameters?.entry_point?.kind === 'retained_session_closure' && plan.input.decision_operation_id === instance.initial_parameters.entry_point.decision_operation_id
+      ? await processAuthority.readRetainedSessionClosure(instance) : null;
+    const selected = historical ? { record: historical.record, output: historical.record.results[0].output }
+      : acceptedForPromotion(instance, plan.input.decision_operation_id, "session_closure_decision");
+    const question = historical?.question ?? human.question(selected.record), decision = historical?.decision ?? human.captured(selected.record).source;
     if (shadowHash({ question, decision }) !== plan.decision_material_sha256 || recorded.output.effect_status !== "confirmed"
       || recorded.output.facts.session_close_report_recorded !== true || recorded.output.facts.session_close_completed !== false
       || selected.output.facts.session_closure_requested !== true || decision.choice !== "close") fail("STANDARD_SESSION_CLOSE_RECORDED_SOURCE_REQUIRED");
@@ -429,10 +448,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
       fail("STANDARD_SESSION_CLOSE_POSTIMAGE_CHANGED");
     for (const row of postimages) if (artifacts.read(row.path, { required: true }).sha256 !== row.sha256 || artifacts.metadataHash(row.path) !== row.metadata_sha256)
       fail("STANDARD_SESSION_CLOSE_POSTIMAGE_CHANGED");
-    return { recorded, plan, question, decision };
+    return { recorded, plan, question, decision, historical };
   }
-  function readSessionCheckpointSource(instance, input) {
-    const source = readAcceptedSessionCloseRecord(instance, input), review = source.question.review;
+  async function readSessionCheckpointSource(instance, input) {
+    const source = await readAcceptedSessionCloseRecord(instance, input), review = source.question.review;
     const owner = analyzeStructuredArtifact(artifacts.read(review.session_path, { required: true }).content).key_values;
     const currentState = analyzeStructuredArtifact(artifacts.read("CURRENT-STATE.md", { required: true }).content).key_values;
     if (owner.state !== "OPEN" || currentState.active_session !== review.session_id || currentState.active_cycle !== "none"
@@ -440,7 +459,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     const ownedPaths = artifacts.cycles().filter(row => analyzeStructuredArtifact(row.content).key_values.session_owner === review.session_id).map(row => row.path.slice(0, -10));
     const fixed = [review.session_path, "CURRENT-STATE.md", "RUNTIME-STATE.md", "snapshots/context-snapshot.md", "baseline/current.md", "baseline/history.md", "index.md"];
     const { approved, journals } = collectStandardSessionCheckpointPostimages({ instance, readRetained: retained, fixed, ownedPaths, closing: true });
-    const admission = acceptedForPromotion(instance, review.admission_operation_id, "session_close_admit").output.observations.admission;
+    const admission = (source.historical?.admission ?? acceptedForPromotion(instance, review.admission_operation_id, "session_close_admit")).output.observations.admission;
     const completionCycle = ["cycle", "intermediate"].includes(classifyAidnBranch(review.branch)) ? admission.mapped_cycle : null;
     if (completionCycle && (!["DONE", "NO_GO", "DROPPED"].includes(completionCycle.state) || completionCycle.session_owner !== review.session_id))
       fail("STANDARD_SESSION_CHECKPOINT_TERMINAL_OWNER_REQUIRED");
@@ -511,13 +530,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   }
   const sessionPrecloseCheckpoint = processAuthority ? createStandardSessionPrecloseCheckpoint({ targetRoot, now, readSource: readSessionPrecloseSource,
     readCurrent: id => current(id).record }) : null;
-  function readSessionCloseHookSource(instance, input) {
-    const recorded = readAcceptedSessionCloseRecord(instance, input), review = recorded.question.review;
+  async function readSessionCloseHookSource(instance, input) {
+    const recorded = await readAcceptedSessionCloseRecord(instance, input), review = recorded.question.review;
     const checkpoint = acceptedForPromotion(instance, input.checkpoint_operation_id, "session_close_checkpoint", "STANDARD_SESSION_CLOSE_CHECKPOINT_REQUIRED");
-    const cp = checkpoint.record.preview.prepared.plan, source = readSessionCheckpointSource(instance, input);
+    const cp = checkpoint.record.preview.prepared.plan, source = await readSessionCheckpointSource(instance, input);
     const startId = instance.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "session_start_finalize").at(-1)?.intent.operation_id;
-    if (!startId || cp.input.record_operation_id !== input.record_operation_id || cp.source_sha256 !== shadowHash(source)) fail("STANDARD_SESSION_CLOSE_CHECKPOINT_REQUIRED");
-    const start = acceptedForPromotion(instance, startId, "session_start_finalize", "STANDARD_SESSION_CLOSE_START_REQUIRED");
+    if ((!startId && !recorded.historical) || cp.input.record_operation_id !== input.record_operation_id || cp.source_sha256 !== shadowHash(source)) fail("STANDARD_SESSION_CLOSE_CHECKPOINT_REQUIRED");
+    const start = recorded.historical?.started ?? acceptedForPromotion(instance, startId, "session_start_finalize", "STANDARD_SESSION_CLOSE_START_REQUIRED");
     if (start.record.preview.input.session_id !== review.session_id) fail("STANDARD_SESSION_CLOSE_START_REQUIRED");
     return { record_operation_id: input.record_operation_id, checkpoint_operation_id: input.checkpoint_operation_id,
       session_id: review.session_id, session_path: review.session_path, mode: review.mode, branch: review.branch,
@@ -1647,7 +1666,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   const providers = createOperationProviderRegistry([createStandardOperationProvider({
     baselinePromotion, baselinePromotionCheckpoint, baselinePromotionHook, canonicalPlanAdoption,
     canonicalResumeAdmission, changeRequest, checkpointCompletion, checksMayObserveMerge,
-    closureReview, current, cycleCloseHook, cycleCloseRecord, prepareCycleCloseRecord, retainedClosureEntry, retainedCompletionEntry, cycleEntryChoiceActivation,
+    closureReview, current, cycleCloseHook, cycleCloseRecord, prepareCycleCloseRecord, prepareSessionCloseRecord, retainedClosureEntry, retainedCompletionEntry, cycleEntryChoiceActivation,
     cycleEntryChoiceCheckpoint, cycleEntryChoiceContext, cycleEntryChoiceRecord,
     cycleEntryFocusCheckpoint, cycleEntrySelectedCheckpoint, cycleEntrySelectedFocus,
     cycleImplementation, cyclePlanRecord, cycleTaskAdvance, cycleValidation, cycleVerification,

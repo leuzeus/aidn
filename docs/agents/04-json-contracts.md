@@ -1,5 +1,12 @@
 # 04 JSON Contracts
 
+`standard-retained-session-closure-entry.v1` names a receipted, unaccepted close
+decision and its original execution plus the original session-start execution.
+Its closed proof and entry selection v8 preserve both histories and the Human
+inbox. The empty session-close input v2 delegates selection to the fixed host;
+historical v1 writer plans remain readable. These are derived journal evidence,
+not a new canonical store, receipt migration, effect grant or Native renewal.
+
 `standard-retained-promotion-entry.v1` and its closed proof name a settled
 no-effect promotion R05 refusal, original accepted record/checkpoint and saved
 Native evaluation. Entry selection v7 keeps that continuation separate from

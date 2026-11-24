@@ -1,5 +1,11 @@
 # 03 Information Governance
 
+Retained session closure uses the same derived journal evidence category. The
+old Human receipt remains unaccepted in its immutable technical instance; a new
+entry authenticates its exact question and current subject. The original start
+run must still be physically open. Canonical session state changes only through
+the existing granted close writer, checkpoint and final hook.
+
 Retained completed-cycle provenance remains derived evidence in the current
 process operation journal. The original instance, operation receipts, Human
 inbox and Native allocations stay under their original authorities. A successor
