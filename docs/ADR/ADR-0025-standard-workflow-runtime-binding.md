@@ -5583,3 +5583,30 @@ Existing historical plans and receipts remain unchanged. A new technical
 instance after a refusal later in promotion needs a separately authenticated
 continuation for its already recorded promotion; this change does not import
 that history or make the old refused occurrence executable with new bindings.
+
+### Recorded promotion continuation
+
+`retained_promotion` supports one additional boundary: a retained-completion
+instance with an accepted promotion, confirmed record and Git checkpoint, a
+closed Native diagnosis, and a settled `STANDARD_DRIFT_GATE_BLOCKED` refusal
+with no effect. The exact seven-operation prefix remains immutable. Dispatching,
+UNKNOWN, later operations, foreign bindings and unclosed actors refuse entry.
+
+The fixed reader authenticates the original configuration, Human source, signed
+prefix, completion chain and Native report. Entry verifies canonical ownership,
+product, branch/HEAD, clean Git and the promotion postimages. Historical drift
+reading re-evaluates the saved authenticated answer against current documents;
+it cannot execute historical bindings. A changed report subject refuses reuse.
+
+Entry selection v7 records a finite proof digest and original operation IDs.
+The published call resumes R05 finalization and the promotion hook, then joins
+session preclosure. Hook plan v2 retains the original record request unchanged
+and names its source proof; the fixed reader reauthenticates it at the effect
+boundary. Preclosure reads the original promotion checkpoint and latest
+authenticated postimages before the older closure history. No old receipt,
+Human answer, timestamp, Native allocation or budget is migrated or renewed.
+
+The existing work-preparation sequence is an explicit pinned call with the same
+leaves and no added input or return. Root capacity remains at most 288 nodes.
+Full source and installed continuation, later business effects and same-candidate
+STANDARD completion remain separately qualified evidence.

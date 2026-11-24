@@ -9,6 +9,8 @@ import { retainedClosureContinuation } from "../../core/workflow/standard-retain
 import { createRetainedCompletionSource } from './standard-retained-completion-source.mjs';
 import { retainedCompletionContinuation } from '../../core/workflow/standard-retained-completion.mjs';
 import { retainObjectiveAlignment } from '../../core/workflow/standard-drift-retained-objective.mjs';
+import { createRetainedPromotionSource } from './standard-retained-promotion-source.mjs';
+import { retainedPromotionContinuation } from '../../core/workflow/standard-retained-promotion.mjs';
 import { createNativeReconciliationHistoryReader } from "./native-reconciliation-history.mjs";
 import { createRetainedValidationSource } from "./standard-retained-validation-source.mjs";
 import { retainedValidationAdmit, retainedTaskWork, workPhaseSelect, retainedValidationPins, assertRetainedValidationOutput, assertRetainedValidationProof } from "../../core/workflow/standard-retained-validation.mjs";
@@ -107,6 +109,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   const retainedAuditSource = createRetainedAuditSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedClosureSource = createRetainedClosureSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedCompletionSource = createRetainedCompletionSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedPromotionSource = createRetainedPromotionSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const nativeReconciliationHistory = createNativeReconciliationHistoryReader({ ...options, configuration, signer, artifacts, environment });
   const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, source: humanSource, projectionRequired: false });
   function read() {
@@ -530,8 +533,15 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (shadowHash(output) !== shadowHash(result.output)) fail("STANDARD_CYCLE_PLAN_EVALUATION_STALE");
     return { output, evaluation_sha256: shadowHash(result.output), context: context.context, context_sha256: context.context_sha256 };
   }
-  async function readDriftEvaluation(instance, input) {
+  async function readDriftEvaluation(instance, input, retainedOptions = {}) {
     assertStandardOperationInput("drift_check_finalize", input); authenticate(instance);
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_promotion') {
+      const entry = instance.events.find(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+      if (input.evaluation_operation_id === entry?.intent.operation_id) {
+        const retained = await readRetainedPromotion(instance, retainedOptions, true);
+        return retained.evaluation;
+      }
+    }
     const retained = operationStore.read(input.evaluation_operation_id).record; signer.verify(retained);
     const result = retained.results.at(-1);
     if (retained.intent.binding_ref !== "drift_report_evaluate" || retained.intent.scope_id !== instance.scope_id || retained.intent.instance_id !== instance.instance_id
@@ -541,6 +551,21 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const output = evaluateStandardDriftReport(readActivityOutput(instance, retained.preview.input.report_occurrence_id), context);
     if (shadowHash(output) !== shadowHash(result.output)) fail("STANDARD_DRIFT_EVALUATION_STALE");
     return { output, evaluation_sha256: shadowHash(result.output), context: context.context, context_sha256: context.context_sha256 };
+  }
+  // Read-only historical capability for a fixed continuation reader. It verifies
+  // the original signed prefix and closed Native evidence, then evaluates that
+  // report against today's canonical documents. It cannot dispatch old bindings.
+  async function readRecordedDriftEvaluation(instance, input) {
+    assertStandardOperationInput('drift_check_finalize', input);
+    const history = authenticateHistory(instance, {}, true);
+    if (!history.journal?.allocations.length || history.journal.allocations.some(row => row.phase !== 'closed' || row.tree_closed !== true))
+      fail('STANDARD_RETAINED_PROMOTION_NATIVE_UNSETTLED');
+    const retained = acceptedOperation(instance, input.evaluation_operation_id, 'drift_report_evaluate', {}, history);
+    const context = await readStandardDriftContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
+      productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
+    const output = evaluateStandardDriftReport(readActivityOutput(instance, retained.record.preview.input.report_occurrence_id, DRIFT_REPORT_CONTRACT, {}, history), context);
+    if (shadowHash(output) !== shadowHash(retained.output)) fail('STANDARD_RETAINED_PROMOTION_EVALUATION_CHANGED');
+    return { output, evaluation_sha256: shadowHash(output), context: context.context, context_sha256: context.context_sha256 };
   }
   function acceptedOperation(instance, id, binding, authenticationOptions = {}, history = null) {
     const observed = history?.records.get(id);
@@ -1473,8 +1498,31 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     return source;
   }
   async function readRetainedObjectiveAlignment(instance, input, verified, options) {
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_promotion') {
+      const retained = await readRetainedPromotion(instance, options, 'alignment');
+      return retainObjectiveAlignment(retained.alignment, input, verified);
+    }
     const retained = await readRetainedCompletion(instance, options, true);
     return retained.alignment === null ? null : retainObjectiveAlignment(retained.alignment, input, verified);
+  }
+  async function retainedPromotionEntry(instance, parameters, options) {
+    authenticate(instance);
+    const source = await retainedPromotionSource.inspect(parameters.entry_point, options);
+    if (source.proof.session_id !== parameters.session?.session_id || source.proof.cycle_id !== parameters.cycle?.cycle_id
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_PROMOTION_FOCUS_CHANGED');
+    return retainedPromotionContinuation(source.proof);
+  }
+  async function readRetainedPromotion(instance, options, evaluation = false) {
+    authenticate(instance);
+    const entries = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+    if (instance.initial_parameters?.entry_point?.kind !== 'retained_promotion' || entries.length !== 1) fail('STANDARD_RETAINED_PROMOTION_ENTRY_REQUIRED');
+    const selected = acceptedOperation(instance, entries[0].intent.operation_id, 'workflow_entry_select');
+    const source = await (evaluation === 'alignment' ? retainedPromotionSource.readAlignment
+      : evaluation ? retainedPromotionSource.readEvaluation : retainedPromotionSource.readRecorded)(instance.initial_parameters.entry_point, options);
+    if (selected.output.facts.retained_promotion_requested !== true || selected.output.observations.entry_point !== 'retained_promotion'
+      || shadowHash(selected.output.observations.continuation) !== shadowHash(retainedPromotionContinuation(source.proof))
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_PROMOTION_SOURCE_CHANGED');
+    return source;
   }
   const readRecordedClosureDecision = (instance, input, options) => readRetainedClosureSource(instance, input, options, true);
   async function readRetainedClosureSource(instance, input, options, recorded) {
@@ -1623,6 +1671,6 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     readNativeActivity: readPreworkNativeActivity,
   });
   return Object.freeze({ profile: "standard-mixed.v1", rollbackProductScope, observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, authenticateOperationHost, inspectDiagnostic, observeNativeDiagnostic, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
-    verifyNativeHumanSource, admitNativeActivity, retainedAuditEntry, retainedClosureEntry, retainedCompletionEntry, readRetainedCompletion, readRetainedObjectiveAlignment, readRetainedClosureDecision, readRecordedClosureDecision, readRecordedCycleAudit, readRecordedCycleValidation, inspectRetainedCycleAudit, retainedVerificationEntry, admitRetainedVerification, retainedValidationEntry, admitRetainedValidation, selectWorkPhase, observeRetainedTaskWork, retainedContributors,
+    verifyNativeHumanSource, admitNativeActivity, retainedAuditEntry, retainedClosureEntry, retainedCompletionEntry, readRetainedCompletion, retainedPromotionEntry, readRetainedPromotion, readRetainedObjectiveAlignment, readRecordedDriftEvaluation, readRetainedClosureDecision, readRecordedClosureDecision, readRecordedCycleAudit, readRecordedCycleValidation, inspectRetainedCycleAudit, retainedVerificationEntry, admitRetainedVerification, retainedValidationEntry, admitRetainedValidation, selectWorkPhase, observeRetainedTaskWork, retainedContributors,
     selectOwnedCyclePlanning, selectCyclePrework, evaluateCyclePrework, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, inspectRetainedCycleTaskWork, readCycleValidationExecution, readCycleVerificationExecution, inspectRetainedCycleVerification, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, selectCycleExecutionSource, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCanonicalResumeProduct, observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

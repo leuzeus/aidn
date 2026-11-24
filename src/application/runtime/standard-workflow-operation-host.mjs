@@ -172,21 +172,21 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   async function readObjectiveAlignment(instance, input, verified) {
     const ownDecision = instance.events.some(event => event.kind === 'operation_intent'
       && ['drift_recovery_decision', 'drift_completion_decision'].includes(event.intent.binding_ref));
-    if (!ownDecision && instance.initial_parameters?.entry_point?.kind === 'retained_completion')
+    if (!ownDecision && ['retained_completion', 'retained_promotion'].includes(instance.initial_parameters?.entry_point?.kind))
       return processAuthority.readRetainedObjectiveAlignment(instance, input, verified, retainedClosureOptions());
     return objectiveDisposition.read(instance, input, verified);
   }
   const driftFinalization = processAuthority ? createStandardDriftFinalization({ targetRoot, now,
-    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
+    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input, retainedClosureOptions()),
     readObjectiveAlignment,
     readCurrent: id => current(id).record }) : null;
   const driftRoute = processAuthority ? createStandardDriftRoute({ targetRoot,
     authenticate: instance => processAuthority.authenticate(instance),
-    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
+    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input, retainedClosureOptions()),
     readOperation: id => retained(id).record, readCompletion: instance => objectiveCompletion.review(instance),
     readCurrentCompletion: instance => objectiveCompletion.read(instance) }) : null;
   const recovery = processAuthority ? createStandardDriftRecovery({ targetRoot, now,
-    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
+    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input, retainedClosureOptions()),
     observeContext: () => processAuthority.observeDriftContext(), readCurrent: id => current(id).record,
     readPreviousCompletion: instance => objectiveCompletion.renewalSubject(instance) }) : null;
   const changeRequest = processAuthority ? createStandardDriftChangeRequest({ targetRoot, now,
@@ -267,8 +267,12 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   const closureReview = processAuthority ? createStandardCycleClosureReview({ readAudit: readAcceptedAudit }) : null;
   const retainedClosureOptions = options => ({ ...options, readValidation: source => cycleValidation.readResult(source) });
   const retainedClosureEntry = (instance, parameters, admission) => processAuthority.retainedClosureEntry(instance, parameters, admission, retainedClosureOptions());
-  const retainedCompletionEntry = (instance, parameters) => processAuthority.retainedCompletionEntry(instance, parameters, retainedClosureOptions());
-  const retainedCompletion = instance => processAuthority.readRetainedCompletion(instance, retainedClosureOptions());
+  const retainedCompletionEntry = (instance, parameters) => parameters.entry_point.kind === 'retained_promotion'
+    ? processAuthority.retainedPromotionEntry(instance, parameters, retainedClosureOptions())
+    : processAuthority.retainedCompletionEntry(instance, parameters, retainedClosureOptions());
+  const retainedPromotion = instance => processAuthority.readRetainedPromotion(instance, retainedClosureOptions());
+  const retainedCompletion = async instance => instance.initial_parameters?.entry_point?.kind === 'retained_promotion'
+    ? (await retainedPromotion(instance)).completed : processAuthority.readRetainedCompletion(instance, retainedClosureOptions());
   async function readAcceptedClosureDecision(instance, input, options = {}) {
     if (instance.initial_parameters?.entry_point?.kind === 'retained_closure'
       && !instance.events.some(row => row.kind === 'operation_intent' && row.intent.operation_id === input.decision_operation_id))
@@ -294,7 +298,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     return cycleCloseRecord.prepare(instance, { decision_operation_id: id });
   }
   async function readAcceptedTerminalRecord(instance, input) {
-    if (instance.initial_parameters?.entry_point?.kind === 'retained_completion') {
+    if (['retained_completion', 'retained_promotion'].includes(instance.initial_parameters?.entry_point?.kind)) {
       const source = await retainedCompletion(instance);
       if (input.closure_operation_id !== source.terminal.record_operation_id) fail('STANDARD_RETAINED_COMPLETION_SOURCE_CHANGED');
       return source.terminal;
@@ -334,7 +338,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     readHistoricalCompletion: instance => objectiveCompletion.review(instance),
     readRecorded: readAcceptedTerminalRecord, observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
   async function selectCompletedClose(instance) {
-    if (instance.initial_parameters?.entry_point?.kind === 'retained_completion') {
+    if (['retained_completion', 'retained_promotion'].includes(instance.initial_parameters?.entry_point?.kind)) {
       const source = await retainedCompletion(instance), record = source.closed.record;
       return assertStandardOperationOutput({ contract_version: 'standard-cycle-close-selection-output.v2', operation_ref: 'cycle_close_completed_select',
         outcome: 'completed', effect_status: 'no_effect', facts: {}, evidence_refs: [], observations: { closure_operation_id: record.operation_id,
@@ -404,7 +408,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     return emit(context, evaluated.output.observations.proposal, "native_record", "OPEN", [], selected.output.evidence_refs);
   }
   const sessionClosureAuthority = processAuthority ? createStandardSessionClosureAuthority({ targetRoot,
-    readAcceptedOperation: acceptedForPromotion, readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input) }) : null;
+    readAcceptedOperation: acceptedForPromotion, readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input, retainedClosureOptions()) }) : null;
   const sessionClosureReview = sessionClosureAuthority ? createStandardSessionClosureReview({ readSource: (instance, input) => sessionClosureAuthority.readSource(instance, input) }) : null;
   async function readAcceptedSessionClosureDecision(instance, input) {
     const selected = acceptedForPromotion(instance, input.decision_operation_id, "session_closure_decision", "STANDARD_SESSION_CLOSE_DECISION_REQUIRED");
@@ -450,7 +454,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   // Commit only their authenticated latest business postimages before asking
   // R05 to assess the session. Do not suppress its scope/integrity signals.
   async function readSessionPrecloseSource(instance, input) {
-    const historical = instance.initial_parameters?.entry_point?.kind === 'retained_completion' ? await retainedCompletion(instance) : null;
+    const recordedPromotion = instance.initial_parameters?.entry_point?.kind === 'retained_promotion' ? await retainedPromotion(instance) : null;
+    const historical = recordedPromotion?.completed ?? (instance.initial_parameters?.entry_point?.kind === 'retained_completion' ? await retainedCompletion(instance) : null);
     const closed = historical?.closed ?? acceptedForPromotion(instance, input.closure_operation_id, "cycle_close_finalize", "STANDARD_SESSION_PRECLOSE_CLOSURE_REQUIRED");
     if (closed.record.operation_id !== input.closure_operation_id) fail('STANDARD_SESSION_PRECLOSE_CLOSURE_REQUIRED');
     const closePlan = closed.record.preview.prepared.plan, terminal = await readAcceptedTerminalRecord(instance, closePlan.input);
@@ -481,6 +486,12 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     const fixed = [selected[0].path, "CURRENT-STATE.md", "RUNTIME-STATE.md", "snapshots/context-snapshot.md", "baseline/current.md", "baseline/history.md", "index.md"];
     const ownedPaths = owned.map(row => row.path.slice(0, -10));
     const { approved, journals } = collectStandardSessionCheckpointPostimages({ instance, readRetained: retained, fixed, ownedPaths });
+    if (recordedPromotion) {
+      const previous = collectStandardSessionCheckpointPostimages({ instance: recordedPromotion.instance, fixed, ownedPaths,
+        readRetained: id => { const record = recordedPromotion.records.find(row => row.operation_id === id); if (!record) fail('STANDARD_RETAINED_PROMOTION_SOURCE_CHANGED'); return { record }; } });
+      for (const [name, hash] of previous.approved) if (!approved.has(name)) approved.set(name, hash);
+      journals.unshift(...previous.journals);
+    }
     if (historical) {
       const previous = collectStandardSessionCheckpointPostimages({ instance: historical.instance, fixed, ownedPaths,
         readRetained: id => { const record = historical.records.find(row => row.operation_id === id); if (!record) fail('STANDARD_RETAINED_COMPLETION_SOURCE_CHANGED'); return { record }; } });
@@ -490,7 +501,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     const prior = instance.events.filter(row => row.kind === "operation_result" && row.receipt.outcome === "completed")
       .map(row => retained(row.receipt.operation_id).record).filter(row => ["cycle_terminal_checkpoint", "baseline_promotion_checkpoint"].includes(row.intent.binding_ref)).at(-1);
     if (!prior && !historical) fail("STANDARD_SESSION_PRECLOSE_CHECKPOINT_REQUIRED");
-    const checkpoint = prior ? acceptedForPromotion(instance, prior.operation_id, prior.intent.binding_ref) : historical.checkpoint;
+    const checkpoint = prior ? acceptedForPromotion(instance, prior.operation_id, prior.intent.binding_ref) : recordedPromotion?.checkpoint ?? historical.checkpoint;
     const git = checkpoint.output.observations.git, head = git?.commit_sha ?? git?.head;
     if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(head ?? "") || checkpoint.output.effect_status !== "confirmed")
       fail("STANDARD_SESSION_PRECLOSE_CHECKPOINT_REQUIRED");
@@ -845,7 +856,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   const promotionAuthority = processAuthority ? createStandardBaselinePromotionAuthority({ targetRoot,
     readAcceptedOperation: acceptedForPromotion, readTerminalRecord: readAcceptedTerminalRecord,
     readRetainedClosure: async (instance, input) => {
-      if (instance.initial_parameters?.entry_point?.kind !== 'retained_completion') return null;
+      if (!['retained_completion', 'retained_promotion'].includes(instance.initial_parameters?.entry_point?.kind)) return null;
       const source = await retainedCompletion(instance);
       if (input.closure_operation_id !== source.closure.operation_id) fail('STANDARD_RETAINED_COMPLETION_SOURCE_CHANGED');
       return { ...source.closure, instance_id: instance.instance_id, scope_id: instance.scope_id };
@@ -867,7 +878,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   }
   async function readAcceptedPromotionCheckpointSource(instance, input) {
     const promoted = await readAcceptedBaselineRecord(instance, { record_operation_id: input.record_operation_id });
-    const historical = instance.initial_parameters?.entry_point?.kind === 'retained_completion' ? await retainedCompletion(instance) : null;
+    const historical = ['retained_completion', 'retained_promotion'].includes(instance.initial_parameters?.entry_point?.kind) ? await retainedCompletion(instance) : null;
     const closure = historical?.closed ?? acceptedForPromotion(instance, input.closure_operation_id, "cycle_close_finalize"), closedPlan = closure.record.preview.prepared.plan;
     const checkpoint = historical?.checkpoint ?? acceptedForPromotion(instance, input.terminal_checkpoint_operation_id, "cycle_terminal_checkpoint"), checkpointPlan = checkpoint.record.preview.prepared.plan;
     if (promoted.plan.request.closure_operation_id !== input.closure_operation_id
@@ -893,6 +904,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     ? createStandardBaselinePromotionCheckpoint({ targetRoot, now, readSource: readAcceptedPromotionCheckpointSource,
       promotion: baselinePromotion, readCurrent: id => current(id).record }) : null;
   const baselinePromotionHook = processAuthority ? createStandardBaselinePromotionHook({ targetRoot, now,
+    readRetainedRecord: async (instance, input) => {
+      if (instance.initial_parameters?.entry_point?.kind !== 'retained_promotion') return null;
+      const source = await retainedPromotion(instance);
+      if (source.promotion.record_operation_id !== input.record_operation_id) fail('STANDARD_RETAINED_PROMOTION_SOURCE_CHANGED');
+      return { selected: source.promotion, anchor: { original_instance_id: source.proof.original_instance_id,
+        original_instance_sha256: source.proof.original_instance_sha256, proof_sha256: shadowHash(source.proof) } };
+    },
     readObjectiveCompletion: instance => objectiveCompletion.read(instance),
     readRecorded: readAcceptedBaselineRecord, promotion: baselinePromotion, readCurrent: id => current(id).record }) : null;
 
@@ -1050,7 +1068,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     } });
   const objectiveCompletion = processAuthority ? createStandardObjectiveCompletion({ now,
     readOperation: id => retained(id).record,
-    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
+    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input, retainedClosureOptions()),
     readDisposition: (instance, input, verified) => objectiveDisposition.read(instance, input, verified),
     readHistoricalDisposition: (instance, input, verified, id) => objectiveDisposition.readHistorical(instance, input, verified, id),
     readRenewedDisposition: (instance, input, verified, anchor) => objectiveDisposition.readRenewed(instance, input, verified, anchor),

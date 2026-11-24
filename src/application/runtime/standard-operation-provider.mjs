@@ -57,7 +57,7 @@ export function createStandardOperationProvider({
     };
     assertCurrent();
     const point = standardEntryPoint(parameters);
-    if (point === 'retained_completion') {
+    if (['retained_completion', 'retained_promotion'].includes(point)) {
       const continuation = await retainedCompletionEntry(instance, parameters); assertCurrent();
       return selectStandardEntry(parameters, null, continuation);
     }

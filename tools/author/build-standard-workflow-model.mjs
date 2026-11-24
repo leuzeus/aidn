@@ -871,6 +871,41 @@ for (const id of ['correction_cycle_drift', 'correction_closure_drift', 'correct
 }
 const correctiveTail = corrective.children.splice(21); corrective.children.push('correction_tail'); seq('correction_tail', correctiveTail);
 
+// Preserve the existing deterministic preparation sequence as a pinned call.
+// It has no external inputs/returns; its accepted facts remain common state.
+// This frees root capacity without raising the historical 288-node limit.
+const preparationGroupNames = new Set(['ordinary_work_preparation', 'work_prepare', 'phase_select']);
+const preparationGroupNodes = nodes.filter(row => preparationGroupNames.has(row.id));
+const preparationGroupInputs = inputs.filter(row => preparationGroupNames.has(row.node_id));
+for (let i = nodes.length - 1; i >= 0; i--) if (preparationGroupNames.has(nodes[i].id)) nodes.splice(i, 1);
+for (let i = inputs.length - 1; i >= 0; i--) if (preparationGroupNames.has(inputs[i].node_id)) inputs.splice(i, 1);
+const preparationGroupTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-work-preparation', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'ordinary_work_preparation', nodes: preparationGroupNodes,
+  operation_pins: pinsFor(preparationGroupNodes), call_interface: { parameters: {}, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [], inputs: preparationGroupInputs } };
+const preparationGroupRef = pinTarget(preparationGroupTarget);
+node('ordinary_work_preparation', 'call', { target: preparationGroupRef }); inputs.push({ node_id: 'ordinary_work_preparation', fields: {} });
+
+// An authenticated recorded promotion enters exactly at R05 finalization.
+// Neither its Human decision, business record, Git checkpoint nor Native report
+// is repeated. The host reobserves the original evidence at each effect fence.
+const promotionFinishNodes = [
+  { id: 'finish', kind: 'sequence', participant_ref: 'project', children: ['drift', 'promote'] },
+  { id: 'drift', kind: 'operation', participant_ref: 'project', binding_ref: 'drift_check_finalize' },
+  { id: 'promote', kind: 'operation', participant_ref: 'project', binding_ref: 'baseline_promotion_finalize' } ];
+const promotionFinishTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-retained-promotion', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'finish', nodes: promotionFinishNodes,
+  operation_pins: pinsFor(promotionFinishNodes), call_interface: { parameters: { evaluation_operation_id: 'string', record_operation_id: 'string' }, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: ['evaluation_operation_id', 'record_operation_id'], inputs: [
+    { node_id: 'drift', fields: { evaluation_operation_id: { source: 'parameter', key: 'evaluation_operation_id', path: [] } } },
+    { node_id: 'promote', fields: { record_operation_id: { source: 'parameter', key: 'record_operation_id', path: [] } } } ] } };
+const promotionFinishRef = pinTarget(promotionFinishTarget);
+nodes.find(row => row.id === 'promotion_eligibility').branches.unshift({ flow_id: 'recorded', node_id: 'retained_promotion_finish', condition: 'retained_promotion_requested' });
+node('retained_promotion_finish', 'call', { target: promotionFinishRef });
+inputs.push({ node_id: 'retained_promotion_finish', fields: {
+  evaluation_operation_id: { source: 'operation_id', node_id: 'entry_select' },
+  record_operation_id: { source: 'operation_output', node_id: 'entry_select', path: ['observations', 'continuation', 'record_operation_id'] } } });
+
 const policy = (id, assurance_profile, allowed_permissions, independent_review = false) => ({ id, version: 1, assurance_profile, mode: "COMMITTING",
   independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });
 const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard", revision: 1,
@@ -888,6 +923,8 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...policy("exploring_planning", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" }, policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
     policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
   operation_pins: pinsFor(nodes), call_targets: [
+    { ...preparationGroupRef, model: preparationGroupTarget },
+    { ...promotionFinishRef, model: promotionFinishTarget },
     { ...closureReviewRef, model: closureReviewTarget },
     { ...verificationRef, model: verificationTarget },
     { ...prReviewRef, model: prReviewTarget },

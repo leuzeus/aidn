@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "original_instance_id",
+    "original_instance_sha256",
+    "original_configuration_sha256",
+    "journals_sha256",
+    "native_journal_sha256",
+    "retained_completion_proof_sha256",
+    "question_sha256",
+    "product_sha256",
+    "record_operation_id",
+    "record_plan_sha256",
+    "record_output_sha256",
+    "checkpoint_operation_id",
+    "checkpoint_output_sha256",
+    "evaluation_operation_id",
+    "evaluation_output_sha256",
+    "failed_finalization_operation_id",
+    "session_id",
+    "cycle_id",
+    "cycle_path"
+  ],
+  "properties": {
+    "original_instance_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96
+    },
+    "original_instance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "original_configuration_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "journals_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "native_journal_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "retained_completion_proof_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "question_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "product_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "record_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "record_plan_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "record_output_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "checkpoint_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "checkpoint_output_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "evaluation_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "evaluation_output_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "failed_finalization_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{3,6}$"
+    },
+    "cycle_id": {
+      "type": "string",
+      "pattern": "^C[0-9]{3,6}$"
+    },
+    "cycle_path": {
+      "type": "string",
+      "pattern": "^cycles/C[0-9]{3,6}-[A-Za-z0-9_-]+$"
+    }
+  },
+  "$id": "aidn://contracts/workflow-definition/standard-retained-promotion-proof.v1",
+  "x-aidn-contract-version": "standard-retained-promotion-proof.v1"
+}
