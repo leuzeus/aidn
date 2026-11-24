@@ -39,7 +39,7 @@ if (child) {
         assert(owned || H(current.record) === H(origin.lease.resource_fence));
         const lock = inspectInterruptedReopenLock(config.root, id, origin.intention, origin.lease, { allowRetired: Boolean(owned) });
         const observation = createLocalHandoffProcessDiscovery({ targetRoot: config.root, controlRoot: config.root,
-          nativeExecutable: process.execPath, ownerIdentities: [origin.lease.resource_fence.process_identity] }).observe();
+          nativeExecutable: config.nativeMarker, ownerIdentities: [origin.lease.resource_fence.process_identity] }).observe();
         assert(observation.stable && observation.samples.every(row => !row.processes.length && !row.unavailable.length),
           'fixture process observation not empty: ' + JSON.stringify(observation));
         return { instance: { instance_id: "fixture", instance_sha256: hash, scope_id: hash, model_sha256: hash }, record: { operation_id: id },
@@ -56,12 +56,16 @@ if (child) {
   }
 } else {
   const owned = [], temporary = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-session-recovery-"));
+  // There is no Native actor in this fixture. Give discovery its own inert image
+  // marker instead of treating every unrelated transient node.exe as that actor.
+  // Target/control markers and actual retained owner identities remain observed.
+  const nativeMarker = path.join(temporary, 'fixture-native.exe'); fs.writeFileSync(nativeMarker, 'fixture image marker');
   const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7) ?? "db-only";
   const run = args => { try { execFileSync(process.execPath, [self, ...args], { encoding: "utf8", windowsHide: true, timeout: 120000, stdio: "pipe" }); return 0; }
     catch (error) { if (error.status === 73) return 73; throw error; } };
   try {
     for (const crash of ["intent", "fence_acquired", "lock_retired", "fence_released"]) {
-      const root = createStandardWorkflowFixture(mode, owned), config = { root, mode, crash }, file = path.join(temporary, crash + ".json");
+      const root = createStandardWorkflowFixture(mode, owned), config = { root, mode, crash, nativeMarker }, file = path.join(temporary, crash + ".json");
       fs.writeFileSync(file, JSON.stringify(config)); assert.equal(run(["--producer", file]), 0);
       const origin = JSON.parse(fs.readFileSync(file + ".origin.json"));
       assert.equal(run(["--recover", file]), 73);
