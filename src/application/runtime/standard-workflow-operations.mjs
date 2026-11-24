@@ -145,7 +145,7 @@ const files = [
   ...["standard-workflow-execution.v1", "standard-workflow-action.v1", "standard-workflow-entry-result.v1", "standard-workflow-call-action.v1", "standard-workflow-call-result.v1", "standard-workflow-native-action.v1", "standard-workflow-native-result.v1", "standard-workflow-native-action.v2", "standard-workflow-native-result.v2"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
   "standard-workflow-mixed-composition.mjs", "standard-process-authority.mjs", "standard-process-inputs.mjs", "standard-drift-report.mjs", "standard-drift-git.mjs", "standard-drift-finalization.mjs",
   "standard-session-mode-operations.mjs", "skill-hook-use-case.mjs", "gating-evaluate-use-case.mjs", "workflow-hook-use-case.mjs", "checkpoint-use-case.mjs",
-  "close-session-hook-use-case.mjs", "session-close-objective-completion.mjs",
+  "close-session-hook-use-case.mjs", "session-close-objective-completion.mjs", "session-delivery-postimages.mjs",
   "standard-session-pr-merge-observe.mjs", "standard-session-pr-review-source.mjs", "standard-session-pr-review-effects.mjs", "standard-workflow-human-decisions.mjs", "standard-workflow-control-inbox.mjs", "standard-session-pr-review-control-source.mjs",
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
 function implementation() {
@@ -297,7 +297,7 @@ new URL("standard-cycle-implementation.mjs", import.meta.url), new URL("../../co
     "standard-retained-closure-entry.v1", "standard-retained-closure-proof.v1", "standard-workflow-entry-selection-output.v5", "standard-cycle-close-input.v2",
     'standard-retained-session-closure-entry.v1', 'standard-retained-session-closure-proof.v1', 'standard-workflow-entry-selection-output.v8', 'standard-session-close-input.v2',
     'handoff-process-observation.v1', 'handoff-process-observation.v2', 'standard-session-close-recovery.v1', 'standard-session-close-recovery-record.v1',
-    'standard-retained-session-checkpoint-entry.v1', 'standard-retained-session-checkpoint-proof.v1', 'standard-workflow-entry-selection-output.v9', 'standard-session-close-hook-input.v2',
+    'standard-retained-session-checkpoint-entry.v1', 'standard-retained-session-checkpoint-proof.v1', 'standard-workflow-entry-selection-output.v9', 'standard-session-close-hook-input.v2', 'standard-session-close-hook-output.v2',
     'standard-retained-promotion-entry.v1', 'standard-retained-promotion-proof.v1', 'standard-workflow-entry-selection-output.v7', 'standard-baseline-promotion-hook-plan.v2',
     'standard-retained-completion-entry.v1', 'standard-retained-completion-proof.v1', 'standard-workflow-entry-selection-output.v6', 'standard-cycle-close-selection-output.v2'])
     refs.push(new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url));
@@ -392,7 +392,7 @@ const definitions = [
   ["session_branch_integrate", "pr-orchestrate", "mutating", ["SPEC-R03", "SPEC-R07", "SPEC-R08"], "standard-session-branch-integrate-input.v1", "deterministic", "standard-session-branch-integrate-output.v1"],
   ["session_delivery_checkpoint", "close-session", "mutating", ["SPEC-R07", "SPEC-R08", "SPEC-R11"], "standard-session-delivery-checkpoint-input.v1", "deterministic", "standard-session-delivery-checkpoint-output.v1"],
   ["session_preclose_checkpoint", "close-session", "mutating", ["SPEC-R05", "SPEC-R07", "SPEC-R11"], "standard-session-preclose-checkpoint-input.v1", "deterministic", "standard-session-preclose-checkpoint-output.v1"],
-  ["session_close_finalize", "close-session", "executor", ["SPEC-R01", "SPEC-R05", "SPEC-R07", "SPEC-R11"], "standard-session-close-hook-input.v2", "deterministic", "standard-session-close-hook-output.v1"],
+  ["session_close_finalize", "close-session", "executor", ["SPEC-R01", "SPEC-R05", "SPEC-R07", "SPEC-R11"], "standard-session-close-hook-input.v2", "deterministic", "standard-session-close-hook-output.v2"],
   ["session_close_checkpoint", "close-session", "mutating", ["SPEC-R05", "SPEC-R07", "SPEC-R11"], "standard-session-close-checkpoint-input.v1", "deterministic", "standard-session-close-checkpoint-output.v1"],
   ["session_close_record", "close-session", "mutating", ["SPEC-R05", "SPEC-R07", "SPEC-R11"], "standard-session-close-input.v2", "deterministic", "standard-session-close-output.v1"],
   ["session_closure_decision", "close-session", "read-only", ["SPEC-R05", "SPEC-R07", "SPEC-R11"], "standard-session-closure-review-input.v1", "human", "standard-session-closure-decision-output.v1"],

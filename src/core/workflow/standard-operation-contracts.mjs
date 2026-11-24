@@ -100,6 +100,7 @@ import deliveryOutput from "../contracts/workflow-definition/standard-session-de
 import precloseInput from "../contracts/workflow-definition/standard-session-preclose-checkpoint-input.v1.schema.json" with { type: "json" };
 import precloseOutput from "../contracts/workflow-definition/standard-session-preclose-checkpoint-output.v1.schema.json" with { type: "json" };
 import sessionCloseHookInput from "../contracts/workflow-definition/standard-session-close-hook-input.v2.schema.json" with { type: "json" };
+import sessionCloseHookOutputV2 from "../contracts/workflow-definition/standard-session-close-hook-output.v2.schema.json" with { type: "json" };
 import sessionCloseHookOutput from "../contracts/workflow-definition/standard-session-close-hook-output.v1.schema.json" with { type: "json" };
 import sessionCloseCheckpointInput from "../contracts/workflow-definition/standard-session-close-checkpoint-input.v1.schema.json" with { type: "json" };
 import sessionCloseCheckpointOutput from "../contracts/workflow-definition/standard-session-close-checkpoint-output.v1.schema.json" with { type: "json" };
@@ -676,8 +677,8 @@ export function assertStandardOperationOutput(value) {
     if (checkShadowJson(value) || validateJsonSchema(value, precloseOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
   }
-  if (value?.contract_version === "standard-session-close-hook-output.v1") {
-    if (checkShadowJson(value) || validateJsonSchema(value, sessionCloseHookOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+  if (["standard-session-close-hook-output.v1", "standard-session-close-hook-output.v2"].includes(value?.contract_version)) {
+    if (checkShadowJson(value) || validateJsonSchema(value, value.contract_version.endsWith(".v2") ? sessionCloseHookOutputV2 : sessionCloseHookOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
   }
   if (value?.contract_version === "standard-session-close-checkpoint-output.v1") {

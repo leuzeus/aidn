@@ -5710,3 +5710,21 @@ and delivery without requiring preimages that the accepted hook has changed.
 The existing operation journal and recovery record remain the authorities; no
 new persisted business concept, permission or migration is introduced. This
 bounded continuation is not a general cross-version resume or a full-run proof.
+
+## Session-close post-write metadata proof
+
+The final session CAS preserves classification and ownership while advancing
+`updated_at`. Its pre-write metadata hash therefore cannot authenticate the
+post-write row. The confirmed v2 hook receipt retains exactly three ordered
+content/metadata postimages, checked by the writer after CAS. The fixed delivery
+reader verifies these against canonical rows and the content evidence before
+preparing its own exact checkpoint. No current row is silently substituted for
+a missing historical hash. Metadata-only changes after completion refuse.
+
+V1 receipts remain immutable and readable. FILES v1 receipts retain their null
+metadata semantics. A database v1 receipt without post-write metadata requires a
+separate, explicitly qualified reanchoring path; ordinary delivery refuses with
+`STANDARD_SESSION_DELIVERY_METADATA_PROOF_REQUIRED`. This change neither recloses
+a session nor introduces such a reanchor, receipt migration, or permission.
+The regression uses the actual hook receipt and owning postimage reader; a
+fixture that injects fresh metadata at delivery cannot establish this claim.

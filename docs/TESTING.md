@@ -8085,3 +8085,13 @@ historical source or finalization. Qualify the reader against preserved signed
 history, including changed bindings, recovery, owner and canonical preimages;
 then exercise the public installed route and verify the physical close event,
 canonical state, Git checkpoint and unchanged old UNKNOWN independently.
+
+## Session-close metadata receipt
+
+Run `node tools/perf/verify-standard-session-close-record-fixtures.mjs --mode=db-only --checkpoint --final-hook --objective-completion --delivery-checkpoint`
+for actual SQLite completion CAS followed by the same postimage reader used by
+the workflow host and then the delivery port. It verifies the receipt's metadata
+hashes after writing, stale-hash refusal and explicit refusal of legacy DB
+receipts lacking those hashes. `--mode=files` preserves metadata-free legacy
+compatibility. Human/R05 source capabilities remain fixture inputs. This does
+not prove historical PostgreSQL reanchoring or continuation between candidates.
