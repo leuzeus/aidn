@@ -36,7 +36,7 @@ export function createStandardCycleCloseRecord({ targetRoot, readDecision, obser
   async function prepare(instance, input, at, acquired = false, expected = null) {
     assertInput(input);
     if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
-    const verified = await readDecision(instance, input), observed = await observeContext(), context = observed.context;
+    const verified = await readDecision(instance, input, acquired ? { assertCurrentOwner: () => artifacts.assertLocalEffectOwner(shadowHash(expected)) } : {}), observed = await observeContext(), context = observed.context;
     if (expected && (materialHash(verified) !== expected.decision_material_sha256 || observed.context_sha256 !== expected.context_sha256)) fail("STANDARD_CYCLE_CLOSE_SOURCE_STALE");
     if (context.cycle_state !== "VERIFYING") return { can_apply: false, reason_code: "STANDARD_CYCLE_CLOSE_VERIFYING_REQUIRED" };
     if (verified.question.operation_id !== input.decision_operation_id) fail("STANDARD_CYCLE_CLOSE_DECISION_CHANGED");

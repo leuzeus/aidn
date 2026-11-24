@@ -1270,3 +1270,13 @@ current operation identities stay distinct. A retained work observation supplies
 no current Native result, implementation permission or validation success. The
 proof pins the complete context digest while carrying only its bounded summary;
 full documents remain at their canonical authorities.
+
+Retained closure uses closed `standard-retained-closure-entry.v1` and
+`standard-retained-closure-proof.v1` records within the existing entry operation.
+`standard-workflow-entry-selection-output.v5` distinguishes this route from a
+fresh Human question; earlier versions remain historical contracts. The proof
+names the original acknowledged decision, question, inbox, audit and exact
+current VERIFYING subject. It neither claims terminal effects nor replaces the
+original source. `standard-cycle-close-input.v2` is empty: the fixed host selects
+the accepted current or explicitly retained decision. The v1 decision locator
+remains the internal plan input and a readable historical schema.

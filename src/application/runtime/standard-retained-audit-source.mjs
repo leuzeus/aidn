@@ -40,12 +40,12 @@ export function createRetainedAuditSource({ configuration, environment, createAu
       original_configuration_sha256: H(execution), native_journal_sha256: H(native), failed_evaluation_operation_id: failed.operation_id, failed_evaluation_journal_sha256: H(failed) } };
   }
   return Object.freeze({
-    async inspect(entry) {
+    async inspect(entry, { assertCurrentOwner = null } = {}) {
       const before = capture(entry), { instance, execution, failed, readKey } = before;
       const product = () => readAgenticProductSnapshot(execution.product_root, execution.product_files);
       const authority = createAuthority({ configuration: execution, model: instance.model, modelSource: failed.preview.snapshot.model_source,
         readSigningKey: readKey, readProductSnapshot: product, readProductSha256: () => H(product()), environment });
-      const retained = await authority.inspectRetainedCycleAudit(instance, failed.operation_id);
+      const retained = await authority.inspectRetainedCycleAudit(instance, failed.operation_id, { assertCurrentOwner });
       require(H(capture(entry).pins) === H(before.pins));
       const context = Object.fromEntries(['session_id', 'cycle_id', 'cycle_path', 'branch', 'head', 'mode', 'cycle_state', 'product_sha256'].map(key => [key, retained.bridge.context[key]]));
       require(context.session_id === instance.initial_parameters.session.session_id);

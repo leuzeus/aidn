@@ -10,6 +10,7 @@ import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-sche
 import { createAgenticProcess, advanceAgenticProcess, inspectAgenticProcess } from '../../src/core/workflow/agentic-process.mjs';
 import { agenticPolicyPins } from '../../src/core/workflow/agentic-process-model.mjs';
 import { processFrameNode } from '../../src/core/workflow/process-call-model.mjs';
+import { resolveProcessCallData } from '../../src/core/workflow/process-call-data.mjs';
 import { resolveProcessOperationInput } from '../../src/core/workflow/process-input-resolution.mjs';
 import { standardWorkflowOperationBindings } from '../../src/application/runtime/standard-workflow-operations.mjs';
 
@@ -77,6 +78,10 @@ await check('published entry reaches current audit evaluation without native, mo
   instance = advanceAgenticProcess(instance, { event_id: 'entry-result', kind: 'operation_result', occurrence_id: occurrence,
     receipt: { contract_version: 'process-operation-receipt.v1', receipt_id: 'synthetic-entry', operation_id: op, intent_sha256: H(intent), authority_id: 'synthetic',
       outcome: 'completed', effect_status: 'no_effect', output_sha256: H(output), facts: output.facts, evidence_refs: [{ ref: 'fixture:entry', sha256: H(output) }] } });
+  const call = inspectAgenticProcess(instance), callId = call.occurrences.find(row => row.wait_reason === 'call_entry').occurrence_id;
+  assert.equal(processFrameNode(model, call.occurrences.find(row => row.occurrence_id === callId)).kind, 'call');
+  instance = advanceAgenticProcess(instance, { event_id: 'closure-review-enter', kind: 'call_enter', occurrence_id: callId,
+    ...resolveProcessCallData({ instance, cursor: call, occurrenceId: callId }) });
   const next = inspectAgenticProcess(instance), frame = next.occurrences.find(row => row.occurrence_id === next.ready[0]);
   assert.equal(processFrameNode(model, frame).binding_ref, 'cycle_audit_evaluate');
   assert.deepEqual(resolveProcessOperationInput({ instance, occurrenceId: frame.occurrence_id, readOperation: () => assert.fail('input must not import a synthetic result') }).input, {});

@@ -2995,6 +2995,17 @@ arguments cannot replace the host guard. These component checks do not prove
 the real STANDARD closure path, PostgreSQL or an installed archive. A retained
 receipt prototype that holds CAS is read-only evidence, not closure success.
 
+`verify-standard-retained-closure-fixtures.mjs`, included by the retained
+verification fixture, checks the closed retained-choice proof, malformed and
+foreign subjects, fixed provider dispatch and the published route to
+`cycle_close_record` without another Human or Native occurrence. The ordinary
+retained-audit fixture enters the new pinned review call and still reaches the
+audit evaluator first. Closure input v2 rejects caller-selected decision IDs;
+the internal v1 plan remains separately checked. These synthetic fixtures do
+not authenticate a real inbox or prove closure effects. Read-only source probes,
+current canonical owner/CAS behavior, public entry and installed evidence must
+be reported independently, with unexecuted stages marked separately.
+
 The required agentic-process gate also runs
 `tools/perf/verify-workflow-engine-fixtures.mjs`: direct JSON creation defaults to
 the structured engine through the common composition, console and actual public

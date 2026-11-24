@@ -48,7 +48,7 @@ export function createStandardOperationProvider({
     sessionPrMergeEffect, sessionPrOpen, sessionPrPremerge, sessionPrRecord, sessionPrRedeliveryPush,
     sessionPrReply, sessionPrResolution, sessionPrReview, sessionPrReviewContent,
     sessionPrReviewReceiver, sessionPrUpdatePush, sessionPrecloseCheckpoint, sessionPush, snapshot,
-    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent, entryContinuation,
+    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent, entryContinuation, retainedClosureEntry, prepareCycleCloseRecord,
 }) {
   async function selectEntry(state) {
     const instance = state.record, parameters = instance.initial_parameters ?? {};
@@ -60,7 +60,7 @@ export function createStandardOperationProvider({
       ? await operations.admitCycleEntry({ contract_version: "standard-cycle-entry-input.v1", session_id: parameters.session?.session_id, cycle_id: null }) : null;
     assertCurrent();
     const continuation = admission?.outcome === "completed" && admission.facts.cycle_entry_resume_allowed
-      ? await (point === "retained_audit" ? processAuthority.retainedAuditEntry(instance, parameters, admission) : point === "retained_verification" ? processAuthority.retainedVerificationEntry(instance, parameters, admission) : point === "retained_validation" ? processAuthority.retainedValidationEntry(instance, parameters, admission)
+      ? await (point === "retained_closure" ? retainedClosureEntry(instance, parameters, admission) : point === "retained_audit" ? processAuthority.retainedAuditEntry(instance, parameters, admission) : point === "retained_verification" ? processAuthority.retainedVerificationEntry(instance, parameters, admission) : point === "retained_validation" ? processAuthority.retainedValidationEntry(instance, parameters, admission)
         : entryContinuation?.(instance, parameters, admission) ?? fail("STANDARD_ENTRY_CONTINUATION_AUTHORITY_REQUIRED")) : null;
     assertCurrent();
     return selectStandardEntry(parameters, admission, continuation);
@@ -300,8 +300,8 @@ export function createStandardOperationProvider({
     ["cycle_close_finalize", async ({ state, input, occurrenceId }) => {
       return await cycleCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CYCLE_CLOSE_HOOK_AUTHORITY_REQUIRED");
     }],
-    ["cycle_close_record", async ({ state, input }) => {
-      return await cycleCloseRecord?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_CLOSE_AUTHORITY_REQUIRED");
+    ["cycle_close_record", async ({ state }) => {
+      return await prepareCycleCloseRecord?.(state.record) ?? fail("STANDARD_CYCLE_CLOSE_AUTHORITY_REQUIRED");
     }],
     ["cycle_closure_decision", async ({ state, input, occurrenceId }) => {
       return await closureReview?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CLOSURE_AUDIT_AUTHORITY_REQUIRED");

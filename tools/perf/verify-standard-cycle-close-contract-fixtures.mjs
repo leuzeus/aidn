@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { assertStandardOperationInput, assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
 import { standardWorkflowOperationBindings } from "../../src/application/runtime/standard-workflow-operations.mjs";
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
-import inputSchema from "../../src/core/contracts/workflow-definition/standard-cycle-close-input.v1.schema.json" with { type: "json" };
+import inputSchema from "../../src/core/contracts/workflow-definition/standard-cycle-close-input.v2.schema.json" with { type: "json" };
 import planSchema from "../../src/core/contracts/workflow-definition/standard-cycle-close-plan.v1.schema.json" with { type: "json" };
 import outputSchema from "../../src/core/contracts/workflow-definition/standard-cycle-close-output.v1.schema.json" with { type: "json" };
 const H = "a".repeat(64), operationId = "op_" + "a".repeat(40);
@@ -11,11 +11,11 @@ for (const schema of [inputSchema, planSchema, outputSchema]) assert.deepEqual(v
 pass("private closure schemas use supported validation vocabulary");
 const binding = standardWorkflowOperationBindings().find(row => row.id === "cycle_close_record");
 assert.equal(binding.executor_kind, "deterministic"); assert.equal(binding.effect_class, "mutating"); assert.equal(binding.skill_id, "cycle-close");
-assert.deepEqual(binding.allowed_modes, ["COMMITTING"]); assert.equal(binding.input_contract, "standard-cycle-close-input.v1"); assert.equal(binding.output_contract, "standard-cycle-close-output.v1");
-assertStandardOperationInput(binding.id, { decision_operation_id: operationId });
+assert.deepEqual(binding.allowed_modes, ["COMMITTING"]); assert.equal(binding.input_contract, "standard-cycle-close-input.v2"); assert.equal(binding.output_contract, "standard-cycle-close-output.v1");
+assertStandardOperationInput(binding.id, {});
 for (const extra of [{ module: "arbitrary.mjs" }, { authorized: true }, { target_state: "DONE" }, { report: {} }])
   assert.throws(() => assertStandardOperationInput(binding.id, { decision_operation_id: operationId, ...extra }));
-pass("fixed deterministic binding accepts only a decision identity and grants no authored authority");
+pass("fixed deterministic binding selects its authenticated decision and refuses caller-authored identities or authority");
 const completed = state => ({ contract_version: "standard-cycle-close-output.v1", operation_ref: "cycle_close_record", outcome: "completed", effect_status: "confirmed",
   facts: { cycle_terminal_recorded: true, cycle_retained: state === "DONE", cycle_close_completed: false },
   observations: { target_state: state, closure_hook: "pending", skill_completion: "pending" }, evidence_refs: Array.from({ length: 6 }, (_, i) => ({ ref: "fixture:artifact:" + i, sha256: H })) });
