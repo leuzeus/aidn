@@ -609,7 +609,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     return sessionDeliveryCheckpoint.prepare(instance, { finalization_operation_id: finalizationId }, operationId);
   }
   const integrationAuthority = processAuthority ? createStandardSessionBranchIntegrationAuthority({ targetRoot,
-    readAcceptedOperation: acceptedForPromotion, readDeliverySource: readSessionDeliverySource }) : null;
+    readAcceptedOperation: acceptedForPromotion, readDeliverySource: readSessionDeliverySource,
+    readRetainedCycle: instance => instance.initial_parameters?.entry_point?.kind === 'retained_session_delivery'
+      ? processAuthority.readRetainedSessionCycleHistory(instance, retainedClosureOptions()) : null }) : null;
   const sessionBranchIntegration = integrationAuthority ? createStandardSessionBranchIntegration({ targetRoot, now,
     readSource: (instance, input) => integrationAuthority.readSource(instance, input), readCurrent: id => current(id).record,
     async readDecision(instance, input) {

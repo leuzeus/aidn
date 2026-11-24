@@ -1065,3 +1065,9 @@ Changed ownership, content, bindings, HEAD, unsettled effects or later metadata
 changes refuse continuation. No close hook or Human decision is replayed.
 The public delivery-checkpoint v2 input is empty: the host selects the accepted
 current or retained finalizer. Internal checkpoint plans keep their explicit ID.
+
+For retained-session delivery, integration resolves the prior cycle and
+promotion through a fixed historical reader. It does not authenticate an old
+cycle journal with the new instance's key or import its receipts. Current
+canonical owners, branches and postimages remain required, and integration
+still asks its own Human question before the separate Git effect.

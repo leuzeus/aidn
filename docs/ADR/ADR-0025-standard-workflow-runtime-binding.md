@@ -5753,3 +5753,20 @@ the host supplies the authenticated finalizer ID to the unchanged internal
 checkpoint plan. Branch integration, PR review, merge and post-merge guarantees
 remain separate qualification boundaries. This entry proves a new technical
 continuation, not restart of the original instance or complete P0.
+
+### Integration after retained session delivery
+
+The session integration authority may receive a fixed retained-cycle reader
+only for the bounded retained-session-delivery entry. This reader authenticates
+the original cycle closure, independent audit/validation, retained Human choice
+and promotion chain with their original authorities. It verifies the selected
+closure and the promotion finalizer against their recorded plans and outputs.
+Current-instance acceptance remains strict for the new delivery checkpoint.
+No old event or receipt is copied into the new instance.
+
+The integration subject includes the historical proof digest and latest
+authenticated cycle postimages, then checks current canonical session/cycle
+ownership, lifecycle and branch. A missing historical capability, foreign
+selection or unproved sibling still refuses. The later Human integration
+decision and Git effect remain separate; a retained cycle choice is not
+consent to integrate, push or merge.
