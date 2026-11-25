@@ -18,6 +18,8 @@ An isolated prototype bound a virtual platform credential's assertion to one exa
 
 Qualification still requires an enrollment bound to the project installation authority, an issuer outside the requesting agent's control, and an accepted evidence format for a panel decision. The fixture used a synthetic message reference to exercise the existing contract. A genuine panel confirmation must carry its own evidence and preserve the exact question, subject, choice and freshness. The actual enrollment, live confirmation and continuation after the mode decision remain SKIP.
 
+Candidate `cb2c3ea1` packages the exact-plan Windows enrollment and the panel's direct WebAuthn proof. Source and installed verification passed. The installed browser fixture produced one verified source from one selection with a virtual authenticator and read the same result after reload. The first real installation reached the Windows administrator prompt, which returned cancellation before credential creation. The existing PostgreSQL mode question remains staged with zero receipts. [Product PR](https://github.com/leuzeus/aidn/pull/203) · [Installed candidate evidence](windows-operator-enrollment-cb2c3ea1.json)
+
 ## Delivery order
 
 | Lot | Delivery and qualification |
