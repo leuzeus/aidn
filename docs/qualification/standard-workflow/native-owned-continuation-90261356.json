@@ -2622,5 +2622,49 @@
       "governance_lane": "ASSURED",
       "ordinary_github_host": "PASS"
     }
+  },
+  "user_authorized_external_merge": {
+    "status": "PHYSICAL_MERGE_CONFIRMED_CONTROL_CAPTURE_BLOCKED",
+    "candidate": "c80a090293af5d532a9d1c72d3e14e1fd57a6ac0",
+    "archive_sha256": "ee9f420b416cbe9c9a0875a87c7048bd8c7970c6039d86c36d4f4433f556badc",
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "authorization": "Explicit user instruction to merge the private pilot PR; connector invocation fenced to exact head",
+    "physical_merge": {
+      "status": "PASS",
+      "head_oid": "6871af7521940cd0498f831a82291b0c8a318138",
+      "merge_oid": "ba413c8b4ccb4e475d05c825ecc5ec7ea1fe7e46",
+      "parent_oids": [
+        "3e91c007406e86d78a6f965f75a76b57f912ae8f",
+        "6871af7521940cd0498f831a82291b0c8a318138"
+      ],
+      "merged_at": "2026-11-25T02:05:07Z",
+      "base_tip_matches_merge": true,
+      "base_protection_enabled": true,
+      "evidence_sha256": "25b4f0a4c1cddc19c9837b679508a3caad6cc4c5e5016b01b95d28a9f15fcb2c"
+    },
+    "public_preview": {
+      "status": "PASS",
+      "kind": "control",
+      "can_apply": true,
+      "evidence_sha256": "2630fbc8e76d213310f31bc3f139c108b48a05c52e57e8885cd420efa9d3942c"
+    },
+    "public_control_capture": {
+      "status": "FAIL",
+      "reason": "PROCESS_CONTROL_AUTHORITY_TIMEOUT",
+      "elapsed_ms": 15425,
+      "evidence_sha256": "1bd51f8277308b3c79ecdcdc4a83d17d1cfcfa97e28e870be049548285c10db8"
+    },
+    "accepted_operations_unchanged": true,
+    "accepted_operation_count": 5,
+    "observation_sha256": "e71447fe697f25aac846e9b9a8065f1e2c8bf60113564af8b2c391e5aa2bcf72",
+    "native_calls": 0,
+    "new_human_questions": 0,
+    "manual_signatures": 0,
+    "qualification_scope": "Externally performed merge relative to the retained workflow; not a nominal workflow merge receipt",
+    "workflow_merge": "SKIP",
+    "post_merge_sync": "SKIP",
+    "full_same_candidate_P0": "SKIP",
+    "next_step": "Repair the bounded external merge control capture and continue from the retained review wait; preserve the physical merge and accepted history without repeating either."
   }
 }
