@@ -6,6 +6,14 @@ export function assertProjectArtifactStore(store) {
   return store;
 }
 
+// Canonical discovery must not load every artifact body across the worker
+// boundary. An unavailable capability has no full-content fallback.
+export function assertProjectArtifactPathInventory(store) {
+  assertProjectArtifactStore(store);
+  if (typeof store.listArtifactPaths !== 'function') throw new TypeError('ProjectArtifactStore requires listArtifactPaths');
+  return store;
+}
+
 // Additive capability for durable checkpoints. Existing callers and doubles
 // retain the original port; no fallback to read-then-upsert is safe.
 export function assertProjectArtifactCompareSwap(store) {

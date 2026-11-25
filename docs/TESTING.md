@@ -4314,6 +4314,13 @@ The documentation-reference verifier resolves active local Markdown links and
 literal `npm run` references against the tracked tree and `package.json`; its
 negative probes prove that a missing link and a missing script are rejected.
 
+For retained R09 completion, the retained-external-merge fixture follows the
+full composed return to the terminal and contrasts the historical delivery
+re-entry. Project-artifact-store fixtures cover path-only canonical inventory
+on actual SQLite and the PostgreSQL double, including scope selection, limits,
+read-only transactions and a full-content worker output-limit refusal. Live
+PostgreSQL completion discovery remains separate pilot evidence.
+
 Stable family wrappers are cataloged in `package/catalogs/gates.v1.json`.
 `verify:handoff` runs on Windows. `verify:release` runs the catalog publication
 selection. To run a distinct check for diagnosis, use its individual

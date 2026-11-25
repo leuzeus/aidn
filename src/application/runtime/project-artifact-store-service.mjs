@@ -10,7 +10,7 @@ import { assertProjectArtifactStore } from '../../core/ports/project-artifact-st
 
 const workerModule = new URL('./project-artifact-store-worker.mjs', import.meta.url);
 const workerOutputBytes = 32 * 1024 * 1024;
-const readActions = new Set(['get', 'get-many', 'list']);
+const readActions = new Set(['get', 'get-many', 'list', 'list-paths']);
 let postgresReadWorker;
 
 function runPostgresRead(input, timeout) {
@@ -64,7 +64,7 @@ export function createProjectArtifactStore(options = {}) {
         input: request, encoding: 'utf8', shell: false, windowsHide: true, timeout: remaining,
         maxBuffer: workerOutputBytes, env: options.env ?? process.env,
       });
-    if (action === 'get-many' && child.error?.code === 'ENOBUFS') throw new Error('ARTIFACT_POSTGRES_WORKER_OUTPUT_LIMIT');
+    if (readActions.has(action) && child.error?.code === 'ENOBUFS') throw new Error('ARTIFACT_POSTGRES_WORKER_OUTPUT_LIMIT');
     let response;
     try { response = JSON.parse(child.stdout); } catch { throw new Error('ARTIFACT_POSTGRES_WORKER_UNAVAILABLE'); }
     if (child.status !== 0 || !response.ok) throw new Error(/^ARTIFACT_[A-Z_]+$/.test(response.code ?? '') ? response.code : 'ARTIFACT_POSTGRES_COMMAND_FAILED');
@@ -100,6 +100,7 @@ export function createProjectArtifactStore(options = {}) {
       return rows;
     },
     listArtifacts: limit => call('list', { limit }),
+    listArtifactPaths: limit => call('list-paths', { limit }),
     materializeArtifacts(materialize = {}) {
       const dryRun = materialize.dryRun === true;
       if (options.readOnly && !dryRun) throw new Error('Artifact store is read-only');

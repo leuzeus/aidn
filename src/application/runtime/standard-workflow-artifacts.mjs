@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { readAidnProjectConfig, resolveConfigStateMode, validateAidnProjectConfig } from "../../lib/config/aidn-config-lib.mjs";
 import { resolveEffectiveRuntimePersistence, resolveRuntimeSqliteFile } from "./runtime-persistence-service.mjs";
 import { createProjectArtifactStore } from "./project-artifact-store-service.mjs";
+import { assertProjectArtifactPathInventory } from "../../core/ports/project-artifact-store-port.mjs";
 import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { artifactContentHash, artifactMetadataHash } from "../../core/workflow/artifact-compare-swap.mjs";
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
@@ -225,7 +226,7 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     };
     if (selected.database) {
       const store = open(true);
-      try { const rows = store.listArtifacts(10000); if (rows.length >= 10000) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED"); names = rows.map(row => nameOf(row.path)); }
+      try { const paths = assertProjectArtifactPathInventory(store).listArtifactPaths(10000); if (paths.length >= 10000) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED"); names = paths.map(nameOf); }
       finally { store.close(); }
     } else {
       const folder = agentRunPhysicalPath(path.join(root, "docs/audit")); let entries = 0;

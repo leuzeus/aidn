@@ -1,5 +1,11 @@
 # 03 Information Governance
 
+Canonical path inventory uses the artifact adapter's `listArtifactPaths`
+capability on PostgreSQL and SQLite. It reads names in the selected scope,
+without transferring all document bodies or falling back to local projections.
+The existing 10,000-entry truncation refusal and path validation remain in
+force. Detailed observation and materialization still use their content reads.
+
 Expired merge-capture continuation is derived process-journal evidence. The
 original signed capture and reservation remain reserved, with unchanged provider
 timestamps and no acknowledgement. A new entry binds their hashes after current
