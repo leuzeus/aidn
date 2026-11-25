@@ -10,6 +10,14 @@ Lot 2b delivers the missing interaction. A person working in their authenticated
 
 The interface records the user's choice and produces the proof in the background. The workflow host must independently verify the principal, the instance and operation, the exact question and subject, the offered choice and freshness. The requesting agent has no access to the signing capability and cannot turn a chat transcript into approval. The host can reuse its existing signed-source verifier. [Decision contracts](../../ADR/ADR-0025-standard-workflow-runtime-binding.md#human-decision-profiles)
 
+### Windows decision panel experiment
+
+On `d0148e3a`, Codex in the Windows pilot reports `providerUnavailable` for native user verification. A top-level browser panel opened in the same chat reports a secure context, WebAuthn permission and an available user-verifying platform authenticator. The panel probe did not enroll a credential or request a decision. An embedded browser frame requires a separate host permission, verified in a controlled browser fixture. [Codex verification API](https://github.com/openai/codex/blob/main/codex-rs/app-server/README.md#user-verification-experimental) · [WebAuthn embedded usage](https://www.w3.org/TR/webauthn-3/#sctn-iframe-guidance)
+
+An isolated prototype bound a virtual platform credential's assertion to one exact question and choice. A test user interface click yielded one verified proof. A separate fixture fed WebAuthn evidence through the signed-source verifier in the installed archive. It recorded one decision and recovered the same receipt with a fresh operator adapter. The live PostgreSQL session still has the original mode question staged and zero enrolled principals or decision receipts. [Windows panel experiment evidence](windows-decision-panel-d0148e3a.json)
+
+Qualification still requires an enrollment bound to the project installation authority, an issuer outside the requesting agent's control, and an accepted evidence format for a panel decision. The fixture used a synthetic message reference to exercise the existing contract. A genuine panel confirmation must carry its own evidence and preserve the exact question, subject, choice and freshness. The actual enrollment, live confirmation and continuation after the mode decision remain SKIP.
+
 ## Delivery order
 
 | Lot | Delivery and qualification |
