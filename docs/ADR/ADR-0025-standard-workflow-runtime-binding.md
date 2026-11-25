@@ -5872,3 +5872,17 @@ explicit comparison does not discard a changed transport hash in an old receipt.
 History is checked again after live provider awaits. No current business
 decision is inferred from historical routing facts. A fixed nested call keeps
 the root model within its existing limit.
+
+### Provider verification before control delivery
+
+The fixed operation host completes bounded provider verification before calling
+the reducer's local control authority. A private invocation-scoped witness binds
+the exact signed inbox record and delivery; authored input cannot supply it.
+The local authority rechecks that record and the current context under its
+unchanged five-second bound. Provider verification keeps its own 60-second bound
+for review and merge sources. The host rechecks the capture, context and merge
+freshness after the provider await, and the reducer still enforces instance CAS.
+Concurrent calls cannot reuse another invocation's witness. Failed verification
+retains the reservation and delivers no event; a retained accepted event repairs
+acknowledgement without consulting the provider again. This change neither
+refreshes expired captures nor authorizes migration of a frozen instance.

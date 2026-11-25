@@ -8155,3 +8155,11 @@ merge and review; the generic control fixtures retain the five-second claim
 bound. Pure boundary fixtures do not prove historical signature authentication
 or actual GitHub reconciliation; the live source prototype and installed
 public journey provide separate qualification evidence.
+
+`verify-standard-pr-review-control-fixtures.mjs --body-transfer-only` also
+exercises full delivery after provider verification takes more than five
+seconds. It proves one accepted event, retained acknowledgement without a second
+provider call, and refusal when the Git context changes during verification.
+The reserved capture survives that refusal and a new invocation authenticates
+it again. These checks cover the fixed-host/reducer handoff, separately from the
+inbox's I/O deadline fixtures; neither proves recovery of an expired capture.
