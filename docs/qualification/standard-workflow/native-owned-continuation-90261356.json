@@ -2502,20 +2502,80 @@
     "manual_signatures": 0,
     "native_calls": 0,
     "review": {
-      "status": "WAITING_FOR_EXTERNAL_REVIEW",
-      "content_observation": "PASS",
-      "durable_wait_evidence_sha256": "919383a43c5a2900270f4eb2ed9c0e747ec993657c13962f5d7b581c355344ee",
-      "request_sent": true,
-      "request_result_sha256": "95affbaabe9db8cad2a06b458c5124f9ee91986aba779e5a9f1fe5aaac746222",
-      "latest_remote_evidence_sha256": "be97f718f38afcd1751ba1520dee995879d09654b9ae22c702ddd2e9df92ce8d",
+      "status": "REVIEW_COMPLETED_CAPTURE_BLOCKED",
+      "reviewer_repository_access": "PASS",
       "provider_review_count": 0,
-      "reviewer_repository_access": "UNAVAILABLE_IN_CONNECTED_INSTALLATION",
-      "selected_repository_inventory_checked": true,
-      "browser_settings": "AUTHENTICATION_REQUIRED",
-      "configuration_change_applied": false
+      "codex_summary": "COMPLETED_NO_FINDINGS",
+      "result_format": "IssueComment versioned summary with full commit identity; separate prose receipt has abbreviated identity",
+      "remote_evidence_sha256": "6b40d16cad65365cf4121c32c69395706a2bf904410532d4f49adb0b77db0873",
+      "protection": {
+        "status": "PASS",
+        "pull_request_required": true,
+        "required_product_check": true,
+        "strict_checks": true,
+        "enforce_admins": true,
+        "resolve_conversations": true,
+        "force_push": false,
+        "deletion": false,
+        "evidence_sha256": "55e07afe0b719bf54491d38993634401c368e425a2939f5d1c5902929b6ac8b8",
+        "unchanged_refs": true
+      },
+      "first_public_capture": {
+        "status": "FAIL",
+        "layer": "operator",
+        "reason": "STANDARD_ENTRY_ACTION_CHANGED",
+        "cause": "Missing control selector on exact apply; no provider read",
+        "evidence_sha256": "aafa6c8ab2084a1f7a4c777772f08024de41ede0f018b793bb51775f246c13fe"
+      },
+      "corrected_public_capture": {
+        "status": "FAIL",
+        "reason": "PROCESS_CONTROL_AUTHORITY_TIMEOUT",
+        "evidence_sha256": "1bd51f8277308b3c79ecdcdc4a83d17d1cfcfa97e28e870be049548285c10db8",
+        "timing": {
+          "started_ms": 1795569098843,
+          "ended_ms": 1795569115502,
+          "exit_code": 1
+        }
+      },
+      "installed_provider_diagnostic": {
+        "status": "FAIL",
+        "reason": "GITHUB_REVIEW_EVENT_NODE_CHANGED",
+        "elapsed_ms": 5453,
+        "evidence_sha256": "3dd1fc6edcf9398aa3d51c810a8909859430191a15964ec8913e8eee2f2af3de"
+      },
+      "isolated_source_prototype": {
+        "status": "PASS",
+        "scope": "Read-only live-provider observation of the exact completed summary, including pinned Bot editor; not workflow delivery",
+        "evidence_sha256": "075c24a1aab0e882172a6678fedb38e8cc9557e4b21dfc37a3ad1a8ffa52c626",
+        "elapsed_ms": 6679,
+        "installed": "SKIP",
+        "control_delivery": "SKIP",
+        "triage": "SKIP",
+        "merge": "SKIP"
+      },
+      "original_instance_unchanged": true,
+      "original_operations_unchanged": true,
+      "native_calls": 0,
+      "new_human_questions": 0,
+      "manual_signatures": 0
     },
     "merge": "NOT_RUN",
     "post_merge_sync": "NOT_RUN",
-    "full_same_candidate_P0": "SKIP"
+    "full_same_candidate_P0": "SKIP",
+    "review_history": [
+      {
+        "status": "WAITING_FOR_EXTERNAL_REVIEW",
+        "content_observation": "PASS",
+        "durable_wait_evidence_sha256": "919383a43c5a2900270f4eb2ed9c0e747ec993657c13962f5d7b581c355344ee",
+        "request_sent": true,
+        "request_result_sha256": "95affbaabe9db8cad2a06b458c5124f9ee91986aba779e5a9f1fe5aaac746222",
+        "latest_remote_evidence_sha256": "be97f718f38afcd1751ba1520dee995879d09654b9ae22c702ddd2e9df92ce8d",
+        "provider_review_count": 0,
+        "reviewer_repository_access": "UNAVAILABLE_IN_CONNECTED_INSTALLATION",
+        "selected_repository_inventory_checked": true,
+        "browser_settings": "AUTHENTICATION_REQUIRED",
+        "configuration_change_applied": false
+      }
+    ]
   }
 }
