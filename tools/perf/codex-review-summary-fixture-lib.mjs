@@ -71,6 +71,11 @@ export async function verifyCodexReviewSummary({ test, workingDirectory }) {
     node.author.login += '[bot]'; node.editor.login += '[bot]';
     assertControlReviewEvent(await readEvent()); node = structuredClone(original);
   });
+  await test('a later summary revision has a distinct event identity without changing the GitHub node', async () => {
+    const before = await readEvent(); node.body += '\nUpdated by the pinned bot.';
+    const after = await readEvent(); assert.equal(after.summary.node_id, before.summary.node_id);
+    assert.notEqual(after.source_event_id, before.source_event_id); node = structuredClone(original);
+  });
   const p = { repository_id: subject.repository_id, node_id: subject.pull_request_id, number: 7, head_oid: head, base_oid: base,
     head_branch: request.branch, base_branch: 'main', state: 'OPEN', draft: false };
   const fixture = createGithubReviewFixture({ workingDirectory, pullRequest: p }); fixture.state.reviews = [];

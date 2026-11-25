@@ -4062,6 +4062,8 @@ edit metadata or a human edit of a bot-authored comment refuses.
 The original comment body and times are preserved in the signed payload, with
 no synthetic PullRequestReview or approval. This completion evidence reaches
 Native triage alongside the independently collected formal reviews and threads.
+Summary event identity includes its node, head and revision: a later result on
+the same provider comment cannot overwrite an earlier capture or alias its event.
 
 The summary can predate a cold receiver. Its currentness is established by a
 fresh authenticated provider reread and exact revision equality, including

@@ -188,7 +188,8 @@ function normalizeReviewEvent(node, { request, sourceRef, subject }, repo, revie
     fail("GITHUB_REVIEW_EVENT_COLLECTION_CHANGED");
   return assertControlReviewEvent({
     contract_version: summary ? 'github-pr-review-event.v2' : "github-pr-review-event.v1", authority_id: "github_review",
-    source_event_id: (summary ? 'codex-summary-' : "review-") + shadowHash(node.id), repository_id: repository.id, pull_request_id: p.id, pull_request_number: p.number,
+    source_event_id: summary ? 'codex-summary-' + shadowHash({ node_id: node.id, head_oid: p.headRefOid, revision: shadowHash(revision) }) : "review-" + shadowHash(node.id),
+    repository_id: repository.id, pull_request_id: p.id, pull_request_number: p.number,
     head_oid: p.headRefOid, base_oid: pr.merged ? pr.merge_parent_oids[0] : p.baseRefOid, head_ref: p.headRefName, base_ref: p.baseRefName,
     event_key: "review_snapshot", revision: shadowHash(revision),
     occurred_at: submittedAt, actor,

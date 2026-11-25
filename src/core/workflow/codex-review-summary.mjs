@@ -34,7 +34,7 @@ export function assertCodexReviewSummaryEvent(event) {
     || Date.parse(source.created_at) > Date.parse(source.updated_at)
     || createHash('sha256').update(body).digest('hex') !== source.body_sha256
     || readCodexReviewSummary(body) !== event.head_oid
-    || event.source_event_id !== 'codex-summary-' + shadowHash(source.node_id)
+    || event.source_event_id !== 'codex-summary-' + shadowHash({ node_id: source.node_id, head_oid: event.head_oid, revision: event.revision })
     || (source.last_edited_at === null ? source.editor !== null : !source.editor
       || shadowHash(source.editor) !== shadowHash(event.actor) || !Number.isSafeInteger(Date.parse(source.last_edited_at))
       || Date.parse(source.last_edited_at) < Date.parse(source.created_at) || Date.parse(source.last_edited_at) > Date.parse(source.updated_at))
