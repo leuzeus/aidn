@@ -10,7 +10,7 @@ import { assertModeWorkQuestion, assertHumanModeWorkDecision, observeHumanModeWo
 import { postMergeDecisionOperation, postMergeQuestionVersion, postMergeDecisionQuestion, assertHumanPostMergeDecision, postMergeDecisionOutput } from "../../core/workflow/standard-pr-post-merge-decision.mjs";
 import { mergeConsentOperation, mergeConsentQuestionVersion, mergeConsentQuestion, assertHumanMergeConsent, mergeConsentOutput } from "../../core/workflow/standard-pr-merge-consent.mjs";
 import { resolutionExceptionOperation, resolutionExceptionQuestion, assertHumanResolutionException, resolutionExceptionOutput } from "../../core/workflow/standard-pr-resolution-exception.mjs";
-import { externalMergeDisposition, externalMergeQuestionVersion, externalMergePretriageQuestionVersion, externalMergeQuestion, assertHumanExternalMergeDisposition,
+import { externalMergeDisposition, externalMergeCapturedQuestionVersion, externalMergeQuestionVersion, externalMergePretriageQuestionVersion, externalMergeQuestion, assertHumanExternalMergeDisposition,
   externalMergeDispositionOutput } from "../../core/workflow/standard-pr-external-merge.mjs";
 import { recoveryCycleSelection, recoveryCycleQuestionVersion, recoveryCycleQuestion, assertHumanRecoveryCycleSelection,
   recoveryCycleSelectionOutput } from "../../core/workflow/standard-drift-recovery-cycle-selection.mjs";
@@ -109,7 +109,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     else if ([recoveryCycleQuestionVersion, "standard-drift-recovery-cycle-question.v1"].includes(request.contract_version)) assertHumanRecoveryCycleSelection(claim, request);
 
     else if (["standard-mode-work-question.v1", "standard-mode-work-question.v2"].includes(request.contract_version)) assertHumanModeWorkDecision(claim, request);
-    else if ([externalMergeQuestionVersion, externalMergePretriageQuestionVersion].includes(request.contract_version)) assertHumanExternalMergeDisposition(claim, request);
+    else if ([externalMergeQuestionVersion, externalMergePretriageQuestionVersion, externalMergeCapturedQuestionVersion].includes(request.contract_version)) assertHumanExternalMergeDisposition(claim, request);
     else if (request.contract_version === postMergeQuestionVersion) assertHumanPostMergeDecision(claim, request);
     else if ([mergeConsentQuestionVersion, "standard-pr-merge-consent-question.v1"].includes(request.contract_version)) assertHumanMergeConsent(claim, request);
     else if (request.contract_version === "standard-pr-review-resolution-exception-question.v1") assertHumanResolutionException(claim, request);

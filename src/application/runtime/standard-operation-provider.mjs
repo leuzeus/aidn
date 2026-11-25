@@ -1,4 +1,5 @@
 import { retainedVerificationAdmit } from "../../core/workflow/standard-retained-verification.mjs";
+import { retainedMergeCaptureSelection } from '../../core/workflow/standard-retained-merge-capture.mjs';
 import { standardOperationReliability } from "../workflow/installed-operation-reliability.mjs";
 import { prIncidentCloseOperation } from "../../core/workflow/standard-pr-incident-close.mjs";
 import { handoffResourceOperation } from "../../core/workflow/standard-handoff-resource-operation.mjs";
@@ -50,6 +51,12 @@ export function createStandardOperationProvider({
     sessionPrReviewReceiver, sessionPrUpdatePush, sessionPrecloseCheckpoint, sessionPush, snapshot,
     spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent, entryContinuation, retainedClosureEntry, retainedCompletionEntry, prepareCycleCloseRecord, prepareSessionCloseRecord, prepareSessionCloseHook, prepareSessionDeliveryCheckpoint, prepareSessionBranchIntegration, prepareSessionPrRecord, retainedSessionPrOpenEntry, retainedSessionIntegrationEntry,
 }) {
+  function selectMergeCapture(state) {
+    const instance = state.record, captured = instance.initial_parameters?.entry_point?.kind === 'retained_external_merge_capture';
+    if (captured) processAuthority.readRetainedMergeCapture(instance);
+    else processAuthority.readRetainedExternalMerge(instance);
+    return retainedMergeCaptureSelection(captured);
+  }
   async function selectEntry(state) {
     const instance = state.record, parameters = instance.initial_parameters ?? {};
     const assertCurrent = () => {
@@ -57,6 +64,10 @@ export function createStandardOperationProvider({
     };
     assertCurrent();
     const point = standardEntryPoint(parameters);
+    if (point === 'retained_external_merge_capture') {
+      const continuation = await processAuthority.retainedMergeCaptureEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
     if (point === 'retained_external_merge') {
       const continuation = await processAuthority.retainedExternalMergeEntry(instance, parameters); assertCurrent();
       return selectStandardEntry(parameters, null, continuation);
@@ -100,6 +111,7 @@ export function createStandardOperationProvider({
     [workPhaseSelect, async ({ state }) => processAuthority.selectWorkPhase(state.record)],
     [retainedTaskWork, async ({ state, input }) => processAuthority.observeRetainedTaskWork(state.record, input)],
     [workflowEntrySelectOperation, async ({ state }) => selectEntry(state)],
+    ['session_pr_retained_merge_select', async ({ state }) => selectMergeCapture(state)],
     ["baseline_promotion_checkpoint", async ({ state, input, occurrenceId }) => {
       return await baselinePromotionCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PROMOTION_CHECKPOINT_AUTHORITY_REQUIRED");
     }],
@@ -417,6 +429,7 @@ export function createStandardOperationProvider({
     [workPhaseSelect, async ({ state }) => processAuthority.selectWorkPhase(state.record)],
     [retainedTaskWork, async ({ state, record }) => processAuthority.observeRetainedTaskWork(state.record, record.preview.input)],
     [workflowEntrySelectOperation, async ({ state }) => selectEntry(state)],
+    ['session_pr_retained_merge_select', async ({ state }) => selectMergeCapture(state)],
     [handoffResourceOperation, async ({ resourceCapture }) => {
       return resourceCapture.output;
     }],
