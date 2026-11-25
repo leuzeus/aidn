@@ -50,10 +50,10 @@ export function createPretriageMergeControl({ readContext, reviewPort, now }) {
 
 // The operation host and the independent R09 admission reader authenticate
 // the same accepted delivery and inbox event. Neither needs a triage receipt.
-export function createPretriageMergeSource({ readAcceptedUpdate, readControl }) {
+export function createPretriageMergeSource({ readAcceptedUpdate, readControl, readRetainedDelivery }) {
   function reviewCaptureCall(cursor, wait) {
     return cursor.occurrences.find(row => row.occurrence_id === wait?.call_scope_id
-      && ['session_pr_review_capture', 'correction_pr_review_capture'].includes(row.node_id));
+      && ['session_pr_review_capture', 'correction_pr_review_capture', 'retained_pr_merge_capture'].includes(row.node_id));
   }
   function readPretriageDelivery({ record: instance, cursor }, wait) {
     const call = reviewCaptureCall(cursor, wait);
@@ -65,8 +65,9 @@ export function createPretriageMergeSource({ readAcceptedUpdate, readControl }) 
       && row.status === 'COMPLETED' && row.operation?.intent.binding_ref === binding);
     const latest = instance.events.findLast(row => row.kind === 'operation_intent'
       && ['session_pr_update_push', 'session_pr_redelivery_push'].includes(row.intent.binding_ref));
-    const updateId = occurrence.length === 1 && occurrence[0].operation.intent.operation_id;
-    if (!updateId || latest?.intent.operation_id !== updateId) fail('STANDARD_PR_EXTERNAL_MERGE_DELIVERY_REQUIRED');
+    const retained = call.node_id === 'retained_pr_merge_capture' ? readRetainedDelivery?.(instance) : null;
+    const updateId = retained ? retained.record.operation_id : occurrence.length === 1 && occurrence[0].operation.intent.operation_id;
+    if (!updateId || (retained ? latest || occurrence.length : latest?.intent.operation_id !== updateId)) fail('STANDARD_PR_EXTERNAL_MERGE_DELIVERY_REQUIRED');
     const { record, output } = readAcceptedUpdate(instance, updateId, binding), pullRequest = output.observations.pull_request;
     const notBefore = record.preview.prepared.plan.prepared_at_ms;
     if (output.facts.session_pr_head_confirmed !== true || pullRequest.state !== 'OPEN' || pullRequest.draft
@@ -92,7 +93,7 @@ export function createPretriageMergeSource({ readAcceptedUpdate, readControl }) 
     const frame = cursor.occurrences.find(row => row.occurrence_id === occurrenceId);
     const call = cursor.occurrences.find(row => row.occurrence_id === frame?.call_scope_id);
     const route = cursor.occurrences.find(row => row.occurrence_id === call?.parent_id);
-    if (frame?.node_id !== 'pr_pretriage_external_disposition' || !['session_pr_pretriage_route', 'correction_pr_pretriage_route'].includes(route?.node_id))
+    if (frame?.node_id !== 'pr_pretriage_external_disposition' || !['session_pr_pretriage_route', 'correction_pr_pretriage_route', 'retained_pr_external_route'].includes(route?.node_id))
       fail('STANDARD_PR_EXTERNAL_MERGE_DELIVERY_REQUIRED');
     const { wait, event, capture } = readPretriageEvent(instance, route.parent_id, cursor);
     const delivery = readPretriageDelivery({ record: instance, cursor }, wait);

@@ -1,5 +1,11 @@
 # 04 JSON Contracts
 
+Entry selection v13 adds the closed `retained_external_merge` variant. Its
+proof binds a settled review wait and the historical delivery; it supplies no
+review approval, merge consent or completion fact. Historical v1-v12 outputs
+remain readable. The recovered provider event and incident disposition use
+the existing v3 control inbox and pretriage external-merge contracts.
+
 `github-pr-review-event.v2` retains the exact visible Codex summary IssueComment,
 its body hash/chunks and original publication timestamps. It accepts only the
 versioned completed/no-findings result on the full current commit, from the

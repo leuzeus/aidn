@@ -1088,6 +1088,17 @@ Public integration input v2 is empty; the host selects the current accepted
 Human decision or this exact retained decision. Internal v1 effect plans retain
 the explicit decision identity and their ordinary grant/freshness checks.
 
+`retained_external_merge` is a bounded configuration entry for a PR already
+merged while an earlier retained-PR instance waited for review. It names a
+protected, hashed original configuration and its `update_operation_id`. The
+host verifies the settled five-operation prefix, original provider and Git
+context, canonical postimages, lineage and current two-parent merge. An
+unsettled owner, Native journal, reserved/delivered control, changed delivery
+or changed provider refuses admission. The new technical instance waits for
+a fresh provider event, then follows the existing external-merge incident
+disposition and R09 suffix. It does not replay delivery or establish nominal
+R08 review/merge qualification. Historical instances and receipts stay intact.
+
 `retained_session_pr_open` continues the exact settled five-operation prefix
 of a retained-integration instance through the existing opened PR. Supply the
 protected `original_configuration` path/hash and `open_operation_id`. Admission

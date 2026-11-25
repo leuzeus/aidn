@@ -4068,7 +4068,7 @@ the same provider comment cannot overwrite an earlier capture or alias its event
 The summary can predate a cold receiver. Its currentness is established by a
 fresh authenticated provider reread and exact revision equality, including
 reverification after content collection and on retained delivery. Publication
-times are never renewed. Review capture and verification each have a fixed
+times are never renewed. Review and external-merge capture and verification each have a fixed
 60-second aggregate I/O bound, including cancellation; other control claims
 retain the five-second bound. Existing transport, content-size, scope, CAS and
 business authorization checks remain. The summary alone grants no merge.
@@ -5851,3 +5851,24 @@ historical v1 and internal plans remain readable. Four deterministic opening
 operations move unchanged into a pinned call, keeping the root within 288 nodes.
 No canonical store, receipt migration, permission, Native renewal or complete
 qualification claim is introduced.
+
+### Retained external merge from a settled review wait
+
+Entry selection v13 permits `retained_external_merge` only from the settled
+five-operation retained-PR prefix: entry, record, checkpoint, update and content
+observation. Its fixed reader verifies the signed lineage, accepted integration
+decision, provider identity, original transport context, canonical postimages,
+local/remote delivery head and current two-parent merge. An outstanding effect
+owner, Native journal, control reservation or delivered event refuses admission.
+The original instance remains immutable. The successor records a new admission
+and captures a fresh external merge event, preserving the original delivery's
+timestamp and identity. It follows the existing pretriage incident disposition
+and R09 suffix; it establishes neither review approval nor nominal merge proof.
+
+The provider context used to verify the old push is the original context, whose
+identity includes its host instance. The successor provider must have the same
+manifest apart from that instance ID, and the same protected profile. This
+explicit comparison does not discard a changed transport hash in an old receipt.
+History is checked again after live provider awaits. No current business
+decision is inferred from historical routing facts. A fixed nested call keeps
+the root model within its existing limit.
