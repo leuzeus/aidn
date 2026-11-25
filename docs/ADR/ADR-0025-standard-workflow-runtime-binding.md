@@ -5953,3 +5953,20 @@ its retained choice as well as the original opening and fetch. This is a derived
 continuation proof, not a canonical store, implicit migration or new merge.
 The local pilot observation exception does not establish an authenticated
 product chat channel or a complete nominal P0 run.
+
+### R09 return and canonical discovery
+
+An installed recorded-decision continuation confirmed the local fast-forward
+and accepted R09 completion, then incorrectly entered ordinary session delivery.
+Entry selection v17 clears the work request for retained merge entries while
+keeping their explicit merge route. The full composed-return regression must
+reach the terminal without another integration, push, merge or Human decision.
+Historical v1-v16 entry outputs and original instances remain immutable.
+
+Independent completion discovery exceeded the 32 MiB worker limit because a
+path inventory transferred every artifact body. PostgreSQL and SQLite now
+provide a separate path-only read capability. It selects the same canonical
+scope, retains bounds and refuses unsupported inventory; it does not fall back
+to a projection, raise the byte limit or change full-content listing. A worker
+output-limit refusal stays distinct from backend unavailability. Existing
+accepted completion receipts can be verified without replaying their effects.

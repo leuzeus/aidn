@@ -303,4 +303,34 @@ for (const kind of ['ordinary_expired','recorded_revoked','recorded_valid']) awa
  assert.equal(gitPreparations,kind==='recorded_valid'?1:0);assert.equal(verifications,kind.startsWith('recorded_')?1:0);
 });
 
+for(const historical of [false,true]) await test('recorded R09 returns to '+(historical?'historical delivery refusal':'terminal without another delivery'),()=>{
+ const f=recordedDecisionBoundary(),q=postMergeDecisionQuestion(f.records.at(-1));
+ const p={...f.proof,original_instance_id:f.instance.instance_id,original_instance_sha256:H(f.instance),original_configuration_sha256:digest,lineage_sha256:digest,
+   inherited_proof_sha256:H(f.proof),recorded_decision_operation_id:f.entry.decision_operation_id,recorded_decision_receipt_sha256:H(f.records.at(-1).results[0].receipt),
+   recorded_question_sha256:H(q),recorded_decision_material_sha256:digest};
+ const params={...parameters,entry_point:f.entry};
+ let instance=createAgenticProcess({instanceId:'recorded-terminal',scopeId:'fixture',model,policyPins:agenticPolicyPins(model),parameters:params}),records=[];
+ const entryOutput=selectStandardEntry(params,null,retainedPostMergeDecisionContinuation(p));
+ assert.equal(entryOutput.facts.cycle_work_requested,false);assertStandardOperationOutput(entryOutput);
+ assert.throws(()=>assertStandardOperationOutput({...entryOutput,facts:{...entryOutput.facts,cycle_work_requested:true}}));
+ if(historical){entryOutput.contract_version='standard-workflow-entry-selection-output.v16';entryOutput.facts.cycle_work_requested=true;assertStandardOperationOutput(entryOutput);}
+ const outputs=[entryOutput,retainedMergeCaptureSelection(false,p.fetch_operation_id,p.recorded_decision_operation_id),
+   {effect_status:'confirmed',facts:{}},{effect_status:'no_effect',facts:{session_pr_post_merge_diverged:false}},
+   {effect_status:'no_effect',facts:{}}];
+ const expected=['workflow_entry_select','session_pr_retained_merge_select','session_pr_post_merge_fast_forward','session_pr_post_merge_measure','session_pr_post_merge_complete'];
+ for(let turns=0;turns<30;turns++){
+   const cursor=inspectAgenticProcess(instance);if(cursor.status==='COMPLETED')break;
+   const call=cursor.occurrences.find(r=>r.status==='WAITING'&&['call_entry','call_return'].includes(r.wait_reason));
+   if(call){const returning=call.wait_reason==='call_return';instance=advanceAgenticProcess(instance,{event_id:'call-'+instance.events.length,kind:returning?'call_return':'call_enter',occurrence_id:call.occurrence_id,
+     ...resolveProcessCallData({instance,cursor,occurrenceId:call.occurrence_id,returning,readOperation:id=>records.find(r=>r.operation_id===id)})});continue;}
+   const frame=cursor.occurrences.find(r=>r.occurrence_id===cursor.ready[0]),node=processFrameNode(instance.model,frame);
+   if(historical&&records.length===5){assert.equal(node.binding_ref,'session_branch_integrate');return;}
+   assert.equal(node.kind,'operation');assert.equal(node.binding_ref,expected[records.length]);
+   const result=accept(instance,node.binding_ref,records.length,outputs[records.length]);instance=result.instance;records.push(result.record);
+ }
+ assert.equal(historical,false,'the original route must expose the unwanted integration');
+ assert.equal(inspectAgenticProcess(instance).status,'COMPLETED');assert.equal(records.length,5);
+ assert(!instance.events.some(e=>['assign','control'].includes(e.kind)));
+});
+
 console.log(JSON.stringify({status:'PASS',checks,historical_live_source:'NOT_RUN',native_calls:0,p0:false}));

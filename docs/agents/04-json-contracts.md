@@ -1,5 +1,10 @@
 # 04 JSON Contracts
 
+Entry selection v17 keeps all earlier contracts readable and clears
+`cycle_work_requested` for the four retained external-merge/R09 entries. Their
+explicit merge route still runs, but returning from it must not enter the
+ordinary session delivery prefix or request integration again.
+
 Entry selection v14 adds `retained_external_merge_capture`. Its closed proof
 binds the original configuration, settled entry, expired reserved capture,
 reservation and inherited delivery. The local read-only selector reauthenticates

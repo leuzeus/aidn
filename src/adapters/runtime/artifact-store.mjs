@@ -231,6 +231,9 @@ function createMissingReadOnlyArtifactStore(sqliteFile) {
     listArtifacts() {
       return [];
     },
+    listArtifactPaths() {
+      return [];
+    },
     materializeArtifacts(options = {}) {
       if (options.dryRun !== true) {
         throw new Error("Artifact store is read-only; materialization requires an explicit write path");
@@ -463,6 +466,10 @@ export function createArtifactStore(options = {}) {
     listArtifacts(limit = 50) {
       const safeLimit = Math.max(1, Number(limit || 50));
       return listStmt.all(safeLimit).map((row) => mapArtifactRow(row));
+    },
+    listArtifactPaths(limit = 50) {
+      const safeLimit = Math.max(1, Math.min(10000, Math.floor(Number(limit) || 50)));
+      return db.prepare('SELECT path FROM v_materializable_artifacts ORDER BY path LIMIT ?').all(safeLimit).map(row => row.path);
     },
     materializeArtifacts(options = {}) {
       const targetRoot = path.resolve(process.cwd(), options.targetRoot ?? ".");

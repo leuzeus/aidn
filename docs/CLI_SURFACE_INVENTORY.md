@@ -1133,3 +1133,8 @@ It admits only an expired, receipted, unaccepted no-effect R09 fast-forward
 choice after the fixed source authenticates its Human evidence and identical
 current Git subject. Preview writes nothing. The successor's exact action and
 current executor grant remain necessary before the local fast-forward.
+
+Entry selection v17 ends retained external-merge/R09 work after its completion
+call; it does not request ordinary session integration a second time. Completion
+discovery inventories canonical paths without loading every stored body. This
+adds no CLI flag, historical receipt mutation or new fusion permission.

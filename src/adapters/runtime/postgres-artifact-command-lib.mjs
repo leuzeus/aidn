@@ -46,9 +46,9 @@ function artifactPaths(values, auditRoot) {
 export async function executePostgresArtifactCommand(client, scopes, action, options = {}) {
   if (action === 'compare-and-delete') assertArtifactCompareDeleteRequest(options);
   const writing = ['upsert', 'compare-and-swap', 'compare-and-delete', 'replace'].includes(action);
-  if (!['upsert', 'compare-and-swap', 'compare-and-delete', 'replace', 'get', 'get-many', 'list'].includes(action)) throw new Error('ARTIFACT_COMMAND_UNSUPPORTED');
+  if (!['upsert', 'compare-and-swap', 'compare-and-delete', 'replace', 'get', 'get-many', 'list', 'list-paths'].includes(action)) throw new Error('ARTIFACT_COMMAND_UNSUPPORTED');
   const paths = action === 'get-many' ? artifactPaths(options.paths, options.auditRoot) : null;
-  const artifactPath = action === 'list' || paths ? null
+  const artifactPath = ['list', 'list-paths'].includes(action) || paths ? null
     : validateArtifactPath(['upsert', 'compare-and-swap'].includes(action) ? options.artifact?.path : options.path, options.auditRoot);
   await client.query(writing ? 'BEGIN' : 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
   try {
@@ -73,7 +73,10 @@ export async function executePostgresArtifactCommand(client, scopes, action, opt
     // Keep the table -> scope lock order used by supervised run reservation.
     if (writing) await guardCanonicalMutation(client, scope);
     let result;
-    if (action === 'list') {
+    if (action === 'list-paths') {
+      const limit = Math.max(1, Math.min(10000, Math.floor(Number(options.limit) || 50)));
+      result = (await client.query('SELECT path FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 ORDER BY path LIMIT $2', [scope, limit])).rows.map(row => row.path);
+    } else if (action === 'list') {
       const limit = Math.max(1, Math.min(10000, Math.floor(Number(options.limit) || 50)));
       result = (await client.query('SELECT * FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 ORDER BY updated_at DESC, path LIMIT $2', [scope, limit])).rows.map(mapped);
     } else if (action === 'get') {
