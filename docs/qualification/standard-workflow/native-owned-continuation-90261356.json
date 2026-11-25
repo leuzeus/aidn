@@ -186,7 +186,7 @@
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "Continue R09 from the accepted external-merge incident disposition on the preserved delivery. Do not repeat the Human decision or private merge. Full frozen source, recovery and installed P0 remain separate.",
+  "next_required": "Freeze a final candidate and measure one uninterrupted nominal public source run through internal PR review, merge and synchronization, including the corrected process exit. Then qualify same-candidate recovery/refusals and installed full nominal. The targeted historical instance remains immutable with its post-R09 exit refusal; external merge, external checkout preparation and local-observer identity limit remain explicit P0 gaps.",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -317,7 +317,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-25T04:05:26.825Z",
+  "updated_at": "2026-11-25T04:42:39.399Z",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -2841,6 +2841,286 @@
       "session_branch_preserved": true,
       "canonical_session_and_instance_unchanged": true,
       "missing_workflow_step": "Source checkout is still an external preparation prerequisite; this does not qualify an uninterrupted full workflow."
+    },
+    "r09_fetch": {
+      "status": "PASS",
+      "accepted_effects": 1,
+      "physical_fetches": 1,
+      "alignment": {
+        "ahead": 0,
+        "behind": 2
+      },
+      "measurement_accepted": true,
+      "evidence_sha256": "f0673a6a032f2ef8af3ac58329b19bc65cef75deb6d87354485a0775c09dc3f4",
+      "first_following_refusal": "STANDARD_PR_POST_MERGE_COMPLETION_SOURCE_REQUIRED",
+      "owner_pending": false,
+      "original_history_unchanged": true
     }
+  },
+  "retained_post_merge_source_correction": {
+    "correction_pr": 243,
+    "status": "INSTALLED_R09_MEASUREMENT_PASS_DECISION_ACCEPTANCE_EXPIRED",
+    "head": "a1b16d4da264f52236596588bd3cb83a8931d850",
+    "scope": "Authenticate the retained original opening, accepted L1 Human disposition and confirmed fetch; resume at a new R09 measurement without repeated merge, disposition or fetch.",
+    "opening_lookup_prototype": {
+      "status": "PASS",
+      "evidence_sha256": "d4e49fccd766d252027627c25227b6d8df15b0081908a9fc22de51c0e62ed019",
+      "substitution_refused": true
+    },
+    "authenticated_source_prototype": {
+      "status": "PASS",
+      "evidence_sha256": "a9f00c8bb5a6a43dd4b13e08cfab2a51ae2cbea889182d2d5a5305a8dc74cde2",
+      "canonical_git_provider_writes": 0,
+      "native_calls": 0
+    },
+    "validation": {
+      "retained_boundary": 52,
+      "composition": 69,
+      "entry": 7,
+      "ordinary_real_git_r09_fast_forward_cold_recovery_and_admission": "PASS",
+      "docs_policies_sensitivity": "PASS",
+      "installed_retained_boundary": 52
+    },
+    "installed_continuation": "BLOCKED",
+    "post_merge_sync": "SKIP",
+    "manual_signatures": 0,
+    "new_native_calls": 0,
+    "candidate": "78ed00b265d093fe4f91adfaa1631123230e81f7",
+    "governance": {
+      "lane": "ASSURED",
+      "admission": "PASS",
+      "run": 45547503128,
+      "selected_families": 10,
+      "perf": "PASS",
+      "perf_run": 45547503028
+    },
+    "archive_sha256": "01672d843145c3ee1b96e15071ac753025d33fad8f637a18cf766d725c0878d1",
+    "model_revision": 502,
+    "entry": {
+      "status": "PASS",
+      "outcome": "completed",
+      "effect_status": "no_effect",
+      "repeated_disposition": false,
+      "repeated_fetch": false
+    },
+    "measurement": "PASS",
+    "question_recovery": {
+      "status": "PASS",
+      "effect_status": "no_effect",
+      "outcome": "deferred",
+      "reason": "expired_before_display"
+    },
+    "recorded_decision": {
+      "status": "RECEIPTED_UNACCEPTED",
+      "failure": "STANDARD_PR_POST_MERGE_DECISION_EXPIRED",
+      "failure_stage": "receipt acceptance",
+      "evidence_sha256": "224d5c31431401882ba94d4e999a0bb8aeac15cb8b477f706ddf1d9848bdfc11",
+      "choice": "fast_forward",
+      "manual_signatures": 0,
+      "physical_git_writes": 0
+    }
+  },
+  "retained_recorded_post_merge_decision_correction": {
+    "correction_pr": 244,
+    "head": "0be7c5ada7d9c97eaaaec33676c7e80c1d329373",
+    "status": "INSTALLED_R09_COMPLETE_PUBLIC_EXIT_REFUSED",
+    "scope": "Explicit successor authenticates the expired receipted/unaccepted Human choice and unchanged exact Git subject before separately granted fast-forward and ordinary R09 completion.",
+    "source_prototype": {
+      "status": "PASS",
+      "evidence_sha256": "b8fe7aca6f6ae26103a47291694bc3806e5c896bbddbdc39917d19857578cf8f",
+      "canonical_git_provider_writes": 0,
+      "native_calls": 0,
+      "substituted_decision_refused": true
+    },
+    "validation": {
+      "retained_boundaries_and_source_fences": 67,
+      "composition": 69,
+      "entry": 7,
+      "ordinary_real_git_r09_fast_forward_cold_recovery_and_admission": "PASS",
+      "docs_policies_sensitivity": "PASS",
+      "physical_merged_product_tests": {
+        "status": "PASS",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "governance": {
+      "lane": "ASSURED",
+      "local_route": "PASS",
+      "run": 45554719554,
+      "admission": "PASS",
+      "selected_families": 10,
+      "perf": "PASS",
+      "perf_run": 45554719582
+    },
+    "installed_continuation": "FAIL",
+    "post_merge_sync": "PASS",
+    "new_human_questions": 0,
+    "manual_signatures": 0,
+    "new_native_calls": 0,
+    "candidate": "171283555126501ff49d7adb10955cf2aea7bd82",
+    "archive_sha256": "4f845de25f9403d8c8878adf63009ddaac35fb2972156651f5adac6bfb49b713",
+    "model_revision": 504,
+    "model_sha256": "15744b73d837c9d06d8603a6606b533ca46183df196d0cbdb6a69365c8bc94b6",
+    "configuration_sha256": "fd47d374de6be952d02584fb3df6c8a41618eb1219a49930d7f9c35557dc2630",
+    "post_merge_sync_verifier_candidate": "105a300a6f52c8aaac6b34da39fba1adfe08b894",
+    "public_terminal": {
+      "status": "FAIL",
+      "reason": "STANDARD_SESSION_INTEGRATION_DECISION_REQUIRED",
+      "stage": "after accepted R09 completion and composed returns",
+      "instance_sha256": "0b60736c264619c3450ba8a42fcb2dd7460a6ae0b41c98a05fba92590c175590",
+      "evidence_sha256": "805c531b85447d6697363a36320c942c08bf7fb7e7a2835d3bcd5d464bea7635",
+      "historical_instance_unchanged": true
+    },
+    "original_independent_lookup": {
+      "status": "FAIL",
+      "reason": "ARTIFACT_POSTGRES_WORKER_UNAVAILABLE",
+      "worker_error": "ENOBUFS",
+      "limit_bytes": 33554432,
+      "evidence_sha256": "7c5d5bbe1881e4a365ac32a99e2e8fecbc7b5bd0cd5704670bfe4fe503fd2b4a"
+    },
+    "operations": [
+      {
+        "binding": "workflow_entry_select",
+        "operation_id": "op_1d888afc1faa2a100ef75b3907f16854dd971575",
+        "receipt_sha256": "a65293ddc2b7bb1cd9439d8ce47572c1800e2d153192cb560670a72048dbb6fc",
+        "output_sha256": "4832b838021dafae844b7f1edf231b2d858ee741184c21019d0ed174b1d7f730",
+        "effect_status": "no_effect",
+        "accepted": true
+      },
+      {
+        "binding": "session_pr_retained_merge_select",
+        "operation_id": "op_357e362325548f5a010fc3f1573dcd936020b8ec",
+        "receipt_sha256": "e216bf3e1997bf357f238e1a3e4a4804b130bf55294676bce36db1ba007ca54c",
+        "output_sha256": "7157e5184108b777b10818264ee42048bdcb76ff3351a269f6dd9cc236565772",
+        "effect_status": "no_effect",
+        "accepted": true
+      },
+      {
+        "binding": "session_pr_post_merge_fast_forward",
+        "operation_id": "op_9ae42b021eeff8bd0913f8ce563cff21b068a9ed",
+        "receipt_sha256": "72dd3ca016b390e3ffdf2e8ee5744b483d59c1d379ab3ae952c7a2ee5b36083e",
+        "output_sha256": "d317fb2ec6903f70047adc44288b5f194d30f4dcc6af51771f33fac923ee9cde",
+        "effect_status": "confirmed",
+        "accepted": true
+      },
+      {
+        "binding": "session_pr_post_merge_measure",
+        "operation_id": "op_52089f7c0837d3eb64fc87049699e53831158c16",
+        "receipt_sha256": "7480f3be6709f5f7e20c3c7797d0eacfbaa5c4e1a8a6dc954a554a1b9486c7a0",
+        "output_sha256": "b5bcfdedab30cdf3ef51e956f52a5a8f81ee8a0296ebf7b77f1b592417dccb97",
+        "effect_status": "no_effect",
+        "accepted": true
+      },
+      {
+        "binding": "session_pr_post_merge_complete",
+        "operation_id": "op_7a267c97d8289c5b1dc68536ed9a1d05bcf6aa6d",
+        "receipt_sha256": "01becdda8b8e97cab252a928d7ddc9359d8d96bbbc8d62e6817838db4b2637b7",
+        "output_sha256": "b6ee0d8d592d271657a3ed9b559c4a982f1f56a94754edb49fcdf9ecddd819e2",
+        "effect_status": "no_effect",
+        "accepted": true
+      }
+    ],
+    "physical_fast_forwards": 1,
+    "replayed_human_choices": 0,
+    "repeated_fetches": 0,
+    "repeated_merges": 0,
+    "original_native_journals_unchanged": true,
+    "timing": {
+      "scope": "Targeted installed deterministic R09 continuation through its historical exit refusal; not a full performance baseline",
+      "public_cli_calls": 29,
+      "public_cli_ms": 1474899,
+      "elapsed_between_first_and_last_cli_ms": 1643972,
+      "native_calls": 0,
+      "new_human_waits": 0
+    }
+  },
+  "retained_r09_completion_exit_correction": {
+    "correction_pr": 245,
+    "head": "ff64efab1e4dcd2df91c0f47f8a02f37c668e0ad",
+    "candidate": "105a300a6f52c8aaac6b34da39fba1adfe08b894",
+    "archive_sha256": "5e84399a2968eb65a813f2f435337d76b767df5e4eda09dc29d50e01d8444455",
+    "status": "INSTALLED_READ_ONLY_POST_MERGE_VERIFICATION_PASS",
+    "scope": "Correct retained route exit and canonical path inventory; verify existing R09 completion without replaying business effects",
+    "governance": {
+      "lane": "ASSURED",
+      "local_route": "PASS",
+      "admission": "PASS",
+      "run": 45560291126,
+      "selected_families": 10,
+      "perf": "PASS",
+      "perf_run": 45560291184
+    },
+    "validation": {
+      "retained_routes_and_refusals": {
+        "status": "PASS",
+        "checks": 69
+      },
+      "composed_return_to_terminal": "PASS_CONTROLLED_FIXTURE",
+      "historical_exit_refusal_reproduced": true,
+      "composition": {
+        "status": "PASS",
+        "checks": 69
+      },
+      "entry": {
+        "status": "PASS",
+        "checks": 7
+      },
+      "artifact_commands": {
+        "status": "PASS",
+        "checks": 59,
+        "scope": "actual SQLite and PostgreSQL double"
+      },
+      "artifact_delete_regression": {
+        "status": "PASS",
+        "checks": 42
+      },
+      "docs_policies_cli_sensitivity": "PASS"
+    },
+    "installed_observation": {
+      "status": "PASS",
+      "evidence_sha256": "ff87e3fd6f4bb1ea48ca79660bd05951676671b2171c0ac0120188e3e9ede071",
+      "execution_candidate": "171283555126501ff49d7adb10955cf2aea7bd82",
+      "execution_archive_sha256": "4f845de25f9403d8c8878adf63009ddaac35fb2972156651f5adac6bfb49b713",
+      "backend": "postgres",
+      "state_mode": "db-only",
+      "session_state": "CLOSED",
+      "cycle_state": "DONE",
+      "baseline": "v0.3",
+      "canonical_documents_unchanged": true,
+      "canonical_completion_lookup": "PASS",
+      "live_alignment": "PASS",
+      "local_remote_heads_equal": true,
+      "ahead": 0,
+      "behind": 0,
+      "git_clean": true,
+      "physical_fast_forwards": 1,
+      "product_sha256": "ed1fc8275ab99e7cd4e571b0419fbc2b57928bf93710b4d1da8709b956510c1a",
+      "completion_plan_sha256": "bf73fa795d9d95e24474f10fa53bec05330e616dd77f1a5fa8758dabf2513d9e",
+      "original_history_unchanged": true,
+      "original_unaccepted_decision_preserved": true,
+      "owner_pending": false
+    },
+    "native_calls": 0,
+    "new_human_questions": 0,
+    "manual_signatures": 0,
+    "repeated_fetches": 0,
+    "repeated_merges": 0,
+    "old_instance_terminal": false,
+    "full_nominal_same_candidate": "SKIP"
+  },
+  "latest_qualification_boundary": {
+    "status": "PASS",
+    "scope": "Physical and canonical post-merge synchronization independently verified; original technical exit refusal preserved",
+    "execution_candidate": "171283555126501ff49d7adb10955cf2aea7bd82",
+    "verification_candidate": "105a300a6f52c8aaac6b34da39fba1adfe08b894",
+    "session_closed": true,
+    "cycle_done": true,
+    "baseline": "v0.3",
+    "post_merge_complete": true,
+    "original_instance_terminal": false,
+    "corrected_terminal": "PASS_CONTROLLED_FIXTURE",
+    "full_nominal_same_candidate": false
   }
 }
