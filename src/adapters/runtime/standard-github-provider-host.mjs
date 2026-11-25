@@ -340,7 +340,8 @@ export function createStandardGithubProviderHost({ configuration, home, identity
         const current = await readEvent(input);
         if (!current || shadowHash(current) !== shadowHash(event)) fail("GITHUB_REVIEW_EVENT_CHANGED");
         return { outcome: "verified", current: true, authority_id: current.authority_id,
-          event_sha256: shadowHash(current), subject_sha256: shadowHash(current.actor) };
+          event_sha256: shadowHash(current), subject_sha256: shadowHash(current.actor),
+          ...(current.contract_version === 'github-pr-review-event.v2' ? { observed_at_ms: Date.now() } : {}) };
       },
     };
   }

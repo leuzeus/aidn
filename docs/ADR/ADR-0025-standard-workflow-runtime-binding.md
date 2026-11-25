@@ -4051,7 +4051,25 @@ The existing five-minute capture window is measured from submission.
 Each capture or verification groups its fixed read queries under one
 authenticated credential, with the checkout binding checked before and after
 the group. Profile, credential and executable checks still fence transport.
-The existing control authority timeout applies to the entire verification.
+Formal review events retain their five-minute submission admission window.
+The separate v2 Codex summary event accepts only a visible, versioned
+completed/no-findings IssueComment on the exact full head commit. Its configured
+Bot node ID and type are mandatory; the REST `[bot]` suffix is normalized only
+when comparing the Bot login to GraphQL. A prose receipt, abbreviated commit,
+pending result, code finding or nonempty security finding is not sufficient.
+An edited summary must also name that same Bot as its latest editor; missing
+edit metadata or a human edit of a bot-authored comment refuses.
+The original comment body and times are preserved in the signed payload, with
+no synthetic PullRequestReview or approval. This completion evidence reaches
+Native triage alongside the independently collected formal reviews and threads.
+
+The summary can predate a cold receiver. Its currentness is established by a
+fresh authenticated provider reread and exact revision equality, including
+reverification after content collection and on retained delivery. Publication
+times are never renewed. Review capture and verification each have a fixed
+60-second aggregate I/O bound, including cancellation; other control claims
+retain the five-second bound. Existing transport, content-size, scope, CAS and
+business authorization checks remain. The summary alone grants no merge.
 
 Reverification of a delivered capture uses the signed original subject and
 content. A merged PR requires a complete provider merge proof, the original

@@ -2220,6 +2220,12 @@ from the component model alone do not qualify the composed standard path.
 
 `node tools/perf/verify-standard-pr-review-control-fixtures.mjs` selects complete
 PR event/content capture on files, dual and db-only; `--mode=<mode>` selects one.
+It also exercises the Codex completed/no-findings summary event: exact Bot node
+identity across REST/GraphQL login spelling, full head/base/PR binding, complete
+body preservation, pending/finding/security/foreign/minimized refusals, older
+publication with a fresh authenticated reread, stale proof and same-head edits.
+An I/O read longer than five seconds and cancellation are checked separately;
+no result manufactures a formal review, approval or merge authorization.
 The actual canonical inbox, host/service, SQLite CAS and common reducer are used.
 Event authentication, accepted update authority and provider responses are fixture
 capabilities. Cases reject stale/foreign/current-revision/actor failures, preserve
