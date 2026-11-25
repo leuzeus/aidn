@@ -2666,5 +2666,67 @@
     "post_merge_sync": "SKIP",
     "full_same_candidate_P0": "SKIP",
     "next_step": "Repair the bounded external merge control capture and continue from the retained review wait; preserve the physical merge and accepted history without repeating either."
+  },
+  "retained_external_merge_capture": {
+    "status": "PARTIAL_RESERVED_CONTROL_DELIVERY_FAILED",
+    "candidate": "239bfa9178ac73362a015bdd9f037c29810e527d",
+    "archive_sha256": "a07592891867b6c660855951ab1f5314e11a489a6bb5579f52b1e4c1603c7878",
+    "configuration_sha256": "e72e16a6ff9a495ac71865c29e23a82711678eb960a223f466d78c6f98d7653c",
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "correction_pr": 240,
+    "merge_commit": "0f1852d3cefe6590a4adad961a88223115a9456b",
+    "entry": {
+      "status": "PASS",
+      "evidence_sha256": "597f63223c9ee72a1d2962261617f0768d19699b0c2d5f5c1fd14c15a15efffd",
+      "accepted_operations": 1,
+      "original_history_unchanged": true,
+      "product_unchanged": true,
+      "owner_pending": false
+    },
+    "control_preview": {
+      "status": "PASS",
+      "evidence_sha256": "f27d0667c4d345d433aab1a7ddd8a1a61b916c218d35de48b25eb46631dcf4d6"
+    },
+    "control_delivery": {
+      "status": "FAIL",
+      "reason": "PROCESS_CONTROL_AUTHORITY_TIMEOUT",
+      "elapsed_ms": 125420,
+      "evidence_sha256": "1bd51f8277308b3c79ecdcdc4a83d17d1cfcfa97e28e870be049548285c10db8",
+      "reservation_retained": true,
+      "capture_phase": "reserved",
+      "accepted_event": false,
+      "capture_evidence_sha256": "db2054e422c9a1b8a31a32b53fc8248ffad91be22ac9848c3020b743be91615c"
+    },
+    "read_only_diagnostic": {
+      "status": "PASS",
+      "elapsed_ms": 48072,
+      "history_reads": [
+        7913,
+        8352,
+        8421,
+        8132
+      ],
+      "provider_reads": [
+        5498,
+        5531
+      ],
+      "evidence_sha256": "ddee1d96b4095c3906848765680ee6f1de15091a1ba106b035cd0752d57fabb7",
+      "instance_and_reservation_unchanged": true
+    },
+    "cause": "The reducer wrapped provider re-verification in its separate five-second local authority deadline; increasing the inbox I/O deadline did not cover delivery.",
+    "regression": {
+      "previous_archive": "FAIL_PROCESS_CONTROL_AUTHORITY_TIMEOUT",
+      "corrected_host": "PASS",
+      "scope": "Full fixture delivery after provider verification exceeds five seconds; changed Git context still refuses delivery"
+    },
+    "native_calls": 0,
+    "new_human_questions": 0,
+    "manual_signatures": 0,
+    "physical_merge_repeated": false,
+    "nominal_workflow_merge": "SKIP",
+    "post_merge_sync": "SKIP",
+    "full_same_candidate_P0": "SKIP",
+    "next_step": "Deliver the bounded provider-verification handoff fix, then explicitly recover the retained expired capture. Do not delete or rewrite the reservation, fabricate its delivery, or repeat the physical merge."
   }
 }
