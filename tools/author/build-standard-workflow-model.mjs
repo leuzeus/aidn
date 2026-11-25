@@ -341,9 +341,24 @@ const pretriageTarget = { ...prReviewTarget, model_id: "aidn-standard-pr-pretria
     ...prReviewTarget.data_bindings.inputs.filter(row => row.node_id !== "pr_merge_basis" && postMerge.some(node => node.id === row.node_id)),
   ] } };
 const pretriageRef = pinTarget(pretriageTarget);
+const capturedPretriageTarget = { ...pretriageTarget, model_id: 'aidn-standard-pr-captured-merge-completion', revision: 1,
+  call_interface: { parameters: { update_operation_id: 'string', entry_operation_id: 'string' }, returns: {} },
+  data_bindings: { ...pretriageTarget.data_bindings, parameter_keys: ['update_operation_id', 'entry_operation_id'],
+    inputs: pretriageTarget.data_bindings.inputs.map(row => row.node_id === 'pr_pretriage_external_disposition'
+      ? { node_id: row.node_id, fields: { contract_version: { source: 'literal', value: 'standard-pr-external-merge-disposition-input.v3' },
+        entry_operation_id: { source: 'parameter', key: 'entry_operation_id', path: [] } } } : row) } };
+const capturedPretriageRef = pinTarget(capturedPretriageTarget);
 // Explicit recovery from an authenticated, settled external review wait.
 // This route neither repeats delivery nor fabricates review/merge consent.
 const retainedMergeNodeStart = nodes.length, retainedMergeInputStart = inputs.length;
+seq('retained_pr_merge_entry', ['retained_pr_merge_select', 'retained_pr_merge_kind']);
+op('retained_pr_merge_select', 'session_pr_retained_merge_select');
+xor('retained_pr_merge_kind', [['capture', 'retained_pr_captured_completion', 'retained_external_merge_capture_requested'],
+  ['wait', 'retained_external_merge', null]]);
+node('retained_pr_captured_completion', 'call', { target: capturedPretriageRef });
+inputs.push({ node_id: 'retained_pr_captured_completion', fields: {
+  update_operation_id: { source: 'parameter', key: 'update_operation_id', path: [] },
+  entry_operation_id: { source: 'parameter', key: 'entry_operation_id', path: [] } } });
 seq('retained_external_merge', ['retained_pr_merge_capture', 'retained_pr_merge_event_route', 'retained_pr_external_route']);
 node('retained_pr_merge_capture', 'call', { target: captureRef });
 inputs.push({ node_id: 'retained_pr_merge_capture', fields: {} });
@@ -354,12 +369,13 @@ node('retained_pr_external_completion', 'call', { target: pretriageRef });
 inputs.push({ node_id: 'retained_pr_external_completion', fields: { update_operation_id: { source: 'parameter', key: 'update_operation_id', path: [] } } });
 const retainedMergeNodes = nodes.splice(retainedMergeNodeStart);
 const retainedMergeTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-retained-external-merge', revision: 1,
-  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'retained_external_merge', nodes: retainedMergeNodes,
-  operation_pins: pinsFor(retainedMergeNodes), call_interface: { parameters: { update_operation_id: 'string' }, returns: {} },
-  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: ['update_operation_id'], inputs: inputs.splice(retainedMergeInputStart) } };
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'retained_pr_merge_entry', nodes: retainedMergeNodes,
+  operation_pins: pinsFor(retainedMergeNodes), call_interface: { parameters: { update_operation_id: 'string', entry_operation_id: 'string' }, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: ['update_operation_id', 'entry_operation_id'], inputs: inputs.splice(retainedMergeInputStart) } };
 const retainedMergeRef = pinTarget(retainedMergeTarget);
 node('retained_external_merge', 'call', { target: retainedMergeRef });
-inputs.push({ node_id: 'retained_external_merge', fields: { update_operation_id: { source: 'operation_output', node_id: 'entry_select', path: ['observations', 'continuation', 'update_operation_id'] } } });
+inputs.push({ node_id: 'retained_external_merge', fields: { update_operation_id: { source: 'operation_output', node_id: 'entry_select', path: ['observations', 'continuation', 'update_operation_id'] },
+  entry_operation_id: { source: 'operation_id', node_id: 'entry_select' } } });
 function callPretriage(id, update) {
   node(id, "call", { target: pretriageRef });
   inputs.push({ node_id: id, fields: operation(null, "update_operation_id", update) });
@@ -1044,6 +1060,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...prReviewRef, model: prReviewTarget },
     { ...pretriageRef, model: pretriageTarget },
     { ...retainedMergeRef, model: retainedMergeTarget },
+    { ...capturedPretriageRef, model: capturedPretriageTarget },
     { ...captureRef, model: captureTarget },
     { ...driftRecoveryRef, model: driftRecoveryTarget },
     { ...correctiveDriftRef, model: correctiveDriftTarget },
@@ -1098,7 +1115,8 @@ verifyStandardWorkflowComponentAssets({ catalog, model, specification, bindings,
 if (process.argv.some(arg => arg.startsWith("--") && arg !== "--write")) throw Error("STANDARD_AUTHORING_ARGUMENT_INVALID");
 if (process.argv.includes("--write")) {
   for (const [name, value] of [[modelPath, model], ["package/catalogs/standard-workflow.v1.json", catalog]])
-    fs.writeFileSync(new URL(name, root), JSON.stringify(value, null, 2) + "\n");
+    // Keep the expanded model inside the unchanged 256 KiB pinned-file limit.
+    fs.writeFileSync(new URL(name, root), JSON.stringify(value, null, name === modelPath ? 1 : 2) + "\n");
 }
 console.log(JSON.stringify({ source_authoring_only: true, write: process.argv.includes("--write"), model: modelPath, model_sha256: shadowHash(model), nodes: nodes.length, operations: catalog.bindings.length,
   standard_workflow_complete: false, author: fileURLToPath(import.meta.url) }));

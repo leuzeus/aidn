@@ -1088,6 +1088,16 @@ Public integration input v2 is empty; the host selects the current accepted
 Human decision or this exact retained decision. Internal v1 effect plans retain
 the explicit decision identity and their ordinary grant/freshness checks.
 
+`retained_external_merge_capture` names a protected, hashed
+`original_configuration` and a `capture_id`. It recovers only the settled
+one-entry predecessor with an expired, signed, reserved external-merge capture
+and its exact reservation. The host verifies the unchanged inherited delivery,
+provider identity, canonical postimages and current two-parent merge. Live,
+delivered, altered or foreign captures and unsettled owners refuse admission.
+The new technical instance references the original evidence without delivering
+or refreshing it, then asks the existing external-merge incident decision before
+the R09 suffix. It repeats neither the delivery nor the merge.
+
 `retained_external_merge` is a bounded configuration entry for a PR already
 merged while an earlier retained-PR instance waited for review. It names a
 protected, hashed original configuration and its `update_operation_id`. The

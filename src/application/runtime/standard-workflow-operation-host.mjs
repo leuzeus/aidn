@@ -709,6 +709,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
     readCheckpoint: (instance, input) => sessionPrSuccessor.readCheckpoint(instance, input), readCurrent: id => current(id).record,
     pushPort: sessionPushPort, pullRequestPort: sessionPullRequestPort }) : null;
   function readAcceptedPrUpdate(instance, id) {
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_external_merge_capture') {
+      const retained = processAuthority.readRetainedMergeCapture(instance);
+      if (id !== retained.update.record.operation_id) fail('STANDARD_PR_REVIEW_UPDATE_REQUIRED');
+      return retained.update;
+    }
     if (instance.initial_parameters?.entry_point?.kind === 'retained_external_merge') {
       const retained = processAuthority.readRetainedExternalMerge(instance);
       if (id !== retained.update.record.operation_id) fail('STANDARD_PR_REVIEW_UPDATE_REQUIRED');
@@ -767,6 +772,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   const { readPretriageDelivery, readPretriageEvent, readPretriage } = createPretriageMergeSource({
     readAcceptedUpdate: readAcceptedPrUpdate, readControl: id => controls.read(id),
     readRetainedDelivery: instance => processAuthority.readRetainedExternalMerge(instance).update,
+    readRetainedCapture: instance => processAuthority.readRetainedMergeCapture(instance),
   });
   const pretriageMerge = sessionReviewPort?.observePrMerge ? createPretriageMergeControl({ now, reviewPort: sessionReviewPort,
     readContext(request) {

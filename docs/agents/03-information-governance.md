@@ -1,5 +1,11 @@
 # 03 Information Governance
 
+Expired merge-capture continuation is derived process-journal evidence. The
+original signed capture and reservation remain reserved, with unchanged provider
+timestamps and no acknowledgement. A new entry binds their hashes after current
+provider and canonical-state revalidation. The existing Human disposition owns
+the decision to proceed to R09; this adds no canonical store or merge permission.
+
 Retained session closure uses the same derived journal evidence category. The
 old Human receipt remains unaccepted in its immutable technical instance; a new
 entry authenticates its exact question and current subject. The original start

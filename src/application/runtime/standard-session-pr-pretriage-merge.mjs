@@ -50,7 +50,7 @@ export function createPretriageMergeControl({ readContext, reviewPort, now }) {
 
 // The operation host and the independent R09 admission reader authenticate
 // the same accepted delivery and inbox event. Neither needs a triage receipt.
-export function createPretriageMergeSource({ readAcceptedUpdate, readControl, readRetainedDelivery }) {
+export function createPretriageMergeSource({ readAcceptedUpdate, readControl, readRetainedDelivery, readRetainedCapture }) {
   function reviewCaptureCall(cursor, wait) {
     return cursor.occurrences.find(row => row.occurrence_id === wait?.call_scope_id
       && ['session_pr_review_capture', 'correction_pr_review_capture', 'retained_pr_merge_capture'].includes(row.node_id));
@@ -93,6 +93,25 @@ export function createPretriageMergeSource({ readAcceptedUpdate, readControl, re
     const frame = cursor.occurrences.find(row => row.occurrence_id === occurrenceId);
     const call = cursor.occurrences.find(row => row.occurrence_id === frame?.call_scope_id);
     const route = cursor.occurrences.find(row => row.occurrence_id === call?.parent_id);
+    if (Object.hasOwn(input, 'entry_operation_id')) {
+      if (frame?.node_id !== 'pr_pretriage_external_disposition' || call?.node_id !== 'retained_pr_captured_completion'
+        || route?.node_id !== 'retained_pr_merge_kind' || !readRetainedCapture
+        || instance.events.some(row => row.kind === 'control' || row.kind === 'operation_intent'
+          && ['session_pr_update_push', 'session_pr_redelivery_push'].includes(row.intent.binding_ref)))
+        fail('STANDARD_PR_EXTERNAL_MERGE_DELIVERY_REQUIRED');
+      const retained = readRetainedCapture(instance), { capture, update, entry } = retained;
+      if (entry.record.operation_id !== input.entry_operation_id || capture.phase !== 'reserved') fail('STANDARD_PR_EXTERNAL_MERGE_DELIVERY_REQUIRED');
+      const delivery = { updateId: update.record.operation_id, pullRequest: update.output.observations.pull_request,
+        notBefore: update.record.preview.prepared.plan.prepared_at_ms,
+        sha256: shadowHash({ intent: update.record.intent, result: update.record.results.at(-1) }) };
+      if (capture.payload.update_operation_id !== delivery.updateId || capture.payload.source_sha256 !== delivery.sha256)
+        fail('STANDARD_PR_EXTERNAL_MERGE_DELIVERY_REQUIRED');
+      const merge_observation = assertExternalMergeControl(capture.payload, capture.source, capture.request);
+      return { delivery, subject: { update_operation_id: delivery.updateId, capture_id: capture.inbox_id,
+        capture_sha256: shadowHash(capture), capture_state: 'reserved', entry_operation_id: entry.record.operation_id,
+        entry_receipt_sha256: shadowHash(entry.record.results.at(-1).receipt), merge_observation,
+        incident: 'R08_PREMERGE_CONTROLS_UNESTABLISHED' } };
+    }
     if (frame?.node_id !== 'pr_pretriage_external_disposition' || !['session_pr_pretriage_route', 'correction_pr_pretriage_route', 'retained_pr_external_route'].includes(route?.node_id))
       fail('STANDARD_PR_EXTERNAL_MERGE_DELIVERY_REQUIRED');
     const { wait, event, capture } = readPretriageEvent(instance, route.parent_id, cursor);

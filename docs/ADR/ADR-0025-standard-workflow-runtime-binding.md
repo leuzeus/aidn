@@ -5886,3 +5886,24 @@ Concurrent calls cannot reuse another invocation's witness. Failed verification
 retains the reservation and delivers no event; a retained accepted event repairs
 acknowledgement without consulting the provider again. This change neither
 refreshes expired captures nor authorizes migration of a frozen instance.
+
+### Continuation from an expired reserved merge capture
+
+An explicit `retained_external_merge_capture` entry derives a new proof from a
+settled one-entry retained-merge predecessor. Its original signed reservation
+and capture must still match that waiting occurrence and remain reserved. The
+capture must have expired; live or already delivered evidence is not eligible.
+The fixed source authenticates the complete inherited delivery, provider binding
+and canonical postimages, observes the same current two-parent merge, and checks
+history and effect ownership again after provider reads.
+
+The successor records its own admission and a local routing selection. It does
+not consume the old reservation, alter timestamps, manufacture a control event
+or reissue a merge. Disposition question v3 names the historical reserved capture
+and the accepted successor entry receipt, before the existing R09 suffix. A new
+business disposition remains necessary; expired evidence alone grants nothing.
+This bounded route adds no general receipt migration or expiry exception.
+
+The published graph preserves root size and call fact isolation. A fixed call
+holds the captured-disposition suffix; its generated one-space JSON fits the
+unchanged 256 KiB file bound. Historical two-space assets remain readable.

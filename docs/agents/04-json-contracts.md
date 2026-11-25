@@ -1,5 +1,12 @@
 # 04 JSON Contracts
 
+Entry selection v14 adds `retained_external_merge_capture`. Its closed proof
+binds the original configuration, settled entry, expired reserved capture,
+reservation and inherited delivery. The local read-only selector reauthenticates
+the accepted entry before routing. Disposition input/question v3 identify that
+historical capture and the new entry receipt explicitly; they claim no delivered
+control event. Earlier entry and disposition contracts remain readable.
+
 Entry selection v13 adds the closed `retained_external_merge` variant. Its
 proof binds a settled review wait and the historical delivery; it supplies no
 review approval, merge consent or completion fact. Historical v1-v12 outputs

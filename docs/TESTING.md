@@ -8156,6 +8156,15 @@ bound. Pure boundary fixtures do not prove historical signature authentication
 or actual GitHub reconciliation; the live source prototype and installed
 public journey provide separate qualification evidence.
 
+The same suite covers v14 capture continuation: unchanged expired reservations,
+refusal of live/delivered/altered/foreign captures and unsettled prefixes, a
+separate authenticated routing selection, and the v3 Human question naming the
+historical reserved capture. No provider control event or merge is fabricated.
+Composition checks also keep the expanded model below the unchanged 256 KiB
+pinned-file limit; its generated JSON uses one-space indentation. The preserved
+predecessor fixture has its original one-entry shape. These deterministic cases
+do not establish successful installed R09 synchronization.
+
 `verify-standard-pr-review-control-fixtures.mjs --body-transfer-only` also
 exercises full delivery after provider verification takes more than five
 seconds. It proves one accepted event, retained acknowledgement without a second
