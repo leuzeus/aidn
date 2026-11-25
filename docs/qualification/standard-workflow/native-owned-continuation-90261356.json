@@ -2577,5 +2577,36 @@
         "configuration_change_applied": false
       }
     ]
+  },
+  "codex_review_summary_correction": {
+    "candidate": "276ce88ef4074a3e3ed00f6112a0f5952f082b16",
+    "correction_pr": 239,
+    "archive_sha256": "9da8d01a666c3434416e689bf6c940eefa20e4c558fe4ec4af46fb02fa553fcd",
+    "status": "PASS",
+    "scope": "Installed provider observation and authentication only; no workflow delivery",
+    "source_event_contract": "github-pr-review-event.v2",
+    "elapsed_ms": 13995,
+    "evidence_sha256": "6eb2a30a3188c48c70cd1f634dcccb543de9f4c38d559a3beff3889b08448e87",
+    "provider_verified": true,
+    "complete_body_retained": true,
+    "original_publication_time_retained": true,
+    "formal_review_fabricated": false,
+    "approval_established": false,
+    "merge_authorization": "not-established",
+    "native_calls": 0,
+    "manual_signatures": 0,
+    "original_instance_and_operations_unchanged": true,
+    "direct_resume_first_attempt": {
+      "status": "FAIL",
+      "candidate": "0ac4eb2ea71e58ad338dfcc3f32154e0d48a69de",
+      "reason": "STANDARD_HOST_AUTHORITY_CHANGED",
+      "written": false,
+      "evidence_sha256": "758b3e98af4afca519e509d154ace2c02d6322874bd22aa526b3af69a66d0348"
+    },
+    "cross_candidate_review_wait_continuation": "SKIP",
+    "workflow_delivery": "SKIP",
+    "native_triage": "SKIP",
+    "merge_and_sync": "SKIP",
+    "full_standard_workflow": false
   }
 }
