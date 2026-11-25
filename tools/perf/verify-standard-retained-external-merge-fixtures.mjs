@@ -19,6 +19,7 @@ import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
 import { assertRetainedMergeCaptureBoundary, assertRetainedMergeCaptureEntry, assertRetainedMergeCaptureProof, retainedMergeCaptureContinuation, retainedMergeCaptureSelection } from '../../src/core/workflow/standard-retained-merge-capture.mjs';
 import { controlReservationId, controlInboxId, controlDelivery } from '../../src/core/workflow/process-control-inbox.mjs';
 import { externalMergeQuestion } from '../../src/core/workflow/standard-pr-external-merge.mjs';
+import { assertRetainedPostMergeBoundary, assertRetainedPostMergeEntry, assertRetainedPostMergeProof, retainedPostMergeContinuation } from '../../src/core/workflow/standard-retained-post-merge.mjs';
 const model=JSON.parse(fs.readFileSync(new URL('../../package/catalogs/process-models/aidn-standard.v1.json',import.meta.url)));
 const digest='a'.repeat(64),updateId='op_'+'b'.repeat(40);
 const entry={kind:'retained_external_merge',original_configuration:{path:'/protected/original.json',sha256:digest},update_operation_id:updateId};
@@ -125,8 +126,8 @@ function capturedBoundary() {
  // Frozen predecessor shape: one root entry, then the review wait. This is not
  // a migration of a live model or its receipts.
  const historical=structuredClone(model),target=historical.call_targets.find(t=>t.model_id==='aidn-standard-retained-external-merge');
- historical.call_targets=historical.call_targets.filter(t=>t.model_id!=='aidn-standard-pr-captured-merge-completion');
- const added=new Set(['retained_pr_merge_entry','retained_pr_merge_select','retained_pr_merge_kind','retained_pr_captured_completion']);
+ historical.call_targets=historical.call_targets.filter(t=>!['aidn-standard-pr-captured-merge-completion','aidn-standard-retained-post-merge'].includes(t.model_id));
+ const added=new Set(['retained_pr_merge_entry','retained_pr_merge_select','retained_pr_merge_kind','retained_pr_captured_completion', 'retained_pr_post_merge']);
  target.model.entry='retained_external_merge';target.model.nodes=target.model.nodes.filter(n=>!added.has(n.id));
  delete target.model.operation_pins.session_pr_retained_merge_select;
  target.model.data_bindings.inputs=target.model.data_bindings.inputs.filter(n=>!added.has(n.node_id));
@@ -192,6 +193,55 @@ await test('capture recovery closed schemas reject invented authorization',()=>{
   'standard-retained-merge-capture-selection.v1','standard-pr-external-merge-disposition-input.v3','standard-pr-external-merge-disposition-question.v3']){
   const s=JSON.parse(fs.readFileSync(new URL('../../src/core/contracts/workflow-definition/'+name+'.schema.json',import.meta.url)));
   assert.deepEqual(validateJsonSchemaDefinition(s,'#',{contractKind:'workflow-definition'}),[]);
+ }
+});
+function postMergeBoundary() {
+ const f=capturedBoundary(),p={...proof,capture_id:f.capture.inbox_id,capture_sha256:H(f.capture),reservation_sha256:H(f.reservation)};
+ let instance=createAgenticProcess({instanceId:'post-owner',scopeId:'fixture',model,policyPins:agenticPolicyPins(model),parameters:{...parameters,entry_point:f.entry}});
+ const records=[];
+ const take=(binding,output,input={})=>{const next=accept(instance,binding,records.length,output);instance=next.instance;next.record.preview.input=input;records.push(next.record);};
+ take('workflow_entry_select',selectStandardEntry({...parameters,entry_point:f.entry},null,retainedMergeCaptureContinuation(p)));
+ instance=enter(instance,records);
+ take('session_pr_retained_merge_select',retainedMergeCaptureSelection(true));
+ instance=enter(instance,records);
+ const output=(observations={},facts={},effect_status='no_effect')=>({outcome:'completed',effect_status,observations,facts});
+ take('session_pr_external_merge_disposition',output({choice:'acknowledge_external_merge_for_r09',severity:'L1_LOW'}));
+ take('session_pr_merge_basis',output({merge_operation_id:records[2].operation_id},{session_pr_incident_tracking_required:false}));
+ take('session_pr_post_merge_fetch',output({}, {}, 'confirmed'),{merge_operation_id:records[2].operation_id});
+ take('session_pr_post_merge_measure',output({}, {session_pr_post_merge_diverged:true}),{fetch_operation_id:records[4].operation_id});
+ return structuredClone({instance,records,entry:{kind:'retained_post_merge',original_configuration:entry.original_configuration,fetch_operation_id:records[4].operation_id}});
+}
+await test('settled R09 prefix preserves accepted disposition and one physical fetch',()=>{
+ const f=postMergeBoundary(),before=H(f);assertRetainedPostMergeBoundary(f);assert.equal(H(f),before);
+});
+for(const[name,change]of Object.entries({unknown:f=>f.records[4].results[0].output.effect_status='unknown',
+ unaccepted:f=>f.instance.events.splice(f.instance.events.findIndex(r=>r.kind==='operation_result'&&r.receipt.operation_id===f.records[4].operation_id),1),
+ extra:f=>f.records.push(f.records[0]),retry:f=>f.records[4].results.push(f.records[4].results[0]),
+ foreign:f=>f.records[2].intent.instance_id='foreign',fetch:f=>f.entry.fetch_operation_id=updateId,
+ noDecision:f=>f.records[2].results[0].output.observations.choice='refused',majorIncident:f=>f.records[2].results[0].output.observations.severity='L2_MEDIUM',
+ reordered:f=>f.records.reverse(),dispatching:f=>f.records[4].phase='dispatching',wrongSource:f=>f.instance.initial_parameters.entry_point.kind='session'}))
+ await test('R09 prefix refuses '+name,()=>{const f=postMergeBoundary();change(f);assert.throws(()=>assertRetainedPostMergeBoundary(f));});
+await test('published R09 continuation starts with fresh measurement and no repeated fetch or question',()=>{
+ const f=postMergeBoundary(),p={...proof,opening_operation_id:'op_'+'c'.repeat(40),opening_receipt_sha256:digest,
+  disposition_operation_id:f.records[2].operation_id,decision_material_sha256:digest,fetch_operation_id:f.entry.fetch_operation_id,fetch_receipt_sha256:digest};
+ assertRetainedPostMergeEntry(f.entry);assertRetainedPostMergeProof(p);
+ const params={...parameters,entry_point:f.entry};
+ let instance=createAgenticProcess({instanceId:'r09-successor',scopeId:'fixture',model,policyPins:agenticPolicyPins(model),parameters:params});
+ const first=accept(instance,'workflow_entry_select',0,selectStandardEntry(params,null,retainedPostMergeContinuation(p)));
+ assertStandardOperationOutput(first.record.results[0].output);
+ instance=enter(first.instance,[first.record]);
+ const selection=accept(instance,'session_pr_retained_merge_select',1,retainedMergeCaptureSelection(false,f.entry.fetch_operation_id));
+ assertStandardOperationOutput(selection.record.results[0].output);
+ instance=enter(selection.instance,[first.record,selection.record]);
+ const cursor=inspectAgenticProcess(instance),frame=cursor.occurrences.find(r=>r.occurrence_id===cursor.ready[0]);
+ assert.equal(frame.node_id,'pr_post_merge_measure');
+ assert.equal(instance.events.filter(r=>r.kind==='operation_intent').length,2);
+ assert.equal(instance.events.some(r=>r.kind==='control'||r.kind==='assign'),false);
+ assert.throws(()=>assertRetainedPostMergeEntry({...f.entry,approved:true}));
+ for(const key of ['opening_receipt_sha256','decision_material_sha256','fetch_receipt_sha256']){const changed={...p};delete changed[key];assert.throws(()=>assertRetainedPostMergeProof(changed));}
+ for(const name of ['standard-retained-post-merge-entry.v1','standard-retained-post-merge-proof.v1','standard-workflow-entry-selection-output.v15','standard-retained-merge-capture-selection.v2']){
+  const schema=JSON.parse(fs.readFileSync(new URL('../../src/core/contracts/workflow-definition/'+name+'.schema.json',import.meta.url)));
+  assert.deepEqual(validateJsonSchemaDefinition(schema,'#',{contractKind:'workflow-definition'}),[]);
  }
 });
 console.log(JSON.stringify({status:'PASS',checks,historical_live_source:'NOT_RUN',native_calls:0,p0:false}));

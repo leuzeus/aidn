@@ -781,3 +781,12 @@ dispatch capsule remain intact. A later Git effect needs a new ordinary intent,
 a new current operation grant and the normal effect owner/fence. A running or
 returned capsule cannot use this pre-dispatch proof. Existing post-effect
 reconciliation still requires its exact committed Git witness.
+
+The retained_post_merge entry admits exactly a settled captured-merge prefix
+through its first measurement, before any R09 decision. It reauthenticates the
+accepted L1 Human disposition and retained fetch without dispatching either.
+The original provider port verifies its original Git witness; new alignment or
+fast-forward effects still require current successor grants. Measurement is
+fresh, and only the existing R09 strategy may advance a behind-only checkout.
+UNKNOWN, pending ownership, changed bindings, moved source or remote, a partial
+prefix and an L2 incident are refused by this bounded continuation.

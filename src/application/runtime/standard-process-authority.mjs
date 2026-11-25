@@ -2,6 +2,8 @@ import { createRetainedSessionIntegrationSource } from './standard-retained-sess
 import { createRetainedSessionPrOpenSource } from './standard-retained-session-pr-open-source.mjs';
 import { retainedMergeCaptureContinuation } from '../../core/workflow/standard-retained-merge-capture.mjs';
 import { createRetainedMergeCaptureSource } from './standard-retained-merge-capture-source.mjs';
+import { createRetainedPostMergeSource } from './standard-retained-post-merge-source.mjs';
+import { retainedPostMergeContinuation } from '../../core/workflow/standard-retained-post-merge.mjs';
 import { retainedExternalMergeContinuation } from '../../core/workflow/standard-retained-external-merge.mjs';
 import { createRetainedExternalMergeSource } from './standard-retained-external-merge-source.mjs';
 import { retainedSessionPrOpenContinuation } from '../../core/workflow/standard-retained-session-pr-open.mjs';
@@ -129,6 +131,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   const retainedSessionIntegrationSource = createRetainedSessionIntegrationSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedExternalMergeSource = createRetainedExternalMergeSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedMergeCaptureSource = createRetainedMergeCaptureSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedPostMergeSource = createRetainedPostMergeSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedSessionPrOpenSource = createRetainedSessionPrOpenSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedSessionClosureSource = createRetainedSessionClosureSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedPromotionSource = createRetainedPromotionSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
@@ -1533,6 +1536,36 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (shadowHash((await readRetainedSessionDelivery(instance)).proof) !== shadowHash(source.proof)) fail('STANDARD_SESSION_INTEGRATION_HISTORY_CHANGED');
     return history;
   }
+  async function retainedPostMergeEntry(instance, parameters, options) {
+    authenticate(instance);
+    const retained = await retainedPostMergeSource.inspect(parameters.entry_point, options);
+    if (retained.proof.session_id !== parameters.session?.session_id || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail('STANDARD_RETAINED_POST_MERGE_FOCUS_CHANGED');
+    return retainedPostMergeContinuation(retained.proof);
+  }
+  function readRetainedPostMerge(instance) {
+    authenticate(instance);
+    const entries = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+    if (instance.initial_parameters?.entry_point?.kind !== 'retained_post_merge' || entries.length !== 1) fail('STANDARD_RETAINED_POST_MERGE_ENTRY_REQUIRED');
+    const selected = acceptedOperation(instance, entries[0].intent.operation_id, 'workflow_entry_select');
+    const retained = retainedPostMergeSource.readRecorded(instance.initial_parameters.entry_point);
+    if (selected.output.observations.entry_point !== 'retained_post_merge'
+      || shadowHash(selected.output.observations.continuation) !== shadowHash(retainedPostMergeContinuation(retained.proof))
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_POST_MERGE_SOURCE_CHANGED');
+    return retained;
+  }
+  function postMergeReviewPort(fallback) {
+    if (instances.read(configuration.instance_id).record?.initial_parameters?.entry_point?.kind !== 'retained_post_merge') return fallback;
+    const names = ['prepareFastForward', 'applyFastForward', 'recoverFastForward', 'prepare', 'apply', 'recover',
+      'verifyCompletedSource', 'readMergedSession', 'observeAlignment'];
+    return { ...fallback, postMergeFetch: Object.fromEntries(names.map(name => [name, (...args) => {
+      const instance = instances.read(configuration.instance_id).record;
+      const port = instance?.initial_parameters?.entry_point?.kind === 'retained_post_merge'
+        ? readRetainedPostMerge(instance).reviewPort.postMergeFetch : fallback?.postMergeFetch;
+      if (typeof port?.[name] !== 'function') fail('STANDARD_PR_POST_MERGE_ALIGNMENT_HOST_REQUIRED');
+      return port[name](...args);
+    }])) };
+  }
   async function retainedMergeCaptureEntry(instance, parameters, options) {
     authenticate(instance);
     const retained = await retainedMergeCaptureSource.inspect(parameters.entry_point, options);
@@ -1825,6 +1858,6 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     readNativeActivity: readPreworkNativeActivity,
   });
   return Object.freeze({ profile: "standard-mixed.v1", rollbackProductScope, observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, authenticateOperationHost, inspectDiagnostic, observeNativeDiagnostic, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
-    verifyNativeHumanSource, admitNativeActivity, readRetainedSessionCycleHistory, retainedMergeCaptureEntry, readRetainedMergeCapture, retainedExternalMergeEntry, readRetainedExternalMerge, retainedSessionPrOpenEntry, readRetainedSessionPrOpen, retainedSessionIntegrationEntry, readRetainedSessionIntegration, retainedSessionDeliveryEntry, readRetainedSessionDelivery, retainedSessionCheckpointEntry, readRetainedSessionCheckpoint, retainedSessionClosureEntry, readRetainedSessionClosure, retainedAuditEntry, retainedClosureEntry, retainedCompletionEntry, readRetainedCompletion, retainedPromotionEntry, readRetainedPromotion, readRetainedObjectiveAlignment, readRecordedDriftEvaluation, readRetainedClosureDecision, readRecordedClosureDecision, readRecordedCycleAudit, readRecordedCycleValidation, inspectRetainedCycleAudit, retainedVerificationEntry, admitRetainedVerification, retainedValidationEntry, admitRetainedValidation, selectWorkPhase, observeRetainedTaskWork, retainedContributors,
+    verifyNativeHumanSource, admitNativeActivity, readRetainedSessionCycleHistory, retainedPostMergeEntry, readRetainedPostMerge, postMergeReviewPort, retainedMergeCaptureEntry, readRetainedMergeCapture, retainedExternalMergeEntry, readRetainedExternalMerge, retainedSessionPrOpenEntry, readRetainedSessionPrOpen, retainedSessionIntegrationEntry, readRetainedSessionIntegration, retainedSessionDeliveryEntry, readRetainedSessionDelivery, retainedSessionCheckpointEntry, readRetainedSessionCheckpoint, retainedSessionClosureEntry, readRetainedSessionClosure, retainedAuditEntry, retainedClosureEntry, retainedCompletionEntry, readRetainedCompletion, retainedPromotionEntry, readRetainedPromotion, readRetainedObjectiveAlignment, readRecordedDriftEvaluation, readRetainedClosureDecision, readRecordedClosureDecision, readRecordedCycleAudit, readRecordedCycleValidation, inspectRetainedCycleAudit, retainedVerificationEntry, admitRetainedVerification, retainedValidationEntry, admitRetainedValidation, selectWorkPhase, observeRetainedTaskWork, retainedContributors,
     selectOwnedCyclePlanning, selectCyclePrework, evaluateCyclePrework, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, inspectRetainedCycleTaskWork, readCycleValidationExecution, readCycleVerificationExecution, inspectRetainedCycleVerification, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, selectCycleExecutionSource, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCanonicalResumeProduct, observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

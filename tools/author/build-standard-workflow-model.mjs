@@ -348,13 +348,29 @@ const capturedPretriageTarget = { ...pretriageTarget, model_id: 'aidn-standard-p
       ? { node_id: row.node_id, fields: { contract_version: { source: 'literal', value: 'standard-pr-external-merge-disposition-input.v3' },
         entry_operation_id: { source: 'parameter', key: 'entry_operation_id', path: [] } } } : row) } };
 const capturedPretriageRef = pinTarget(capturedPretriageTarget);
+// Resume only the already fetched R09 suffix; disposition and fetch stay in
+// their authenticated original instance. A fresh measurement governs the next action.
+const retainedPostNodes = structuredClone(postMerge.slice(postMerge.findIndex(row => row.id === 'pr_post_merge_measure')));
+retainedPostNodes.unshift({ id: 'retained_post_merge', kind: 'sequence', participant_ref: 'project', children: ['pr_post_merge_measure', 'pr_post_merge_route'] });
+const retainedPostInputs = prReviewTarget.data_bindings.inputs.filter(row => retainedPostNodes.some(node => node.id === row.node_id))
+  .map(row => ['pr_post_merge_measure', 'pr_post_merge_alignment'].includes(row.node_id)
+    ? { ...row, fields: { ...row.fields, fetch_operation_id: { source: 'parameter', key: 'fetch_operation_id', path: [] } } } : row);
+const retainedPostTarget = { ...prReviewTarget, model_id: 'aidn-standard-retained-post-merge', revision: 1,
+  entry: 'retained_post_merge', nodes: retainedPostNodes, operation_pins: pinsFor(retainedPostNodes),
+  call_interface: { parameters: { fetch_operation_id: 'string' }, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: ['fetch_operation_id'], inputs: retainedPostInputs } };
+const retainedPostRef = pinTarget(retainedPostTarget);
 // Explicit recovery from an authenticated, settled external review wait.
 // This route neither repeats delivery nor fabricates review/merge consent.
 const retainedMergeNodeStart = nodes.length, retainedMergeInputStart = inputs.length;
 seq('retained_pr_merge_entry', ['retained_pr_merge_select', 'retained_pr_merge_kind']);
 op('retained_pr_merge_select', 'session_pr_retained_merge_select');
-xor('retained_pr_merge_kind', [['capture', 'retained_pr_captured_completion', 'retained_external_merge_capture_requested'],
+xor('retained_pr_merge_kind', [['post_merge', 'retained_pr_post_merge', 'retained_post_merge_requested'],
+  ['capture', 'retained_pr_captured_completion', 'retained_external_merge_capture_requested'],
   ['wait', 'retained_external_merge', null]]);
+node('retained_pr_post_merge', 'call', { target: retainedPostRef });
+inputs.push({ node_id: 'retained_pr_post_merge', fields: {
+  fetch_operation_id: { source: 'operation_output', node_id: 'retained_pr_merge_select', path: ['observations', 'fetch_operation_id'] } } });
 node('retained_pr_captured_completion', 'call', { target: capturedPretriageRef });
 inputs.push({ node_id: 'retained_pr_captured_completion', fields: {
   update_operation_id: { source: 'parameter', key: 'update_operation_id', path: [] },
@@ -1061,6 +1077,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...pretriageRef, model: pretriageTarget },
     { ...retainedMergeRef, model: retainedMergeTarget },
     { ...capturedPretriageRef, model: capturedPretriageTarget },
+    { ...retainedPostRef, model: retainedPostTarget },
     { ...captureRef, model: captureTarget },
     { ...driftRecoveryRef, model: driftRecoveryTarget },
     { ...correctiveDriftRef, model: correctiveDriftTarget },

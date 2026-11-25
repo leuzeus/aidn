@@ -53,6 +53,8 @@ export function createStandardOperationProvider({
 }) {
   function selectMergeCapture(state) {
     const instance = state.record, captured = instance.initial_parameters?.entry_point?.kind === 'retained_external_merge_capture';
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_post_merge')
+      return retainedMergeCaptureSelection(false, processAuthority.readRetainedPostMerge(instance).proof.fetch_operation_id);
     if (captured) processAuthority.readRetainedMergeCapture(instance);
     else processAuthority.readRetainedExternalMerge(instance);
     return retainedMergeCaptureSelection(captured);
@@ -64,6 +66,10 @@ export function createStandardOperationProvider({
     };
     assertCurrent();
     const point = standardEntryPoint(parameters);
+    if (point === 'retained_post_merge') {
+      const continuation = await processAuthority.retainedPostMergeEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
     if (point === 'retained_external_merge_capture') {
       const continuation = await processAuthority.retainedMergeCaptureEntry(instance, parameters); assertCurrent();
       return selectStandardEntry(parameters, null, continuation);

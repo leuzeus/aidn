@@ -855,12 +855,19 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   const sessionPrMergeEffect = createStandardPrMergeExecute({ ...acceptedReviewPorts, assertConsentFresh: assertMergeConsentFresh,
     observeMergeQualification: sessionPrConsent.observeForMerge,
     verifyFreshDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
-  const postMerge = createStandardSessionPrPostMergeFetch(acceptedReviewPorts);
+  const retainedPostMerge = instance => instance.initial_parameters?.entry_point?.kind === 'retained_post_merge'
+    ? processAuthority.readRetainedPostMerge(instance) : null;
+  const postMergePorts = { ...acceptedReviewPorts,
+    reviewPort: processAuthority?.postMergeReviewPort?.(sessionReviewPort) ?? sessionReviewPort,
+    readRetainedOpening: instance => retainedPostMerge(instance)?.opening ?? null,
+    readRetainedFetch: (instance, input) => retainedPostMerge(instance)?.alignmentSource(input) ?? null,
+    assertRetainedOrder: (instance, ids) => retainedPostMerge(instance)?.assertOrder(instance, ids) ?? false };
+  const postMerge = createStandardSessionPrPostMergeFetch(postMergePorts);
   const postMergeScope = () => postMergeProjectScope(targetRoot);
-  const postMergeDecision = createStandardPostMergeDecision({ ...acceptedReviewPorts, artifacts, postMerge, scopeSha: postMergeScope, now });
+  const postMergeDecision = createStandardPostMergeDecision({ ...postMergePorts, artifacts, postMerge, scopeSha: postMergeScope, now });
   const assertPostMergeDecisionFresh = (instance, record, signal) => postMergeDecision.assertFresh(
     instance, record.preview.input, record.preview.prepared, signal);
-  const postMergeCompletion = createStandardPostMergeCompletion({ ...acceptedReviewPorts, artifacts,
+  const postMergeCompletion = createStandardPostMergeCompletion({ ...postMergePorts, artifacts,
     readAlignmentSource: postMerge.alignmentSource, scopeSha: postMergeScope });
   const prIncidentEvidence = createStandardPrIncidentEvidence({ ...acceptedReviewPorts, artifacts,
     readAlignmentSource: postMerge.alignmentSource, scopeSha: postMergeScope, readHumanSource: record => human.captured(record).source });
@@ -875,7 +882,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
         .map(name => { const row = artifacts.read(name, { required: true }); return { path: name, sha256: row.sha256, metadata_sha256: artifacts.metadataHash(name) }; });
       return shadowHash({ observed, inventory });
     } });
-  const postMergeFastForward = createStandardPostMergeFastForward({ ...acceptedReviewPorts, postMerge, decision: postMergeDecision,
+  const postMergeFastForward = createStandardPostMergeFastForward({ ...postMergePorts, postMerge, decision: postMergeDecision,
     verifyDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
   const reviewEffects = new Map([
     [postMergeFastForwardOperation, postMergeFastForward],
