@@ -306,7 +306,7 @@
         "method": "windows-job-object",
         "active_processes": 0,
         "started_at": "2026-11-23T05:13:25.1585228Z",
-        "observed_at": "2026-11-23T05:15:57.0184950Z"
+        "observed_at": "2026-11-23T05:15:57.018495Z"
       }
     },
     "proposed_tasks": 1,
@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-24T19:34:06.995990+00:00",
+  "updated_at": "2026-11-24T14:34:06.99599-05:00",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -1952,7 +1952,7 @@
         "responses": 5,
         "bytes": 33902364
       },
-      "deadline": "2026-11-24T18:12:02.350Z"
+      "deadline": "2026-11-24T18:12:02.35Z"
     },
     "original_history_unchanged": true,
     "product_unchanged": true,
@@ -2607,6 +2607,20 @@
     "workflow_delivery": "SKIP",
     "native_triage": "SKIP",
     "merge_and_sync": "SKIP",
-    "full_standard_workflow": false
+    "full_standard_workflow": false,
+    "delivery": {
+      "composition_checks": 69,
+      "governance_admission": "PASS",
+      "focused_summary_checks": 29,
+      "perf_run": 45527092456,
+      "governance_run": 45527092462,
+      "db_only_capture_and_resume_checks": 43,
+      "generic_control_checks": 27,
+      "status": "MERGED",
+      "merge_commit": "6ca82305e52a56e9b07a4bccde607af3923e410a",
+      "perf_kpi": "PASS",
+      "governance_lane": "ASSURED",
+      "ordinary_github_host": "PASS"
+    }
   }
 }
