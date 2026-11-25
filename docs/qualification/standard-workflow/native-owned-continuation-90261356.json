@@ -306,7 +306,7 @@
         "method": "windows-job-object",
         "active_processes": 0,
         "started_at": "2026-11-23T05:13:25.1585228Z",
-        "observed_at": "2026-11-23T05:15:57.018495Z"
+        "observed_at": "2026-11-23T05:15:57.0184950Z"
       }
     },
     "proposed_tasks": 1,
@@ -316,7 +316,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-24T14:34:06.99599-05:00",
+  "updated_at": "2026-11-24T19:34:06.995990+00:00",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -1952,7 +1952,7 @@
         "responses": 5,
         "bytes": 33902364
       },
-      "deadline": "2026-11-24T18:12:02.35Z"
+      "deadline": "2026-11-24T18:12:02.350Z"
     },
     "original_history_unchanged": true,
     "product_unchanged": true,
