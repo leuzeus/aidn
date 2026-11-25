@@ -3784,6 +3784,13 @@ policies, scoped signed decisions and revocation. The operator-session
 fixture exercises one accepted message and cold receipt recovery under the
 installed policy. These checks use controlled local issuers.
 
+Run `npm run perf:verify-standard-windows-operator` for the Windows panel proof.
+It checks the exact plan and non-mutating public install preview on Windows,
+and uses a controlled credential for signature, scope, origin, user
+verification, replay and single delivery checks. A real Windows registration,
+one operator selection in Codex and a canonical runtime receipt are separate
+qualification evidence.
+
 The install idempotence fixture checks that a core install and reinstall
 preserve user ignore rules and add the private dispatch directory and exact
 local artifact fence path. On a disposable source-installed FILES project,

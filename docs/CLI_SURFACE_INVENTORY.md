@@ -230,7 +230,9 @@ Purpose:
 These are the durable surfaces exposed through `aidn` today:
 
 - `aidn install` with optional `--standard-authorization FILE` for an approved
-  STANDARD decision issuer policy
+  STANDARD decision issuer policy. `--standard-windows-operator-enrollment FILE`
+  previews a Windows authority plan with `--dry-run`. Applying that action
+  requires `--expect-windows-operator-plan SHA256` and Windows consent.
 - `aidn bootstrap`
 - `aidn build-release`
 - `aidn setup`

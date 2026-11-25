@@ -78,6 +78,43 @@ signature and current question. While the source is missing, recovery returns
 After acceptance, the same lookup reads the matching signed journal result and
 process receipt across restarts, even after the transport copy is removed.
 
+### Windows operator key and decision panel
+
+An administrator can enroll an operator on Windows through an explicit
+installation action. A trusted launcher prepares the public enrollment plan
+with the packaged `tools/runtime/standard-windows-decisions.mjs` helper.
+`--prepare-enrollment` takes the project root, Codex thread UUID, a local port
+and a file of question contracts and allowed choices. The plan also binds the
+resolved project and runtime scope and the current Windows account.
+
+```sh
+aidn install --target . --standard-windows-operator-enrollment windows-enrollment.json --dry-run
+aidn install --target . --standard-windows-operator-enrollment windows-enrollment.json --expect-windows-operator-plan SHA256
+```
+
+Use the SHA-256 printed by the preview. Windows asks for administrator consent
+to install the authority. The same Windows user enrolls the key through the
+platform authenticator. The installer obtains the public key from the native
+WebAuthn API and records it under an administrator-owned machine registry key.
+The workflow receives only public data. Reapplying the same enrollment reuses
+the key. A different scope, thread, account or set of choices requires a new
+administrator-approved enrollment. Enrollment supplies no business decision.
+
+Pin the returned authority digest in `windows_operator_authority_sha256` in
+the STANDARD execution request. The packaged helper starts the loopback panel
+with `--serve <project> <standard-configuration> <thread-uuid>`. The launcher
+opens its URL in the browser panel of that same Codex chat. The panel presents
+the exact pending subject and its authorized choices. The operator chooses
+once. Windows can request device verification for the selected action. The
+private key stays with the authenticator throughout the workflow.
+
+The workflow host verifies the assertion against the machine enrollment before
+publishing the answer and again at the operation boundary. The signed
+challenge covers the exact claim, profile, thread, question and source. The
+accepted receipt and its canonical journal entry support reopening the panel
+without another choice. The signature authenticates an approved panel action.
+The separate Codex message recovery path continues to verify message evidence.
+
 The experimental workflow console shares its read model and action service
 between the CLI and a local browser dashboard. It requires no dashboard install
 or PostgreSQL for human-only workflows. New workflows default to the structured

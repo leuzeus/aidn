@@ -1,5 +1,9 @@
 # Installation Guide
 
+For a Windows STANDARD pilot that uses an authenticated Codex decision panel,
+enroll the operator once during setup. The exact-plan enrollment is independent
+of the installed project assets. See [Windows operator enrollment](WORKFLOW_CONSOLE.md#windows-operator-key-and-decision-panel).
+
 ## Current installation: one engine per user
 
 The global model shipped in 0.10.0. Install one verified package under

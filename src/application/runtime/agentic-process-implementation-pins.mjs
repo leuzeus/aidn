@@ -89,6 +89,8 @@ const files = [
   "src/core/contracts/workflow-definition/process-reconciliation-inventory.v1.schema.json",
   "src/core/contracts/workflow-definition/process-owner-observation.v1.schema.json",
   "src/application/runtime/standard-workflow-entry.mjs", "src/application/runtime/standard-workflow-native-entry.mjs", "src/adapters/runtime/standard-host-authority.mjs",
+  "src/adapters/runtime/standard-windows-operator-authority.mjs", "src/core/contracts/workflow-definition/standard-windows-operator-authority.v1.schema.json",
+  "src/core/contracts/workflow-definition/standard-host-source.webauthn.v1.schema.json",
   "src/adapters/runtime/standard-github-provider-host.mjs",
   "src/adapters/runtime/standard-host-resource-source.mjs",
   "src/adapters/runtime/local-handoff-process-discovery.mjs",

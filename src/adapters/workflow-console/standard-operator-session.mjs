@@ -21,7 +21,8 @@ export function createStandardOperatorSession({ targetRoot, configuration, envir
   const request = readAgentRunFile(path.resolve(configuration)).value;
   const resolved = resolve(request).configuration;
   if (path.relative(agentRunPhysicalPath(targetRoot, { directory: true }), resolved.target_root) !== "") fail("OPERATOR_TARGET_CHANGED");
-  const authority = createStandardHostAuthority({ configuration: resolved, environment }, { useProvider: false });
+  const authority = createStandardHostAuthority({ configuration: resolved, environment,
+    windowsOperatorAuthoritySha256: request.windows_operator_authority_sha256 }, { useProvider: false });
   const chat = operatorChat && bindOperatorChat(operatorChat.thread_id, operatorChat.authority_id);
   const { identity } = readStandardHostInstance({ targetRoot: resolved.target_root, instanceId: resolved.instance_id, environment });
   const lastAnswer = path.join(authority.home, identity + ".operator-answer.json");
@@ -163,6 +164,7 @@ export function createStandardOperatorSession({ targetRoot, configuration, envir
     return receipt() ?? fail("OPERATOR_RECEIPT_PENDING");
   }
   return {
+    ...(request.windows_operator_authority_sha256 && { windowsOperatorPolicy: authority.windowsOperatorPolicy }),
     session: () => ({ instance: resolved.instance_id, principals: authority.humanPrincipals(), project_authorization: authority.projectAuthorization(),
       last_receipt: recordedReceipt(readAgentRunFile(lastAnswer, { optional: true })?.value) }),
     async question() {

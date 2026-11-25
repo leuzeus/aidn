@@ -29,6 +29,10 @@ The classification keeps automation from confusing output format with write perm
 - `install --standard-authorization FILE` uses the existing installation
   transaction to enroll the administrator-approved public keys in the protected
   project host home. Its dry run verifies the input and previews the digest.
+- `install --standard-windows-operator-enrollment FILE` previews with
+  `--dry-run` and requires `--expect-windows-operator-plan SHA256` to apply.
+  Windows elevation and the local authenticator authorize the isolated registry
+  write. This action leaves the checkout and canonical project state untouched.
 - Global management previews require `--write --expect-plan` for application.
   `setup` is an interactive executor whose confirmation dispatches the same
   exact-plan write operation; JSON output alone never authorizes it.

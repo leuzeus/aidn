@@ -12,6 +12,7 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { createStandardGithubProviderHost } from "./standard-github-provider-host.mjs";
 import { createStandardHostResourceSource } from "./standard-host-resource-source.mjs";
 import { readStandardProjectAuthorization } from "./standard-project-authorization-store.mjs";
+import { readStandardWindowsOperator, verifyWindowsPanelAnswer, windowsPanelSourceVersion } from "./standard-windows-operator-authority.mjs";
 import { signedCodexMessageReference } from "../workflow-console/codex-message-recovery.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
@@ -49,9 +50,10 @@ export function readStandardHostInstance({ targetRoot, instanceId, environment =
 
 // Host wiring, never a JSON-selected plugin/module. The private home is supplied
 // by the embedding process and must be outside every native writable root.
-// MAC keys authenticate journals; only independent Ed25519 principals can supply
-// human/control/renewal claims. Possessing a journal key grants no human role.
-export function createStandardHostAuthority({ configuration, environment = process.env }, { providerTransport, useProvider = true } = {}) {
+// MAC keys authenticate journals. Human, control and renewal claims require
+// their independently enrolled authority. A journal key grants no human role.
+export function createStandardHostAuthority({ configuration, environment = process.env, windowsOperatorAuthoritySha256 = null },
+  { providerTransport, useProvider = true, readWindowsEnrollment } = {}) {
   const home = standardHostHome(environment);
   for (const root of [configuration.target_root, configuration.control_root, configuration.review_root, configuration.native.home, ...configuration.native.tool_roots])
     if (inside(root, home) || inside(home, root)) fail("STANDARD_HOST_HOME_OVERLAP");
@@ -80,9 +82,14 @@ export function createStandardHostAuthority({ configuration, environment = proce
     return value;
   }
   const projectAuthorization = () => readStandardProjectAuthorization({ home, targetRoot: configuration.target_root, environment });
+  const windowsOperatorPolicy = () => windowsOperatorAuthoritySha256 === null ? null : readStandardWindowsOperator({
+    targetRoot: configuration.target_root, environment, expectedSha256: windowsOperatorAuthoritySha256,
+  }, { readEnrollment: readWindowsEnrollment });
   const authorizationView = state => state ? { revision: state.current?.revision ?? null, sha256: state.current_sha256 } : null;
   const trustSha = () => {
     const principals = registry();
+    const windows = windowsOperatorPolicy();
+    if (windows) return shadowHash({ principals, github: githubProvider?.contextSha ?? null, windows_operator: shadowHash(windows) });
     const installed = projectAuthorization();
     if (!installed) return shadowHash(githubProvider ? { principals, github: githubProvider.contextSha } : principals);
     return shadowHash({ principals, github: githubProvider?.contextSha ?? null,
@@ -95,17 +102,20 @@ export function createStandardHostAuthority({ configuration, environment = proce
     return verifyEnvelope(kind, sourceRef, subject, fresh, JSON.parse(bytes(file)));
   }
   function verifyEnvelope(kind, sourceRef, subject, fresh, envelope) {
-    if (!exact(envelope, ["contract_version", "kind", "authority_id", "source_ref", "subject_sha256", "payload", "issued_at_ms", "expires_at_ms", "signature"])
-      || envelope.contract_version !== "standard-host-source.v1" || envelope.kind !== kind || envelope.source_ref !== sourceRef
+    const windows = kind === "human" ? windowsOperatorPolicy() : null;
+    const metadata = ["contract_version", "kind", "authority_id", "source_ref", "subject_sha256", "payload", "issued_at_ms", "expires_at_ms"];
+    if (!exact(envelope, windows ? [...metadata, "nonce", "assertion"] : [...metadata, "signature"])
+      || envelope.contract_version !== (windows ? windowsPanelSourceVersion : "standard-host-source.v1") || envelope.kind !== kind || envelope.source_ref !== sourceRef
       || envelope.subject_sha256 !== shadowHash(subject) || !Number.isSafeInteger(envelope.issued_at_ms) || !Number.isSafeInteger(envelope.expires_at_ms)
       || envelope.expires_at_ms <= envelope.issued_at_ms
-      || fresh && (envelope.issued_at_ms > Date.now() || envelope.expires_at_ms <= Date.now())
-      || !/^[A-Za-z0-9+/]{86}==$/.test(envelope.signature ?? "")) fail("STANDARD_HOST_SOURCE_INVALID");
+      || fresh && (envelope.issued_at_ms > Date.now() || envelope.expires_at_ms <= Date.now())) fail("STANDARD_HOST_SOURCE_INVALID");
     if (kind === "human" && ["standard-pr-merge-consent-question.v1", postMergeQuestionVersion, externalMergeQuestionVersion].includes(subject.contract_version)
       && (envelope.issued_at_ms < subject.issued_at_ms || envelope.issued_at_ms >= subject.expires_at_ms
         || envelope.expires_at_ms < subject.expires_at_ms)) fail("STANDARD_HOST_SOURCE_INVALID");
     if (kind === "human" && subject.contract_version === mergeConsentQuestionVersion && envelope.issued_at_ms < subject.issued_at_ms)
       fail("STANDARD_HOST_SOURCE_INVALID");
+    if (windows) return verifyWindowsPanelAnswer(windows, envelope, subject);
+    if (!/^[A-Za-z0-9+/]{86}==$/.test(envelope.signature ?? "")) fail("STANDARD_HOST_SOURCE_INVALID");
     const installed = kind === "human" ? projectAuthorization() : null;
     const principal = installed
       ? installed.current?.principals.find(row => row.authority_id === envelope.authority_id)
@@ -200,9 +210,10 @@ export function createStandardHostAuthority({ configuration, environment = proce
       evidence_refs: [{ ref: 'standard:explicit-native-allocation-reconciliation', sha256: permit.action_sha256 }] };
     return { ...body, grant_sha256: createHmac('sha256', readKey()).update(shadowHash(body)).digest('hex') };
   }
-  return Object.freeze({ home, keyId, readKey, ensureKey, trustSha, githubProvider,
+  return Object.freeze({ home, keyId, readKey, ensureKey, trustSha, githubProvider, windowsOperatorPolicy,
     projectAuthorization: () => authorizationView(projectAuthorization()),
     humanPrincipals() {
+      if (windowsOperatorAuthoritySha256 !== null) return [];
       const installed = projectAuthorization();
       const humans = installed ? installed.current?.principals ?? [] : (registry()?.principals ?? []).filter(row => row.kinds.includes("human"));
       return humans

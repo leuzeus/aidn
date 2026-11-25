@@ -6015,3 +6015,26 @@ from the authenticated interface, as a signed exact claim submitted through the
 ordinary inbox. Revocation and replacement require another approved revision.
 Installation enrollment adds no business acceptance or automatic promotion,
 merge, model use, or other execution permission.
+
+### Windows platform operator authority
+
+A separate exact-plan installation action opens Windows elevation and creates
+an ES256 credential through the native platform WebAuthn API. The plan names
+the Windows user, resolved project and runtime scope, Codex thread, loopback
+origin and permitted question and choice pairs. Windows protects the private
+key. The elevated installer publishes the matching public authority under an
+administrator-owned machine registry key. Installation validates the exact
+plan and reuses an identical already-enrolled authority.
+
+An opted-in STANDARD request pins that public authority's digest. The fixed
+host reads it from the machine registry when it verifies a human source. It
+checks a top-level WebAuthn assertion with user presence and user verification
+against the enrolled key. The challenge covers the full human claim, exact
+question, source reference, random nonce and pinned authority. Evidence refers
+to the panel action in the bound chat. A missing or replaced authority refuses
+the request. Existing host-source and Codex message recovery contracts remain
+readable under their respective authority paths.
+
+The panel publishes a verified answer through the existing protected inbox.
+The canonical operation and process journals remain the receipt authority.
+Enrollment and an accepted business decision grant no Native execution budget.

@@ -7,6 +7,7 @@
   "properties": {
     "contract_version": { "const": "standard-workflow-execution.v1" },
     "parameters": { "type": "object" },
+    "windows_operator_authority_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "validation_profile": {
       "type": "object", "additionalProperties": false, "required": ["path", "sha256"],
       "properties": { "path": { "type": "string" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } }
