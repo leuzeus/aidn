@@ -1,3 +1,5 @@
+import { retainedVerificationAdmit } from "../../core/workflow/standard-retained-verification.mjs";
+import { retainedMergeCaptureSelection } from '../../core/workflow/standard-retained-merge-capture.mjs';
 import { standardOperationReliability } from "../workflow/installed-operation-reliability.mjs";
 import { prIncidentCloseOperation } from "../../core/workflow/standard-pr-incident-close.mjs";
 import { handoffResourceOperation } from "../../core/workflow/standard-handoff-resource-operation.mjs";
@@ -18,6 +20,9 @@ import { cycleEntrySelectedFocusOperation } from "../../core/workflow/standard-c
 import { cycleEntryFocusCheckpointOperation } from "../../core/workflow/standard-cycle-entry-focus-checkpoint.mjs";
 import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation, ownedCanonicalCycleResumeAdmitOperation } from "../../core/workflow/standard-canonical-cycle-resume.mjs";
 import { cycleExecutionSourceSelectOperation } from "../../core/workflow/standard-cycle-source-selection.mjs";
+import { ownedCyclePlanningSelectOperation } from "../../core/workflow/standard-owned-cycle-planning.mjs";
+import { workflowEntrySelectOperation, standardEntryPoint, selectStandardEntry } from "../../core/workflow/standard-workflow-entry-selection.mjs";
+import { retainedValidationAdmit, retainedTaskWork, workPhaseSelect } from "../../core/workflow/standard-retained-validation.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { operationJournalId } from "../../core/workflow/process-operation-journal.mjs";
 import { assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
@@ -44,9 +49,75 @@ export function createStandardOperationProvider({
     sessionPrMergeEffect, sessionPrOpen, sessionPrPremerge, sessionPrRecord, sessionPrRedeliveryPush,
     sessionPrReply, sessionPrResolution, sessionPrReview, sessionPrReviewContent,
     sessionPrReviewReceiver, sessionPrUpdatePush, sessionPrecloseCheckpoint, sessionPush, snapshot,
-    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent,
+    spike, terminalCheckpoint, verifyGrant, verifyGrantCurrent, entryContinuation, retainedClosureEntry, retainedCompletionEntry, prepareCycleCloseRecord, prepareSessionCloseRecord, prepareSessionCloseHook, prepareSessionDeliveryCheckpoint, prepareSessionBranchIntegration, prepareSessionPrRecord, retainedSessionPrOpenEntry, retainedSessionIntegrationEntry,
 }) {
+  function selectMergeCapture(state) {
+    const instance = state.record, captured = instance.initial_parameters?.entry_point?.kind === 'retained_external_merge_capture';
+    if (['retained_post_merge','retained_post_merge_decision'].includes(instance.initial_parameters?.entry_point?.kind))
+      { const { proof } = processAuthority.readRetainedPostMerge(instance); return retainedMergeCaptureSelection(false, proof.fetch_operation_id, proof.recorded_decision_operation_id ?? null); }
+    if (captured) processAuthority.readRetainedMergeCapture(instance);
+    else processAuthority.readRetainedExternalMerge(instance);
+    return retainedMergeCaptureSelection(captured);
+  }
+  async function selectEntry(state) {
+    const instance = state.record, parameters = instance.initial_parameters ?? {};
+    const assertCurrent = () => {
+      if (current(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail("STANDARD_ENTRY_PROCESS_CHANGED");
+    };
+    assertCurrent();
+    const point = standardEntryPoint(parameters);
+    if (['retained_post_merge','retained_post_merge_decision'].includes(point)) {
+      const continuation = await processAuthority.retainedPostMergeEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
+    if (point === 'retained_external_merge_capture') {
+      const continuation = await processAuthority.retainedMergeCaptureEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
+    if (point === 'retained_external_merge') {
+      const continuation = await processAuthority.retainedExternalMergeEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
+    if (point === 'retained_session_pr_open') {
+      const continuation = await retainedSessionPrOpenEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
+    if (point === 'retained_session_integration') {
+      const continuation = await retainedSessionIntegrationEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
+    if (point === 'retained_session_delivery') {
+      const continuation = await processAuthority.retainedSessionDeliveryEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
+    if (point === 'retained_session_checkpoint') {
+      const continuation = await processAuthority.retainedSessionCheckpointEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
+    if (point === 'retained_session_closure') {
+      const continuation = await processAuthority.retainedSessionClosureEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
+    if (['retained_completion', 'retained_promotion'].includes(point)) {
+      const continuation = await retainedCompletionEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
+    const admission = point !== "session"
+      ? await operations.admitCycleEntry({ contract_version: "standard-cycle-entry-input.v1", session_id: parameters.session?.session_id, cycle_id: null }) : null;
+    assertCurrent();
+    const continuation = admission?.outcome === "completed" && admission.facts.cycle_entry_resume_allowed
+      ? await (point === "retained_closure" ? retainedClosureEntry(instance, parameters, admission) : point === "retained_audit" ? processAuthority.retainedAuditEntry(instance, parameters, admission) : point === "retained_verification" ? processAuthority.retainedVerificationEntry(instance, parameters, admission) : point === "retained_validation" ? processAuthority.retainedValidationEntry(instance, parameters, admission)
+        : entryContinuation?.(instance, parameters, admission) ?? fail("STANDARD_ENTRY_CONTINUATION_AUTHORITY_REQUIRED")) : null;
+    assertCurrent();
+    return selectStandardEntry(parameters, admission, continuation);
+  }
   const previews = new Map([
+    [retainedVerificationAdmit, async ({ state }) => processAuthority.admitRetainedVerification(state.record)],
+    [retainedValidationAdmit, async ({ state }) => processAuthority.admitRetainedValidation(state.record)],
+    [workPhaseSelect, async ({ state }) => processAuthority.selectWorkPhase(state.record)],
+    [retainedTaskWork, async ({ state, input }) => processAuthority.observeRetainedTaskWork(state.record, input)],
+    [workflowEntrySelectOperation, async ({ state }) => selectEntry(state)],
+    ['session_pr_retained_merge_select', async ({ state }) => selectMergeCapture(state)],
     ["baseline_promotion_checkpoint", async ({ state, input, occurrenceId }) => {
       return await baselinePromotionCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PROMOTION_CHECKPOINT_AUTHORITY_REQUIRED");
     }],
@@ -89,6 +160,9 @@ export function createStandardOperationProvider({
     [ownedCanonicalCycleResumeAdmitOperation, async ({ state, input, occurrenceId }) => {
       return await ownedResumeAdmission?.(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_OWNED_RESUME_AUTHORITY_REQUIRED");
     }],
+    [ownedCyclePlanningSelectOperation, async ({ state, input }) => {
+      return await processAuthority?.selectOwnedCyclePlanning?.(state.record, input) ?? fail("STANDARD_OWNED_PLANNING_AUTHORITY_REQUIRED");
+    }],
     [canonicalCycleResumeObserveOperation, async ({ state, input }) => {
       return await processAuthority?.observeCanonicalResumeProduct?.(state.record, input) ?? fail("STANDARD_CANONICAL_RESUME_PRODUCT_AUTHORITY_REQUIRED");
     }],
@@ -120,7 +194,7 @@ export function createStandardOperationProvider({
       return await rollback?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");
     }],
     ["session_close_finalize", async ({ state, input, occurrenceId }) => {
-      return await sessionCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED");
+      return await prepareSessionCloseHook?.(state.record, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED");
     }],
     ["session_pr_checkpoint", async ({ state, input, occurrenceId }) => {
       return await sessionPrCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED");
@@ -226,7 +300,8 @@ export function createStandardOperationProvider({
       return await sessionPrReview?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED");
     }],
     ["session_pr_record", async ({ state, input }) => {
-      return await sessionPrRecord?.prepare(state.record, input) ?? fail("STANDARD_PR_RECORD_AUTHORITY_REQUIRED");
+      if (!input || Object.keys(input).length !== 0) fail("STANDARD_OPERATION_INPUT_INVALID");
+      return await prepareSessionPrRecord?.(state.record) ?? fail("STANDARD_PR_RECORD_AUTHORITY_REQUIRED");
     }],
     ["session_pr_open", async ({ state, input, occurrenceId }) => {
       return await sessionPrOpen?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_PR_OPEN_TRANSPORT_REQUIRED");
@@ -241,10 +316,11 @@ export function createStandardOperationProvider({
       return await sessionBranchIntegration?.prepareDecision(state.record, input) ?? fail("STANDARD_SESSION_INTEGRATION_AUTHORITY_REQUIRED");
     }],
     ["session_branch_integrate", async ({ state, input, occurrenceId }) => {
-      return await sessionBranchIntegration?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_INTEGRATION_AUTHORITY_REQUIRED");
+      if (!input || Object.keys(input).length !== 0) fail("STANDARD_OPERATION_INPUT_INVALID");
+      return await prepareSessionBranchIntegration?.(state.record, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_INTEGRATION_AUTHORITY_REQUIRED");
     }],
     ["session_delivery_checkpoint", async ({ state, input, occurrenceId }) => {
-      return await sessionDeliveryCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_DELIVERY_AUTHORITY_REQUIRED");
+      return await prepareSessionDeliveryCheckpoint?.(state.record, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_DELIVERY_AUTHORITY_REQUIRED");
     }],
     ["session_preclose_checkpoint", async ({ state, input, occurrenceId }) => {
       return await sessionPrecloseCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_PRECLOSE_CHECKPOINT_AUTHORITY_REQUIRED");
@@ -253,7 +329,7 @@ export function createStandardOperationProvider({
       return await sessionCloseCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CHECKPOINT_AUTHORITY_REQUIRED");
     }],
     ["session_close_record", async ({ state, input }) => {
-      return await sessionCloseRecord?.prepare(state.record, input) ?? fail("STANDARD_SESSION_CLOSE_AUTHORITY_REQUIRED");
+      return await prepareSessionCloseRecord(state.record);
     }],
     ["session_closure_decision", async ({ state, input }) => {
       return await sessionClosureReview?.prepare(state.record, input) ?? fail("STANDARD_SESSION_CLOSURE_AUTHORITY_REQUIRED");
@@ -273,8 +349,8 @@ export function createStandardOperationProvider({
     ["cycle_close_finalize", async ({ state, input, occurrenceId }) => {
       return await cycleCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CYCLE_CLOSE_HOOK_AUTHORITY_REQUIRED");
     }],
-    ["cycle_close_record", async ({ state, input }) => {
-      return await cycleCloseRecord?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_CLOSE_AUTHORITY_REQUIRED");
+    ["cycle_close_record", async ({ state }) => {
+      return await prepareCycleCloseRecord?.(state.record) ?? fail("STANDARD_CYCLE_CLOSE_AUTHORITY_REQUIRED");
     }],
     ["cycle_closure_decision", async ({ state, input, occurrenceId }) => {
       return await closureReview?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CLOSURE_AUDIT_AUTHORITY_REQUIRED");
@@ -354,6 +430,12 @@ export function createStandardOperationProvider({
     }],
   ]);
   const observations = new Map([
+    [retainedVerificationAdmit, async ({ state }) => processAuthority.admitRetainedVerification(state.record)],
+    [retainedValidationAdmit, async ({ state }) => processAuthority.admitRetainedValidation(state.record)],
+    [workPhaseSelect, async ({ state }) => processAuthority.selectWorkPhase(state.record)],
+    [retainedTaskWork, async ({ state, record }) => processAuthority.observeRetainedTaskWork(state.record, record.preview.input)],
+    [workflowEntrySelectOperation, async ({ state }) => selectEntry(state)],
+    ['session_pr_retained_merge_select', async ({ state }) => selectMergeCapture(state)],
     [handoffResourceOperation, async ({ resourceCapture }) => {
       return resourceCapture.output;
     }],
@@ -632,6 +714,9 @@ export function createStandardOperationProvider({
     }],
     [ownedCanonicalCycleResumeAdmitOperation, async ({ state, record }) => {
       return await ownedResumeAdmission?.(state.record, record.preview.input, record.operation_id) ?? fail("STANDARD_OWNED_RESUME_AUTHORITY_REQUIRED");
+    }],
+    [ownedCyclePlanningSelectOperation, async ({ state, record }) => {
+      return await processAuthority?.selectOwnedCyclePlanning?.(state.record, record.preview.input) ?? fail("STANDARD_OWNED_PLANNING_AUTHORITY_REQUIRED");
     }],
     [canonicalCycleResumeObserveOperation, async ({ state, record }) => {
       return await processAuthority?.observeCanonicalResumeProduct?.(state.record, record.preview.input) ?? fail("STANDARD_CANONICAL_RESUME_PRODUCT_AUTHORITY_REQUIRED");

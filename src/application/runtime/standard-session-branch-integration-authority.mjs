@@ -7,7 +7,7 @@ const fail = code => { throw Object.assign(Error(code), { code }); };
 const fields = row => analyzeStructuredArtifact(row.content).key_values;
 // These capabilities authenticate the retained host journals and final R07
 // physical event; no caller-supplied CLOSED/DONE/synced marker is accepted.
-export function createStandardSessionBranchIntegrationAuthority({ targetRoot, readAcceptedOperation, readDeliverySource }) {
+export function createStandardSessionBranchIntegrationAuthority({ targetRoot, readAcceptedOperation, readDeliverySource, readRetainedCycle = null }) {
   if (![readAcceptedOperation, readDeliverySource].every(fn => typeof fn === 'function')) fail('STANDARD_SESSION_INTEGRATION_AUTHORITY_REQUIRED');
   const artifacts = createStandardWorkflowArtifacts({ targetRoot });
   return Object.freeze({ async readSource(instance, input) {
@@ -19,16 +19,25 @@ export function createStandardSessionBranchIntegrationAuthority({ targetRoot, re
       fail('STANDARD_SESSION_INTEGRATION_DELIVERY_REQUIRED');
     const final = await readDeliverySource(instance, deliveryPlan.input);
     if (deliveryPlan.source_sha256 !== shadowHash(final)) fail('STANDARD_SESSION_INTEGRATION_DELIVERY_CHANGED');
-    const closed = readAcceptedOperation(instance, input.closure_operation_id, 'cycle_close_finalize');
+    if (readRetainedCycle !== null && typeof readRetainedCycle !== 'function') fail('STANDARD_SESSION_INTEGRATION_AUTHORITY_REQUIRED');
+    const historical = readRetainedCycle === null ? null : await readRetainedCycle(instance, input);
+    const closed = historical?.closed ?? readAcceptedOperation(instance, input.closure_operation_id, 'cycle_close_finalize');
+    if (closed.record.operation_id !== input.closure_operation_id) fail('STANDARD_SESSION_INTEGRATION_RETAINED_CLOSURE_REQUIRED');
     const closePlan = closed.record.preview.prepared.plan, closeOutput = closed.output;
     if (closeOutput.effect_status !== 'confirmed' || closeOutput.facts.cycle_close_completed !== true
       || closeOutput.observations.target_state !== 'DONE' || closePlan.scope.session_id !== final.session_id || closePlan.scope.branch !== final.branch)
       fail('STANDARD_SESSION_INTEGRATION_RETAINED_CLOSURE_REQUIRED');
-    const terminal = readAcceptedOperation(instance, closePlan.input.closure_operation_id, 'cycle_close_record');
-    const terminalPlan = terminal.record.preview.prepared.plan;
-    const decision = readAcceptedOperation(instance, terminalPlan.input.decision_operation_id, 'cycle_closure_decision');
+    const terminal = historical ? { output: historical.terminal.output }
+      : readAcceptedOperation(instance, closePlan.input.closure_operation_id, 'cycle_close_record');
+    const terminalPlan = historical?.terminal.plan ?? terminal.record.preview.prepared.plan;
+    const decision = historical ? null : readAcceptedOperation(instance, terminalPlan.input.decision_operation_id, 'cycle_closure_decision');
     if (terminal.output.effect_status !== 'confirmed' || terminal.output.facts.cycle_terminal_recorded !== true
-      || terminalPlan.target_state !== 'DONE' || decision.output.observations.choice !== 'retain')
+      || terminalPlan.target_state !== 'DONE' || (historical
+        ? historical.terminal.record_operation_id !== closePlan.input.closure_operation_id
+          || historical.terminal.closure_question.operation_id !== terminalPlan.input.decision_operation_id
+          || historical.terminal.closure_question.review.cycle_id !== closePlan.scope.cycle_id
+          || !/^[a-f0-9]{64}$/.test(historical.material_sha256 ?? '')
+        : decision.output.observations.choice !== 'retain'))
       fail('STANDARD_SESSION_INTEGRATION_RETAINED_CLOSURE_REQUIRED');
     const observed = closeOutput.observations;
     if (observed.event_file !== '.aidn/runtime/perf/workflow-events.ndjson') fail('STANDARD_SESSION_INTEGRATION_CLOSURE_EVENT_CHANGED');
@@ -51,10 +60,14 @@ export function createStandardSessionBranchIntegrationAuthority({ targetRoot, re
       || session.mode !== 'COMMITTING' || !sessionBranch || sessionBranch === final.branch)
       fail('STANDARD_SESSION_INTEGRATION_CANONICAL_OWNER_CHANGED');
     const latest = new Map(), terminalStates = new Map();
-    for (const entry of instance.events.filter(row => row.kind === 'operation_result' && row.receipt.outcome === 'completed')) {
+    const statusRecords = historical?.records ?? instance.events.filter(row => row.kind === 'operation_result' && row.receipt.outcome === 'completed').flatMap(entry => {
       const intent = instance.events.find(row => row.kind === 'operation_intent' && row.intent.operation_id === entry.receipt.operation_id)?.intent;
-      if (!['cycle_close_finalize', 'baseline_promotion_record', 'baseline_promotion_finalize'].includes(intent?.binding_ref)) continue;
-      const accepted = readAcceptedOperation(instance, intent.operation_id, intent.binding_ref);
+      return ['cycle_close_finalize', 'baseline_promotion_record', 'baseline_promotion_finalize'].includes(intent?.binding_ref)
+        ? [readAcceptedOperation(instance, intent.operation_id, intent.binding_ref)] : [];
+    });
+    for (const accepted of statusRecords) {
+      const intent = accepted.record.intent ?? instance.events.find(row => row.kind === 'operation_intent' && row.intent.operation_id === accepted.record.operation_id)?.intent;
+      if (!['cycle_close_finalize', 'baseline_promotion_record', 'baseline_promotion_finalize'].includes(intent?.binding_ref)) fail('STANDARD_SESSION_INTEGRATION_POSTIMAGE_CHANGED');
       if (intent.binding_ref === 'cycle_close_finalize' && accepted.record.preview.prepared.plan.scope.session_id === final.session_id) {
         const scope = accepted.record.preview.prepared.plan.scope;
         const original = owned.filter(row => row.cycle_id === scope.cycle_id);
@@ -89,7 +102,7 @@ export function createStandardSessionBranchIntegrationAuthority({ targetRoot, re
       source_branch: final.branch, target_branch: sessionBranch, delivery_head: deliveryHead,
       delivery_operation_id: input.delivery_operation_id, delivery_output_sha256: shadowHash(deliveryOutput),
       closure_operation_id: input.closure_operation_id, closure_output_sha256: shadowHash(closeOutput),
-      material_sha256: shadowHash({ delivery: final, closure: closeOutput, terminal: terminal.output, decision: decision.output }),
+      material_sha256: shadowHash({ delivery: final, closure: closeOutput, terminal: terminal.output, decision: historical ? { retained_material_sha256: historical.material_sha256, question: historical.terminal.closure_question } : decision.output }),
       documents: names.map(name => ({ ref: 'audit:' + name, sha256: artifacts.read(name, { required: true }).sha256, metadata_sha256: artifacts.metadataHash(name) })) };
   } });
 }

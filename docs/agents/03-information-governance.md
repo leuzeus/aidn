@@ -1,5 +1,39 @@
 # 03 Information Governance
 
+Canonical path inventory uses the artifact adapter's `listArtifactPaths`
+capability on PostgreSQL and SQLite. It reads names in the selected scope,
+without transferring all document bodies or falling back to local projections.
+The existing 10,000-entry truncation refusal and path validation remain in
+force. Detailed observation and materialization still use their content reads.
+
+Expired merge-capture continuation is derived process-journal evidence. The
+original signed capture and reservation remain reserved, with unchanged provider
+timestamps and no acknowledgement. A new entry binds their hashes after current
+provider and canonical-state revalidation. The existing Human disposition owns
+the decision to proceed to R09; this adds no canonical store or merge permission.
+
+Retained session closure uses the same derived journal evidence category. The
+old Human receipt remains unaccepted in its immutable technical instance; a new
+entry authenticates its exact question and current subject. The original start
+run must still be physically open. Canonical session state changes only through
+the existing granted close writer, checkpoint and final hook.
+
+Retained completed-cycle provenance remains derived evidence in the current
+process operation journal. The original instance, operation receipts, Human
+inbox and Native allocations stay under their original authorities. A successor
+entry records their finite proof digest; it creates no canonical concept or
+receipt migration. Canonical session ownership and cycle state remain in the
+configured artifact backend, including optional PostgreSQL and local SQLite.
+
+Reused objective agreement is derived evidence in that same operation journal.
+It references the unchanged Human decision and witnessed completion, alongside
+the new evaluation. It adds no decision, inbox claim, canonical concept or store.
+
+Recorded-promotion continuation likewise derives its finite proof from the
+original operation and Native journals. Its accepted record and first refusal
+remain owned by the original instance; PostgreSQL or SQLite still owns the
+canonical baseline, history, session and cycle.
+
 ## Purpose
 
 AIDN governs information concepts, not just files.
@@ -169,3 +203,17 @@ and one genuine current-controller blocked/no-effect result at index zero.
 The immutable original running capsule is not rewritten. Separate acceptance
 permits a fresh operation intention under the existing reducer; no new record
 concept, backend, projection, shared capability or Native allocation is added.
+
+## Session recovery evidence
+
+Checkpoint-only session recovery belongs to `process_operation_journal` and is
+stored by the same canonical FILES/SQLite/PostgreSQL record-store authority. Its
+signed attempts retain exact original scope, configuration, journals, physical
+event/run/document digests and lock/fence identity. It does not rewrite session
+state, historical operation results, Human decisions or Native accounting.
+
+Retained post-merge completion remains derived process-journal evidence. It
+creates neither a new canonical session nor copied receipts. The independent
+reader discovers one matching successor from a bounded canonical inventory,
+authenticates its entry and predecessor lineage, and refuses ambiguity. A
+PostgreSQL project never falls back to a checkout file for that discovery.

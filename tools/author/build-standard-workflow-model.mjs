@@ -46,7 +46,13 @@ const native = (id, role_ref, policy_ref, output_contract, skill_ids, rule_refs)
 };
 const xor = (id, choices) => node(id, "xor", { branches: choices.map(([flow_id, node_id, condition]) => ({ flow_id, node_id, condition })) });
 
-seq("standard", ["startup", "mode_preflight", "session_start_finalize", "mode_route", "cycle_work_route"]);
+seq("standard", ["entry_select", "startup_route", "mode_preparation_route", "cycle_work_route"]);
+op("entry_select", "workflow_entry_select");
+xor("mode_preparation_route", [["retained", "retained_preparation_inapplicable", "retained_preparation_requested"], ["ordinary", "mode_route", null]]);
+seq("retained_preparation_inapplicable", []);
+xor("startup_route", [["owned", "owned_startup_inapplicable", "owned_cycle_continuation_requested"], ["session", "session_startup", null]]);
+seq("owned_startup_inapplicable", []);
+seq("session_startup", ["startup", "mode_preflight", "session_start_finalize"]);
 xor("cycle_work_route", [["requested", "cycle_work", "cycle_work_requested"], ["analysis", "cycle_work_inapplicable", null]]);
 seq("cycle_work_inapplicable", []);
 // Reuse the authored session setup through the common call engine. Native
@@ -152,11 +158,14 @@ op("cycle_entry", "cycle_entry_admit", { session_id: { source: "operation_input"
 // An ordinary owned cycle needs no carryover H/checkpoint chain. The root's
 // existing cycle_refresh_before already derives its active-cycle digest.
 const ownedNodeStart = nodes.length, ownedInputStart = inputs.length;
-seq("owned_entry", ["entry", "resume"]);
+seq("owned_entry", ["entry", "planning_select", "planning_route"]);
 const ownedSession = { session_id: { source: "parameter", key: "session_id", path: [] } };
 op("entry", "cycle_entry_admit", { ...ownedSession, cycle_id: { source: "literal", value: null } });
+op("planning_select", "cycle_owned_planning_select", operation(null, "entry_operation_id", "entry"));
+xor("planning_route", [["unplanned", "planning_pending", "owned_cycle_planning_required"], ["canonical", "resume", null]]);
+seq("planning_pending", []);
 op("resume", "cycle_owned_resume_admit", operation(null, "entry_operation_id", "entry"));
-const ownedNodes = nodes.splice(ownedNodeStart), ownedTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-owned-entry", revision: 1,
+const ownedNodes = nodes.splice(ownedNodeStart), ownedTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-owned-entry", revision: 2,
   participants: [{ id: "project" }], roles: [], policies: [], entry: "owned_entry", nodes: ownedNodes, operation_pins: pinsFor(ownedNodes),
   call_interface: { parameters: { session_id: "string" }, returns: {} },
   data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session_id"], inputs: inputs.splice(ownedInputStart) } };
@@ -182,8 +191,10 @@ const choiceNodes = nodes.splice(choiceNodeStart), choiceTarget = { contract_ver
 const choiceRef = pinTarget(choiceTarget);
 node("selected_cycle", "call", { target: choiceRef });
 inputs.push({ node_id: "selected_cycle", fields: operation(null, "entry_operation_id", "cycle_entry_observe") });
-seq("cycle_work", ["work_prepare", "phase_select", "initial_task_route",
-  "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "cycle_terminal_checkpoint", "close_finalize", "promotion_eligibility", "session_preclose_checkpoint", "session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize", "session_delivery_checkpoint", "session_branch_integration_decide", "session_branch_integrate", "session_pr_delivery"]);
+seq("cycle_work", ["audit_preparation_route", "audit_evaluate", "closure_decide", "close_record", "cycle_terminal_checkpoint", "close_finalize", "promotion_eligibility", "session_preclose_checkpoint", "session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize", "session_delivery_checkpoint", "session_branch_integration_decide", "session_branch_integrate", "session_pr_delivery"]);
+xor("audit_preparation_route", [["retained", "retained_audit_ready", "retained_audit_requested"], ["fresh", "audit_produce", null]]);
+seq("retained_audit_ready", []);
+seq("audit_produce", ["work_preparation_route", "work_phase_select", "initial_task_route", "audit_select", "audit_review"]);
 seq("session_pr_delivery", ["session_pr_admit", "session_push", "session_pr_open", "session_pr_record", "session_pr_checkpoint", "session_pr_update_push", "session_pr_review_observe", "session_pr_review_capture", "session_pr_review_event_route", "session_pr_pretriage_route"]);
 op("session_pr_review_observe", "session_pr_review_content_observe", operation("session_pr_review_observe", "update_operation_id", "session_pr_update_push"));
 const firstCaptureNode = nodes.length;
@@ -330,6 +341,74 @@ const pretriageTarget = { ...prReviewTarget, model_id: "aidn-standard-pr-pretria
     ...prReviewTarget.data_bindings.inputs.filter(row => row.node_id !== "pr_merge_basis" && postMerge.some(node => node.id === row.node_id)),
   ] } };
 const pretriageRef = pinTarget(pretriageTarget);
+const capturedPretriageTarget = { ...pretriageTarget, model_id: 'aidn-standard-pr-captured-merge-completion', revision: 1,
+  call_interface: { parameters: { update_operation_id: 'string', entry_operation_id: 'string' }, returns: {} },
+  data_bindings: { ...pretriageTarget.data_bindings, parameter_keys: ['update_operation_id', 'entry_operation_id'],
+    inputs: pretriageTarget.data_bindings.inputs.map(row => row.node_id === 'pr_pretriage_external_disposition'
+      ? { node_id: row.node_id, fields: { contract_version: { source: 'literal', value: 'standard-pr-external-merge-disposition-input.v3' },
+        entry_operation_id: { source: 'parameter', key: 'entry_operation_id', path: [] } } } : row) } };
+const capturedPretriageRef = pinTarget(capturedPretriageTarget);
+// Resume only the already fetched R09 suffix; disposition and fetch stay in
+// their authenticated original instance. A fresh measurement governs the next action.
+const retainedPostNodes = structuredClone(postMerge.slice(postMerge.findIndex(row => row.id === 'pr_post_merge_measure')));
+retainedPostNodes.unshift({ id: 'retained_post_merge', kind: 'sequence', participant_ref: 'project', children: ['pr_post_merge_measure', 'pr_post_merge_route'] });
+const retainedPostInputs = prReviewTarget.data_bindings.inputs.filter(row => retainedPostNodes.some(node => node.id === row.node_id))
+  .map(row => ['pr_post_merge_measure', 'pr_post_merge_alignment'].includes(row.node_id)
+    ? { ...row, fields: { ...row.fields, fetch_operation_id: { source: 'parameter', key: 'fetch_operation_id', path: [] } } } : row);
+const retainedPostTarget = { ...prReviewTarget, model_id: 'aidn-standard-retained-post-merge', revision: 1,
+  entry: 'retained_post_merge', nodes: retainedPostNodes, operation_pins: pinsFor(retainedPostNodes),
+  call_interface: { parameters: { fetch_operation_id: 'string' }, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: ['fetch_operation_id'], inputs: retainedPostInputs } };
+const retainedPostRef = pinTarget(retainedPostTarget);
+// A recorded exact Human choice enters only the local fast-forward. The same
+// R09 measurement/alignment/completion call then verifies the physical result.
+const recordedPostNodes = [
+  { id: 'recorded_post_merge', kind: 'sequence', participant_ref: 'project', children: ['recorded_post_merge_fast_forward', 'recorded_post_merge_finish'] },
+  { id: 'recorded_post_merge_fast_forward', kind: 'operation', participant_ref: 'project', binding_ref: 'session_pr_post_merge_fast_forward' },
+  { id: 'recorded_post_merge_finish', kind: 'call', participant_ref: 'project', target: retainedPostRef }
+];
+const recordedPostTarget = { ...retainedPostTarget, model_id: 'aidn-standard-recorded-post-merge', revision: 1, entry: 'recorded_post_merge',
+  nodes: recordedPostNodes, operation_pins: pinsFor(recordedPostNodes),
+  call_interface: { parameters: { fetch_operation_id: 'string', decision_operation_id: 'string' }, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: ['fetch_operation_id','decision_operation_id'], inputs: [
+    { node_id: 'recorded_post_merge_fast_forward', fields: { contract_version: { source: 'literal', value: 'standard-pr-post-merge-fast-forward-input.v1' }, decision_operation_id: { source: 'parameter', key: 'decision_operation_id', path: [] } } },
+    { node_id: 'recorded_post_merge_finish', fields: { fetch_operation_id: { source: 'parameter', key: 'fetch_operation_id', path: [] } } }
+  ] } };
+const recordedPostRef = pinTarget(recordedPostTarget);
+// Explicit recovery from an authenticated, settled external review wait.
+// This route neither repeats delivery nor fabricates review/merge consent.
+const retainedMergeNodeStart = nodes.length, retainedMergeInputStart = inputs.length;
+seq('retained_pr_merge_entry', ['retained_pr_merge_select', 'retained_pr_merge_kind']);
+op('retained_pr_merge_select', 'session_pr_retained_merge_select');
+xor('retained_pr_merge_kind', [['recorded_decision', 'retained_pr_recorded_post_merge', 'retained_post_merge_decision_requested'], ['post_merge', 'retained_pr_post_merge', 'retained_post_merge_requested'],
+  ['capture', 'retained_pr_captured_completion', 'retained_external_merge_capture_requested'],
+  ['wait', 'retained_external_merge', null]]);
+node('retained_pr_recorded_post_merge', 'call', { target: recordedPostRef });
+inputs.push({ node_id: 'retained_pr_recorded_post_merge', fields: Object.fromEntries(['fetch_operation_id','decision_operation_id'].map(key => [key, { source: 'operation_output', node_id: 'retained_pr_merge_select', path: ['observations', key] }])) });
+node('retained_pr_post_merge', 'call', { target: retainedPostRef });
+inputs.push({ node_id: 'retained_pr_post_merge', fields: {
+  fetch_operation_id: { source: 'operation_output', node_id: 'retained_pr_merge_select', path: ['observations', 'fetch_operation_id'] } } });
+node('retained_pr_captured_completion', 'call', { target: capturedPretriageRef });
+inputs.push({ node_id: 'retained_pr_captured_completion', fields: {
+  update_operation_id: { source: 'parameter', key: 'update_operation_id', path: [] },
+  entry_operation_id: { source: 'parameter', key: 'entry_operation_id', path: [] } } });
+seq('retained_external_merge', ['retained_pr_merge_capture', 'retained_pr_merge_event_route', 'retained_pr_external_route']);
+node('retained_pr_merge_capture', 'call', { target: captureRef });
+inputs.push({ node_id: 'retained_pr_merge_capture', fields: {} });
+op('retained_pr_merge_event_route', 'session_pr_review_event_route');
+xor('retained_pr_external_route', [['external', 'retained_pr_external_completion', 'session_pr_pretriage_external'], ['refused', 'retained_pr_external_refused', null]]);
+seq('retained_pr_external_refused', []);
+node('retained_pr_external_completion', 'call', { target: pretriageRef });
+inputs.push({ node_id: 'retained_pr_external_completion', fields: { update_operation_id: { source: 'parameter', key: 'update_operation_id', path: [] } } });
+const retainedMergeNodes = nodes.splice(retainedMergeNodeStart);
+const retainedMergeTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-retained-external-merge', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'retained_pr_merge_entry', nodes: retainedMergeNodes,
+  operation_pins: pinsFor(retainedMergeNodes), call_interface: { parameters: { update_operation_id: 'string', entry_operation_id: 'string' }, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: ['update_operation_id', 'entry_operation_id'], inputs: inputs.splice(retainedMergeInputStart) } };
+const retainedMergeRef = pinTarget(retainedMergeTarget);
+node('retained_external_merge', 'call', { target: retainedMergeRef });
+inputs.push({ node_id: 'retained_external_merge', fields: { update_operation_id: { source: 'operation_output', node_id: 'entry_select', path: ['observations', 'continuation', 'update_operation_id'] },
+  entry_operation_id: { source: 'operation_id', node_id: 'entry_select' } } });
 function callPretriage(id, update) {
   node(id, "call", { target: pretriageRef });
   inputs.push({ node_id: id, fields: operation(null, "update_operation_id", update) });
@@ -342,19 +421,19 @@ function callPrReview(id, triage) {
 callPrReview("session_pr_effects_pending", "session_pr_triage_evaluate");
 op("session_pr_checkpoint", "session_pr_checkpoint", operation("session_pr_checkpoint", "record_operation_id", "session_pr_record"));
 op("session_pr_update_push", "session_pr_update_push", operation("session_pr_update_push", "checkpoint_operation_id", "session_pr_checkpoint"));
-op("session_pr_record", "session_pr_record", operation("session_pr_record", "open_operation_id", "session_pr_open"));
+op("session_pr_record", "session_pr_record");
 op("session_pr_open", "session_pr_open", operation("session_pr_open", "push_operation_id", "session_push"));
 op("session_push", "session_push", operation("session_push", "admission_operation_id", "session_pr_admit"));
 op("session_pr_admit", "session_pr_admit", operation("session_pr_admit", "integration_operation_id", "session_branch_integrate"));
 op("session_branch_integration_decide", "session_branch_integration_decision", {
   ...operation("session_branch_integration_decide", "delivery_operation_id", "session_delivery_checkpoint"),
   ...operation("session_branch_integration_decide", "closure_operation_id", "close_finalize") });
-op("session_branch_integrate", "session_branch_integrate", operation("session_branch_integrate", "decision_operation_id", "session_branch_integration_decide"));
-op("session_delivery_checkpoint", "session_delivery_checkpoint", operation("session_delivery_checkpoint", "finalization_operation_id", "session_close_finalize"));
+op("session_branch_integrate", "session_branch_integrate");
+op("session_delivery_checkpoint", "session_delivery_checkpoint");
 op("session_preclose_checkpoint", "session_preclose_checkpoint", operation("session_preclose_checkpoint", "closure_operation_id", "close_finalize"));
-op("session_close_finalize", "session_close_finalize", { ...operation("session_close_finalize", "record_operation_id", "session_close_record"), ...operation("session_close_finalize", "checkpoint_operation_id", "session_close_checkpoint") });
+op("session_close_finalize", "session_close_finalize");
 op("session_close_checkpoint", "session_close_checkpoint", operation("session_close_checkpoint", "record_operation_id", "session_close_record"));
-op("session_close_record", "session_close_record", operation("session_close_record", "decision_operation_id", "session_closure_decide"));
+op("session_close_record", "session_close_record");
 op("session_close_admit", "session_close_admit", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] } });
 op("session_closure_decide", "session_closure_decision", { contract_version: { source: "literal", value: "standard-session-closure-review-input.v1" },
   ...operation("session_closure_decide", "admission_operation_id", "session_close_admit"),
@@ -404,10 +483,16 @@ const preparationNodes = nodes.splice(preparationNodeStart), preparationTarget =
 const preparationRef = pinTarget(preparationTarget);
 node("work_prepare", "call", { target: preparationRef }); inputs.push({ node_id: "work_prepare", fields: {} });
 op("phase_select", "cycle_execution_source_select", { record_operation_id: { source: "call_output", node_id: "work_prepare", path: ["record_operation_id"] } });
-xor("initial_task_route", [["pending", "task_loop", "cycle_work_tasks_pending"], ["complete", "canonical_verification", "cycle_work_product_ready"]]);
+xor("work_preparation_route", [["verified", "retained_verification_admit", "retained_verification_requested"], ["retained", "retained_admit", "retained_validation_requested"], ["ordinary", "ordinary_work_preparation", null]]);
+seq("ordinary_work_preparation", ["work_prepare", "phase_select"]);
+op("retained_admit", "cycle_retained_validation_admit");
+op("retained_verification_admit", "cycle_retained_verification_admit");
+seq("retained_verification_ready", []);
+op("work_phase_select", "cycle_work_phase_select");
+xor("initial_task_route", [["verified", "retained_verification_ready", "cycle_work_retained_verification"], ["retained", "retained_validation", "cycle_work_retained_validation"], ["pending", "task_loop", "cycle_work_tasks_pending"], ["complete", "canonical_verification", "cycle_work_product_ready"]]);
 node("task_loop", "loop", { child: "task_iteration", until: "cycle_tasks_finished", max_iterations: 32 });
 seq("task_iteration", ["task_select", "implement", "work_evaluate", "validate", "task_validation", "task_advance", "task_route"]);
-const implementationSource = () => ({ implementation_operation_id: { source: "operation_output", node_id: "phase_select", path: ["observations", "implementation_operation_id"] } });
+const implementationSource = () => ({ implementation_operation_id: { source: "operation_output", node_id: "work_phase_select", path: ["observations", "implementation_operation_id"] } });
 op("task_select", "cycle_task_select", implementationSource());
 native("implement", "implementer", "implementation", "standard-cycle-task-work-report.v1", [], ["SPEC-R03", "SPEC-R04", "SPEC-R06"]);
 inputs.push({ node_id: "implement", fields: operation("implement", "task_operation_id", "task_select") });
@@ -435,6 +520,16 @@ node("final_verification", "call", { target: verificationRef });
 inputs.push({ node_id: "final_verification", fields: {
   ...operation(null, "validation_operation_id", "validate"), ...operation(null, "progress_operation_id", "task_advance"),
 } });
+// One recovered single-task boundary. Retain historical Native authorship;
+// validation, progress and verification all receive new current receipts.
+seq("retained_validation", ["retained_task_select", "retained_work", "retained_validate", "retained_evaluate", "retained_advance", "retained_verify"]);
+op("retained_task_select", "cycle_task_select", implementationSource());
+op("retained_work", "cycle_retained_task_work_observe", { ...implementationSource(), ...operation(null, "task_operation_id", "retained_task_select") });
+op("retained_validate", "cycle_validation_execute", operation(null, "work_operation_id", "retained_work"));
+op("retained_evaluate", "cycle_validation_evaluate", operation(null, "validation_operation_id", "retained_validate"));
+op("retained_advance", "cycle_task_advance", operation(null, "evaluation_operation_id", "retained_evaluate"));
+node("retained_verify", "call", { target: verificationRef });
+inputs.push({ node_id: "retained_verify", fields: { ...operation(null, "validation_operation_id", "retained_validate"), ...operation(null, "progress_operation_id", "retained_advance") } });
 // Complete canonical DATA gets a trusted present-product observation and fresh
 // checks, with no synthetic task advance, writer result or progress identity.
 const completeNodeStart = nodes.length, completeInputStart = inputs.length;
@@ -452,9 +547,9 @@ node("canonical_verification", "call", { target: completeRef }); inputs.push({ n
 op("audit_select", "cycle_audit_select", implementationSource());
 native("audit_review", "auditor", "audit", "standard-cycle-audit-report.v1", ["cycle-close"], ["SPEC-R04", "SPEC-R06"]);
 inputs.push({ node_id: "audit_review", fields: operation("audit_review", "audit_operation_id", "audit_select") });
-op("audit_evaluate", "cycle_audit_evaluate", occurrence("audit_review"));
+op("audit_evaluate", "cycle_audit_evaluate");
 op("closure_decide", "cycle_closure_decision", operation("closure_decide", "audit_operation_id", "audit_evaluate"));
-op("close_record", "cycle_close_record", operation("close_record", "decision_operation_id", "closure_decide"));
+op("close_record", "cycle_close_record");
 op("cycle_terminal_checkpoint", "cycle_terminal_checkpoint", operation("cycle_terminal_checkpoint", "closure_operation_id", "close_record"));
 op("close_finalize", "cycle_close_finalize", operation("close_finalize", "closure_operation_id", "close_record"));
 xor("promotion_eligibility", [["retained", "promotion_choice", "cycle_retained"], ["not_retained", "promotion_inapplicable", null]]);
@@ -495,15 +590,14 @@ checkpointDrift("session_closure_drift", null, null);
 // finalizer still owns R05 and refuses unresolved drift.
 const correctiveDriftNodeStart = nodes.length, correctiveDriftInputStart = inputs.length;
 const correctiveEvaluation = { evaluation_operation_id: { source: "parameter", key: "evaluation_operation_id", path: [] } };
-seq("checkpoint_drift", ["select", "objective_route", "finalize", "checkpoint_review_route"]);
+// The checkpoint reauthenticates the accepted alignment and physical completion.
+// Finishing the finalizer adds evidence, not a second human choice of objectives.
+seq("checkpoint_drift", ["select", "objective_route", "finalize"]);
 op("select", "drift_followup_select", correctiveEvaluation);
 xor("objective_route", [["review", "decide", "drift_objective_review_required"], ["other", "without_review", null]]);
 op("decide", "drift_recovery_decision", correctiveEvaluation);
 seq("without_review", []);
 op("finalize", "drift_check_finalize", correctiveEvaluation);
-xor("checkpoint_review_route", [["review", "checkpoint_review", "drift_objective_review_required"], ["nominal", "checkpoint_without_review", null]]);
-op("checkpoint_review", "drift_completion_decision");
-seq("checkpoint_without_review", []);
 const correctiveDriftNodes = nodes.splice(correctiveDriftNodeStart);
 const correctiveDriftTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-corrective-drift", revision: 1,
   participants: [{ id: "project" }], roles: [], policies: [], entry: "checkpoint_drift", nodes: correctiveDriftNodes,
@@ -543,7 +637,7 @@ for (const id of correctionNodes) {
   if (input) {
     const next = structuredClone(input); next.node_id = copy.id;
     for (const [key, field] of Object.entries(next.fields)) {
-      if (field.source === "operation_output" && field.node_id === "phase_select")
+      if (field.source === "operation_output" && field.node_id === "work_phase_select")
         next.fields[key] = { source: "operation_id", node_id: "correction_implementation_enter" };
       else if (field.node_id) field.node_id = correctionName(field.node_id);
     }
@@ -556,7 +650,7 @@ nodes.find(row => row.id === "correction_cycle").children.push(...correctionRoot
 
 // Fresh and corrective checkpoints both need the objective review when their
 // accepted Native diagnosis is clean but the gate detects differing goals.
-for (const id of ["cycle_drift_finalize", "correction_cycle_drift_finalize", "correction_closure_drift_finalize",
+for (const id of ["correction_cycle_drift_finalize", "correction_closure_drift_finalize",
   "correction_promotion_drift_finalize", "correction_session_closure_drift_finalize"]) {
   const call = nodes.find(row => row.id === id);
   if (call?.kind !== "operation" || call.binding_ref !== "drift_check_finalize") throw Error("STANDARD_CHECKPOINT_DRIFT_SITE_CHANGED");
@@ -609,11 +703,9 @@ const modeClosureStart = nodes.length, modeClosureInputStart = inputs.length;
 const modeClosureParameters = ["admission_operation_id", "drift_evaluation_operation_id", "drift_finalization_operation_id"];
 seq("session_closure", ["session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize"]);
 op("session_closure_decide", "session_closure_decision", Object.fromEntries(modeClosureParameters.map(key => [key, { source: "parameter", key, path: [] }])));
-op("session_close_record", "session_close_record", operation(null, "decision_operation_id", "session_closure_decide"));
+op("session_close_record", "session_close_record");
 op("session_close_checkpoint", "session_close_checkpoint", operation(null, "record_operation_id", "session_close_record"));
-op("session_close_finalize", "session_close_finalize", {
-  ...operation(null, "record_operation_id", "session_close_record"),
-  ...operation(null, "checkpoint_operation_id", "session_close_checkpoint") });
+op("session_close_finalize", "session_close_finalize");
 const modeClosureNodes = nodes.splice(modeClosureStart);
 const modeClosureTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-mode-session-closure", revision: 1,
   participants: [{ id: "project" }], roles: [], policies: [], entry: "session_closure", nodes: modeClosureNodes,
@@ -782,6 +874,198 @@ const freshCheckpointRef = freshCall("fresh_checkpoint", "aidn-standard-fresh-cy
 for (const row of inputs) for (const field of Object.values(row.fields)) if (movedFreshNames.has(field.node_id))
   throw Error("STANDARD_FRESH_CALL_UNDECLARED_RETURN");
 
+// Keep the evaluation and its consumers in one iteration. A confirmed opinion
+// reaches the real finalizer and checkpoint once; a requested diagnosis creates
+// a new Native occurrence and cannot reuse the old evaluation or opinion.
+const freshParent = nodes.find(row => row.id === "fresh_cycle");
+const freshDriftSteps = ["cycle_drift_report", "cycle_drift_evaluate", "cycle_drift_finalize", "fresh_checkpoint"];
+const freshDriftStart = freshParent.children.indexOf(freshDriftSteps[0]);
+if (freshDriftStart < 0 || freshParent.children.slice(freshDriftStart).join() !== freshDriftSteps.join())
+  throw Error("STANDARD_FRESH_DIAGNOSIS_ORDER_CHANGED");
+freshParent.children.splice(freshDriftStart, freshDriftSteps.length, "cycle_drift_loop");
+node("cycle_drift_loop", "loop", { child: "cycle_drift_iteration", until: "drift_check_completed", max_iterations: 32 });
+seq("cycle_drift_iteration", ["cycle_drift_report", "cycle_drift_evaluate", "cycle_drift_select", "cycle_drift_objective_route", "cycle_drift_outcome"]);
+op("cycle_drift_select", "drift_followup_select", operation(null, "evaluation_operation_id", "cycle_drift_evaluate"));
+xor("cycle_drift_objective_route", [["review", "cycle_drift_decide", "drift_objective_review_required"], ["nominal", "cycle_drift_aligned", null]]);
+op("cycle_drift_decide", "drift_recovery_decision", operation(null, "evaluation_operation_id", "cycle_drift_evaluate"));
+seq("cycle_drift_aligned", []);
+xor("cycle_drift_outcome", [["ready", "cycle_drift_checkpoint_ready", "drift_route_ready"],
+  ["diagnose", "cycle_drift_diagnosis_requested", "drift_diagnosis_requested"], ["unresolved", "cycle_drift_unresolved", null]]);
+op("cycle_drift_unresolved", "drift_check_finalize", operation(null, "evaluation_operation_id", "cycle_drift_evaluate"));
+seq("cycle_drift_checkpoint_ready", ["cycle_drift_finalize", "fresh_checkpoint"]);
+seq("cycle_drift_diagnosis_requested", []);
+
+// Keep ordinary audit evaluation and Human capture together. The root can skip
+// this call only after its retained-closure entry authenticates the old decision.
+const closureReviewNames = new Set(['audit_evaluate', 'closure_decide']);
+const closureReviewNodes = nodes.filter(row => closureReviewNames.has(row.id));
+const closureReviewInputs = inputs.filter(row => closureReviewNames.has(row.node_id));
+for (let i = nodes.length - 1; i >= 0; i--) if (closureReviewNames.has(nodes[i].id)) nodes.splice(i, 1);
+for (let i = inputs.length - 1; i >= 0; i--) if (closureReviewNames.has(inputs[i].node_id)) inputs.splice(i, 1);
+const closureReviewTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-cycle-closure-review', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'review',
+  nodes: [{ id: 'review', kind: 'sequence', participant_ref: 'project', children: ['audit_evaluate', 'closure_decide'] }, ...closureReviewNodes],
+  operation_pins: pinsFor(closureReviewNodes), call_interface: { parameters: {}, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [], inputs: closureReviewInputs } };
+const closureReviewRef = pinTarget(closureReviewTarget);
+const closureParent = nodes.find(row => row.id === 'cycle_work'), closureAt = closureParent.children.indexOf('audit_evaluate');
+if (closureParent.children.slice(closureAt, closureAt + 2).join() !== 'audit_evaluate,closure_decide') throw Error('STANDARD_CLOSURE_REVIEW_ORDER_CHANGED');
+closureParent.children.splice(closureAt, 2, 'closure_review_route');
+xor('closure_review_route', [['retained', 'closure_retained_ready', 'retained_closure_requested'], ['ordinary', 'closure_review', null]]);
+seq('closure_retained_ready', []); node('closure_review', 'call', { target: closureReviewRef }); inputs.push({ node_id: 'closure_review', fields: {} });
+// Inline a purely sequential delivery group; preserve its leaves and order and
+// keep the existing 288-node root bound without altering any old model.
+const deliveryGroup = nodes.find(row => row.id === 'session_pr_delivery'), deliveryAt = closureParent.children.indexOf(deliveryGroup.id);
+closureParent.children.splice(deliveryAt, 1, ...deliveryGroup.children); nodes.splice(nodes.indexOf(deliveryGroup), 1);
+
+// A settled completion enters after the actual final hook. It must not repeat
+// any terminal effect or R05 question. The selector authenticates the original
+// completion and Git receipt under the exact admitted historical source.
+const completedAt = closureParent.children.indexOf('close_completed_select');
+const completionPrefix = closureParent.children.splice(0, completedAt, 'cycle_completion_route');
+xor('cycle_completion_route', [['completed', 'retained_completion_ready', 'retained_completion_requested'], ['ordinary', 'cycle_completion_work', null]]);
+seq('retained_completion_ready', []); seq('cycle_completion_work', completionPrefix);
+const promotionCheckpointInput = inputs.find(row => row.node_id === 'promotion_checkpoint');
+promotionCheckpointInput.fields.terminal_checkpoint_operation_id = { source: 'operation_output', node_id: 'close_completed_select', path: ['observations', 'terminal_checkpoint_operation_id'] };
+// Regroup a purely sequential corrective path, preserving leaf order while
+// retaining both the 288-node root and 32-child sequence bounds.
+const corrective = nodes.find(row => row.id === 'correction_cycle');
+for (const id of ['correction_cycle_drift', 'correction_closure_drift', 'correction_session_closure_drift', 'correction_pr_redelivery']) {
+  const wrapper = nodes.find(row => row.id === id), index = corrective.children.indexOf(id);
+  if (wrapper?.kind !== 'sequence' || index < 0) throw Error('STANDARD_COMPLETION_WRAPPER_CHANGED');
+  corrective.children.splice(index, 1, ...wrapper.children); nodes.splice(nodes.indexOf(wrapper), 1);
+}
+const correctiveTail = corrective.children.splice(21); corrective.children.push('correction_tail'); seq('correction_tail', correctiveTail);
+
+// Preserve the existing deterministic preparation sequence as a pinned call.
+// It has no external inputs/returns; its accepted facts remain common state.
+// This frees root capacity without raising the historical 288-node limit.
+const preparationGroupNames = new Set(['ordinary_work_preparation', 'work_prepare', 'phase_select']);
+const preparationGroupNodes = nodes.filter(row => preparationGroupNames.has(row.id));
+const preparationGroupInputs = inputs.filter(row => preparationGroupNames.has(row.node_id));
+for (let i = nodes.length - 1; i >= 0; i--) if (preparationGroupNames.has(nodes[i].id)) nodes.splice(i, 1);
+for (let i = inputs.length - 1; i >= 0; i--) if (preparationGroupNames.has(inputs[i].node_id)) inputs.splice(i, 1);
+const preparationGroupTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-work-preparation', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'ordinary_work_preparation', nodes: preparationGroupNodes,
+  operation_pins: pinsFor(preparationGroupNodes), call_interface: { parameters: {}, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [], inputs: preparationGroupInputs } };
+const preparationGroupRef = pinTarget(preparationGroupTarget);
+node('ordinary_work_preparation', 'call', { target: preparationGroupRef }); inputs.push({ node_id: 'ordinary_work_preparation', fields: {} });
+
+// An authenticated recorded promotion enters exactly at R05 finalization.
+// Neither its Human decision, business record, Git checkpoint nor Native report
+// is repeated. The host reobserves the original evidence at each effect fence.
+const promotionFinishNodes = [
+  { id: 'finish', kind: 'sequence', participant_ref: 'project', children: ['drift', 'promote'] },
+  { id: 'drift', kind: 'operation', participant_ref: 'project', binding_ref: 'drift_check_finalize' },
+  { id: 'promote', kind: 'operation', participant_ref: 'project', binding_ref: 'baseline_promotion_finalize' } ];
+const promotionFinishTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-retained-promotion', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'finish', nodes: promotionFinishNodes,
+  operation_pins: pinsFor(promotionFinishNodes), call_interface: { parameters: { evaluation_operation_id: 'string', record_operation_id: 'string' }, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: ['evaluation_operation_id', 'record_operation_id'], inputs: [
+    { node_id: 'drift', fields: { evaluation_operation_id: { source: 'parameter', key: 'evaluation_operation_id', path: [] } } },
+    { node_id: 'promote', fields: { record_operation_id: { source: 'parameter', key: 'record_operation_id', path: [] } } } ] } };
+const promotionFinishRef = pinTarget(promotionFinishTarget);
+nodes.find(row => row.id === 'promotion_eligibility').branches.unshift({ flow_id: 'recorded', node_id: 'retained_promotion_finish', condition: 'retained_promotion_requested' });
+node('retained_promotion_finish', 'call', { target: promotionFinishRef });
+inputs.push({ node_id: 'retained_promotion_finish', fields: {
+  evaluation_operation_id: { source: 'operation_id', node_id: 'entry_select' },
+  record_operation_id: { source: 'operation_output', node_id: 'entry_select', path: ['observations', 'continuation', 'record_operation_id'] } } });
+
+// Retained session closure skips the settled prefix without importing events.
+const sessionSuffix = closureParent.children.splice(closureParent.children.indexOf('session_close_record'));
+nodes.find(row => row.id === 'cycle_work_route').branches.unshift({ flow_id: 'retained_session', node_id: 'session_close_retained_ready', condition: 'retained_session_closure_requested' });
+nodes.find(row => row.id === 'cycle_work_route').branches.unshift({ flow_id: 'external_merge', node_id: 'retained_external_merge', condition: 'retained_external_merge_requested' });
+seq('session_close_retained_ready', []);
+nodes.find(row => row.id === 'standard').children.push('session_delivery_route');
+xor('session_delivery_route', [['committing', 'session_delivery_work', 'cycle_work_requested'], ['inapplicable', 'session_delivery_inapplicable', null]]);
+seq('session_delivery_work', sessionSuffix); seq('session_delivery_inapplicable', []);
+sessionSuffix.splice(sessionSuffix.indexOf('session_branch_integration_decide'), 0, 'session_completion_select');
+op('session_completion_select', 'cycle_close_completed_select');
+inputs.find(row => row.node_id === 'session_branch_integration_decide').fields.closure_operation_id.node_id = 'session_completion_select';
+// A reconciled historical checkpoint proceeds straight to the corrected hook.
+sessionSuffix.splice(0, 3, 'session_close_preparation_route');
+xor('session_close_preparation_route', [['delivered', 'session_delivery_retained_ready', 'retained_session_delivery_requested'], ['retained', 'session_close_finalize', 'retained_session_checkpoint_requested'], ['ordinary', 'session_close_prepare', null]]);
+seq('session_delivery_retained_ready', []);
+seq('session_close_prepare', ['session_close_record', 'session_close_checkpoint', 'session_close_finalize']);
+// Preserve the ordinary writer/checkpoint as a bounded deterministic call.
+const sessionPreparationNames = new Set(['session_close_prepare', 'session_close_record', 'session_close_checkpoint']);
+const sessionPreparationNodes = [...nodes.filter(row => sessionPreparationNames.has(row.id)), structuredClone(nodes.find(row => row.id === 'session_close_finalize'))];
+const sessionPreparationInputs = [...inputs.filter(row => sessionPreparationNames.has(row.node_id)), structuredClone(inputs.find(row => row.node_id === 'session_close_finalize'))];
+for (const row of sessionPreparationInputs) for (const field of Object.values(row.fields)) {
+  if (field.node_id && !sessionPreparationNames.has(field.node_id)) throw Error('STANDARD_SESSION_PREPARATION_INPUT_CHANGED');
+}
+for (let i = nodes.length - 1; i >= 0; i--) if (sessionPreparationNames.has(nodes[i].id)) nodes.splice(i, 1);
+for (let i = inputs.length - 1; i >= 0; i--) if (sessionPreparationNames.has(inputs[i].node_id)) inputs.splice(i, 1);
+const sessionPreparationTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-session-close-preparation', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'session_close_prepare', nodes: sessionPreparationNodes,
+  operation_pins: pinsFor(sessionPreparationNodes), call_interface: { parameters: {}, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [], inputs: sessionPreparationInputs } };
+const sessionPreparationRef = pinTarget(sessionPreparationTarget);
+node('session_close_prepare', 'call', { target: sessionPreparationRef });
+inputs.push({ node_id: 'session_close_prepare', fields: {} });
+// The retained decision enters the ordinary integration effect directly. The
+// delivery/selection/H preparation is a fixed call with no caller input.
+// Existing close routing remains in its original fact scope.
+const integrationPreparationChildren = sessionSuffix.splice(1, sessionSuffix.indexOf('session_branch_integrate') - 1);
+const integrationPreparationNames = new Set(integrationPreparationChildren);
+const integrationPreparationNodes = nodes.filter(row => integrationPreparationNames.has(row.id));
+const integrationPreparationInputs = inputs.filter(row => integrationPreparationNames.has(row.node_id));
+for (const row of integrationPreparationInputs) for (const field of Object.values(row.fields)) {
+  if (field.node_id && !integrationPreparationNames.has(field.node_id)) throw Error('STANDARD_INTEGRATION_PREPARATION_INPUT_CHANGED');
+}
+for (let i = nodes.length - 1; i >= 0; i--) if (integrationPreparationNames.has(nodes[i].id)) nodes.splice(i, 1);
+for (let i = inputs.length - 1; i >= 0; i--) if (integrationPreparationNames.has(inputs[i].node_id)) inputs.splice(i, 1);
+const integrationPreparationTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-integration-preparation', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'integration_prepare',
+  nodes: [{ id: 'integration_prepare', kind: 'sequence', participant_ref: 'project', children: integrationPreparationChildren }, ...integrationPreparationNodes],
+  operation_pins: pinsFor(integrationPreparationNodes), call_interface: { parameters: {}, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [], inputs: integrationPreparationInputs } };
+const integrationPreparationRef = pinTarget(integrationPreparationTarget);
+const ordinarySessionPreparation = sessionSuffix.shift();
+sessionSuffix.unshift('session_integration_preparation_route');
+xor('session_integration_preparation_route', [['retained', 'session_integration_retained_ready', 'retained_session_integration_requested'], ['ordinary', 'session_integration_prepare', null]]);
+seq('session_integration_retained_ready', []);
+seq('session_integration_prepare', [ordinarySessionPreparation, 'session_delivery_prepare']);
+node('session_delivery_prepare', 'call', { target: integrationPreparationRef });
+inputs.push({ node_id: 'session_delivery_prepare', fields: {} });
+// A settled open PR skips this separately granted four-effect prefix. The
+// ordinary path retains integration/admission/push/open ordering inside a call.
+const prOpenChildren = sessionSuffix.splice(1, 4, 'session_pr_open_route');
+if (prOpenChildren.join(',') !== 'session_branch_integrate,session_pr_admit,session_push,session_pr_open') throw Error('STANDARD_PR_OPEN_PREFIX_CHANGED');
+const prOpenNames = new Set(prOpenChildren), prOpenNodes = nodes.filter(row => prOpenNames.has(row.id)), prOpenInputs = inputs.filter(row => prOpenNames.has(row.node_id));
+for (const row of prOpenInputs) for (const field of Object.values(row.fields)) if (field.node_id && !prOpenNames.has(field.node_id)) throw Error('STANDARD_PR_OPEN_INPUT_CHANGED');
+for (let i = nodes.length - 1; i >= 0; i--) if (prOpenNames.has(nodes[i].id)) nodes.splice(i, 1);
+for (let i = inputs.length - 1; i >= 0; i--) if (prOpenNames.has(inputs[i].node_id)) inputs.splice(i, 1);
+const prOpenTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-session-pr-opening', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'open',
+  nodes: [{ id: 'open', kind: 'sequence', participant_ref: 'project', children: prOpenChildren }, ...prOpenNodes],
+  operation_pins: pinsFor(prOpenNodes), call_interface: { parameters: {}, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [], inputs: prOpenInputs } };
+const prOpenRef = pinTarget(prOpenTarget);
+xor('session_pr_open_route', [['retained', 'session_pr_open_retained_ready', 'retained_session_pr_open_requested'], ['ordinary', 'session_pr_open_prepare', null]]);
+seq('session_pr_open_retained_ready', []);
+node('session_pr_open_prepare', 'call', { target: prOpenRef }); inputs.push({ node_id: 'session_pr_open_prepare', fields: {} });
+
+// Preserve the deterministic validation sequence as a call, within the existing
+// root-size bound. Its only external input is the selected implementation ID.
+const validationNames = new Set(['retained_validation', ...nodes.find(row => row.id === 'retained_validation').children]);
+const validationNodes = nodes.filter(row => validationNames.has(row.id));
+const validationInputs = inputs.filter(row => validationNames.has(row.node_id));
+for (const row of validationInputs) for (const field of Object.values(row.fields)) {
+  if (field.node_id === 'work_phase_select') parameterField(field, 'implementation_operation_id');
+  else if (field.node_id && !validationNames.has(field.node_id)) throw Error('STANDARD_RETAINED_VALIDATION_INPUT_CHANGED');
+}
+for (let i = nodes.length - 1; i >= 0; i--) if (validationNames.has(nodes[i].id)) nodes.splice(i, 1);
+for (let i = inputs.length - 1; i >= 0; i--) if (validationNames.has(inputs[i].node_id)) inputs.splice(i, 1);
+const retainedValidationTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-retained-validation', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'retained_validation', nodes: validationNodes, operation_pins: pinsFor(validationNodes),
+  call_interface: { parameters: { implementation_operation_id: 'string' }, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: ['implementation_operation_id'], inputs: validationInputs } };
+const retainedValidationRef = pinTarget(retainedValidationTarget);
+node('retained_validation', 'call', { target: retainedValidationRef });
+inputs.push({ node_id: 'retained_validation', fields: { implementation_operation_id: { source: 'operation_output', node_id: 'work_phase_select', path: ['observations', 'implementation_operation_id'] } } });
+
 const policy = (id, assurance_profile, allowed_permissions, independent_review = false) => ({ id, version: 1, assurance_profile, mode: "COMMITTING",
   independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });
 const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard", revision: 1,
@@ -799,9 +1083,19 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...policy("exploring_planning", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" }, policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
     policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
   operation_pins: pinsFor(nodes), call_targets: [
+    { ...integrationPreparationRef, model: integrationPreparationTarget },
+    { ...sessionPreparationRef, model: sessionPreparationTarget },
+    { ...preparationGroupRef, model: preparationGroupTarget },
+    { ...promotionFinishRef, model: promotionFinishTarget },
+    { ...retainedValidationRef, model: retainedValidationTarget },
+    { ...closureReviewRef, model: closureReviewTarget },
     { ...verificationRef, model: verificationTarget },
     { ...prReviewRef, model: prReviewTarget },
     { ...pretriageRef, model: pretriageTarget },
+    { ...retainedMergeRef, model: retainedMergeTarget },
+    { ...capturedPretriageRef, model: capturedPretriageTarget },
+    { ...retainedPostRef, model: retainedPostTarget },
+    { ...recordedPostRef, model: recordedPostTarget },
     { ...captureRef, model: captureTarget },
     { ...driftRecoveryRef, model: driftRecoveryTarget },
     { ...correctiveDriftRef, model: correctiveDriftTarget },
@@ -812,9 +1106,9 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...choiceRef, model: choiceTarget },
     { ...preparationRef, model: preparationTarget },
     { ...completeRef, model: completeTarget },
-    freshEntryRef, freshCheckpointRef,
+    freshEntryRef, freshCheckpointRef, { ...prOpenRef, model: prOpenTarget },
   ],
-  data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session", "cycle"], inputs } };
+  data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session", "cycle", "entry_point"], inputs } };
 // Session creation is conditional inside the pinned setup call. Later work
 // binds the requested identity, authenticated again by the root admission.
 for (const input of inputs) for (const field of Object.values(input.fields)) {
@@ -856,7 +1150,8 @@ verifyStandardWorkflowComponentAssets({ catalog, model, specification, bindings,
 if (process.argv.some(arg => arg.startsWith("--") && arg !== "--write")) throw Error("STANDARD_AUTHORING_ARGUMENT_INVALID");
 if (process.argv.includes("--write")) {
   for (const [name, value] of [[modelPath, model], ["package/catalogs/standard-workflow.v1.json", catalog]])
-    fs.writeFileSync(new URL(name, root), JSON.stringify(value, null, 2) + "\n");
+    // Keep the expanded model inside the unchanged 256 KiB pinned-file limit.
+    fs.writeFileSync(new URL(name, root), JSON.stringify(value, null, name === modelPath ? 1 : 2) + "\n");
 }
 console.log(JSON.stringify({ source_authoring_only: true, write: process.argv.includes("--write"), model: modelPath, model_sha256: shadowHash(model), nodes: nodes.length, operations: catalog.bindings.length,
   standard_workflow_complete: false, author: fileURLToPath(import.meta.url) }));

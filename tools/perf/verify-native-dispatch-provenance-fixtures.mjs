@@ -7,6 +7,8 @@ import os from 'node:os';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { assertNativeDispatchRecord, nativeDispatchId, nativeDispatchPath, nativeDispatchContextHash } from '../../src/core/workflow/native-dispatch-record.mjs';
+import { verifyRetainedAuditNativeOwner } from './retained-audit-native-owner-fixture-lib.mjs';
+import { verifyRetiredNativeWitness } from './retired-native-witness-fixture-lib.mjs';
 import { nativeJournalId } from '../../src/core/workflow/native-allocation-journal.mjs';
 import { createOperationJournalSigner } from '../../src/core/workflow/process-operation-journal.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
@@ -19,6 +21,7 @@ const key = () => Buffer.alloc(32, 73), signer = createOperationJournalSigner(ke
 const uuid = n => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
 let checks = 0;
 const test = (name, run) => { run(); checks++; console.log('PASS ' + name); };
+verifyRetiredNativeWitness(test);
 function fixtureBody(kind = 'allocation') {
   const authority = { scope_id: 'fixture-scope', model_sha256: H('model'), policy_pins: {} };
   const intent = { instance_id: 'case', [kind === 'allocation' ? 'authorization_sha256' : 'epoch_request_sha256']: H('intent') };
@@ -130,6 +133,8 @@ if (contractsOnly) {
     const intent = { instance_id: 'case', [point === 'epoch_returned' ? 'epoch_request_sha256' : 'authorization_sha256']: H('controlled-intent') };
     const execute = () => port.withOwner(intent, async () => {
       callbacks++; assert.equal(artifacts.ownerPending(), true);
+      if (point === 'returned') verifyRetainedAuditNativeOwner({ configuration, instance: host.inspect('case').record,
+        signer, artifacts, authority: observed, journalId, intent, test });
       return point === 'unknown' ? { status: 'CONTROLLED_UNKNOWN_NO_NATIVE_RUN' } : { native_started: false, status: 'CONTROLLED_NO_NATIVE_EFFECT' };
     });
     if (point.startsWith('native_')) await assert.rejects(execute, { code: 'FIXTURE_NATIVE_OWNER_INTERRUPT' });

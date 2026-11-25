@@ -5,6 +5,7 @@ import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { setTimeout as delay } from 'node:timers/promises';
 import { createStandardWorkflowFixture } from './standard-workflow-fixture-lib.mjs';
 import { createGithubReviewFixture, createComposedGithubReviewFixture } from './github-review-evidence-fixture-lib.mjs';
 import { arrangeStandardReviewScenario, assertCapturedStandardReviewScenario } from './standard-pr-review-scenario-fixture-lib.mjs';
@@ -21,6 +22,7 @@ import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 import { getDatabaseSync } from '../../src/lib/sqlite/workflow-db-schema-lib.mjs';
 import { resolveRuntimeSqliteFile } from '../../src/application/runtime/runtime-persistence-service.mjs';
 import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-schema-validator.mjs';
+import { verifyCodexReviewSummary } from './codex-review-summary-fixture-lib.mjs';
 
 const H = 'a'.repeat(64), updateId = 'op_' + 'a'.repeat(40), here = fileURLToPath(import.meta.url);
 const model = { contract_version: 'agentic-process-model.v2', model_id: 'pr-content-control-component', revision: 1,
@@ -30,7 +32,7 @@ const model = { contract_version: 'agentic-process-model.v2', model_id: 'pr-cont
     ...['reviewed', 'checked'].map(id => ({ id, kind: 'sequence', participant_ref: 'project', children: [] }))] };
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
 const stateFile = root => path.join(root, 'event.json');
-function open(root, privateRoot) {
+function open(root, privateRoot, { verificationDelay = 0, afterVerification = () => {} } = {}) {
   const initial = JSON.parse(fs.readFileSync(stateFile(privateRoot), 'utf8'));
   const provider = initial.body_transfer_scenario
     ? { port: createComposedGithubReviewFixture({ controlRoot: privateRoot, remoteRoot: initial.remote_root }) }
@@ -52,7 +54,11 @@ function open(root, privateRoot) {
       request_sha256: shadowHash(host.prepareControl({ instanceId: request.instance_id, expectedSha256: request.instance_sha256, occurrenceId: request.occurrence_id })),
       input: { contract_version: 'standard-session-pr-review-observe-input.v1', update_operation_id: updateId } }),
   });
-  host = createStandardWorkflowOperationHost({ targetRoot: root, model, controlSource: source,
+  const deliverySource = { ...source, async verifyReview(input) {
+    await delay(verificationDelay, null, { signal: input.signal });
+    const result = await source.verifyReview(input); afterVerification(); return result;
+  } };
+  host = createStandardWorkflowOperationHost({ targetRoot: root, model, controlSource: deliverySource,
     readSigningKey: () => fs.readFileSync(path.join(privateRoot, 'host.key')),
     authorize: async () => ({ authorized: true, authority_id: 'fixture_operator', principal_sha256: H, grant_sha256: H }) });
   return { host, provider, source, observer };
@@ -67,6 +73,7 @@ if (process.argv[2] === '--deliver') {
   const selected = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7);
   if (selected && !['files', 'dual', 'db-only'].includes(selected)) throw Error('FIXTURE_MODE_INVALID');
   try {
+    if (!process.argv.includes('--body-transfer-only')) await verifyCodexReviewSummary({ test, workingDirectory: parent });
     // Exercise the composed driver's real arrangement -> durable provider store
     // -> local Git refs -> content reader -> authenticated signed inbox path.
     // Expected text below is an independent scenario oracle, not observed data.
@@ -103,8 +110,10 @@ if (process.argv[2] === '--deliver') {
         assert.equal(host.inspect('body_transfer').record.instance_sha256, before.record.instance_sha256);
       });
       state.authorized = true; persist();
+      let reservedId;
       await test(scenario + ': actual composed body construction and signed capture match the declared scenario', async () => {
         const reserved = await capture(); assert.equal(reserved.status, 'reserved');
+        reservedId = reserved.inbox_id;
         const captured = host.readControl(reserved.inbox_id); assertControlInbox(captured);
         createOperationJournalSigner(() => fs.readFileSync(path.join(privateRoot, 'host.key'))).verify(captured);
         assert.equal(captured.payload.observation.observations.evidence.reviews[0].body_chunks.join(''), expected);
@@ -114,6 +123,27 @@ if (process.argv[2] === '--deliver') {
         assert.throws(() => assertCapturedStandardReviewScenario(altered, scenario), { code: 'ERR_ASSERTION' });
         assert.throws(() => createOperationJournalSigner(() => fs.readFileSync(path.join(privateRoot, 'host.key'))).verify(altered));
         assert.equal(host.inspect('body_transfer').record.events.length, 0);
+      });
+      await test(scenario + ': slow provider verification reaches the reducer with fresh local context', async () => {
+        let verifications = 0;
+        const branch = git(root, 'branch', '--show-current');
+        const slow = open(root, privateRoot, { verificationDelay: 5100, afterVerification() {
+          verifications++;
+          if (scenario === 'correction') git(root, 'switch', '-c', 'fixture-context-changed');
+        } }).host;
+        if (scenario === 'correction') {
+          await assert.rejects(slow.deliverControl(reservedId, { write: true }), { code: 'PROCESS_CONTROL_CONTEXT_CHANGED' });
+          assert.equal(host.inspect('body_transfer').record.events.length, 0);
+          assert.equal(host.readControl(reservedId).phase, 'reserved');
+          git(root, 'switch', branch);
+          await open(root, privateRoot).host.deliverControl(reservedId, { write: true });
+        } else {
+          await slow.deliverControl(reservedId, { write: true });
+          assert.equal((await slow.deliverControl(reservedId, { write: true })).retained, true);
+        }
+        assert.equal(verifications, 1);
+        assert.equal(host.inspect('body_transfer').record.events.filter(row => row.kind === 'control').length, 1);
+        assert.equal(host.readControl(reservedId).phase, 'delivered');
       });
     }
     if (!process.argv.includes('--body-transfer-only')) {

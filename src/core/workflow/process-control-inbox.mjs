@@ -9,6 +9,8 @@ import reviewPayloadSchema from "../contracts/workflow-definition/standard-sessi
 import eventSchema from "../contracts/workflow-definition/github-pr-review-event.v1.schema.json" with { type: "json" };
 import payloadSchema from "../contracts/workflow-definition/process-pr-review-payload.v1.schema.json" with { type: "json" };
 import { createHash } from "node:crypto";
+import summaryEventSchema from "../contracts/workflow-definition/github-pr-review-event.v2.schema.json" with { type: "json" };
+import { assertCodexReviewSummaryEvent } from "./codex-review-summary.mjs";
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { assertProcessControlEvent } from "./process-operation-contracts.mjs";
 import { checkShadowJson, shadowHash } from "./shadow-json.mjs";
@@ -111,4 +113,8 @@ export function assertControlReviewPayload(value, source, request) {
   return value;
 }
 
-export const assertControlReviewEvent = value => schema(value, eventSchema, "PROCESS_CONTROL_REVIEW_EVENT_INVALID");
+export function assertControlReviewEvent(value) {
+  const summary = value?.contract_version === 'github-pr-review-event.v2';
+  schema(value, summary ? summaryEventSchema : eventSchema, 'PROCESS_CONTROL_REVIEW_EVENT_INVALID');
+  return summary ? assertCodexReviewSummaryEvent(value) : value;
+}

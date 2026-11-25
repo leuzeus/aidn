@@ -4,6 +4,15 @@ import { checkShadowJson } from "./shadow-json.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 export const CYCLE_PLAN_CONTRACT = "standard-cycle-plan-proposal.v1";
+export const CYCLE_PLAN_REQUIRED_EVIDENCE_REFS = Object.freeze(["audit:SPEC.md"]);
+// Fresh producer admission only. Historical structural readers and canonical
+// audit-only proposals retain their original evidence and are never repaired.
+export function assertStandardCyclePlanRequiredEvidence(proposal) {
+  if (!Array.isArray(proposal?.evidence_refs)
+    || CYCLE_PLAN_REQUIRED_EVIDENCE_REFS.some(ref => !proposal.evidence_refs.some(row => row?.ref === ref)))
+    fail("STANDARD_CYCLE_PLAN_EVIDENCE_INVALID");
+  return proposal;
+}
 const unique = values => new Set(values).size === values.length;
 const scalar = value => typeof value === "string" && value === value.replace(/\s+/gu, " ").trim();
 export function assertStandardCyclePlan(proposal) {

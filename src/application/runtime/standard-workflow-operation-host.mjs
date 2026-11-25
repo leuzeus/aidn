@@ -1,6 +1,9 @@
+import { readSessionDeliveryPostimages } from './session-delivery-postimages.mjs';
 import { createOperationProviderRegistry } from "../workflow/operation-provider-registry.mjs";
+import { assertRetainedClosureTerminalMaterial } from "../../core/workflow/standard-retained-closure.mjs";
 import { assertOperationReliability, assertRetryBudget, assertWaitDeadline } from "../../core/workflow/operation-reliability.mjs";
 import { createStandardOperationProvider } from "./standard-operation-provider.mjs";
+import { createStandardOwnedEntryContinuation } from "./standard-owned-entry-continuation.mjs";
 import { createStandardDriftRoute } from "./standard-drift-route.mjs";
 import { assertObjectiveReview } from "../../core/workflow/standard-drift-objective-review.mjs";
 import { createStandardSpikeConversion } from "./standard-spike-conversion.mjs";
@@ -68,6 +71,7 @@ import { createStandardSessionPrCheckpoint } from "./standard-session-pr-checkpo
 import { createStandardSessionPrUpdatePush } from "./standard-session-pr-update-push.mjs";
 import { createStandardSessionBranchIntegration } from "./standard-session-branch-integration.mjs";
 import { createStandardSessionBranchIntegrationAuthority } from "./standard-session-branch-integration-authority.mjs";
+import { readSessionCloseObjectiveCompletion } from './session-close-objective-completion.mjs';
 import { createStandardSessionPrRecord } from "./standard-session-pr-record.mjs";
 import { createStandardSessionPrRecordAuthority } from "./standard-session-pr-record-authority.mjs";
 import { createStandardSessionPrOpen } from "./standard-session-pr-open.mjs";
@@ -163,21 +167,28 @@ function controlCheckpoint(instance, eventId) {
 // Fixed local business adapters plus the common reducer/store. This host owns
 // neither model routing nor human decisions. Signing/authorization capabilities
 // must come from a trusted outer host, never authored JSON or a model tool.
-export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, reconciliationConfiguration = null, dispositionSource = null, nativeOwnerDispositionSource = null, nativeReconciliationSource = null, nativeAuthorizationSource = null, handoffResourceSource = null, handoffNativeHistory = null }, { validationBoundaryFactory, dispatchCheckpoint, nativeOwnerDispositionBoundary, nativeReconciliationBoundary, handoffPublicationBoundary } = {}) {
+export function createStandardWorkflowOperationHost({ targetRoot, environment = process.env, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, reconciliationConfiguration = null, dispositionSource = null, nativeOwnerDispositionSource = null, nativeReconciliationSource = null, nativeAuthorizationSource = null, handoffResourceSource = null, handoffNativeHistory = null }, { validationBoundaryFactory, dispatchCheckpoint, nativeOwnerDispositionBoundary, nativeReconciliationBoundary, handoffPublicationBoundary } = {}) {
   if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.authenticate !== "function"
     || typeof processAuthority.authenticateOperationHost !== "function")) fail("STANDARD_HOST_CONFIGURATION_INVALID");
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
+  async function readObjectiveAlignment(instance, input, verified) {
+    const ownDecision = instance.events.some(event => event.kind === 'operation_intent'
+      && ['drift_recovery_decision', 'drift_completion_decision'].includes(event.intent.binding_ref));
+    if (!ownDecision && ['retained_completion', 'retained_promotion'].includes(instance.initial_parameters?.entry_point?.kind))
+      return processAuthority.readRetainedObjectiveAlignment(instance, input, verified, retainedClosureOptions());
+    return objectiveDisposition.read(instance, input, verified);
+  }
   const driftFinalization = processAuthority ? createStandardDriftFinalization({ targetRoot, now,
-    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
-    readObjectiveAlignment: (instance, input, verified) => objectiveDisposition.read(instance, input, verified),
+    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input, retainedClosureOptions()),
+    readObjectiveAlignment,
     readCurrent: id => current(id).record }) : null;
   const driftRoute = processAuthority ? createStandardDriftRoute({ targetRoot,
     authenticate: instance => processAuthority.authenticate(instance),
-    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
+    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input, retainedClosureOptions()),
     readOperation: id => retained(id).record, readCompletion: instance => objectiveCompletion.review(instance),
     readCurrentCompletion: instance => objectiveCompletion.read(instance) }) : null;
   const recovery = processAuthority ? createStandardDriftRecovery({ targetRoot, now,
-    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
+    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input, retainedClosureOptions()),
     observeContext: () => processAuthority.observeDriftContext(), readCurrent: id => current(id).record,
     readPreviousCompletion: instance => objectiveCompletion.renewalSubject(instance) }) : null;
   const changeRequest = processAuthority ? createStandardDriftChangeRequest({ targetRoot, now,
@@ -236,7 +247,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         audit_context_sha256: material.context_sha256, validation }, evidence_refs: material.context.evidence_refs };
   }
   async function inspectAudit(instance, input) {
-    const native = processAuthority.readCycleAuditActivity(instance, input), current = await auditSource(instance, native.selection.record.preview.input);
+    const native = await processAuthority.readCycleAuditActivity(instance, input), current = await auditSource(instance, native.selection.record.preview.input);
     const { audit_operation_id: selectionId, input_resolution: resolution, ...baseContext } = native.context;
     if (shadowHash(baseContext) !== current.material.context_sha256 || current.material.context_sha256 !== native.selection.output.observations.audit_context_sha256
       || current.bridge.verification.record.operation_id !== native.selection.output.observations.verification_operation_id) fail("STANDARD_AUDIT_CONTEXT_STALE");
@@ -256,7 +267,18 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     return { ...verified, record };
   }
   const closureReview = processAuthority ? createStandardCycleClosureReview({ readAudit: readAcceptedAudit }) : null;
-  async function readAcceptedClosureDecision(instance, input) {
+  const retainedClosureOptions = options => ({ ...options, readValidation: source => cycleValidation.readResult(source) });
+  const retainedClosureEntry = (instance, parameters, admission) => processAuthority.retainedClosureEntry(instance, parameters, admission, retainedClosureOptions());
+  const retainedCompletionEntry = (instance, parameters) => parameters.entry_point.kind === 'retained_promotion'
+    ? processAuthority.retainedPromotionEntry(instance, parameters, retainedClosureOptions())
+    : processAuthority.retainedCompletionEntry(instance, parameters, retainedClosureOptions());
+  const retainedPromotion = instance => processAuthority.readRetainedPromotion(instance, retainedClosureOptions());
+  const retainedCompletion = async instance => instance.initial_parameters?.entry_point?.kind === 'retained_promotion'
+    ? (await retainedPromotion(instance)).completed : processAuthority.readRetainedCompletion(instance, retainedClosureOptions());
+  async function readAcceptedClosureDecision(instance, input, options = {}) {
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_closure'
+      && !instance.events.some(row => row.kind === 'operation_intent' && row.intent.operation_id === input.decision_operation_id))
+      return processAuthority.readRetainedClosureDecision(instance, input, retainedClosureOptions(options));
     const record = retained(input.decision_operation_id).record, result = record.results.at(-1);
     const latest = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "cycle_closure_decision").at(-1);
     if (latest?.intent.operation_id !== record.operation_id || record.intent.binding_ref !== "cycle_closure_decision"
@@ -270,7 +292,19 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   const cycleCloseRecord = processAuthority ? createStandardCycleCloseRecord({ targetRoot, now,
     readDecision: readAcceptedClosureDecision, observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
+  async function prepareCycleCloseRecord(instance) {
+    const selected = instance.events.findLast(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'cycle_closure_decision');
+    const id = selected?.intent.operation_id ?? (instance.initial_parameters?.entry_point?.kind === 'retained_closure'
+      ? instance.initial_parameters.entry_point.decision_operation_id : null);
+    if (!id) fail('STANDARD_CYCLE_CLOSE_ACCEPTED_DECISION_REQUIRED');
+    return cycleCloseRecord.prepare(instance, { decision_operation_id: id });
+  }
   async function readAcceptedTerminalRecord(instance, input) {
+    if (['retained_completion', 'retained_promotion'].includes(instance.initial_parameters?.entry_point?.kind)) {
+      const source = await retainedCompletion(instance);
+      if (input.closure_operation_id !== source.terminal.record_operation_id) fail('STANDARD_RETAINED_COMPLETION_SOURCE_CHANGED');
+      return source.terminal;
+    }
     function accepted(id, binding) {
       const record = retained(id).record, result = record.results.at(-1);
       const latest = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === binding).at(-1);
@@ -280,17 +314,23 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return { record, output: result.output };
     }
     const closed = accepted(input.closure_operation_id, "cycle_close_record"), plan = closed.record.preview.prepared.plan;
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_closure'
+      && !instance.events.some(row => row.kind === 'operation_intent' && row.intent.operation_id === plan.input.decision_operation_id)) {
+      const verified = await processAuthority.readRecordedClosureDecision(instance, plan.input, retainedClosureOptions());
+      assertRetainedClosureTerminalMaterial(plan, closed.output, verified);
+      return { record_operation_id: closed.record.operation_id, plan, output: closed.output, closure_question: verified.question };
+    }
     const selected = accepted(plan.input.decision_operation_id, "cycle_closure_decision");
     const question = human.question(selected.record), decision = human.captured(selected.record).source;
     const audit = accepted(selected.record.preview.prepared.plan.audit_operation_id, "cycle_audit_evaluate");
-    const physical = processAuthority.readCycleCloseValidation(instance, audit.record.preview.input), evidence = await cycleValidation.readResult(physical);
+    const physical = await processAuthority.readCycleCloseValidation(instance, audit.record.preview.input), evidence = await cycleValidation.readResult(physical);
     const report = physical.native.authenticated.report, machine = physical.machine;
     if (shadowHash({ question, decision, report }) !== plan.decision_material_sha256 || question.review.audit_output_sha256 !== shadowHash(audit.output)
       || question.review.report_sha256 !== shadowHash(report) || closed.output.effect_status !== "confirmed" || closed.output.facts.cycle_terminal_recorded !== true
       || closed.output.facts.cycle_close_completed !== false || evidence.plan.product_sha256 !== machine.product_sha256 || evidence.plan.profile_sha256 !== machine.profile_sha256
       || evidence.manifest.status !== machine.status || shadowHash(evidence.checks) !== shadowHash(machine.checks)
       || shadowHash(evidence.evidence_refs) !== shadowHash(machine.evidence_refs)) fail("STANDARD_CYCLE_CLOSE_RECORDED_PROVENANCE_CHANGED");
-    return { record_operation_id: closed.record.operation_id, plan, output: closed.output };
+    return { record_operation_id: closed.record.operation_id, plan, output: closed.output, closure_question: question };
   }
   const terminalCheckpoint = processAuthority && processModels(model).some(component => component.nodes.some(node => node.binding_ref === "cycle_terminal_checkpoint"))
     ? createStandardCycleTerminalCheckpoint({ targetRoot, now, readRecorded: readAcceptedTerminalRecord,
@@ -299,7 +339,21 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readObjectiveCompletion: instance => objectiveCompletion.read(instance),
     readHistoricalCompletion: instance => objectiveCompletion.review(instance),
     readRecorded: readAcceptedTerminalRecord, observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
-  function selectCompletedClose(instance) {
+  async function selectCompletedClose(instance) {
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_session_delivery') {
+      return (await processAuthority.readRetainedSessionDelivery(instance)).checkpoint.historical.records[1].results[0].output;
+    }
+    if (['retained_session_closure', 'retained_session_checkpoint'].includes(instance.initial_parameters?.entry_point?.kind)) {
+      const source = instance.initial_parameters.entry_point.kind === 'retained_session_checkpoint'
+        ? (await processAuthority.readRetainedSessionCheckpoint(instance)).historical : await processAuthority.readRetainedSessionClosure(instance);
+      return source.records[1].results[0].output;
+    }
+    if (['retained_completion', 'retained_promotion'].includes(instance.initial_parameters?.entry_point?.kind)) {
+      const source = await retainedCompletion(instance), record = source.closed.record;
+      return assertStandardOperationOutput({ contract_version: 'standard-cycle-close-selection-output.v2', operation_ref: 'cycle_close_completed_select',
+        outcome: 'completed', effect_status: 'no_effect', facts: {}, evidence_refs: [], observations: { closure_operation_id: record.operation_id,
+          receipt_sha256: shadowHash(record.results[0].receipt), output_sha256: shadowHash(source.closed.output), terminal_checkpoint_operation_id: source.checkpoint.record.operation_id } });
+    }
     const intent = instance.events.findLast(event => event.kind === "operation_intent" && event.intent.binding_ref === "cycle_close_finalize")?.intent;
     if (!intent) fail("STANDARD_CYCLE_CLOSE_ACCEPTED_COMPLETION_REQUIRED");
     const record = retained(intent.operation_id).record, result = record.results.at(-1), output = assertStandardOperationOutput(result?.output);
@@ -309,9 +363,12 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       || result.receipt.output_sha256 !== shadowHash(output)
       || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt))
       || current(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail("STANDARD_CYCLE_CLOSE_ACCEPTED_COMPLETION_REQUIRED");
-    return assertStandardOperationOutput({ contract_version: "standard-cycle-close-selection-output.v1", operation_ref: "cycle_close_completed_select",
+    const checkpointId = instance.events.findLast(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'cycle_terminal_checkpoint')?.intent.operation_id;
+    const checkpoint = acceptedForPromotion(instance, checkpointId, 'cycle_terminal_checkpoint');
+    if (checkpoint.record.preview.input.closure_operation_id !== record.preview.prepared.plan.input.closure_operation_id) fail('STANDARD_CYCLE_CLOSE_ACCEPTED_COMPLETION_REQUIRED');
+    return assertStandardOperationOutput({ contract_version: "standard-cycle-close-selection-output.v2", operation_ref: "cycle_close_completed_select",
       outcome: "completed", effect_status: "no_effect", facts: {}, evidence_refs: [],
-      observations: { closure_operation_id: intent.operation_id, receipt_sha256: shadowHash(result.receipt), output_sha256: shadowHash(output) } });
+      observations: { closure_operation_id: intent.operation_id, receipt_sha256: shadowHash(result.receipt), output_sha256: shadowHash(output), terminal_checkpoint_operation_id: checkpointId } });
   }
   function acceptedForPromotion(instance, id, binding, reason = "STANDARD_PROMOTION_ACCEPTED_SOURCE_REQUIRED") {
     const record = retained(id).record, result = record.results.at(-1);
@@ -361,19 +418,34 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     return emit(context, evaluated.output.observations.proposal, "native_record", "OPEN", [], selected.output.evidence_refs);
   }
   const sessionClosureAuthority = processAuthority ? createStandardSessionClosureAuthority({ targetRoot,
-    readAcceptedOperation: acceptedForPromotion, readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input) }) : null;
+    readAcceptedOperation: acceptedForPromotion, readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input, retainedClosureOptions()) }) : null;
   const sessionClosureReview = sessionClosureAuthority ? createStandardSessionClosureReview({ readSource: (instance, input) => sessionClosureAuthority.readSource(instance, input) }) : null;
   async function readAcceptedSessionClosureDecision(instance, input) {
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_session_closure'
+      && input.decision_operation_id === instance.initial_parameters.entry_point.decision_operation_id) {
+      const { question, decision } = await processAuthority.readRetainedSessionClosure(instance, { fresh: true });
+      return { question, decision };
+    }
     const selected = acceptedForPromotion(instance, input.decision_operation_id, "session_closure_decision", "STANDARD_SESSION_CLOSE_DECISION_REQUIRED");
     await sessionClosureReview.assertFresh(instance, selected.record.preview.prepared.plan);
     return { question: human.question(selected.record), decision: human.captured(selected.record).source };
   }
   const sessionCloseRecord = processAuthority ? createStandardSessionCloseRecord({ targetRoot, now,
     readDecision: readAcceptedSessionClosureDecision, readCurrent: id => current(id).record }) : null;
-  function readAcceptedSessionCloseRecord(instance, input) {
+  async function prepareSessionCloseRecord(instance) {
+    const selected = instance.events.findLast(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'session_closure_decision');
+    const id = selected?.intent.operation_id ?? (instance.initial_parameters?.entry_point?.kind === 'retained_session_closure' ? instance.initial_parameters.entry_point.decision_operation_id : null);
+    if (!id) fail('STANDARD_SESSION_CLOSE_DECISION_REQUIRED');
+    return sessionCloseRecord.prepare(instance, { decision_operation_id: id });
+  }
+  async function readAcceptedSessionCloseRecord(instance, input) {
     const recorded = acceptedForPromotion(instance, input.record_operation_id, "session_close_record", "STANDARD_SESSION_CLOSE_RECORDED_SOURCE_REQUIRED");
-    const plan = recorded.record.preview.prepared.plan, selected = acceptedForPromotion(instance, plan.input.decision_operation_id, "session_closure_decision");
-    const question = human.question(selected.record), decision = human.captured(selected.record).source;
+    const plan = recorded.record.preview.prepared.plan;
+    const historical = instance.initial_parameters?.entry_point?.kind === 'retained_session_closure' && plan.input.decision_operation_id === instance.initial_parameters.entry_point.decision_operation_id
+      ? await processAuthority.readRetainedSessionClosure(instance) : null;
+    const selected = historical ? { record: historical.record, output: historical.record.results[0].output }
+      : acceptedForPromotion(instance, plan.input.decision_operation_id, "session_closure_decision");
+    const question = historical?.question ?? human.question(selected.record), decision = historical?.decision ?? human.captured(selected.record).source;
     if (shadowHash({ question, decision }) !== plan.decision_material_sha256 || recorded.output.effect_status !== "confirmed"
       || recorded.output.facts.session_close_report_recorded !== true || recorded.output.facts.session_close_completed !== false
       || selected.output.facts.session_closure_requested !== true || decision.choice !== "close") fail("STANDARD_SESSION_CLOSE_RECORDED_SOURCE_REQUIRED");
@@ -382,10 +454,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       fail("STANDARD_SESSION_CLOSE_POSTIMAGE_CHANGED");
     for (const row of postimages) if (artifacts.read(row.path, { required: true }).sha256 !== row.sha256 || artifacts.metadataHash(row.path) !== row.metadata_sha256)
       fail("STANDARD_SESSION_CLOSE_POSTIMAGE_CHANGED");
-    return { recorded, plan, question, decision };
+    return { recorded, plan, question, decision, historical };
   }
-  function readSessionCheckpointSource(instance, input) {
-    const source = readAcceptedSessionCloseRecord(instance, input), review = source.question.review;
+  async function readSessionCheckpointSource(instance, input) {
+    const source = await readAcceptedSessionCloseRecord(instance, input), review = source.question.review;
     const owner = analyzeStructuredArtifact(artifacts.read(review.session_path, { required: true }).content).key_values;
     const currentState = analyzeStructuredArtifact(artifacts.read("CURRENT-STATE.md", { required: true }).content).key_values;
     if (owner.state !== "OPEN" || currentState.active_session !== review.session_id || currentState.active_cycle !== "none"
@@ -393,7 +465,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     const ownedPaths = artifacts.cycles().filter(row => analyzeStructuredArtifact(row.content).key_values.session_owner === review.session_id).map(row => row.path.slice(0, -10));
     const fixed = [review.session_path, "CURRENT-STATE.md", "RUNTIME-STATE.md", "snapshots/context-snapshot.md", "baseline/current.md", "baseline/history.md", "index.md"];
     const { approved, journals } = collectStandardSessionCheckpointPostimages({ instance, readRetained: retained, fixed, ownedPaths, closing: true });
-    const admission = acceptedForPromotion(instance, review.admission_operation_id, "session_close_admit").output.observations.admission;
+    const admission = (source.historical?.admission ?? acceptedForPromotion(instance, review.admission_operation_id, "session_close_admit")).output.observations.admission;
     const completionCycle = ["cycle", "intermediate"].includes(classifyAidnBranch(review.branch)) ? admission.mapped_cycle : null;
     if (completionCycle && (!["DONE", "NO_GO", "DROPPED"].includes(completionCycle.state) || completionCycle.session_owner !== review.session_id))
       fail("STANDARD_SESSION_CHECKPOINT_TERMINAL_OWNER_REQUIRED");
@@ -407,7 +479,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   // Commit only their authenticated latest business postimages before asking
   // R05 to assess the session. Do not suppress its scope/integrity signals.
   async function readSessionPrecloseSource(instance, input) {
-    const closed = acceptedForPromotion(instance, input.closure_operation_id, "cycle_close_finalize", "STANDARD_SESSION_PRECLOSE_CLOSURE_REQUIRED");
+    const recordedPromotion = instance.initial_parameters?.entry_point?.kind === 'retained_promotion' ? await retainedPromotion(instance) : null;
+    const historical = recordedPromotion?.completed ?? (instance.initial_parameters?.entry_point?.kind === 'retained_completion' ? await retainedCompletion(instance) : null);
+    const closed = historical?.closed ?? acceptedForPromotion(instance, input.closure_operation_id, "cycle_close_finalize", "STANDARD_SESSION_PRECLOSE_CLOSURE_REQUIRED");
+    if (closed.record.operation_id !== input.closure_operation_id) fail('STANDARD_SESSION_PRECLOSE_CLOSURE_REQUIRED');
     const closePlan = closed.record.preview.prepared.plan, terminal = await readAcceptedTerminalRecord(instance, closePlan.input);
     const sessionId = closePlan.scope.session_id, cycleId = closePlan.scope.cycle_id;
     const selected = artifacts.sessions().filter(row => row.session_id === sessionId);
@@ -436,10 +511,22 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     const fixed = [selected[0].path, "CURRENT-STATE.md", "RUNTIME-STATE.md", "snapshots/context-snapshot.md", "baseline/current.md", "baseline/history.md", "index.md"];
     const ownedPaths = owned.map(row => row.path.slice(0, -10));
     const { approved, journals } = collectStandardSessionCheckpointPostimages({ instance, readRetained: retained, fixed, ownedPaths });
+    if (recordedPromotion) {
+      const previous = collectStandardSessionCheckpointPostimages({ instance: recordedPromotion.instance, fixed, ownedPaths,
+        readRetained: id => { const record = recordedPromotion.records.find(row => row.operation_id === id); if (!record) fail('STANDARD_RETAINED_PROMOTION_SOURCE_CHANGED'); return { record }; } });
+      for (const [name, hash] of previous.approved) if (!approved.has(name)) approved.set(name, hash);
+      journals.unshift(...previous.journals);
+    }
+    if (historical) {
+      const previous = collectStandardSessionCheckpointPostimages({ instance: historical.instance, fixed, ownedPaths,
+        readRetained: id => { const record = historical.records.find(row => row.operation_id === id); if (!record) fail('STANDARD_RETAINED_COMPLETION_SOURCE_CHANGED'); return { record }; } });
+      for (const [name, hash] of previous.approved) if (!approved.has(name)) approved.set(name, hash);
+      journals.unshift(...previous.journals);
+    }
     const prior = instance.events.filter(row => row.kind === "operation_result" && row.receipt.outcome === "completed")
       .map(row => retained(row.receipt.operation_id).record).filter(row => ["cycle_terminal_checkpoint", "baseline_promotion_checkpoint"].includes(row.intent.binding_ref)).at(-1);
-    if (!prior) fail("STANDARD_SESSION_PRECLOSE_CHECKPOINT_REQUIRED");
-    const checkpoint = acceptedForPromotion(instance, prior.operation_id, prior.intent.binding_ref);
+    if (!prior && !historical) fail("STANDARD_SESSION_PRECLOSE_CHECKPOINT_REQUIRED");
+    const checkpoint = prior ? acceptedForPromotion(instance, prior.operation_id, prior.intent.binding_ref) : recordedPromotion?.checkpoint ?? historical.checkpoint;
     const git = checkpoint.output.observations.git, head = git?.commit_sha ?? git?.head;
     if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(head ?? "") || checkpoint.output.effect_status !== "confirmed")
       fail("STANDARD_SESSION_PRECLOSE_CHECKPOINT_REQUIRED");
@@ -449,27 +536,53 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   const sessionPrecloseCheckpoint = processAuthority ? createStandardSessionPrecloseCheckpoint({ targetRoot, now, readSource: readSessionPrecloseSource,
     readCurrent: id => current(id).record }) : null;
-  function readSessionCloseHookSource(instance, input) {
-    const recorded = readAcceptedSessionCloseRecord(instance, input), review = recorded.question.review;
+  async function readSessionCloseHookSource(instance, input) {
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_session_checkpoint') {
+      const h = await processAuthority.readRetainedSessionCheckpoint(instance);
+      if (input.record_operation_id !== h.proof.record_operation_id || input.checkpoint_operation_id !== h.proof.checkpoint_operation_id)
+        fail('STANDARD_RETAINED_SESSION_CHECKPOINT_SOURCE_CHANGED');
+      return { ...h.source, objective_completion: readSessionCloseObjectiveCompletion({ artifacts, recorded: h.recorded, finalization: h.finalization }) };
+    }
+
+    const recorded = await readAcceptedSessionCloseRecord(instance, input), review = recorded.question.review;
     const checkpoint = acceptedForPromotion(instance, input.checkpoint_operation_id, "session_close_checkpoint", "STANDARD_SESSION_CLOSE_CHECKPOINT_REQUIRED");
-    const cp = checkpoint.record.preview.prepared.plan, source = readSessionCheckpointSource(instance, input);
+    const cp = checkpoint.record.preview.prepared.plan, source = await readSessionCheckpointSource(instance, input);
     const startId = instance.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "session_start_finalize").at(-1)?.intent.operation_id;
-    if (!startId || cp.input.record_operation_id !== input.record_operation_id || cp.source_sha256 !== shadowHash(source)) fail("STANDARD_SESSION_CLOSE_CHECKPOINT_REQUIRED");
-    const start = acceptedForPromotion(instance, startId, "session_start_finalize", "STANDARD_SESSION_CLOSE_START_REQUIRED");
+    if ((!startId && !recorded.historical) || cp.input.record_operation_id !== input.record_operation_id || cp.source_sha256 !== shadowHash(source)) fail("STANDARD_SESSION_CLOSE_CHECKPOINT_REQUIRED");
+    const start = recorded.historical?.started ?? acceptedForPromotion(instance, startId, "session_start_finalize", "STANDARD_SESSION_CLOSE_START_REQUIRED");
     if (start.record.preview.input.session_id !== review.session_id) fail("STANDARD_SESSION_CLOSE_START_REQUIRED");
+    const historicalFinal = recorded.historical?.records.find(row => row.operation_id === review.drift_finalization_operation_id);
+    const finalization = historicalFinal ? { record: historicalFinal, output: historicalFinal.results[0].output }
+      : acceptedForPromotion(instance, review.drift_finalization_operation_id, 'drift_check_finalize');
+    const objectiveCompletion = readSessionCloseObjectiveCompletion({ artifacts, recorded, finalization });
     return { record_operation_id: input.record_operation_id, checkpoint_operation_id: input.checkpoint_operation_id,
       session_id: review.session_id, session_path: review.session_path, mode: review.mode, branch: review.branch,
       record_plan_sha256: shadowHash(recorded.plan), record_output_sha256: shadowHash(recorded.recorded.output),
-      start_output: start.output, checkpoint_output: checkpoint.output };
+      start_output: start.output, checkpoint_output: checkpoint.output, objective_completion: objectiveCompletion };
   }
   const sessionCloseHook = processAuthority ? createStandardSessionCloseHook({ targetRoot, now, readSource: readSessionCloseHookSource,
     readCurrent: id => current(id).record }) : null;
+  async function prepareSessionCloseHook(instance, operationId) {
+    const h = instance.initial_parameters?.entry_point?.kind === 'retained_session_checkpoint'
+      ? await processAuthority.readRetainedSessionCheckpoint(instance) : null;
+    const checkpointId = h?.proof.checkpoint_operation_id ?? instance.events.findLast(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'session_close_checkpoint')?.intent.operation_id;
+    if (!checkpointId) fail('STANDARD_SESSION_CLOSE_CHECKPOINT_REQUIRED');
+    const checkpoint = h?.checkpoint ?? acceptedForPromotion(instance, checkpointId, 'session_close_checkpoint');
+    return sessionCloseHook.prepare(instance, { record_operation_id: checkpoint.record.preview.prepared.plan.input.record_operation_id,
+      checkpoint_operation_id: checkpointId }, operationId);
+  }
   async function readSessionDeliverySource(instance, input) {
-    const closed = acceptedForPromotion(instance, input.finalization_operation_id, "session_close_finalize", "STANDARD_SESSION_DELIVERY_FINALIZATION_REQUIRED");
+    const delivery = instance.initial_parameters?.entry_point?.kind === 'retained_session_delivery'
+      ? await processAuthority.readRetainedSessionDelivery(instance) : null;
+    const closed = delivery?.finalizer ?? acceptedForPromotion(instance, input.finalization_operation_id, "session_close_finalize", "STANDARD_SESSION_DELIVERY_FINALIZATION_REQUIRED");
     const plan = closed.record.preview.prepared.plan, output = closed.output, observed = output.observations;
     if (output.effect_status !== "confirmed" || output.facts.session_close_completed !== true || plan.operation_id !== input.finalization_operation_id
       || observed.run_id !== plan.run_id || observed.event_file !== ".aidn/runtime/perf/workflow-events.ndjson") fail("STANDARD_SESSION_DELIVERY_FINALIZATION_REQUIRED");
-    const checkpoint = acceptedForPromotion(instance, plan.input.checkpoint_operation_id, "session_close_checkpoint");
+    const h = delivery?.checkpoint ?? (instance.initial_parameters?.entry_point?.kind === 'retained_session_checkpoint'
+      ? await processAuthority.readRetainedSessionCheckpoint(instance) : null);
+    if (h && (h.proof.checkpoint_operation_id !== plan.input.checkpoint_operation_id || h.proof.record_operation_id !== plan.input.record_operation_id))
+      fail('STANDARD_SESSION_DELIVERY_CHECKPOINT_REQUIRED');
+    const checkpoint = h?.checkpoint ?? acceptedForPromotion(instance, plan.input.checkpoint_operation_id, "session_close_checkpoint");
     if (checkpoint.output.facts.session_close_checkpoint_completed !== true || checkpoint.output.observations.record_operation_id !== plan.input.record_operation_id
       || (checkpoint.output.observations.git?.commit_sha ?? checkpoint.output.observations.git?.head) !== plan.head) fail("STANDARD_SESSION_DELIVERY_CHECKPOINT_REQUIRED");
     const bytes = readAgentRunFile(agentRunPhysicalPath(path.join(artifacts.root, observed.event_file)), { json: false, maxBytes: 4194304 }).value;
@@ -482,23 +595,42 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     const currentState = analyzeStructuredArtifact(artifacts.read("CURRENT-STATE.md", { required: true }).content).key_values;
     if (session.state !== "CLOSED" || session.session_closure_status !== "completed" || currentState.active_session !== plan.session_id
       || currentState.active_cycle !== "none" || currentState.session_closure_status !== "completed") fail("STANDARD_SESSION_DELIVERY_OWNER_CHANGED");
-    const names = sessionClosePaths(plan.session_path), postimages = names.map(name => {
-      const refs = output.evidence_refs.filter(row => row.ref === "docs/audit/" + name), prior = plan.documents.find(row => row.path === name);
-      if (refs.length !== 1 || !prior || artifacts.read(name, { required: true }).sha256 !== refs[0].sha256
-        || artifacts.metadataHash(name) !== prior.metadata_sha256) fail("STANDARD_SESSION_DELIVERY_POSTIMAGE_CHANGED");
-      return { path: name, sha256: refs[0].sha256, metadata_sha256: prior.metadata_sha256 };
-    });
-    if (shadowHash(observed.committed) !== shadowHash(names)) fail("STANDARD_SESSION_DELIVERY_POSTIMAGE_CHANGED");
+    const postimages = delivery?.postimages ?? readSessionDeliveryPostimages({ artifacts, plan, output });
     return { finalization_operation_id: input.finalization_operation_id, session_id: plan.session_id, session_path: plan.session_path,
-      branch: plan.branch, parent_head: plan.head, material_sha256: shadowHash({ finalization: output, checkpoint: checkpoint.output }), postimages };
+      branch: plan.branch, parent_head: plan.head, material_sha256: shadowHash({ finalization: output, checkpoint: checkpoint.output, ...(delivery ? { metadata_admission: delivery.proof } : {}) }), postimages };
   }
   const sessionDeliveryCheckpoint = processAuthority ? createStandardSessionDeliveryCheckpoint({ targetRoot, now, readSource: readSessionDeliverySource,
     readCurrent: id => current(id).record }) : null;
-  const integrationAuthority = processAuthority ? createStandardSessionBranchIntegrationAuthority({ targetRoot,
-    readAcceptedOperation: acceptedForPromotion, readDeliverySource: readSessionDeliverySource }) : null;
+  async function prepareSessionDeliveryCheckpoint(instance, operationId) {
+    const historical = instance.initial_parameters?.entry_point?.kind === 'retained_session_delivery'
+      ? await processAuthority.readRetainedSessionDelivery(instance) : null;
+    const finalizationId = historical?.proof.finalization_operation_id ?? instance.events.findLast(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'session_close_finalize')?.intent.operation_id;
+    if (!finalizationId) fail('STANDARD_SESSION_DELIVERY_FINALIZATION_REQUIRED');
+    return sessionDeliveryCheckpoint.prepare(instance, { finalization_operation_id: finalizationId }, operationId);
+  }
+  const ordinaryIntegrationAuthority = processAuthority ? createStandardSessionBranchIntegrationAuthority({ targetRoot,
+    readAcceptedOperation: acceptedForPromotion, readDeliverySource: readSessionDeliverySource,
+    readRetainedCycle: instance => instance.initial_parameters?.entry_point?.kind === 'retained_session_delivery'
+      ? processAuthority.readRetainedSessionCycleHistory(instance, retainedClosureOptions()) : null }) : null;
+  const usesRetainedIntegration = instance => instance.initial_parameters?.entry_point?.kind === 'retained_session_integration'
+    && !instance.events.some(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'session_branch_integration_decision');
+  const retainedSessionIntegrationEntry = (instance, parameters) => processAuthority.retainedSessionIntegrationEntry(instance, parameters, retainedClosureOptions());
+  const retainedSessionPrOpenEntry = (instance, parameters) => processAuthority.retainedSessionPrOpenEntry(instance, parameters, retainedClosureOptions());
+  const integrationAuthority = ordinaryIntegrationAuthority && { async readSource(instance, input) {
+    if (!usesRetainedIntegration(instance)) return ordinaryIntegrationAuthority.readSource(instance, input);
+    const source = await processAuthority.readRetainedSessionIntegration(instance, retainedClosureOptions());
+    if (input.delivery_operation_id !== source.canonical.delivery_operation_id || input.closure_operation_id !== source.canonical.closure_operation_id)
+      fail('STANDARD_RETAINED_SESSION_INTEGRATION_SUBJECT_CHANGED');
+    return source.canonical;
+  } };
   const sessionBranchIntegration = integrationAuthority ? createStandardSessionBranchIntegration({ targetRoot, now,
     readSource: (instance, input) => integrationAuthority.readSource(instance, input), readCurrent: id => current(id).record,
     async readDecision(instance, input) {
+      if (usesRetainedIntegration(instance)) {
+        const source = await processAuthority.readRetainedSessionIntegration(instance, retainedClosureOptions());
+        if (input.decision_operation_id !== source.record.operation_id) fail('STANDARD_RETAINED_SESSION_INTEGRATION_DECISION_REQUIRED');
+        return { decision_operation_id: input.decision_operation_id, choice: source.decision.choice, source_sha256: shadowHash(source.decision), plan: source.plan };
+      }
       const selected = acceptedForPromotion(instance, input.decision_operation_id, "session_branch_integration_decision", "STANDARD_SESSION_INTEGRATION_DECISION_REQUIRED");
       await verifyHumanRecord(selected.record);
       const capture = human.captured(selected.record), question = human.question(selected.record), output = selected.output;
@@ -508,6 +640,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return { decision_operation_id: input.decision_operation_id, choice: capture.source.choice,
         source_sha256: shadowHash(capture.source), plan: selected.record.preview.prepared.plan };
     } }) : null;
+  async function prepareSessionBranchIntegration(instance, operationId) {
+    const selected = instance.events.findLast(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'session_branch_integration_decision');
+    const id = selected?.intent.operation_id ?? (usesRetainedIntegration(instance)
+      ? (await processAuthority.readRetainedSessionIntegration(instance, retainedClosureOptions())).record.operation_id : null);
+    if (!id) fail('STANDARD_SESSION_INTEGRATION_DECISION_REQUIRED');
+    return sessionBranchIntegration.prepare(instance, { contract_version: 'standard-session-branch-integrate-input.v1', decision_operation_id: id }, operationId);
+  }
   async function readSessionIntegration(instance, input) {
       const selected = acceptedForPromotion(instance, input.integration_operation_id, "session_branch_integrate", "STANDARD_SESSION_PR_INTEGRATION_REQUIRED");
       const plan = selected.record.preview.prepared.plan;
@@ -541,10 +680,27 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return { push_operation_id: input.push_operation_id, output: selected.output, admission: admission.output,
         admission_source_sha256: shadowHash(admission) };
     } }) : null;
+  function readPrHistoryOperations(instance) {
+    const retained = instance.initial_parameters?.entry_point?.kind === 'retained_session_pr_open'
+      ? processAuthority.readRetainedSessionPrOpen(instance) : null;
+    return (_instance, id, binding, code) => {
+      if (instance.events.some(row => row.kind === 'operation_intent' && row.intent.operation_id === id))
+        return acceptedForPromotion(instance, id, binding, code);
+      if (retained) return retained.lookup(id, binding);
+      return acceptedForPromotion(instance, id, binding, code);
+    };
+  }
   const sessionPrRecordAuthority = sessionPrOpen ? createStandardSessionPrRecordAuthority({ targetRoot,
-    readAcceptedOperation: acceptedForPromotion, pullRequestPort: sessionPullRequestPort }) : null;
+    readAcceptedOperation: acceptedForPromotion, readHistoryOperations: readPrHistoryOperations, pullRequestPort: sessionPullRequestPort }) : null;
   const sessionPrRecord = sessionPrRecordAuthority ? createStandardSessionPrRecord({ targetRoot, now,
     readSource: (instance, input) => sessionPrRecordAuthority.readSource(instance, input), readCurrent: id => current(id).record }) : null;
+  async function prepareSessionPrRecord(instance) {
+    const selected = instance.events.findLast(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'session_pr_open');
+    const id = selected?.intent.operation_id ?? (instance.initial_parameters?.entry_point?.kind === 'retained_session_pr_open'
+      ? processAuthority.readRetainedSessionPrOpen(instance).open.record.operation_id : null);
+    if (!id) fail('STANDARD_PR_RECORD_OPEN_REQUIRED');
+    return sessionPrRecord.prepare(instance, { contract_version: 'standard-session-pr-record-input.v1', open_operation_id: id });
+  }
   const sessionPrSuccessor = sessionPrRecordAuthority ? createStandardSessionPrSuccessorAuthority({ targetRoot,
     readAcceptedOperation: acceptedForPromotion, historyAuthority: sessionPrRecordAuthority }) : null;
   const sessionPrCheckpoint = sessionPrSuccessor ? createStandardSessionPrCheckpoint({ targetRoot, now,
@@ -553,6 +709,16 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readCheckpoint: (instance, input) => sessionPrSuccessor.readCheckpoint(instance, input), readCurrent: id => current(id).record,
     pushPort: sessionPushPort, pullRequestPort: sessionPullRequestPort }) : null;
   function readAcceptedPrUpdate(instance, id) {
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_external_merge_capture') {
+      const retained = processAuthority.readRetainedMergeCapture(instance);
+      if (id !== retained.update.record.operation_id) fail('STANDARD_PR_REVIEW_UPDATE_REQUIRED');
+      return retained.update;
+    }
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_external_merge') {
+      const retained = processAuthority.readRetainedExternalMerge(instance);
+      if (id !== retained.update.record.operation_id) fail('STANDARD_PR_REVIEW_UPDATE_REQUIRED');
+      return retained.update;
+    }
     const intent = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === id)?.intent;
     if (!["session_pr_update_push", "session_pr_redelivery_push"].includes(intent?.binding_ref)) fail("STANDARD_PR_REVIEW_UPDATE_REQUIRED");
     return acceptedForPromotion(instance, id, intent.binding_ref, "STANDARD_PR_REVIEW_UPDATE_REQUIRED");
@@ -605,6 +771,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     } });
   const { readPretriageDelivery, readPretriageEvent, readPretriage } = createPretriageMergeSource({
     readAcceptedUpdate: readAcceptedPrUpdate, readControl: id => controls.read(id),
+    readRetainedDelivery: instance => processAuthority.readRetainedExternalMerge(instance).update,
+    readRetainedCapture: instance => processAuthority.readRetainedMergeCapture(instance),
   });
   const pretriageMerge = sessionReviewPort?.observePrMerge ? createPretriageMergeControl({ now, reviewPort: sessionReviewPort,
     readContext(request) {
@@ -687,12 +855,19 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const sessionPrMergeEffect = createStandardPrMergeExecute({ ...acceptedReviewPorts, assertConsentFresh: assertMergeConsentFresh,
     observeMergeQualification: sessionPrConsent.observeForMerge,
     verifyFreshDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
-  const postMerge = createStandardSessionPrPostMergeFetch(acceptedReviewPorts);
+  const retainedPostMerge = instance => ['retained_post_merge','retained_post_merge_decision'].includes(instance.initial_parameters?.entry_point?.kind)
+    ? processAuthority.readRetainedPostMerge(instance) : null;
+  const postMergePorts = { ...acceptedReviewPorts,
+    reviewPort: processAuthority?.postMergeReviewPort?.(sessionReviewPort) ?? sessionReviewPort,
+    readRetainedOpening: instance => retainedPostMerge(instance)?.opening ?? null,
+    readRetainedFetch: (instance, input) => retainedPostMerge(instance)?.alignmentSource(input) ?? null,
+    assertRetainedOrder: (instance, ids) => retainedPostMerge(instance)?.assertOrder(instance, ids) ?? false };
+  const postMerge = createStandardSessionPrPostMergeFetch(postMergePorts);
   const postMergeScope = () => postMergeProjectScope(targetRoot);
-  const postMergeDecision = createStandardPostMergeDecision({ ...acceptedReviewPorts, artifacts, postMerge, scopeSha: postMergeScope, now });
+  const postMergeDecision = createStandardPostMergeDecision({ ...postMergePorts, artifacts, postMerge, scopeSha: postMergeScope, now });
   const assertPostMergeDecisionFresh = (instance, record, signal) => postMergeDecision.assertFresh(
     instance, record.preview.input, record.preview.prepared, signal);
-  const postMergeCompletion = createStandardPostMergeCompletion({ ...acceptedReviewPorts, artifacts,
+  const postMergeCompletion = createStandardPostMergeCompletion({ ...postMergePorts, artifacts,
     readAlignmentSource: postMerge.alignmentSource, scopeSha: postMergeScope });
   const prIncidentEvidence = createStandardPrIncidentEvidence({ ...acceptedReviewPorts, artifacts,
     readAlignmentSource: postMerge.alignmentSource, scopeSha: postMergeScope, readHumanSource: record => human.captured(record).source });
@@ -707,7 +882,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         .map(name => { const row = artifacts.read(name, { required: true }); return { path: name, sha256: row.sha256, metadata_sha256: artifacts.metadataHash(name) }; });
       return shadowHash({ observed, inventory });
     } });
-  const postMergeFastForward = createStandardPostMergeFastForward({ ...acceptedReviewPorts, postMerge, decision: postMergeDecision,
+  const postMergeFastForward = createStandardPostMergeFastForward({ readRetainedDecision(instance, input) {
+      const source = retainedPostMerge(instance);
+      if (!source?.recordedDecision || input.decision_operation_id !== source.recordedDecision.record.operation_id) return null;
+      return { ...source.recordedDecision, verify: source.verifyRecordedDecision };
+    }, ...postMergePorts, postMerge, decision: postMergeDecision,
     verifyDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
   const reviewEffects = new Map([
     [postMergeFastForwardOperation, postMergeFastForward],
@@ -793,6 +972,12 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     } }, { handoff: true });
   const promotionAuthority = processAuthority ? createStandardBaselinePromotionAuthority({ targetRoot,
     readAcceptedOperation: acceptedForPromotion, readTerminalRecord: readAcceptedTerminalRecord,
+    readRetainedClosure: async (instance, input) => {
+      if (!['retained_completion', 'retained_promotion'].includes(instance.initial_parameters?.entry_point?.kind)) return null;
+      const source = await retainedCompletion(instance);
+      if (input.closure_operation_id !== source.closure.operation_id) fail('STANDARD_RETAINED_COMPLETION_SOURCE_CHANGED');
+      return { ...source.closure, instance_id: instance.instance_id, scope_id: instance.scope_id };
+    },
     human: { question: record => human.question(record), captured: record => human.captured(record) } }) : null;
   const baselinePromotion = processAuthority ? createStandardBaselinePromotion({ targetRoot, now,
     readRequest: (instance, input) => promotionAuthority.readRequest(instance, input),
@@ -810,9 +995,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   async function readAcceptedPromotionCheckpointSource(instance, input) {
     const promoted = await readAcceptedBaselineRecord(instance, { record_operation_id: input.record_operation_id });
-    const closure = acceptedForPromotion(instance, input.closure_operation_id, "cycle_close_finalize"), closedPlan = closure.record.preview.prepared.plan;
-    const checkpoint = acceptedForPromotion(instance, input.terminal_checkpoint_operation_id, "cycle_terminal_checkpoint"), checkpointPlan = checkpoint.record.preview.prepared.plan;
+    const historical = ['retained_completion', 'retained_promotion'].includes(instance.initial_parameters?.entry_point?.kind) ? await retainedCompletion(instance) : null;
+    const closure = historical?.closed ?? acceptedForPromotion(instance, input.closure_operation_id, "cycle_close_finalize"), closedPlan = closure.record.preview.prepared.plan;
+    const checkpoint = historical?.checkpoint ?? acceptedForPromotion(instance, input.terminal_checkpoint_operation_id, "cycle_terminal_checkpoint"), checkpointPlan = checkpoint.record.preview.prepared.plan;
     if (promoted.plan.request.closure_operation_id !== input.closure_operation_id
+      || closure.record.operation_id !== input.closure_operation_id || checkpoint.record.operation_id !== input.terminal_checkpoint_operation_id
       || closedPlan.input.closure_operation_id !== checkpointPlan.input.closure_operation_id
       || checkpointPlan.cycle_id !== promoted.plan.request.cycle_id || checkpointPlan.cycle_path !== promoted.plan.request.cycle_path
       || closure.output.effect_status !== "confirmed" || closure.output.facts.cycle_close_completed !== true || closure.output.facts.cycle_retained !== true
@@ -834,6 +1021,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     ? createStandardBaselinePromotionCheckpoint({ targetRoot, now, readSource: readAcceptedPromotionCheckpointSource,
       promotion: baselinePromotion, readCurrent: id => current(id).record }) : null;
   const baselinePromotionHook = processAuthority ? createStandardBaselinePromotionHook({ targetRoot, now,
+    readRetainedRecord: async (instance, input) => {
+      if (instance.initial_parameters?.entry_point?.kind !== 'retained_promotion') return null;
+      const source = await retainedPromotion(instance);
+      if (source.promotion.record_operation_id !== input.record_operation_id) fail('STANDARD_RETAINED_PROMOTION_SOURCE_CHANGED');
+      return { selected: source.promotion, anchor: { original_instance_id: source.proof.original_instance_id,
+        original_instance_sha256: source.proof.original_instance_sha256, proof_sha256: shadowHash(source.proof) } };
+    },
     readObjectiveCompletion: instance => objectiveCompletion.read(instance),
     readRecorded: readAcceptedBaselineRecord, promotion: baselinePromotion, readCurrent: id => current(id).record }) : null;
 
@@ -851,7 +1045,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readEvaluation: (instance, input, options) => readValidationEvaluation(instance, input, "cycle_verification_enter", options),
     observeContext: () => processAuthority.observeCycleVerificationContext(), readCurrent: id => current(id).record }) : null;
   const cycleTaskAdvance = processAuthority ? createStandardCycleTaskAdvance({ targetRoot, now,
-    readEvaluation: (instance, input) => readValidationEvaluation(instance, input, "cycle_task_advance"),
+    readEvaluation: (instance, input, options) => readValidationEvaluation(instance, input, "cycle_task_advance", options),
     observeContext: () => processAuthority.observeCycleReadinessContext(), readCurrent: id => current(id).record }) : null;
   const recoveryCycle = processAuthority ? createStandardDriftCycle({ targetRoot, operations, now,
     readSource: (instance, operation, input) => cycleRecoverySource(instance, operation, input),
@@ -991,10 +1185,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     } });
   const objectiveCompletion = processAuthority ? createStandardObjectiveCompletion({ now,
     readOperation: id => retained(id).record,
-    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
+    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input, retainedClosureOptions()),
     readDisposition: (instance, input, verified) => objectiveDisposition.read(instance, input, verified),
     readHistoricalDisposition: (instance, input, verified, id) => objectiveDisposition.readHistorical(instance, input, verified, id),
     readRenewedDisposition: (instance, input, verified, anchor) => objectiveDisposition.readRenewed(instance, input, verified, anchor),
+    readRetainedDisposition: readObjectiveAlignment,
     readCurrent: id => current(id).record,
     readReport: name => artifacts.read(name, { required: true }),
     readEvent: ({ file, offset }) => {
@@ -1184,11 +1379,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         return { outcome: "verified", authority_id: receipt.authority_id, receipt_sha256: shadowHash(receipt), intent_sha256: shadowHash(intent) };
       }
       await verifyGrant(record, signal);
-      if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "spike_conversion_decision") await spike.assertFresh(instance, record.preview.input, record.preview.prepared);
       if (record.intent.binding_ref === "mode_work_continue_decision") processAuthority.assertModeWorkContinuationFresh(instance, record.preview.input, record.preview.prepared);
-      if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(instance, record.preview.prepared.plan);
-      if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(instance, record.preview.prepared.plan, { signal });
       // Cycle-choice H authentication is followed below by a full fresh subject
       // reconstruction before acceptance; do not repeat it before that await.
@@ -1205,11 +1397,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           fail("STANDARD_PR_MERGE_CONSENT_EXPIRED");
         if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       }
-      if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(instance, record.preview.prepared.plan);
+      // Closure reconstructs its complete current audit in the fixed local
+      // commit guard, after this bounded Human/source authentication.
       if (record.intent.binding_ref === "spike_conversion_decision") await spike.assertFresh(instance, record.preview.input, record.preview.prepared);
       if (record.intent.binding_ref === "mode_work_continue_decision") processAuthority.assertModeWorkContinuationFresh(instance, record.preview.input, record.preview.prepared);
-      if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(instance, record.preview.prepared.plan);
-      if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(instance, record.preview.prepared.plan, { signal });
       if (record.intent.binding_ref === cycleEntryChoiceOperation) await assertCycleEntryChoiceFresh(instance, record, signal);
       if (record.intent.binding_ref === recoveryCycleSelection) await assertRecoveryCycleSelectionFresh(instance, record, signal);
@@ -1217,17 +1408,34 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return { outcome: "verified", authority_id: receipt.authority_id, receipt_sha256: shadowHash(receipt), intent_sha256: shadowHash(intent) };
     },
   };
+  const controlVerification = new AsyncLocalStorage();
   const controlAuthority = activeControlSource ? {
     read({ delivery_id }) { return controls.read(delivery_id).delivery; },
-    async verify({ delivery, signal }) {
+    verify({ delivery, signal }) {
       const capture = controls.read(delivery.delivery_id);
       if (shadowHash(snapshot()) !== capture.request.context_sha256) fail("PROCESS_CONTROL_CONTEXT_CHANGED");
-      const verified = await controls.verifyDelivery(delivery.delivery_id, signal);
+      const witness = controlVerification.getStore();
+      if (signal?.aborted || !witness || witness.capture_sha256 !== shadowHash(capture)
+        || witness.delivery_sha256 !== shadowHash(delivery)) fail("PROCESS_CONTROL_NOT_AUTHENTICATED");
+      const verified = witness.delivery;
       if (shadowHash(snapshot()) !== capture.request.context_sha256 || shadowHash(verified) !== shadowHash(delivery)) fail("PROCESS_CONTROL_CONTEXT_CHANGED");
       return { outcome: "verified", authority_id: delivery.authority_id, delivery_sha256: shadowHash(delivery) };
     },
   } : undefined;
-  service = createAgenticProcessService({ store, readAuthority, operationAuthority: authority, controlAuthority, now, authorityTimeoutMs: 5000 });
+  service = createAgenticProcessService({ store, readAuthority, operationAuthority: authority, controlAuthority, now, authorityTimeoutMs: 5000,
+    async operationCommitGuard({ instance, intent, receipt, signal }) {
+      if (!['cycle_closure_decision', 'baseline_promotion_decision', 'session_closure_decision', 'session_branch_integration_decision'].includes(intent.binding_ref)) return;
+      const record = retained(intent.operation_id).record;
+      if (shadowHash(record.intent) !== shadowHash(intent) || !record.results.some(row => shadowHash(row.receipt) === shadowHash(receipt)))
+        fail("PROCESS_OPERATION_RESULT_NOT_AUTHENTICATED");
+      const review = intent.binding_ref === 'cycle_closure_decision' ? closureReview
+        : intent.binding_ref === 'baseline_promotion_decision' ? promotionReview
+        : intent.binding_ref === 'session_branch_integration_decision' ? sessionBranchIntegration : sessionClosureReview;
+      await review.assertFresh(instance, record.preview.prepared.plan);
+      if (signal?.aborted) fail("PROCESS_OPERATION_COMMIT_ABORTED");
+      if (shadowHash(retained(intent.operation_id).record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
+      if (current(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail("PROCESS_REVISION_CONFLICT");
+    } });
   const current = id => {
     const value = service.inspect(id);
     if (processAuthority) {
@@ -1553,17 +1761,20 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     return { operation_id: record.operation_id, intent_sha256: shadowHash(record.intent),
       disposition_receipt_sha256: shadowHash(result.receipt) };
   }
+  const entryContinuation = processAuthority ? createStandardOwnedEntryContinuation({ targetRoot, environment, humanSource,
+    observeScope: () => operations.observeScope(), observeProduct: () => processAuthority.observeProduct(),
+    readCurrent: id => current(id).record }) : null;
   const providers = createOperationProviderRegistry([createStandardOperationProvider({
     baselinePromotion, baselinePromotionCheckpoint, baselinePromotionHook, canonicalPlanAdoption,
     canonicalResumeAdmission, changeRequest, checkpointCompletion, checksMayObserveMerge,
-    closureReview, current, cycleCloseHook, cycleCloseRecord, cycleEntryChoiceActivation,
+    closureReview, current, cycleCloseHook, cycleCloseRecord, prepareCycleCloseRecord, prepareSessionCloseRecord, prepareSessionCloseHook, prepareSessionDeliveryCheckpoint, prepareSessionBranchIntegration, prepareSessionPrRecord, retainedSessionPrOpenEntry, retainedSessionIntegrationEntry, retainedClosureEntry, retainedCompletionEntry, cycleEntryChoiceActivation,
     cycleEntryChoiceCheckpoint, cycleEntryChoiceContext, cycleEntryChoiceRecord,
     cycleEntryFocusCheckpoint, cycleEntrySelectedCheckpoint, cycleEntrySelectedFocus,
     cycleImplementation, cyclePlanRecord, cycleTaskAdvance, cycleValidation, cycleVerification,
     decisionInput, driftFinalization, driftRoute, evaluateAudit, evaluateAuditSelection,
     evaluateValidation, externalDisposition, fail, handoffGitCheckpoint, handoffPreparation,
     handoffPublication, handoffResourceObservation, mergeObservationInput, now, objectiveCompletion,
-    operations, ownedResumeAdmission, postMerge, postMergeDecision, prCorrectionCheckpoint,
+    operations, ownedResumeAdmission, postMerge, postMergeDecision, prCorrectionCheckpoint, entryContinuation,
     prCorrectionCycle, prCorrectionReopen, prCorrectionReview, prIncidentClose, prTriage,
     predecessorFor, pretriageRoute, processAuthority, promotionReview, recovery, recoveryCycle,
     recoveryCycleSubject, recoveryDecision, retained, reviewEffects, rollback, selectCompletedClose,
@@ -1715,8 +1926,18 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         && !(capture.contract_version === "process-control-inbox.v2" && reviewControlSource
           || capture.contract_version === "process-control-inbox.v3" && pretriageMerge)) fail("PROCESS_CONTROL_PR_EVENT_SOURCE_REQUIRED");
       if (capture.contract_version === "process-control-inbox.v3") pretriageMerge.assertCaptureFresh(capture.payload);
-      const result = await service.deliverControl({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256,
-        occurrenceId: capture.request.occurrence_id, deliveryId: capture.delivery.delivery_id, eventId, write: true });
+      if (shadowHash(snapshot()) !== capture.request.context_sha256) fail("PROCESS_CONTROL_CONTEXT_CHANGED");
+      // Provider I/O has its own bounded verification. The reducer receives a
+      // private, single-invocation witness and keeps its five-second local gate.
+      const delivery = await controls.verifyDelivery(id);
+      if (shadowHash(controls.read(id)) !== shadowHash(capture)
+        || shadowHash(snapshot()) !== capture.request.context_sha256
+        || shadowHash(delivery) !== shadowHash(capture.delivery)) fail("PROCESS_CONTROL_CONTEXT_CHANGED");
+      if (capture.contract_version === "process-control-inbox.v3") pretriageMerge.assertCaptureFresh(capture.payload);
+      const result = await controlVerification.run({ capture_sha256: shadowHash(capture),
+        delivery_sha256: shadowHash(delivery), delivery }, () => service.deliverControl({
+        instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256,
+        occurrenceId: capture.request.occurrence_id, deliveryId: capture.delivery.delivery_id, eventId, write: true }));
       controls.acknowledge(id, result.record.instance_sha256);
       return result;
     },
@@ -2035,7 +2256,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         if (shadowHash(retained(id).record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
       }
       return disposition.withReceiptAcceptance(id, () => service.acceptOperation({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256, occurrenceId: record.intent.occurrence_id,
-        eventId: "result_" + id.slice(3) + (index ? "_" + index : ""), receiptId: receipt.receipt_id, write: true }), { signal });
+        eventId: "result_" + id.slice(3) + (index ? "_" + index : ""), receiptId: receipt.receipt_id, write: true, signal }), { signal });
     },
     readPrIncidentClosureEvidence: request => prIncidentEvidence.read(request),
     readJournal: id => structuredClone(retained(id).record),

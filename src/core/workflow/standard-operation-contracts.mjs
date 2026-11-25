@@ -1,3 +1,5 @@
+import externalMergeInputV3 from '../contracts/workflow-definition/standard-pr-external-merge-disposition-input.v3.schema.json' with { type: 'json' };
+import { retainedVerificationAdmit, assertRetainedVerificationInput, assertRetainedVerificationOutput } from "./standard-retained-verification.mjs";
 import spikeReviewInput from "../contracts/workflow-definition/standard-spike-review-input.v1.schema.json" with { type: "json" };
 import spikeExperimentInput from "../contracts/workflow-definition/standard-spike-experiment-input.v1.schema.json" with { type: "json" };
 import spikeExperimentOutput from "../contracts/workflow-definition/standard-spike-experiment-admission-output.v1.schema.json" with { type: "json" };
@@ -53,6 +55,7 @@ import { assertExternalMergeDisposition, assertExternalMergeObservation, externa
 import mergeBasisOutput from "../contracts/workflow-definition/standard-pr-merge-basis-output.v1.schema.json" with { type: "json" };
 import mergeBasisOutputV2 from "../contracts/workflow-definition/standard-pr-merge-basis-output.v2.schema.json" with { type: "json" };
 import externalMergeInputV2 from "../contracts/workflow-definition/standard-pr-external-merge-disposition-input.v2.schema.json" with { type: "json" };
+import { assertRetainedMergeCaptureSelection } from './standard-retained-merge-capture.mjs';
 import reviewEventRouteOutput from "../contracts/workflow-definition/standard-pr-review-event-route-output.v1.schema.json" with { type: "json" };
 import externalMergeInput from "../contracts/workflow-definition/standard-pr-external-merge-disposition-input.v1.schema.json" with { type: "json" };
 import checksAcceptInputV2 from "../contracts/workflow-definition/standard-pr-checks-accept-input.v2.schema.json" with { type: "json" };
@@ -94,11 +97,12 @@ import pushInput from "../contracts/workflow-definition/standard-session-push-in
 import pushOutput from "../contracts/workflow-definition/standard-session-push-output.v1.schema.json" with { type: "json" };
 import prAdmissionInput from "../contracts/workflow-definition/standard-session-pr-admission-input.v1.schema.json" with { type: "json" };
 import prAdmissionOutput from "../contracts/workflow-definition/standard-session-pr-admission-output.v1.schema.json" with { type: "json" };
-import deliveryInput from "../contracts/workflow-definition/standard-session-delivery-checkpoint-input.v1.schema.json" with { type: "json" };
+import deliveryInput from "../contracts/workflow-definition/standard-session-delivery-checkpoint-input.v2.schema.json" with { type: "json" };
 import deliveryOutput from "../contracts/workflow-definition/standard-session-delivery-checkpoint-output.v1.schema.json" with { type: "json" };
 import precloseInput from "../contracts/workflow-definition/standard-session-preclose-checkpoint-input.v1.schema.json" with { type: "json" };
 import precloseOutput from "../contracts/workflow-definition/standard-session-preclose-checkpoint-output.v1.schema.json" with { type: "json" };
-import sessionCloseHookInput from "../contracts/workflow-definition/standard-session-close-hook-input.v1.schema.json" with { type: "json" };
+import sessionCloseHookInput from "../contracts/workflow-definition/standard-session-close-hook-input.v2.schema.json" with { type: "json" };
+import sessionCloseHookOutputV2 from "../contracts/workflow-definition/standard-session-close-hook-output.v2.schema.json" with { type: "json" };
 import sessionCloseHookOutput from "../contracts/workflow-definition/standard-session-close-hook-output.v1.schema.json" with { type: "json" };
 import sessionCloseCheckpointInput from "../contracts/workflow-definition/standard-session-close-checkpoint-input.v1.schema.json" with { type: "json" };
 import sessionCloseCheckpointOutput from "../contracts/workflow-definition/standard-session-close-checkpoint-output.v1.schema.json" with { type: "json" };
@@ -123,13 +127,14 @@ import closeHookInput from "../contracts/workflow-definition/standard-cycle-clos
 import closeHookOutput from "../contracts/workflow-definition/standard-cycle-close-hook-output.v1.schema.json" with { type: "json" };
 import closeHookOutputV2 from "../contracts/workflow-definition/standard-cycle-close-hook-output.v2.schema.json" with { type: "json" };
 import closeSelectionOutput from "../contracts/workflow-definition/standard-cycle-close-selection-output.v1.schema.json" with { type: "json" };
+import closeSelectionOutputV2 from '../contracts/workflow-definition/standard-cycle-close-selection-output.v2.schema.json' with { type: 'json' };
 import spikeSelectionOutput from "../contracts/workflow-definition/standard-spike-selection-output.v1.schema.json" with { type: "json" };
-import closeInput from "../contracts/workflow-definition/standard-cycle-close-input.v1.schema.json" with { type: "json" };
+import closeInput from "../contracts/workflow-definition/standard-cycle-close-input.v2.schema.json" with { type: "json" };
 import closeOutput from "../contracts/workflow-definition/standard-cycle-close-output.v1.schema.json" with { type: "json" };
 import closureInput from "../contracts/workflow-definition/standard-cycle-closure-review-input.v1.schema.json" with { type: "json" };
 import closureOutput from "../contracts/workflow-definition/standard-cycle-closure-decision-output.v1.schema.json" with { type: "json" };
 import auditSelectInput from "../contracts/workflow-definition/standard-cycle-audit-select-input.v1.schema.json" with { type: "json" };
-import auditEvaluateInput from "../contracts/workflow-definition/standard-cycle-audit-evaluate-input.v1.schema.json" with { type: "json" };
+import auditEvaluateInput from "../contracts/workflow-definition/standard-cycle-audit-evaluate-input.v2.schema.json" with { type: "json" };
 import auditSelectOutput from "../contracts/workflow-definition/standard-cycle-audit-selection-output.v1.schema.json" with { type: "json" };
 import auditOutput from "../contracts/workflow-definition/standard-cycle-audit-output.v1.schema.json" with { type: "json" };
 import empty from "../contracts/workflow-definition/standard-empty-input.v1.schema.json" with { type: "json" };
@@ -190,6 +195,9 @@ import { cycleEntrySelectedFocusOperation, assertSelectedFocusInput, assertSelec
 import { cycleEntryFocusCheckpointOperation, assertFocusCheckpointInput, assertFocusCheckpointOutput } from "./standard-cycle-entry-focus-checkpoint.mjs";
 import { canonicalCycleResumeAdmitOperation, canonicalCycleResumeObserveOperation, ownedCanonicalCycleResumeAdmitOperation, assertCanonicalResumeInput, assertCanonicalResumeObserveInput, assertCanonicalResumeOutput, assertCanonicalResumeObserveOutput } from "./standard-canonical-cycle-resume.mjs";
 import { assertOwnedCanonicalResumeInput, assertOwnedCanonicalResumeOutput } from "./standard-owned-cycle-resume.mjs";
+import { ownedCyclePlanningSelectOperation, assertOwnedCyclePlanningSelection } from "./standard-owned-cycle-planning.mjs";
+import { workflowEntrySelectOperation, assertStandardEntrySelection } from "./standard-workflow-entry-selection.mjs";
+import { retainedValidationAdmit, retainedTaskWork, workPhaseSelect, assertRetainedValidationInput, assertRetainedValidationOutput } from "./standard-retained-validation.mjs";
 import driftCycleInput from "../contracts/workflow-definition/standard-drift-cycle-initialize-input.v1.schema.json" with { type: "json" };
 import driftCycleOutput from "../contracts/workflow-definition/standard-drift-cycle-output.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
@@ -208,6 +216,16 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (operation === 'session_close_record' && value && Object.keys(value).length === 0) {
+    if (checkShadowJson(value) || validateJsonSchema(value, empty, '$', { contractKind: 'workflow-definition' }).length) fail('STANDARD_OPERATION_INPUT_INVALID');
+    return value;
+  }
+  if (operation === retainedVerificationAdmit) return assertRetainedVerificationInput(value);
+  if ([retainedValidationAdmit, retainedTaskWork, workPhaseSelect].includes(operation)) return assertRetainedValidationInput(operation, value);
+  if (operation === workflowEntrySelectOperation) {
+    if (checkShadowJson(value) || validateJsonSchema(value, empty, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
+    return value;
+  }
   if (operation === "cycle_prework_evaluate") return assertStandardOperationInput("cycle_plan_evaluate", value);
   if (operation === cycleExecutionSourceSelectOperation) return assertStandardOperationInput("cycle_readiness_evaluate", value);
   if (operation === cycleEntryChoiceActivationOperation) return assertCycleChoiceActivationInput(value);
@@ -216,6 +234,7 @@ export function assertStandardOperationInput(operation, value) {
   if (operation === cycleEntryFocusCheckpointOperation) return assertFocusCheckpointInput(value);
   if (operation === canonicalCycleResumeAdmitOperation) return assertCanonicalResumeInput(value);
   if (operation === ownedCanonicalCycleResumeAdmitOperation) return assertOwnedCanonicalResumeInput(value);
+  if (operation === ownedCyclePlanningSelectOperation) return assertOwnedCanonicalResumeInput(value);
   if (operation === canonicalCycleResumeObserveOperation) return assertCanonicalResumeObserveInput(value);
   if (operation === cycleEntryChoiceCheckpointOperation) {
     if (checkShadowJson(value) || validateJsonSchema(value, cycleEntryChoiceCheckpointInput, "$", { contractKind: "workflow-definition" }).length)
@@ -314,7 +333,7 @@ export function assertStandardOperationInput(operation, value) {
   if (operation === postMergeFetchOperation) return assertPostMergeFetchInput(value);
   if ([mergeExecuteOperation, postMergeWaitOperation].includes(operation)) return assertMergeExecuteInput(operation, value);
   if ([externalMergeDisposition, "session_pr_merge_basis"].includes(operation)) {
-    if (checkShadowJson(value) || validateJsonSchema(value, value?.contract_version === "standard-pr-external-merge-disposition-input.v2" ? externalMergeInputV2 : externalMergeInput, "$", { contractKind: "workflow-definition" }).length)
+    if (checkShadowJson(value) || validateJsonSchema(value, value?.contract_version === "standard-pr-external-merge-disposition-input.v3" ? externalMergeInputV3 : value?.contract_version === "standard-pr-external-merge-disposition-input.v2" ? externalMergeInputV2 : externalMergeInput, "$", { contractKind: "workflow-definition" }).length)
       fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
   }
@@ -335,7 +354,7 @@ export function assertStandardOperationInput(operation, value) {
     if (checkShadowJson(value) || validateJsonSchema(value, prReviewInput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
   }
-  const schema = operation === "session_pr_redelivery_push" ? prRedeliveryInput : operation === "session_pr_checkpoint" ? prCheckpointInput : operation === "session_pr_update_push" ? prUpdateInput : operation === "session_pr_record" ? prRecordInput : operation === "session_pr_open" ? prOpenInput : operation === "session_push" ? pushInput : operation === "session_pr_admit" ? prAdmissionInput : operation === "session_branch_integration_decision" ? integrationReviewInput : operation === "session_branch_integrate" ? integrationInput : operation === "session_delivery_checkpoint" ? deliveryInput : operation === "session_preclose_checkpoint" ? precloseInput : operation === "session_close_finalize" ? sessionCloseHookInput : operation === "session_close_checkpoint" ? sessionCloseCheckpointInput : operation === "session_close_record" ? sessionCloseInput : operation === "session_closure_decision" ? sessionClosureInput : operation === "baseline_promotion_checkpoint" ? promotionCheckpointInput : operation === "cycle_terminal_checkpoint" ? terminalCheckpointInput : operation === "session_git_checkpoint" ? gitCheckpointInput : operation === "baseline_promotion_finalize" ? promotionHookInput : operation === "baseline_promotion_decision" ? promotionReviewInput : operation === "baseline_promotion_record" ? promotionInput : operation === "cycle_close_finalize" ? closeHookInput : operation === "cycle_close_record" ? closeInput : operation === "cycle_closure_decision" ? closureInput : operation === "cycle_audit_select" ? auditSelectInput : operation === "cycle_audit_evaluate" ? auditEvaluateInput : operation === "session_initialize" ? initialize : ["context_reload", "session_admit", "cycle_admit", "session_pr_review_event_route", "drift_completion_decision", "drift_completion_select", "cycle_close_completed_select", "spike_conversion_select"].includes(operation) ? empty
+  const schema = operation === "session_pr_redelivery_push" ? prRedeliveryInput : operation === "session_pr_checkpoint" ? prCheckpointInput : operation === "session_pr_update_push" ? prUpdateInput : operation === "session_pr_record" ? (value?.contract_version === "standard-session-pr-record-input.v1" ? prRecordInput : empty) : operation === "session_pr_open" ? prOpenInput : operation === "session_push" ? pushInput : operation === "session_pr_admit" ? prAdmissionInput : operation === "session_branch_integration_decision" ? integrationReviewInput : operation === "session_branch_integrate" ? (value?.contract_version === "standard-session-branch-integrate-input.v1" ? integrationInput : empty) : operation === "session_delivery_checkpoint" ? deliveryInput : operation === "session_preclose_checkpoint" ? precloseInput : operation === "session_close_finalize" ? sessionCloseHookInput : operation === "session_close_checkpoint" ? sessionCloseCheckpointInput : operation === "session_close_record" ? sessionCloseInput : operation === "session_closure_decision" ? sessionClosureInput : operation === "baseline_promotion_checkpoint" ? promotionCheckpointInput : operation === "cycle_terminal_checkpoint" ? terminalCheckpointInput : operation === "session_git_checkpoint" ? gitCheckpointInput : operation === "baseline_promotion_finalize" ? promotionHookInput : operation === "baseline_promotion_decision" ? promotionReviewInput : operation === "baseline_promotion_record" ? promotionInput : operation === "cycle_close_finalize" ? closeHookInput : operation === "cycle_close_record" ? closeInput : operation === "cycle_closure_decision" ? closureInput : operation === "cycle_audit_select" ? auditSelectInput : operation === "cycle_audit_evaluate" ? auditEvaluateInput : operation === "session_initialize" ? initialize : ["context_reload", "session_admit", "cycle_admit", "session_pr_retained_merge_select", "session_pr_review_event_route", "drift_completion_decision", "drift_completion_select", "cycle_close_completed_select", "spike_conversion_select"].includes(operation) ? empty
     : ["mode_decision", "session_start_finalize", "cycle_context_refresh", "session_close_admit"].includes(operation) ? sessionRef : operation === "session_mode_apply" ? modeApply
     : operation === "cycle_initialize" ? cycleInput : operation === "branch_cycle_audit" ? cycleRef
     : operation === "cycle_checkpoint_finalize" ? cycleCheckpointInput : operation === "drift_report_evaluate" ? driftInput
@@ -354,6 +373,10 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.operation_ref === 'session_pr_retained_merge_select') return assertRetainedMergeCaptureSelection(value);
+  if (["standard-workflow-entry-selection-output.v1", "standard-workflow-entry-selection-output.v2", "standard-workflow-entry-selection-output.v3", "standard-workflow-entry-selection-output.v4", "standard-workflow-entry-selection-output.v5", 'standard-workflow-entry-selection-output.v6', 'standard-workflow-entry-selection-output.v7', 'standard-workflow-entry-selection-output.v8', 'standard-workflow-entry-selection-output.v9', 'standard-workflow-entry-selection-output.v10', 'standard-workflow-entry-selection-output.v11', 'standard-workflow-entry-selection-output.v12', 'standard-workflow-entry-selection-output.v13', 'standard-workflow-entry-selection-output.v14', 'standard-workflow-entry-selection-output.v15', 'standard-workflow-entry-selection-output.v16', 'standard-workflow-entry-selection-output.v17'].includes(value?.contract_version)) return assertStandardEntrySelection(value);
+  if (value?.operation_ref === retainedVerificationAdmit) return assertRetainedVerificationOutput(value);
+  if ([retainedValidationAdmit, retainedTaskWork, workPhaseSelect].includes(value?.operation_ref)) return assertRetainedValidationOutput(value);
   if (value?.contract_version === "standard-handoff-git-output.v1") return assertHandoffGitOutput(value);
   if (["standard-handoff-summary-output.v1", "standard-handoff-prepare-output.v1", "standard-handoff-admission-output.v1"].includes(value?.contract_version)) return assertHandoffPreparationOutput(value);
   if (value?.contract_version === "standard-handoff-resource-operation-output.v1") return assertHandoffResourceOperationOutput(value);
@@ -368,6 +391,7 @@ export function assertStandardOperationOutput(value) {
   if (value?.contract_version === "standard-cycle-entry-focus-checkpoint-output.v1") return assertFocusCheckpointOutput(value);
   if (value?.contract_version === "standard-canonical-cycle-resume-output.v1") return assertCanonicalResumeOutput(value);
   if (value?.contract_version === "standard-owned-cycle-resume-output.v1") return assertOwnedCanonicalResumeOutput(value);
+  if (value?.contract_version === "standard-owned-cycle-planning-selection-output.v1") return assertOwnedCyclePlanningSelection(value);
   if (value?.contract_version === "standard-canonical-cycle-resume-observe-output.v1") return assertCanonicalResumeObserveOutput(value);
   if (value?.contract_version === "standard-cycle-entry-choice-record-output.v1") return assertStandardCycleEntryChoiceRecordOutput(value);
   if (value?.contract_version === "standard-cycle-entry-choice-output.v1") return assertCycleEntryChoiceOutput(value);
@@ -433,8 +457,8 @@ export function assertStandardOperationOutput(value) {
     if (checkShadowJson(value) || validateJsonSchema(value, spikeSelectionOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
   }
-  if (value?.contract_version === "standard-cycle-close-selection-output.v1") {
-    if (checkShadowJson(value) || validateJsonSchema(value, closeSelectionOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+  if (['standard-cycle-close-selection-output.v1', 'standard-cycle-close-selection-output.v2'].includes(value?.contract_version)) {
+    if (checkShadowJson(value) || validateJsonSchema(value, value.contract_version === 'standard-cycle-close-selection-output.v2' ? closeSelectionOutputV2 : closeSelectionOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
   }
   if (value?.contract_version === "standard-operation-output.v3") {
@@ -656,8 +680,8 @@ export function assertStandardOperationOutput(value) {
     if (checkShadowJson(value) || validateJsonSchema(value, precloseOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
   }
-  if (value?.contract_version === "standard-session-close-hook-output.v1") {
-    if (checkShadowJson(value) || validateJsonSchema(value, sessionCloseHookOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+  if (["standard-session-close-hook-output.v1", "standard-session-close-hook-output.v2"].includes(value?.contract_version)) {
+    if (checkShadowJson(value) || validateJsonSchema(value, value.contract_version.endsWith(".v2") ? sessionCloseHookOutputV2 : sessionCloseHookOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
   }
   if (value?.contract_version === "standard-session-close-checkpoint-output.v1") {

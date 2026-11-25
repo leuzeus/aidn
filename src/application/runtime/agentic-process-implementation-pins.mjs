@@ -6,6 +6,21 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 // their separately retained build-lock/installed-version pins. npm distributions
 // exclude package-lock.json; direct code pins must use distributed assets only.
 const files = [
+  "src/application/runtime/standard-retained-post-merge-decision-source.mjs",
+  "src/core/workflow/standard-retained-post-merge-decision.mjs",
+  "src/core/contracts/workflow-definition/standard-retained-post-merge-decision-entry.v1.schema.json",
+  "src/core/contracts/workflow-definition/standard-retained-post-merge-decision-proof.v1.schema.json",
+  "src/core/contracts/workflow-definition/standard-retained-merge-capture-selection.v3.schema.json",
+  "src/core/contracts/workflow-definition/standard-workflow-entry-selection-output.v17.schema.json", "src/core/contracts/workflow-definition/standard-workflow-entry-selection-output.v16.schema.json",
+  'src/application/runtime/standard-retained-post-merge-continuity.mjs',
+  "src/core/workflow/standard-retained-post-merge.mjs", "src/application/runtime/standard-retained-post-merge-source.mjs",
+  ...["standard-retained-post-merge-entry.v1","standard-retained-post-merge-proof.v1","standard-retained-merge-capture-selection.v2","standard-workflow-entry-selection-output.v15"].map(name => `src/core/contracts/workflow-definition/${name}.schema.json`),
+  'src/application/runtime/standard-retained-merge-capture-source.mjs', 'src/core/workflow/standard-retained-merge-capture.mjs',
+  ...['standard-retained-merge-capture-selection.v1', 'standard-retained-merge-capture-entry.v1', 'standard-retained-merge-capture-proof.v1',
+    'standard-workflow-entry-selection-output.v14', 'standard-pr-external-merge-disposition-input.v3',
+    'standard-pr-external-merge-disposition-question.v3'].map(name => `src/core/contracts/workflow-definition/${name}.schema.json`),
+  "src/core/workflow/standard-validation-native-layout.mjs", "src/application/runtime/standard-validation-profile-layout.mjs",
+  "src/adapters/runtime/codex-validation-diagnostics.mjs",
   "src/application/workflow/workflow-evaluations.mjs", "package/catalogs/workflow-evaluations.v1.json",
   "src/application/workflow/standard-human-decision-profiles.mjs", "src/core/workflow/human-decision.mjs",
   "src/core/contracts/workflow-definition/human-decision-question.v1.schema.json",
@@ -202,6 +217,7 @@ const files = [
   "src/core/contracts/workflow-definition/standard-cycle-entry-selected-input.v1.schema.json", "src/core/contracts/workflow-definition/standard-cycle-entry-selected-checkpoint-plan.v1.schema.json", "src/core/contracts/workflow-definition/standard-cycle-entry-selected-checkpoint-output.v1.schema.json",
   "src/application/runtime/agentic-process-persistence.mjs", "src/application/runtime/runtime-persistence-service.mjs",
   "src/application/runtime/project-artifact-store-service.mjs", "src/application/runtime/project-artifact-store-worker.mjs",
+  "src/core/ports/project-artifact-store-port.mjs", "src/adapters/runtime/artifact-store.mjs",
   "src/adapters/runtime/postgres-runtime-artifact-store.mjs", "src/adapters/runtime/postgres-artifact-command-lib.mjs",
   "src/adapters/runtime/agent-execution-fence.mjs", "src/core/workflow/artifact-compare-swap.mjs",
   "src/application/runtime/agentic-process-execution-composition.mjs", "src/application/runtime/agentic-process-execution-host.mjs",
@@ -246,6 +262,24 @@ const files = [
   "src/core/contracts/workflow-definition/standard-canonical-cycle-resume-observe-output.v1.schema.json",
   "src/core/workflow/standard-canonical-cycle-resume.mjs",
   "src/core/workflow/standard-owned-cycle-resume.mjs",
+  "src/core/workflow/standard-owned-cycle-planning.mjs",
+  "src/core/workflow/standard-workflow-entry-selection.mjs",
+  "src/application/runtime/standard-owned-entry-continuation.mjs",
+  "src/application/runtime/standard-retained-validation-source.mjs",
+  "src/application/runtime/standard-retained-verification-source.mjs",
+  "src/application/runtime/standard-retained-audit-source.mjs",
+  "src/core/workflow/standard-retained-audit.mjs",
+  "src/application/runtime/retained-audit-native-owner.mjs",
+  "src/core/workflow/standard-retained-verification.mjs",
+  "src/core/workflow/standard-retained-validation.mjs",
+  ...["standard-retained-validation-entry.v1", "standard-retained-validation-pins.v1", "standard-retained-validation-proof.v1",
+    "standard-retained-validation-admission-output.v1", "standard-work-phase-selection-output.v1", "standard-retained-task-work-input.v1",
+    "standard-retained-task-work-output.v1", "standard-workflow-entry-selection-output.v2",
+    "standard-retained-verification-entry.v1", "standard-retained-verification-proof.v1", "standard-retained-verification-admission-output.v1",
+    "standard-work-phase-selection-output.v2", "standard-workflow-entry-selection-output.v3", "standard-workflow-entry-selection-output.v4",
+    "standard-retained-audit-entry.v1", "standard-retained-audit-proof.v1", "standard-cycle-audit-evaluate-input.v2"].map(name => `src/core/contracts/workflow-definition/${name}.schema.json`),
+  "src/core/contracts/workflow-definition/standard-workflow-entry-selection-output.v1.schema.json",
+  "src/core/contracts/workflow-definition/standard-owned-cycle-planning-selection-output.v1.schema.json",
   "src/application/runtime/standard-canonical-cycle-resume.mjs",
   "src/core/workflow/standard-cycle-source-selection.mjs",
   "src/core/contracts/workflow-definition/standard-cycle-entry-choice-checkpoint-plan.v2.schema.json",
@@ -265,6 +299,7 @@ const files = [
   "src/core/contracts/workflow-definition/standard-operation-preview.v1.schema.json",
   "src/application/runtime/standard-workflow-control-inbox.mjs", "src/application/runtime/standard-session-pr-review-control-source.mjs", "src/adapters/runtime/process-control-inbox-store.mjs", "src/core/workflow/process-control-inbox.mjs",
   "src/core/contracts/workflow-definition/process-pr-review-payload.v1.schema.json", "src/core/contracts/workflow-definition/github-pr-review-event.v1.schema.json",
+  "src/core/contracts/workflow-definition/github-pr-review-event.v2.schema.json", "src/core/workflow/codex-review-summary.mjs",
   "src/core/contracts/workflow-definition/process-control-inbox.v1.schema.json", "src/core/contracts/workflow-definition/process-control-inbox.v2.schema.json", "src/core/contracts/workflow-definition/process-control-request.v1.schema.json",
   "src/core/contracts/workflow-definition/process-control-source.v1.schema.json",
   "src/core/workflow/native-allocation-journal.mjs", "src/core/contracts/workflow-definition/native-allocation-journal.v1.schema.json",
@@ -296,6 +331,12 @@ const files = [
 ];
 files.push("src/core/contracts/workflow-definition/standard-workflow-catalog.v4.schema.json", "src/core/contracts/workflow-definition/standard-workflow-catalog.v5.schema.json", "src/core/contracts/workflow-definition/standard-workflow-catalog.v6.schema.json");
 files.push("src/application/runtime/canonical-handoff-projection.mjs", "src/application/runtime/standard-handoff-publication.mjs", "src/application/runtime/standard-handoff-operation.mjs", "src/core/workflow/standard-handoff-operation.mjs", "src/core/contracts/workflow-definition/standard-handoff-operation-plan.v1.schema.json", "src/core/contracts/workflow-definition/standard-handoff-operation-output.v1.schema.json", "src/core/workflow/standard-handoff-publication.mjs", "src/core/contracts/workflow-definition/standard-handoff-publication-input.v1.schema.json", "src/core/contracts/workflow-definition/standard-handoff-publication-plan.v1.schema.json", "src/core/contracts/workflow-definition/standard-handoff-publication-output.v1.schema.json", "src/application/runtime/handoff-packet-projector-use-case.mjs", "tools/runtime/project-handoff-packet.mjs", "tools/runtime/db-first-runtime-view-lib.mjs", "tools/perf/verify-current-state-consistency.mjs");
+files.push('src/application/runtime/standard-retained-session-pr-open-source.mjs', 'src/application/runtime/standard-retained-pr-history.mjs', 'src/core/workflow/standard-retained-session-pr-open.mjs',
+  'src/core/contracts/workflow-definition/standard-retained-session-pr-open-entry.v1.schema.json', 'src/core/contracts/workflow-definition/standard-retained-session-pr-open-proof.v1.schema.json',
+  'src/core/contracts/workflow-definition/standard-workflow-entry-selection-output.v12.schema.json', 'src/core/contracts/workflow-definition/standard-session-pr-record-input.v2.schema.json');
+files.push('src/application/runtime/standard-retained-session-integration-source.mjs', 'src/core/workflow/standard-retained-session-integration.mjs',
+  'src/core/contracts/workflow-definition/standard-retained-session-integration-entry.v1.schema.json', 'src/core/contracts/workflow-definition/standard-retained-session-integration-proof.v1.schema.json',
+  'src/core/contracts/workflow-definition/standard-workflow-entry-selection-output.v11.schema.json', 'src/core/contracts/workflow-definition/standard-session-branch-integrate-input.v2.schema.json');
 export function agenticProcessImplementationPins() {
   const source = files.map(name => {
     const data = fs.readFileSync(new URL(`../../../${name}`, import.meta.url));

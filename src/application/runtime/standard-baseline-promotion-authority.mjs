@@ -6,15 +6,23 @@ const fail = code => { throw Object.assign(Error(code), { code }); };
 // These capabilities belong to the fixed host. readAcceptedOperation must
 // verify signed journal/receipt provenance, accepted current-instance membership,
 // and the latest occurrence for the requested binding. Process JSON cannot
-// select or implement one of these readers.
-export function createStandardBaselinePromotionAuthority({ targetRoot, readAcceptedOperation, readTerminalRecord, human }) {
+// select or implement one of these readers. readTerminalRecord also returns the
+// closure question authenticated against that writer's decision material. Its
+// Human journal may belong to a retained origin with a different signing key.
+export function createStandardBaselinePromotionAuthority({ targetRoot, readAcceptedOperation, readTerminalRecord, human, readRetainedClosure = null }) {
   if ([readAcceptedOperation, readTerminalRecord, human?.question, human?.captured].some(value => typeof value !== "function")) fail("STANDARD_PROMOTION_SOURCE_AUTHORITY_REQUIRED");
   async function readClosure(instance, input) {
+    if (readRetainedClosure !== null) {
+      if (typeof readRetainedClosure !== 'function') fail('STANDARD_PROMOTION_SOURCE_AUTHORITY_REQUIRED');
+      const source = await readRetainedClosure(instance, input);
+      if (source !== null) return source;
+    }
     const closed = await readAcceptedOperation(instance, input.closure_operation_id, "cycle_close_finalize"), plan = closed.record.preview.prepared.plan;
     const recorded = await readTerminalRecord(instance, plan.input);
-    const selected = await readAcceptedOperation(instance, recorded.plan.input.decision_operation_id, "cycle_closure_decision"), question = human.question(selected.record);
+    const question = recorded.closure_question;
     const observed = closed.output.observations, eventPath = ".aidn/runtime/perf/workflow-events.ndjson";
-    if (closed.record.operation_id !== input.closure_operation_id || plan.operation_id !== input.closure_operation_id
+    if (!question || question.operation_id !== recorded.plan.input.decision_operation_id
+      || closed.record.operation_id !== input.closure_operation_id || plan.operation_id !== input.closure_operation_id
       || closed.output.operation_ref !== "cycle_close_finalize" || closed.output.outcome !== "completed"
       || recorded.record_operation_id !== plan.input.closure_operation_id || question.review.cycle_id !== plan.scope.cycle_id
       || closed.output.effect_status !== "confirmed" || closed.output.facts.cycle_close_completed !== true || closed.output.facts.cycle_retained !== true

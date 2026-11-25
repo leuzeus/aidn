@@ -1,5 +1,9 @@
 # BPMN model projects
 
+V2 components accept at most 288 nodes, matching the process model schema and
+runtime loader. The depth and occurrence bounds also apply when importing a
+project; a larger diagram cannot bypass the executable model limits.
+
 A local authoring project contains `manifest.json` (`workflow-project.v1`) and one
 `<model_id>.<revision>.bpmn` file per model. The first manifest row is the root.
 Subsequent rows are the root's ordered call targets. Each row supplies its identity,

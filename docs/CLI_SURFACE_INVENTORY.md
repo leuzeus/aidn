@@ -336,8 +336,50 @@ finalization; `--verify` retains its read-only verification behavior.
     An explicit `standard-workflow-execution.v1` configuration selects the
     published STANDARD catalog/model and the common mixed host. Its `execution`
     supplies project/native pins and roots; the host supplies the model, skills,
-    typed activity outputs and implementation pins. Save the returned `preview`
-    object and apply it with `--action-file <file> --execute --expect-plan <sha256>`.
+    typed activity outputs and implementation pins. If `validation_profile` is
+    supplied, its pinned profile and boundary configuration are read before host
+    creation. Windows
+    validation snapshot/scratch and sandboxed executable paths must not be
+    below Native denied roots; a conflicting layout returns
+    `STANDARD_VALIDATION_NATIVE_READ_CONFLICT` without starting a workflow or
+    repairing permissions. This check does not qualify the validator.
+    A `standard-session-close-recovery.v1` configuration names `target_root`,
+    `instance_id`, `operation_id` and the pinned resolved `original_configuration`.
+    It previews only the bounded returned final-hook failure with unchanged
+    canonical preimages, original start run and exactly three checkpoint events.
+    `--execute --expect-plan` archives the authenticated abandoned owner and
+    records a separate `reconciled_checkpoint_only` disposition. Old UNKNOWN
+    receipts and instance remain immutable; session closure and workflow
+    continuation remain false. Authorization/action/decision/control inputs
+    cannot substitute evidence. Completed replay is inert. Ambiguous business
+    postimages, additional close events and active/unavailable processes refuse.
+    A separate `standard-validation-launch-recovery.v1` configuration selects
+    the bounded historical Windows launch recovery. It names `target_root`,
+    `instance_id`, `operation_id`, and pinned `original_configuration` (the
+    resolved execution) and `validation_profile` references. Preview authenticates
+    the retained occurrence and current context without writing. Explicit
+    `--execute --expect-plan <sha256>` records a separate disposition and retires
+    the exact abandoned local owner. No authorization/action/decision/control
+    file can substitute evidence in this route. It recognizes only the reviewed
+    client failure before sandbox command startup, with the outer Job closed
+    and fresh complete child-runner observations. Other cases refuse.
+    The original UNKNOWN receipt and instance remain unchanged. The result
+    reports `reconciled_not_started`, never a passing validation or resumed
+    workflow. A completed replay returns its retained result without writing;
+    continuation requires a separate compatible entry and current validation.
+    Save the returned `preview`
+    object for each action. The optional `parameters.entry_point` is `session`
+    by default. `{ "kind": "owned_cycle", "checkpoint_operation_id": "op_<40 hex>" }`
+    requires an existing unambiguous OPEN COMMITTING cycle owned by
+    `parameters.session.session_id` in the configured canonical store. Its
+    accepted checkpoint, physical completion, current business/product pins
+    and current R05 gate must still agree; retained alignment is authenticated.
+    A new technical instance then rejoins the cycle context refresh, current
+    entry admission and planning/work chain, preserving the session, cycle and
+    branch. It does not rerun session setup, ask for the mode again or migrate
+    old instance receipts. Missing ownership or unresolved effects refuse.
+    Apply the returned `preview`
+    object with `--action-file <file> --execute --expect-plan <sha256>`.
     Each invocation admits one exact action. A Native allocation that returns a
     failed result with a matching authenticated journal and confirmed process
     tree closure keeps the first failure in `result.details.first_failure`.
@@ -438,7 +480,9 @@ finalization; `--verify` retains its read-only verification behavior.
     review reads, inline replies and thread resolution as specified in ADR-0025. Exact initialization checks
     the configured identity. For either PR review wait, a reviewer pinned in
     the protected manifest enables `--control-source` with the opaque GitHub
-    review node ID. Delivery requires the authenticated review and signed
+    review node ID or the completed/no-findings Codex summary comment node ID.
+    A summary retains its original content/time and supplies no approval.
+    Delivery requires the authenticated provider result and signed
     context. Replay and simulation perform no GitHub or credential I/O.
 - `aidn runtime workflow-action --target <root> --request <file> --json`
   - A STANDARD run preview returns `action.request` with its closed
@@ -942,3 +986,155 @@ branch, a STANDARD PR opening record requires the origin instance's accepted
 R09 completion. The check verifies the source HEAD against the protected
 remote and can use that measurement when the origin tracking ref is stale.
 It uses the existing upstream diagnostic and performs no fetch or ref update.
+
+The STANDARD `runtime workflow-run --configuration` request also accepts an
+explicit retained validation entry in its parameters:
+
+The bounded `retained_session_closure` entry also supports a receipted, unaccepted
+session-close decision after recorded promotion. Its parameters name the exact
+`decision_operation_id`, `original_configuration` and `start_configuration`, the
+latter two as protected `{ "path": "…", "sha256": "…" }` file references. Preview
+authenticates the unchanged decision, original start run and current R05 subject;
+execution still requires the ordinary exact action and explicit `--execute`.
+This route adds no Human signature, Native budget, receipt migration or implicit
+effect. It does not authorize branch integration or provider merge.
+
+After a completed checkpoint-only recovery, `retained_session_checkpoint` names
+`recovery_operation_id` and the protected `original_configuration` reference.
+The fixed reader authenticates the signed recovery, failed dispatch, accepted
+writer/checkpoint and their original Human/R05 chain. It checks the unchanged
+canonical preimages and runtime event suffix before admitting a new technical
+instance directly to the corrected hook. No old result is replaced. Later
+history reads retain authentication after the new hook changes the session.
+The finalizer takes no caller-authored operation IDs; the host selects the
+accepted checkpoint from the current instance or that bounded retained chain.
+Delivery and integration remain separately authorized operations. The session-close
+receipt v2 retains the exact three content and metadata postimages. Delivery
+checks these post-write hashes, never pre-close metadata. Historical v1 receipts
+remain readable; a database-backed receipt without post-write metadata refuses
+with `STANDARD_SESSION_DELIVERY_METADATA_PROOF_REQUIRED`. The CLI cannot supply
+replacement hashes or rewrite a historical receipt.
+
+The final session hook reads objective completion through its fixed host
+authority. Its preview refuses an unresolved gate before dispatch; the real
+checkpoint rechecks it. No CLI field supplies an alignment opinion or disables
+R05, and an existing UNKNOWN still requires separate reconciliation.
+
+```json
+{
+  "entry_point": {
+    "kind": "retained_validation",
+    "recovery_operation_id": "op_1111111111111111111111111111111111111111",
+    "original_configuration": {
+      "path": "/private/original-resolved-execution.json",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  }
+}
+```
+
+The ordinary request still supplies the same session/cycle, current execution
+configuration and qualified validation profile. Use a new technical instance ID.
+The entry requires the actual completed signed launch recovery, original closed
+Native history and unchanged single-task work. The original configuration is
+pinned data, not a selected executable. Protect its path and the historical
+control/review roots in the new Native configuration. Changed business inputs,
+provider/model or process controller require a separately qualified continuation.
+Preview remains read-only; every effect uses the existing exact action execution.
+This entry retains COMMITTING and starts at current validation without another
+planning or implementation activity. It does not renew Native authorization.
+
+For an already verified retained-validation instance, the same public request
+accepts `entry_point.kind: retained_verification`, `audit_operation_id` naming
+its accepted audit selection, and `original_configuration` with the path/hash
+of that instance's resolved execution configuration. Use a new technical
+instance ID for the same owned session and VERIFYING cycle. This bounded entry
+rechecks the original validation/progression/verification chain and current
+product/context, then starts at independent audit. It does not rerun validation
+or replace its original receipts. A failed Native allocation must have its
+closure and accounting reconciled first. Normal exact execution, protected
+source paths, current qualified profile and applicable Native budget remain
+required; preview grants no execution or renewal.
+
+A confirmed close from a `retained_session_checkpoint` instance can continue via
+`retained_session_delivery` in a new technical instance. The entry supplies only
+the protected original configuration reference and finalization operation ID.
+The fixed reader authenticates both accepted operations and the retained
+checkpoint/recovery chain. For a legacy v1 database close, it admits only the
+default normative metadata profile as a **new current observation**, pinned in
+the accepted entry. It does not reconstruct missing historical metadata.
+Changed ownership, content, bindings, HEAD, unsettled effects or later metadata
+changes refuse continuation. No close hook or Human decision is replayed.
+The public delivery-checkpoint v2 input is empty: the host selects the accepted
+current or retained finalizer. Internal checkpoint plans keep their explicit ID.
+
+For retained-session delivery, integration resolves the prior cycle and
+promotion through a fixed historical reader. It does not authenticate an old
+cycle journal with the new instance's key or import its receipts. Current
+canonical owners, branches and postimages remain required, and integration
+still asks its own Human question before the separate Git effect.
+
+An acknowledged but unaccepted integration decision at the end of a
+`retained_session_delivery` instance can continue through
+`retained_session_integration`. Supply its protected original configuration
+reference and `decision_operation_id`. Only the exact four-operation prefix
+(entry, no-effect delivery, cycle selection, Human integration decision) is
+admitted. The historical receipt stays unaccepted in its original instance;
+the successor authenticates its capture and current subject, records derived
+proof, and proceeds to the ordinary integration effect without asking again.
+Any prior integration dispatch, unsettled owner, changed binding, canonical
+subject or Git preimage refuses. No Native grant transfers implicitly.
+Public integration input v2 is empty; the host selects the current accepted
+Human decision or this exact retained decision. Internal v1 effect plans retain
+the explicit decision identity and their ordinary grant/freshness checks.
+
+`retained_external_merge_capture` names a protected, hashed
+`original_configuration` and a `capture_id`. It recovers only the settled
+one-entry predecessor with an expired, signed, reserved external-merge capture
+and its exact reservation. The host verifies the unchanged inherited delivery,
+provider identity, canonical postimages and current two-parent merge. Live,
+delivered, altered or foreign captures and unsettled owners refuse admission.
+The new technical instance references the original evidence without delivering
+or refreshing it, then asks the existing external-merge incident decision before
+the R09 suffix. It repeats neither the delivery nor the merge.
+
+`retained_external_merge` is a bounded configuration entry for a PR already
+merged while an earlier retained-PR instance waited for review. It names a
+protected, hashed original configuration and its `update_operation_id`. The
+host verifies the settled five-operation prefix, original provider and Git
+context, canonical postimages, lineage and current two-parent merge. An
+unsettled owner, Native journal, reserved/delivered control, changed delivery
+or changed provider refuses admission. The new technical instance waits for
+a fresh provider event, then follows the existing external-merge incident
+disposition and R09 suffix. It does not replay delivery or establish nominal
+R08 review/merge qualification. Historical instances and receipts stay intact.
+
+`retained_session_pr_open` continues the exact settled five-operation prefix
+of a retained-integration instance through the existing opened PR. Supply the
+protected `original_configuration` path/hash and `open_operation_id`. Admission
+authenticates the original authorities, conserved integration choice, physical
+integration, canonical postimages and current provider identity/head. Its next
+operation is `session_pr_record`; it neither reintegrates nor pushes or opens
+another PR. Original journals remain immutable. Public PR record input v2 is
+empty; the fixed host selects the accepted current opening or this admitted
+historical opening. Internal v1 plans retain explicit references. No Native
+budget, review verdict or consent to merge is implied.
+
+The existing STANDARD workflow-run configuration also accepts the explicit
+parameters.entry_point kind retained_post_merge, with a protected hashed
+original_configuration and fetch_operation_id. It resumes one settled L1
+captured-merge prefix at a fresh R09 measurement. It does not repeat the accepted
+incident disposition or physical fetch, grant Native work, or authorize a merge.
+Preview and exact-action execution retain their existing effect classifications.
+
+The STANDARD workflow-run configuration also accepts entry_point.kind
+retained_post_merge_decision with original_configuration and decision_operation_id.
+It admits only an expired, receipted, unaccepted no-effect R09 fast-forward
+choice after the fixed source authenticates its Human evidence and identical
+current Git subject. Preview writes nothing. The successor's exact action and
+current executor grant remain necessary before the local fast-forward.
+
+Entry selection v17 ends retained external-merge/R09 work after its completion
+call; it does not request ordinary session integration a second time. Completion
+discovery inventories canonical paths without loading every stored body. This
+adds no CLI flag, historical receipt mutation or new fusion permission.

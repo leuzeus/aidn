@@ -31,6 +31,7 @@ export async function verifyProjectArtifactCommands() {
       if (sql.includes("to_regclass('aidn_shared.execution_runs')")) return { rows: [{ execution_runs: executionSchema ? 'aidn_shared.execution_runs' : null }] };
       if (sql.startsWith('SELECT run_id FROM aidn_shared.execution_runs')) return { rows: reservations.filter(row => row.runtime_scope_id === values[0] && row.reservation_active).map(row => ({ run_id: row.run_id })) };
       if (sql.startsWith('SELECT DISTINCT scope_key')) return { rows: scopes.map(scope_key => ({ scope_key })) };
+      if (sql.startsWith('SELECT path FROM aidn_runtime.v_materializable_artifacts')) return { rows: readRows.filter(row => row.scope_key === values[0]).sort((a,b)=>a.path.localeCompare(b.path)).slice(0,values[1]).map(row=>({path:row.path})) };
       if (sql.includes('path=ANY($2::text[])')) return { rows: readRows.filter(row => row.scope_key === values[0] && values[1].includes(row.path)) };
       if (sql.includes('COALESCE(MAX(artifact_id)')) return { rows: [{ id: '8' }] };
       if (sql.startsWith('SELECT artifact_path')) return { rows: headPath ? [{ artifact_path: headPath }] : [] };
@@ -98,6 +99,15 @@ export async function verifyProjectArtifactCommands() {
   assert.equal(batch.queries[0].sql, 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
   assert.deepEqual(batch.queries.filter(q => q.sql.includes('v_materializable_artifacts')).map(q => q.values), [['scope', [first, missing, second]]]);
   assert.equal(batch.queries.at(-1).sql, 'COMMIT'); count++;
+  const inventory = fake({ scopes: ['legacy', 'scope'], readRows: [
+    {scope_key:'scope',path:second,get content(){throw Error('inventory must not read bodies');}},
+    {scope_key:'legacy',path:missing},{scope_key:'scope',path:first},
+  ] });
+  assert.deepEqual(await executePostgresArtifactCommand(inventory,['scope','legacy'],'list-paths',{limit:1}),[first]);
+  assert.equal(inventory.queries[0].sql,'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+  assert.equal(inventory.queries.at(-1).sql,'COMMIT');
+  assert(inventory.queries.some(q=>q.sql==='SELECT path FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 ORDER BY path LIMIT $2'));
+  assert(!inventory.queries.some(q=>/SELECT \*|LOCK TABLE|INSERT|UPDATE|DELETE/.test(q.sql)));count++;
   for (const paths of [[], [first, first], [first, '../invalid']]) {
     const invalid = fake();
     await assert.rejects(executePostgresArtifactCommand(invalid, ['scope'], 'get-many', { paths }), /ARTIFACT_/);
@@ -118,6 +128,14 @@ export async function verifyProjectArtifactCommands() {
   assert.throws(() => worker.getArtifacts([first, second]), /ARTIFACT_POSTGRES_WORKER_UNAVAILABLE/);
   assert.deepEqual(workerActions, ['get-many']); count++;
   worker.close();
+  const namesOnlyActions=[];
+  const namesOnly=createProjectArtifactStore({backend:'postgres',connectionRef:'env:PROJECT_DB',readOnly:true,
+    workerRunner(_exe,_args,{input}){const r=JSON.parse(input);namesOnlyActions.push(r.action);return r.action==='list-paths'
+      ? {status:0,stdout:JSON.stringify({ok:true,result:[first,second]})}
+      : {status:null,error:{code:'ENOBUFS'}};}});
+  assert.deepEqual(namesOnly.listArtifactPaths(10000),[first,second]);
+  assert.throws(()=>namesOnly.listArtifacts(10000),/ARTIFACT_POSTGRES_WORKER_OUTPUT_LIMIT/);
+  assert.deepEqual(namesOnlyActions,['list-paths','list']);namesOnly.close();count++;
   for (const lifecycle_status of ['running', 'recovery_required']) {
     const fenced = fake({ scopes: ['legacy', 'scope'], executionSchema: true, reservations: [
       { run_id: 'run-1', runtime_scope_id: 'scope', reservation_active: true, lifecycle_status, lease_expires_at: '2000-01-01T00:00:00Z' },
@@ -176,6 +194,7 @@ export async function verifyProjectArtifactCommands() {
         content: 'mode: THINKING\nsession_branch: S001-original\nparent_session: none\n' };
       store.compareAndSwapArtifact({ artifact, expectedSha256: null });
       const original = store.getArtifact(artifact.path);
+      assert.deepEqual(store.listArtifactPaths(10000),[artifact.path]);count++;
       assert.deepEqual(store.getArtifacts(['absent.md', artifact.path, artifact.path]), [null, original, original]); count++;
       db.prepare('UPDATE artifacts SET classification_reason=? WHERE path=?').run('changed-after-read', artifact.path);
       const [current] = store.getArtifacts([artifact.path]);
@@ -217,6 +236,7 @@ export async function verifyProjectArtifactCommands() {
     const audit = path.join(target, 'docs/audit'); fs.mkdirSync(audit, { recursive: true });
     fs.writeFileSync(path.join(audit, 'one.md'), 'one');
     const files = createStandardWorkflowArtifacts({ targetRoot: target, env: {} });
+    assert.deepEqual(files.inventory().paths,['one.md']);count++;
     const batch = files.readMany(['absent.md', 'one.md'], { required: ['one.md'], includeMetadata: true });
     assert.deepEqual(batch.map(row => [row.content, row.metadata_sha256]), [[null, null], ['one', null]]);
     assert.throws(() => files.readMany(['absent.md'], { required: ['absent.md'] }), { code: 'STANDARD_REQUIRED_ARTIFACT_MISSING' });

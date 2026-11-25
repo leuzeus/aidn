@@ -27,7 +27,7 @@ export function observeComposedHost(host, file) {
   }])));
 }
 
-// The corrective drift call carries its own evaluation and human reviews.
+// The corrective drift call carries its own evaluation and one human opinion.
 export function verifyCorrectiveDriftCall({ call, cursor, prefix, event, accepted, evaluationNode = "correction_cycle_drift_evaluate" }) {
   const entering = event.kind === "call_enter";
   const entry = entering ? event : prefix.find(row => row.kind === "call_enter" && row.occurrence_id === call.occurrence_id);
@@ -48,7 +48,7 @@ export function verifyCorrectiveDriftCall({ call, cursor, prefix, event, accepte
     assert.equal(selected.results.at(-1).output.facts.drift_route_ready, true);
   }
   const bindings = { select: "drift_followup_select", ...(objective ? { decide: "drift_recovery_decision" } : {}),
-    finalize: "drift_check_finalize", ...(objective ? { checkpoint_review: "drift_completion_decision" } : {}) };
+    finalize: "drift_check_finalize" };
   assert.equal(leaves.length, Object.keys(bindings).length);
   const operations = Object.fromEntries(Object.entries(bindings).map(([node, binding]) => {
     const leaf = leaves.find(row => row.node_id === node);
@@ -61,7 +61,7 @@ export function verifyCorrectiveDriftCall({ call, cursor, prefix, event, accepte
   assert.equal(event.witnesses.length, 1);
   assert.equal(event.witnesses[0].operation_id, operations.finalize.intent.operation_id);
   assert.deepEqual(event.witnesses[0].results, [operations.finalize.results.at(-1)]);
-  if (objective) assert.equal(operations.checkpoint_review.preview.prepared.plan.previous_completion.operation_id, operations.finalize.intent.operation_id);
+  assert.equal(leaves.some(row => row.operation.intent.binding_ref === "drift_completion_decision"), false);
   assert.deepEqual(event.resolution.input, { finalization_operation_id: operations.finalize.intent.operation_id });
 }
 

@@ -13,18 +13,25 @@ export async function verifyObjectiveCompletion(pass) {
   let completed = false, sequence = 0;
   const H = "a".repeat(64), id = "op_" + "a".repeat(40), evaluation = "op_" + "b".repeat(40);
   try {
-    function fixture(preparedAt = 100) {
+    function fixture(preparedAt = 100, retained = false, retainedAuthority = true) {
       const folder = path.join(root, String(++sequence)); fs.mkdirSync(folder);
       const reportFile = path.join(folder, "report.md"), eventFile = path.join(folder, "events.ndjson");
-      const alignment = { contract_version: "standard-drift-objective-disposition.v1", decision_operation_id: "op_" + "c".repeat(40),
+      let alignment = { contract_version: "standard-drift-objective-disposition.v1", decision_operation_id: "op_" + "c".repeat(40),
         evaluation_operation_id: evaluation, evaluation_sha256: H, context_sha256: H, review_sha256: H, question_sha256: H,
         source_sha256: H, receipt_sha256: H, inbox_id: "decision_" + "d".repeat(40), authority_id: "fixture_user", source_event_id: "fixture_event",
         session_objective: "Learn through an explicitly admitted bounded SPIKE", cycle_objective: "Determine whether a bounded prototype is useful",
         rationale: "Fixture exact accepted completion", prepared_at_ms: preparedAt };
+      if (retained) alignment = { contract_version: 'standard-drift-objective-disposition.v2', decision_operation_id: alignment.decision_operation_id,
+        evaluation_operation_id: evaluation, evaluation_sha256: H, context_sha256: H, session_id: 'S001', cycle_id: 'C001',
+        session_objective: alignment.session_objective, cycle_objective: alignment.cycle_objective, prepared_at_ms: preparedAt,
+        source: { disposition: structuredClone(alignment), completion: { operation_id: id, receipt_sha256: H, plan_sha256: H, output_sha256: H,
+          alignment_sha256: shadowHash(alignment), report_sha256: H, event_sha256: H, event_offset: 0 },
+        scope: { instance_id: 'original_fixture', scope_id: H, configuration_sha256: H, session_id: 'S001', cycle_id: 'C001', product_sha256: H, branch: 'fixture', head: 'a'.repeat(40) } } };
       const plan = { contract_version: "standard-drift-finalize-plan.v3", operation_id: id, input: { evaluation_operation_id: evaluation },
         prepared_at_ms: preparedAt, context_sha256: H, evaluation_sha256: H, branch: "fixture", head: "a".repeat(40), mode: "COMMITTING",
         report: { path: `workflows/drift-reports/${id}.md`, before_sha256: null, after: "# Exact retained fixture report\n", after_sha256: artifactContentHash("# Exact retained fixture report\n") },
         gate_constraints: { level1: { decision: "incremental" }, level3: { required: false }, other_signals: ["objective_delta"] }, objective_alignment: alignment };
+      if (retained) plan.contract_version = 'standard-drift-finalize-plan.v4';
       const event = { run_id: "process_drift_" + id, ts: "1970-01-01T00:00:00.000Z", event: "drift_check_completed", skill: "drift-check",
         result: "ok", branch: "fixture", mode: "COMMITTING", objective_alignment_sha256: shadowHash(alignment) };
       const prefix = Buffer.from('{"event":"preserved"}\n');
@@ -42,6 +49,7 @@ export async function verifyObjectiveCompletion(pass) {
       const current = { context_sha256: H, evaluation_sha256: H, context: { branch: plan.branch, head: plan.head } };
       let time = 100, sourceExpiresAt = null, live = true, journal = H, renewal = null, onHistory = () => {}, onRenewal = () => {};
       const reader = createStandardObjectiveCompletion({ readOperation: () => structuredClone(record), readEvaluation: async () => structuredClone(current),
+        ...(retainedAuthority ? { readRetainedDisposition: async () => { await new Promise(resolve => setImmediate(resolve)); assert.equal(live, true, 'fixture retained source revoked'); return structuredClone(alignment); } } : {}),
         readDisposition: async () => { await new Promise(resolve => setImmediate(resolve)); assert.equal(live, true, "fixture retained source revoked"); return structuredClone(alignment); },
         readHistoricalDisposition: async (_instance, _input, _current, selected) => { assert.equal(selected, alignment.decision_operation_id); await new Promise(resolve => setImmediate(resolve)); onHistory(); return structuredClone(alignment); },
         readRenewedDisposition: async (_instance, _input, _current, anchor) => { await new Promise(resolve => setImmediate(resolve)); onRenewal(); assert.equal(live, true, "fixture current source revoked");
@@ -136,6 +144,18 @@ export async function verifyObjectiveCompletion(pass) {
       } else await assert.rejects(f.reader.read(f.instance), fault === "history-revocation" ? /current source revoked/ : fault === "source-expiry" ? /current source expired/ : fault === "report-after-auth" ? /REPORT_CHANGED/ : fault === "receipt-after-auth" ? /LINK_CHANGED/ : fault === "CAS-after-auth" ? /PROCESS_CHANGED/ : /deep-equal/);
       if (!["report-after-auth", "event-after-auth"].includes(fault)) { assert.deepEqual(fs.readFileSync(f.reportFile), report); assert.deepEqual(fs.readFileSync(f.eventFile), event); }
       pass(`linked completion ${fault}: retained fact and current source permission remain distinct, exact witnesses retained`);
+    }
+    for (const scenario of ['nominal', 'missing-authority', 'revoked', 'changed-event']) {
+      const f = fixture(100, true, scenario !== 'missing-authority'), original = structuredClone(f.alignment.source.disposition);
+      if (scenario === 'revoked') f.revoke();
+      if (scenario === 'changed-event') fs.writeFileSync(f.eventFile, Buffer.concat([f.prefix, Buffer.from('{"event":"forged"}\n')]));
+      const report = fs.readFileSync(f.reportFile), event = fs.readFileSync(f.eventFile);
+      if (scenario === 'nominal') {
+        assert.deepEqual(await f.reader.read(f.instance), f.alignment);
+        assert.equal((await f.reader.review(f.instance)).alignment_sha256, shadowHash(f.alignment));
+      } else await assert.rejects(f.reader.read(f.instance), scenario === 'missing-authority' ? /AUTHORITY_REQUIRED/ : scenario === 'revoked' ? /source revoked/ : /EVENT_CHANGED/);
+      assert.deepEqual(f.alignment.source.disposition, original); assert.deepEqual(fs.readFileSync(f.reportFile), report); assert.deepEqual(fs.readFileSync(f.eventFile), event);
+      pass('retained v4 completion ' + scenario + ': source capability and physical witnesses remain required');
     }
     completed = true;
   } finally {

@@ -6,10 +6,11 @@ import { assertPostMergeFastForwardOutput, assertPostMergeFastForwardPlan, postM
 const fail = (code, effect_status = 'no_effect') => { throw Object.assign(Error(code), { code, effect_status }); };
 const required = 'STANDARD_PR_POST_MERGE_FAST_FORWARD_DECISION_REQUIRED';
 
-export function createStandardPostMergeFastForward({ postMerge, decision, reviewPort, readAccepted, readCurrent, verifyDecision }) {
+export function createStandardPostMergeFastForward({ postMerge, decision, reviewPort, readAccepted, readCurrent, verifyDecision, readRetainedDecision }) {
   const port = reviewPort?.postMergeFetch;
   function source(instance, input) {
-    const { record, output } = readAccepted(instance, input.decision_operation_id, postMergeDecisionOperation, required);
+    const recorded = readRetainedDecision?.(instance, input);
+    const { record, output } = recorded ?? readAccepted(instance, input.decision_operation_id, postMergeDecisionOperation, required);
     const { observations } = assertPostMergeDecisionOutput(output), question = postMergeDecisionQuestion(record);
     const { alignment } = question.subject;
     if (observations.choice !== postMergeFastForwardChoice || !question.choices.includes(postMergeFastForwardChoice)
@@ -19,7 +20,7 @@ export function createStandardPostMergeFastForward({ postMerge, decision, review
     if (alignment.fetch_receipt_sha256 !== fetch.receiptSha || question.subject.merge_receipt_sha256 !== fetch.fetch.merge_receipt_sha256
       || question.subject.merge_operation_id !== fetch.fetch.merge_operation_id
       || ['source_ref', 'merge_oid', 'fetched_head', 'proof_ref'].some(key => alignment[key] !== fetch.fetch[key])) fail(required);
-    return { record, question, alignment, fetch, decisionSha: shadowHash(record.results.at(-1).receipt) };
+    return { record, question, alignment, fetch, verifyRecorded: recorded?.verify, decisionSha: shadowHash(record.results.at(-1).receipt) };
   }
 
   function planFor(id, selected, git) {
@@ -54,7 +55,8 @@ export function createStandardPostMergeFastForward({ postMerge, decision, review
       const selected = source(instance, input);
       if (!['prepareFastForward', 'applyFastForward', 'recoverFastForward'].every(name => typeof port?.[name] === 'function'))
         fail('STANDARD_PR_POST_MERGE_FAST_FORWARD_HOST_REQUIRED');
-      decision.assertAge(selected.record.preview.prepared);
+      if (selected.verifyRecorded) await selected.verifyRecorded();
+      else decision.assertAge(selected.record.preview.prepared);
       const git = await port.prepareFastForward(selected.fetch.git, { alignment: selected.alignment, operationId: id });
       if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail('STANDARD_PR_POST_MERGE_FAST_FORWARD_CONTEXT_CHANGED');
       const plan = planFor(id, selected, git);
@@ -63,13 +65,17 @@ export function createStandardPostMergeFastForward({ postMerge, decision, review
     async apply(instance, input, prepared, { signal, operationId, assertAuthorized }) {
       const { selected, plan } = checked(instance, input, prepared, operationId);
       try {
-        decision.assertAge(selected.record.preview.prepared);
-        await verifyDecision(selected.record, signal);
+        if (selected.verifyRecorded) await selected.verifyRecorded(signal);
+        else {
+          decision.assertAge(selected.record.preview.prepared);
+          await verifyDecision(selected.record, signal);
+        }
       } catch (cause) { throw Object.assign(cause, { effect_status: 'no_effect' }); }
       const value = await port.applyFastForward(plan.git, selected.fetch.git, { write: true, expectPlan: shadowHash(plan.git), signal,
         async assertAuthorized() {
           await assertAuthorized();
-          decision.assertAge(selected.record.preview.prepared);
+          if (selected.verifyRecorded) await selected.verifyRecorded(signal, { alignment: false });
+          else decision.assertAge(selected.record.preview.prepared);
         } });
       return result(plan, value, 'executed');
     },

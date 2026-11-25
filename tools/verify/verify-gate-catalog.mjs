@@ -937,8 +937,10 @@ const negativeProbes = {
   }),
   agent_run_lifecycle_invocation_omission: (() => {
     const commands = packageJson.scripts["perf:verify-agent-run-lifecycle-fixtures"].split(" && ");
-    return commands.length === 11
+    return commands.length === 13
       && commands.includes("node tools/perf/verify-codex-sandbox-validation-fixtures.mjs")
+      && commands.includes("node tools/perf/verify-standard-validation-recovery-fixtures.mjs")
+      && commands.includes("node tools/perf/verify-standard-retained-validation-fixtures.mjs")
       && commands.includes("node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs")
       && commands.includes("node tools/perf/verify-codex-startup-arguments-fixtures.mjs")
       && commands.includes("node tools/perf/verify-agent-local-path-policy-fixtures.mjs")

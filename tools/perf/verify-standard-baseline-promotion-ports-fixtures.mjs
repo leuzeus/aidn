@@ -23,6 +23,8 @@ const finalFault = process.argv.find(value => value.startsWith("--final-hook-fau
 if (finalFault !== undefined && (!process.argv.includes("--final-hook") || !["event", "suffix", "projection", "grant_after"].includes(finalFault))) throw Error("PROMOTION_FINAL_FAULT_INVALID");
 if (process.argv.includes("--final-hook") && (!["files", "dual", "db-only"].includes(selected) || finalFault === "suffix" && mode === "files" || finalFault === "projection" && mode !== "dual")) throw Error("PROMOTION_FINAL_MODE_INVALID");
 const promotionCheckpoint = process.argv.includes("--promotion-checkpoint"), keepCycleBranch = process.argv.includes("--keep-cycle-branch");
+const retainedRecord = process.argv.includes('--retained-record');
+if (retainedRecord && !process.argv.includes('--final-hook')) throw Error('PROMOTION_RETAINED_RECORD_FLAGS_INVALID');
 const objectiveCompletion = process.argv.includes("--objective-completion");
 if (objectiveCompletion && (!promotionCheckpoint || !keepCycleBranch || finalFault !== undefined)) throw Error("PROMOTION_OBJECTIVE_COMPLETION_FLAGS_INVALID");
 const agedCheckpoint = process.argv.includes("--aged-checkpoint");
@@ -129,7 +131,7 @@ try {
     }
   }
   if (process.argv.includes("--final-hook")) {
-    assert.equal(result?.outcome, "completed"); await verifyBaselinePromotionHook({ root, mode, artifacts, promotion, instance, preview, result, git, fault: finalFault, promotionCheckpoint, checkpointFault, agedCheckpoint, agedHook, objectiveCompletion });
+    assert.equal(result?.outcome, "completed"); await verifyBaselinePromotionHook({ root, mode, artifacts, promotion, instance, preview, result, git, fault: finalFault, promotionCheckpoint, checkpointFault, agedCheckpoint, agedHook, objectiveCompletion, retainedRecord });
     if (agedCheckpoint && !checkpointFault) pass("day-old baseline Git checkpoint applies with current accepted source, postimages and grant");
     if (agedHook && !checkpointFault && !finalFault) pass("day-old baseline finalization plan confirms the actual checkpoint and canonical completion");
     pass(checkpointFault ? "promotion checkpoint refusal or unknown effect cannot complete the promotion skill" : finalFault ? "actual checkpoint with lost confirmation retains unknown effects and prevents another checkpoint" : "actual selected promotion checkpoint and five completion writes preserve append-only history and cannot repeat");

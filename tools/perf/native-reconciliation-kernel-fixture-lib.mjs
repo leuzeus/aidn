@@ -63,7 +63,7 @@ export function verifyNativeReconciliationKernel(check) {
       owner_retirement_receipt_sha256: H('fixture-synthetic-owner-retirement'), minimum_consumption: structuredClone(entry.consumption),
       resources: [allocationResource(entry), scopeResource], prepared_at_ms: preparedAt });
     const grant = { contract_version: 'native-allocation-reconciliation-grant.v1', authority_id: 'fixture_native_owner', source_event_id: 'fixture-reconciliation-' + origin.contract_version + '-' + generation,
-      request_sha256: H(request), consumption: consumption(entry.consumption.storage_debit_bytes + 128), closure: closureFor(request),
+      request_sha256: H(request), consumption: { ...consumption(entry.consumption.storage_debit_bytes + 128), native_usage_sha256: entry.consumption.native_usage_sha256 }, closure: closureFor(request),
       evidence_refs: [{ ref: 'fixture:synthetic-final-debit', sha256: H('fixture-cost') }] };
     const receipt = signer.seal({ contract_version: 'native-allocation-reconciliation-receipt.v1', request, grant,
       verification: { outcome: 'verified', authority_id: grant.authority_id, request_sha256: H(request), grant_sha256: H(grant), evidence_class: 'fixture' },
@@ -72,6 +72,25 @@ export function verifyNativeReconciliationKernel(check) {
     return signer.seal({ contract_version: 'native-allocation-journal.v4', journal_id: origin.journal_id, ...scope, revision: origin.revision + 1,
       allocations: structuredClone(origin.allocations), initial_authorization: original, epochs: structuredClone(origin.epochs ?? []), origin_journal: origin, reconciliations: [receipt] });
   }
+  check('reconciliation kernel preserves empty worker usage evidence with zero responses', () => {
+    const value = structuredClone(v1), usage = H({ thread_counters: [], aggregation: 'latest observed cumulative snapshot per thread; not a billed total', incomplete_turns_may_be_unknown: true });
+    value.allocations[0].consumption.native_usage_sha256 = usage;
+    const origin = signer.seal(value), reconciled = reconcile(origin), receipt = reconciled.reconciliations[0];
+    assertNativeAllocationJournal(reconciled); signer.verify(reconciled);
+    assert.deepEqual(reconciled.origin_journal, origin);
+    assert.equal(receipt.request.minimum_consumption.native_usage_sha256, usage);
+    assert.equal(receipt.grant.consumption.native_usage_sha256, usage);
+    assert.equal(nativeAllocationTotals(reconciled.allocations, reconciled.reconciliations).responses, 0);
+    for (const substitute of [null, H('substituted-usage')]) {
+      const grant = structuredClone(receipt.grant); grant.consumption.native_usage_sha256 = substitute;
+      assert.throws(() => assertNativeReconciliationGrant(grant, receipt.request), /NATIVE_RECONCILIATION_CONSUMPTION_CHANGED/);
+    }
+    const invalid = structuredClone(receipt.request); invalid.minimum_consumption.native_usage_sha256 = 'not-a-digest';
+    assert.throws(() => assertNativeReconciliationRequest(invalid), /NATIVE_RECONCILIATION_REQUEST_INVALID/);
+    invalid.minimum_consumption.native_usage_sha256 = usage; invalid.minimum_consumption.responses_observed = 1;
+    invalid.minimum_consumption.response_sha256 = [H('response')];
+    assert.throws(() => assertNativeReconciliationRequest(invalid), /NATIVE_RECONCILIATION_REQUEST_INVALID/);
+  });
   for (const origin of origins) check('reconciliation kernel retains ' + origin.contract_version + ' failure and exact origin', () => {
     const before = JSON.stringify(origin), journal = reconcile(origin); assertNativeAllocationJournal(origin); assertNativeAllocationJournal(journal); signer.verify(journal);
     assert.equal(JSON.stringify(origin), before); assert.equal(JSON.stringify(journal.origin_journal), before);

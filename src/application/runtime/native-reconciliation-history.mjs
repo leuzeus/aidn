@@ -70,7 +70,7 @@ export function createNativeReconciliationHistoryReader({ targetRoot, stateMode,
       || H(dispatch) !== q.dispatch_sha256 || !witness || dispatch.leases.length !== 1
       || H(dispatch.leases[0]) !== owner.plan.original_lease_sha256) fail('NATIVE_RECONCILIATION_RETIRED_OWNER_CHANGED');
     inspectRetiredNativeOwnerWitness({ targetRoot: artifacts.root, dispatchId: q.dispatch_id, originalLease: dispatch.leases[0],
-      expectedLockSha256: owner.plan.lock_sha256, expectedIdentitySha256: witness.retired_identity_sha256 });
+      expectedLockSha256: owner.plan.lock_sha256 });
     return { ...resolved, receipt_sha256: H(receipt), record_sha256: H(record) };
   }
   return Object.freeze({ read, resolution });

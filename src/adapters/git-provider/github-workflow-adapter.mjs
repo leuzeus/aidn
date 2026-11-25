@@ -7,6 +7,7 @@ import { performance } from "node:perf_hooks";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import { checkShadowJson, shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { assertControlRequest, assertControlReviewEvent } from "../../core/workflow/process-control-inbox.mjs";
+import { readCodexReviewSummary } from "../../core/workflow/codex-review-summary.mjs";
 import requestSchema from "../../core/contracts/workflow-definition/github-pr-observation-request.v1.schema.json" with { type: "json" };
 import outputSchema from "../../core/contracts/workflow-definition/github-pr-observation-output.v1.schema.json" with { type: "json" };
 import contentRequestSchema from "../../core/contracts/workflow-definition/github-pr-observation-request.v2.schema.json" with { type: "json" };
@@ -59,6 +60,13 @@ const reviewEventQuery = `query AidnPrReviewEvent($id:ID!) {
     ... on PullRequestReview {
       id state submittedAt updatedAt isMinimized body commit { oid }
       author { __typename login ... on User { id } ... on Bot { id } }
+      repository { id nameWithOwner }
+      pullRequest { ${mergeFields} baseRefOid baseRepository { id } }
+    }
+    ... on IssueComment {
+      id createdAt updatedAt lastEditedAt isMinimized body
+      author { __typename login ... on User { id } ... on Bot { id } }
+      editor { __typename login ... on User { id } ... on Bot { id } }
       repository { id nameWithOwner }
       pullRequest { ${mergeFields} baseRefOid baseRepository { id } }
     }
@@ -135,21 +143,32 @@ function mergeObservation(repository, p, start, end, effect = false) {
 }
 function normalizeReviewEvent(node, { request, sourceRef, subject }, repo, reviewer, start, end) {
   if (node === null) return null;
-  if (node?.__typename !== "PullRequestReview" || node.id !== sourceRef) fail("GITHUB_REVIEW_EVENT_NODE_CHANGED");
+  const summary = node?.__typename === 'IssueComment';
+  if (!summary && node?.__typename !== "PullRequestReview" || node.id !== sourceRef) fail("GITHUB_REVIEW_EVENT_NODE_CHANGED");
   const { author, pullRequest: p, repository } = node;
   const actor = { node_id: author?.id, login: author?.login, type: author?.__typename };
-  if (actor.node_id !== reviewer.node_id || actor.login !== reviewer.login || actor.type !== reviewer.type)
+  // GitHub REST app logins carry [bot]; GraphQL Bot.login omits it. The
+  // immutable node ID and exact actor type remain mandatory in both forms.
+  const expectedLogin = reviewer.type === 'Bot' ? reviewer.login.replace(/\[bot\]$/, '') : reviewer.login;
+  if (actor.node_id !== reviewer.node_id || actor.login !== reviewer.login && actor.login !== expectedLogin || actor.type !== reviewer.type)
     fail("GITHUB_REVIEW_EVENT_REVIEWER_CHANGED");
+  if (summary && actor.type !== 'Bot') fail('GITHUB_REVIEW_EVENT_REVIEWER_CHANGED');
+  const editor = summary && node.editor ? { node_id: node.editor.id, login: node.editor.login, type: node.editor.__typename } : null;
+  if (summary && (node.lastEditedAt === null ? node.editor !== null
+    : !Number.isSafeInteger(providerDate(node.lastEditedAt)) || !editor || shadowHash(editor) !== shadowHash(actor)))
+    fail('GITHUB_REVIEW_EVENT_EDITOR_CHANGED');
+  const commit = summary ? readCodexReviewSummary(node.body) : node.commit?.oid;
   if (repository?.id !== repo.node_id || repository.nameWithOwner !== repo.owner + "/" + repo.name
     || p?.baseRepository?.id !== repo.node_id || p.headRepository?.id !== repo.node_id || subject.repository_id !== repo.node_id
     || p.id !== subject.pull_request_id || p.number !== subject.pull_request_number
-    || p.headRefOid !== request.head || p.headRefOid !== subject.head_oid || node.commit?.oid !== subject.head_oid
+    || p.headRefOid !== request.head || p.headRefOid !== subject.head_oid || commit !== subject.head_oid
     || p.headRefName !== request.branch || p.headRefName !== subject.head_ref || p.baseRefName !== subject.base_ref
     || p.isDraft !== false) fail("GITHUB_REVIEW_EVENT_SUBJECT_CHANGED");
-  if (!["APPROVED", "COMMENTED", "CHANGES_REQUESTED"].includes(node.state) || node.isMinimized !== false
+  const submittedAt = summary ? node.updatedAt : node.submittedAt;
+  if (!summary && !["APPROVED", "COMMENTED", "CHANGES_REQUESTED"].includes(node.state) || node.isMinimized !== false
     || typeof node.body !== "string" || Buffer.byteLength(node.body) > githubObservationLimits.commentBytes
-    || typeof node.submittedAt !== "string" || typeof node.updatedAt !== "string") fail("GITHUB_REVIEW_EVENT_NOT_SUBMITTED");
-  const submitted = providerDate(node.submittedAt), updated = providerDate(node.updatedAt);
+    || typeof submittedAt !== "string" || typeof node.updatedAt !== "string") fail("GITHUB_REVIEW_EVENT_NOT_SUBMITTED");
+  const submitted = providerDate(submittedAt), updated = providerDate(node.updatedAt);
   if (!Number.isSafeInteger(submitted) || !Number.isSafeInteger(updated) || updated < submitted || updated > end
     || subject.not_before_ms !== undefined && submitted < subject.not_before_ms) fail("GITHUB_REVIEW_EVENT_TIME_INVALID");
   const { pull_request: pr } = mergeObservation({ node_id: repo.node_id, owner: repo.owner, name: repo.name }, p, start, end);
@@ -161,17 +180,21 @@ function normalizeReviewEvent(node, { request, sourceRef, subject }, repo, revie
     || Date.parse(pr.merged_at) < Math.max(subject.pre_merge_observed_until_ms, submitted, updated)) {
     fail("GITHUB_REVIEW_EVENT_HISTORICAL_SUBJECT_UNPROVEN");
   }
-  const revision = { state: node.state, updated_at: node.updatedAt, body_sha256: sha(node.body) };
-  if (subject.reviews && !subject.reviews.some(row => row.node_id === node.id && row.commit_oid === node.commit.oid
+  const revision = { state: summary ? 'COMPLETED_NO_FINDINGS' : node.state, updated_at: node.updatedAt, body_sha256: sha(node.body),
+    ...(summary ? { editor, last_edited_at: node.lastEditedAt } : {}) };
+  if (!summary && subject.reviews && !subject.reviews.some(row => row.node_id === node.id && row.commit_oid === node.commit.oid
     && row.submitted_at === node.submittedAt && shadowHash(row.author) === shadowHash(actor)
     && row.state === revision.state && row.updated_at === revision.updated_at && row.body_sha256 === revision.body_sha256))
     fail("GITHUB_REVIEW_EVENT_COLLECTION_CHANGED");
   return assertControlReviewEvent({
-    contract_version: "github-pr-review-event.v1", authority_id: "github_review",
-    source_event_id: "review-" + shadowHash(node.id), repository_id: repository.id, pull_request_id: p.id, pull_request_number: p.number,
+    contract_version: summary ? 'github-pr-review-event.v2' : "github-pr-review-event.v1", authority_id: "github_review",
+    source_event_id: summary ? 'codex-summary-' + shadowHash({ node_id: node.id, head_oid: p.headRefOid, revision: shadowHash(revision) }) : "review-" + shadowHash(node.id),
+    repository_id: repository.id, pull_request_id: p.id, pull_request_number: p.number,
     head_oid: p.headRefOid, base_oid: pr.merged ? pr.merge_parent_oids[0] : p.baseRefOid, head_ref: p.headRefName, base_ref: p.baseRefName,
     event_key: "review_snapshot", revision: shadowHash(revision),
-    occurred_at: node.submittedAt, actor,
+    occurred_at: submittedAt, actor,
+    ...(summary ? { summary: { kind: 'codex-completed-no-findings', node_id: node.id, created_at: node.createdAt,
+      updated_at: node.updatedAt, editor, last_edited_at: node.lastEditedAt, body_sha256: sha(node.body), body_chunks: [node.body] } } : {}),
   });
 }
 // The embedding host pins the executable/repository. The runner is a test seam,

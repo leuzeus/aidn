@@ -3452,7 +3452,11 @@
                             "maximum": 9007199254740991
                           },
                           "native_usage_sha256": {
-                            "type": "null"
+                            "type": [
+                              "null",
+                              "string"
+                            ],
+                            "pattern": "^[a-f0-9]{64}$"
                           }
                         }
                       },
@@ -3639,7 +3643,11 @@
                             "maximum": 9007199254740991
                           },
                           "native_usage_sha256": {
-                            "type": "null"
+                            "type": [
+                              "null",
+                              "string"
+                            ],
+                            "pattern": "^[a-f0-9]{64}$"
                           }
                         }
                       },
@@ -6517,7 +6525,11 @@
                                     "maximum": 9007199254740991
                                   },
                                   "native_usage_sha256": {
-                                    "type": "null"
+                                    "type": [
+                                      "null",
+                                      "string"
+                                    ],
+                                    "pattern": "^[a-f0-9]{64}$"
                                   }
                                 }
                               },
@@ -6704,7 +6716,11 @@
                                     "maximum": 9007199254740991
                                   },
                                   "native_usage_sha256": {
-                                    "type": "null"
+                                    "type": [
+                                      "null",
+                                      "string"
+                                    ],
+                                    "pattern": "^[a-f0-9]{64}$"
                                   }
                                 }
                               },
@@ -7072,7 +7088,11 @@
                                 "maximum": 9007199254740991
                               },
                               "native_usage_sha256": {
-                                "type": "null"
+                                "type": [
+                                  "null",
+                                  "string"
+                                ],
+                                "pattern": "^[a-f0-9]{64}$"
                               }
                             }
                           },
@@ -7259,7 +7279,11 @@
                                 "maximum": 9007199254740991
                               },
                               "native_usage_sha256": {
-                                "type": "null"
+                                "type": [
+                                  "null",
+                                  "string"
+                                ],
+                                "pattern": "^[a-f0-9]{64}$"
                               }
                             }
                           },
@@ -11359,7 +11383,11 @@
                                       "maximum": 9007199254740991
                                     },
                                     "native_usage_sha256": {
-                                      "type": "null"
+                                      "type": [
+                                        "null",
+                                        "string"
+                                      ],
+                                      "pattern": "^[a-f0-9]{64}$"
                                     }
                                   }
                                 },
@@ -11546,7 +11574,11 @@
                                       "maximum": 9007199254740991
                                     },
                                     "native_usage_sha256": {
-                                      "type": "null"
+                                      "type": [
+                                        "null",
+                                        "string"
+                                      ],
+                                      "pattern": "^[a-f0-9]{64}$"
                                     }
                                   }
                                 },
@@ -11914,7 +11946,11 @@
                                   "maximum": 9007199254740991
                                 },
                                 "native_usage_sha256": {
-                                  "type": "null"
+                                  "type": [
+                                    "null",
+                                    "string"
+                                  ],
+                                  "pattern": "^[a-f0-9]{64}$"
                                 }
                               }
                             },
@@ -12101,7 +12137,11 @@
                                   "maximum": 9007199254740991
                                 },
                                 "native_usage_sha256": {
-                                  "type": "null"
+                                  "type": [
+                                    "null",
+                                    "string"
+                                  ],
+                                  "pattern": "^[a-f0-9]{64}$"
                                 }
                               }
                             },

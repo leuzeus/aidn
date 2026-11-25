@@ -1,5 +1,37 @@
 # Testing Guide
 
+## Recorded promotion continuation
+
+`tools/perf/verify-standard-retained-promotion-fixtures.mjs` checks closed entry
+proofs and drives the published reducer through the retained finalization call
+to session preclosure. Its receipts are synthetic; it runs in the existing
+retained-completion fixture family. Source readers and installed execution
+require separate evidence.
+
+`node tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs --mode=db-only --final-hook --promotion-checkpoint --keep-cycle-branch --objective-completion --retained-record`
+exercises the real local SQLite promotion hook with a controlled historical
+record capability. Missing, foreign, revoked or changed source proofs must
+produce no checkpoint call or canonical/event change; the nominal hook must
+retain the original record request and physically finalize once. This does not
+authenticate a real user or establish PostgreSQL or full-workflow qualification.
+
+## Retained objective agreement after cycle completion
+
+`tools/perf/verify-standard-retained-objective-fixtures.mjs` checks the closed
+scope projection, preservation of original opinion bytes, and refusal of foreign
+or changed session/cycle, ownership, objectives, branch, HEAD, product, diagnosis
+and completion links. It runs with the retained-completion fixture family.
+The gating objective-fence suite exercises v4 report/event finalization and
+revocation before effects. The objective-completion fixture uses real temporary
+report/event bytes to check the retained-source capability and cold witness
+reads. Their authority and artifact ports are fixtures, not live-user evidence.
+
+A separate read-only local pilot probe authenticates the original Human source,
+Native context and physical completion and compares a v4 preparation with the
+preserved blocked occurrence on the same current evaluation. It performs no
+business effect or model call. Installed continuation after a recorded promotion,
+later effects and full same-candidate qualification remain separate evidence.
+
 ## Workflow incident information and source template
 
 `npm run perf:verify-metadata-policy` checks the source incident template against
@@ -110,6 +142,31 @@ Windows using real local process discovery, the publication owner and a Git
 index lock. It also checks the closed resource contracts with controlled inputs.
 The result covers resource observation and revocation before publication.
 A full handoff journey, Native inference and live GitHub are separate results.
+
+For Native answer constraints and refusal evidence, run
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --native-answer-only`
+and `node tools/perf/verify-standard-cycle-prework-fixtures.mjs`. The session
+adapter uses an explicit RPC double: valid answers retain their normal result;
+invalid JSON, schema and semantics retain bounded private refusal evidence;
+disk and storage-budget failures preserve the first refusal and start no retry.
+The mixed FILES host verifies that the full bound schema reaches `turn/start`
+and its prompt hash matches retained provenance. The prework counterexample
+accepts code punctuation in the transport schema but refuses it in a safe-prose
+field of the complete schema, naming the field without echoing its value.
+These checks make no genuine Native call and do not establish the cause of
+an earlier live rejection whose answer was not retained.
+
+The same selector checks hosted activity instructions at the actual
+`thread/start` boundary, including the reused work context and isolated review.
+It loads the installed startup contract and uses an explicit PostgreSQL worker
+double in `db-only`: the trusted Native parent receives the configured connection,
+while model-tool environment filters exclude it. Retained developer-message
+hashes must match the messages sent to the client. This verifies delivery and
+scope of the instructions, not whether a genuine model follows them. Run
+`node tools/perf/verify-codex-assets-fixtures.mjs` for managed startup-contract
+upgrade/rollback and `node tools/perf/verify-codex-db-only-skill-readiness.mjs
+--root scaffold/codex --agents scaffold/root/AGENTS.md` for DB-only startup
+coverage. Native replay remains separate qualification.
 
 The catalog lists slower checks that are omitted from required admission.
 Their route and family results show `SKIP`. Run a relevant individual command
@@ -364,6 +421,20 @@ timestamp cache. Local pure lookup timings remain distinct from full workflow
 performance, Native execution and installed-archive qualification.
 
 ## Reviewed public validation client artifact, 2026-11-12
+
+The entry-selection fixture includes Windows validation/Native layout refusals:
+snapshot and scratch ancestors, sandboxed executables, case/separator and dot
+normalization, control/home roots, sibling and drive distinctions. A public
+entry test supplies pinned files and verifies refusal before authority/provider
+or workflow creation, with unchanged local bytes. This is a portable declaration
+check; it does not launch a sandbox, modify ACLs or prove live access.
+
+The sandbox-boundary fixture also verifies private v2 runtime launch diagnostics:
+split stderr delivery, a 4096-byte tail, partial delivery, UTF-8 boundaries,
+counter/digest/text corruption, immutable restart reads and historical v1 reads.
+A failed client without child membership remains unknown even when its outer
+Job is closed. These portable cases do not launch Codex, reconcile a prior
+unknown operation or qualify a native validator.
 
 The sandbox-boundary fixture checks both the historical app artifact and the
 exact public Windows x64 artifact of the reviewed Codex source. V1/V2 retain
@@ -879,6 +950,13 @@ re-preparation and a separate postimage after CAS. Retain a metadata-only
 change, a stale plan or context, and any partial write as distinct outcomes.
 An isolated observation or transition is insufficient for a nominal verdict.
 
+The task-progress validity fixture also exercises a retained-work reader that
+requires the current writer's private owner assertion. A foreign owner must
+refuse before reading work; owner loss during source reobservation or current
+authorization must leave zero writes. Loss after the first conditional write
+must retain UNKNOWN and the committed prefix. These controlled-port checks do
+not establish a live Native audit or an installed continuation.
+
 For the PostgreSQL cycle validation subject, compare the complete selected
 plan and work result with individual authenticated reads. Check an altered
 journal and altered native evidence, and verify that another subject read
@@ -1322,16 +1400,28 @@ to exercise the exact published corrective checkpoint call inside a disposable
 mixed fixture with an active cycle. The direct finalizer first retains its
 objective refusal. The call then binds the accepted evaluation, waits for the
 signed fixture opinion across host reopening, and returns after the confirmed
-R05 result and the fresh review linked to that completion. Use `--drift-objective-published-checkpoint` with
+R05 result without another human question. Reopening after finalization preserves
+the one decision receipt and its original completion evidence.
+Use `--drift-objective-published-checkpoint` with
 `--drift-objective-mismatch-only` to also exercise the next real cycle checkpoint,
-including its linked plan, separate grant, gate invocation and retained result.
+including its plan bound to the original alignment, separate grant, gate invocation and retained result.
 The full correction sequence, installed package and actual actors have separate
 gates.
 Run `node tools/perf/verify-standard-composed-preflight-fixtures.mjs --cycle-entry-only`
 to check the published fresh cycle caller. The synthetic preflight covers
 equivalent objectives, an accepted review of differing objectives and a deferred
-review. It verifies that the same evaluation reaches the checkpoint and that
-deferring the decision stops the route before finalization.
+review. It verifies that the same evaluation reaches the checkpoint with one
+alignment question, that deferring the decision stops before finalization,
+and that an unconfirmed finalizer cannot reach the checkpoint.
+It also covers one or two `request_diagnosis` choices: each repeats the Native
+occurrence with a distinct evaluation, without recreating the cycle, finalizing
+the rejected alignment or increasing the original response allowance.
+Run `node tools/perf/verify-agentic-process-execution-fixtures.mjs
+--drift-objective-mismatch-only --drift-objective-fresh-diagnosis-only
+--retain-on-failure` for the real FILES host and physical checkpoint regression.
+The fixture uses the published loop, reopens at human boundaries, retains each
+choice once, and completes one finalizer/checkpoint on the second evaluation.
+Native and human ports are fixtures; this is not the genuine-actor campaign.
 Add `--drift-objective-checkpoint-only` with the published-checkpoint selector
 to isolate its positive route within the same execution bound. The direct
 refusal is verified by a separate execution.
@@ -2130,6 +2220,12 @@ from the component model alone do not qualify the composed standard path.
 
 `node tools/perf/verify-standard-pr-review-control-fixtures.mjs` selects complete
 PR event/content capture on files, dual and db-only; `--mode=<mode>` selects one.
+It also exercises the Codex completed/no-findings summary event: exact Bot node
+identity across REST/GraphQL login spelling, full head/base/PR binding, complete
+body preservation, pending/finding/security/foreign/minimized refusals, older
+publication with a fresh authenticated reread, stale proof and same-head edits.
+An I/O read longer than five seconds and cancellation are checked separately;
+no result manufactures a formal review, approval or merge authorization.
 The actual canonical inbox, host/service, SQLite CAS and common reducer are used.
 Event authentication, accepted update authority and provider responses are fixture
 capabilities. Cases reject stale/foreign/current-revision/actor failures, preserve
@@ -2927,6 +3023,57 @@ semantics, authenticated control delivery and provider-event reuse refusal.
 It does not use the standard business adapters. The native-only composition also refuses
 the operation profile before allocation. These checks do not qualify the
 standard workflow or native/installed mixed-host execution.
+
+The same operation fixture includes `verify-operation-commit-guard-fixtures.mjs`.
+Its SQLite/db-only cases distinguish a slow fixed local pre-commit guard from a
+bounded source authority, reject unauthenticated and timed-out sources before
+the guard, preserve the waiting receipt on stale context or cancellation, and
+prove that a competing acceptance appends only one result. Serialized operation
+arguments cannot replace the host guard. These component checks do not prove
+the real STANDARD closure path, PostgreSQL or an installed archive. A retained
+receipt prototype that holds CAS is read-only evidence, not closure success.
+
+The guard fixture also composes the production session-closure review with the
+SQLite reducer and controlled source capabilities. A local reconstruction longer
+than the source-authentication timeout may complete; a changed HEAD or missing
+R05 completion still preserves the waiting instance and original receipt. These
+cases exercise acceptance ordering, not the complete STANDARD host or a real
+Human source. Integration cases also compose the production branch review with
+real temporary Git refs and SQLite receipt acceptance. Slow reconstruction
+succeeds after authentication, while HEAD or canonical-subject changes during
+that authentication preserve the receipt and waiting instance. They do not
+integrate a branch or qualify the historical source chain or installed host.
+
+`verify-standard-retained-closure-fixtures.mjs`, included by the retained
+verification fixture, checks the closed retained-choice proof, malformed and
+foreign subjects, fixed provider dispatch and the published route to
+`cycle_close_record` without another Human or Native occurrence. The ordinary
+retained-audit fixture enters the new pinned review call and still reaches the
+audit evaluator first. Closure input v2 rejects caller-selected decision IDs;
+the internal v1 plan remains separately checked. These synthetic fixtures do
+not authenticate a real inbox or prove closure effects. Read-only source probes,
+current canonical owner/CAS behavior, public entry and installed evidence must
+be reported independently, with unexecuted stages marked separately.
+
+The terminal-material cases reject a different cycle or decision, changed audit
+or report, an unknown effect, premature skill completion and mismatched causal
+context or decision hashes. The historical terminal reader must separately be
+probed against the same retained proof and physical validation evidence; it is
+not a fresh VERIFYING admission. Current terminal postimages remain checked by
+the checkpoint and final-hook component fixtures.
+
+`verify-standard-retained-completion-fixtures.mjs`, included by the retained
+verification fixture, validates the closed completed-cycle entry and source
+proof, rejects missing provenance and authored answers/permissions, and checks
+that the provider does not misclassify a DONE cycle as resumable active work.
+The published model reaches the promotion question through two read-only
+operations, without terminal writes, a new retention question or Native work.
+Its closure/checkpoint references remain distinct. These synthetic receipts
+do not authenticate a real origin or prove public entry. A private source probe
+must separately verify the original configuration, settled journal prefix,
+closed Native tree, original Human/audit/validation evidence, physical event,
+current session ownership and canonical/Git postimages. Public and installed
+continuation, promotion effects and final P0 remain separate evidence.
 
 The required agentic-process gate also runs
 `tools/perf/verify-workflow-engine-fixtures.mjs`: direct JSON creation defaults to
@@ -4181,6 +4328,13 @@ The documentation-reference verifier resolves active local Markdown links and
 literal `npm run` references against the tracked tree and `package.json`; its
 negative probes prove that a missing link and a missing script are rejected.
 
+For retained R09 completion, the retained-external-merge fixture follows the
+full composed return to the terminal and contrasts the historical delivery
+re-entry. Project-artifact-store fixtures cover path-only canonical inventory
+on actual SQLite and the PostgreSQL double, including scope selection, limits,
+read-only transactions and a full-content worker output-limit refusal. Live
+PostgreSQL completion discovery remains separate pilot evidence.
+
 Stable family wrappers are cataloged in `package/catalogs/gates.v1.json`.
 `verify:handoff` runs on Windows. `verify:release` runs the catalog publication
 selection. To run a distinct check for diagnosis, use its individual
@@ -4779,6 +4933,13 @@ closure proof, a new allocation grant or a general resume qualification.
 
 ### Standard cycle audit components
 
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --worker-only`
+also checks that the trusted supervised worker receives the protected STANDARD
+host home needed to authenticate retained origins. The model transport still
+excludes that location and database credentials. Invalid host-home paths refuse.
+These process and environment fixtures use a controlled Native transport; they
+do not establish a real independent audit on an installed archive.
+
 `node tools/perf/verify-standard-cycle-audit-fixtures.mjs` checks typed report
 coverage and semantic refusals. `node tools/perf/verify-standard-workflow-inventory-fixtures.mjs`
 checks complete canonical presence, redirection refusal and DB-only behavior.
@@ -5068,7 +5229,12 @@ Promotion request qualification uses three required agentic fixtures:
 fixed bindings and outcome separation; `verify-standard-baseline-human-fixtures.mjs`
 checks the actual signer/capture logic on memory plus files/dual/DB-only stores;
 `verify-standard-baseline-authority-fixtures.mjs` checks the real bounded event
-reader with a fixture accepted-journal capability. Human provider and completed
+reader with a fixture accepted-journal capability. It also checks a terminal
+reader carrying the authenticated original closure question when that Human
+journal belongs to a retained origin. The promotion reader must not reopen that
+journal using the current instance's signing key. Missing, foreign and changed
+question subjects still refuse, as do unaccepted closure sources and altered
+physical events. Human provider and completed
 closure remain fixture authorities in these component cases. They do not prove
 that the common cursor reached the bindings from a real preceding closure.
 The existing source-installed baseline port producers also exercise read-only
@@ -5444,6 +5610,21 @@ report and actual hook without cycle reopening. These selectors use fake native
 transport and make no session-close, full-model or archive claim.
 
 ### Session closure decision and R05 physical authority
+
+`node tools/perf/verify-session-close-objective-fixtures.mjs` checks the
+session-close reader's pinned R05 output, actual event bytes, report, unchanged
+documents and the writer's causal content/metadata transition for v3/v4
+completion. Its accepted-source capabilities are fixture inputs. It is also
+included in the short process-operation fixture.
+
+Add `--objective-completion` to
+`node tools/perf/verify-standard-session-close-record-fixtures.mjs --mode=db-only --checkpoint --final-hook --delivery-checkpoint`
+to exercise a terminal owned cycle whose objective wording differs from the
+session. Missing and wrong opinions refuse without events or owner acquisition;
+the exact controlled reader reaches the actual hook and delivery. Repeat with
+files when changing Git projection behavior. This component uses injected
+source authority; authenticated PostgreSQL pilot evidence and UNKNOWN recovery
+remain separate qualifications.
 
 `node tools/perf/verify-standard-session-closure-history-fixtures.mjs` checks the
 private v2 record/completion contracts, repeated pure reopen/reclosure, exact old
@@ -6419,6 +6600,35 @@ The focused `--drift-git-readonly-only --retain-always` selector runs the existi
 Interpret each result against its exact source, argv and retained receipts. Preserve original failed or uncertain attempts separately from later corrections, including Native bounds, consumption and pending ownership. Closed processes alone do not admit an uncertain effect or release its owner. The complete manifest retains all existing command order and its final nominal case when these maintained component cases are added.
 
 
+## Owned cycle before plan recording
+
+`node tools/perf/verify-standard-entry-selection-fixtures.mjs` checks the closed
+public-entry selection, default setup, typed refusals and process changes around
+the actual admission port. Its provider callbacks are identified doubles.
+`node tools/perf/verify-standard-owned-entry-public-fixtures.mjs --mode=db-only`
+uses the public CLI, real canonical SQLite setup, an actual legacy drift hook
+and a receipted host checkpoint to reach the planning Native wait on the same
+session, cycle and branch. It asks no mode question, starts no model, preserves
+the product and original instance, and rejects changed parameters, missing
+checkpoint proof, unsupported phase, changed HEAD/product/canonical intent,
+origin key replacement and missing physical event. The legacy hook is a fixture
+prerequisite; this does not qualify a genuine Native R05 or Human interaction.
+The ordinary entry fixture separately checks the default session path. Neither
+fixture qualifies genuine actors, PostgreSQL or an installed archive.
+
+`node tools/perf/verify-standard-owned-planning-fixtures.mjs` checks the closed
+read-only contract, exact scaffold selection, rejection of partial replacement
+and source/owner/backend/metadata/product/process changes across awaits. It
+also checks that an accepted selection can supply the fresh prework subject.
+
+`node tools/perf/verify-standard-owned-planning-host-fixtures.mjs --mode=db-only`
+uses real canonical initialization, journals, plan recording, DoR and phase
+ports, with a controlled Native wire. A new instance continues the existing
+session and cycle, preserves an earlier accepted entry and instance, and changes
+no product or branch. DB-only here uses SQLite. `--mode=files` is available for
+historical storage parity; PostgreSQL, a real model, process-tree supervision,
+the public journey and the installed archive require separate qualification.
+
 ## Owned canonical progress source components
 
 Run `node tools/perf/verify-standard-owned-cycle-resume-fixtures.mjs --contracts-only` for the closed entry-only source and output schemas, preserved selected input, ordinary/integration-only intent, all three phase descriptors, working-progress context fencing and inconsistent/foreign source refusals. These pure checks perform no host, H or Native execution.
@@ -6463,6 +6673,29 @@ The choice-checkpoint fixtures retain closed v1 readers and validate v2 plan/out
 Run `node tools/perf/verify-standard-cycle-prework-fixtures.mjs` for the pure initial-audit subject/report boundary. The required agentic manifest includes this command before the existing typed source-selection check and unchanged final nominal case. It verifies closed supported schemas, separate intent/architecture verdicts, historical v1 readability without conversion, immutable canonical plans, failed/information-needed distinctions, changed source/context/HEAD/product/metadata/rule refusals, foreign evidence and rejection of JSON approvals or authority fields. The protected-source shape regression first exposed an untyped null-reference error, then passed with typed refusal.
 
 This scope calls no Native/Human provider, authenticates no authority, executes no host effect and connects no published route. Current Native producer, readiness/fence, actual root, backend and installed qualifications remain separate required work. The original plan and all old FAIL/UNKNOWN attempts are unchanged.
+
+The prework fixtures also exercise both fresh and canonical Native answers
+with a mandatory intent or architecture rule omitted. Each refusal identifies
+the missing field and rule, and the answer remains byte-for-byte unchanged.
+Valid additional declared rules remain accepted. The producer instructions
+state the same mandatory mapping. Run
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --native-answer-only`
+to exercise the production session adapter with a controlled transport: the
+rule guidance reaches the turn, the original rejected answer and semantic
+diagnostic are retained, no successful result is emitted, the product stays
+unchanged and the adapter closes. These cases use no real model and do not
+replace targeted replay of the failed activity with a real actor or final
+source/archive qualification on one frozen candidate.
+
+The same selectors cover a fresh proposal that omits `audit:SPEC.md` while
+both initial audits cite it. Standalone and wrapped plan answers refuse with
+the same typed reason and an exact field diagnostic, without inserting a
+reference. The production session adapter retains the original bytes, emits
+no success and closes its controlled transport. Host evaluation still rejects
+foreign reference names and changed hashes. Historical structural readers
+and canonical audit-only answers retain their acceptance. Replaying preserved
+inputs against these pure boundaries is a targeted regression; it does not
+resume the live instance or replace final source/archive qualification.
 
 
 The same prework fixture command checks the registered Native answer schema
@@ -6680,6 +6913,13 @@ entry, post-assignment effect, real resource termination or workflow resume.
 Original required command argv/order and finite Native grants remain unchanged.
 
 ## Native no-assignment reconciliation producer candidate
+
+The no-assignment request and grant also accept the digest of an empty worker
+usage observation. Zero responses and an empty response list remain required.
+The grant must preserve the exact retained usage digest, including historical
+null values; replacing or erasing it refuses. Embedded journal, receipt, record
+and public-action schemas enforce the same rule. The kernel covers both forms;
+the producer fixture uses a sealed empty observation as the actual worker does.
 
 The original three Native dispatch provenance commands also run the private
 producer fixture. The same argv and required-case order remain unchanged.
@@ -7764,3 +8004,216 @@ without Git mutation. A new ordinary action then requires a different intent
 and current grant, exactly one real Git commit, unchanged original capsule and
 Native allocations, and exact replay/SIM. Source/provider/H/Native doubles remain
 identified; this component does not prove installed or genuine-actor behavior.
+
+## Historical validation launch recovery
+
+For the bounded Windows startup recovery, run
+`node tools/perf/verify-codex-sandbox-validation-fixtures.mjs` and
+`node tools/perf/verify-standard-validation-recovery-fixtures.mjs`. The first
+recognizes only reviewed pre-command logon failure and refuses twelve contradictory
+witnesses. The second uses controlled persistence/process ports to exercise exact
+preview, signed evidence, active-owner refusal, subject drift, completed replay
+and nine interruption boundaries, retaining prior attempts and one retirement.
+It is included in the existing agent-run-lifecycle gate.
+
+Run `node tools/perf/verify-standard-validation-recovery-storage-fixtures.mjs --mode=db-only`
+for actual child-process termination, SQLite CAS, exact physical lock archival
+and restart at intent, acquired fence, archived lock and released fence. The same
+script accepts `--mode=dual` and `--mode=files` for their persistence/projection
+semantics. It uses fixture history and cannot prove historical Windows launch
+evidence, real Native work or PostgreSQL execution. Public pilot preview, actual
+reconciliation, compatible workflow continuation, installed archive and P0 retain
+separate verdicts. Never count `reconciled_not_started` as a passing product test.
+
+For the bounded continuation after launch recovery, run
+`node tools/perf/verify-standard-retained-validation-fixtures.mjs`. It checks the
+closed proof/entry contracts, changed task/product/session/scope refusals, fixed
+provider routing, the published reducer path to validation with no Native work,
+and historical contributor exclusion before a fresh review session opens. These
+controlled checks are part of agent-run-lifecycle. They do not qualify real
+Native actors or historical recovery evidence. Recheck the retained installed
+source in read-only mode, then exercise the public entry, current validator,
+canonical progression and audit separately on the frozen candidate. Record
+source/installed execution and retained UNKNOWN history separately from final P0.
+
+For the subsequent VERIFYING-to-audit continuation, run
+`node tools/perf/verify-standard-retained-verification-fixtures.mjs` (also loaded
+by the retained-validation fixture gate). It checks closed entry/proof contracts,
+phase/product/contributor refusals, fixed provider routing, and the published
+reducer path directly to independent audit. These pure fixtures do not exercise
+the historical source reader or real Native execution. Separately compare the
+read-only reader with preserved source evidence, including the original Native
+reconciliation, then exercise the installed public entry on that same owned
+session/cycle. Require unchanged historical instances, product and canonical
+business state, retained contributor exclusions and the same machine-evidence
+and audit-context hashes. Record source, installed-entry and actual audit results
+separately. Only the private historical reader may authenticate old binding pins;
+execution of an old instance must continue to refuse changed implementation.
+
+The retained audit's trusted worker reobserves the original evidence while its
+own Native dispatch holds the effect fence. Run
+`node tools/perf/verify-native-dispatch-provenance-fixtures.mjs db-only`
+for that ownership boundary: a signed live dispatch, exact reservation, physical
+lock and canonical fence must agree. Foreign owners, stale reservations, changed
+authority, returned dispatches and replaced locks refuse. These checks use an
+identified allocation fixture under the production owner; they do not start a
+model. A reader-only probe before owner acquisition is insufficient evidence for
+the owned worker path. Keep that result separate from the actual Native audit.
+
+The same provenance gate exercises archived Native witnesses against actual
+filesystem metadata changes. A chmod round trip changes ctime while retaining
+the file and its owner bytes; historical observation must still pass. Changed
+identity fields, owner/hash, physical content, a byte-identical replacement,
+extra hard links and absence refuse. The live-owner check must still reject the
+same metadata-only change. These filesystem fixtures are separate from the
+signed retirement/reconciliation history checks and genuine Native qualification.
+
+Run `node tools/perf/verify-standard-retained-audit-fixtures.mjs` for the bounded
+post-audit continuation contracts, fixed provider selection, stale-instance and
+foreign-proof refusals, and the authored route from entry directly to current
+audit evaluation. It is included through retained-verification fixtures. These
+pure cases do not authenticate a real historical auditor. Qualify the private
+reader separately against retained evidence and negative source/binding cases,
+then exercise the frozen public source and installed entry. Keep original
+blocked receipts and Native accounting unchanged. Reaching human closure review
+does not establish closure, delivery or full P0.
+
+Run `node tools/perf/verify-standard-retained-session-closure-fixtures.mjs` for
+the closed retained-session contracts, provider revision fence and published
+reducer route directly to the close writer. It is included through the retained
+closure fixtures. These cases use constructed source proofs and do not prove
+historical authentication or a real closure. Qualify the fixed reader separately
+against a local-only pilot corpus, including changed configuration, start source,
+decision, provider, authority, product scope and evidence protection. Then run
+the frozen public source/installed entry and check canonical effects separately.
+Preserve original instances, the first failed acceptance, Human inbox and Native
+accounting. No branch of this test claims a complete STANDARD run.
+
+## Historical session-hook recovery
+
+Run `node tools/perf/verify-standard-session-recovery-fixtures.mjs` for closed
+contracts, the three-event checkpoint-only boundary, exact plans, forged evidence,
+active recovery owners, subject drift and nine interrupted writer boundaries.
+Controlled ports distinguish durable recovery from session closure. These checks
+are included in process-operation fixtures.
+
+Run `node tools/perf/verify-standard-session-recovery-storage-fixtures.mjs --mode=db-only`
+for real child-process exit, live scoped process samples, SQLite CAS, exact lock
+archival and four interrupted recovery boundaries. The same fixture accepts
+`--mode=files` and `--mode=dual`. Its business history is synthetic. Historical
+PostgreSQL recovery, installed behavior and continuation to delivery require
+separate pilot evidence. A successful recovery does not close the session.
+
+## Retained session checkpoint continuation
+
+Run `node tools/perf/verify-standard-retained-session-checkpoint-fixtures.mjs`
+for closed recovery/checkpoint references, missing proof rejection, provider
+revision fencing and the published reducer route directly to the final hook.
+The ordinary retained-closure fixture enters its writer/checkpoint call first;
+composition fixtures retain corrective ordering and the unchanged root bound.
+These cases are included in retained-closure fixtures. They do not prove a real
+historical source or finalization. Qualify the reader against preserved signed
+history, including changed bindings, recovery, owner and canonical preimages;
+then exercise the public installed route and verify the physical close event,
+canonical state, Git checkpoint and unchanged old UNKNOWN independently.
+
+## Session-close metadata receipt
+
+Run `node tools/perf/verify-standard-session-close-record-fixtures.mjs --mode=db-only --checkpoint --final-hook --objective-completion --delivery-checkpoint`
+for actual SQLite completion CAS followed by the same postimage reader used by
+the workflow host and then the delivery port. It verifies the receipt's metadata
+hashes after writing, stale-hash refusal and explicit refusal of legacy DB
+receipts lacking those hashes. `--mode=files` preserves metadata-free legacy
+compatibility. Human/R05 source capabilities remain fixture inputs. This does
+not prove historical PostgreSQL reanchoring or continuation between candidates.
+
+The retained session delivery fixtures exercise the closed entry/proof, fixed
+provider and published reducer, including absence of a repeated Human/Native
+step. Metadata admission checks reject foreign classification, ownership and
+content, and bind a new digest when update metadata changes. The actual legacy
+PostgreSQL journal reader and public installed delivery remain local pilot
+checks; fixture success alone does not qualify them. Run
+`node tools/perf/verify-standard-retained-session-delivery-fixtures.mjs` for this
+focused boundary and the composition fixtures for the ordinary/corrective graph.
+
+The session branch integration authority fixtures also exercise its fixed
+retained-cycle capability: historical closure can supply the integration
+subject without adding events to the current instance; wrong closure/terminal
+IDs, question subject, proof digest and missing status history refuse. The
+actual retained audit/validation/promotion chain is a separate read-only local
+pilot probe, not a fixture claim.
+
+The retained-closure family includes
+`verify-standard-retained-session-integration-fixtures.mjs`: closed entry/proof,
+malformed and foreign historical boundaries, UNKNOWN or accepted decision
+refusal, provider CAS across awaits, and the published reducer route directly
+to integration with an empty public input. Pure boundary checks authenticate no
+signature themselves. Common Human/HMAC tests, the historical reader on a local
+pilot and installed execution provide distinct evidence; none is implied by
+these fixtures. Ordinary delivery, checkpoint and closure selectors also enter
+the new pinned call where applicable, preserving their next actual operation.
+
+The retained-closure family also runs
+`verify-standard-retained-session-pr-open-fixtures.mjs`. It checks the closed
+contracts, exact settled five-operation boundary, foreign/extra/unaccepted or
+UNKNOWN operations, fixed provider CAS and the published route to PR recording
+without repeated integration, push, opening, Human or Native operations. These
+pure fixtures do not authenticate historical signatures. The source reader on
+an actual preserved journal and installed execution remain separate pilot
+evidence. PR record authority fixtures reject history changed during provider
+observation and verify finalizer identity from the signed delivery plan when
+the public input is empty. Canonical writer and successor fixtures verify
+their own new postimages, independently of the historical close proof.
+
+The retained-closure family includes
+`verify-standard-retained-external-merge-fixtures.mjs`: closed v13 selection,
+settled review-wait boundaries, changed/foreign/UNKNOWN/control refusals,
+entry CAS across observation, provider-event waiting without delivery replay,
+and preservation of the original delivery timestamp. Real delayed merge read
+and verification exceed five seconds; accelerated deadline and cancellation
+cases assert zero canonical writes. The fixed 60-second I/O bound applies to
+merge and review; the generic control fixtures retain the five-second claim
+bound. Pure boundary fixtures do not prove historical signature authentication
+or actual GitHub reconciliation; the live source prototype and installed
+public journey provide separate qualification evidence.
+
+The same suite covers v14 capture continuation: unchanged expired reservations,
+refusal of live/delivered/altered/foreign captures and unsettled prefixes, a
+separate authenticated routing selection, and the v3 Human question naming the
+historical reserved capture. No provider control event or merge is fabricated.
+Composition checks also keep the expanded model below the unchanged 256 KiB
+pinned-file limit; its generated JSON uses one-space indentation. The preserved
+predecessor fixture has its original one-entry shape. These deterministic cases
+do not establish successful installed R09 synchronization.
+
+`verify-standard-pr-review-control-fixtures.mjs --body-transfer-only` also
+exercises full delivery after provider verification takes more than five
+seconds. It proves one accepted event, retained acknowledgement without a second
+provider call, and refusal when the Git context changes during verification.
+The reserved capture survives that refusal and a new invocation authenticates
+it again. These checks cover the fixed-host/reducer handoff, separately from the
+inbox's I/O deadline fixtures; neither proves recovery of an expired capture.
+
+### Retained post-merge continuation
+
+The retained-external-merge fixture additionally exercises the closed v15 entry,
+selector v2, one settled L1 disposition/fetch/measurement prefix, changed or
+unaccepted receipts, UNKNOWN, retries, foreign identity, incident severity and
+fetch substitution. The published successor reaches a fresh measurement without
+replaying a Human disposition, fetch, provider event or Native activity.
+Historical opening lookup and the live authenticated source prototype are
+separate evidence; these synthetic boundary fixtures do not qualify installed
+post-merge completion. Keep the ordinary R09 fast-forward, historical admission
+and composition suites when changing its shared readers.
+
+## Recorded R09 choice continuation
+
+The retained external-merge fixture suite covers the closed recorded-choice
+boundary and published routing to fast-forward followed by ordinary R09
+measurement, alignment and completion. It refuses missing, changed, foreign,
+unsettled, UNKNOWN and substituted decision evidence. Its reducer receipts
+and Human source are synthetic. The ordinary real-Git R09 suite remains the
+regression for execution, interruption and independent continuity admission.
+A separate local-only PostgreSQL source probe authenticates genuine retained
+Human evidence and current exact Git tips without writing either store.
+Installed execution and final P0 qualification require their own evidence.

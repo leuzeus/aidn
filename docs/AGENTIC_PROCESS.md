@@ -323,6 +323,23 @@ observed polling marker. Raw commands, arguments, outputs and reasoning are not
 copied. Each activity receipt counts distinct native responses and observed
 tool items; these are diagnostic observations, never result authority.
 
+Each typed activity receives its full bound answer schema in the per-turn
+instructions, before the host records the prompt hash. This includes patterns,
+lengths and item bounds omitted from the strict provider response format and
+also applies when a compatible Native thread is reused. The complete schema,
+semantic report rules, current evidence and authority checks remain enforced.
+
+If a captured final answer fails JSON parsing, structural/schema validation or
+report semantics, the adapter attempts to retain `native-answer-rejected` in
+the private control directory. It records the refusal code and bounded schema
+diagnostics, the request/context/schema digests, usage and the exact final
+answer (at most 64 KiB, base64-encoded to bound JSON expansion). It copies no
+tool output, reasoning or exception message/stack. This file consumes the
+existing storage allowance and is not a result receipt or retry authority.
+If storage refuses the diagnostic, the original failure remains first; missing
+evidence must be reported as unavailable. Raw final answers stay local and
+must be redacted before inclusion in a public qualification report.
+
 The adapter checks effective configuration, allowed permission profile, existing
 Windows sandbox readiness and exact trusted project-hook hashes before a model
 turn. It never provisions a backend, approves hooks, changes home configuration
@@ -347,6 +364,11 @@ Executable occurrence paths must fit the unchanged 256-character assignment
 activity-ID contract, including the longest loop and collection suffixes. The
 model loader refuses an oversized possible path before resource assignment;
 paths are never shortened or hashed into an ambiguous identity.
+
+The v2 model admits at most 288 nodes per component. STANDARD's fresh-cycle
+diagnosis loop uses 266 root nodes so its human choice and routing facts remain
+in the same scope as the next Native occurrence. V1 retains its 128-node bound;
+the depth, child, loop, expanded-occurrence and Native budget limits still apply.
 
 Cancellation already requested at entry, or received during the asynchronous
 pre-turn observation, prohibits a new model turn. Exhausted deadlines also

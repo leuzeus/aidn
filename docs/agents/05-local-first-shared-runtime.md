@@ -411,6 +411,35 @@ Controlled Git context reads set `diff.autoRefreshIndex=false` per invocation al
 
 ## Owned entry to canonical progress
 
+The public `entry_point` object (`kind: owned_cycle`, `checkpoint_operation_id`)
+starts a new technical instance on an already owned OPEN canonical COMMITTING
+cycle. The checkpoint locator resolves through the selected canonical backend.
+An authenticated read-only operation requires current cycle-entry admission,
+the original accepted checkpoint, matching project/backend, branch, HEAD,
+product and business document/metadata pins, and a current R05 gate before
+routing past session startup. A retained alignment is verified against its
+original independent Human source and physical completion. Source processes
+with unconfirmed operations or Native allocations refuse; no UNKNOWN is reset.
+The ordinary cycle context refresh and subsequent admission still run. Existing
+mode, session/cycle identities and branch remain canonical; this path fabricates
+no Human receipt and migrates no previous instance. It adds no authority store,
+backend fallback, implicit projection, expiry rule or shared synchronization.
+
+An admitted owned OPEN cycle with untouched scaffold planning documents can
+select the ordinary fresh-prework chain through `cycle_owned_planning_select`.
+The fixed host compares canonical plan, audit and traceability bytes with the
+current templates and requires unfrozen, not-ready status. An existing
+integration-only choice cannot select fresh planning. The host reobserves the
+accepted entry, content and metadata, scope, backend, product and process around
+awaits. Partial planning is never replaced on a parser failure. Current DoR,
+plan-record and phase effects retain their grants, owners and CAS checks.
+
+This allows a new process instance with current implementation pins to continue
+the same canonical session and cycle before their plan was recorded. It does
+not migrate an old process instance or rewrite its decisions, receipts, Native
+accounting or UNKNOWN effects. The selector stays in the existing operation
+journal; it introduces no state table or shared synchronization method.
+
 An unambiguous owned cycle can supply its accepted `cycle_entry_admit` identity to the separate read-only `cycle_owned_resume_admit` adapter. This preserves ordinary entry and avoids requiring the selected-cycle H/activation/checkpoint sequence for a cycle already owned in the current context. The selected source retains that full sequence and its physical checkpoint rules.
 
 The owned source reuses current canonical/backend/metadata/process ownership checks and the progress projector. Its current Git diff/status and product scope are observed through the existing controlled context reader and fenced before/after awaited reads. Uncommitted current progress is DATA, not a reason to invent a checkpoint or fresh work receipt. Canonical choice history can retain `integration_only` intent; it provides no H authentication or effect permission. All unfinished work still needs current DoR, the existing separately granted implementation entry and specific Native write admission. Complete data keeps imported and current task IDs separate through product observation, checks and audit. No new authority, store, shared synchronization or elapsed-age rule is introduced.
@@ -418,7 +447,7 @@ The owned source reuses current canonical/backend/metadata/process ownership che
 
 ## Published phase and work-source routing
 
-The root retains its existing R01 context-refresh and fresh-creation preconditions. An unambiguous owned cycle enters a deterministic call for actual entry and typed progress admission. Ambiguous/reported entry follows the existing H decision and accepted record/checkpoint/activation/selected-context/focus chain. Deferred, rejected and cancelled H receipts retain the common reducer wait/stop semantics. No extra human approval or elapsed-age rule is introduced.
+The root retains its existing R01 context-refresh and fresh-creation preconditions. An unambiguous owned cycle enters a deterministic call for actual entry, untouched-scaffold selection and, when planning already exists, typed progress admission. The caller then uses the existing prework chain for an unplanned cycle. Ambiguous/reported entry follows the existing H decision and accepted record/checkpoint/activation/selected-context/focus chain. Deferred, rejected and cancelled H receipts retain the common reducer wait/stop semantics. No extra human approval or elapsed-age rule is introduced.
 
 A deterministic preparation call selects the accepted planning source and performs current DoR/implementation entry only when needed. Its typed return names the original planning operation. The root then selects the actual accepted phase identity and routes unfinished tasks through the existing Native task loop. Complete canonical DATA reaches a trusted current-product snapshot, actual machine checks and current verification before audit. Imported and current work stay separate; no synthetic task advance, writer receipt or progress ID is created. Corrective cycles use their own implementation entry.
 
@@ -752,3 +781,12 @@ dispatch capsule remain intact. A later Git effect needs a new ordinary intent,
 a new current operation grant and the normal effect owner/fence. A running or
 returned capsule cannot use this pre-dispatch proof. Existing post-effect
 reconciliation still requires its exact committed Git witness.
+
+The retained_post_merge entry admits exactly a settled captured-merge prefix
+through its first measurement, before any R09 decision. It reauthenticates the
+accepted L1 Human disposition and retained fetch without dispatching either.
+The original provider port verifies its original Git witness; new alignment or
+fast-forward effects still require current successor grants. Measurement is
+fresh, and only the existing R09 strategy may advance a behind-only checkout.
+UNKNOWN, pending ownership, changed bindings, moved source or remote, a partial
+prefix and an L2 incident are refused by this bounded continuation.

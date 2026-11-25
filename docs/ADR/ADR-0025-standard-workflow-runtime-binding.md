@@ -1,5 +1,69 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## R05 evidence at the session final hook, 2026-11-24
+
+The session finalizer passes the accepted R05 objective completion through a
+fixed host capability into its actual checkpoint. The signed session-close
+question pins that R05 output; the accepted report writer and finite Git
+checkpoint account for the intervening changes. Unchanged review documents
+retain their content and metadata pins, while the three writer paths must match
+their authenticated postimages. The R05 report and exact physical event remain
+required. No CLI flag or model input supplies an alignment opinion.
+
+The finalizer first evaluates the gate without emitting events. Missing or
+changed completion refuses before ownership or hook dispatch; the actual
+checkpoint repeats the existing gate with the same verified capability and
+live effect authority. The public close-session script uses the same use case
+without a completion capability. R05 age, other signals, constraints and runtime
+strictness remain enforced. This change does not settle historical UNKNOWN
+effects or authorize replay of a consumed start run.
+
+## Public entry on an existing owned cycle, 2026-11-22
+
+The optional STANDARD parameter `entry_point` defaults to `session`. The closed
+object `{ "kind": "owned_cycle", "checkpoint_operation_id": "op_<40 hex>" }`
+requests one bounded continuation: an owned COMMITTING cycle still OPEN after
+its accepted creation checkpoint. The locator selects a canonical journal,
+never an implementation, key path or authority. The host verifies its original
+MAC, accepted process history, physical checkpoint event, exact project/backend,
+HEAD, branch, product and the checkpoint's fifteen business document/metadata
+pins. A missing proof, changed subject, other phase, foreign ownership, active
+Native allocation or unresolved effect refuses. Initial facts remain host-owned.
+
+The R05 alignment, when present, is verified through the original accepted
+evaluation, independent Human source, report and physical completion event.
+The current gate rechecks intent, scope, integrity and repair signals. Derived
+`RUNTIME-STATE.md` refreshes do not replace those business pins or renew the
+decision. This transition does not loosen the general R05 context fingerprint
+or admit other cross-version continuations. Session setup remains the default.
+
+The published graph branches only around session setup and its preflight. Both
+paths join the existing mode/cycle route. The owned path rereads cycle context
+and entry admission, then uses the same planning, DoR, work and delivery ports.
+It does not create a session/cycle or copy decisions and receipts from another
+instance. Retained business decisions remain attached to their original subjects;
+later Human decisions and Native use keep their own current authorization.
+This is a new technical instance, not migration or resumption of an old model.
+
+## Owned cycle continuation before plan recording, 2026-11-22
+
+An admitted existing COMMITTING cycle may be OPEN because its first plan was
+never recorded. The owned-entry component now selects that case explicitly
+before attempting canonical plan projection. Only exact canonical scaffold
+plan, audit and traceability bytes, together with unfrozen, not-ready status,
+permit fresh planning. The fixed host reauthenticates the current accepted
+entry and reobserves content, metadata, templates, scope, backend, process and
+product. A partial or modified plan keeps the canonical path and its refusals.
+
+The existing prework producer, evaluation, record, DoR and phase operations
+remain responsible for their separate evidence and effects. This path creates
+neither a session nor a cycle. A new process instance can use the same canonical
+objects after implementation pins change; prior instances, accepted decisions,
+receipts, uncertain effects and Native consumption remain unchanged. There is
+no implicit migration, grant, synchronization or new persistence authority.
+Fixtures and a targeted continuation do not replace final same-candidate public
+and installed-archive qualification.
+
 ## Human decision profiles
 
 A human-decision-question.v1 names the subject and its digest, an explicit
@@ -38,11 +102,39 @@ including lengths, item bounds, patterns, bindings and cross-field rules. The
 transport schema is derived for the current request and grants no authority.
 Canonical report schemas, retained receipts and acceptance rules stay the same.
 
+The per-turn instructions also carry the complete bound schema, including
+constraints the provider format omits. Prompt provenance covers those exact
+instructions. Schema values remain data and confer no authority. A captured
+answer refused by the host is retained as a bounded private diagnostic when
+storage permits, with its validation stage, digests and original final text.
+That evidence cannot be consumed as an accepted result, trigger a retry or
+authorize an effect. Retention failure preserves the original refusal. This
+does not reclassify earlier Native failures whose rejected answers are absent.
+
 For a Native R05 diagnosis, the request binds `original_objective` to the
 canonical context. The actor receives the host's rules for comparing objective
 text, classifying deviations and reporting the corresponding recommendation
 and split flags. The host checks the returned report and evaluates its
 freshness and evidence against the current context.
+
+## Hosted Native activity and coordinator startup, 2026-11-22
+
+The execution composition identifies a hosted Native activity in the trusted
+developer message, before supplying project authorities and skills. The actor
+uses the supplied activity context and product scope. Project activation,
+session/cycle admission, mode decisions, canonical workflow access, Git
+transitions and skill completion belong to the existing host. Installed startup
+instructions preserve this distinction; ordinary interactive sessions retain
+their admission-first startup. Project data cannot declare an admitted activity.
+
+The actor must not repeat coordinator startup through the ambient AIDN CLI.
+Its model tools intentionally lack canonical database credentials and global
+runtime lease access. Missing required context produces a rejected outcome
+for the host. Existing live hooks, permission profiles, current admissions,
+independent-review rules and result validation remain in force. This is an
+instruction boundary, not a capability or an admission receipt. The retained
+developer-message digest covers it; no environment marker, new permission,
+credential exposure or global runtime access is introduced.
 
 ## Retained failure of an ordinary Native action, 2026-11-20
 
@@ -944,16 +1036,17 @@ checkpoint so the hook can authenticate the corresponding completion. The
 deterministic selector requests human review only for a
 clean diagnostic with a sole objective disagreement. The existing v2 review
 binds that exact diagnostic and objective pair. The R05 finalizer authenticates
-current alignment and retains its separate effect authority. Before the objective
-route returns, a fresh v3 review binds the accepted R05 receipt, report and
-physical event to the separate checkpoint. It preserves the original completion
-and starts a new review window under the existing limit. The cycle checkpoint's
-signed plan retains the renewed completion digest and the existing hook
-reauthenticates that proof under its own grant. Other signals and unconfirmed
+current alignment and retains its separate effect authority. The call returns
+after that confirmed completion. It asks once about the objective pair; the
+finalizer's new receipt, report and physical event do not require a second
+human opinion about the same evaluation. The cycle checkpoint's signed plan
+retains the accepted alignment digest and the existing hook reauthenticates
+the original source and physical completion under its own grant. Other signals and unconfirmed
 alignment stop the checkpoint. Corrective rediagnosis and later corrective R05
 checkpoints require separate routing and qualification.
 
-Within a single renewal read, the authenticated completion reader supplies
+Historical linked reviews retain their existing protocol. Within a single
+renewal read, the authenticated completion reader supplies
 the witnessed historical anchor and authenticated evaluation to current review
 validation. The live gate and context are reobserved before authenticating the
 new human source. After that authentication the completion reader checks the retained
@@ -2443,6 +2536,19 @@ validation, task advancement, review, closure and exception routes.
 
 ### Deterministic validation of observed code
 
+The public STANDARD entry reads a supplied pinned validation profile and its
+boundary configuration before constructing its authority or workflow host.
+For a Windows boundary, the snapshot, scratch and sandboxed executable paths
+cannot be inside a Native denied root, control root or home. Scratch also
+cannot contain one of those roots. Windows uses a shared sandbox group, so a
+deny-read ancestor from the Native activity can prevent the later validator
+from starting even though an earlier isolated qualification passed.
+`STANDARD_VALIDATION_NATIVE_READ_CONFLICT` identifies the conflicting role and
+root index. Preparation must choose disjoint validation work paths; the host
+does not remove a protection or repair ACLs. The check is a necessary layout
+condition, not native qualification, a full filesystem-access observation or
+reconciliation of a previous effect. No profile or historical record is changed.
+
 `cycle_validation_execute` consumes the accepted `cycle_work_evaluate` identity
 from IR data links. The actual source authority authenticates the signed
 operation and native evidence, then rechecks current product, canonical context
@@ -2531,6 +2637,13 @@ grant. It writes exactly plan/status/CURRENT-STATE through metadata-preserving
 CAS. The ordered task list gains checked markers and a progress record; the
 frozen scope JSON remains unchanged. Partial writes or missing projections
 retain unknown effects and their owner instead of authorizing another task.
+
+Locked task advancement passes a private assertion of its own live effect
+owner through validation reobservation to the retained-work reader. A bare
+preview still refuses an unsettled owner. The assertion is rechecked after
+awaited reads and authorization and before each write; it cannot be supplied
+in request data. Ownership lost before writing refuses with no effect, while
+loss after a conditional write retains the unknown result and committed prefix.
 
 PostgreSQL reads task advancement material in separate batches at preview,
 locked re-preparation, preimage and postimage checks. Each batch binds content
@@ -3938,7 +4051,27 @@ The existing five-minute capture window is measured from submission.
 Each capture or verification groups its fixed read queries under one
 authenticated credential, with the checkout binding checked before and after
 the group. Profile, credential and executable checks still fence transport.
-The existing control authority timeout applies to the entire verification.
+Formal review events retain their five-minute submission admission window.
+The separate v2 Codex summary event accepts only a visible, versioned
+completed/no-findings IssueComment on the exact full head commit. Its configured
+Bot node ID and type are mandatory; the REST `[bot]` suffix is normalized only
+when comparing the Bot login to GraphQL. A prose receipt, abbreviated commit,
+pending result, code finding or nonempty security finding is not sufficient.
+An edited summary must also name that same Bot as its latest editor; missing
+edit metadata or a human edit of a bot-authored comment refuses.
+The original comment body and times are preserved in the signed payload, with
+no synthetic PullRequestReview or approval. This completion evidence reaches
+Native triage alongside the independently collected formal reviews and threads.
+Summary event identity includes its node, head and revision: a later result on
+the same provider comment cannot overwrite an earlier capture or alias its event.
+
+The summary can predate a cold receiver. Its currentness is established by a
+fresh authenticated provider reread and exact revision equality, including
+reverification after content collection and on retained delivery. Publication
+times are never renewed. Review and external-merge capture and verification each have a fixed
+60-second aggregate I/O bound, including cancellation; other control claims
+retain the five-second bound. Existing transport, content-size, scope, CAS and
+business authorization checks remain. The summary alone grants no merge.
 
 Reverification of a delivered capture uses the signed original subject and
 content. A merged PR requires a complete provider merge proof, the original
@@ -4493,7 +4626,7 @@ separate recovery boundaries.
 
 ### Corrective R05 evaluation and finalizer return
 
-Every corrective R05 boundary (entry, cycle closure, promotion and session closure) uses the pinned corrective-drift call with that boundary's accepted evaluation. A prior human alignment cannot authorize another evaluation. The call retains the ordinary current-subject review, physical finalizer and separate completion review; unresolved drift and other gate signals still block.
+Every corrective R05 boundary (entry, cycle closure, promotion and session closure) uses the pinned corrective-drift call with that boundary's accepted evaluation. A prior human alignment cannot authorize another evaluation. The call retains one ordinary current-subject review and the physical finalizer; unresolved drift and other gate signals still block. The next checkpoint authenticates that accepted evidence with its own effect grant. Historical models with an explicit linked completion review retain their original readers and identities.
 
 The confirmed finalizer adds its own operation identity to `observations.operation_id`. The call exports that signed output as the typed `finalization_operation_id` return. Corrective session closure consumes this return through the existing `call_output` data binding and still authenticates the original accepted finalizer and physical evidence. No engine, Native activity, elapsed-time gate or authorization ceiling is added. Historical outputs without the additive observation remain readable under their original model pins.
 
@@ -4675,6 +4808,26 @@ ACT-10 and the mandatory cycle pipeline require actual judgements before impleme
 Compatible initial judgements may share an eligible Native planning response; this does not claim independence and never replaces the mandatory independent final review. An unfinished canonical source without an authenticated current producer requires a real current assessment, without replacing its approved plan. A complete canonical DATA source keeps its separate present-product verification route. Existing Native grants and every original attempt keep their original limits.
 
 The pure validator requires separate intent/architecture verdicts and registered evidence, rejects missing, contradictory, stale or foreign material and preserves failed versus information-needed outcomes. It authenticates no Native or human source and grants no phase, work or validation authority. The fixed application host, current readiness/effect fences, durable producer linkage and published IR integration are required follow-up implementation; this data component alone does not close ACT-10 or full STANDARD qualification. No new store, shared table, authority principal or preparation-age rule is added.
+
+The Native producer receives the validator's existing mandatory rule mapping:
+intent cites `SPEC-R03`, architecture cites `SPEC-R04`, and additional subject
+rules remain admissible. Its instructions require actual assessment before a
+verdict and explain the existing verdict, uniqueness and prose constraints.
+A missing mandatory reference remains a refusal and is identified by field
+path in bounded private evidence; the original answer remains unchanged.
+Guidance and validator share the mapping, with no new approval, automatic
+repair or relaxed acceptance criterion. Controlled regressions do not prove
+that a genuine Native actor will satisfy the contract on a new candidate.
+
+Fresh planning guidance also names the proposal's own mandatory `audit:SPEC.md`
+reference. The Native answer boundary and the deterministic plan evaluator use
+the same required-reference guard; the latter retains its independent current
+name-and-digest membership check. An audit's reference is not copied into the
+proposal. An invalid producer answer is retained with the original typed code
+and a bounded field diagnostic before completion. This moves an existing
+fresh-plan refusal earlier without changing historical plan readers, canonical
+audit-only assessment, grants or effect admission. Instructions also state the
+existing task, traceability, usage and adaptive-plan constraints.
 
 
 The Native answer registry supports these closed reports with current context,
@@ -5164,6 +5317,659 @@ No public action kind, JSON shape, store, shared coordination surface, Native
 allocation or preparation-age ceiling is added. Running/returned capsules retain
 their separate reconciliation requirements. Component observations do not close
 the full A6 boundary/concurrency, installed or genuine-actor qualification.
+
+## Fresh-cycle diagnosis continuation
+
+The fresh COMMITTING cycle's objective review can return `request_diagnosis`.
+That accepted choice must lead to a new Native occurrence, not to an attempted
+alignment finalization. Creation stays outside the bounded loop. Its evaluation,
+follow-up selection, human choice, conditional finalizer and checkpoint remain
+inside one iteration; only `drift_route_ready` permits the latter two effects.
+Each retry selects its own report and evaluation. The existing authority still
+refuses to finalize an unconfirmed alignment, and a new occurrence remains
+subject to the original cumulative Native authorization.
+
+Routing facts are local to a call. Moving the human choice into a child call
+would hide its result from the parent loop. The fresh route therefore keeps
+these nodes in the root instead of exporting implicit facts or weakening the
+call/source selection contracts. The terminal and corrective routes keep their
+existing structure. This decision supersedes the previous 256-node v2 capacity:
+the schema and loader now admit 288 nodes per component, while the published
+root uses 266. V1 stays at 128. Depth 16, 32 children/iterations, expanded and
+runtime occurrence bounds, and the 256-character occurrence identity bound are
+unchanged. Boundary tests admit 288 and reject 289; no execution budget is raised.
+
+Synthetic published-model planning and a FILES mixed-host regression separately
+cover diagnosis, cold reopening, the subsequent alignment and one physical
+checkpoint. Their Native and human ports are fixtures. Genuine actors, the
+installed archive, corrective diagnosis branches and full STANDARD completion
+remain independently qualified; this change does not close those requirements.
+
+## Bounded historical validation launch recovery
+
+The public workflow runner accepts a separate
+`standard-validation-launch-recovery.v1` request. The resolved historical
+execution and validation profile are pinned inputs, not executable historical
+package code. The reader authenticates the original instance, UNKNOWN operation,
+accepted work, closed Native allocations, dispatch, project/backend authority,
+Git/document/product context and unchanged snapshot. It reconstructs the bounded
+single-check countdown only when both complete request and launcher hashes match.
+
+Recognition is restricted to the existing reviewed Windows client registry and
+the exact bounded logon error emitted before command startup. Supervisor journal
+witnesses must remain outside the product, within the original Native denied
+roots. These local observations are distinct from the original signed operation
+receipt; the new recovery record seals their current interpretation. The retained
+outer Job proof must report closure. Two fresh complete OS observations must find no matching
+runner or trampoline; any matching process, opaque observation or changed witness
+refuses. Process absence alone grants no closure. The fixed reviewed source is
+Codex commit `0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807`, specifically the CLI
+`debug_sandbox.rs` error path and `runner_client.rs` logon-before-send path.
+No other error code, unreviewed client or arbitrary operator assertion qualifies.
+
+Explicit execution binds the fresh preview hash and appends a separate signed
+`standard-validation-launch-recovery-record.v1` under the existing operation
+journal authority, in the selected canonical backend. The durable attempt names
+its proposed fence before CAS. The writer transfers only the exact authenticated
+fence after retaining both complete empty process observations in the signed
+attempt; these observations remain evidence, never permission. It transfers the
+fence of a terminated owner, archives the exact physical lock with its witness,
+records retirement, releases its fence and records completion. Every boundary
+is restartable from the retained attempt and exact current fence; a live or
+unresolved recovery owner refuses. Previous attempts, operation results and the
+original instance remain intact. Completed replay only returns historical proof.
+
+This disposition establishes that the sandbox check did not start and that its
+local owner has been retired. It neither passes product validation nor resumes
+the old model. A compatible continuation must consume this proof explicitly and
+run current validation. No global pin relaxation, implicit receipt migration,
+manual key ceremony or synthetic successful operation result is introduced.
+Native allocation budgets and accepted business decisions remain unchanged.
+
+### Retained work after a recovered validation launch
+
+`parameters.entry_point.kind=retained_validation` names the completed launch
+recovery operation and the pinned original resolved configuration. It starts a
+new technical instance for the same owned COMMITTING session/cycle. The original
+instance, UNKNOWN receipt and recovery record remain immutable. This bounded
+transition supports one implemented task with no accepted task advance, an
+IMPLEMENTING cycle and an unchanged product/plan/branch. Multi-task progress,
+integration-only intent, foreign ownership, missing recovery, active owners and
+changed criteria, provider/model or controller refuse before validation.
+
+The historical reader uses the private diagnostic authentication path and the
+original signing key, model, bindings and closed Native checkpoints. It rechecks
+the original task work with the current pure evaluator. Historical configuration
+is data; no old package module is loaded. Normal execution of the historical model
+continues to require current implementation pins. The source configuration and
+historical evidence roots must be protected from the new Native actors.
+
+The current entry receipt retains the proof digest. Three deterministic bindings
+admit that exact source, select the phase and observe retained task work. Their
+closed contracts distinguish the original Native producer from a current activity;
+they grant no implementation or validation success. Current validation, task
+advance and verification receive current operation receipts. After a legitimate
+progress transition, its existing causal chain governs the new context; the
+unchanged historical records and product remain pinned. No facts or Native events
+are imported into the new instance.
+
+The execution host receives prior contributor identities through a private reader
+before opening a Native session. They supplement the current review exclusion
+set, without importing old resources or falsely assigning them the new scope.
+Independent review still requires its separate fresh read-only session. Native
+budgets are not renewed by this entry, and accepted mode/alignment decisions are
+not asked again. This targeted continuation is not a full single-candidate P0 run.
+
+### Retained verification before independent audit
+
+`retained_verification` is a second bounded entry for a completed single-task
+`retained_validation` origin whose audit selection is accepted while its cycle
+is VERIFYING. It names that selection and a protected, hash-bound original
+configuration. It does not generalize arbitrary version migration or recursively
+import another retained-verification instance.
+
+The private reader authenticates the original history with its own model,
+bindings and signing key. It requires settled operations and closed or explicitly
+reconciled Native allocations, then rechecks the task-progress/verification
+bridge, original audit selection and exact current product and context. The
+current audit selection reads the genuine validator evidence through the
+current qualified profile. Any changed source, unsettled effect, foreign owner,
+changed provider/model/controller or stale verification refuses before an audit
+session opens. Diagnostic authentication is selected only by this private reader;
+normal execution of an old model still requires current binding pins.
+
+A new technical instance retains the proof in an ordinary operation journal,
+skips mode, planning, implementation and validation, and requests a fresh
+independent auditor. Prior contributor identities supplement current exclusions.
+The auditor's result and subsequent decisions belong to the new instance; the
+original validation and verification receipts stay attributed to their origin.
+Closure rechecks that same historical machine evidence. No original record,
+UNKNOWN, budget or deadline is rewritten. This adds no storage concept or
+backend requirement and does not establish final P0 completion.
+
+During the retained audit's trusted-worker preparation, the current Native
+dispatch already owns the effect fence. Historical reads accept that owner only
+through a private synchronous assertion of its exact authenticated reservation,
+running signed dispatch, live parent, physical lock and canonical fence. The
+assertion runs again after awaited historical reads. Generic entry/diagnostic
+reads still refuse any pending owner. Foreign, returned, stale or substituted
+owners cannot use this path; it grants no effect, ownership transfer, closure,
+allocation or budget renewal. Read-only preparation without the owner held does
+not qualify this boundary.
+
+After confirmed Native owner retirement, historical admission authenticates the
+original lease, disposition receipt and archived owner bytes. The archived file
+must retain its device, inode, size, link count, mode and modification time.
+Its change time is an observation of metadata updates, including Windows sandbox
+ACL refreshes; it is not a persistent identity pin. The signed retirement digest
+remains immutable historical evidence. This comparison applies only to completed
+retirement history. Live ownership, in-flight retirement, read races, replaced
+files, changed bytes and resource fences retain their existing strict checks.
+The observer proves current retained evidence, not the absence of every past
+metadata or content-write event. It grants no resumption, write or Native budget.
+
+### Retained independent audit after a blocked evaluation
+
+`retained_audit` is bounded to a `retained_verification` origin whose latest
+accepted operation is `cycle_audit_evaluate`, blocked without effect by the
+archived-owner witness check. It names that operation and the protected original
+configuration. Every Native allocation must be closed, every operation settled,
+the original audit independent and non-contributing, and the same owned cycle
+still VERIFYING with unchanged product, plan and machine evidence. No original
+instance, failed receipt, checkpoint, consumption or decision is rewritten.
+
+The private historical reader authenticates original model/binding signatures,
+the completed Native result and its exact context, artifact snapshot and prior
+verification chain. Current entry binds the resulting proof to a new technical
+instance for the same session/cycle. Current `cycle_audit_evaluate` v2 input is
+empty: the fixed host selects the latest authenticated audit activity, or this
+explicitly admitted retained audit when no current activity exists. V1 remains
+readable as historical data. The current evaluator and qualified validation
+reader recheck the report before issuing a new receipt; the producer remains
+attributed to its original instance. Ordinary model implementation pins still
+apply and cannot be bypassed by a JSON option.
+
+This route skips mode, work, validation and the Native auditor. It grants no
+closure or risk acceptance; the next actual closure question still requires
+the human decision. Later corrective work follows its ordinary fresh audit
+route. Budgets are not transferred or renewed by this deterministic entry.
+
+### Closure receipt authentication and commit
+
+Receipt source authentication retains the common five-second authority bound.
+Reconstructing the current closure subject can require several canonical reads
+through a retained audit and verification chain. The fixed STANDARD host performs
+that reconstruction after authentication, in a local pre-commit guard, rather
+than inside the external authority callback. The guard cannot supply or replace
+a receipt, facts, permissions or an authorization.
+
+Before the ordinary reducer/CAS, closure admission rechecks the exact signed
+review, operation journal, instance and current authority. Cancellation, changed
+source material or a concurrent receipt acceptance refuses the write. The guard
+is a host-composed function, never a capability selected by serialized process
+data. This separates source liveness from local domain validation without
+increasing the authority timeout or weakening closure freshness. Historical
+model pins and decisions are not migrated by this change.
+
+Session closure uses this same guard for its complete admission, R05 physical
+proof and canonical session subject. Source authentication keeps its five-second
+bound; the two former reconstructions inside that callback are removed. The
+local guard still rejects a changed subject, journal or instance before the
+receipt event can be accepted. A timed-out, already receipted Human choice is
+retained; this change alone grants no cross-version execution of its old model.
+
+Session-branch integration uses the same local commit guard. The current Git,
+canonical session/cycle and retained closure/delivery chain are reconstructed
+after bounded Human authentication, then the journal and instance are rechecked
+before CAS. The two previous reconstructions inside the five-second callback
+are removed. This changes neither consent scope nor the integration effect
+preconditions. A receipted decision remains immutable on timeout; resumption
+across implementation versions still requires an explicit compatible entry.
+
+### Retained closure decision before terminal effects
+
+`retained_closure` names a completed, acknowledged Human retention receipt that
+has not yet been accepted by its original `retained_audit` instance. The original
+configuration is protected data, pinned both by the locator and by every signed
+operation snapshot. The original model and journal signatures authenticate the
+history; they cannot authorize execution of that old model with new code.
+
+The fixed reader requires one final closure intention, a single completed
+no-effect retention result, no active Native allocation and settled earlier
+operations. It verifies the original inbox and question, rechecks the original
+independent audit, qualified machine evidence and exact current owned VERIFYING
+cycle. A changed configuration, product, subject, decision or pending owner
+refuses. No new answer, signature, inbox claim or synthetic Human receipt is
+created. The original instance and every old result remain unchanged.
+
+The current entry records a proof digest under its ordinary operation journal.
+The root skips audit evaluation and Human capture only for this admitted entry.
+The ordinary review pair is a pinned call; its deterministic/Human order remains
+unchanged. Inlining the sequential delivery group preserves the 288-node root
+bound. `cycle_close_record` v2 has empty input: the host selects the latest
+accepted current decision, or this explicitly retained source if no current
+decision exists. V1 remains readable as historical data and as the internal
+close-plan subject. Current closure still requires its own grant, owner, CAS and
+postconditions; entry proof is neither a terminal result nor skill completion.
+
+During the close writer's fresh pre-effect observation, the private reader may
+receive that writer's exact synchronous owner assertion. It propagates only
+through the retained verification chain and is rechecked across awaits. JSON
+cannot assert ownership; ordinary inspection still refuses a pending owner.
+This adds no canonical concept, store, backend requirement or budget renewal.
+
+After an accepted confirmed terminal writer, the fixed host uses a separate
+historical evidence reader. It authenticates the unchanged original instances,
+journals, inbox, independent Native report and qualified validation files, and
+matches the entry proof and exact decision material carried by that writer.
+It does not require the former VERIFYING documents to remain current after
+their authorized terminal transition. The terminal checkpoint and completion
+hook still verify the actual owning session, cycle, product and canonical
+postimages, current admission, owner and CAS. This historical reader admits no
+new closure, imports no receipt and cannot be selected through operation JSON.
+
+The terminal reader returns the original closure question only after this
+writer/material verification, for both ordinary and retained decisions. The
+promotion authority consumes that private verified result rather than opening
+the historical Human journal under the successor instance's key. It still
+requires the accepted current final closure, the matching question/decision and
+cycle identities, and the correlated physical checkpoint event. This supplies
+closure provenance, not a promotion choice or permission. Baseline promotion
+continues to require its own explicit Human decision and current admission.
+
+### Retained completed cycle at the promotion boundary
+
+`retained_completion` names one confirmed final closure in a settled
+`retained_closure` origin. Its last accepted operation must select that exact
+completion, before any promotion question. A new technical instance preserves
+the original project, session, cycle and product. The protected original
+configuration, complete accepted journal prefix, closed Native allocations,
+original retention proof, qualified validation, physical final-hook event and
+terminal Git receipt are authenticated under their original authorities.
+
+Entry additionally requires the current owned DONE cycle, its OPEN session and
+explicit `attached_cycles` membership, COMMITTING mode, unchanged branch/HEAD,
+clean checkout, exact latest canonical writer postimages and no pending owner.
+The signed entry retains a digest of this finite source. Subsequent historical
+reads authenticate that same immutable source; current promotion and session
+ports independently check their own subjects and postimages after permitted
+effects. They do not require pre-effect documents to remain unchanged forever.
+The reader never executes an old model with new bindings or imports old receipt
+events. A changed history, binding, product, owner or source refuses.
+
+The published route skips terminal writes and the already completed R05, then
+selects the historical closure and checkpoint for the current promotion review.
+Selection v2 retains both identities; v1 stays readable. Entry-selection v6 adds
+this completed-cycle branch separately from active-cycle work resumption.
+The corrective sequence is regrouped without changing its leaf order, keeping
+the existing node and child bounds. Promotion acceptance rechecks its complete
+current subject in the fixed local commit guard after bounded Human-source
+authentication. No new signature ceremony, Native allocation, budget reset,
+canonical concept or persistence backend is introduced. Source probes, public
+entry, Human capture and later effects must be qualified separately.
+Current pre-effect closure inspection retains all its VERIFYING checks.
+
+### Retained objective agreement after completion
+
+A clean promotion diagnosis can still encounter the lexical `objective_delta`
+signal for the same session and cycle goals. The retained-completion host may
+reuse the original Human alignment opinion only when there is no newer local
+drift decision. Its owning reader authenticates the original protected
+configuration, signed journals, accepted Human inbox, source authority, saved
+Native context, canonical report and exact physical R05 event. It does not
+rebuild the old question using current documents or search behind a later
+nominal finalizer for a more convenient opinion.
+
+The projection requires the same OPEN session and attached owned DONE cycle,
+exact objectives, COMMITTING mode, branch, HEAD and product, plus the current
+complete clean Native diagnosis. Disposition v2 explicitly separates that new
+evaluation from the unchanged original opinion, completion anchor and scope.
+Finalize-plan v4 reauthenticates this proof at the effect boundary and retains
+the existing owner, CAS, current grant, other-signal and physical-event checks.
+The completion reader also requires the fixed retained-source capability.
+Revocation, changed objectives, foreign ownership, product/HEAD changes, new
+drift, missing witnesses and malformed source data refuse.
+
+This is a bounded authority extension of `retained_completion`; it creates no
+Human receipt, renewed timestamp, Native allocation or canonical concept.
+Existing historical plans and receipts remain unchanged. A new technical
+instance after a refusal later in promotion needs a separately authenticated
+continuation for its already recorded promotion; this change does not import
+that history or make the old refused occurrence executable with new bindings.
+
+### Recorded promotion continuation
+
+`retained_promotion` supports one additional boundary: a retained-completion
+instance with an accepted promotion, confirmed record and Git checkpoint, a
+closed Native diagnosis, and a settled `STANDARD_DRIFT_GATE_BLOCKED` refusal
+with no effect. The exact seven-operation prefix remains immutable. Dispatching,
+UNKNOWN, later operations, foreign bindings and unclosed actors refuse entry.
+
+The fixed reader authenticates the original configuration, Human source, signed
+prefix, completion chain and Native report. Entry verifies canonical ownership,
+product, branch/HEAD, clean Git and the promotion postimages. Historical drift
+reading re-evaluates the saved authenticated answer against current documents;
+it cannot execute historical bindings. A changed report subject refuses reuse.
+
+Entry selection v7 records a finite proof digest and original operation IDs.
+The published call resumes R05 finalization and the promotion hook, then joins
+session preclosure. Hook plan v2 retains the original record request unchanged
+and names its source proof; the fixed reader reauthenticates it at the effect
+boundary. Preclosure reads the original promotion checkpoint and latest
+authenticated postimages before the older closure history. No old receipt,
+Human answer, timestamp, Native allocation or budget is migrated or renewed.
+
+The existing work-preparation sequence is an explicit pinned call with the same
+leaves and no added input or return. Root capacity remains at most 288 nodes.
+Full source and installed continuation, later business effects and same-candidate
+STANDARD completion remain separately qualified evidence.
+
+### Receipted session closure continuation
+
+`retained_session_closure` supports a retained-promotion instance at its first
+session-close decision: its nine-operation prefix must be settled, with exactly
+one completed/no-effect close response that was recorded but not accepted. The
+source configuration, signed journals, Human inbox and closed Native history
+remain immutable. The original session-start execution is separately pinned and
+authenticated. Its run file and unique start event must still identify the open
+run before the close writer can be prepared.
+
+The fixed source re-evaluates the retained R05 against current canonical state,
+verifies its physical report/event and reconstructs the exact original question.
+Changed HEAD, scope, documents, decision, authority, model provider, execution
+binding, unprotected evidence and unsettled Native history refuse. The source
+is checked again before the ordinary writer acquires its effect owner. Subsequent
+checkpoint/finalizer readers authenticate the retained decision material against
+the accepted writer and exact canonical postimages; they do not apply the old
+preimage check after their own confirmed effect.
+
+Entry selection v8 records this derived proof and skips the settled prefix.
+Session-close input v2 is empty: the fixed host selects the latest own decision
+or this exact retained decision. The original v1 input in writer plans remains
+unchanged. No old result is adopted or migrated. The existing close writer,
+Git checkpoint, final hook and delivery checkpoint keep their grants and fences.
+A separate completion selector precedes branch integration. Delivery, integration,
+provider review and full STANDARD completion still require their own evidence.
+
+The deterministic retained-validation sequence becomes a pinned call with its
+single existing implementation ID input. Its leaves and ordering are unchanged;
+the root remains within 288 nodes and all Native activities remain at the root.
+
+## Historical session-hook checkpoint-only recovery
+
+The separate `standard-session-close-recovery.v1` route recognizes a returned
+UNKNOWN at a retained session's final hook only when the signed prefix, old
+configuration, original Human receipt and Native history authenticate; current
+canonical documents and metadata are still the hook preimages; the original
+start run is present; and the event suffix is exactly gating/reload/checkpoint
+without a session-close event. Current process discovery must report two empty,
+stable samples over configured target/control markers, retained owners and their
+descendants. This is scoped observation, not global process closure.
+
+Explicit execute/expect-plan retains a separately authenticated recovery record
+under the operation-journal authority, acquires a new resource fence and archives
+the exact abandoned lock. Attempts survive interruption. Old receipts, instance,
+telemetry and business state are immutable. The result is
+`reconciled_checkpoint_only`, never `no_effect`, a closed session or permission
+to repeat the old operation. Finishing the session requires a separately admitted
+continuation; this bounded recovery route allocates no model and asks no new
+Human decision. Any close event, partial canonical write, unknown suffix, changed
+subject or active/unavailable scoped process refuses recovery.
+
+## Retained session checkpoint continuation
+
+A completed `standard-session-close-recovery.v1` disposition permits a bounded
+`retained_session_checkpoint` entry in a new technical instance. Its source is
+the four-operation retained-session-closure history: accepted entry, confirmed
+writer, confirmed checkpoint and returned UNKNOWN hook. The fixed reader pins
+and authenticates that history, the dispatch, Native journal and signed recovery,
+then authenticates the original Human choice, start run and R05 chain. It admits
+only unchanged checkpoint-only events, run identity and canonical preimages with
+no unsettled owner. It never edits the original instance or receipt.
+
+The new route skips the Human, writer and checkpoint and prepares the corrected
+hook under its ordinary current authority. The host selects the historical IDs;
+public finalizer input v2 is empty. Nominal routes likewise select their latest
+accepted checkpoint. The ordinary writer/checkpoint pair becomes a pinned call
+without changing effect order or increasing the 288-node root limit. Entry
+selection v9 declares the new route; historical v1-v8 outputs remain readable.
+After admission, immutable historical reads remain available to verify the close
+and delivery without requiring preimages that the accepted hook has changed.
+The existing operation journal and recovery record remain the authorities; no
+new persisted business concept, permission or migration is introduced. This
+bounded continuation is not a general cross-version resume or a full-run proof.
+
+## Session-close post-write metadata proof
+
+The final session CAS preserves classification and ownership while advancing
+`updated_at`. Its pre-write metadata hash therefore cannot authenticate the
+post-write row. The confirmed v2 hook receipt retains exactly three ordered
+content/metadata postimages, checked by the writer after CAS. The fixed delivery
+reader verifies these against canonical rows and the content evidence before
+preparing its own exact checkpoint. No current row is silently substituted for
+a missing historical hash. Metadata-only changes after completion refuse.
+
+V1 receipts remain immutable and readable. FILES v1 receipts retain their null
+metadata semantics. A database v1 receipt without post-write metadata requires a
+separate, explicitly qualified reanchoring path; ordinary delivery refuses with
+`STANDARD_SESSION_DELIVERY_METADATA_PROOF_REQUIRED`. This change neither recloses
+a session nor introduces such a reanchor, receipt migration, or permission.
+The regression uses the actual hook receipt and owning postimage reader; a
+fixture that injects fresh metadata at delivery cannot establish this claim.
+
+### Retained confirmed session delivery
+
+A separate `retained_session_delivery` entry handles the exact two-operation
+retained-checkpoint instance after its confirmed session finalizer. Historical
+configuration, model, instance, accepted journal MACs, recovery and original
+Human/R05 chain remain immutable. The fixed reader verifies the single close
+event, removed start run, closed canonical focus and current Git/owner state.
+
+For a legacy v1 database finalizer, missing metadata evidence is not synthesized.
+A fresh admission accepts only the existing default normative profile for the
+session, current state and context snapshot. Content must match the confirmed
+close evidence. Its metadata digests and evidence basis enter a new accepted
+entry proof; changes across awaits or before the delivery effect refuse. This
+read-only observation grants neither a metadata write nor a session reclose.
+Other metadata profiles refuse. Current v2 finalizers retain exact post-CAS
+metadata checks, without this legacy admission.
+
+The model routes retained delivery directly to the Git checkpoint, while the
+ordinary writer/checkpoint/finalizer remain a pinned call and checkpoint-only
+recovery still reaches the finalizer. Public delivery input v2 is empty; only
+the host supplies the authenticated finalizer ID to the unchanged internal
+checkpoint plan. Branch integration, PR review, merge and post-merge guarantees
+remain separate qualification boundaries. This entry proves a new technical
+continuation, not restart of the original instance or complete P0.
+
+### Integration after retained session delivery
+
+The session integration authority may receive a fixed retained-cycle reader
+only for the bounded retained-session-delivery entry. This reader authenticates
+the original cycle closure, independent audit/validation, retained Human choice
+and promotion chain with their original authorities. It verifies the selected
+closure and the promotion finalizer against their recorded plans and outputs.
+Current-instance acceptance remains strict for the new delivery checkpoint.
+No old event or receipt is copied into the new instance.
+
+The integration subject includes the historical proof digest and latest
+authenticated cycle postimages, then checks current canonical session/cycle
+ownership, lifecycle and branch. A missing historical capability, foreign
+selection or unproved sibling still refuses. The later Human integration
+decision and Git effect remain separate; a retained cycle choice is not
+consent to integrate, push or merge.
+
+### Retained integration consent before the Git effect
+
+`retained_session_integration` covers one no-effect, acknowledged, durably
+receipted Human choice that timed out before acceptance in a retained-delivery
+instance. Its exact four-operation boundary has no integration dispatch or
+Native journal. The fixed reader authenticates original configuration, model,
+HMAC records, Human inbox/source, accepted delivery and selected cycle history.
+It reconstructs the canonical subject and compares the exact Git preimage
+before entry. Changed history, unsettled effects or a different subject refuse.
+
+The successor records derived journal proof and references the original choice;
+it neither accepts the receipt into the old instance nor fabricates a new Human
+answer. The same integration port still checks original consent, current Git,
+canonical data, grants and CAS around the physical transaction. Original
+instances, receipts, first failure and budget accounting remain immutable.
+This bounded profile does not admit arbitrary version migration or UNKNOWN
+integration. Post-dispatch uncertainty must be reconciled on its occurrence.
+
+Entry selection v11 adds the closed route; earlier versions remain readable.
+Public integration input v2 delegates decision selection to the fixed host.
+Internal v1 plans remain readable. The ordinary delivery/selection/H sequence
+is now a pinned call; close routing stays in the parent fact scope. The root
+remains within its existing 288-node limit. This does not establish full P0.
+
+### Recording an already opened PR after retained integration
+
+`retained_session_pr_open` admits only the settled five-operation prefix of a
+retained-integration instance: entry, integration, admission, push and PR open.
+Every receipt must be accepted by its original instance, with the required
+confirmed or no-effect status. Extra operations, UNKNOWN, pending owners or a
+Native allocation refuse. Admission authenticates the full original close and
+integration lineage, conserved Human response, physical integration, canonical
+postimages and live provider subject. A new technical instance starts at the
+ordinary PR record writer; it never repeats integration, push or opening.
+
+Historical journal readers use each original signing authority and pin the
+protected configurations, instances, journals, recovery and allocation history.
+The new accepted entry retains their digest. After admission, these immutable
+facts remain distinct from current canonical freshness: the PR writer and its
+successors own their new postimages. Requiring the old close postimages after
+an accepted PR write would reject the authorized progression. The reader is
+bounded to seven exact predecessors, not an arbitrary cross-instance lookup.
+It recaptures history after provider awaits and refuses any changed evidence.
+Delivery's finalizer identity comes from its signed plan and matching output;
+an empty public input cannot replace that reference.
+
+Entry selection v12 and closed entry/proof contracts keep older variants
+readable. Public PR record input v2 delegates selection to the fixed host;
+historical v1 and internal plans remain readable. Four deterministic opening
+operations move unchanged into a pinned call, keeping the root within 288 nodes.
+No canonical store, receipt migration, permission, Native renewal or complete
+qualification claim is introduced.
+
+### Retained external merge from a settled review wait
+
+Entry selection v13 permits `retained_external_merge` only from the settled
+five-operation retained-PR prefix: entry, record, checkpoint, update and content
+observation. Its fixed reader verifies the signed lineage, accepted integration
+decision, provider identity, original transport context, canonical postimages,
+local/remote delivery head and current two-parent merge. An outstanding effect
+owner, Native journal, control reservation or delivered event refuses admission.
+The original instance remains immutable. The successor records a new admission
+and captures a fresh external merge event, preserving the original delivery's
+timestamp and identity. It follows the existing pretriage incident disposition
+and R09 suffix; it establishes neither review approval nor nominal merge proof.
+
+The provider context used to verify the old push is the original context, whose
+identity includes its host instance. The successor provider must have the same
+manifest apart from that instance ID, and the same protected profile. This
+explicit comparison does not discard a changed transport hash in an old receipt.
+History is checked again after live provider awaits. No current business
+decision is inferred from historical routing facts. A fixed nested call keeps
+the root model within its existing limit.
+
+### Provider verification before control delivery
+
+The fixed operation host completes bounded provider verification before calling
+the reducer's local control authority. A private invocation-scoped witness binds
+the exact signed inbox record and delivery; authored input cannot supply it.
+The local authority rechecks that record and the current context under its
+unchanged five-second bound. Provider verification keeps its own 60-second bound
+for review and merge sources. The host rechecks the capture, context and merge
+freshness after the provider await, and the reducer still enforces instance CAS.
+Concurrent calls cannot reuse another invocation's witness. Failed verification
+retains the reservation and delivers no event; a retained accepted event repairs
+acknowledgement without consulting the provider again. This change neither
+refreshes expired captures nor authorizes migration of a frozen instance.
+
+### Continuation from an expired reserved merge capture
+
+An explicit `retained_external_merge_capture` entry derives a new proof from a
+settled one-entry retained-merge predecessor. Its original signed reservation
+and capture must still match that waiting occurrence and remain reserved. The
+capture must have expired; live or already delivered evidence is not eligible.
+The fixed source authenticates the complete inherited delivery, provider binding
+and canonical postimages, observes the same current two-parent merge, and checks
+history and effect ownership again after provider reads.
+
+The successor records its own admission and a local routing selection. It does
+not consume the old reservation, alter timestamps, manufacture a control event
+or reissue a merge. Disposition question v3 names the historical reserved capture
+and the accepted successor entry receipt, before the existing R09 suffix. A new
+business disposition remains necessary; expired evidence alone grants nothing.
+This bounded route adds no general receipt migration or expiry exception.
+
+The published graph preserves root size and call fact isolation. A fixed call
+holds the captured-disposition suffix; its generated one-space JSON fits the
+unchanged 256 KiB file bound. Historical two-space assets remain readable.
+
+## Retained R09 completion after an accepted captured merge
+
+A technical instance may continue the same session after the captured-merge
+instance has accepted its L1 disposition and fetch. Admit only that exact settled
+prefix, preserving every predecessor and its original authority. Use the
+accepted opening from the authenticated lineage instead of assuming it belongs
+to the successor. Preserve cross-instance order by the accepted continuation
+entry and exact source IDs; never synthesize reducer events or migrate receipts.
+
+The original provider binding remains necessary to authenticate its fetch
+witness. New execution uses the successor's current grant. The independent R09
+reader searches the bounded canonical process inventory for one authenticated
+completion matching the canonical opening. Missing or ambiguous proof refuses
+admission. This is a derived evidence lookup, not a new canonical store.
+
+This bounded route does not qualify arbitrary version migration, L2 incident
+continuation, Native execution or an uninterrupted STANDARD nominal journey.
+
+## Recorded R09 choice after capture expiry
+
+A completed no-effect Human receipt can outlive its five-minute question before
+the reducer accepts it. A separate retained_post_merge_decision entry admits
+only this bounded case: an admitted retained-post-merge prefix, optional accepted
+system question dispositions, and one receipted but unaccepted fast-forward
+choice. Its acknowledged inbox and original signed source must authenticate
+historically; no interrupted claim, UNKNOWN, refusal or accepted choice qualifies.
+The original instance, question, receipt, source and timestamps remain immutable.
+
+The successor authenticates the complete original lineage and provider binding,
+then observes the same source branch, exact local/remote tips, merge, proof ref
+and fetch receipt named in the Human question. A changed subject or revoked
+source refuses. The accepted successor entry is the new admission proof; it
+does not fabricate acceptance in the original instance. A current executor
+grant and exact Git plan govern the effect. Before execution the fixed source
+rechecks the historical choice and current subject. Under the Git port's owned
+locks it rechecks authority/history while that port independently fences the
+exact tips, index and files. No global question-age limit is changed or renewed.
+
+A fixed call contains only fast-forward, then calls the existing R09 measurement,
+alignment and completion suffix. This preserves the existing 256-operation
+limit. Independent completion lookup recognizes the new entry and authenticates
+its retained choice as well as the original opening and fetch. This is a derived
+continuation proof, not a canonical store, implicit migration or new merge.
+The local pilot observation exception does not establish an authenticated
+product chat channel or a complete nominal P0 run.
+
+### R09 return and canonical discovery
+
+An installed recorded-decision continuation confirmed the local fast-forward
+and accepted R09 completion, then incorrectly entered ordinary session delivery.
+Entry selection v17 clears the work request for retained merge entries while
+keeping their explicit merge route. The full composed-return regression must
+reach the terminal without another integration, push, merge or Human decision.
+Historical v1-v16 entry outputs and original instances remain immutable.
+
+Independent completion discovery exceeded the 32 MiB worker limit because a
+path inventory transferred every artifact body. PostgreSQL and SQLite now
+provide a separate path-only read capability. It selects the same canonical
+scope, retains bounds and refuses unsupported inventory; it does not fall back
+to a projection, raise the byte limit or change full-content listing. A worker
+output-limit refusal stays distinct from backend unavailability. Existing
+accepted completion receipts can be verified without replaying their effects.
 
 ## Capturing an operator answer
 

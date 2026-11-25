@@ -58,7 +58,7 @@ test('versioned binding capacity preserves v1/v2 bounds and admits the larger st
   }
   for (const count of [141, 256]) assertProcessDataBindings({ contract_version: 'process-data-bindings.v3', parameter_keys: [], inputs: rows(count) }, nodes(count));
   assert.throws(() => assertProcessDataBindings({ contract_version: 'process-data-bindings.v3', parameter_keys: [], inputs: rows(257) }, nodes(257)), { code: 'PROCESS_DATA_BINDINGS_INVALID' });
-  const instance = createAgenticProcess({ instanceId: 'capacity-v3', scopeId: 'fixture', model: assets.model, policyPins: agenticPolicyPins(assets.model), facts: {}, parameters: { session: {}, cycle: {} } });
+  const instance = createAgenticProcess({ instanceId: 'capacity-v3', scopeId: 'fixture', model: assets.model, policyPins: agenticPolicyPins(assets.model), facts: {}, parameters: { entry_point: 'session', session: {}, cycle: {} } });
   const hash = instance.instance_sha256;
   const replay = inspectAgenticProcess(instance);
   assert.equal(replay.status, 'RUNNING'); assert.equal(instance.instance_sha256, hash);
@@ -84,9 +84,9 @@ function atBoundary(spec) {
     let output = {};
     if (readsOutput) {
       assert.equal(source.binding_ref, 'cycle_close_completed_select');
-      output = { contract_version: 'standard-cycle-close-selection-output.v1', operation_ref: source.binding_ref,
+      output = { contract_version: 'standard-cycle-close-selection-output.v2', operation_ref: source.binding_ref,
         outcome: 'completed', effect_status: 'no_effect', facts: {}, evidence_refs: [],
-        observations: { closure_operation_id: 'op_' + 'e'.repeat(40), receipt_sha256: H, output_sha256: H } };
+        observations: { closure_operation_id: 'op_' + 'e'.repeat(40), terminal_checkpoint_operation_id: 'op_' + 'f'.repeat(40), receipt_sha256: H, output_sha256: H } };
     }
     const occurrence_id = inspectAgenticProcess(instance).ready[0];
     const intent = { contract_version: 'process-operation-intent.v1', operation_id: 'op_' + (++serial).toString(16).padStart(40, '0'),

@@ -49,7 +49,7 @@ if (process.argv[2] === "--accept") {
     fs.writeFileSync(path.join(target, "app.mjs"), "export const value = 1;\n");
     execFileSync("git", ["-C", target, "add", "app.mjs"], { windowsHide: true });
     execFileSync("git", ["-C", target, "-c", "core.hooksPath=NUL", "commit", "-m", "fixture product"], { windowsHide: true });
-    const parameters = { session: { session_id: "S001", session_branch: "S001-start", objective: "Qualify the published standard composition prefix" },
+    const parameters = { entry_point: "session", session: { session_id: "S001", session_branch: "S001-start", objective: "Qualify the published standard composition prefix" },
       cycle: { cycle_id: "C001", cycle_type: "FEATURE", title: "Deferred cycle", objective: "Not entered in THINKING" } };
     const artifacts = createStandardWorkflowArtifacts({ targetRoot: target });
     const sessionDocuments = ["CURRENT-STATE.md", "sessions/S001.md"];

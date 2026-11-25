@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-retained-validation-entry.v1",
+  "x-aidn-contract-version": "standard-retained-validation-entry.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "recovery_operation_id",
+    "original_configuration"
+  ],
+  "properties": {
+    "kind": {
+      "const": "retained_validation"
+    },
+    "recovery_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "original_configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  }
+}

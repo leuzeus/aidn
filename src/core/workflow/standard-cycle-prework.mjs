@@ -8,6 +8,7 @@ import { checkShadowJson, shadowHash } from "./shadow-json.mjs";
 import { assertStandardCyclePlan } from "./standard-cycle-planning.mjs";
 
 export const CYCLE_PREWORK_CONTRACT = "standard-cycle-prework-report.v1";
+export const CYCLE_PREWORK_AUDIT_RULES = Object.freeze({ intent: "SPEC-R03", architecture: "SPEC-R04" });
 // Existing total byte bound for the source-owned Native prework context.
 export const CYCLE_PREWORK_CONTEXT_MAX_BYTES = 262144;
 const fail = code => { throw Object.assign(Error(code), { code }); };
@@ -21,7 +22,7 @@ const scalar = value => value === value.replace(/\s+/gu, " ").trim();
 export function assertStandardCyclePreworkSubject(subject) {
   valid(subject, subjectSchema, 4096, "STANDARD_PREWORK_SUBJECT_INVALID");
   if (!subject.cycle_path.startsWith("cycles/" + subject.cycle_id + "-")
-    || !unique(subject.rule_refs) || !["SPEC-R03", "SPEC-R04"].every(rule => subject.rule_refs.includes(rule))
+    || !unique(subject.rule_refs) || !Object.values(CYCLE_PREWORK_AUDIT_RULES).every(rule => subject.rule_refs.includes(rule))
     || (subject.kind === "fresh_cycle" ? subject.proposal_sha256 !== null : !hash(subject.proposal_sha256)))
     fail("STANDARD_PREWORK_SUBJECT_INVALID");
   return subject;
@@ -29,7 +30,7 @@ export function assertStandardCyclePreworkSubject(subject) {
 export function assertStandardCyclePreworkReport(report) {
   valid(report, reportSchema, 131072, "STANDARD_PREWORK_REPORT_INVALID");
   if (report.proposal !== null) assertStandardCyclePlan(report.proposal);
-  for (const [kind, requiredRule] of [["intent", "SPEC-R03"], ["architecture", "SPEC-R04"]]) {
+  for (const [kind, requiredRule] of Object.entries(CYCLE_PREWORK_AUDIT_RULES)) {
     const audit = report.audits[kind], blocking = audit.findings.some(row => row.severity === "blocking");
     if (!scalar(audit.rationale) || !unique(audit.rule_refs) || !audit.rule_refs.includes(requiredRule)
       || !unique(audit.evidence_refs.map(row => row.ref)) || !unique(audit.questions) || !audit.questions.every(scalar)

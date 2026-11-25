@@ -38,6 +38,9 @@ function reopen(data) {
   const providerTransport = {
     runGithub() { assert.fail("unexpected GitHub effect transport"); },
     runRemoteGit() { assert.fail("unexpected Git remote transport"); },
+    async runGithubReply() { assert.fail("unexpected reply transport"); },
+    async runGithubResolution() { assert.fail("unexpected resolution transport"); },
+    async runGithubMerge() { assert.fail("unexpected merge transport"); },
     async runGithubRead(binary, args, options) {
       await setImmediate();
       assert.equal(binary, binding.gh.path);

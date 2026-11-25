@@ -22,7 +22,7 @@ function observationSubject(instance, input, id, binding, readAccepted) {
 export function readExternalMergeForFetch(instance, id, readAccepted, readPretriage) {
   const { record, output } = readAccepted(instance, id, externalMergeDisposition, required);
   const question = externalMergeQuestion(record), subject = question.subject;
-  const pretriage = Object.hasOwn(record.preview.input, 'update_operation_id');
+  const pretriage = Object.hasOwn(record.preview.input, 'update_operation_id') || Object.hasOwn(record.preview.input, 'entry_operation_id');
   const original = pretriage
     ? readPretriage(instance, record.preview.input, record.intent.occurrence_id).subject
     : observationSubject(instance, record.preview.input, subject.observation_operation_id,
@@ -36,7 +36,7 @@ export function readExternalMergeForFetch(instance, id, readAccepted, readPretri
 
 export function createStandardExternalMergeDisposition({ readAccepted, now, observeMerge, readPretriage, pretriageMerge }) {
   function source(instance, input, occurrenceId) {
-    if (Object.hasOwn(input, 'update_operation_id')) return readPretriage(instance, input, occurrenceId).subject;
+    if (Object.hasOwn(input, 'update_operation_id') || Object.hasOwn(input, 'entry_operation_id')) return readPretriage(instance, input, occurrenceId).subject;
     const frames = inspectAgenticProcess(instance).occurrences;
     const frame = frames.find(row => row.occurrence_id === occurrenceId);
     if (!frame?.call_scope_id) fail(required);
@@ -58,7 +58,8 @@ export function createStandardExternalMergeDisposition({ readAccepted, now, obse
       const { operation_id, binding_ref } = sources[0].operation.intent;
       const { record, output } = readAccepted(instance, operation_id, binding_ref, required);
       const key = Object.hasOwn(input, 'update_operation_id') ? 'update_operation_id' : 'triage_operation_id';
-      if (record.preview.input[key] !== input[key]) fail(required);
+      const captured = binding_ref === externalMergeDisposition && Object.hasOwn(record.preview.input, 'entry_operation_id');
+      if ((captured ? externalMergeQuestion(record).subject[key] : record.preview.input[key]) !== input[key]) fail(required);
       let incidentTrackingRequired = false;
       if (binding_ref === externalMergeDisposition) {
         readExternalMergeForFetch(instance, operation_id, readAccepted, readPretriage);
@@ -82,10 +83,11 @@ export function createStandardExternalMergeDisposition({ readAccepted, now, obse
       this.assertAge(prepared);
       const subject = source(instance, input, record.intent.occurrence_id);
       if (!same(subject, prepared.subject)) fail(required);
-      if (Object.hasOwn(input, 'update_operation_id')) {
+      if (Object.hasOwn(input, 'update_operation_id') || Object.hasOwn(input, 'entry_operation_id')) {
         const { delivery } = readPretriage(instance, input, record.intent.occurrence_id);
         if (!pretriageMerge) fail('STANDARD_PR_MERGE_PROVIDER_REQUIRED');
         await pretriageMerge.assertPostimage(delivery, subject.merge_observation, signal);
+        if (!same(source(instance, input, record.intent.occurrence_id), subject)) fail(required);
         this.assertAge(prepared);
         return;
       }

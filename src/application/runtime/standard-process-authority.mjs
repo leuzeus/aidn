@@ -1,4 +1,36 @@
+import { createRetainedPostMergeDecisionSource } from './standard-retained-post-merge-decision-source.mjs';
+import { retainedPostMergeDecisionContinuation } from '../../core/workflow/standard-retained-post-merge-decision.mjs';
+import { createRetainedSessionIntegrationSource } from './standard-retained-session-integration-source.mjs';
+import { createRetainedSessionPrOpenSource } from './standard-retained-session-pr-open-source.mjs';
+import { retainedMergeCaptureContinuation } from '../../core/workflow/standard-retained-merge-capture.mjs';
+import { createRetainedMergeCaptureSource } from './standard-retained-merge-capture-source.mjs';
+import { createRetainedPostMergeSource } from './standard-retained-post-merge-source.mjs';
+import { retainedPostMergeContinuation } from '../../core/workflow/standard-retained-post-merge.mjs';
+import { retainedExternalMergeContinuation } from '../../core/workflow/standard-retained-external-merge.mjs';
+import { createRetainedExternalMergeSource } from './standard-retained-external-merge-source.mjs';
+import { retainedSessionPrOpenContinuation } from '../../core/workflow/standard-retained-session-pr-open.mjs';
+import { retainedSessionIntegrationContinuation } from '../../core/workflow/standard-retained-session-integration.mjs';
+import { readRetainedSessionCycleHistory as readSessionCycleHistory } from './standard-retained-session-cycle-history.mjs';
+import { createRetainedSessionDeliverySource } from './standard-retained-session-delivery-source.mjs';
+import { retainedSessionDeliveryContinuation } from '../../core/workflow/standard-retained-session-delivery.mjs';
+import { createRetainedSessionCheckpointSource } from './standard-retained-session-checkpoint-source.mjs';
+import { retainedSessionCheckpointContinuation } from '../../core/workflow/standard-retained-session-checkpoint.mjs';
+import { createRetainedVerificationSource } from "./standard-retained-verification-source.mjs";
+import { createRetainedAuditNativeOwnerAssertion } from "./retained-audit-native-owner.mjs";
+import { retainedVerificationAdmit, assertRetainedVerificationOutput, retainedVerificationContinuation } from "../../core/workflow/standard-retained-verification.mjs";
+import { retainedAuditContinuation } from "../../core/workflow/standard-retained-audit.mjs";
+import auditInputV1 from "../../core/contracts/workflow-definition/standard-cycle-audit-evaluate-input.v1.schema.json" with { type: "json" };
+import { createRetainedAuditSource } from "./standard-retained-audit-source.mjs";
+import { createRetainedClosureSource } from "./standard-retained-closure-source.mjs";
+import { retainedClosureContinuation } from "../../core/workflow/standard-retained-closure.mjs";
+import { createRetainedCompletionSource } from './standard-retained-completion-source.mjs';
+import { retainedCompletionContinuation } from '../../core/workflow/standard-retained-completion.mjs';
+import { retainObjectiveAlignment } from '../../core/workflow/standard-drift-retained-objective.mjs';
+import { createRetainedPromotionSource } from './standard-retained-promotion-source.mjs';
+import { retainedPromotionContinuation } from '../../core/workflow/standard-retained-promotion.mjs';
 import { createNativeReconciliationHistoryReader } from "./native-reconciliation-history.mjs";
+import { createRetainedValidationSource } from "./standard-retained-validation-source.mjs";
+import { retainedValidationAdmit, retainedTaskWork, workPhaseSelect, retainedValidationPins, assertRetainedValidationOutput, assertRetainedValidationProof } from "../../core/workflow/standard-retained-validation.mjs";
 import { MODE_WORK_CONTRACT, evaluateStandardModeWork } from "../../core/workflow/standard-mode-work.mjs";
 import { assertObjectiveReview } from "../../core/workflow/standard-drift-objective-review.mjs";
 import { observeModeWorkReport, modeWorkContinuationChoices, modeWorkHandoffChoices, assertModeWorkObservationOutput } from "../../core/workflow/standard-mode-work-continuation.mjs";
@@ -40,6 +72,8 @@ import { assertAgenticProcessModel, agenticPolicyPins } from "../../core/workflo
 import { shadowHash, freezeShadow, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import previewSchema from "../../core/contracts/workflow-definition/standard-operation-preview.v1.schema.json" with { type: "json" };
+import { createRetainedSessionClosureSource } from './standard-retained-session-closure-source.mjs';
+import { retainedSessionClosureContinuation } from '../../core/workflow/standard-retained-session-closure.mjs';
 import path from "node:path";
 import { resolveProcessOperationInput } from "../../core/workflow/process-input-resolution.mjs";
 import { CYCLE_WORK_CONTRACT, CYCLE_TASK_WORK_CONTRACT, assertWorkProductSnapshot, observeStandardCycleWork, observeStandardCycleTaskWork } from "../../core/workflow/standard-cycle-work.mjs";
@@ -89,6 +123,23 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       || component.operation_pins[node.binding_ref] !== shadowHash(bindings.get(node.binding_ref))) fail("STANDARD_PROCESS_BINDING_CHANGED");
   }
   const operationStore = createProcessOperationJournalStore(options), controls = createProcessControlInboxStore(options), allocations = createNativeAllocationJournalStore(options), instances = createAgenticProcessStore(options);
+  const retainedSource = createRetainedValidationSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedVerificationSource = createRetainedVerificationSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedAuditSource = createRetainedAuditSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedClosureSource = createRetainedClosureSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedCompletionSource = createRetainedCompletionSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedSessionCheckpointSource = createRetainedSessionCheckpointSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedSessionDeliverySource = createRetainedSessionDeliverySource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedSessionIntegrationSource = createRetainedSessionIntegrationSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedExternalMergeSource = createRetainedExternalMergeSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedMergeCaptureSource = createRetainedMergeCaptureSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedPostMergeDecisionSource = createRetainedPostMergeDecisionSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const postMergeSourceFor = point => point?.kind === 'retained_post_merge_decision' ? retainedPostMergeDecisionSource : retainedPostMergeSource;
+  const postMergeContinuationFor = proof => proof.recorded_decision_operation_id ? retainedPostMergeDecisionContinuation(proof) : retainedPostMergeContinuation(proof);
+  const retainedPostMergeSource = createRetainedPostMergeSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedSessionPrOpenSource = createRetainedSessionPrOpenSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedSessionClosureSource = createRetainedSessionClosureSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedPromotionSource = createRetainedPromotionSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const nativeReconciliationHistory = createNativeReconciliationHistoryReader({ ...options, configuration, signer, artifacts, environment });
   const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, source: humanSource, projectionRequired: false });
   function read() {
@@ -484,6 +535,9 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   async function selectCyclePrework(instance, input) {
     assertStandardOperationInput("cycle_prework_select", input); return prework.select(instance);
   }
+  async function selectOwnedCyclePlanning(instance, input) {
+    assertStandardOperationInput("cycle_owned_planning_select", input); return prework.selectOwnedPlanning(instance, input);
+  }
   async function evaluateCyclePrework(instance, input) {
     assertStandardOperationInput("cycle_prework_evaluate", input); return prework.evaluate(instance, input);
   }
@@ -509,8 +563,15 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (shadowHash(output) !== shadowHash(result.output)) fail("STANDARD_CYCLE_PLAN_EVALUATION_STALE");
     return { output, evaluation_sha256: shadowHash(result.output), context: context.context, context_sha256: context.context_sha256 };
   }
-  async function readDriftEvaluation(instance, input) {
+  async function readDriftEvaluation(instance, input, retainedOptions = {}) {
     assertStandardOperationInput("drift_check_finalize", input); authenticate(instance);
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_promotion') {
+      const entry = instance.events.find(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+      if (input.evaluation_operation_id === entry?.intent.operation_id) {
+        const retained = await readRetainedPromotion(instance, retainedOptions, true);
+        return retained.evaluation;
+      }
+    }
     const retained = operationStore.read(input.evaluation_operation_id).record; signer.verify(retained);
     const result = retained.results.at(-1);
     if (retained.intent.binding_ref !== "drift_report_evaluate" || retained.intent.scope_id !== instance.scope_id || retained.intent.instance_id !== instance.instance_id
@@ -520,6 +581,21 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const output = evaluateStandardDriftReport(readActivityOutput(instance, retained.preview.input.report_occurrence_id), context);
     if (shadowHash(output) !== shadowHash(result.output)) fail("STANDARD_DRIFT_EVALUATION_STALE");
     return { output, evaluation_sha256: shadowHash(result.output), context: context.context, context_sha256: context.context_sha256 };
+  }
+  // Read-only historical capability for a fixed continuation reader. It verifies
+  // the original signed prefix and closed Native evidence, then evaluates that
+  // report against today's canonical documents. It cannot dispatch old bindings.
+  async function readRecordedDriftEvaluation(instance, input) {
+    assertStandardOperationInput('drift_check_finalize', input);
+    const history = authenticateHistory(instance, {}, true);
+    if (!history.journal?.allocations.length || history.journal.allocations.some(row => row.phase !== 'closed' || row.tree_closed !== true))
+      fail('STANDARD_RETAINED_PROMOTION_NATIVE_UNSETTLED');
+    const retained = acceptedOperation(instance, input.evaluation_operation_id, 'drift_report_evaluate', {}, history);
+    const context = await readStandardDriftContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
+      productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
+    const output = evaluateStandardDriftReport(readActivityOutput(instance, retained.record.preview.input.report_occurrence_id, DRIFT_REPORT_CONTRACT, {}, history), context);
+    if (shadowHash(output) !== shadowHash(retained.output)) fail('STANDARD_RETAINED_PROMOTION_EVALUATION_CHANGED');
+    return { output, evaluation_sha256: shadowHash(output), context: context.context, context_sha256: context.context_sha256 };
   }
   function acceptedOperation(instance, id, binding, authenticationOptions = {}, history = null) {
     const observed = history?.records.get(id);
@@ -745,6 +821,10 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   }
   function taskPhase(instance, id, auth = {}, history = null) {
     const binding = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === id)?.intent.binding_ref;
+    if (binding === retainedValidationAdmit) {
+      const phase = acceptedRetainedPhase(instance, id, auth, history), proof = phase.output.observations.proof;
+      return { phase, proposal: proof.proposal, phaseContextSha256: proof.context_sha256, canonicalResume: null, resumeSource: null };
+    }
     let phase, proposal, resume = null, phaseContextSha256;
     if (canonicalCycleResumeAdmissionOperations.includes(binding)) {
       phase = canonicalResumeOrigin(instance, id, auth, history);
@@ -771,16 +851,18 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
           : { focus_checkpoint_operation_id: resume.output.observations.focus_checkpoint_operation_id }), source_sha256: resume.output.observations.source_sha256,
         continuity_action: resume.output.observations.continuity_action, work_intent: resume.output.observations.work_intent } : null };
   }
-  function taskAdvances(instance, phaseId, auth = {}) {
+  function taskAdvances(instance, phaseId, auth = {}, history = null) {
     const result = [];
     for (const event of instance.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "cycle_task_advance")) {
       if (!instance.events.some(row => row.kind === "operation_result" && row.receipt.operation_id === event.intent.operation_id && row.receipt.outcome === "completed")) continue;
-      const advanced = acceptedOperation(instance, event.intent.operation_id, "cycle_task_advance", auth), details = advanced.output.observations;
+      const advanced = acceptedOperation(instance, event.intent.operation_id, "cycle_task_advance", auth, history), details = advanced.output.observations;
       if (details.implementation_operation_id !== phaseId) continue;
-      const selected = acceptedOperation(instance, details.task_operation_id, "cycle_task_select", auth);
-      const evaluated = acceptedOperation(instance, details.evaluation_operation_id, "cycle_validation_evaluate", auth);
-      const validation = acceptedOperation(instance, evaluated.record.preview.input.validation_operation_id, "cycle_validation_execute", auth);
-      const work = acceptedOperation(instance, validation.record.preview.input.work_operation_id, "cycle_task_work_evaluate", auth);
+      const selected = acceptedOperation(instance, details.task_operation_id, "cycle_task_select", auth, history);
+      const evaluated = acceptedOperation(instance, details.evaluation_operation_id, "cycle_validation_evaluate", auth, history);
+      const validation = acceptedOperation(instance, evaluated.record.preview.input.validation_operation_id, "cycle_validation_execute", auth, history);
+      const workId = validation.record.preview.input.work_operation_id, workBinding = operationStore.read(workId).record?.intent.binding_ref;
+      if (!["cycle_task_work_evaluate", retainedTaskWork].includes(workBinding)) fail("STANDARD_TASK_PROGRESS_CHAIN_CHANGED");
+      const work = acceptedOperation(instance, workId, workBinding, auth, history);
       if (selected.output.observations.context_sha256 !== details.selection_context_sha256 || selected.output.observations.task?.id !== details.task_id || selected.output.observations.previous_progress_operation_id !== details.previous_progress_operation_id
         || selected.output.observations.implementation_operation_id !== phaseId || work.output.observations.task_operation_id !== details.task_operation_id
         || details.validation_operation_id !== validation.record.operation_id || details.work_operation_id !== work.record.operation_id
@@ -790,9 +872,9 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     }
     return result;
   }
-  function taskCursor(instance, phaseId, subject, contextSha256, auth = {}) {
+  function taskCursor(instance, phaseId, subject, contextSha256, auth = {}, history = null) {
     const options = { proposal: subject.proposal, implementationOperationId: phaseId, phaseContextSha256: subject.phaseContextSha256,
-      advances: taskAdvances(instance, phaseId, auth), contextSha256 };
+      advances: taskAdvances(instance, phaseId, auth, history), contextSha256 };
     return subject.canonicalResume ? deriveStandardCanonicalResumeTaskCursor({ ...options, canonicalResume: subject.canonicalResume }) : deriveStandardCycleTaskCursor(options);
   }
   async function evaluateCycleTaskSelection(instance, input, auth = {}, productSha256 = readProductSha256?.()) {
@@ -891,8 +973,11 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     return { context, context_sha256: shadowHash(context) };
   }
   async function evaluateCycleWork(instance, input, contractRef = CYCLE_WORK_CONTRACT) {
+    return evaluateCycleWorkEvidence(instance, input, contractRef);
+  }
+  async function evaluateCycleWorkEvidence(instance, input, contractRef, history = null) {
     assertStandardOperationInput(contractRef === CYCLE_TASK_WORK_CONTRACT ? "cycle_task_work_evaluate" : "cycle_work_evaluate", input);
-    const authenticated = readActivityOutput(instance, input.report_occurrence_id, contractRef);
+    const authenticated = readActivityOutput(instance, input.report_occurrence_id, contractRef, {}, history);
     const event = instance.events.find(row => row.kind === "result" && row.occurrence_id === input.report_occurrence_id);
     const journal = allocations.read(nativeJournalId(instance)).record;
     const get = suffix => {
@@ -910,6 +995,197 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     return (contractRef === CYCLE_TASK_WORK_CONTRACT ? observeStandardCycleTaskWork : observeStandardCycleWork)({ report: authenticated.report, context, contextSha256: source.value.context_sha256, after: output.value.files,
       boundarySha256: cycleWorkBoundary({ root: artifacts.root, context: observed.context, environment }, context.task.paths.map(row => row.path)),
       producer: authenticated.producer, evidenceRefs: [authenticated.reference, source.ref, output.ref] });
+  }
+  // Read-only historical evaluation. It selects the same private diagnostic
+  // authentication as retained-resource inspection, never an execution flag.
+  // A caller receives evidence of prior work, not an activity result for a new
+  // instance, an implementation grant or permission to bypass UNKNOWN.
+  async function inspectRetainedCycleTaskWork(instance, workId) {
+    const history = authenticateHistory(instance, {}, true);
+    if (!history.journal?.allocations.length || !history.native?.parent_closed
+      || history.journal.allocations.some(row => row.phase !== "closed" || row.tree_closed !== true))
+      fail("STANDARD_RETAINED_WORK_NATIVE_UNSETTLED");
+    const current = () => {
+      if (instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+        fail("STANDARD_RETAINED_WORK_INSTANCE_CHANGED");
+      if (shadowHash(allocations.read(nativeJournalId(instance)).record) !== shadowHash(history.journal))
+        fail("STANDARD_RETAINED_WORK_NATIVE_UNSETTLED");
+    };
+    current();
+    const work = acceptedOperation(instance, workId, "cycle_task_work_evaluate", {}, history);
+    const fresh = await evaluateCycleWorkEvidence(instance, work.record.preview.input, CYCLE_TASK_WORK_CONTRACT, history);
+    if (fresh.facts.cycle_work_observed !== true || shadowHash(fresh) !== shadowHash(work.output))
+      fail("STANDARD_RETAINED_WORK_CHANGED");
+    const subject = taskPhase(instance, work.output.observations.implementation_operation_id, {}, history);
+    const selected = acceptedOperation(instance, work.output.observations.task_operation_id, "cycle_task_select", {}, history);
+    if (subject.proposal.tasks.length !== 1 || selected.output.observations.ordinal !== 1
+      || selected.output.observations.completed_task_ids.length || subject.canonicalResume?.completed_task_ids.length
+      || subject.resumeSource?.work_intent === "integration_only"
+      || instance.events.some(row => row.kind === "operation_intent" && row.intent.binding_ref === "cycle_task_advance"))
+      fail("STANDARD_RETAINED_WORK_PHASE_UNSUPPORTED");
+    const observed = await observeCycleReadinessContext();
+    if (observed.context.cycle_state !== "IMPLEMENTING" || observed.context.mode !== "COMMITTING"
+      || selected.output.observations.context_sha256 !== subject.phaseContextSha256
+      || shadowHash(fresh.observations.task) !== shadowHash(selected.output.observations.task)
+      || shadowHash(fresh.observations.task) !== shadowHash(subject.proposal.tasks[0])
+      || fresh.observations.scope_sha256 !== shadowHash(subject.proposal.tasks.map(({ task, intent, paths }) => ({ task, intent, paths }))))
+      fail("STANDARD_RETAINED_WORK_CONTEXT_CHANGED");
+    const files = currentProductSnapshot(); current();
+    if (shadowHash(operationStore.read(workId).record) !== shadowHash(work.record)) fail("STANDARD_RETAINED_WORK_CHANGED");
+    return { instance_id: instance.instance_id, instance_sha256: instance.instance_sha256,
+      work_operation_id: workId, work_journal_sha256: shadowHash(work.record), output_sha256: shadowHash(work.output),
+      output: work.output, product_snapshot: files, product_sha256: shadowHash(files),
+      original_native_producer: fresh.observations.producer, proposal: subject.proposal,
+      context: observed.context, context_sha256: observed.context_sha256,
+      validation_test_refs: subject.proposal.tests.map(row => row.id),
+      contributors: history.native.resources.map(row => row.executor).filter(row => row.contributions.some(c => c.scope_id === instance.scope_id))
+        .map(({ agent_id, lineage_id }) => ({ agent_id, lineage_id })),
+      written: false, native_started: false,
+      current_native_work_evidence: false, implementation_authorized: false, workflow_resumed: false };
+  }
+  function retainedEntry(instance) {
+    const entry = instance.initial_parameters?.entry_point;
+    if (entry?.kind !== "retained_validation") fail("STANDARD_RETAINED_VALIDATION_ENTRY_REQUIRED");
+    return entry;
+  }
+  const continuationFor = proof => ({ source_instance_id: proof.original_instance_id, source_instance_sha256: proof.original_instance_sha256,
+    recovery_operation_id: proof.recovery_operation_id, recovery_sha256: proof.recovery_sha256,
+    work_operation_id: proof.work_operation_id, proof_sha256: shadowHash(proof) });
+  async function retainedValidationEntry(instance, parameters, admission) {
+    authenticate(instance);
+    const proof = assertRetainedValidationProof(await retainedSource.inspect(retainedEntry(instance))), selected = admission.observations.selected_cycle;
+    if (artifacts.ownerPending() || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail("STANDARD_RETAINED_VALIDATION_OWNER_UNSETTLED");
+    if (!selected || selected.state !== "IMPLEMENTING" || selected.cycle_id !== proof.proposal.cycle_id
+      || parameters.session.session_id !== proof.proposal.session_id || selected.cycle_path !== proof.context.cycle_path
+      || selected.branch !== proof.context.branch) fail("STANDARD_RETAINED_VALIDATION_FOCUS_CHANGED");
+    return continuationFor(proof);
+  }
+  function retainedEntryRecord(instance, auth = {}, history = null) {
+    const ids = instance.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "workflow_entry_select");
+    if (ids.length !== 1) fail("STANDARD_RETAINED_VALIDATION_ENTRY_REQUIRED");
+    const entry = acceptedOperation(instance, ids[0].intent.operation_id, "workflow_entry_select", auth, history);
+    if (entry.output.observations.entry_point !== "retained_validation" || entry.output.facts.retained_validation_requested !== true)
+      fail("STANDARD_RETAINED_VALIDATION_ENTRY_REQUIRED");
+    return entry;
+  }
+  async function admitRetainedValidation(instance) {
+    const entry = retainedEntryRecord(instance), proof = assertRetainedValidationProof(await retainedSource.inspect(retainedEntry(instance)));
+    if (shadowHash(continuationFor(proof)) !== shadowHash(entry.output.observations.continuation) || artifacts.ownerPending()
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail("STANDARD_RETAINED_VALIDATION_SOURCE_CHANGED");
+    const admission = await preWriteAdmit({ targetRoot: configuration.target_root, skill: "start-session" });
+    if (admission.ok !== true || !["admitted", "admitted_with_warnings"].includes(admission.admission_status)) fail("STANDARD_RETAINED_VALIDATION_ADMISSION_BLOCKED");
+    if (shadowHash(await retainedSource.inspect(retainedEntry(instance))) !== shadowHash(proof)) fail("STANDARD_RETAINED_VALIDATION_SOURCE_CHANGED");
+    return assertRetainedValidationOutput({ contract_version: "standard-retained-validation-admission-output.v1", operation_ref: retainedValidationAdmit,
+      outcome: "completed", effect_status: "no_effect", facts: { cycle_retained_validation_admitted: true },
+      observations: { proof, proof_sha256: shadowHash(proof), entry_operation_id: entry.record.operation_id,
+        implementation_authorized: false, current_native_work_evidence: false, current_validation_evidence: false },
+      evidence_refs: [{ ref: "audit:workflows/validation-launch-recoveries/" + proof.recovery_operation_id + ".json", sha256: proof.recovery_sha256 },
+        { ref: "audit:" + operationJournalPath(proof.work_operation_id), sha256: proof.work_journal_sha256 }] });
+  }
+  function acceptedRetainedPhase(instance, id, auth = {}, history = null) {
+    const phase = acceptedOperation(instance, id, retainedValidationAdmit, auth, history), output = assertRetainedValidationOutput(phase.output), proof = output.observations.proof;
+    const entry = retainedEntryRecord(instance, auth, history);
+    if (output.observations.entry_operation_id !== entry.record.operation_id
+      || shadowHash(continuationFor(proof)) !== shadowHash(entry.output.observations.continuation)) fail("STANDARD_RETAINED_VALIDATION_SOURCE_CHANGED");
+    retainedSource.assertPinned(retainedEntry(instance), retainedValidationPins(proof));
+    return phase;
+  }
+
+  function verificationEntry(instance) {
+    const entry = instance.initial_parameters?.entry_point;
+    if (entry?.kind !== "retained_verification") fail("STANDARD_RETAINED_VERIFICATION_ENTRY_REQUIRED");
+    return entry;
+  }
+  async function retainedVerificationEntry(instance, parameters, admission) {
+    authenticate(instance);
+    const { proof } = await retainedVerificationSource.inspect(verificationEntry(instance)), selected = admission.observations.selected_cycle;
+    if (artifacts.ownerPending() || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail("STANDARD_RETAINED_VERIFICATION_OWNER_UNSETTLED");
+    if (!selected || selected.state !== "VERIFYING" || selected.cycle_id !== proof.context.cycle_id
+      || parameters.session.session_id !== proof.context.session_id || selected.cycle_path !== proof.context.cycle_path
+      || selected.branch !== proof.context.branch) fail("STANDARD_RETAINED_VERIFICATION_FOCUS_CHANGED");
+    return retainedVerificationContinuation(proof);
+  }
+  function verificationEntryRecord(instance, auth = {}, history = null) {
+    const rows = instance.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "workflow_entry_select");
+    if (rows.length !== 1) fail("STANDARD_RETAINED_VERIFICATION_ENTRY_REQUIRED");
+    const entry = acceptedOperation(instance, rows[0].intent.operation_id, "workflow_entry_select", auth, history);
+    if (entry.output.observations.entry_point !== "retained_verification" || entry.output.facts.retained_verification_requested !== true)
+      fail("STANDARD_RETAINED_VERIFICATION_ENTRY_REQUIRED");
+    return entry;
+  }
+  async function admitRetainedVerification(instance) {
+    const entry = verificationEntryRecord(instance), { proof } = await retainedVerificationSource.inspect(verificationEntry(instance));
+    if (shadowHash(retainedVerificationContinuation(proof)) !== shadowHash(entry.output.observations.continuation)
+      || artifacts.ownerPending() || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail("STANDARD_RETAINED_VERIFICATION_SOURCE_CHANGED");
+    return assertRetainedVerificationOutput({ contract_version: "standard-retained-verification-admission-output.v1", operation_ref: retainedVerificationAdmit,
+      outcome: "completed", effect_status: "no_effect", facts: { cycle_retained_verification_admitted: true },
+      observations: { proof, proof_sha256: shadowHash(proof), entry_operation_id: entry.record.operation_id,
+        implementation_authorized: false, current_native_work_evidence: false, current_validation_evidence: false },
+      evidence_refs: [{ ref: "audit:" + operationJournalPath(proof.audit_operation_id), sha256: proof.audit_journal_sha256 },
+        { ref: "audit:" + operationJournalPath(proof.verification_operation_id), sha256: proof.verification_journal_sha256 }] });
+  }
+  function acceptedRetainedVerification(instance, id, auth = {}, history = null) {
+    const phase = acceptedOperation(instance, id, retainedVerificationAdmit, auth, history), output = assertRetainedVerificationOutput(phase.output), proof = output.observations.proof;
+    const entry = verificationEntryRecord(instance, auth, history);
+    if (output.observations.entry_operation_id !== entry.record.operation_id
+      || shadowHash(retainedVerificationContinuation(proof)) !== shadowHash(entry.output.observations.continuation)) fail("STANDARD_RETAINED_VERIFICATION_SOURCE_CHANGED");
+    retainedVerificationSource.assertPinned(verificationEntry(instance), proof); return phase;
+  }
+  async function retainedVerificationBridge(instance, phaseId, auth = {}, productSha256, history = null, currentOwner = null) {
+    const phase = acceptedRetainedVerification(instance, phaseId, auth, history);
+    const assertCurrentOwner = nativeReservation && auth.reservation === nativeReservation
+      ? createRetainedAuditNativeOwnerAssertion({ configuration, instance, reservation: nativeReservation, signer, artifacts,
+        readJournal: () => allocations.read(nativeJournalId(instance)).record,
+        readInstance: () => instances.read(instance.instance_id).record, readAuthority: read }) : currentOwner;
+    const retained = await retainedVerificationSource.inspect(verificationEntry(instance), { assertCurrentOwner });
+    if (shadowHash(retained.proof) !== phase.output.observations.proof_sha256
+      || retained.proof.product_sha256 !== (productSha256 ?? readProductSha256?.())) fail("STANDARD_RETAINED_VERIFICATION_SOURCE_CHANGED");
+    return retained.bridge;
+  }
+
+  async function selectWorkPhase(instance) {
+    const kind = instance.initial_parameters?.entry_point?.kind, retained = kind === "retained_validation", verified = kind === "retained_verification";
+    const binding = verified ? retainedVerificationAdmit : retained ? retainedValidationAdmit : "cycle_execution_source_select";
+    const candidates = instance.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === binding);
+    if (candidates.length !== 1) fail("STANDARD_WORK_PHASE_SELECTION_REQUIRED");
+    const id = candidates[0].intent.operation_id, source = verified ? acceptedRetainedVerification(instance, id)
+      : retained ? acceptedRetainedPhase(instance, id) : acceptedOperation(instance, id, binding);
+    return assertRetainedValidationOutput({ contract_version: "standard-work-phase-selection-output.v2", operation_ref: workPhaseSelect,
+      outcome: "completed", effect_status: "no_effect", facts: { cycle_work_retained_validation: retained, cycle_work_retained_verification: verified,
+        cycle_work_tasks_pending: !retained && !verified && source.output.facts.cycle_work_tasks_pending,
+        cycle_work_product_ready: !retained && !verified && source.output.facts.cycle_work_product_ready },
+      observations: { implementation_operation_id: retained || verified ? id : source.output.observations.implementation_operation_id,
+        source_operation_id: id, source_sha256: shadowHash(source.record) }, evidence_refs: source.output.evidence_refs });
+  }
+  async function observeRetainedTaskWork(instance, input, { assertOwner = null } = {}) {
+    assertStandardOperationInput(retainedTaskWork, input);
+    const phase = acceptedRetainedPhase(instance, input.implementation_operation_id), proof = phase.output.observations.proof;
+    if (assertOwner) assertOwner(); else if (artifacts.ownerPending()) fail("STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED");
+    const selected = acceptedOperation(instance, input.task_operation_id, "cycle_task_select");
+    const fresh = await evaluateCycleTaskSelection(instance, { implementation_operation_id: input.implementation_operation_id });
+    if (shadowHash(selected.output) !== shadowHash(fresh) || fresh.observations.complete || fresh.observations.ordinal !== 1
+      || fresh.observations.context_sha256 !== proof.context_sha256 || shadowHash(fresh.observations.task) !== shadowHash(proof.proposal.tasks[0])
+      || shadowHash(await retainedSource.inspect(retainedEntry(instance))) !== shadowHash(proof)) fail("STANDARD_RETAINED_VALIDATION_SOURCE_CHANGED");
+    return assertRetainedValidationOutput({ contract_version: "standard-retained-task-work-output.v1", operation_ref: retainedTaskWork,
+      outcome: "completed", effect_status: "no_effect", facts: { cycle_work_observed: true, cycle_validation_required: true },
+      observations: { ...input, source_kind: "retained_native_work", source: retainedValidationPins(proof), task: proof.proposal.tasks[0],
+        producer: proof.output.observations.producer, scope_sha256: proof.output.observations.scope_sha256, after_product_sha256: proof.product_sha256,
+        product_snapshot: proof.product_snapshot, validation_test_refs: proof.validation_test_refs,
+        validation: "not_executed", implementation_authorized: false, current_native_work_evidence: false,
+        authorship: "retained_native_producer_not_current_activity" }, evidence_refs: phase.output.evidence_refs });
+  }
+  function retainedContributors(instance) {
+    if (instance.initial_parameters?.entry_point?.kind === "retained_verification") {
+      const id = instance.events.find(row => row.kind === "operation_intent" && row.intent.binding_ref === retainedVerificationAdmit)?.intent.operation_id;
+      return structuredClone(acceptedRetainedVerification(instance, id, nativeReservation ? { reservation: nativeReservation } : {}).output.observations.proof.contributors);
+    }
+    if (instance.initial_parameters?.entry_point?.kind !== "retained_validation") return [];
+    const id = instance.events.find(row => row.kind === "operation_intent" && row.intent.binding_ref === retainedValidationAdmit)?.intent.operation_id;
+    return structuredClone(acceptedRetainedPhase(instance, id, nativeReservation ? { reservation: nativeReservation } : {}).output.observations.proof.contributors);
   }
   function currentProductSnapshot() {
     if (typeof readProductSnapshot !== "function") fail("STANDARD_CANONICAL_RESUME_PRODUCT_AUTHORITY_REQUIRED");
@@ -956,11 +1232,24 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       evidence_refs: [...after.context.documents.map(({ ref, sha256 }) => ({ ref, sha256 })),
         { ref: "audit:" + operationJournalPath(origin.record.operation_id), sha256: shadowHash(origin.record) }, { ref: "product:snapshot", sha256: shadowHash(files) }] });
   }
-  function acceptedWorkSnapshot(instance, workId, { auth = {}, productSha256 } = {}) {
+  function acceptedWorkSnapshot(instance, workId, { auth = {}, productSha256, history = null } = {}) {
     const binding = operationStore.read(workId).record?.intent.binding_ref;
+    if (binding === retainedTaskWork) {
+      const evaluated = acceptedOperation(instance, workId, binding, auth, history), output = assertRetainedValidationOutput(evaluated.output),
+        phase = acceptedRetainedPhase(instance, output.observations.implementation_operation_id, auth, history), proof = phase.output.observations.proof;
+      const selected = acceptedOperation(instance, output.observations.task_operation_id, "cycle_task_select", auth, history);
+      if (shadowHash(output.observations.source) !== shadowHash(retainedValidationPins(proof))
+        || shadowHash(output.observations.task) !== shadowHash(selected.output.observations.task)
+        || selected.output.observations.implementation_operation_id !== phase.record.operation_id
+        || shadowHash(output.observations.producer) !== shadowHash(proof.output.observations.producer)
+        || shadowHash(output.observations.product_snapshot) !== proof.product_sha256 || proof.product_sha256 !== (productSha256 ?? readProductSha256?.()))
+        fail("STANDARD_RETAINED_VALIDATION_SOURCE_CHANGED");
+      return { evaluated, binding, output, evaluation_sha256: shadowHash(output), files: proof.product_snapshot,
+        product_root: configuration.product_root, validation_test_refs: proof.validation_test_refs };
+    }
     if (binding === canonicalCycleResumeObserveOperation) {
-      const evaluated = acceptedOperation(instance, workId, binding, auth), output = assertCanonicalResumeObserveOutput(evaluated.output),
-        subject = taskPhase(instance, output.observations.implementation_operation_id, auth), origin = subject.resumeSource,
+      const evaluated = acceptedOperation(instance, workId, binding, auth, history), output = assertCanonicalResumeObserveOutput(evaluated.output),
+        subject = taskPhase(instance, output.observations.implementation_operation_id, auth, history), origin = subject.resumeSource,
         files = currentProductSnapshot();
       if (!origin || output.observations.resume_operation_id !== origin.operation_id || output.observations.resume_output_sha256 !== origin.output_sha256
         || output.observations.scope_sha256 !== shadowHash(subject.proposal.tasks.map(({ task, intent, paths }) => ({ task, intent, paths })))
@@ -971,18 +1260,18 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
         validation_test_refs: subject.proposal.tests.map(row => row.id) };
     }
     if (!["cycle_work_evaluate", "cycle_task_work_evaluate"].includes(binding)) fail("STANDARD_VALIDATION_WORK_REQUIRED");
-    const evaluated = acceptedOperation(instance, workId, binding, auth), output = evaluated.output;
+    const evaluated = acceptedOperation(instance, workId, binding, auth, history), output = evaluated.output;
     if (output.facts.cycle_work_observed !== true) fail("STANDARD_VALIDATION_WORK_REQUIRED");
     const contractRef = binding === "cycle_task_work_evaluate" ? CYCLE_TASK_WORK_CONTRACT : CYCLE_WORK_CONTRACT;
-    const native = readActivityOutput(instance, evaluated.record.preview.input.report_occurrence_id, contractRef, auth);
+    const native = readActivityOutput(instance, evaluated.record.preview.input.report_occurrence_id, contractRef, auth, history);
     if (shadowHash(native.producer) !== shadowHash(output.observations.producer)) fail("STANDARD_VALIDATION_WORK_STALE");
     const ref = output.evidence_refs.find(row => row.ref.endsWith("-artifact-output.json")), journal = allocations.read(nativeJournalId(instance)).record;
     const observed = readAgentRunFile(nativeEvidenceFile(configuration, ref, journal.allocations.length), { sha256: ref.sha256, maxBytes: 1048576 }).value;
     if (observed.occurrence_id !== evaluated.record.preview.input.report_occurrence_id || shadowHash(observed.files) !== observed.artifact_sha256 || observed.artifact_sha256 !== (productSha256 ?? readProductSha256?.())) fail("STANDARD_VALIDATION_WORK_STALE");
     let validation_test_refs;
     if (binding === "cycle_task_work_evaluate") {
-      const selected = acceptedOperation(instance, output.observations.task_operation_id, "cycle_task_select", auth);
-      const { proposal } = taskPhase(instance, output.observations.implementation_operation_id, auth);
+      const selected = acceptedOperation(instance, output.observations.task_operation_id, "cycle_task_select", auth, history);
+      const { proposal } = taskPhase(instance, output.observations.implementation_operation_id, auth, history);
       validation_test_refs = selected.output.observations.ordinal === proposal.tasks.length ? proposal.tests.map(row => row.id) : output.observations.task.test_refs;
     }
     return { evaluated, binding, output, evaluation_sha256: shadowHash(output), files: observed.files, product_root: configuration.product_root, ...(validation_test_refs ? { validation_test_refs } : {}) };
@@ -990,7 +1279,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   async function readCycleWorkEvaluation(instance, input, options = {}) {
     assertStandardOperationInput("cycle_validation_execute", input);
     const work = acceptedWorkSnapshot(instance, input.work_operation_id);
-    const output = work.binding === canonicalCycleResumeObserveOperation
+    const output = work.binding === retainedTaskWork ? await observeRetainedTaskWork(instance, work.evaluated.record.preview.input, options) : work.binding === canonicalCycleResumeObserveOperation
       ? await observeCanonicalResumeProduct(instance, work.evaluated.record.preview.input, options)
       : await evaluateCycleWork(instance, work.evaluated.record.preview.input, work.binding === "cycle_task_work_evaluate" ? CYCLE_TASK_WORK_CONTRACT : CYCLE_WORK_CONTRACT);
     if (shadowHash(output) !== work.evaluation_sha256) fail("STANDARD_VALIDATION_WORK_STALE");
@@ -998,6 +1287,14 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   }
   function collectObservedTasks(instance, phaseId, proposal, scopeSha256, auth = {}, history = null) {
     const observedTasks = new Set();
+    for (const event of instance.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === retainedTaskWork)) {
+      if (!instance.events.some(row => row.kind === "operation_result" && row.receipt.operation_id === event.intent.operation_id && row.receipt.outcome === "completed")) continue;
+      const work = acceptedWorkSnapshot(instance, event.intent.operation_id, { auth, history });
+      if (work.output.observations.implementation_operation_id !== phaseId) continue;
+      if (work.output.observations.scope_sha256 !== scopeSha256 || proposal.tasks.length !== 1
+        || shadowHash(work.output.observations.task) !== shadowHash(proposal.tasks[0])) fail("STANDARD_VERIFICATION_TASK_SOURCE_CHANGED");
+      observedTasks.add(proposal.tasks[0].id);
+    }
     for (const event of instance.events.filter(row => row.kind === "operation_intent" && ["cycle_work_evaluate", "cycle_task_work_evaluate"].includes(row.intent.binding_ref))) {
       const accepted = instance.events.some(row => row.kind === "operation_result" && row.receipt.operation_id === event.intent.operation_id && row.receipt.outcome === "completed");
       if (!accepted) continue;
@@ -1012,19 +1309,19 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     }
     return observedTasks;
   }
-  function cycleValidationSubject(instance, work, auth = {}) {
+  function cycleValidationSubject(instance, work, auth = {}, retainedHistory = null) {
     const phaseId = work.output.observations.implementation_operation_id;
     // One selected PostgreSQL history observation still authenticates this
     // synchronous subject. Subsequent callers acquire their own observation.
-    const history = operationStore.readMany ? authenticateHistory(instance, auth) : null, subject = taskPhase(instance, phaseId, auth, history),
+    const history = retainedHistory ?? (operationStore.readMany ? authenticateHistory(instance, auth) : null), subject = taskPhase(instance, phaseId, auth, history),
       observedTasks = collectObservedTasks(instance, phaseId, subject.proposal, work.output.observations.scope_sha256, auth, history),
       importedTasks = new Set(subject.canonicalResume?.completed_task_ids ?? []);
     if ([...importedTasks].some(id => observedTasks.has(id))) fail("STANDARD_CANONICAL_RESUME_WORK_OVERLAP");
     return { phaseId, ...subject, observedTasks, importedTasks };
   }
-  async function readCycleVerificationExecution(instance, input, auth = {}, productSha256) {
+  async function readCycleVerificationHistory(instance, input, auth = {}, productSha256, history = null) {
     if (!input || Object.keys(input).join(",") !== "implementation_operation_id" || !/^op_[a-f0-9]{40}$/.test(input.implementation_operation_id ?? "")) fail("STANDARD_AUDIT_INPUT_INVALID");
-    authenticate(instance, auth);
+    if (!history) authenticate(instance, auth);
     const admission = await preWriteAdmit({ targetRoot: configuration.target_root, skill: "cycle-close" });
     if (admission.ok !== true || !["admitted", "admitted_with_warnings"].includes(admission.admission_status)) fail("STANDARD_AUDIT_ADMISSION_BLOCKED");
     const currentProduct = () => productSha256 ?? readProductSha256?.();
@@ -1033,25 +1330,25 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const candidates = [];
     for (const event of instance.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "cycle_verification_enter")) {
       if (!instance.events.some(row => row.kind === "operation_result" && row.receipt.operation_id === event.intent.operation_id && row.receipt.outcome === "completed")) continue;
-      const verification = acceptedOperation(instance, event.intent.operation_id, "cycle_verification_enter", auth), details = verification.output.observations;
+      const verification = acceptedOperation(instance, event.intent.operation_id, "cycle_verification_enter", auth, history), details = verification.output.observations;
       if (verification.output.facts.cycle_verification_started !== true || verification.output.effect_status !== "confirmed"
         || details.causal_transition?.after_context_sha256 !== context.context_sha256) continue;
-      const evaluation = acceptedOperation(instance, verification.record.preview.input.evaluation_operation_id, "cycle_validation_evaluate", auth);
-      const validation = acceptedOperation(instance, evaluation.record.preview.input.validation_operation_id, "cycle_validation_execute", auth);
-      const work = acceptedWorkSnapshot(instance, validation.record.preview.input.work_operation_id, { auth, productSha256: context.context.product_sha256 });
+      const evaluation = acceptedOperation(instance, verification.record.preview.input.evaluation_operation_id, "cycle_validation_evaluate", auth, history);
+      const validation = acceptedOperation(instance, evaluation.record.preview.input.validation_operation_id, "cycle_validation_execute", auth, history);
+      const work = acceptedWorkSnapshot(instance, validation.record.preview.input.work_operation_id, { auth, productSha256: context.context.product_sha256, history });
       if (work.output.observations.implementation_operation_id !== input.implementation_operation_id) continue;
-      const subject = cycleValidationSubject(instance, work, auth);
+      const subject = cycleValidationSubject(instance, work, auth, history);
       if (details.evaluation_operation_id !== evaluation.record.operation_id || details.scope_sha256 !== work.output.observations.scope_sha256
         || details.causal_transition.before_context_sha256 !== evaluation.output.observations.context_sha256
         || details.causal_transition.evaluation_sha256 !== shadowHash(evaluation.output)
         || verification.record.preview.prepared.plan.evaluation_sha256 !== shadowHash(evaluation.output)
         || verification.record.preview.prepared.plan.context_sha256 !== details.causal_transition.before_context_sha256) fail("STANDARD_AUDIT_VERIFICATION_BRIDGE_CHANGED");
       if (evaluation.record.preview.input.progress_operation_id) {
-        const progress = acceptedOperation(instance, evaluation.record.preview.input.progress_operation_id, "cycle_task_advance", auth);
+        const progress = acceptedOperation(instance, evaluation.record.preview.input.progress_operation_id, "cycle_task_advance", auth, history);
         if (progress.output.observations.validation_operation_id !== validation.record.operation_id
           || progress.output.observations.work_operation_id !== work.evaluated.record.operation_id
           || progress.output.observations.causal_transition.after_context_sha256 !== details.causal_transition.before_context_sha256) fail("STANDARD_AUDIT_VERIFICATION_BRIDGE_CHANGED");
-        const cursor = taskCursor(instance, subject.phaseId, subject, details.causal_transition.before_context_sha256, auth);
+        const cursor = taskCursor(instance, subject.phaseId, subject, details.causal_transition.before_context_sha256, auth, history);
         if (!cursor.complete || cursor.previous_progress_operation_id !== progress.record.operation_id) fail("STANDARD_AUDIT_TASKS_INCOMPLETE");
       }
       candidates.push({ verification, evaluation, source: { ...validation, work, proposal: subject.proposal, observed_task_ids: [...subject.observedTasks],
@@ -1061,6 +1358,398 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (candidates.length !== 1) fail("STANDARD_AUDIT_VERIFICATION_AMBIGUOUS");
     if ((await observeCycleVerificationContext(currentProduct())).context_sha256 !== context.context_sha256) fail("STANDARD_AUDIT_SOURCE_CHANGED");
     return candidates[0];
+  }
+
+  async function readCycleVerificationExecution(instance, input, auth = {}, productSha256) {
+    if (instance.initial_parameters?.entry_point?.kind === "retained_audit"
+      && !instance.events.some(row => row.kind === "operation_intent" && row.intent.operation_id === input.implementation_operation_id)) {
+      const retained = await retainedAuditForCurrent(instance);
+      if (shadowHash(input) === shadowHash(retained.native.selection.record.preview.input)) return retained.bridge;
+    }
+    if (instance.initial_parameters?.entry_point?.kind === "retained_verification") {
+      assertStandardOperationInput("cycle_audit_select", input);
+      return retainedVerificationBridge(instance, input.implementation_operation_id, auth, productSha256);
+    }
+    return readCycleVerificationHistory(instance, input, auth, productSha256);
+  }
+  async function inspectRetainedCycleVerification(instance, selectionId, { assertCurrentOwner = null } = {}) {
+    // Bounded to the existing single-task retained-validation origin. Only this
+    // private reader chooses historical authentication; execution never does.
+    if (instance.initial_parameters?.entry_point?.kind !== "retained_validation") fail("STANDARD_RETAINED_VERIFICATION_ORIGIN_UNSUPPORTED");
+    const history = authenticateHistory(instance, {}, true), product = currentProductSnapshot();
+    const stable = () => {
+      if (assertCurrentOwner !== null) {
+        if (typeof assertCurrentOwner !== "function" || assertCurrentOwner() !== undefined) fail("STANDARD_PROCESS_AUDIT_OWNER_CHANGED");
+      } else if (artifacts.ownerPending()) fail("STANDARD_RETAINED_VERIFICATION_SOURCE_CHANGED");
+      if (instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256
+        || shadowHash(currentProductSnapshot()) !== shadowHash(product)) fail("STANDARD_RETAINED_VERIFICATION_SOURCE_CHANGED");
+    };
+    stable();
+    const journal = allocations.read(nativeJournalId(instance)).record;
+    if (!journal || journal.allocations.some(row => row.tree_closed !== true
+      || row.phase !== "closed" && !nativeReconciliationHistory.resolution(journal, row))) fail("STANDARD_RETAINED_VERIFICATION_CLOSURE_REQUIRED");
+    const cursor = inspectAgenticProcess(instance);
+    if (cursor.occurrences.some(frame => frame.status === "RUNNING" && processFrameNode(instance.model, frame)?.kind === "activity"))
+      fail("STANDARD_RETAINED_VERIFICATION_SOURCE_ACTIVE");
+    for (const event of instance.events.filter(row => row.kind === "operation_intent")) {
+      const record = operationStore.read(event.intent.operation_id).record;
+      if (record?.phase !== "receipted" || record.results.at(-1)?.receipt.effect_status === "unknown")
+        fail("STANDARD_RETAINED_VERIFICATION_EFFECT_UNSETTLED");
+    }
+    if (instance.events.findLast(row => row.kind === "operation_intent" && row.intent.binding_ref === "cycle_audit_select")?.intent.operation_id !== selectionId)
+      fail("STANDARD_RETAINED_VERIFICATION_SELECTION_CHANGED");
+    const selection = acceptedOperation(instance, selectionId, "cycle_audit_select", {}, history);
+    const bridge = await readCycleVerificationHistory(instance, selection.record.preview.input, {}, shadowHash(product), history);
+    const material = observeCycleAuditContext(bridge, selection.output.observations.validation);
+    if (material.context_sha256 !== selection.output.observations.audit_context_sha256
+      || bridge.verification.record.operation_id !== selection.output.observations.verification_operation_id) fail("STANDARD_RETAINED_VERIFICATION_SELECTION_CHANGED");
+    const phase = acceptedRetainedPhase(instance, selection.record.preview.input.implementation_operation_id, {}, history);
+    stable();
+    if (shadowHash(allocations.read(nativeJournalId(instance)).record) !== shadowHash(journal)) fail("STANDARD_RETAINED_VERIFICATION_SOURCE_CHANGED");
+    return { bridge, selection, material, contributors: phase.output.observations.proof.contributors,
+      product_sha256: shadowHash(product), native_journal_sha256: shadowHash(journal) };
+  }
+
+  function readRecordedCycleValidation(instance, proof) {
+    if (instance.initial_parameters?.entry_point?.kind !== "retained_validation"
+      || proof.original_instance_id !== instance.instance_id || proof.original_instance_sha256 !== instance.instance_sha256)
+      fail("STANDARD_RETAINED_VERIFICATION_ORIGIN_UNSUPPORTED");
+    const history = authenticateHistory(instance, {}, true), product = currentProductSnapshot();
+    const selection = acceptedOperation(instance, proof.audit_operation_id, "cycle_audit_select", {}, history);
+    const verification = acceptedOperation(instance, proof.verification_operation_id, "cycle_verification_enter", {}, history);
+    const evaluation = acceptedOperation(instance, proof.evaluation_operation_id, "cycle_validation_evaluate", {}, history);
+    const validation = acceptedOperation(instance, proof.validation_operation_id, "cycle_validation_execute", {}, history);
+    const work = acceptedWorkSnapshot(instance, validation.record.preview.input.work_operation_id, { history, productSha256: shadowHash(product) });
+    if (shadowHash(product) !== proof.product_sha256 || shadowHash(work.files) !== proof.product_sha256
+      || selection.output.observations.audit_context_sha256 !== proof.audit_context_sha256
+      || selection.output.observations.verification_operation_id !== verification.record.operation_id
+      || verification.output.observations.causal_transition?.after_context_sha256 !== proof.context_sha256
+      || verification.record.preview.input.evaluation_operation_id !== evaluation.record.operation_id
+      || evaluation.record.preview.input.validation_operation_id !== validation.record.operation_id
+      || evaluation.output.facts.cycle_work_complete !== true || evaluation.output.facts.cycle_checks_passed !== true
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail("STANDARD_CYCLE_CLOSE_VALIDATION_REQUIRED");
+    return { ...validation, work, evaluation, verification };
+  }
+  const inspectRetainedCycleAudit = (instance, failedId, options) => inspectRetainedCycleAuditSource(instance, failedId, options, false);
+  const readRecordedCycleAudit = (instance, failedId) => inspectRetainedCycleAuditSource(instance, failedId, {}, true);
+  async function inspectRetainedCycleAuditSource(instance, failedId, { assertCurrentOwner = null } = {}, recorded = false) {
+    if (instance.initial_parameters?.entry_point?.kind !== "retained_verification") fail("STANDARD_RETAINED_AUDIT_ORIGIN_UNSUPPORTED");
+    const history = authenticateHistory(instance, {}, true), product = currentProductSnapshot();
+    const stable = () => {
+      if (assertCurrentOwner !== null) {
+        if (typeof assertCurrentOwner !== "function" || assertCurrentOwner() !== undefined) fail("STANDARD_PROCESS_AUDIT_OWNER_CHANGED");
+      } else if (!recorded && artifacts.ownerPending()) fail("STANDARD_RETAINED_AUDIT_SOURCE_CHANGED");
+      if (instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256
+        || shadowHash(currentProductSnapshot()) !== shadowHash(product)) fail("STANDARD_RETAINED_AUDIT_SOURCE_CHANGED");
+    };
+    stable();
+    const journal = allocations.read(nativeJournalId(instance)).record;
+    if (!journal?.allocations.length || journal.allocations.some(row => row.phase !== "closed" || row.tree_closed !== true))
+      fail("STANDARD_RETAINED_AUDIT_CLOSURE_REQUIRED");
+    if (history.cursor.occurrences.some(frame => frame.status === "RUNNING" && processFrameNode(instance.model, frame)?.kind === "activity"))
+      fail("STANDARD_RETAINED_AUDIT_SOURCE_ACTIVE");
+    const intents = instance.events.filter(row => row.kind === "operation_intent");
+    if (intents.at(-1)?.intent.operation_id !== failedId) fail("STANDARD_RETAINED_AUDIT_BOUNDARY_CHANGED");
+    for (const event of intents) {
+      const record = history.records.get(event.intent.operation_id), receipt = record?.results.at(-1)?.receipt;
+      if (record?.phase !== "receipted" || !receipt || receipt.effect_status === "unknown") fail("STANDARD_RETAINED_AUDIT_EFFECT_UNSETTLED");
+    }
+    const failed = history.records.get(failedId), result = failed?.results.at(-1);
+    if (failed?.intent.binding_ref !== "cycle_audit_evaluate" || result?.receipt.outcome !== "blocked" || result.receipt.effect_status !== "no_effect"
+      || result.output.observations.reason_code !== "NATIVE_OWNER_RETIRED_WITNESS_CHANGED"
+      || !instance.events.some(row => row.kind === "operation_result" && shadowHash(row.receipt) === shadowHash(result.receipt)))
+      fail("STANDARD_RETAINED_AUDIT_BOUNDARY_CHANGED");
+    const native = readCycleAuditActivityAuthenticated(instance, failed.preview.input, history);
+    const phaseId = native.selection.record.preview.input.implementation_operation_id;
+    const phase = acceptedRetainedVerification(instance, phaseId, {}, history), verificationProof = phase.output.observations.proof;
+    const frame = history.cursor.occurrences.find(row => row.occurrence_id === failed.preview.input.report_occurrence_id), assigned = frame?.assignment;
+    if (frame?.status !== "COMPLETED" || assigned?.request.independent_review !== true || assigned.request.context_isolation_required !== true
+      || assigned.request.role !== "auditor" || assigned.request.action !== "audit" || assigned.decision.write_authorization !== false
+      || assigned.request.allowed_permissions.some(permission => permission !== "read:product")
+      || verificationProof.contributors.some(row => row.agent_id === assigned.decision.agent_id || row.lineage_id === assigned.decision.lineage_id
+        || !assigned.request.reviewed_contributors.some(excluded => shadowHash(excluded) === shadowHash(row))))
+      fail("STANDARD_RETAINED_AUDIT_INDEPENDENCE_REQUIRED");
+    if (recorded) {
+      const source = retainedVerificationSource.readRecordedValidation(verificationEntry(instance), verificationProof), machine = native.context.validation;
+      const { audit_operation_id, input_resolution, ...baseContext } = native.context;
+      if (shadowHash(baseContext) !== verificationProof.audit_context_sha256
+        || native.selection.output.observations.audit_context_sha256 !== verificationProof.audit_context_sha256
+        || native.context.source_context_sha256 !== verificationProof.context_sha256
+        || machine.validation_operation_id !== source.record.operation_id || machine.evaluation_operation_id !== source.evaluation.record.operation_id
+        || machine.work_complete !== true || machine.product_sha256 !== shadowHash(product)
+        || native.selection.output.observations.verification_operation_id !== source.verification.record.operation_id)
+        fail("STANDARD_CYCLE_CLOSE_VALIDATION_REQUIRED");
+      stable(); if (shadowHash(allocations.read(nativeJournalId(instance)).record) !== shadowHash(journal)) fail("STANDARD_RETAINED_AUDIT_SOURCE_CHANGED");
+      return { native, source, context: verificationProof.context, verification_proof: verificationProof };
+    }
+    const bridge = await retainedVerificationBridge(instance, phaseId, {}, shadowHash(product), history, assertCurrentOwner);
+    const material = observeCycleAuditContext(bridge, native.context.validation);
+    const { audit_operation_id, input_resolution, ...baseContext } = native.context;
+    if (material.context_sha256 !== shadowHash(baseContext) || material.context_sha256 !== native.selection.output.observations.audit_context_sha256
+      || bridge.verification.record.operation_id !== native.selection.output.observations.verification_operation_id)
+      fail("STANDARD_RETAINED_AUDIT_CONTEXT_CHANGED");
+    stable(); if (shadowHash(allocations.read(nativeJournalId(instance)).record) !== shadowHash(journal)) fail("STANDARD_RETAINED_AUDIT_SOURCE_CHANGED");
+    return { native, bridge, verification_proof: verificationProof };
+  }
+  async function retainedAuditEntry(instance, parameters, admission) {
+    authenticate(instance);
+    const { proof } = await retainedAuditSource.inspect(instance.initial_parameters.entry_point), selected = admission.observations.selected_cycle;
+    if (artifacts.ownerPending() || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256
+      || !selected || selected.state !== "VERIFYING" || selected.cycle_id !== proof.context.cycle_id || selected.cycle_path !== proof.context.cycle_path
+      || selected.branch !== proof.context.branch || parameters.session.session_id !== proof.context.session_id) fail("STANDARD_RETAINED_AUDIT_FOCUS_CHANGED");
+    return retainedAuditContinuation(proof);
+  }
+  async function retainedClosureEntry(instance, parameters, admission, options) {
+    authenticate(instance);
+    const { proof } = await retainedClosureSource.inspect(parameters.entry_point, options), selected = admission.observations.selected_cycle;
+    if (artifacts.ownerPending() || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256
+      || !selected || selected.state !== 'VERIFYING' || selected.cycle_id !== proof.context.cycle_id || selected.cycle_path !== proof.context.cycle_path
+      || selected.branch !== proof.context.branch || parameters.session.session_id !== proof.context.session_id) fail('STANDARD_RETAINED_CLOSURE_FOCUS_CHANGED');
+    return retainedClosureContinuation(proof);
+  }
+  const readRetainedClosureDecision = (instance, input, options) => readRetainedClosureSource(instance, input, options, false);
+  async function retainedCompletionEntry(instance, parameters, options) {
+    authenticate(instance);
+    const source = await retainedCompletionSource.inspect(parameters.entry_point, options);
+    if (parameters.session.session_id !== source.proof.session_id || parameters.cycle?.cycle_id !== source.proof.cycle_id
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_COMPLETION_FOCUS_CHANGED');
+    return retainedCompletionContinuation(source.proof);
+  }
+  async function readRetainedCompletion(instance, options, withObjectiveAlignment = false) {
+    authenticate(instance);
+    const entries = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+    if (instance.initial_parameters?.entry_point?.kind !== 'retained_completion' || entries.length !== 1) fail('STANDARD_RETAINED_COMPLETION_ENTRY_REQUIRED');
+    const selected = acceptedOperation(instance, entries[0].intent.operation_id, 'workflow_entry_select');
+    const source = await (withObjectiveAlignment ? retainedCompletionSource.readObjectiveAlignment : retainedCompletionSource.readRecorded)(instance.initial_parameters.entry_point, options);
+    if (selected.output.facts.retained_completion_requested !== true || selected.output.observations.entry_point !== 'retained_completion'
+      || shadowHash(selected.output.observations.continuation) !== shadowHash(retainedCompletionContinuation(source.proof))
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_COMPLETION_SOURCE_CHANGED');
+    return source;
+  }
+  async function readRetainedObjectiveAlignment(instance, input, verified, options) {
+    if (instance.initial_parameters?.entry_point?.kind === 'retained_promotion') {
+      const retained = await readRetainedPromotion(instance, options, 'alignment');
+      return retainObjectiveAlignment(retained.alignment, input, verified);
+    }
+    const retained = await readRetainedCompletion(instance, options, true);
+    return retained.alignment === null ? null : retainObjectiveAlignment(retained.alignment, input, verified);
+  }
+  async function readRetainedSessionCycleHistory(instance, { readValidation } = {}) {
+    const source = await readRetainedSessionDelivery(instance);
+    const history = await readSessionCycleHistory({ configuration, environment, createAuthority: createStandardProcessAuthority, source, readValidation });
+    if (shadowHash((await readRetainedSessionDelivery(instance)).proof) !== shadowHash(source.proof)) fail('STANDARD_SESSION_INTEGRATION_HISTORY_CHANGED');
+    return history;
+  }
+  async function retainedPostMergeEntry(instance, parameters, options) {
+    authenticate(instance);
+    const retained = await postMergeSourceFor(parameters.entry_point).inspect(parameters.entry_point, options);
+    if (retained.proof.session_id !== parameters.session?.session_id || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail('STANDARD_RETAINED_POST_MERGE_FOCUS_CHANGED');
+    return postMergeContinuationFor(retained.proof);
+  }
+  function readRetainedPostMerge(instance) {
+    authenticate(instance);
+    const entries = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+    if (!['retained_post_merge','retained_post_merge_decision'].includes(instance.initial_parameters?.entry_point?.kind) || entries.length !== 1) fail('STANDARD_RETAINED_POST_MERGE_ENTRY_REQUIRED');
+    const selected = acceptedOperation(instance, entries[0].intent.operation_id, 'workflow_entry_select');
+    const retained = postMergeSourceFor(instance.initial_parameters.entry_point).readRecorded(instance.initial_parameters.entry_point);
+    if (selected.output.observations.entry_point !== instance.initial_parameters.entry_point.kind
+      || shadowHash(selected.output.observations.continuation) !== shadowHash(postMergeContinuationFor(retained.proof))
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_POST_MERGE_SOURCE_CHANGED');
+    return retained;
+  }
+  function postMergeReviewPort(fallback) {
+    if (!['retained_post_merge','retained_post_merge_decision'].includes(instances.read(configuration.instance_id).record?.initial_parameters?.entry_point?.kind)) return fallback;
+    const names = ['prepareFastForward', 'applyFastForward', 'recoverFastForward', 'prepare', 'apply', 'recover',
+      'verifyCompletedSource', 'readMergedSession', 'observeAlignment'];
+    return { ...fallback, postMergeFetch: Object.fromEntries(names.map(name => [name, (...args) => {
+      const instance = instances.read(configuration.instance_id).record;
+      const port = ['retained_post_merge','retained_post_merge_decision'].includes(instance?.initial_parameters?.entry_point?.kind)
+        ? readRetainedPostMerge(instance).reviewPort.postMergeFetch : fallback?.postMergeFetch;
+      if (typeof port?.[name] !== 'function') fail('STANDARD_PR_POST_MERGE_ALIGNMENT_HOST_REQUIRED');
+      return port[name](...args);
+    }])) };
+  }
+  async function retainedMergeCaptureEntry(instance, parameters, options) {
+    authenticate(instance);
+    const retained = await retainedMergeCaptureSource.inspect(parameters.entry_point, options);
+    if (retained.proof.session_id !== parameters.session?.session_id || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail('STANDARD_RETAINED_MERGE_CAPTURE_FOCUS_CHANGED');
+    return retainedMergeCaptureContinuation(retained.proof);
+  }
+  function readRetainedMergeCapture(instance) {
+    authenticate(instance);
+    const entries = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+    if (instance.initial_parameters?.entry_point?.kind !== 'retained_external_merge_capture' || entries.length !== 1) fail('STANDARD_RETAINED_MERGE_CAPTURE_ENTRY_REQUIRED');
+    const selected = acceptedOperation(instance, entries[0].intent.operation_id, 'workflow_entry_select');
+    const retained = retainedMergeCaptureSource.readRecorded(instance.initial_parameters.entry_point);
+    if (selected.output.facts.retained_external_merge_capture_requested !== true || selected.output.observations.entry_point !== 'retained_external_merge_capture'
+      || shadowHash(selected.output.observations.continuation) !== shadowHash(retainedMergeCaptureContinuation(retained.proof))
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_MERGE_CAPTURE_SOURCE_CHANGED');
+    return { ...retained, entry: selected };
+  }
+  async function retainedExternalMergeEntry(instance, parameters, options) {
+    authenticate(instance);
+    const retained = await retainedExternalMergeSource.inspect(parameters.entry_point, options);
+    if (retained.proof.session_id !== parameters.session?.session_id || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail('STANDARD_RETAINED_EXTERNAL_MERGE_FOCUS_CHANGED');
+    return retainedExternalMergeContinuation(retained.proof);
+  }
+  function readRetainedExternalMerge(instance) {
+    authenticate(instance);
+    const entries = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+    if (instance.initial_parameters?.entry_point?.kind !== 'retained_external_merge' || entries.length !== 1) fail('STANDARD_RETAINED_EXTERNAL_MERGE_ENTRY_REQUIRED');
+    const selected = acceptedOperation(instance, entries[0].intent.operation_id, 'workflow_entry_select');
+    const retained = retainedExternalMergeSource.readRecorded(instance.initial_parameters.entry_point);
+    if (selected.output.facts.retained_external_merge_requested !== true || selected.output.observations.entry_point !== 'retained_external_merge'
+      || shadowHash(selected.output.observations.continuation) !== shadowHash(retainedExternalMergeContinuation(retained.proof))
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_EXTERNAL_MERGE_SOURCE_CHANGED');
+    return retained;
+  }
+  async function retainedSessionPrOpenEntry(instance, parameters, options) {
+    authenticate(instance);
+    const retained = await retainedSessionPrOpenSource.inspect(parameters.entry_point, options);
+    if (retained.proof.session_id !== parameters.session?.session_id || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail('STANDARD_RETAINED_SESSION_PR_OPEN_FOCUS_CHANGED');
+    return retainedSessionPrOpenContinuation(retained.proof);
+  }
+  function readRetainedSessionPrOpen(instance) {
+    authenticate(instance);
+    const entries = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+    if (instance.initial_parameters?.entry_point?.kind !== 'retained_session_pr_open' || entries.length !== 1) fail('STANDARD_RETAINED_SESSION_PR_OPEN_ENTRY_REQUIRED');
+    const selected = acceptedOperation(instance, entries[0].intent.operation_id, 'workflow_entry_select');
+    const retained = retainedSessionPrOpenSource.readRecorded(instance.initial_parameters.entry_point);
+    if (selected.output.facts.retained_session_pr_open_requested !== true || selected.output.observations.entry_point !== 'retained_session_pr_open'
+      || shadowHash(selected.output.observations.continuation) !== shadowHash(retainedSessionPrOpenContinuation(retained.proof))
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_SESSION_PR_OPEN_SOURCE_CHANGED');
+    return retained;
+  }
+  async function retainedSessionIntegrationEntry(instance, parameters, options) {
+    authenticate(instance);
+    const source = await retainedSessionIntegrationSource.inspect(parameters.entry_point, options);
+    if (source.proof.session_id !== parameters.session?.session_id || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail('STANDARD_RETAINED_SESSION_INTEGRATION_FOCUS_CHANGED');
+    return retainedSessionIntegrationContinuation(source.proof);
+  }
+  async function readRetainedSessionIntegration(instance, options) {
+    authenticate(instance);
+    const entries = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+    if (instance.initial_parameters?.entry_point?.kind !== 'retained_session_integration' || entries.length !== 1) fail('STANDARD_RETAINED_SESSION_INTEGRATION_ENTRY_REQUIRED');
+    const selected = acceptedOperation(instance, entries[0].intent.operation_id, 'workflow_entry_select');
+    const source = await retainedSessionIntegrationSource.readRecorded(instance.initial_parameters.entry_point, options);
+    if (selected.output.facts.retained_session_integration_requested !== true || selected.output.observations.entry_point !== 'retained_session_integration'
+      || shadowHash(selected.output.observations.continuation) !== shadowHash(retainedSessionIntegrationContinuation(source.proof))
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_SESSION_INTEGRATION_SOURCE_CHANGED');
+    return source;
+  }
+  async function retainedSessionDeliveryEntry(instance, parameters) {
+    authenticate(instance);
+    const source = await retainedSessionDeliverySource.inspect(parameters.entry_point);
+    if (source.proof.session_id !== parameters.session?.session_id || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail('STANDARD_RETAINED_SESSION_DELIVERY_FOCUS_CHANGED');
+    return retainedSessionDeliveryContinuation(source.proof);
+  }
+  async function readRetainedSessionDelivery(instance) {
+    authenticate(instance);
+    const entries = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+    if (instance.initial_parameters?.entry_point?.kind !== 'retained_session_delivery' || entries.length !== 1) fail('STANDARD_RETAINED_SESSION_DELIVERY_ENTRY_REQUIRED');
+    const selected = acceptedOperation(instance, entries[0].intent.operation_id, 'workflow_entry_select');
+    const source = await retainedSessionDeliverySource.readRecorded(instance.initial_parameters.entry_point);
+    if (selected.output.facts.retained_session_delivery_requested !== true || selected.output.observations.entry_point !== 'retained_session_delivery'
+      || shadowHash(selected.output.observations.continuation) !== shadowHash(retainedSessionDeliveryContinuation(source.proof))
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_SESSION_DELIVERY_SOURCE_CHANGED');
+    return source;
+  }
+  async function retainedSessionCheckpointEntry(instance, parameters) {
+    authenticate(instance);
+    const source = await retainedSessionCheckpointSource.inspect(parameters.entry_point);
+    if (source.proof.session_id !== parameters.session?.session_id || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail('STANDARD_RETAINED_SESSION_CHECKPOINT_FOCUS_CHANGED');
+    return retainedSessionCheckpointContinuation(source.proof);
+  }
+  async function readRetainedSessionCheckpoint(instance) {
+    authenticate(instance);
+    const entries = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+    if (instance.initial_parameters?.entry_point?.kind !== 'retained_session_checkpoint' || entries.length !== 1) fail('STANDARD_RETAINED_SESSION_CHECKPOINT_ENTRY_REQUIRED');
+    const selected = acceptedOperation(instance, entries[0].intent.operation_id, 'workflow_entry_select');
+    const source = await retainedSessionCheckpointSource.readRecorded(instance.initial_parameters.entry_point);
+    if (selected.output.facts.retained_session_checkpoint_requested !== true || selected.output.observations.entry_point !== 'retained_session_checkpoint'
+      || shadowHash(selected.output.observations.continuation) !== shadowHash(retainedSessionCheckpointContinuation(source.proof))
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_SESSION_CHECKPOINT_SOURCE_CHANGED');
+    return source;
+  }
+  async function retainedSessionClosureEntry(instance, parameters) {
+    authenticate(instance);
+    const source = await retainedSessionClosureSource.inspect(parameters.entry_point);
+    if (source.proof.session_id !== parameters.session?.session_id || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail('STANDARD_RETAINED_SESSION_CLOSURE_FOCUS_CHANGED');
+    return retainedSessionClosureContinuation(source.proof);
+  }
+  async function readRetainedSessionClosure(instance, { fresh = false } = {}) {
+    authenticate(instance);
+    const entries = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+    if (instance.initial_parameters?.entry_point?.kind !== 'retained_session_closure' || entries.length !== 1) fail('STANDARD_RETAINED_SESSION_CLOSURE_ENTRY_REQUIRED');
+    const selected = acceptedOperation(instance, entries[0].intent.operation_id, 'workflow_entry_select');
+    const source = await (fresh ? retainedSessionClosureSource.inspect : retainedSessionClosureSource.readRecorded)(instance.initial_parameters.entry_point);
+    if (selected.output.facts.retained_session_closure_requested !== true || selected.output.observations.entry_point !== 'retained_session_closure'
+      || shadowHash(selected.output.observations.continuation) !== shadowHash(retainedSessionClosureContinuation(source.proof))
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_SESSION_CLOSURE_SOURCE_CHANGED');
+    return source;
+  }
+  async function retainedPromotionEntry(instance, parameters, options) {
+    authenticate(instance);
+    const source = await retainedPromotionSource.inspect(parameters.entry_point, options);
+    if (source.proof.session_id !== parameters.session?.session_id || source.proof.cycle_id !== parameters.cycle?.cycle_id
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_PROMOTION_FOCUS_CHANGED');
+    return retainedPromotionContinuation(source.proof);
+  }
+  async function readRetainedPromotion(instance, options, evaluation = false) {
+    authenticate(instance);
+    const entries = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+    if (instance.initial_parameters?.entry_point?.kind !== 'retained_promotion' || entries.length !== 1) fail('STANDARD_RETAINED_PROMOTION_ENTRY_REQUIRED');
+    const selected = acceptedOperation(instance, entries[0].intent.operation_id, 'workflow_entry_select');
+    const source = await (evaluation === 'alignment' ? retainedPromotionSource.readAlignment
+      : evaluation ? retainedPromotionSource.readEvaluation : retainedPromotionSource.readRecorded)(instance.initial_parameters.entry_point, options);
+    if (selected.output.facts.retained_promotion_requested !== true || selected.output.observations.entry_point !== 'retained_promotion'
+      || shadowHash(selected.output.observations.continuation) !== shadowHash(retainedPromotionContinuation(source.proof))
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_PROMOTION_SOURCE_CHANGED');
+    return source;
+  }
+  const readRecordedClosureDecision = (instance, input, options) => readRetainedClosureSource(instance, input, options, true);
+  async function readRetainedClosureSource(instance, input, options, recorded) {
+    authenticate(instance);
+    const entries = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
+    if (entries.length !== 1 || instance.initial_parameters?.entry_point?.kind !== 'retained_closure'
+      || input.decision_operation_id !== instance.initial_parameters.entry_point.decision_operation_id) fail('STANDARD_RETAINED_CLOSURE_ENTRY_REQUIRED');
+    const entry = acceptedOperation(instance, entries[0].intent.operation_id, 'workflow_entry_select');
+    const observed = await (recorded ? retainedClosureSource.readRecorded : retainedClosureSource.inspect)(instance.initial_parameters.entry_point, options);
+    if (entry.output.facts.retained_closure_requested !== true || entry.output.observations.entry_point !== 'retained_closure'
+      || shadowHash(entry.output.observations.continuation) !== shadowHash(retainedClosureContinuation(observed.proof))
+      || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_CLOSURE_SOURCE_CHANGED');
+    return observed;
+  }
+  async function retainedAuditForCurrent(instance) {
+    authenticate(instance);
+    const rows = instance.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "workflow_entry_select");
+    if (rows.length !== 1 || instance.initial_parameters?.entry_point?.kind !== "retained_audit") fail("STANDARD_RETAINED_AUDIT_ENTRY_REQUIRED");
+    const entry = acceptedOperation(instance, rows[0].intent.operation_id, "workflow_entry_select");
+    const retained = await retainedAuditSource.inspect(instance.initial_parameters.entry_point);
+    if (entry.output.observations.entry_point !== "retained_audit" || entry.output.facts.retained_audit_requested !== true
+      || shadowHash(entry.output.observations.continuation) !== shadowHash(retainedAuditContinuation(retained.proof))
+      || artifacts.ownerPending() || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
+      fail("STANDARD_RETAINED_AUDIT_SOURCE_CHANGED");
+    return retained;
+  }
+  async function selectCycleAuditReport(instance) {
+    authenticate(instance);
+    const cursor = inspectAgenticProcess(instance), candidates = instance.events.filter(row => row.kind === "result" && row.result.outcome === "completed"
+      && configuration.activity_outputs?.[cursor.occurrences.find(frame => frame.occurrence_id === row.occurrence_id)?.node_id] === CYCLE_AUDIT_CONTRACT);
+    const latest = candidates.at(-1);
+    let native;
+    if (latest) native = readCycleAuditActivityAuthenticated(instance, { report_occurrence_id: latest.occurrence_id });
+    else native = (await retainedAuditForCurrent(instance)).native;
+    return native;
   }
   async function prepareAuditActivity({ instance, occurrenceId, productSha256, productSnapshot }) {
     const auth = nativeReservation ? { reservation: nativeReservation } : {};
@@ -1076,9 +1765,9 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const context = { ...material.context, audit_operation_id: selection.record.operation_id, input_resolution: resolution };
     return { context, context_sha256: shadowHash(context) };
   }
-  function readCycleAuditActivity(instance, input) {
-    assertStandardOperationInput("cycle_audit_evaluate", input);
-    const authenticated = readActivityOutput(instance, input.report_occurrence_id, CYCLE_AUDIT_CONTRACT);
+  function readCycleAuditActivityAuthenticated(instance, input, history = null) {
+    if (checkShadowJson(input) || validateJsonSchema(input, auditInputV1, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_AUDIT_INPUT_INVALID");
+    const authenticated = readActivityOutput(instance, input.report_occurrence_id, CYCLE_AUDIT_CONTRACT, {}, history);
     const event = instance.events.find(row => row.kind === "result" && row.occurrence_id === input.report_occurrence_id), journal = allocations.read(nativeJournalId(instance)).record;
     const get = suffix => {
       const references = event.result.evidence_refs.filter(row => row.ref.endsWith(suffix));
@@ -1091,11 +1780,34 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       || retained.value.context_sha256 !== authenticated.report.context_sha256 || shadowHash(context) !== authenticated.report.context_sha256
       || shadowHash(observed.value.files) !== observed.value.artifact_sha256 || observed.value.artifact_sha256 !== context.product_sha256
       || observed.value.artifact_sha256 !== readProductSha256?.()) fail("STANDARD_AUDIT_NATIVE_SOURCE_CHANGED");
-    const selection = acceptedOperation(instance, context.audit_operation_id, "cycle_audit_select");
+    const selection = acceptedOperation(instance, context.audit_operation_id, "cycle_audit_select", {}, history);
     return { authenticated, context, selection, evidence_refs: [authenticated.reference, retained.ref, observed.ref] };
   }
-  function readCycleCloseValidation(instance, input) {
-    const native = readCycleAuditActivity(instance, input), machine = native.context.validation;
+  async function readCycleAuditActivity(instance, input) {
+    if (input && !Object.keys(input).length) return selectCycleAuditReport(instance);
+    if (instance.initial_parameters?.entry_point?.kind === "retained_audit"
+      && !instance.events.some(row => row.kind === "result" && row.occurrence_id === input.report_occurrence_id)) {
+      const retained = await retainedAuditForCurrent(instance);
+      if (input.report_occurrence_id !== retained.proof.report_occurrence_id) fail("STANDARD_RETAINED_AUDIT_REPORT_CHANGED");
+      return retained.native;
+    }
+    return readCycleAuditActivityAuthenticated(instance, input);
+  }
+  async function readCycleCloseValidation(instance, input) {
+    const native = await readCycleAuditActivity(instance, input), machine = native.context.validation;
+    if (native.authenticated.producer.instance_id !== instance.instance_id) {
+      const retained = await retainedAuditForCurrent(instance), bridge = retained.bridge;
+      if (shadowHash(native) !== shadowHash(retained.native) || bridge.source.record.operation_id !== machine.validation_operation_id
+        || bridge.evaluation.record.operation_id !== machine.evaluation_operation_id || machine.work_complete !== true
+        || machine.product_sha256 !== native.context.product_sha256) fail("STANDARD_CYCLE_CLOSE_VALIDATION_REQUIRED");
+      return { ...bridge.source, native, machine, evaluation: bridge.evaluation };
+    }
+    if (instance.initial_parameters?.entry_point?.kind === "retained_verification") {
+      const bridge = await retainedVerificationBridge(instance, native.selection.record.preview.input.implementation_operation_id);
+      if (bridge.source.record.operation_id !== machine.validation_operation_id || bridge.evaluation.record.operation_id !== machine.evaluation_operation_id
+        || machine.work_complete !== true || machine.product_sha256 !== native.context.product_sha256) fail("STANDARD_CYCLE_CLOSE_VALIDATION_REQUIRED");
+      return { ...bridge.source, native, machine, evaluation: bridge.evaluation };
+    }
     const validation = acceptedOperation(instance, machine.validation_operation_id, "cycle_validation_execute");
     const work = acceptedWorkSnapshot(instance, validation.record.preview.input.work_operation_id);
     const evaluation = acceptedOperation(instance, machine.evaluation_operation_id, "cycle_validation_evaluate");
@@ -1151,5 +1863,6 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     readNativeActivity: readPreworkNativeActivity,
   });
   return Object.freeze({ profile: "standard-mixed.v1", rollbackProductScope, observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, authenticateOperationHost, inspectDiagnostic, observeNativeDiagnostic, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
-    verifyNativeHumanSource, admitNativeActivity, selectCyclePrework, evaluateCyclePrework, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, selectCycleExecutionSource, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCanonicalResumeProduct, observeCycleVerificationContext, observeDriftContext, modelSource: source });
+    verifyNativeHumanSource, admitNativeActivity, readRetainedSessionCycleHistory, retainedPostMergeEntry, readRetainedPostMerge, postMergeReviewPort, retainedMergeCaptureEntry, readRetainedMergeCapture, retainedExternalMergeEntry, readRetainedExternalMerge, retainedSessionPrOpenEntry, readRetainedSessionPrOpen, retainedSessionIntegrationEntry, readRetainedSessionIntegration, retainedSessionDeliveryEntry, readRetainedSessionDelivery, retainedSessionCheckpointEntry, readRetainedSessionCheckpoint, retainedSessionClosureEntry, readRetainedSessionClosure, retainedAuditEntry, retainedClosureEntry, retainedCompletionEntry, readRetainedCompletion, retainedPromotionEntry, readRetainedPromotion, readRetainedObjectiveAlignment, readRecordedDriftEvaluation, readRetainedClosureDecision, readRecordedClosureDecision, readRecordedCycleAudit, readRecordedCycleValidation, inspectRetainedCycleAudit, retainedVerificationEntry, admitRetainedVerification, retainedValidationEntry, admitRetainedValidation, selectWorkPhase, observeRetainedTaskWork, retainedContributors,
+    selectOwnedCyclePlanning, selectCyclePrework, evaluateCyclePrework, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, inspectRetainedCycleTaskWork, readCycleValidationExecution, readCycleVerificationExecution, inspectRetainedCycleVerification, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, selectCycleExecutionSource, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCanonicalResumeProduct, observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

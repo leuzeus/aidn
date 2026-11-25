@@ -8,7 +8,7 @@ import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { createAgenticCodexRpc } from "../../src/adapters/agents/agentic-codex-rpc.mjs";
 import { loadStandardWorkflowAssets } from "../../src/application/runtime/standard-workflow-composition.mjs";
-import { nativeActivityAnswerSchema, nativeActivityTransportSchema, nativeActivityOutputBindings, nativeActivityOutputInstructions, assertNativeActivityAnswer } from "../../src/core/workflow/native-activity-output.mjs";
+import { nativeActivityAnswerSchema, nativeActivityAnswerInstructions, nativeActivityTransportSchema, nativeActivityOutputBindings, nativeActivityOutputInstructions, assertNativeActivityAnswer } from "../../src/core/workflow/native-activity-output.mjs";
 import { assertAgenticProcessModel, agenticPolicyPins, agenticProcessCapabilities } from "../../src/core/workflow/agentic-process-model.mjs";
 import { createAgenticProcess, inspectAgenticProcess, advanceAgenticProcess, assertAgenticProcessInstance } from "../../src/core/workflow/agentic-process.mjs";
 import { createAgenticProcessService } from "../../src/application/runtime/agentic-process-service.mjs";
@@ -111,6 +111,28 @@ await check("G06/G07: OR joins only selected flows, but waits for all selected w
   let two = initial(gateway("or", 3), { "condition-0": true, "condition-1": false, "condition-2": true });
   two = completed(two, "root/flow-0"); assert.equal(inspect(two).status, "RUNNING");
   assert.deepEqual(inspect(two).ready, ["root/flow-2"]);
+});
+await check("v2 node capacity admits 288 structured nodes and rejects 289", () => {
+  const schema = JSON.parse(fs.readFileSync(new URL("../../src/core/contracts/workflow-definition/agentic-process-model.v2.schema.json", import.meta.url)));
+  const bounded = size => {
+    const nodes = [{ id: "root", kind: "sequence", participant_ref: "delivery", children: [] }];
+    let leaves = size - 10;
+    for (let group = 0; group < 9; group++) {
+      const branch = { id: "group-" + group, kind: "sequence", participant_ref: "delivery", children: [] };
+      nodes[0].children.push(branch.id); nodes.push(branch);
+      for (let n = 0, count = Math.min(32, leaves); n < count; n++) {
+        const id = `leaf-${group}-${n}`; branch.children.push(id); nodes.push({ id, kind: "sequence", participant_ref: "delivery", children: [] }); leaves--;
+      }
+    }
+    return { contract_version: "agentic-process-model.v2", model_id: "capacity", revision: 1, participants: [{ id: "delivery" }],
+      roles: [], policies: [], operation_pins: {}, entry: "root", nodes };
+  };
+  const accepted = bounded(288), rejected = bounded(289);
+  assert.equal(accepted.nodes.length, 288); assert.equal(rejected.nodes.length, 289);
+  assert.deepEqual(validateJsonSchema(accepted, schema, "$", { contractKind: "workflow-definition" }), []);
+  assert.equal(inspect(initial(accepted)).status, "COMPLETED");
+  assert.ok(validateJsonSchema(rejected, schema, "$", { contractKind: "workflow-definition" }).length);
+  assert.throws(() => initial(rejected), { code: "PROCESS_MODEL_INVALID" });
 });
 await check("G08: unstructured shared OR child and cycles are explicitly refused", () => {
   const m = gateway("or"); m.nodes[0].branches[1].node_id = "task-0";
@@ -557,6 +579,8 @@ try {
       const wire = nativeActivityTransportSchema(contract, contract ? context : null);
       assert.equal(wire.type, "object");
       checkWire(wire);
+      const instructions = nativeActivityAnswerInstructions(contract, contract ? context : null);
+      assert.deepEqual(JSON.parse(instructions.split("\n").at(-1)), nativeActivityAnswerSchema(contract, contract ? context : null));
     }
     const contract = "standard-drift-report.v1";
     const full = nativeActivityAnswerSchema(contract, context).properties.report.anyOf[1];

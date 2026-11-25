@@ -170,7 +170,7 @@ async function interruptAfterNativeCAS(data, action) {
       if (name === 'native_reconciliation_journal_cas') throw Object.assign(Error('FIXTURE_PUBLIC_NATIVE_CAS_INTERRUPT'), { code: 'FIXTURE_PUBLIC_NATIVE_CAS_INTERRUPT' });
     } });
   try {
-    await runStandardWorkflowAction({ request: data.request, configuration: data.configuration, parameters: data.request.parameters, modelSource: data.model_source,
+    await runStandardWorkflowAction({ request: data.request, configuration: data.configuration, parameters: resolveStandardWorkflowConfiguration(data.request).parameters, modelSource: data.model_source,
       preparedAction: action, execute: true, expectPlan: H(action) }, { authority: local, compose });
     assert.fail('named interruption must occur');
   } catch (error) { if (error.code !== 'FIXTURE_PUBLIC_NATIVE_CAS_INTERRUPT') throw error; }
@@ -190,7 +190,7 @@ async function revokeEpochSourceAfterVerification(data, action) {
     authorize, environment: environment(data), humanSource: local.humanSource, controlSource: local.controlSource, nativeAuthorizationSource: source,
     dispositionSource, nativeOwnerDispositionSource: sources.owner, nativeReconciliationSource: sources.reconciliation });
   try {
-    await assert.rejects(runStandardWorkflowAction({ request: data.request, configuration: data.configuration, parameters: data.request.parameters,
+    await assert.rejects(runStandardWorkflowAction({ request: data.request, configuration: data.configuration, parameters: resolveStandardWorkflowConfiguration(data.request).parameters,
       modelSource: data.model_source, preparedAction: action, execute: true, expectPlan: H(action) }, { authority: local, compose }),
     { code: 'STANDARD_HOST_SOURCE_NOT_AUTHENTICATED' });
     assert.equal(observed, true);

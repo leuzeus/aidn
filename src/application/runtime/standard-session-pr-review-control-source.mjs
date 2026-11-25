@@ -28,7 +28,12 @@ export function createStandardPrReviewControlSource({ readEvent, verifyEvent, re
     if (proof?.outcome !== 'verified' || proof.current !== true || proof.authority_id !== event.authority_id
       || proof.event_sha256 !== shadowHash(event) || proof.subject_sha256 !== shadowHash(event.actor)) fail('PROCESS_CONTROL_PR_NOT_AUTHENTICATED');
     const date = Date.parse(event.occurred_at), time = now();
-    if (!Number.isSafeInteger(time) || !Number.isSafeInteger(date) || date > time || !retained && time - date > 300000)
+    // A Codex summary can precede a cold receiver. Its publication time remains
+    // immutable; freshness comes from the authenticated provider reread, never
+    // a rewritten event time. V1 keeps its historical admission semantics.
+    const fresh = event.contract_version === 'github-pr-review-event.v2' ? proof.observed_at_ms : date;
+    if (!Number.isSafeInteger(time) || !Number.isSafeInteger(date) || date > time
+      || !Number.isSafeInteger(fresh) || fresh > time || !retained && time - fresh > 300000)
       fail('PROCESS_CONTROL_PR_EVENT_STALE');
     if (!request.event_keys.includes(event.event_key) || event.head_oid !== request.head || event.head_ref !== request.branch)
       fail('PROCESS_CONTROL_PR_EVENT_CHANGED');

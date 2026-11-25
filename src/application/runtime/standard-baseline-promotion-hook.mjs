@@ -12,6 +12,7 @@ import { artifactContentHash } from "../../core/workflow/artifact-compare-swap.m
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import inputSchema from "../../core/contracts/workflow-definition/standard-baseline-promotion-hook-input.v1.schema.json" with { type: "json" };
 import planSchema from "../../core/contracts/workflow-definition/standard-baseline-promotion-hook-plan.v1.schema.json" with { type: "json" };
+import retainedPlanSchema from '../../core/contracts/workflow-definition/standard-baseline-promotion-hook-plan.v2.schema.json' with { type: 'json' };
 import outputSchema from "../../core/contracts/workflow-definition/standard-baseline-promotion-hook-output.v1.schema.json" with { type: "json" };
 import recordSchema from "../../core/contracts/workflow-definition/standard-baseline-promotion-plan.v1.schema.json" with { type: "json" };
 import { assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
@@ -21,7 +22,7 @@ const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(
 const openGate = gate => gate?.result === "ok" && gate.levels?.level1?.decision !== "stop" && gate.levels?.level2?.required === false && gate.levels?.level3?.required === false;
 // Fixed host readers authenticate accepted request/record/close provenance.
 // Optional dependencies are trusted test ports; process data selects none.
-export function createStandardBaselinePromotionHook({ targetRoot, readRecorded, promotion, readCurrent, readObjectiveCompletion = null, now = Date.now },
+export function createStandardBaselinePromotionHook({ targetRoot, readRecorded, promotion, readCurrent, readObjectiveCompletion = null, readRetainedRecord = null, now = Date.now },
   { gating = runGatingEvaluateUseCase, checkpoint = runPromoteBaselineCheckpointUseCase } = {}) {
   if ([readRecorded, promotion?.inspectContext, readCurrent].some(value => typeof value !== "function")) fail("STANDARD_PROMOTION_HOOK_AUTHORITY_REQUIRED");
   if (readObjectiveCompletion !== null && typeof readObjectiveCompletion !== "function") fail("STANDARD_PROMOTION_HOOK_AUTHORITY_REQUIRED");
@@ -38,8 +39,12 @@ export function createStandardBaselinePromotionHook({ targetRoot, readRecorded, 
     thresholdFiles: 3, thresholdMinutes: null, mode: "COMMITTING", runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: false,
   } });
   async function source(instance, input) {
-    const selected = await readRecorded(instance, input), plan = selected.plan, output = assertStandardOperationOutput(selected.output);
-    if (selected.record_operation_id !== input.record_operation_id || !valid(plan, recordSchema) || plan.request.instance_id !== instance.instance_id || plan.request.scope_id !== instance.scope_id
+    if (readRetainedRecord !== null && typeof readRetainedRecord !== 'function') fail('STANDARD_PROMOTION_HOOK_AUTHORITY_REQUIRED');
+    const retained = readRetainedRecord === null ? null : await readRetainedRecord(instance, input);
+    const selected = retained?.selected ?? await readRecorded(instance, input), plan = selected.plan, output = assertStandardOperationOutput(selected.output);
+    if (selected.record_operation_id !== input.record_operation_id || !valid(plan, recordSchema)
+      || (retained === null ? plan.request.instance_id !== instance.instance_id || plan.request.scope_id !== instance.scope_id
+        : plan.request.instance_id !== retained.anchor.original_instance_id || plan.request.instance_id === instance.instance_id)
       || output.operation_ref !== "baseline_promotion_record" || output.outcome !== "completed" || output.effect_status !== "confirmed"
       || output.observations.decision_operation_id !== plan.input.decision_operation_id || output.observations.cycle_id !== plan.request.cycle_id || output.observations.version !== plan.request.version
       || output.facts.baseline_recorded !== true || output.facts.baseline_promotion_completed !== false
@@ -52,15 +57,16 @@ export function createStandardBaselinePromotionHook({ targetRoot, readRecorded, 
       if (artifactContentHash(row.text_chunks.join("")) !== row.after_sha256 || artifacts.read(row.path, { required: true }).sha256 !== row.after_sha256) fail("STANDARD_PROMOTION_HOOK_POSTIMAGE_CHANGED");
       if (artifacts.describe().state_mode !== "db-only" && readAgentRunFile(agentRunPhysicalPath(path.join(root, "docs/audit", row.path)), { json: false, maxBytes: 1048576 }).sha256 !== row.after_sha256) fail("STANDARD_PROMOTION_HOOK_PROJECTION_STALE");
     }
-    return { selected, observed };
+    return { selected, observed, retained_record: retained?.anchor ?? null };
   }
   function assertPlan(plan) {
-    if (!valid(plan, planSchema) || shadowHash(plan.completion_preimages.map(row => row.path)) !== shadowHash(baselinePromotionPaths)) fail("STANDARD_PROMOTION_HOOK_PLAN_INVALID"); return plan;
+    if (!valid(plan, plan?.contract_version === 'standard-baseline-promotion-hook-plan.v2' ? retainedPlanSchema : planSchema)
+      || shadowHash(plan.completion_preimages.map(row => row.path)) !== shadowHash(baselinePromotionPaths)) fail("STANDARD_PROMOTION_HOOK_PLAN_INVALID"); return plan;
   }
   async function prepare(instance, input, operationId, at, acquired = false) {
     if (!valid(input, inputSchema) || !/^op_[a-f0-9]{40}$/.test(operationId ?? "")) fail("STANDARD_PROMOTION_HOOK_INPUT_INVALID");
     if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
-    const { selected, observed } = await source(instance, input), context = observed.context;
+    const { selected, observed, retained_record } = await source(instance, input), context = observed.context;
     const completionCycleId = ["cycle", "intermediate"].includes(classifyAidnBranch(context.branch)) ? selected.plan.request.cycle_id : null;
     const gatingResult = await gate(instance, completionCycleId);
     if (!openGate(gatingResult)) return { can_apply: false, reason_code: "STANDARD_PROMOTION_HOOK_GATE_REQUIRED", gate: gatingResult };
@@ -68,7 +74,8 @@ export function createStandardBaselinePromotionHook({ targetRoot, readRecorded, 
     // This is a planned postimage estimate, never a successful receipt.
     renderStandardBaselinePromotionCompletion({ request: selected.plan.request, context, documents: observed.documents,
       runId: "process_promote_" + operationId.slice(3), eventSha256: "0".repeat(64), completedAt: at });
-    const before = events(), plan = { contract_version: "standard-baseline-promotion-hook-plan.v1", input, operation_id: operationId, prepared_at_ms: at,
+    const before = events(), plan = { contract_version: retained_record === null ? "standard-baseline-promotion-hook-plan.v1" : 'standard-baseline-promotion-hook-plan.v2', input, operation_id: operationId, prepared_at_ms: at,
+      ...(retained_record === null ? {} : { retained_record }),
       request: selected.plan.request, record_plan_sha256: shadowHash(selected.plan), record_output_sha256: shadowHash(selected.output), context_sha256: observed.context_sha256,
       boundary_sha256: observed.completion_boundary_sha256, completion_cycle_id: completionCycleId, scope: { branch: context.branch, state_mode: artifacts.describe().state_mode },
       completion_preimages: baselinePromotionPaths.map(name => { const row = artifacts.read(name, { required: true }); return { path: name, sha256: row.sha256, metadata_sha256: artifacts.metadataHash(name) }; }),
@@ -127,7 +134,8 @@ export function createStandardBaselinePromotionHook({ targetRoot, readRecorded, 
             || event.ts !== observed.ts || !Number.isFinite(Date.parse(event.ts)) || Date.parse(event.ts) < started || Date.parse(event.ts) > now()) fail("STANDARD_PROMOTION_HOOK_EVENT_UNCONFIRMED");
           await assertAuthorized();
           const current = await source(instance, plan.input);
-          if (shadowHash(current.selected.plan) !== plan.record_plan_sha256 || shadowHash(current.selected.output) !== plan.record_output_sha256
+          if (shadowHash(current.retained_record) !== shadowHash(plan.retained_record ?? null)
+            || shadowHash(current.selected.plan) !== plan.record_plan_sha256 || shadowHash(current.selected.output) !== plan.record_output_sha256
             || current.observed.completion_boundary_sha256 !== plan.boundary_sha256
             || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || !openGate(await gate(instance, plan.completion_cycle_id))) fail("STANDARD_PROMOTION_HOOK_POSTCONDITION_FAILED");
           if (readObjectiveCompletion !== null) await assertEffectAuthorized();

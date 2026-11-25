@@ -9,7 +9,7 @@ import { evaluateAgentTransition } from "../../core/agents/agent-transition-poli
 // A composition-owned authority, not an attestation supplied by a worker. Only
 // sessionFactory creates native resources; result receipts originate here after
 // the session adapter has correlated and verified its actual terminal event.
-export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evidence, now = Date.now, deadline, retainedState = null }) {
+export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evidence, now = Date.now, deadline, retainedState = null, readPriorContributors = null }) {
   const history = retainedState === null ? null : structuredClone(assertNativeHostState(retainedState));
   if (history && !history.parent_closed) fail("PROCESS_HOST_HISTORY_NOT_CLOSED");
   const authorityId = history?.authority_id ?? `host-${randomUUID()}`, resources = new Map(), observations = new Map(), results = new Map(), prepared = new Map(), issuedAssignments = new Map();
@@ -44,6 +44,11 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
     const input = { ...checked(metadata), instruction, developer_instructions: developer };
     const instructionHash = shadowHash(input.instruction);
     if (typeof input.instruction !== "string" || !input.instruction.trim() || !input.binding) fail("PROCESS_HOST_INPUT_REQUIRED");
+    const priorContributors = readPriorContributors ? checked(await readPriorContributors(instance)) : [];
+    if (!Array.isArray(priorContributors) || priorContributors.length > 128 || priorContributors.some(row => !row
+      || Object.keys(row).sort().join(",") !== "agent_id,lineage_id"
+      || [row.agent_id, row.lineage_id].some(id => typeof id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$/.test(id))))
+      fail("PROCESS_HOST_PRIOR_CONTRIBUTORS_INVALID");
     let resource = !policy.independent_review && !policy.context_isolation_required ? resources.get(current) : null;
     if (resource && (shadowHash(resource.permissions) !== shadowHash(policy.allowed_permissions)
       || role.skills.some(skill => !resource.skills.includes(skill))
@@ -69,8 +74,8 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
     const allowed = policy.independent_review || policy.context_isolation_required
       ? [...resource.context, instructionHash] : [...new Set([...resource.context, instructionHash])];
     const binding = { ...input.binding, allowed_context_sha256: allowed,
-      reviewed_contributors: [...(history?.resources ?? []).map(row => row.executor), ...[...resources.values()].map(describe)]
-        .flatMap(item => item.contributions.some(c => c.scope_id === instance.scope_id) ? [{ agent_id: item.agent_id, lineage_id: item.lineage_id }] : []) };
+      reviewed_contributors: [...priorContributors, ...[...(history?.resources ?? []).map(row => row.executor), ...[...resources.values()].map(describe)]
+        .flatMap(item => item.contributions.some(c => c.scope_id === instance.scope_id) ? [{ agent_id: item.agent_id, lineage_id: item.lineage_id }] : [])] };
     prepared.set(frame.occurrence_id, { input, binding, resource, instructionHash, policy, role,
       instanceId: instance.instance_id, scopeId: instance.scope_id, modelSha256: instance.model_sha256 });
     // Candidate preference is not a verdict identity substitution. Each request

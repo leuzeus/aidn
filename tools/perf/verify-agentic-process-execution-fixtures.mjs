@@ -8,6 +8,7 @@ import { createStandardReviewEventFixture } from "./standard-pr-review-event-fix
 import { verifyModeAnalysisExecution } from "./standard-mode-analysis-execution-fixture-lib.mjs";
 import { arrangeStandardReviewScenario, assertCapturedStandardReviewScenario, standardReviewScenarioAnswer } from "./standard-pr-review-scenario-fixture-lib.mjs";
 import { preflightStandardComposedFixture } from "./standard-composed-preflight-fixture-lib.mjs";
+import { attachFreshDiagnosisFixture, verifyFreshDiagnosisFixture } from "./standard-fresh-diagnosis-fixture-lib.mjs";
 import { composedCyclePlan, composedCycleValidationProfile, composedCorrectionChoice, prepareComposedNativeAnswer, composedTriageAnswer } from "./standard-composed-cycle-fixture-lib.mjs";
 import { observeComposedHost, loseCheckpointReceipt, loseCheckpointOwnerReleaseAck, verifyCorrectiveDriftCall } from "./standard-composed-observation-fixture-lib.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
@@ -57,7 +58,7 @@ import { createGithubPrOpenTransportFixture } from "./github-pr-open-fixture-lib
 import { createLocalWorkflowSessionPush } from "../../src/adapters/runtime/local-workflow-session-push.mjs";
 import { createStandardWorkflowMixedHost } from "../../src/application/runtime/standard-workflow-mixed-composition.mjs";
 import { createStandardProcessAuthority } from "../../src/application/runtime/standard-process-authority.mjs";
-import { assertNativeActivityAnswer, nativeActivityAnswerSchema, assertStandardDriftReport } from "../../src/core/workflow/native-activity-output.mjs";
+import { assertNativeActivityAnswer, nativeActivityAnswerSchema, nativeActivityAnswerInstructions, nativeActivityOutputInstructions, nativeActivityOutputBindings, assertStandardDriftReport } from "../../src/core/workflow/native-activity-output.mjs";
 import { evaluateStandardDriftReport, readStandardDriftContext } from "../../src/application/runtime/standard-drift-report.mjs";
 import { runReloadCheckUseCase } from "../../src/application/runtime/reload-check-use-case.mjs";
 import { createStandardDriftFinalization } from "../../src/application/runtime/standard-drift-finalization.mjs";
@@ -251,6 +252,7 @@ if (process.argv.includes("--standard-composed-preflight-only")) {
   console.log(JSON.stringify(standardPreflight)); process.exit(0);
 }
 const checkFlags = new Set([
+  "--native-answer-only",
   "--host-resource-activity-only", "--drift-git-readonly-only", "--cycle-plan-select-native-only",
   "--canonical-plan-work-only", "--drift-objective-mismatch-only", "--v2-only",
   "--native-human-port-only", "--historical-diagnostic-only", "--native-human-turn-only",
@@ -293,6 +295,7 @@ let serial = 0, completed = false;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
 async function check(name, callback) { if (process.argv.includes("--host-resource-activity-only") && !name.startsWith("host resource activity:") && name !== "worker mixed private v2 authority stops at an operation boundary without native startup") return; if (process.argv.includes("--drift-git-readonly-only") && !name.startsWith("drift controlled Git ")) return; if (selectedCanonicalResumeNativeMode && !name.startsWith(`canonical resume native ${selectedCanonicalResumeNativeMode}:`)) return; if (selectedStandardExistingOpenWorkMode && !name.startsWith(`standard existing open work ${selectedStandardExistingOpenWorkMode}:`)) return; if (selectedPublishedChoiceMode && !name.startsWith(`standard selected root ${selectedPublishedChoiceMode}:`)) return; if (selectedStandardExistingCompleteMode && !name.startsWith(`standard existing complete ${selectedStandardExistingCompleteMode}:`)) return; if (selectedStandardExistingOpenMode && !name.startsWith(`standard existing open ${selectedStandardExistingOpenMode}:`)) return; if (process.argv.includes("--cycle-plan-select-native-only") && !name.startsWith("cycle plan selection native files:")) return; if (selectedCanonicalPlanSelectionMode && !name.startsWith(`cycle plan selection ${selectedCanonicalPlanSelectionMode}:`)) return; if (process.argv.includes("--canonical-plan-work-only") && !name.startsWith("canonical plan work files:")) return; if (selectedCanonicalPlanReadinessMode && !name.startsWith(`cycle plan readiness ${selectedCanonicalPlanReadinessMode}:`)) return; if (selectedCanonicalPlanAdoptionMode && !name.startsWith(`cycle plan adoption ${selectedCanonicalPlanAdoptionMode}:`)) return; if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
   if (process.argv.includes("--native-human-port-only") && !name.startsWith("native human port:")) return;
+  if (process.argv.includes("--native-answer-only") && !name.startsWith("native answer:")) return;
   if (process.argv.includes("--bpmn-control-only") && !name.startsWith("explicit pinned host scenario drives XML")) return;
   if (process.argv.includes("--native-permission-profile-only") && !name.startsWith("explicit pinned host scenario drives XML")
     && !name.startsWith("typed native permission null defaults")
@@ -365,7 +368,7 @@ function fixture(options = {}) {
   for (const name of [".codex/hooks/aidn-hook-runtime.mjs", ".codex/hooks/aidn-session-start.mjs", ".codex/hooks/aidn-pre-tool-use.mjs", ".agents/skills/context-reload/SKILL.md", ".agents/skills/start-session/SKILL.md"]) {
     const text = "Neutral fixture\n"; put(targetRoot, name, text); assets[name] = { kind: "file", current: Buffer.from(text).toString("base64") };
   }
-  block = "<!-- CODEX-AUDIT-WORKFLOW START -->\nNeutral fixture\n<!-- CODEX-AUDIT-WORKFLOW END -->";
+  block = options.agentsText ?? "<!-- CODEX-AUDIT-WORKFLOW START -->\nNeutral fixture\n<!-- CODEX-AUDIT-WORKFLOW END -->";
   put(targetRoot, "AGENTS.md", block); assets["AGENTS.md"] = { kind: "agents-block", current: block };
   const hooks = ["SessionStart", "PreToolUse"].map(event => ({ event, group: { matcher: "fixture" }, hook: { type: "command", command: "echo fixture" } }));
   put(targetRoot, ".codex/hooks.json", JSON.stringify({ hooks: Object.fromEntries(hooks.map(h => [h.event, [{ ...h.group, hooks: [h.hook] }]])) }));
@@ -590,7 +593,9 @@ function mixedFixture(stateMode = "files", options = {}) {
           : { decision_operation_id: { source: "operation_id", node_id: "decide" } } },
         { node_id: "action_executed", fields: {} }, { node_id: "action_cancelled", fields: {} },
       ] };
-      if (options.publishedCorrectiveDrift) {
+      if (options.publishedFreshDiagnosis) {
+        attachFreshDiagnosisFixture({ model, published: loadStandardWorkflowAssets().model, configuration: f.configuration });
+      } else if (options.publishedCorrectiveDrift) {
         const target = loadStandardWorkflowAssets().model.call_targets.find(row => row.model_id === "aidn-standard-corrective-drift");
         const { model: child, ...identity } = target;
         model.participants = child.participants;
@@ -757,6 +762,7 @@ function mixedFixture(stateMode = "files", options = {}) {
     : { analyze: "Analyze without writing.", review: "Review without correcting." };
   if (options.audit) f.configuration.instructions.audit_review = "Audit the final product and supplied checklist read-only; report uncertainty and leave all decisions and writes to the host.";
   if (options.rollbackRediagnosis) f.configuration.instructions = { closure_drift_report: f.configuration.instructions.analyze };
+  if (options.publishedFreshDiagnosis) f.configuration.instructions = { cycle_drift_report: f.configuration.instructions.analyze };
   if (options.objectiveCompletion) f.configuration.instructions.objective_drift = "Diagnose the exact terminal context read-only; the host retains decisions and completion effects.";
   if (options.rediagnosis) {
     const report = { ...model.nodes.find(row => row.id === "analyze"), id: "closure_drift_report" };
@@ -1548,8 +1554,10 @@ if (process.argv[2] === "--mixed-continue") {
             claim = composedCorrectionChoice(result.question, result.operation_id);
           } else if (["drift_recovery_decision", "drift_completion_decision"].includes(binding)) {
             const question = result.question, parent = state.cursor.occurrences.find(row => row.occurrence_id === frame.call_scope_id);
-            assert.equal(state.record.model.nodes.find(node => node.id === parent?.node_id)?.target?.model_id, "aidn-standard-corrective-drift");
-            if (parent.node_id !== "cycle_drift_finalize") assert.equal(fullCorrection, true);
+            if (frame.node_id !== "cycle_drift_decide") {
+              assert.equal(state.record.model.nodes.find(node => node.id === parent?.node_id)?.target?.model_id, "aidn-standard-corrective-drift");
+              assert.equal(fullCorrection, true);
+            }
             assert.equal(question.contract_version, "standard-drift-recovery-question.v2");
             assert.ok(question.choices.includes("confirm_alignment"));
             const beforeWait = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
@@ -1559,8 +1567,8 @@ if (process.argv[2] === "--mixed-continue") {
             claim = { contract_version: "human-drift-recovery-decision.v2", source_kind: "human", authority_id: "fixture_operator",
               source_event_id: "standard:" + ref, subject_sha256: shadowHash(question.review), question_sha256: shadowHash(question),
               choice: "confirm_alignment", rationale: binding === "drift_completion_decision"
-                ? `The fixture operator confirms the witnessed completion at ${parent.node_id}.`
-                : `The fixture operator reviews the current objectives at ${parent.node_id}.`,
+                ? `The fixture operator confirms the witnessed completion at ${frame.node_id}.`
+                : `The fixture operator reviews the current objectives at ${frame.node_id}.`,
               evidence_refs: [{ ref: "fixture:operator-corrective-drift", sha256: shadowHash(question.review) }] };
           } else if (binding === "session_branch_integration_decision") {
             assert.ok(runsPromotion); assert.ok(result.question.choices.includes("integrate-to-session"));
@@ -2404,7 +2412,9 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(context.context.git.other_changes.count, 0); assert.ok(context.evidence_refs.some(row => row.ref === "audit:parking-lot.md"));
     assert.notEqual(beforeRecord.record.instance_sha256, after.record.instance_sha256);
   });
-  if (process.argv.includes("--drift-objective-mismatch-only")) await check(process.argv.includes("--drift-objective-construction-only")
+  if (process.argv.includes("--drift-objective-fresh-diagnosis-only")) await check("drift objective mismatch: fresh diagnosis resumes the published loop before one confirmed checkpoint",
+    () => verifyFreshDiagnosisFixture({ finalizationFixture, bootstrapMixed, prepareCompletionCycle }));
+  if (process.argv.includes("--drift-objective-mismatch-only") && !process.argv.includes("--drift-objective-fresh-diagnosis-only")) await check(process.argv.includes("--drift-objective-construction-only")
     ? "drift objective mismatch: construction preflight builds both exact authorities without Native allocation"
     : process.argv.includes("--drift-objective-finalize-accept") ? "drift objective mismatch: exact accepted opinion reaches authenticated finalization and retained replay"
     : "drift objective mismatch: exact goals retain finalization refusal and prepare an authenticated signal review", async () => {
@@ -2524,28 +2534,21 @@ if (process.argv[2] === "--mixed-continue") {
             assert.equal((await f.open().dispatchOperation(closed.operation_id, { write: true })).status, "retained_result");
             assert.equal(f.open().readOperation(closed.operation_id).results.length, record.results.length);
             if (published) {
-              const review = await f.open().step({ write: true });
-              assert.equal(review.status, "waiting_for_human");
-              assert.equal(review.question.review.previous_completion.operation_id, closed.operation_id);
-              const renewed = { ...claim, source_event_id: "fixture-objective-checkpoint-1",
-                question_sha256: shadowHash(review.question), subject_sha256: shadowHash(review.question.review),
-                rationale: "Fixture operator confirms the witnessed completion for the separate cycle checkpoint." };
-              humanClaims.set("renew", renewed);
-              await f.open().receiveDecision(review.operation_id, { write: true, sourceRef: "renew" });
-              await f.open().acceptOperation(review.operation_id, { write: true });
-              const renewal = f.open().readOperation(review.operation_id).results.at(-1).output;
-              assert.equal(renewal.effect_status, "no_effect");
-              assert.equal(renewal.observations.signal_discharged, false);
-              assert.deepEqual(f.open().readOperation(closed.operation_id), record);
               const state = f.open().inspect();
+              assert.equal(f.reopen().inspect().record.instance_sha256, state.record.instance_sha256);
               const returned = await f.open().step({ write: true });
               assert.equal(returned.kind, "call");
               verifyPublishedCall(state, returned);
+              assert.deepEqual(f.open().readOperation(closed.operation_id), record);
+              assert.equal(f.open().readOperation(waiting.operation_id).results.length, 1);
+              assert.equal(humanClaims.size, 1);
+              assert.equal(f.open().inspect().record.events.some(row => row.kind === "operation_intent"
+                && row.intent.binding_ref === "drift_completion_decision"), false);
               const transitions = f.open().inspect().record.events.filter(row => ["call_enter", "call_return"].includes(row.kind));
               assert.deepEqual(transitions.map(row => row.kind), ["call_enter", "call_return"]);
               assert.equal(transitions[0].occurrence_id, transitions[1].occurrence_id);
               if (publishedCheckpoint) {
-                assert.deepEqual(review.question.review.gate_constraints.level1, { decision: "full", fallback: true, reason_codes: ["MISSING_CACHE"] });
+                assert.deepEqual(waiting.question.review.gate_constraints.level1, { decision: "full", fallback: true, reason_codes: ["MISSING_CACHE"] });
                 const previewStarted = performance.now();
                 const checkpointPreview = await f.open().step({ write: false });
                 const previewMs = Math.round(performance.now() - previewStarted);
@@ -2553,7 +2556,7 @@ if (process.argv[2] === "--mixed-continue") {
                 assert.equal(prepared.can_apply, true, JSON.stringify(prepared));
                 assert.equal(prepared.plan.input.evaluation_operation_id, evaluated.operation_id);
                 assert.match(prepared.plan.objective_completion_sha256, /^[a-f0-9]{64}$/);
-                assert.notEqual(prepared.plan.objective_completion_sha256, shadowHash(finalized.observations.hook.payload.objective_alignment));
+                assert.equal(prepared.plan.objective_completion_sha256, shadowHash(finalized.observations.hook.payload.objective_alignment));
                 const stageStarted = performance.now();
                 const staged = await f.open().stageOperation(checkpointPreview.preview,
                   { write: true, expectedPreviewSha256: shadowHash(checkpointPreview.preview) });
@@ -2582,7 +2585,7 @@ if (process.argv[2] === "--mixed-continue") {
       }
       if (route === "finalize") assert.equal(f.open().inspect().record.instance_sha256, before);
       assert.equal(c.artifacts.ownerPending(), false);
-      assert.equal(humanReads, route === "recovery" && acceptOpinion ? published ? 3 : 1 : 0);
+      assert.equal(humanReads, route === "recovery" && acceptOpinion ? published ? 2 : 1 : 0);
       assert.equal(f.t.sessions.length, 1); assert.ok(f.t.sessions.every(row => row.closed));
       console.log(JSON.stringify({ diagnosis: route === "recovery" && finalizeOpinion ? "AUTHENTICATED_FIXTURE_ALIGNMENT_FINALIZED" : "UNRESOLVED_SIGNAL_REPORT_DISAGREEMENT", route,
         session_objective: sessionObjective, cycle_objective: cycleObjective, target: f.configuration.target_root,
@@ -3526,6 +3529,197 @@ if (process.argv[2] === "--mixed-continue") {
     assert.match(refused.stderr, /PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED/);
     assert.deepEqual(fs.readdirSync(f.dirs.control), []);
   });
+  await check("native answer: retain bounded refusal evidence and preserve acceptance with the production session adapter", async () => {
+    for (const fault of ["none", "json", "schema", "semantics", "storage", "budget", "escaped-limit"]) {
+      const f = fixture(), records = [], model = JSON.parse(fs.readFileSync(f.configuration.model.path));
+      const contract = "standard-drift-report.v1", context = "c".repeat(64), bindings = { original_objective: "Scoped work" };
+      const answer = { outcome: "completed", summary: "Final answer only", report: {
+        contract_version: contract, context_sha256: context, original_objective: "Scoped work", current_objective: "Scoped work",
+        drift_level: "none", objective_changed: false, changes: [], keep: [], discard: [],
+        split_recommendation: { new_cycle: false, new_branch: false, change_request_required: false, impact: "none" },
+        recommendation: "continue", rationale: "No deviation observed", evidence_refs: [{ ref: "fixture:report", sha256: "a".repeat(64) }] } };
+      if (["schema", "storage", "budget"].includes(fault)) answer.report.rationale = "";
+      if (fault === "semantics") answer.report.changes = ["Unexpected deviation"];
+      const finalText = fault === "json" ? "{PRIVATE_INVALID_JSON" : fault === "escaped-limit" ? "\u0000".repeat(65536) : JSON.stringify(answer);
+      const t = transport(f, { answerText: finalText });
+      const sessions = createAgenticCodexSessions({ native: f.configuration.native, targetRoot: f.configuration.target_root,
+        productRoot: f.dirs.product, controlRoot: path.join(f.dirs.control, "case"), rpcFactory: t.rpcFactory,
+        evidence: { async retain(kind, value, options) {
+          records.push({ kind, value: structuredClone(value), options });
+          if (["storage", "budget"].includes(fault) && kind === "native-answer-rejected")
+            throw Object.assign(Error("private storage failure"), { code: fault === "storage" ? "ENOSPC" : "PROCESS_EXECUTION_STORAGE_LIMIT" });
+          return { ref: "fixture/" + kind, sha256: shadowHash(value) };
+        }, diagnostic() {} }, budget: { maxTurnMs: 1000, remainingBytes: () => 1000000, response() {} } });
+      try {
+        const session = await sessions.open({ role: model.roles[0], policy: model.policies.find(row => row.id === "work"),
+          input: { developer_instructions: "Common fixture authority" }, deadline: Date.now() + 60000 });
+        const execute = () => session.run({ instruction: "Assess without effects", request_sha256: "b".repeat(64),
+          output_contract: contract, output_context_sha256: context, output_bindings: bindings });
+        if (fault === "none") {
+          assert.equal((await execute()).outcome, "completed");
+          assert.deepEqual(records.find(row => row.kind === "native-result").value.answer, answer);
+          assert.equal(records.some(row => row.kind === "native-answer-rejected"), false);
+        } else {
+          const code = fault === "semantics" ? "STANDARD_DRIFT_REPORT_INCONSISTENT" : "PROCESS_SESSION_ANSWER_INVALID";
+          await assert.rejects(execute(), { code });
+          const retained = records.find(row => row.kind === "native-answer-rejected");
+          assert.equal(retained.options.failureCode, code);
+          assert.equal(retained.value.code, code);
+          assert.equal(retained.value.validation.stage, ["json", "escaped-limit"].includes(fault) ? "json_parse" : fault === "semantics" ? "report_semantics" : "schema");
+          assert.equal(Buffer.from(retained.value.answer_base64, "base64").toString(), finalText);
+          assert.equal(retained.value.answer_sha256, sha(finalText));
+          assert.equal(retained.value.answer_bytes, Buffer.byteLength(finalText));
+          assert.equal(retained.value.answer_schema_sha256, shadowHash(nativeActivityAnswerSchema(contract, context, bindings)));
+          assert(Buffer.byteLength(JSON.stringify(retained.value)) < 100000);
+          assert.equal(records.some(row => row.kind === "native-result"), false);
+          assert(!JSON.stringify(retained.value.validation).includes("PRIVATE_INVALID_JSON"));
+        }
+        assert(!JSON.stringify(records).includes("private command/output must not be retained"));
+        assert.equal(t.calls.filter(row => row.method === "turn/start").length, 1);
+      } finally { assert.equal((await sessions.close()).closed, true); }
+    }
+  });
+  await check("native answer: missing prework rule or plan evidence retains the original answer and a field-specific refusal", async () => {
+    for (const fault of ["audit_rule", "plan_evidence"]) {
+      const f = fixture(), records = [], model = JSON.parse(fs.readFileSync(f.configuration.model.path));
+      const contract = "standard-cycle-prework-report.v1", context = "c".repeat(64);
+      const bindings = { kind: "audit_canonical_plan", subject_sha256: "d".repeat(64), origin_operation_id: "op_" + "e".repeat(40), proposal: null };
+      const audit = rules => ({ verdict: "passed", rationale: "Current judgement against the supplied canonical source", rule_refs: rules,
+        evidence_refs: [{ ref: "audit:SPEC.md", sha256: "a".repeat(64) }], findings: [], questions: [] });
+      const answer = { outcome: "completed", summary: "Current canonical assessment", report: {
+        contract_version: contract, context_sha256: context, ...bindings,
+        audits: { intent: audit(["SPEC-R04", "SPEC-R05"]), architecture: audit(["SPEC-R04", "SPEC-R11"]) } } };
+      let code = "STANDARD_PREWORK_REPORT_INVALID", issue = "$.report.audits.intent.rule_refs: must include SPEC-R03";
+      if (fault === "plan_evidence") {
+        const planning = { session_id: "S001", cycle_id: "C001", cycle_type: "feature", mode: "COMMITTING",
+          original_objective: "Update the scoped product", allowed_product_files: ["product/app.mjs"] };
+        const proposal = cyclePlanProposal({ context_sha256: "f".repeat(64), context: planning,
+          evidence_refs: [{ ref: "audit:brief.md", sha256: "a".repeat(64) }] });
+        proposal.evidence_refs = [{ ref: "audit:brief.md", sha256: "a".repeat(64) }];
+        bindings.kind = "propose_plan";
+        bindings.proposal = Object.fromEntries(["context_sha256", "session_id", "cycle_id", "cycle_type", "objective"].map(key => [key, proposal[key]]));
+        answer.report.kind = "propose_plan"; answer.report.proposal = proposal;
+        answer.report.audits.intent.rule_refs = ["SPEC-R03"];
+        code = "STANDARD_CYCLE_PLAN_EVIDENCE_INVALID";
+        issue = "$.report.proposal.evidence_refs: must include audit:SPEC.md";
+      }
+      const finalText = JSON.stringify(answer), t = transport(f, { answerText: finalText });
+      const sessions = createAgenticCodexSessions({ native: f.configuration.native, targetRoot: f.configuration.target_root,
+        productRoot: f.dirs.product, controlRoot: path.join(f.dirs.control, "case"), rpcFactory: t.rpcFactory,
+        evidence: { async retain(kind, value, options) { records.push({ kind, value: structuredClone(value), options });
+          return { ref: "fixture/" + kind, sha256: shadowHash(value) }; }, diagnostic() {} },
+        budget: { maxTurnMs: 1000, remainingBytes: () => 1000000, response() {} } });
+      try {
+        const session = await sessions.open({ role: model.roles[0], policy: model.policies.find(row => row.id === "work"),
+          input: { developer_instructions: "Common fixture authority" }, deadline: Date.now() + 60000 });
+        await assert.rejects(() => session.run({ instruction: nativeActivityOutputInstructions(contract), request_sha256: "b".repeat(64),
+          output_contract: contract, output_context_sha256: context, output_bindings: bindings }), { code });
+        const retained = records.find(row => row.kind === "native-answer-rejected");
+        assert.equal(retained.value.code, code);
+        assert.deepEqual(retained.value.validation, { stage: "report_semantics", issues: [issue] });
+        assert.equal(Buffer.from(retained.value.answer_base64, "base64").toString(), finalText);
+        assert.equal(retained.value.answer_sha256, sha(finalText));
+        assert.equal(retained.value.answer_bytes, Buffer.byteLength(finalText));
+        assert.equal(records.some(row => row.kind === "native-result"), false);
+        const turns = t.calls.filter(row => row.method === "turn/start");
+        assert.equal(turns.length, 1);
+        assert(turns[0].params.input[0].text.includes("audits.intent.rule_refs must include SPEC-R03"));
+        assert(turns[0].params.input[0].text.includes("audits.architecture.rule_refs must include SPEC-R04"));
+        assert(turns[0].params.input[0].text.includes("report.proposal.evidence_refs must include audit:SPEC.md"));
+        assert.equal(fs.readFileSync(path.join(f.dirs.product, "app.mjs"), "utf8"), "export const value = 1;\n");
+      } finally { assert.equal((await sessions.close()).closed, true); }
+      assert(t.sessions.every(session => session.closed));
+    }
+  });
+  await check("native answer: hosted activity scope reaches reused work and isolated review without credential or hook bypass", async () => {
+    const agentsText = fs.readFileSync(new URL("../../scaffold/root/AGENTS.md", import.meta.url), "utf8").replace(/\r\n/g, "\n").trim();
+    for (const noAdmission of [false, true]) {
+      const f = fixture({ agentsText }); persistenceFixture(f, "postgres", "db-only");
+      const { result, sessions, calls } = await run(f, { noAdmission });
+      const starts = calls.filter(row => row.method === "thread/start");
+      assert.equal(starts.length, noAdmission ? 1 : 2);
+      for (const { params } of starts) {
+        const developer = params.developerInstructions;
+        const boundary = developer.slice(0, developer.indexOf("Common authority "));
+        assert.match(boundary, /hosted Native activity within an existing AIDN workflow/);
+        assert.match(boundary, /host owns project activation, session and cycle admission/);
+        assert.match(boundary, /Do not invoke the AIDN CLI, bootstrap, admission commands or workflow hooks from model tools/);
+        assert.match(boundary, /live admission hooks, sandbox and independent-review requirements remain mandatory/);
+        assert.match(boundary, /valid rejected outcome/);
+        assert(developer.includes(agentsText), "Supply the installed contract with its ordinary-session startup and hosted-activity scope");
+        assert.doesNotMatch(developer, /fixture:fixture|AIDN_TEST_DB/);
+      }
+      assert.equal(sessions[0].configuration.env.AIDN_TEST_DB, f.environment.AIDN_TEST_DB);
+      for (const session of sessions) {
+        assert.equal(session.cfg.shell_environment_policy.filters.AIDN_TEST_DB, undefined);
+        assert.deepEqual(Object.keys(session.cfg.shell_environment_policy.filters).sort(), [...CODEX_STARTUP_ENVIRONMENT_PROFILES.worker].sort());
+      }
+      if (noAdmission) {
+        assert.equal(result.first_failure, "PROCESS_SESSION_ADMISSION_HOOKS_REQUIRED");
+        assert.equal(calls.filter(row => row.method === "turn/start").length, 0);
+        assert.equal(fs.readFileSync(path.join(f.dirs.product, "app.mjs"), "utf8"), "export const value = 1;\n");
+      } else {
+        assert.equal(result.status, "COMPLETED", JSON.stringify(result));
+        assert.deepEqual(calls.filter(row => row.method === "turn/start").map(row => row.thread), ["thread-1", "thread-1", "thread-2"]);
+        assert.equal(sessions[1].configuration.env.AIDN_TEST_DB, undefined);
+        assert.notEqual(sessions[0].configuration.cwd, sessions[1].configuration.cwd);
+        assert.equal(sessions[1].cfg.permissions.aidn_agentic_2.filesystem[sessions[1].configuration.cwd.replaceAll("\\", "/")], "read");
+        const inputs = fs.readdirSync(path.join(f.dirs.control, "case")).filter(name => name.endsWith("-activity-input.json"))
+          .sort().map(name => JSON.parse(fs.readFileSync(path.join(f.dirs.control, "case", name))));
+        assert.deepEqual(inputs.map(input => input.developer_sha256), [starts[0], starts[0], starts[1]].map(row => shadowHash(row.params.developerInstructions)));
+        assert.equal(fs.readFileSync(path.join(f.dirs.product, "app.mjs"), "utf8"), "export const value = 2;\n");
+      }
+      assert(sessions.every(session => session.closed));
+    }
+  });
+  await check("native answer: full bound constraints reach the turn with matching prompt evidence", async () => {
+    let prompt;
+    const f = mixedFixture("files", { drift: true, answer({ params }) {
+      prompt = params.input[0].text;
+      const observed = JSON.parse(prompt.split("\n").at(-1));
+      const contract = "standard-drift-report.v1", bindings = nativeActivityOutputBindings(contract, observed.context);
+      assert(prompt.includes(nativeActivityAnswerInstructions(contract, observed.context_sha256, bindings)));
+      const objective = observed.context.original_objective;
+      return { outcome: "completed", summary: "Current diagnostic", report: {
+        contract_version: contract, context_sha256: observed.context_sha256, original_objective: objective, current_objective: objective,
+        drift_level: "none", objective_changed: false, changes: [], keep: [], discard: [],
+        split_recommendation: { new_cycle: false, new_branch: false, change_request_required: false, impact: "none" },
+        recommendation: "continue", rationale: "No deviation observed", evidence_refs: observed.evidence_refs } };
+    } });
+    f.sessionMode = "COMMITTING";
+    const auth = await bootstrapMixed(f);
+    const result = await f.open().step({ write: true, authorization: auth });
+    assert.equal(result.journal_phase, "closed", JSON.stringify(result));
+    assert.equal(f.t.calls.filter(row => row.method === "turn/start").length, 1);
+    const inputs = fs.readdirSync(f.dirs.control, { recursive: true }).filter(name => name.endsWith("-activity-input.json"))
+      .map(name => JSON.parse(fs.readFileSync(path.join(f.dirs.control, name))));
+    assert.equal(inputs.length, 1); assert.equal(inputs[0].instruction_sha256, shadowHash(prompt));
+    assert(f.t.sessions.every(session => session.closed));
+  });
+  await check("native answer: rejected evidence cannot replace the first composition failure or grant a result", async () => {
+    for (const fault of ["none", "disk", "budget"]) {
+      const f = fixture(), original = fs.writeFileSync;
+      if (fault === "disk") fs.writeFileSync = function(file, ...args) {
+        if (String(file).endsWith("-native-answer-rejected.json")) throw Object.assign(Error("fixture full disk"), { code: "ENOSPC" });
+        return original.call(this, file, ...args);
+      };
+      try {
+        const { result, calls, sessions } = await run(f, { answer() {
+          if (fault === "budget") put(f.dirs.control, "case/refusal-storage-pressure.bin", Buffer.alloc(11 * 1024 * 1024));
+          return { outcome: "not-an-outcome", summary: "Invalid fixture response" };
+        } });
+        // Budget exhaustion during buffered notification capture predates
+        // answer validation and must keep that earlier storage refusal.
+        assert.equal(result.first_failure, fault === "budget" ? "PROCESS_EXECUTION_STORAGE_LIMIT" : "PROCESS_SESSION_ANSWER_INVALID");
+        assert.equal(result.status, "FAILED"); assert.equal(result.native_parent_closure.closed, true);
+        assert.equal(calls.filter(row => row.method === "turn/start").length, 1);
+        assert(sessions.every(session => session.closed));
+        const files = fs.readdirSync(path.join(f.dirs.control, "case"));
+        assert(!files.some(name => name.endsWith("-native-result.json")));
+        assert.equal(files.some(name => name.endsWith("-native-answer-rejected.json")), fault === "none");
+      } finally { fs.writeFileSync = original; }
+    }
+  });
   await check("abort during pre-turn observation and exhausted deadline prohibit turn/start", async () => {
     for (const expired of [false, true]) {
       const f = fixture(), controller = new AbortController(); let armed = false;
@@ -3750,13 +3944,18 @@ if (process.argv[2] === "--mixed-continue") {
     const { result, sessions } = await run(f);
     assert.equal(result.first_failure, "WORKFLOW_INSTANCE_LOCK_RECONCILIATION_REQUIRED"); assert.equal(sessions.length, 0);
   });
-  await check("only trusted runtime/admission hosts receive PostgreSQL credentials; no model shell, review, pins or configuration contain them", async () => {
+  await check("worker persistence: trusted host home and credentials stay outside model shells and reviews", async () => {
     const f = fixture(); persistenceFixture(f, "postgres", "db-only");
-    const env = { ...f.environment, PGPASSWORD: "fixture-password", PGSSLMODE: "require", NODE_OPTIONS: "--bad-injection" };
+    const hostHome = path.join(f.configuration.control_root, "fixture-host-home");
+    const env = { ...f.environment, AIDN_STANDARD_HOST_HOME: hostHome, PGPASSWORD: "fixture-password", PGSSLMODE: "require", NODE_OPTIONS: "--bad-injection" };
     const pin = agenticProcessPersistence({ targetRoot: f.configuration.target_root, env });
     const workerEnv = createAgenticProcessWorkerEnvironment({ targetRoot: f.configuration.target_root, expectedBinding: pin.binding_sha256, env });
     assert.equal(workerEnv.AIDN_TEST_DB, env.AIDN_TEST_DB); assert.equal(workerEnv.PGPASSWORD, "fixture-password");
     assert.equal(workerEnv.PGSSLMODE, "require"); assert.equal(workerEnv.NODE_OPTIONS, undefined);
+    assert.equal(workerEnv.AIDN_STANDARD_HOST_HOME, hostHome);
+    assert.equal(createCodexHostEnvironment(workerEnv).AIDN_STANDARD_HOST_HOME, undefined);
+    for (const invalid of ["", "relative", "invalid\0home", 42]) assert.throws(() => createAgenticProcessWorkerEnvironment({
+      targetRoot: f.configuration.target_root, expectedBinding: pin.binding_sha256, env: { ...env, AIDN_STANDARD_HOST_HOME: invalid } }), /HOST_HOME_INVALID/);
     assert.equal(createCodexHostEnvironment(workerEnv).AIDN_TEST_DB, undefined); assert.equal(createCodexHostEnvironment(workerEnv).PGPASSWORD, undefined);
     assert.doesNotMatch(JSON.stringify(pin), /fixture-password|fixture:fixture/);
     assert.throws(() => createAgenticProcessWorkerEnvironment({ targetRoot: f.configuration.target_root, expectedBinding: "a".repeat(64), env }), /PERSISTENCE_CHANGED/);
@@ -3770,6 +3969,7 @@ if (process.argv[2] === "--mixed-continue") {
       async checkAvailability() { return { available: true }; },
       async run(request, { onEvent }) {
         captured = request; assert.equal(request.env.AIDN_TEST_DB, env.AIDN_TEST_DB); assert.equal(request.env.NODE_OPTIONS, undefined);
+        assert.equal(request.env.AIDN_STANDARD_HOST_HOME, hostHome);
         assert.doesNotMatch(request.stdin, /fixture-password|fixture:fixture/);
         const spec = JSON.parse(request.stdin); assert.equal(spec.persistenceBinding, pin.binding_sha256);
         await onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify({ contract_version: "agentic-process-execution-result.v1", status: "COMPLETED",

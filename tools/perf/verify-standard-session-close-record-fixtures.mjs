@@ -1,3 +1,4 @@
+import { readSessionDeliveryPostimages } from '../../src/application/runtime/session-delivery-postimages.mjs';
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
@@ -21,9 +22,12 @@ import { sessionClosureChoices } from "../../src/core/workflow/standard-session-
 import { createStandardSessionDeliveryCheckpoint } from "../../src/application/runtime/standard-session-delivery-checkpoint.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
+import { runGatingEvaluateUseCase } from '../../src/application/runtime/gating-evaluate-use-case.mjs';
 const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7) ?? "files";
 const agedCheckpoint = process.argv.includes("--aged-checkpoint"), agedDelivery = process.argv.includes("--aged-delivery");
 const agedHook = process.argv.includes("--aged-hook");
+const objectiveCompletion = process.argv.includes('--objective-completion');
+if (objectiveCompletion && !process.argv.includes('--final-hook')) throw Error('FIXTURE_OBJECTIVE_HOOK_REQUIRED');
 if (agedHook && !process.argv.includes("--final-hook")) throw Error("FIXTURE_AGED_HOOK_ARGUMENT_INVALID");
 if (agedCheckpoint && !process.argv.includes("--checkpoint") || agedDelivery && !process.argv.includes("--delivery-checkpoint")) throw Error("FIXTURE_AGED_CHECKPOINT_ARGUMENT_INVALID");
 if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
@@ -66,6 +70,24 @@ try {
     started = await operations.finalizeStart(plan, { write: true, expectPlan: plan.plan_sha256 });
     assert.equal(started.outcome, "completed", JSON.stringify(started)); pass("actual start hook produces the physical run later consumed by closure");
   }
+  if (objectiveCompletion) {
+    const git = (...args) => execFileSync('git', ['-C', root, '-c', 'core.hooksPath=NUL', ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' });
+    git('add', '.'); git('commit', '--allow-empty', '-m', 'fixture session start');
+    plan = await operations.prepareCycleContext({ session_id: 'S001' });
+    assert.equal((await operations.refreshCycleContext(plan, { write: true, expectPlan: plan.plan_sha256 })).outcome, 'completed');
+    git('add', '.'); git('commit', '--allow-empty', '-m', 'fixture cycle admission');
+    plan = await operations.prepareCycle({ session_id: 'S001', cycle_id: 'C001', cycle_type: 'feature', title: 'close-objective',
+      objective: 'Verify a bounded closure with distinct wording', continuity_rule: 'R2_SESSION_BASE_WITH_IMPORT', base_branch: 'S001-close-record' });
+    assert.equal((await operations.initializeCycle(plan, { write: true, expectPlan: plan.plan_sha256 })).outcome, 'completed');
+    await artifacts.withLocalEffectOwner(H, async () => {
+      for (const [name,transform] of [['cycles/C001-feature-close-objective/status.md', s => s.replace(/^state:.*$/m, 'state: DONE')],
+        ['CURRENT-STATE.md', s => s.replace(/^active_cycle:.*$/m, 'active_cycle: none')]]) {
+        const row=artifacts.read(name,{required:true}); artifacts.compareAndSwapPreservingMetadata({path:name,before_sha256:row.sha256,before_metadata_sha256:artifacts.metadataHash(name),after:transform(row.content)}); artifacts.project([name]);
+      }
+      return {effect_status:'confirmed'};
+    });
+    git('add','.'); git('commit','--allow-empty','-m','fixture terminal cycle');
+  }
   const context = await readStandardSessionClosureContext({ targetRoot: root, sessionId: "S001" }); assert.equal(context.blocked, undefined);
   const { admission_allowed, context_sha256, ...base } = context;
   const review = { ...base, context_sha256, admission_operation_id: id(1), admission_output_sha256: H, drift_evaluation_operation_id: id(2), drift_evaluation_output_sha256: H,
@@ -106,7 +128,7 @@ try {
   if (process.argv.includes("--checkpoint")) {
     const postimages = result.observations.postimages, git = createLocalWorkflowGitCheckpoint({ targetRoot: root }, { profile: "cycle-terminal", approvedPaths: postimages.map(row => "docs/audit/" + row.path) });
     const beforeGit = git.inspect(), checkpointSource = { record_operation_id: id(5), session_id: "S001", material_sha256: shadowHash({ prepared, result }),
-      branch: beforeGit.branch, parent_head: beforeGit.head, completion_cycle_id: null, postimages };
+      branch: beforeGit.branch, parent_head: beforeGit.head, completion_cycle_id: objectiveCompletion ? 'C001' : null, postimages };
     let checkpointClock = agedCheckpoint ? Date.now() - 86400000 : null;
     const checkpoint = createStandardSessionCloseCheckpoint({ targetRoot: root, readSource: () => structuredClone(checkpointSource), readCurrent: () => instance, now: () => checkpointClock ?? Date.now() });
     const cpInput = { record_operation_id: id(5) }, foreign = path.join(root, "foreign-close.txt");
@@ -140,6 +162,23 @@ try {
           branch: beforeGit.branch, start_output: started, checkpoint_output: cpResult };
         let hookClock = agedHook ? Date.now() - 86400000 : null;
         const finalizer = createStandardSessionCloseHook({ targetRoot: root, readSource: () => structuredClone(selected), readCurrent: () => instance, now: () => hookClock ?? Date.now() });
+        if (objectiveCompletion) {
+          const completed = await runGatingEvaluateUseCase({targetRoot:root,runtimeDir:import.meta.dirname,completionCycleId:'C001',
+            verifyObjectiveAlignment:async()=>({session_objective:'Prepare closure without announcing completion',cycle_objective:'Verify a bounded closure with distinct wording'}),
+            args:{cache:'.aidn/runtime/cache/reload-state.json',eventFile:'.aidn/runtime/perf/workflow-events.ndjson',indexSyncCheckFile:'.aidn/runtime/index/index-sync-check.json',
+              stateMode:mode,stateModeExplicit:true,indexFile:'.aidn/runtime/index/workflow-index.sqlite',indexBackend:'auto',thresholdFiles:3,thresholdMinutes:null,
+              mode:'COMMITTING',runId:'fixture_session_objective_completion',reloadDecision:'',reloadFallback:'',reloadReasonCodes:'',emitEvent:true,completeDriftCheck:true}});
+          assert.equal(completed.ok,true,JSON.stringify(completed));
+          const untouched = fs.readFileSync(path.join(root,'.aidn/runtime/perf/workflow-events.ndjson'));
+          const probe = () => finalizer.prepare(instance,{record_operation_id:id(5),checkpoint_operation_id:id(6)},id(8));
+          assert.equal((await probe()).reason_code,'STANDARD_SESSION_CLOSE_HOOK_GATE_REQUIRED');
+          selected.objective_completion={session_objective:'Prepare closure without announcing completion',cycle_objective:'An unaccepted objective'};
+          await assert.rejects(probe(),/STANDARD_OBJECTIVE_COMPLETION_GATE_CHANGED/);
+          assert.deepEqual(fs.readFileSync(path.join(root,'.aidn/runtime/perf/workflow-events.ndjson')),untouched);
+          assert.equal(artifacts.ownerPending(),false);
+          selected.objective_completion={session_objective:'Prepare closure without announcing completion',cycle_objective:'Verify a bounded closure with distinct wording'};
+          pass('missing and wrong completion refuse before events or owner; exact controlled completion is passed to the actual hook');
+        }
         const finalInput = { record_operation_id: id(5), checkpoint_operation_id: id(6) }, finalPlan = await finalizer.prepare(instance, finalInput, id(8));
         if (policyFault) {
           assert.equal(finalPlan.can_apply, false); assert.equal(finalPlan.reason_code, "STANDARD_SESSION_CLOSE_CONSTRAINT_PROJECTION_POLICY_REQUIRED");
@@ -185,8 +224,15 @@ try {
           const names = finalPlan.plan.documents.map(row => row.path), parent = execFileSync("git", ["-C", root, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
           const eventFile = path.join(root, ".aidn/runtime/perf/workflow-events.ndjson"), eventBytes = fs.readFileSync(eventFile);
           const cacheFile = path.join(root, ".aidn/runtime/cache/reload-state.json"), cacheBytes = fs.readFileSync(cacheFile);
+          if(mode!=='files') assert(final.observations.postimages.some((row,i)=>row.metadata_sha256!==finalPlan.plan.documents[i].metadata_sha256));
+          const legacy = structuredClone(final); legacy.contract_version='standard-session-close-hook-output.v1'; delete legacy.observations.postimages;
+          if(mode!=='files') assert.throws(()=>readSessionDeliveryPostimages({artifacts,plan:finalPlan.plan,output:legacy}),{code:'STANDARD_SESSION_DELIVERY_METADATA_PROOF_REQUIRED'});
+          else assert.equal(readSessionDeliveryPostimages({artifacts,plan:finalPlan.plan,output:legacy}).length,3);
+          const stale=structuredClone(final); stale.observations.postimages[0].metadata_sha256='b'.repeat(64);
+          assert.throws(()=>readSessionDeliveryPostimages({artifacts,plan:finalPlan.plan,output:stale}),{code:'STANDARD_SESSION_DELIVERY_POSTIMAGE_CHANGED'});
+          pass('actual completion receipt binds post-write metadata; stale hashes and legacy DB receipts refuse');
           const source = { finalization_operation_id: id(9), session_id: "S001", session_path: "sessions/S001.md", branch: finalPlan.plan.branch, parent_head: parent,
-            material_sha256: shadowHash(final), postimages: names.map(name => ({ path: name, sha256: artifacts.read(name).sha256, metadata_sha256: artifacts.metadataHash(name) })) };
+            material_sha256: shadowHash(final), postimages: readSessionDeliveryPostimages({ artifacts, plan: finalPlan.plan, output: final }) };
           let deliveryClock = agedDelivery ? Date.now() - 86400000 : null;
           const port = createStandardSessionDeliveryCheckpoint({ targetRoot: root, readSource: async () => structuredClone(source), readCurrent: () => instance, now: () => deliveryClock ?? Date.now() });
           const deliveryId = "op_" + "d".repeat(40), input = { finalization_operation_id: id(9) }, preview = await port.prepare(instance, input, deliveryId);

@@ -17,7 +17,8 @@ function fixture() {
   const closed = { record: { operation_id: closureId, preview: { prepared: { plan: { operation_id: closureId, input: { closure_operation_id: recordId }, scope: { cycle_id: "C001", target_state: "DONE" } } } } },
     output: { operation_ref: "cycle_close_finalize", outcome: "completed", effect_status: "confirmed", facts: { cycle_close_completed: true, cycle_retained: true },
       observations: { target_state: "DONE", event, event_file: ".aidn/runtime/perf/workflow-events.ndjson", event_offset: Buffer.byteLength(prefix) } } };
-  const recorded = { record_operation_id: recordId, plan: { input: { decision_operation_id: selectionId }, cycle_path: "cycles/C001-build-example" } };
+  const recorded = { record_operation_id: recordId, plan: { input: { decision_operation_id: selectionId }, cycle_path: "cycles/C001-build-example" },
+    closure_question: { operation_id: selectionId, session_id: "S001", review: { cycle_id: "C001", product_sha256: sha } } };
   const question = { contract_version: "standard-baseline-promotion-question.v1", operation_id: decisionId, ...instance, occurrence_id: "promotion:0", intent_sha256: sha, session_id: "S001",
     choices: [...baselinePromotionChoices], review: { session_id: "S001", cycle_id: "C001", cycle_path: recorded.plan.cycle_path, closure_operation_id: closureId,
       closure_output_sha256: shadowHash(closed.output), context_sha256: sha, product_sha256: sha, baseline_sha256: sha, history_sha256: sha, current_version: "v0.1", evidence_refs: [{ ref: "closure/result", sha256: sha }] } };
@@ -28,7 +29,7 @@ function fixture() {
   const authority = createStandardBaselinePromotionAuthority({ targetRoot: root,
     readAcceptedOperation(actual, id, binding) { assert.deepEqual(actual, instance); calls.push([id, binding]); if (!allowed) throw Object.assign(Error("fixture rejected source"), { code: "FIXTURE_ACCEPTED_SOURCE_REQUIRED" });
       if (id === closureId && binding === "cycle_close_finalize") return structuredClone(closed);
-      if (id === selectionId && binding === "cycle_closure_decision") return { record: { kind: "selection" } };
+      if (id === selectionId && binding === "cycle_closure_decision") throw Object.assign(Error("retained question belongs to its original authority"), { code: "PROCESS_JOURNAL_NOT_AUTHENTICATED" });
       if (id === decisionId && binding === "baseline_promotion_decision") return { record: { kind: "promotion" } }; throw Error("FIXTURE_SOURCE_ID_INVALID"); },
     readTerminalRecord(actual, selected) { assert.deepEqual(actual, instance); assert.equal(selected.closure_operation_id, recordId); return structuredClone(recorded); },
     human: { question(record) { return record.kind === "promotion" ? structuredClone(question) : { session_id: "S001", review: { cycle_id: "C001", product_sha256: sha } }; },
@@ -39,10 +40,24 @@ try {
   await test("fixed reader observes a physically correlated checkpoint at a Unicode byte offset", async () => {
     const f = fixture(), before = fs.readFileSync(eventFile), result = await f.authority.readClosure(instance, input);
     assert.equal(result.operation_id, closureId); assert.equal(result.cycle_id, "C001"); assert.equal(result.product_sha256, sha); assert.deepEqual(fs.readFileSync(eventFile), before);
-    assert.deepEqual(f.calls, [[closureId, "cycle_close_finalize"], [selectionId, "cycle_closure_decision"]]);
+    assert.deepEqual(f.calls, [[closureId, "cycle_close_finalize"]]);
   });
   await test("later unrelated events preserve the same confirmed checkpoint identity", async () => {
     const f = fixture(); fs.appendFileSync(eventFile, JSON.stringify({ event: "later_fixture" }) + "\n"); await f.authority.readClosure(instance, input);
+  });
+  await test("terminal provenance supplies the original question without authenticating it under the successor key", async () => {
+    const f = fixture(); f.recorded.closure_question.instance_id = "retained-origin";
+    const result = await f.authority.readClosure(instance, input);
+    assert.equal(result.session_id, "S001"); assert.equal(result.instance_id, instance.instance_id);
+    assert.deepEqual(f.calls, [[closureId, "cycle_close_finalize"]]);
+  });
+  await test("missing foreign or changed terminal questions cannot substitute the verified writer subject", async () => {
+    for (const mutate of [f => delete f.recorded.closure_question,
+      f => f.recorded.closure_question.operation_id = decisionId,
+      f => f.recorded.closure_question.review.cycle_id = "C002"]) {
+      const f = fixture(); mutate(f);
+      await assert.rejects(f.authority.readClosure(instance, input), { code: "STANDARD_PROMOTION_COMPLETED_CLOSURE_REQUIRED" });
+    }
   });
   await test("unaccepted journal capability refuses before physical evidence can grant anything", async () => {
     const f = fixture(); f.deny(); await assert.rejects(f.authority.readClosure(instance, input), { code: "FIXTURE_ACCEPTED_SOURCE_REQUIRED" });

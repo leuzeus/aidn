@@ -14,7 +14,7 @@ const finalVerificationOnly = process.argv.includes("--final-verification");
 const cycleEntryOnly = process.argv.includes("--cycle-entry-only");
 if (cycleEntryOnly && finalVerificationOnly) throw Error("STANDARD_PREFLIGHT_FOCUS_CONFLICT");
 const test = (name, run, finalVerification = false) => {
-  if (cycleEntryOnly && !["owned OPEN entry audits the current plan without creation or replacement", "setup uses pinned call data and deterministic/H operations without another native response", "fresh objective review precedes finalization and checkpoint"].includes(name)) return;
+  if (cycleEntryOnly && !["owned OPEN entry audits the current plan without creation or replacement", "setup uses pinned call data and deterministic/H operations without another native response", "fresh objective review precedes finalization and checkpoint", "requested fresh diagnosis repeats Native with a new evaluation before one checkpoint"].includes(name)) return;
   if (finalVerificationOnly && !finalVerification) return;
   run(); checks++; console.log("PASS " + name);
 };
@@ -102,10 +102,11 @@ function verifyFreshCalls(result, cycleObjective = "Synthetic fixture budget pla
     ["fresh_checkpoint", "call_enter"], ["fresh_checkpoint", "call_return"]]);
   assert.deepEqual(calls[0].resolution.input, { session_id: "S001", context_operation_id: refresh.operation_id,
     cycle_id: "C001", cycle_type: "feature", title: "standard-prefix", objective: cycleObjective });
-  const review = result.call_transitions.find(row => row.node_id === "cycle_drift_finalize" && row.kind === "call_enter");
-  assert.ok(review.resolution.input.evaluation_operation_id);
+  const evaluation = result.source_operations.filter(row => row.node_id === "cycle_drift_evaluate").at(-1);
+  assert.ok(evaluation.operation_id);
   assert.deepEqual(calls[2].resolution.input, { session_id: "S001", cycle_id: "C001",
-    evaluation_operation_id: review.resolution.input.evaluation_operation_id });
+    evaluation_operation_id: evaluation.operation_id });
+  assert.equal(result.source_operations.find(row => row.node_id === "cycle_drift_finalize").input.evaluation_operation_id, evaluation.operation_id);
   for (const row of [calls[0], calls[2]]) {
     const source = row.resolution.sources.find(item => item.field === "session_id");
     assert.equal(source.source, "operation_input"); assert.equal(source.operation_id, refresh.operation_id);
@@ -144,13 +145,45 @@ function verifyFinalVerificationCalls(result, sites) {
 test("fresh objective review precedes finalization and checkpoint", () => {
   const subject = { model, scenario, cycleObjective: "Verify both endpoints of a closed interval", stop: "plan" };
   const complete = preflightStandardComposedFixture(subject);
-  const steps = ["cycle_drift_evaluate", "cycle_drift_select", "cycle_drift_decide", "cycle_drift_finalize", "cycle_drift_checkpoint_review", "cycle_checkpoint"];
+  assert.equal(complete.operations.filter(id => id === "cycle_drift_decide").length, 1);
+  assert.equal(complete.operations.includes("cycle_drift_checkpoint_review"), false,
+    "An accepted alignment and its confirmed finalization must reach the checkpoint without asking the same person again.");
+  const steps = ["cycle_drift_evaluate", "cycle_drift_select", "cycle_drift_decide", "cycle_drift_finalize", "cycle_checkpoint"];
   assert.deepEqual(complete.operations.filter(id => steps.includes(id)), steps);
   verifyFreshCalls(complete, subject.cycleObjective);
   const pending = preflightStandardComposedFixture({ ...subject, scenario: { ...scenario, interruption: { node_id: "cycle_drift_decide", outcome: "deferred" } } });
   assert.equal(pending.planned_status, "WAITING");
   assert.ok(!pending.operations.includes("cycle_drift_finalize"));
   assert.ok(!pending.operations.includes("cycle_checkpoint"));
+  const unfinished = preflightStandardComposedFixture({ ...subject, scenario: { ...scenario,
+    interruption: { node_id: "cycle_drift_finalize", outcome: "blocked" } } });
+  assert.ok(!unfinished.operations.includes("cycle_checkpoint"));
+  assert.notEqual(unfinished.planned_status, "COMPLETED");
+});
+test("requested fresh diagnosis repeats Native with a new evaluation before one checkpoint", () => {
+  const subject = { model, scenario, cycleObjective: "Verify both endpoints of a closed interval", stop: "plan" };
+  for (const diagnosisRequests of [1, 2]) {
+    const result = preflightStandardComposedFixture({ ...subject, diagnosisRequests });
+    const reports = result.native_occurrences.filter(row => row.node_id === "cycle_drift_report");
+    assert.equal(reports.length, diagnosisRequests + 1);
+    assert.equal(new Set(reports.map(row => row.occurrence_id)).size, reports.length);
+    const steps = ["cycle_drift_evaluate", "cycle_drift_select", "cycle_drift_decide", "cycle_drift_finalize", "cycle_checkpoint"];
+    assert.deepEqual(result.operations.filter(id => steps.includes(id)), [
+      ...Array.from({ length: diagnosisRequests + 1 }, () => steps.slice(0, 3)).flat(), ...steps.slice(3)]);
+    const evaluations = result.source_operations.filter(row => row.node_id === "cycle_drift_evaluate");
+    assert.equal(new Set(evaluations.map(row => row.operation_id)).size, evaluations.length);
+    verifyFreshCalls(result, subject.cycleObjective);
+    assert.equal(result.operations.filter(id => id === "cycle_initialize").length, 1);
+    assert.equal(result.replay_exact, true);
+  }
+  assert.throws(() => preflightStandardComposedFixture({ ...subject, diagnosisRequests: 1,
+    scenario: { ...scenario, max_responses: 2 } }), { code: "STANDARD_FIXTURE_RESPONSE_BUDGET_INSUFFICIENT" });
+  const unresolved = preflightStandardComposedFixture({ ...subject, freshRecovery: true,
+    scenario: { ...scenario, interruption: { node_id: "cycle_drift_unresolved", outcome: "blocked" } } });
+  assert.equal(unresolved.native_occurrences.filter(row => row.node_id === "cycle_drift_report").length, 1);
+  assert.equal(unresolved.planned_status, "WAITING");
+  assert.ok(!unresolved.operations.includes("cycle_checkpoint"));
+  assert.ok(!unresolved.operations.includes("cycle_drift_decide"));
 });
 function verifyReviewCall(result, prefix) {
   const captureSites = prefix === "correction" ? ["session_pr_review_capture", "correction_pr_review_capture"] : ["session_pr_review_capture"];
@@ -180,7 +213,7 @@ test("positive path selects nine native turns; its cold prefix keeps the same cu
   assert.equal(result.cold_resume_checkpoints.length, 1); assert.equal(result.cold_resume_checkpoints[0].responses, 5);
   assert.equal(result.responses_required - result.cold_resume_checkpoints[0].responses, 4);
   assert.equal(result.planned_status, "WAITING"); assert.equal(result.replay_exact, true);
-  assert.equal(result.operations.length, 76); assert.equal(result.event_count, 188);
+  assert.equal(result.operations.length, 76); assert.equal(result.event_count, 186);
   verifyFreshCalls(result);
   verifyPlanningOrigin(result, "cycle_plan_record");
   assert.equal(result.operations.filter(id => id === "cycle_entry_observe").length, 1);
@@ -220,7 +253,7 @@ test('v3 plans both cycles through the same published model, new closure, redeli
   const correction = JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/standard-workflow/composed-correction.v3.json', import.meta.url)));
   const result = preflightStandardComposedFixture({ model, scenario: correction, stop: "pr_effects_pending" });
   assert.equal(result.responses_required, 17); assert.equal(result.planned_status, 'WAITING');
-  assert.equal(result.operations.length, 139); assert.equal(result.event_count, 343);
+  assert.equal(result.operations.length, 135); assert.equal(result.event_count, 333);
   verifyFreshCalls(result);
   verifyPlanningOrigin(result, "cycle_plan_record");
   assert.equal(result.operations.filter(id => id === "cycle_entry_observe").length, 1);
@@ -231,9 +264,9 @@ test('v3 plans both cycles through the same published model, new closure, redeli
   assert.deepEqual(correctiveDrift[0].resolution.sources.map(({ source, operation_id }) => [source, operation_id]), [["operation_id", evaluation]]);
   const decisionIndex = result.operations.indexOf("correction_cycle_drift_decide");
   assert.ok(decisionIndex > 0);
-  assert.deepEqual(result.operations.slice(decisionIndex - 2, decisionIndex + 4), ["correction_cycle_drift_evaluate",
+  assert.deepEqual(result.operations.slice(decisionIndex - 2, decisionIndex + 3), ["correction_cycle_drift_evaluate",
     "correction_cycle_drift_select", "correction_cycle_drift_decide", "correction_cycle_drift_finalize",
-    "correction_cycle_drift_checkpoint_review", "correction_cycle_checkpoint"]);
+    "correction_cycle_checkpoint"]);
   for (const stage of ["cycle", "closure", "promotion", "session_closure"]) {
     const site = `correction_${stage}_drift_finalize`, evaluationNode = site.replace(/_finalize$/, "_evaluate");
     const call = model.nodes.find(row => row.id === site), input = model.data_bindings.inputs.find(row => row.node_id === site);
@@ -271,8 +304,8 @@ test("correction retains its original budget refusal and interruption choices", 
     assert.ok(!stopped.operations.includes('correction_initialize'));
     assert.notEqual(stopped.planned_status, 'COMPLETED');
   }
-  for (const stage of ["cycle", "closure", "promotion", "session_closure"]) for (const suffix of ["decide", "checkpoint_review"]) {
-    const node_id = `correction_${stage}_drift_${suffix}`;
+  for (const stage of ["cycle", "closure", "promotion", "session_closure"]) {
+    const node_id = `correction_${stage}_drift_decide`;
     const deferred = preflightStandardComposedFixture({ model, scenario: { ...correction, interruption: { node_id, outcome: "deferred" } } });
     assert.equal(deferred.planned_status, "WAITING");
     assert.deepEqual(deferred.call_transitions.filter(row => row.node_id === `correction_${stage}_drift_finalize`).map(row => row.kind), ["call_enter"]);
@@ -285,7 +318,6 @@ test("an interrupted final evaluation retains its entry without returning or ent
   assert.deepEqual(result.call_transitions.map(row => [row.node_id, row.kind]),
     [["session_setup", "call_enter"], ["session_setup", "call_return"],
       ["fresh_entry", "call_enter"], ["fresh_entry", "call_return"],
-      ["cycle_drift_finalize", "call_enter"], ["cycle_drift_finalize", "call_return"],
       ["fresh_checkpoint", "call_enter"], ["fresh_checkpoint", "call_return"], ["work_prepare", "call_enter"],
       ["work_prepare", "call_return"], ["final_verification", "call_enter"]]);
   assert.deepEqual(result.verification_inputs.map(row => row.node_id), ["final_validation"]);

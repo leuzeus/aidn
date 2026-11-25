@@ -1,5 +1,78 @@
 # 04 JSON Contracts
 
+Entry selection v17 keeps all earlier contracts readable and clears
+`cycle_work_requested` for the four retained external-merge/R09 entries. Their
+explicit merge route still runs, but returning from it must not enter the
+ordinary session delivery prefix or request integration again.
+
+Entry selection v14 adds `retained_external_merge_capture`. Its closed proof
+binds the original configuration, settled entry, expired reserved capture,
+reservation and inherited delivery. The local read-only selector reauthenticates
+the accepted entry before routing. Disposition input/question v3 identify that
+historical capture and the new entry receipt explicitly; they claim no delivered
+control event. Earlier entry and disposition contracts remain readable.
+
+Entry selection v13 adds the closed `retained_external_merge` variant. Its
+proof binds a settled review wait and the historical delivery; it supplies no
+review approval, merge consent or completion fact. Historical v1-v12 outputs
+remain readable. The recovered provider event and incident disposition use
+the existing v3 control inbox and pretriage external-merge contracts.
+
+`github-pr-review-event.v2` retains the exact visible Codex summary IssueComment,
+its body hash/chunks and original publication timestamps. It accepts only the
+versioned completed/no-findings result on the full current commit, from the
+pinned Bot. It remains distinct from a v1 PullRequestReview and establishes no
+approval or merge permission. The existing v2 control inbox retains either
+validated event within its full payload; no historical entry is upgraded.
+
+
+STANDARD entry selection v12 adds the explicit `retained_session_pr_open`
+variant and its closed proof. All other successful variants set its request
+flag to false; historical v1-v11 outputs remain readable. PR record input v2 is
+empty: the fixed host selects the accepted current opening or the admitted
+retained opening. Historical v1 inputs and signed plan inputs stay readable.
+
+`standard-retained-session-closure-entry.v1` names a receipted, unaccepted close
+decision and its original execution plus the original session-start execution.
+Its closed proof and entry selection v8 preserve both histories and the Human
+inbox. The empty session-close input v2 delegates selection to the fixed host;
+historical v1 writer plans remain readable. These are derived journal evidence,
+not a new canonical store, receipt migration, effect grant or Native renewal.
+
+`standard-retained-promotion-entry.v1` and its closed proof name a settled
+no-effect promotion R05 refusal, original accepted record/checkpoint and saved
+Native evaluation. Entry selection v7 keeps that continuation separate from
+v1-v6. Promotion-hook plan v2 names the original record proof without rewriting
+its request or granting an effect. Historical v1 hook plans remain readable.
+
+`standard-drift-objective-disposition.v2` separates an authenticated retained
+opinion and physical completion from the current evaluation. Finalize-plan v4
+uses this closed proof only for COMMITTING and preserves the original source
+bytes and timestamp. V1 dispositions and v1-v3 plans remain readable. JSON alone
+cannot provide the owning source capability or effect authority.
+
+`standard-retained-completion-entry.v1` and its closed proof bind a settled
+historical closure at the first promotion boundary. Entry selection v6 separates
+this DONE-cycle route from active-cycle resumption; completion selection v2
+returns the authenticated closure and terminal checkpoint identities. Historical
+contracts remain readable. These are derived operation-journal evidence, not
+new canonical stores, imported receipts, promotion decisions or Native grants.
+
+`standard-retained-audit-entry.v1` and `standard-retained-audit-proof.v1` bind a
+completed historical Native audit to its blocked evaluation and original
+configuration, instance, allocation journal and verification proof. Entry
+selection v4 adds this bounded route and explicit preparation-skip facts;
+v1-v3 remain readable. Current audit-evaluation input v2 is empty and delegates
+selection to the fixed host. Its v1 occurrence reference remains historical
+data. These contracts grant no closure, resource ownership or Native renewal and
+introduce no canonical store. The current audit output retains its real producer.
+
+Private `codex-validation-terminal.v2` adds bounded client stderr diagnostics to
+the existing local validation evidence. Its closed reader validates counters,
+controller digest, base64 tail and optional decoded text. V1 remains readable
+without conversion. Diagnostics grant no process closure, check verdict,
+reconciliation or retry authority and are not embedded in public CLI outputs.
+
 Native epoch closure `observed_at_ms` remains bound chronology/provenance.
 A consumer-added sixty-second ceiling does not override current scope/source
 checks and the original signed request, issuer and Native grant deadlines.
@@ -425,6 +498,13 @@ authorization and an authenticated empty allocation prefix. A native-scope
 inventory still requires independent complete resource discovery and closure;
 absence of allocations is not a termination proof. V1/v2 schemas are unchanged.
 
+
+`standard-retained-session-integration-entry.v1` and its closed proof name an
+acknowledged, unaccepted integration choice at a settled retained-delivery
+boundary. Entry selection v11 and empty integration input v2 preserve original
+records and derive no new Human answer or Native authority. Internal v1 plans
+remain independently validated. This is derived journal evidence, not a new
+canonical store or generic receipt migration.
 
 ## Purpose
 
@@ -852,6 +932,31 @@ Validation and verification forward a private assertion tied to their own local 
 
 ## Private owned-cycle progress source
 
+The published `workflow_entry_select` operation takes the existing closed empty
+input and reads the instance's immutable `parameters.entry_point`, defaulting
+to `session`. Its closed `standard-workflow-entry-selection-output.v1` records
+either normal setup or an actual current owned-cycle admission and its closed
+continuation evidence. The owned selector is the exact object with `kind` and
+`checkpoint_operation_id`. Its host reader requires an unchanged OPEN cycle,
+an authenticated accepted creation checkpoint, current business/product pins,
+physical completion and a current R05 gate. The output names the original
+instance/checkpoint, their hashes, optional completion/alignment hashes and
+current gate hash. No caller-supplied continuation evidence is consumed.
+The nested admission retains its content/metadata evidence and grants no implementation.
+The host still refuses caller-supplied initial facts. Invalid selectors fail at
+configuration resolution, and changed parameters cannot resume an instance.
+
+The read-only `cycle_owned_planning_select` uses the existing closed
+`standard-owned-cycle-resume-input.v1` entry reference and emits
+`standard-owned-cycle-planning-selection-output.v1`. Its accepted current entry,
+canonical content and metadata, templates, scope, HEAD and product identify an
+owned OPEN cycle whose planning documents still match the initialized scaffold.
+Only that case selects a fresh proposal through the existing prework chain.
+The prework selection's origin vocabulary includes this explicit operation;
+`fresh_cycle` describes fresh planning here, not session or cycle creation.
+The output grants no implementation permission. A modified or partial plan
+continues to canonical admission and its existing explicit refusals.
+
 The separate `cycle_owned_resume_admit` binding accepts the closed `standard-owned-cycle-resume-input.v1` entry-operation identity. Its protected reader requires an accepted current-process `cycle_entry_admit` result for one unambiguous owned cycle. The original selected-focus input/output and H/checkpoint chain keep their contracts. The owned output uses its own closed `standard-owned-cycle-resume-output.v1` with `entry_operation_id` and `entry_sha256`; an entry is never labelled as a focus checkpoint.
 
 Current canonical phase, ordered task prefix, metadata, context, branch/session ownership and DoR remain observed. Existing Process cycle choice sections are canonical DATA used to retain an integration-only restriction, including when the transaction originally focused a different reported cycle. They authenticate no human and supply no current work, validation or Native receipt. Unknown or inconsistent declared choice material refuses interpretation.
@@ -874,6 +979,25 @@ The current cycle-choice checkpoint binding revision 2 emits closed output v2. A
 Private standard-cycle-prework-subject.v1 and standard-cycle-prework-report.v1 define initial intent and architecture judgement DATA. The closed subject carries origin, declared rules, current scope/canonical/product/HEAD hashes and the canonical proposal hash when applicable. A fresh proposal reuses the unchanged v1 plan contract; a canonical assessment supplies no replacement proposal. Both named judgement dimensions have explicit passed/failed/needs_information verdicts, rationale and registered evidence. Unknown approvals/principals/permissions, contradictory passed claims and foreign references refuse.
 
 These pure readers confer no source authenticity or implementation permission. The fixed host must authenticate accepted Native provenance and reobserve its actual subject around awaited reads before current readiness or effects. Historical v1 planning is never converted into an audit receipt. The runtime producer and published model remain separate implementation/qualification boundaries.
+
+The existing semantic rule mapping requires `SPEC-R03` in intent audit rule
+references and `SPEC-R04` in architecture audit rule references. Other rules
+declared by the subject may be included as well. Native activity instructions
+state these requirements from the same source mapping as the validator.
+Missing mandatory references retain `STANDARD_PREWORK_REPORT_INVALID`; the
+private Native refusal evidence names their field paths without modifying the
+answer or changing the accepted report shape. A reference alone is no proof of
+a completed judgement.
+
+Fresh Native plan answers also enforce the host's existing requirement that
+the proposal's own `evidence_refs` include `audit:SPEC.md`. References in the
+two audit judgements do not satisfy that separate requirement. Standalone plan
+and fresh prework instructions name the required reference from the shared
+source constant. A missing reference retains `STANDARD_CYCLE_PLAN_EVIDENCE_INVALID`
+and a field-specific private refusal diagnostic before Native completion.
+The host still rechecks every reference and digest against current evidence.
+Historical structural readers and canonical audit-only answers keep their
+existing acceptance; no old proposal or producer answer is modified.
 
 
 The fixed Native answer-schema registry also recognizes the prework report.
@@ -1192,3 +1316,53 @@ existing blocked/no_effect handoff output with its fixed no-effect confirmation
 reason. At most one terminal controller receipt is retained at index zero.
 Historical v1-v4 contracts and readers stay separate. Data alone grants no
 permission and matching beforeimages alone do not prove original non-execution.
+
+The separate historical validation recovery route uses
+`standard-validation-launch-recovery.v1`, its closed plan/result contracts and
+the signed `standard-validation-launch-recovery-record.v1` in the existing
+operation-journal authority. The public `runtime-workflow-run.v1` envelope is
+unchanged. A result distinguishes a reconciled non-start from validation success
+and workflow resumption; both latter claims remain false. The original UNKNOWN
+operation and instance are immutable. Preview supplies no write authority; only
+explicit execution of the exact current preview can append a recovery attempt.
+
+Retained single-task validation uses closed `standard-retained-validation-*`
+entry, pins, proof and admission contracts, `standard-retained-task-work-*`
+input/output and `standard-work-phase-selection-output.v1`.
+`standard-workflow-entry-selection-output.v2` adds the explicit retained branch;
+v1 remains readable in authenticated history. Historical producer identities and
+current operation identities stay distinct. A retained work observation supplies
+no current Native result, implementation permission or validation success. The
+proof pins the complete context digest while carrying only its bounded summary;
+full documents remain at their canonical authorities.
+
+Retained closure uses closed `standard-retained-closure-entry.v1` and
+`standard-retained-closure-proof.v1` records within the existing entry operation.
+`standard-workflow-entry-selection-output.v5` distinguishes this route from a
+fresh Human question; earlier versions remain historical contracts. The proof
+names the original acknowledged decision, question, inbox, audit and exact
+current VERIFYING subject. It neither claims terminal effects nor replaces the
+original source. `standard-cycle-close-input.v2` is empty: the fixed host selects
+the accepted current or explicitly retained decision. The v1 decision locator
+remains the internal plan input and a readable historical schema.
+
+## Session checkpoint-only recovery
+
+`standard-session-close-recovery.v1` and its closed record/plan/result contracts
+add a bounded historical reconciliation route. The signed recovery is derived
+operation-journal evidence and retains all original UNKNOWN history. It reports
+`reconciled_checkpoint_only`, with session_closed/workflow_resumed/native_started
+false. Embedded process observations preserve their limited scope and grant no
+business effect. No new canonical information concept is introduced.
+
+Entry selection v15 adds the closed retained_post_merge variant. Its proof
+binds the accepted original L1 disposition, immutable capture lineage, original
+opening, confirmed fetch receipt and protected provider identity. Selector v2
+carries the retained fetch ID only after authenticating that entry. Historical
+v1-v14 entry outputs and selector v1 stay readable.
+
+Entry selection v16 adds the closed retained_post_merge_decision route. Its
+proof names the immutable receipted/unaccepted fast-forward choice, original
+Human inbox and inherited R09 evidence. Selection v3 routes that choice to the
+existing Git executor before the ordinary R09 suffix. Historical contracts
+remain readable; no timestamp, receipt or original reducer event is rewritten.

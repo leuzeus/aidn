@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "original_instance_id",
+    "original_instance_sha256",
+    "original_configuration_sha256",
+    "native_journal_sha256",
+    "audit_operation_id",
+    "audit_journal_sha256",
+    "context",
+    "audit_context_sha256",
+    "product_sha256",
+    "failed_evaluation_operation_id",
+    "failed_evaluation_journal_sha256",
+    "report_occurrence_id",
+    "report_sha256",
+    "verification_proof_sha256"
+  ],
+  "properties": {
+    "original_instance_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "original_instance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "original_configuration_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "native_journal_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "audit_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "audit_journal_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_id",
+        "cycle_id",
+        "cycle_path",
+        "branch",
+        "head",
+        "mode",
+        "cycle_state",
+        "product_sha256"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "cycle_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "cycle_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "head": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "mode": {
+          "const": "COMMITTING"
+        },
+        "cycle_state": {
+          "const": "VERIFYING"
+        },
+        "product_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "audit_context_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "product_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "failed_evaluation_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "failed_evaluation_journal_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "report_occurrence_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "report_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "verification_proof_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$id": "aidn://contracts/workflow-definition/standard-retained-audit-proof.v1",
+  "x-aidn-contract-version": "standard-retained-audit-proof.v1"
+}

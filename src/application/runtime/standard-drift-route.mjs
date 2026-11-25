@@ -42,7 +42,7 @@ export function createStandardDriftRoute({ targetRoot, readEvaluation, authentic
         || result.output.facts.drift_check_completed !== true || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt)))
         fail("STANDARD_OBJECTIVE_COMPLETION_NOT_ACCEPTED");
       let review = false, anchor = null;
-      if (record.preview.prepared.plan.contract_version === "standard-drift-finalize-plan.v3") {
+      if (["standard-drift-finalize-plan.v3", "standard-drift-finalize-plan.v4"].includes(record.preview.prepared.plan.contract_version)) {
         try { if (!await readCurrentCompletion(instance)) fail("STANDARD_OBJECTIVE_COMPLETION_REQUIRED"); }
         catch (cause) {
           // Only expiry selects a fresh H review. Invalid/revoked sources,
