@@ -54,7 +54,8 @@ export function createCodexDecisionChannel({ session, elicit, formSupported }) {
   return { present, decide, describe() {
     const current = session.session();
     return { instance: current.instance, form_supported: formSupported(), enrolled: Boolean(enrolled(current.principals)),
-      public_key: publicPem, last_receipt: current.last_receipt };
+      public_key: publicPem, ...(current.project_authorization ? { project_authorization: current.project_authorization } : {}),
+      last_receipt: current.last_receipt };
   } };
 }
 

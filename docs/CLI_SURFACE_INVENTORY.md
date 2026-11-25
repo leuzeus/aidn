@@ -229,7 +229,8 @@ Purpose:
 
 These are the durable surfaces exposed through `aidn` today:
 
-- `aidn install`
+- `aidn install` with optional `--standard-authorization FILE` for an approved
+  STANDARD decision issuer policy
 - `aidn bootstrap`
 - `aidn build-release`
 - `aidn setup`

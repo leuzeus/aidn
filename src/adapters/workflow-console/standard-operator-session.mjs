@@ -163,7 +163,7 @@ export function createStandardOperatorSession({ targetRoot, configuration, envir
     return receipt() ?? fail("OPERATOR_RECEIPT_PENDING");
   }
   return {
-    session: () => ({ instance: resolved.instance_id, principals: authority.humanPrincipals(),
+    session: () => ({ instance: resolved.instance_id, principals: authority.humanPrincipals(), project_authorization: authority.projectAuthorization(),
       last_receipt: recordedReceipt(readAgentRunFile(lastAnswer, { optional: true })?.value) }),
     async question() {
       const state = await pending();

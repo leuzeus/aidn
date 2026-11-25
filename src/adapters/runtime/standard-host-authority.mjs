@@ -11,6 +11,8 @@ import { agentRunPhysicalPath, readAgentRunFile } from "../../application/runtim
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { createStandardGithubProviderHost } from "./standard-github-provider-host.mjs";
 import { createStandardHostResourceSource } from "./standard-host-resource-source.mjs";
+import { readStandardProjectAuthorization } from "./standard-project-authorization-store.mjs";
+import { signedCodexMessageReference } from "../workflow-console/codex-message-recovery.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const inside = (root, file) => { const r = path.relative(root, file); return r === "" || !path.isAbsolute(r) && r !== ".." && !r.startsWith(".." + path.sep); };
@@ -77,9 +79,14 @@ export function createStandardHostAuthority({ configuration, environment = proce
       || typeof row.public_key !== "string" || createPublicKey(row.public_key).asymmetricKeyType !== "ed25519") fail("STANDARD_HOST_PRINCIPALS_INVALID");
     return value;
   }
+  const projectAuthorization = () => readStandardProjectAuthorization({ home, targetRoot: configuration.target_root, environment });
+  const authorizationView = state => state ? { revision: state.current?.revision ?? null, sha256: state.current_sha256 } : null;
   const trustSha = () => {
     const principals = registry();
-    return shadowHash(githubProvider ? { principals, github: githubProvider.contextSha } : principals);
+    const installed = projectAuthorization();
+    if (!installed) return shadowHash(githubProvider ? { principals, github: githubProvider.contextSha } : principals);
+    return shadowHash({ principals, github: githubProvider?.contextSha ?? null,
+      authorization: authorizationView(installed), administrator_sha256: installed.administrator_sha256 });
   };
   function capture(kind, sourceRef, subject, fresh) {
     if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,95}$/.test(sourceRef ?? "")) fail("STANDARD_HOST_SOURCE_REF_INVALID");
@@ -99,11 +106,19 @@ export function createStandardHostAuthority({ configuration, environment = proce
         || envelope.expires_at_ms < subject.expires_at_ms)) fail("STANDARD_HOST_SOURCE_INVALID");
     if (kind === "human" && subject.contract_version === mergeConsentQuestionVersion && envelope.issued_at_ms < subject.issued_at_ms)
       fail("STANDARD_HOST_SOURCE_INVALID");
-    const principal = registry()?.principals.find(row => row.authority_id === envelope.authority_id && row.kinds.includes(kind));
+    const installed = kind === "human" ? projectAuthorization() : null;
+    const principal = installed
+      ? installed.current?.principals.find(row => row.authority_id === envelope.authority_id)
+      : registry()?.principals.find(row => row.authority_id === envelope.authority_id && row.kinds.includes(kind));
     const { signature, ...body } = envelope;
     if (!principal || !verify(null, Buffer.from(shadowHash(body)), createPublicKey(principal.public_key), Buffer.from(signature, "base64"))) fail("STANDARD_HOST_SOURCE_NOT_AUTHENTICATED");
     const claim = envelope.payload?.source ?? envelope.payload;
     if (claim?.authority_id !== envelope.authority_id) fail("STANDARD_HOST_SOURCE_AUTHOR_CHANGED");
+    if (installed) {
+      const rule = principal.decisions.find(row => row.question_contract === subject.contract_version);
+      if (!rule?.choices.includes(claim.choice)) fail("STANDARD_AUTHORIZATION_DECISION_REFUSED");
+      if (!signedCodexMessageReference(claim.evidence_refs)) fail("STANDARD_AUTHORIZATION_CODEX_EVIDENCE_REQUIRED");
+    }
     return envelope;
   }
   const sourceActivity = Object.fromEntries(["human", "control", "native-renewal"].map(kind => [kind, { active: 0, revision: 0 }]));
@@ -186,8 +201,11 @@ export function createStandardHostAuthority({ configuration, environment = proce
     return { ...body, grant_sha256: createHmac('sha256', readKey()).update(shadowHash(body)).digest('hex') };
   }
   return Object.freeze({ home, keyId, readKey, ensureKey, trustSha, githubProvider,
+    projectAuthorization: () => authorizationView(projectAuthorization()),
     humanPrincipals() {
-      return (registry()?.principals ?? []).filter(row => row.kinds.includes("human"))
+      const installed = projectAuthorization();
+      const humans = installed ? installed.current?.principals ?? [] : (registry()?.principals ?? []).filter(row => row.kinds.includes("human"));
+      return humans
         .map(({ authority_id, public_key }) => ({ authority_id, public_key }));
     },
     verifyHumanEnvelope: (envelope, sourceRef, question) => verifyEnvelope("human", sourceRef, question, true, envelope),

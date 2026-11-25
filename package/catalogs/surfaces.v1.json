@@ -13904,6 +13904,30 @@
       "migration": ""
     },
     {
+      "id": "option:aidn install:--standard-authorization",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/install.mjs",
+      "entrypoint": "aidn install --standard-authorization",
+      "implementation": "tools/install.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/install.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn install:--strict",
       "kind": "option",
       "status": "active",

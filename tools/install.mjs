@@ -14,6 +14,7 @@ function parseArgs(argv) {
     pack: "",
     sourceBranch: "",
     adapterFile: "",
+    standardAuthorizationFile: "",
     initDefaults: false,
     projectName: "",
     dryRun: false,
@@ -47,6 +48,10 @@ function parseArgs(argv) {
     } else if (token === "--adapter-file") {
       args.adapterFile = String(argv[i + 1] ?? "").trim();
       i += 1;
+    } else if (token === "--standard-authorization") {
+      const file = argv[++i];
+      if (!file || file.startsWith("--") || args.standardAuthorizationFile) throw new Error("Expected one file for --standard-authorization");
+      args.standardAuthorizationFile = file;
     } else if (token === "--init-defaults") {
       args.initDefaults = true;
     } else if (token === "--project-name") {
@@ -120,6 +125,9 @@ function parseArgs(argv) {
     args.verifyOnly = false;
     args.verifyAfterInstall = true;
   }
+  if (args.verifyOnly && args.standardAuthorizationFile) {
+    throw new Error("--standard-authorization requires installation or --dry-run");
+  }
 
   return args;
 }
@@ -130,6 +138,7 @@ function printUsage() {
   console.log("  node tools/install.mjs --target ../repo --pack core");
   console.log("  node tools/install.mjs --target ../repo --pack core --source-branch main");
   console.log("  node tools/install.mjs --target ../repo --pack core --adapter-file ./workflow.adapter.json");
+  console.log("  node tools/install.mjs --target ../repo --standard-authorization ./approved-project-authorization.json");
   console.log("  node tools/install.mjs --target ../repo --pack core --init-defaults --project-name my-project --verify");
   console.log("  node tools/install.mjs --target . --pack core --dry-run");
   console.log("  node tools/install.mjs --target . --pack core --verify");

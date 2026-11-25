@@ -3777,6 +3777,13 @@ When a change affects the simplified install/upgrade orchestrator, run:
 - `npm run perf:verify-project-config`
 - `npm run perf:verify-install-idempotence`
 
+Run `npm run perf:verify-standard-project-authorization` for the opt-in
+STANDARD installation authority. It covers read-only planning, installation
+and retry of an administrator-approved public key, refused foreign or stale
+policies, scoped signed decisions and revocation. The operator-session
+fixture exercises one accepted message and cold receipt recovery under the
+installed policy. These checks use controlled local issuers.
+
 The install idempotence fixture checks that a core install and reinstall
 preserve user ignore rules and add the private dispatch directory and exact
 local artifact fence path. On a disposable source-installed FILES project,

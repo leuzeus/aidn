@@ -27,9 +27,17 @@ export function codexMessageEvidence(chat, selector) {
 }
 
 export function assertCodexMessageEvidence(refs, expected) {
-  const messages = refs?.filter(row => row.ref.startsWith("codex:thread/"));
-  if (messages?.length !== 1 || messages[0].ref !== expected.ref || messages[0].sha256 !== expected.sha256)
+  const message = signedCodexMessageReference(refs);
+  if (!message || message.ref !== expected.ref || message.sha256 !== expected.sha256)
     throw Error("CODEX_MESSAGE_EVIDENCE_CHANGED");
+}
+
+export function signedCodexMessageReference(refs) {
+  const messages = Array.isArray(refs) ? refs.filter(row => typeof row?.ref === "string" && row.ref.startsWith("codex:thread/")) : [];
+  if (messages.length !== 1) return null;
+  const message = messages[0];
+  const match = /^codex:thread\/([^/]+)\/turn\/([^/]+)\/message\/([^/]+)$/.exec(message.ref);
+  return match && match.slice(1).every(id => matches(uuid, id)) && matches(digest, message.sha256) ? message : null;
 }
 
 // Codex item anchors are exclusive. Read backwards from the successor, or

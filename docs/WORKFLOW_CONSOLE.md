@@ -23,6 +23,41 @@ availability. Proving that the authenticated project account owns the live
 connection is a separate qualification step. Plain-text chat history alone
 does not carry the host-source proof required by this version.
 
+### Enroll a decision issuer at installation
+
+An authenticated project setup service provisions its administrator's
+Ed25519 public key as `project-authorization-admin.pem` in the protected
+`AIDN_STANDARD_HOST_HOME`. The home is dedicated to the project and lives
+outside the checkout. The setup service keeps its signing authority and the
+decision issuer's private key outside the requesting agent.
+
+The service approves a closed `standard-project-authorization.v1` contract
+for the resolved project and runtime scope. Each principal contains one public
+key, an authority ID, and explicit pairs of question contract and allowed
+choices. The initial revision is `1` with `previous_sha256: null`. The next
+revision names the digest of the full signed predecessor. The administrator
+signs the UTF-8 hex SHA-256 of the canonical unsigned body using Ed25519.
+Installation receives only the signed public enrollment data.
+
+```sh
+aidn install --target . --standard-authorization approved-project-authorization.json --dry-run
+aidn install --target . --standard-authorization approved-project-authorization.json
+```
+
+The preview reports the revision and contract digest. The installation
+transaction publishes the approved revision after verifying the installation.
+Resuming the transaction reuses its validated input. Reapplying the same
+revision is idempotent. A signed successor can remove issuers or choices.
+Apply it on every execution host for the project. Installation asset rollback
+and uninstall leave this administrator-owned authority available.
+
+An anchored host requires the current enrollment for new human decisions.
+The authority checks the issuer key, question version, choice and signed Codex
+message reference before capture. The installed revision and digest appear as
+`project_authorization` in the decision tool's session status. The ordinary
+MCP connection key remains separate from the installed decision issuer. The
+authenticated Codex interface supplies the message proof to that issuer.
+
 A trusted launcher can append `--chat <thread-uuid> <enrolled-human-authority>`
 to expose `recover_message`. These two selectors restrict delivery to that
 chat and principal. For an existing text answer the Codex client reads the

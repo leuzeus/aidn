@@ -5989,3 +5989,29 @@ choice, thread/turn/message reference and digest of the original UTF-8 text.
 Codex history, account status and the lookup arguments grant no authority.
 Redelivery identifies the accepted source and message evidence in the signed
 operation result and confirms the same receipt on the workflow instance.
+
+### Project installation and issuer authority
+
+The protected STANDARD host admits an explicit
+`standard-project-authorization.v1` revision through the installation
+transaction. Admission checks the independent administrator's public key from
+the protected host home, the resolved project and runtime scope, the next
+revision and the exact previous digest. Atomic publication of each signed
+revision makes installation retryable and preserves the previous records.
+Projects with a shared database apply an approved revision on each execution
+host. Checkout configuration and installation assets supply no signing keys.
+
+The active contract narrows the human source verifier to the enrolled issuer
+and the listed question contract and choice. A signed Codex message reference
+is required on this path. The verifier binds the original question using the
+existing `standard-host-source.v1` envelope and rechecks the active authority.
+An anchored home requires its enrollment and refuses legacy human sources.
+Legacy unanchored homes retain their historical rules. An accepted matching
+receipt is independently readable from its original journal and process event.
+Revocation stops further source verification under the revoked issuer.
+
+The project authority signs policy only. Business acceptance still comes
+from the authenticated interface, as a signed exact claim submitted through the
+ordinary inbox. Revocation and replacement require another approved revision.
+Installation enrollment adds no business acceptance or automatic promotion,
+merge, model use, or other execution permission.

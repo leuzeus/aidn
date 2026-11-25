@@ -26,6 +26,9 @@ The classification keeps automation from confusing output format with write perm
   combinations instead of silently choosing an effect.
 - Read-only and preview commands must not modify the checkout.
 - Local writes require explicit intent such as `--write`.
+- `install --standard-authorization FILE` uses the existing installation
+  transaction to enroll the administrator-approved public keys in the protected
+  project host home. Its dry run verifies the input and previews the digest.
 - Global management previews require `--write --expect-plan` for application.
   `setup` is an interactive executor whose confirmation dispatches the same
   exact-plan write operation; JSON output alone never authorizes it.

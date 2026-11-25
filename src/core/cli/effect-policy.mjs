@@ -454,7 +454,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
       effectClass: "preview",
     }],
     safeArgs: ["install", "--target", ".", "--profile", "minimal"],
-    notes: "Installs or upgrades tracked scaffold projections in the explicit target repository.",
+    notes: "Installs or upgrades scaffold projections in the explicit target. An explicit approved STANDARD authorization input enrolls public keys in protected host state.",
   }),
   commandPolicy({
     id: "build-release",

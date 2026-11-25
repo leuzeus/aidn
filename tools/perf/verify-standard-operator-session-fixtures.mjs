@@ -9,6 +9,8 @@ import { bindOperatorChat, readCodexMessageReference } from "../../src/adapters/
 import { operatorOffer, assertOperatorClaim } from "../../src/adapters/workflow-console/standard-operator-offer.mjs";
 import { runStandardWorkflowEntry } from "../../src/application/runtime/standard-workflow-entry.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
+import { installStandardAuthorization, prepareStandardAuthorizationInstallation } from "../../src/adapters/runtime/standard-project-authorization-store.mjs";
 
 const fixture = createStandardConsoleFixture();
 const { target, config, configuration: request, dirs } = fixture;
@@ -82,9 +84,25 @@ try {
   const messageId = "30000000-0000-4000-8000-000000000003";
   const chat = bindOperatorChat(threadId, "fixture_operator"), keys = generateKeyPairSync("ed25519");
   const foreign = generateKeyPairSync("ed25519");
-  const principals = [[chat.authority_id, keys], ["fixture_other", foreign]].map(([authority_id, key]) =>
-    ({ authority_id, kinds: ["human"], public_key: key.publicKey.export({ format: "pem", type: "spki" }) }));
-  fs.writeFileSync(path.join(historical.dirs.authority, "principals.json"), JSON.stringify({ contract_version: "standard-host-principals.v1", principals }));
+  const administrator = generateKeyPairSync("ed25519");
+  const pem = key => key.export({ format: "pem", type: "spki" });
+  const scope = resolveRuntimeProjectContext({ targetRoot: historical.target, env });
+  const principals = [[chat.authority_id, keys], ["fixture_other", foreign]].map(([authority_id, key]) => ({
+    authority_id, public_key: pem(key.publicKey), decisions: [{ question_contract: "standard-mode-question.v1", choices: ["COMMITTING"] }],
+  }));
+  fs.writeFileSync(path.join(historical.dirs.authority, "project-authorization-admin.pem"), pem(administrator.publicKey));
+  const fileForPolicy = path.join(historical.base, "approved-authorization.json");
+  const policy = { contract_version: "standard-project-authorization.v1", project_id: scope.project_id,
+    runtime_scope_id: scope.runtime_scope_id, revision: 1, previous_sha256: null, principals };
+  function install(policy) {
+    const signed = { ...policy, signature: sign(null, Buffer.from(shadowHash(policy)), administrator.privateKey).toString("base64") };
+    fs.writeFileSync(fileForPolicy, JSON.stringify(signed));
+    const setup = { targetRoot: historical.target, file: fileForPolicy, environment: env };
+    const plan = prepareStandardAuthorizationInstallation(setup);
+    installStandardAuthorization({ ...setup, plan });
+    return plan.contract_sha256;
+  }
+  const firstRevision = install(policy);
   const open = () => createStandardOperatorSession({ targetRoot: historical.target, configuration: historical.config, environment: env, operatorChat: chat });
   const q = await walkToQuestion(options => runStandardWorkflowEntry({ request: historical.configuration, environment: env, ...options }));
   const row = { turnId, item: { id: messageId, type: "userMessage", content: [{ type: "text", text: "COMMITTING\n" }] } };
@@ -119,12 +137,14 @@ try {
   assert.equal(received.choice, "COMMITTING"); assert.equal(received.outcome, "completed");
   fs.unlinkSync(file);
   assert.deepEqual(await recover(selector), received);
+  install({ ...policy, revision: 2, previous_sha256: firstRevision, principals: [] });
+  assert.deepEqual(await recover(selector), received);
   await assert.rejects(recover({ ...selector, message_id: threadId }), /CODEX_MESSAGE_EVIDENCE_CHANGED/);
   const record = JSON.parse(fs.readFileSync(path.join(historical.target, "docs/audit/workflows/operation-records", q.operation_id + ".json")));
   assert.equal(record.results.length, 1);
   assert(record.results[0].output.evidence_refs.some(e => e.ref === awaited.evidence.ref && e.sha256 === selector.content_sha256));
-  console.log(JSON.stringify({ status: "PASS", proof: "independently signed fixture message through public STANDARD FILES",
-    receipts: 1, prompts: 0, cold_recovery: true, genuine_codex_attestation: "SKIP" }));
+  console.log(JSON.stringify({ status: "PASS", proof: "independently signed fixture message through public STANDARD FILES with installed authorization",
+    receipts: 1, prompts: 0, cold_recovery: true, retained_after_revocation: true, genuine_codex_attestation: "SKIP" }));
 } finally {
   for (const dir of [historical.base, ...historical.owned]) fs.rmSync(dir, { recursive: true, force: true });
 }
