@@ -21,6 +21,7 @@ import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 import { getDatabaseSync } from '../../src/lib/sqlite/workflow-db-schema-lib.mjs';
 import { resolveRuntimeSqliteFile } from '../../src/application/runtime/runtime-persistence-service.mjs';
 import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-schema-validator.mjs';
+import { verifyCodexReviewSummary } from './codex-review-summary-fixture-lib.mjs';
 
 const H = 'a'.repeat(64), updateId = 'op_' + 'a'.repeat(40), here = fileURLToPath(import.meta.url);
 const model = { contract_version: 'agentic-process-model.v2', model_id: 'pr-content-control-component', revision: 1,
@@ -67,6 +68,7 @@ if (process.argv[2] === '--deliver') {
   const selected = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7);
   if (selected && !['files', 'dual', 'db-only'].includes(selected)) throw Error('FIXTURE_MODE_INVALID');
   try {
+    if (!process.argv.includes('--body-transfer-only')) await verifyCodexReviewSummary({ test, workingDirectory: parent });
     // Exercise the composed driver's real arrangement -> durable provider store
     // -> local Git refs -> content reader -> authenticated signed inbox path.
     // Expected text below is an independent scenario oracle, not observed data.

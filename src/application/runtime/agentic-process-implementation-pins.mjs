@@ -285,6 +285,7 @@ const files = [
   "src/core/contracts/workflow-definition/standard-operation-preview.v1.schema.json",
   "src/application/runtime/standard-workflow-control-inbox.mjs", "src/application/runtime/standard-session-pr-review-control-source.mjs", "src/adapters/runtime/process-control-inbox-store.mjs", "src/core/workflow/process-control-inbox.mjs",
   "src/core/contracts/workflow-definition/process-pr-review-payload.v1.schema.json", "src/core/contracts/workflow-definition/github-pr-review-event.v1.schema.json",
+  "src/core/contracts/workflow-definition/github-pr-review-event.v2.schema.json", "src/core/workflow/codex-review-summary.mjs",
   "src/core/contracts/workflow-definition/process-control-inbox.v1.schema.json", "src/core/contracts/workflow-definition/process-control-inbox.v2.schema.json", "src/core/contracts/workflow-definition/process-control-request.v1.schema.json",
   "src/core/contracts/workflow-definition/process-control-source.v1.schema.json",
   "src/core/workflow/native-allocation-journal.mjs", "src/core/contracts/workflow-definition/native-allocation-journal.v1.schema.json",

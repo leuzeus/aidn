@@ -480,7 +480,9 @@ finalization; `--verify` retains its read-only verification behavior.
     review reads, inline replies and thread resolution as specified in ADR-0025. Exact initialization checks
     the configured identity. For either PR review wait, a reviewer pinned in
     the protected manifest enables `--control-source` with the opaque GitHub
-    review node ID. Delivery requires the authenticated review and signed
+    review node ID or the completed/no-findings Codex summary comment node ID.
+    A summary retains its original content/time and supplies no approval.
+    Delivery requires the authenticated provider result and signed
     context. Replay and simulation perform no GitHub or credential I/O.
 - `aidn runtime workflow-action --target <root> --request <file> --json`
   - A STANDARD run preview returns `action.request` with its closed

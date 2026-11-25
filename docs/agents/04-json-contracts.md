@@ -1,5 +1,13 @@
 # 04 JSON Contracts
 
+`github-pr-review-event.v2` retains the exact visible Codex summary IssueComment,
+its body hash/chunks and original publication timestamps. It accepts only the
+versioned completed/no-findings result on the full current commit, from the
+pinned Bot. It remains distinct from a v1 PullRequestReview and establishes no
+approval or merge permission. The existing v2 control inbox retains either
+validated event within its full payload; no historical entry is upgraded.
+
+
 STANDARD entry selection v12 adds the explicit `retained_session_pr_open`
 variant and its closed proof. All other successful variants set its request
 flag to false; historical v1-v11 outputs remain readable. PR record input v2 is
