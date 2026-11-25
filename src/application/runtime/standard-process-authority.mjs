@@ -1,3 +1,5 @@
+import { createRetainedPostMergeDecisionSource } from './standard-retained-post-merge-decision-source.mjs';
+import { retainedPostMergeDecisionContinuation } from '../../core/workflow/standard-retained-post-merge-decision.mjs';
 import { createRetainedSessionIntegrationSource } from './standard-retained-session-integration-source.mjs';
 import { createRetainedSessionPrOpenSource } from './standard-retained-session-pr-open-source.mjs';
 import { retainedMergeCaptureContinuation } from '../../core/workflow/standard-retained-merge-capture.mjs';
@@ -131,6 +133,9 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   const retainedSessionIntegrationSource = createRetainedSessionIntegrationSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedExternalMergeSource = createRetainedExternalMergeSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedMergeCaptureSource = createRetainedMergeCaptureSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const retainedPostMergeDecisionSource = createRetainedPostMergeDecisionSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
+  const postMergeSourceFor = point => point?.kind === 'retained_post_merge_decision' ? retainedPostMergeDecisionSource : retainedPostMergeSource;
+  const postMergeContinuationFor = proof => proof.recorded_decision_operation_id ? retainedPostMergeDecisionContinuation(proof) : retainedPostMergeContinuation(proof);
   const retainedPostMergeSource = createRetainedPostMergeSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedSessionPrOpenSource = createRetainedSessionPrOpenSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
   const retainedSessionClosureSource = createRetainedSessionClosureSource({ configuration, environment, createAuthority: createStandardProcessAuthority });
@@ -1538,29 +1543,29 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   }
   async function retainedPostMergeEntry(instance, parameters, options) {
     authenticate(instance);
-    const retained = await retainedPostMergeSource.inspect(parameters.entry_point, options);
+    const retained = await postMergeSourceFor(parameters.entry_point).inspect(parameters.entry_point, options);
     if (retained.proof.session_id !== parameters.session?.session_id || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256)
       fail('STANDARD_RETAINED_POST_MERGE_FOCUS_CHANGED');
-    return retainedPostMergeContinuation(retained.proof);
+    return postMergeContinuationFor(retained.proof);
   }
   function readRetainedPostMerge(instance) {
     authenticate(instance);
     const entries = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select');
-    if (instance.initial_parameters?.entry_point?.kind !== 'retained_post_merge' || entries.length !== 1) fail('STANDARD_RETAINED_POST_MERGE_ENTRY_REQUIRED');
+    if (!['retained_post_merge','retained_post_merge_decision'].includes(instance.initial_parameters?.entry_point?.kind) || entries.length !== 1) fail('STANDARD_RETAINED_POST_MERGE_ENTRY_REQUIRED');
     const selected = acceptedOperation(instance, entries[0].intent.operation_id, 'workflow_entry_select');
-    const retained = retainedPostMergeSource.readRecorded(instance.initial_parameters.entry_point);
-    if (selected.output.observations.entry_point !== 'retained_post_merge'
-      || shadowHash(selected.output.observations.continuation) !== shadowHash(retainedPostMergeContinuation(retained.proof))
+    const retained = postMergeSourceFor(instance.initial_parameters.entry_point).readRecorded(instance.initial_parameters.entry_point);
+    if (selected.output.observations.entry_point !== instance.initial_parameters.entry_point.kind
+      || shadowHash(selected.output.observations.continuation) !== shadowHash(postMergeContinuationFor(retained.proof))
       || instances.read(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail('STANDARD_RETAINED_POST_MERGE_SOURCE_CHANGED');
     return retained;
   }
   function postMergeReviewPort(fallback) {
-    if (instances.read(configuration.instance_id).record?.initial_parameters?.entry_point?.kind !== 'retained_post_merge') return fallback;
+    if (!['retained_post_merge','retained_post_merge_decision'].includes(instances.read(configuration.instance_id).record?.initial_parameters?.entry_point?.kind)) return fallback;
     const names = ['prepareFastForward', 'applyFastForward', 'recoverFastForward', 'prepare', 'apply', 'recover',
       'verifyCompletedSource', 'readMergedSession', 'observeAlignment'];
     return { ...fallback, postMergeFetch: Object.fromEntries(names.map(name => [name, (...args) => {
       const instance = instances.read(configuration.instance_id).record;
-      const port = instance?.initial_parameters?.entry_point?.kind === 'retained_post_merge'
+      const port = ['retained_post_merge','retained_post_merge_decision'].includes(instance?.initial_parameters?.entry_point?.kind)
         ? readRetainedPostMerge(instance).reviewPort.postMergeFetch : fallback?.postMergeFetch;
       if (typeof port?.[name] !== 'function') fail('STANDARD_PR_POST_MERGE_ALIGNMENT_HOST_REQUIRED');
       return port[name](...args);

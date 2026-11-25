@@ -94,7 +94,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
   // Fresh and corrective R05 share the target's finalizer binding.
-  assert.equal(assets.catalog.bindings.length, 255); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 256); assert.equal(assets.catalog.activities.length, 23);
   assert.deepEqual(assets.catalog.bindings.filter(row => row.model_ref?.model_id === "aidn-standard-mode-handoff")
     .map(row => [row.node_id, row.binding.id]).sort(), [
       ["mode_handoff_decide", "mode_work_continue_decision"], ["mode_handoff_summary", "handoff_summary_prepare"],
@@ -842,10 +842,10 @@ test("the ordinary loader authenticates the two final-verification operations fo
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 288);
   assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 126);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 129);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 130);
   assert.ok(read('package/catalogs/process-models/aidn-standard.v1.json').length <= 262144);
   const target = loaded.model.call_targets.find(row => row.model_id === 'aidn-standard-final-verification'), { model: child, ...identity } = target;
-  assert.equal(loaded.model.call_targets.length, 25);
+  assert.equal(loaded.model.call_targets.length, 26);
   assert.equal(child.model_id, "aidn-standard-final-verification");
   assert.deepEqual(identity, processModelIdentity(child));
   const retainedValidation = loaded.model.call_targets.find(row => row.model_id === 'aidn-standard-retained-validation').model;
@@ -873,14 +873,14 @@ test("distinct pinned targets may share both local operation IDs", () => {
   const wrapper = model.call_targets.find(row => row.model_id === 'aidn-standard-retained-external-merge');
   const oldWrapper = processModelIdentity(wrapper.model);
   wrapper.model.nodes.find(row => row.id === 'retained_pr_merge_kind').branches =
-    wrapper.model.nodes.find(row => row.id === 'retained_pr_merge_kind').branches.filter(row => row.flow_id !== 'post_merge');
-  wrapper.model.nodes = wrapper.model.nodes.filter(row => row.id !== 'retained_pr_post_merge');
-  wrapper.model.data_bindings.inputs = wrapper.model.data_bindings.inputs.filter(row => row.node_id !== 'retained_pr_post_merge');
+    wrapper.model.nodes.find(row => row.id === 'retained_pr_merge_kind').branches.filter(row => !['post_merge','recorded_decision'].includes(row.flow_id));
+  wrapper.model.nodes = wrapper.model.nodes.filter(row => !['retained_pr_post_merge','retained_pr_recorded_post_merge'].includes(row.id));
+  wrapper.model.data_bindings.inputs = wrapper.model.data_bindings.inputs.filter(row => !['retained_pr_post_merge','retained_pr_recorded_post_merge'].includes(row.node_id));
   Object.assign(wrapper, processModelIdentity(wrapper.model));
   model.nodes.find(row => row.id === 'retained_external_merge').target = processModelIdentity(wrapper.model);
   for (const row of catalog.bindings) if (row.model_ref && shadowHash(row.model_ref) === shadowHash(oldWrapper)) row.model_ref = processModelIdentity(wrapper.model);
-  model.call_targets = model.call_targets.filter(row => row.model_id !== 'aidn-standard-retained-post-merge');
-  catalog.bindings = catalog.bindings.filter(row => row.model_ref?.model_id !== 'aidn-standard-retained-post-merge');
+  model.call_targets = model.call_targets.filter(row => !['aidn-standard-retained-post-merge','aidn-standard-recorded-post-merge'].includes(row.model_id));
+  catalog.bindings = catalog.bindings.filter(row => !['aidn-standard-retained-post-merge','aidn-standard-recorded-post-merge'].includes(row.model_ref?.model_id));
   const sourceTarget = model.call_targets.find(row => row.model_id === 'aidn-standard-final-verification');
   const second = structuredClone(sourceTarget.model);
   second.model_id += "-alternate";

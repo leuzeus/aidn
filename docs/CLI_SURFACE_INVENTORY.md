@@ -1126,3 +1126,10 @@ original_configuration and fetch_operation_id. It resumes one settled L1
 captured-merge prefix at a fresh R09 measurement. It does not repeat the accepted
 incident disposition or physical fetch, grant Native work, or authorize a merge.
 Preview and exact-action execution retain their existing effect classifications.
+
+The STANDARD workflow-run configuration also accepts entry_point.kind
+retained_post_merge_decision with original_configuration and decision_operation_id.
+It admits only an expired, receipted, unaccepted no-effect R09 fast-forward
+choice after the fixed source authenticates its Human evidence and identical
+current Git subject. Preview writes nothing. The successor's exact action and
+current executor grant remain necessary before the local fast-forward.

@@ -8184,3 +8184,15 @@ Historical opening lookup and the live authenticated source prototype are
 separate evidence; these synthetic boundary fixtures do not qualify installed
 post-merge completion. Keep the ordinary R09 fast-forward, historical admission
 and composition suites when changing its shared readers.
+
+## Recorded R09 choice continuation
+
+The retained external-merge fixture suite covers the closed recorded-choice
+boundary and published routing to fast-forward followed by ordinary R09
+measurement, alignment and completion. It refuses missing, changed, foreign,
+unsettled, UNKNOWN and substituted decision evidence. Its reducer receipts
+and Human source are synthetic. The ordinary real-Git R09 suite remains the
+regression for execution, interruption and independent continuity admission.
+A separate local-only PostgreSQL source probe authenticates genuine retained
+Human evidence and current exact Git tips without writing either store.
+Installed execution and final P0 qualification require their own evidence.

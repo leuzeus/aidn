@@ -1,3 +1,5 @@
+import { createRetainedPostMergeDecisionSource } from './standard-retained-post-merge-decision-source.mjs';
+import { retainedPostMergeDecisionContinuation } from '../../core/workflow/standard-retained-post-merge-decision.mjs';
 import { readStandardHostInstance } from '../../adapters/runtime/standard-host-authority.mjs';
 import { createOperationJournalSigner } from '../../core/workflow/process-operation-journal.mjs';
 import { shadowHash as H } from '../../core/workflow/shadow-json.mjs';
@@ -21,7 +23,7 @@ export function readRetainedPostMergeContinuity({ targetRoot, sessionId, sourceB
     require(match);
     const instance = instances.read(match[1]).record;
     require(instance);
-    if (instance.initial_parameters?.entry_point?.kind !== 'retained_post_merge'
+    if (!['retained_post_merge','retained_post_merge_decision'].includes(instance.initial_parameters?.entry_point?.kind)
       || instance.initial_parameters.session?.session_id !== sessionId) continue;
     const intent = latestIntent(instance, postMergeCompleteOperation);
     if (!intent || !instance.events.some(row => row.kind === 'operation_result'
@@ -32,15 +34,16 @@ export function readRetainedPostMergeContinuity({ targetRoot, sessionId, sourceB
     const entryIntent = latestIntent(instance, 'workflow_entry_select');
     require(entryIntent && instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'workflow_entry_select').length === 1);
     const entry = acceptedOperation(read, instance, entryIntent.operation_id, 'workflow_entry_select');
-    require(entry.output.observations.entry_point === 'retained_post_merge');
+    require(entry.output.observations.entry_point === instance.initial_parameters.entry_point.kind);
     const ref = instance.initial_parameters.entry_point.original_configuration;
     const original = readAgentRunFile(ref.path, { sha256: ref.sha256 }).value;
     require(original.target_root === targetRoot);
     // Only reconstruct the immutable reader's shared bindings. This object is
     // never executed and cannot replace the successor's configuration or grants.
     const configuration = { ...original, instance_id: instance.instance_id };
-    const retained = createRetainedPostMergeSource({ configuration, environment }).readRecorded(instance.initial_parameters.entry_point);
-    require(H(entry.output.observations.continuation) === H(retainedPostMergeContinuation(retained.proof))
+    const recorded = instance.initial_parameters.entry_point.kind === 'retained_post_merge_decision';
+    const retained = (recorded ? createRetainedPostMergeDecisionSource : createRetainedPostMergeSource)({ configuration, environment }).readRecorded(instance.initial_parameters.entry_point);
+    require(H(entry.output.observations.continuation) === H((recorded ? retainedPostMergeDecisionContinuation : retainedPostMergeContinuation)(retained.proof))
       && H(retained.opening.record) === H(opening));
     const { record, output } = acceptedOperation(read, instance, intent.operation_id, postMergeCompleteOperation);
     require(record.preview.binding.effect_class === 'mutating' && record.grant?.authorized === true
