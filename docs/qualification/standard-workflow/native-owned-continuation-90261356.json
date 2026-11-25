@@ -2728,5 +2728,51 @@
     "post_merge_sync": "SKIP",
     "full_same_candidate_P0": "SKIP",
     "next_step": "Deliver the bounded provider-verification handoff fix, then explicitly recover the retained expired capture. Do not delete or rewrite the reservation, fabricate its delivery, or repeat the physical merge."
+  },
+  "provider_control_delivery_handoff": {
+    "correction_pr": 241,
+    "status": "MERGED",
+    "candidate": "a8e04d163918128e21411304b5699a73db912741",
+    "archive_sha256": "c8448a4e3f57e0018dae255d1d7825e25290f190a123c9cfd98d96a97a23a9da",
+    "merge_commit": "4808d7f64c638ef338f9a28b152376f8edb92db0",
+    "scope": "Bounded provider verification precedes the reducer local gate; exact capture/context and CAS remain enforced. No expiry renewal or frozen-instance migration.",
+    "governance": {
+      "lane": "ASSURED",
+      "admission": "PASS",
+      "run": 45538044788,
+      "selected_families": 10,
+      "perf": "PASS",
+      "perf_run": 45538044771
+    },
+    "validation": {
+      "previous_archive_regression": "FAIL_PROCESS_CONTROL_AUTHORITY_TIMEOUT",
+      "source_full_delivery_regression": "PASS",
+      "source_full_delivery_checks": 6,
+      "installed_component_regression": "PASS",
+      "installed_component_checks": 6,
+      "fixture_support": "source checkout",
+      "review_control_db_only_checks": 45,
+      "generic_control_checks": 27,
+      "composition_checks": 69,
+      "ordinary_github_host": "PASS",
+      "documentation_and_sensitivity": "PASS",
+      "evidence_sha256": "1446db940810cec578e0b872b63ac681ec00d5033610d8520b20912d454dbf77",
+      "standalone_packaged_fixture": "UNAVAILABLE_REQUIRES_GIT_FIXTURE_OWNER"
+    },
+    "current_live_boundary": {
+      "status": "REFUSED_AS_REQUIRED",
+      "reason": "STANDARD_PR_EXTERNAL_MERGE_CAPTURE_EXPIRED",
+      "phase": "reserved",
+      "evidence_sha256": "a0bb442dc0371bac8e4d249ae7a8177c069fb904be8bb5f51ea3e314b197def9",
+      "original_instance_capture_and_history_unchanged": true,
+      "owner_pending": false
+    },
+    "native_calls": 0,
+    "new_human_questions": 0,
+    "manual_signatures": 0,
+    "physical_merge_repeated": false,
+    "live_capture_recovery": "SKIP",
+    "post_merge_sync": "SKIP",
+    "full_same_candidate_P0": "SKIP"
   }
 }
