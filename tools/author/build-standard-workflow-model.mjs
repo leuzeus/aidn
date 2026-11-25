@@ -341,6 +341,25 @@ const pretriageTarget = { ...prReviewTarget, model_id: "aidn-standard-pr-pretria
     ...prReviewTarget.data_bindings.inputs.filter(row => row.node_id !== "pr_merge_basis" && postMerge.some(node => node.id === row.node_id)),
   ] } };
 const pretriageRef = pinTarget(pretriageTarget);
+// Explicit recovery from an authenticated, settled external review wait.
+// This route neither repeats delivery nor fabricates review/merge consent.
+const retainedMergeNodeStart = nodes.length, retainedMergeInputStart = inputs.length;
+seq('retained_external_merge', ['retained_pr_merge_capture', 'retained_pr_merge_event_route', 'retained_pr_external_route']);
+node('retained_pr_merge_capture', 'call', { target: captureRef });
+inputs.push({ node_id: 'retained_pr_merge_capture', fields: {} });
+op('retained_pr_merge_event_route', 'session_pr_review_event_route');
+xor('retained_pr_external_route', [['external', 'retained_pr_external_completion', 'session_pr_pretriage_external'], ['refused', 'retained_pr_external_refused', null]]);
+seq('retained_pr_external_refused', []);
+node('retained_pr_external_completion', 'call', { target: pretriageRef });
+inputs.push({ node_id: 'retained_pr_external_completion', fields: { update_operation_id: { source: 'parameter', key: 'update_operation_id', path: [] } } });
+const retainedMergeNodes = nodes.splice(retainedMergeNodeStart);
+const retainedMergeTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-retained-external-merge', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'retained_external_merge', nodes: retainedMergeNodes,
+  operation_pins: pinsFor(retainedMergeNodes), call_interface: { parameters: { update_operation_id: 'string' }, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: ['update_operation_id'], inputs: inputs.splice(retainedMergeInputStart) } };
+const retainedMergeRef = pinTarget(retainedMergeTarget);
+node('retained_external_merge', 'call', { target: retainedMergeRef });
+inputs.push({ node_id: 'retained_external_merge', fields: { update_operation_id: { source: 'operation_output', node_id: 'entry_select', path: ['observations', 'continuation', 'update_operation_id'] } } });
 function callPretriage(id, update) {
   node(id, "call", { target: pretriageRef });
   inputs.push({ node_id: id, fields: operation(null, "update_operation_id", update) });
@@ -907,6 +926,7 @@ inputs.push({ node_id: 'retained_promotion_finish', fields: {
 // Retained session closure skips the settled prefix without importing events.
 const sessionSuffix = closureParent.children.splice(closureParent.children.indexOf('session_close_record'));
 nodes.find(row => row.id === 'cycle_work_route').branches.unshift({ flow_id: 'retained_session', node_id: 'session_close_retained_ready', condition: 'retained_session_closure_requested' });
+nodes.find(row => row.id === 'cycle_work_route').branches.unshift({ flow_id: 'external_merge', node_id: 'retained_external_merge', condition: 'retained_external_merge_requested' });
 seq('session_close_retained_ready', []);
 nodes.find(row => row.id === 'standard').children.push('session_delivery_route');
 xor('session_delivery_route', [['committing', 'session_delivery_work', 'cycle_work_requested'], ['inapplicable', 'session_delivery_inapplicable', null]]);
@@ -1023,6 +1043,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...verificationRef, model: verificationTarget },
     { ...prReviewRef, model: prReviewTarget },
     { ...pretriageRef, model: pretriageTarget },
+    { ...retainedMergeRef, model: retainedMergeTarget },
     { ...captureRef, model: captureTarget },
     { ...driftRecoveryRef, model: driftRecoveryTarget },
     { ...correctiveDriftRef, model: correctiveDriftTarget },

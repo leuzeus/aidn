@@ -8143,3 +8143,15 @@ evidence. PR record authority fixtures reject history changed during provider
 observation and verify finalizer identity from the signed delivery plan when
 the public input is empty. Canonical writer and successor fixtures verify
 their own new postimages, independently of the historical close proof.
+
+The retained-closure family includes
+`verify-standard-retained-external-merge-fixtures.mjs`: closed v13 selection,
+settled review-wait boundaries, changed/foreign/UNKNOWN/control refusals,
+entry CAS across observation, provider-event waiting without delivery replay,
+and preservation of the original delivery timestamp. Real delayed merge read
+and verification exceed five seconds; accelerated deadline and cancellation
+cases assert zero canonical writes. The fixed 60-second I/O bound applies to
+merge and review; the generic control fixtures retain the five-second claim
+bound. Pure boundary fixtures do not prove historical signature authentication
+or actual GitHub reconciliation; the live source prototype and installed
+public journey provide separate qualification evidence.

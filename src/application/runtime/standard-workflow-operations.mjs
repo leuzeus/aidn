@@ -426,7 +426,7 @@ const definitions = [
   ["cycle_readiness_evaluate", "start-session", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-cycle-readiness-evaluate-input.v1", "deterministic", "standard-cycle-readiness-output.v1"],
   ["cycle_implementation_enter", "cycle-create", "mutating", ["SPEC-R03", "SPEC-R04"], "standard-cycle-implementation-enter-input.v1", "deterministic", "standard-cycle-readiness-output.v1"],
   ["context_reload", "context-reload", "read-only", ["SPEC-R01", "SPEC-R11"], "standard-empty-input.v1"],
-  ["workflow_entry_select", "context-reload", "read-only", ["SPEC-R01", "SPEC-R02", "SPEC-R03", "SPEC-R05"], "standard-empty-input.v1", "deterministic", "standard-workflow-entry-selection-output.v12"],
+  ["workflow_entry_select", "context-reload", "read-only", ["SPEC-R01", "SPEC-R02", "SPEC-R03", "SPEC-R05"], "standard-empty-input.v1", "deterministic", "standard-workflow-entry-selection-output.v13"],
   ["cycle_retained_verification_admit", "cycle-close", "read-only", ["SPEC-R03", "SPEC-R04", "SPEC-R07"], "standard-empty-input.v1", "deterministic", "standard-retained-verification-admission-output.v1"],
   ["cycle_retained_validation_admit", "start-session", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-empty-input.v1", "deterministic", "standard-retained-validation-admission-output.v1"],
   ["cycle_work_phase_select", "start-session", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-empty-input.v1", "deterministic", "standard-work-phase-selection-output.v2"],

@@ -94,7 +94,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
   // Fresh and corrective R05 share the target's finalizer binding.
-  assert.equal(assets.catalog.bindings.length, 235); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 236); assert.equal(assets.catalog.activities.length, 23);
   assert.deepEqual(assets.catalog.bindings.filter(row => row.model_ref?.model_id === "aidn-standard-mode-handoff")
     .map(row => [row.node_id, row.binding.id]).sort(), [
       ["mode_handoff_decide", "mode_work_continue_decision"], ["mode_handoff_summary", "handoff_summary_prepare"],
@@ -704,7 +704,7 @@ test("published cycle entry preserves creation preconditions and separates owned
     { flow_id: "canonical", node_id: "prework_record_inapplicable", condition: null }]);
   assert.equal(node("cycle_drift_report").kind, "activity");
   assert.equal(assets.model.nodes.filter(row => row.kind === "activity").length, 23);
-  assert.equal(assets.model.nodes.length, 287); assert.ok(assets.model.nodes.length <= 288);
+  assert.equal(assets.model.nodes.length, 288); assert.ok(assets.model.nodes.length <= 288);
 });
 test("catalog v7 declares typed initial audits while the closed v4-v6 formats retain their scopes", () => {
   assert.deepEqual(validateJsonSchema(assets.catalog, catalogSchemaV7, "$", { contractKind: "workflow-definition" }), []);
@@ -840,11 +840,11 @@ test("the ordinary loader authenticates the two final-verification operations fo
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV6, "#", { contractKind: "workflow-definition" }), []);
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV7, "#", { contractKind: "workflow-definition" }), []);
   const input = fresh(), loaded = assets;
-  assert.equal(loaded.model.nodes.length, 287);
+  assert.equal(loaded.model.nodes.length, 288);
   assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 126);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 109);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 110);
   const target = loaded.model.call_targets.find(row => row.model_id === 'aidn-standard-final-verification'), { model: child, ...identity } = target;
-  assert.equal(loaded.model.call_targets.length, 22);
+  assert.equal(loaded.model.call_targets.length, 23);
   assert.equal(child.model_id, "aidn-standard-final-verification");
   assert.deepEqual(identity, processModelIdentity(child));
   const retainedValidation = loaded.model.call_targets.find(row => row.model_id === 'aidn-standard-retained-validation').model;

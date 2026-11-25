@@ -57,6 +57,10 @@ export function createStandardOperationProvider({
     };
     assertCurrent();
     const point = standardEntryPoint(parameters);
+    if (point === 'retained_external_merge') {
+      const continuation = await processAuthority.retainedExternalMergeEntry(instance, parameters); assertCurrent();
+      return selectStandardEntry(parameters, null, continuation);
+    }
     if (point === 'retained_session_pr_open') {
       const continuation = await retainedSessionPrOpenEntry(instance, parameters); assertCurrent();
       return selectStandardEntry(parameters, null, continuation);

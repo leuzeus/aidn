@@ -26,10 +26,9 @@ export function createStandardControlInbox({ store, signer, source, projectionRe
     });
     const expired = new Promise((_, reject) => { timer = setTimeout(() => {
       reject(Object.assign(new Error("PROCESS_CONTROL_AUTHORITY_TIMEOUT"), { code: "PROCESS_CONTROL_AUTHORITY_TIMEOUT" })); stop.abort();
-    // Review capture includes bounded authenticated provider I/O and complete
-    // content collection. It is not the small local claim verifier. Preserve
-    // the five-second bound for all other sources and cancellation for both.
-    }, ['readReview', 'verifyReview'].includes(method) ? 60000 : 5000); });
+    // Review and merge capture include authenticated provider I/O. Local
+    // claims retain their shorter bound; cancellation applies to both.
+    }, ['readReview', 'verifyReview', 'readMerge', 'verifyMerge'].includes(method) ? 60000 : 5000); });
     try {
       const value = await Promise.race([Promise.resolve().then(() => source[method]({ ...structuredClone(input), signal: combined })), expired, aborted]);
       if (value !== null && checkShadowJson(value)) fail("PROCESS_CONTROL_AUTHORITY_INVALID");
