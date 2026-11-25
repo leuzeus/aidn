@@ -360,14 +360,31 @@ const retainedPostTarget = { ...prReviewTarget, model_id: 'aidn-standard-retaine
   call_interface: { parameters: { fetch_operation_id: 'string' }, returns: {} },
   data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: ['fetch_operation_id'], inputs: retainedPostInputs } };
 const retainedPostRef = pinTarget(retainedPostTarget);
+// A recorded exact Human choice enters only the local fast-forward. The same
+// R09 measurement/alignment/completion call then verifies the physical result.
+const recordedPostNodes = [
+  { id: 'recorded_post_merge', kind: 'sequence', participant_ref: 'project', children: ['recorded_post_merge_fast_forward', 'recorded_post_merge_finish'] },
+  { id: 'recorded_post_merge_fast_forward', kind: 'operation', participant_ref: 'project', binding_ref: 'session_pr_post_merge_fast_forward' },
+  { id: 'recorded_post_merge_finish', kind: 'call', participant_ref: 'project', target: retainedPostRef }
+];
+const recordedPostTarget = { ...retainedPostTarget, model_id: 'aidn-standard-recorded-post-merge', revision: 1, entry: 'recorded_post_merge',
+  nodes: recordedPostNodes, operation_pins: pinsFor(recordedPostNodes),
+  call_interface: { parameters: { fetch_operation_id: 'string', decision_operation_id: 'string' }, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: ['fetch_operation_id','decision_operation_id'], inputs: [
+    { node_id: 'recorded_post_merge_fast_forward', fields: { contract_version: { source: 'literal', value: 'standard-pr-post-merge-fast-forward-input.v1' }, decision_operation_id: { source: 'parameter', key: 'decision_operation_id', path: [] } } },
+    { node_id: 'recorded_post_merge_finish', fields: { fetch_operation_id: { source: 'parameter', key: 'fetch_operation_id', path: [] } } }
+  ] } };
+const recordedPostRef = pinTarget(recordedPostTarget);
 // Explicit recovery from an authenticated, settled external review wait.
 // This route neither repeats delivery nor fabricates review/merge consent.
 const retainedMergeNodeStart = nodes.length, retainedMergeInputStart = inputs.length;
 seq('retained_pr_merge_entry', ['retained_pr_merge_select', 'retained_pr_merge_kind']);
 op('retained_pr_merge_select', 'session_pr_retained_merge_select');
-xor('retained_pr_merge_kind', [['post_merge', 'retained_pr_post_merge', 'retained_post_merge_requested'],
+xor('retained_pr_merge_kind', [['recorded_decision', 'retained_pr_recorded_post_merge', 'retained_post_merge_decision_requested'], ['post_merge', 'retained_pr_post_merge', 'retained_post_merge_requested'],
   ['capture', 'retained_pr_captured_completion', 'retained_external_merge_capture_requested'],
   ['wait', 'retained_external_merge', null]]);
+node('retained_pr_recorded_post_merge', 'call', { target: recordedPostRef });
+inputs.push({ node_id: 'retained_pr_recorded_post_merge', fields: Object.fromEntries(['fetch_operation_id','decision_operation_id'].map(key => [key, { source: 'operation_output', node_id: 'retained_pr_merge_select', path: ['observations', key] }])) });
 node('retained_pr_post_merge', 'call', { target: retainedPostRef });
 inputs.push({ node_id: 'retained_pr_post_merge', fields: {
   fetch_operation_id: { source: 'operation_output', node_id: 'retained_pr_merge_select', path: ['observations', 'fetch_operation_id'] } } });
@@ -1078,6 +1095,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...retainedMergeRef, model: retainedMergeTarget },
     { ...capturedPretriageRef, model: capturedPretriageTarget },
     { ...retainedPostRef, model: retainedPostTarget },
+    { ...recordedPostRef, model: recordedPostTarget },
     { ...captureRef, model: captureTarget },
     { ...driftRecoveryRef, model: driftRecoveryTarget },
     { ...correctiveDriftRef, model: correctiveDriftTarget },

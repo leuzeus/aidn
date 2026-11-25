@@ -5925,3 +5925,31 @@ admission. This is a derived evidence lookup, not a new canonical store.
 
 This bounded route does not qualify arbitrary version migration, L2 incident
 continuation, Native execution or an uninterrupted STANDARD nominal journey.
+
+## Recorded R09 choice after capture expiry
+
+A completed no-effect Human receipt can outlive its five-minute question before
+the reducer accepts it. A separate retained_post_merge_decision entry admits
+only this bounded case: an admitted retained-post-merge prefix, optional accepted
+system question dispositions, and one receipted but unaccepted fast-forward
+choice. Its acknowledged inbox and original signed source must authenticate
+historically; no interrupted claim, UNKNOWN, refusal or accepted choice qualifies.
+The original instance, question, receipt, source and timestamps remain immutable.
+
+The successor authenticates the complete original lineage and provider binding,
+then observes the same source branch, exact local/remote tips, merge, proof ref
+and fetch receipt named in the Human question. A changed subject or revoked
+source refuses. The accepted successor entry is the new admission proof; it
+does not fabricate acceptance in the original instance. A current executor
+grant and exact Git plan govern the effect. Before execution the fixed source
+rechecks the historical choice and current subject. Under the Git port's owned
+locks it rechecks authority/history while that port independently fences the
+exact tips, index and files. No global question-age limit is changed or renewed.
+
+A fixed call contains only fast-forward, then calls the existing R09 measurement,
+alignment and completion suffix. This preserves the existing 256-operation
+limit. Independent completion lookup recognizes the new entry and authenticates
+its retained choice as well as the original opening and fetch. This is a derived
+continuation proof, not a canonical store, implicit migration or new merge.
+The local pilot observation exception does not establish an authenticated
+product chat channel or a complete nominal P0 run.

@@ -1,3 +1,4 @@
+import selectionSchemaV3 from '../contracts/workflow-definition/standard-retained-merge-capture-selection.v3.schema.json' with { type: 'json' };
 import entrySchema from '../contracts/workflow-definition/standard-retained-merge-capture-entry.v1.schema.json' with { type: 'json' };
 import proofSchema from '../contracts/workflow-definition/standard-retained-merge-capture-proof.v1.schema.json' with { type: 'json' };
 import selectionSchemaV2 from '../contracts/workflow-definition/standard-retained-merge-capture-selection.v2.schema.json' with { type: 'json' };
@@ -15,16 +16,19 @@ const valid = (value, schema) => {
 export const assertRetainedMergeCaptureEntry = value => valid(value, entrySchema);
 export const assertRetainedMergeCaptureProof = value => valid(value, proofSchema);
 export function assertRetainedMergeCaptureSelection(value) {
-  const current = value?.contract_version === 'standard-retained-merge-capture-selection.v2';
-  valid(value, current ? selectionSchemaV2 : selectionSchema);
+  const v3 = value?.contract_version === 'standard-retained-merge-capture-selection.v3';
+  const current = v3 || value?.contract_version === 'standard-retained-merge-capture-selection.v2';
+  valid(value, v3 ? selectionSchemaV3 : current ? selectionSchemaV2 : selectionSchema);
+  if (v3) require(value.facts.retained_post_merge_decision_requested === (value.observations.decision_operation_id !== null)
+    && (!value.facts.retained_post_merge_decision_requested || value.facts.retained_post_merge_requested));
   if (current) require(value.facts.retained_post_merge_requested === (value.observations.fetch_operation_id !== null)
     && !(value.facts.retained_post_merge_requested && value.facts.retained_external_merge_capture_requested),
     'STANDARD_RETAINED_MERGE_CAPTURE_CONTRACT_INVALID');
   return value;
 }
-export const retainedMergeCaptureSelection = (captured, fetchId = null) => assertRetainedMergeCaptureSelection({
-  contract_version: 'standard-retained-merge-capture-selection.v2', operation_ref: 'session_pr_retained_merge_select',
-  outcome: 'completed', effect_status: 'no_effect', facts: { retained_external_merge_capture_requested: captured, retained_post_merge_requested: fetchId !== null }, observations: { fetch_operation_id: fetchId }, evidence_refs: [] });
+export const retainedMergeCaptureSelection = (captured, fetchId = null, decisionId = null) => assertRetainedMergeCaptureSelection({
+  contract_version: 'standard-retained-merge-capture-selection.v3', operation_ref: 'session_pr_retained_merge_select',
+  outcome: 'completed', effect_status: 'no_effect', facts: { retained_external_merge_capture_requested: captured, retained_post_merge_requested: fetchId !== null, retained_post_merge_decision_requested: decisionId !== null }, observations: { fetch_operation_id: fetchId, decision_operation_id: decisionId }, evidence_refs: [] });
 export const retainedMergeCaptureContinuation = proof => ({ source_instance_id: proof.original_instance_id,
   source_instance_sha256: proof.original_instance_sha256, update_operation_id: proof.update_operation_id,
   capture_id: proof.capture_id, proof_sha256: H(assertRetainedMergeCaptureProof(proof)) });

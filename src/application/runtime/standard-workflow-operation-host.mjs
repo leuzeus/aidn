@@ -855,7 +855,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   const sessionPrMergeEffect = createStandardPrMergeExecute({ ...acceptedReviewPorts, assertConsentFresh: assertMergeConsentFresh,
     observeMergeQualification: sessionPrConsent.observeForMerge,
     verifyFreshDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
-  const retainedPostMerge = instance => instance.initial_parameters?.entry_point?.kind === 'retained_post_merge'
+  const retainedPostMerge = instance => ['retained_post_merge','retained_post_merge_decision'].includes(instance.initial_parameters?.entry_point?.kind)
     ? processAuthority.readRetainedPostMerge(instance) : null;
   const postMergePorts = { ...acceptedReviewPorts,
     reviewPort: processAuthority?.postMergeReviewPort?.(sessionReviewPort) ?? sessionReviewPort,
@@ -882,7 +882,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
         .map(name => { const row = artifacts.read(name, { required: true }); return { path: name, sha256: row.sha256, metadata_sha256: artifacts.metadataHash(name) }; });
       return shadowHash({ observed, inventory });
     } });
-  const postMergeFastForward = createStandardPostMergeFastForward({ ...postMergePorts, postMerge, decision: postMergeDecision,
+  const postMergeFastForward = createStandardPostMergeFastForward({ readRetainedDecision(instance, input) {
+      const source = retainedPostMerge(instance);
+      if (!source?.recordedDecision || input.decision_operation_id !== source.recordedDecision.record.operation_id) return null;
+      return { ...source.recordedDecision, verify: source.verifyRecordedDecision };
+    }, ...postMergePorts, postMerge, decision: postMergeDecision,
     verifyDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
   const reviewEffects = new Map([
     [postMergeFastForwardOperation, postMergeFastForward],

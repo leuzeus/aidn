@@ -1355,3 +1355,9 @@ binds the accepted original L1 disposition, immutable capture lineage, original
 opening, confirmed fetch receipt and protected provider identity. Selector v2
 carries the retained fetch ID only after authenticating that entry. Historical
 v1-v14 entry outputs and selector v1 stay readable.
+
+Entry selection v16 adds the closed retained_post_merge_decision route. Its
+proof names the immutable receipted/unaccepted fast-forward choice, original
+Human inbox and inherited R09 evidence. Selection v3 routes that choice to the
+existing Git executor before the ordinary R09 suffix. Historical contracts
+remain readable; no timestamp, receipt or original reducer event is rewritten.
