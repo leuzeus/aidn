@@ -4,7 +4,8 @@
   "model_revision": 437,
   "correction_prs": [
     210,
-    211
+    211,
+    242
   ],
   "backend": "postgres",
   "state_mode": "db-only",
@@ -185,7 +186,7 @@
     "manual_signatures": 0,
     "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
   },
-  "next_required": "Correct and qualify session delivery metadata provenance from the retained CLOSED session; preserve its close event and original UNKNOWN. Then private branch integration/PR/review/merge/synchronization. Full frozen source, recovery and installed P0 remain required.",
+  "next_required": "Continue R09 from the accepted external-merge incident disposition on the preserved delivery. Do not repeat the Human decision or private merge. Full frozen source, recovery and installed P0 remain separate.",
   "genuine_native_planning": "PASS",
   "plan_recording": "PASS",
   "following_admission": "PASS",
@@ -316,7 +317,7 @@
     "manual_signatures": 0,
     "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
   },
-  "updated_at": "2026-11-24T19:34:06.995990+00:00",
+  "updated_at": "2026-11-25T04:05:26.825Z",
   "real_implementation": {
     "status": "PASS",
     "native": {
@@ -2774,5 +2775,72 @@
     "live_capture_recovery": "SKIP",
     "post_merge_sync": "SKIP",
     "full_same_candidate_P0": "SKIP"
+  },
+  "retained_expired_merge_capture_recovery": {
+    "correction_pr": 242,
+    "status": "PASS_INSTALLED_RECOVERY_AND_INCIDENT_DISPOSITION",
+    "candidate": "9862bf3292e0a7bbea888f51449c08aef2629fd7",
+    "archive_sha256": "f7d9f5a9bf6558daca305585e263faa1227916503a3380e0d0346db607404da1",
+    "configuration_sha256": "f21f5bf1693d5844cb72346dfeaf0cecb7e78ce6b1cf3596aca3db591d942245",
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "scope": "Explicit continuation from the original signed expired reserved capture, with fresh material verification and immutable predecessor history.",
+    "governance": {
+      "lane": "ASSURED",
+      "admission": "PASS",
+      "run": 45541731357,
+      "selected_families": 10,
+      "perf": "PASS",
+      "perf_run": 45541731354
+    },
+    "validation": {
+      "source_recovery_checks": 39,
+      "installed_recovery_checks": 39,
+      "composition_checks": 69,
+      "entry_checks": 7,
+      "review_control_checks": 45,
+      "generic_control_checks": 27,
+      "ordinary_github": "PASS",
+      "documentation_policies_and_sensitivity": "PASS"
+    },
+    "installed_entry": {
+      "status": "PASS",
+      "accepted_operations": 2,
+      "effect_status": "no_effect",
+      "evidence_sha256": "acfb453feb67a1d555aaa085fb8f764d5542ba753e83b2ee5dbf5ac6272e6cb8",
+      "original_history_unchanged": true,
+      "original_capture_and_reservation_unchanged": true,
+      "product_unchanged": true,
+      "owner_pending": false
+    },
+    "human_disposition": {
+      "status": "PASS",
+      "question_sha256": "eef8eeb28699e82caee4f527bbfbd64a5df97ac840f9bc6e653c6d1c3e047699",
+      "choice": "acknowledge_external_merge_for_r09",
+      "severity": "L1_LOW",
+      "accepted_results": 1,
+      "same_receipt_on_redelivery": true,
+      "evidence_sha256": "7a5e9265baad77112d5e5dfe2b5f5cb8080635a0d1eceb33f91133a808b87f86",
+      "independent_original_author_proof": false
+    },
+    "native_calls": 0,
+    "new_human_questions": 1,
+    "manual_signatures": 0,
+    "physical_merge_repeated": false,
+    "nominal_workflow_merge": "SKIP",
+    "post_merge_sync": "SKIP",
+    "full_same_candidate_P0": "SKIP",
+    "post_merge_checkout": {
+      "first_refusal": "WORKFLOW_POST_MERGE_SOURCE_CHECKOUT_REQUIRED",
+      "effect_dispatched": false,
+      "refusal_evidence_sha256": "5c65d23e2952b8e932bf335770c64add9bf14d800c17c3444e3f2b248e132a2b",
+      "preparation": "EXPLICIT_EXTERNAL_CHECKOUT_PREPARATION",
+      "evidence_sha256": "3272c3b648bc0e90cd7d257ebf8061fd65e33470f9d6cf67be9dedb86c4ba5af",
+      "clean_before_and_after": true,
+      "source_branch_selected": true,
+      "session_branch_preserved": true,
+      "canonical_session_and_instance_unchanged": true,
+      "missing_workflow_step": "Source checkout is still an external preparation prerequisite; this does not qualify an uninterrupted full workflow."
+    }
   }
 }
