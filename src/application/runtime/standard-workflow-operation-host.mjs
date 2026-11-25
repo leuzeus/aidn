@@ -1391,12 +1391,16 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
       return { outcome: "verified", authority_id: receipt.authority_id, receipt_sha256: shadowHash(receipt), intent_sha256: shadowHash(intent) };
     },
   };
+  const controlVerification = new AsyncLocalStorage();
   const controlAuthority = activeControlSource ? {
     read({ delivery_id }) { return controls.read(delivery_id).delivery; },
-    async verify({ delivery, signal }) {
+    verify({ delivery, signal }) {
       const capture = controls.read(delivery.delivery_id);
       if (shadowHash(snapshot()) !== capture.request.context_sha256) fail("PROCESS_CONTROL_CONTEXT_CHANGED");
-      const verified = await controls.verifyDelivery(delivery.delivery_id, signal);
+      const witness = controlVerification.getStore();
+      if (signal?.aborted || !witness || witness.capture_sha256 !== shadowHash(capture)
+        || witness.delivery_sha256 !== shadowHash(delivery)) fail("PROCESS_CONTROL_NOT_AUTHENTICATED");
+      const verified = witness.delivery;
       if (shadowHash(snapshot()) !== capture.request.context_sha256 || shadowHash(verified) !== shadowHash(delivery)) fail("PROCESS_CONTROL_CONTEXT_CHANGED");
       return { outcome: "verified", authority_id: delivery.authority_id, delivery_sha256: shadowHash(delivery) };
     },
@@ -1905,8 +1909,18 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
         && !(capture.contract_version === "process-control-inbox.v2" && reviewControlSource
           || capture.contract_version === "process-control-inbox.v3" && pretriageMerge)) fail("PROCESS_CONTROL_PR_EVENT_SOURCE_REQUIRED");
       if (capture.contract_version === "process-control-inbox.v3") pretriageMerge.assertCaptureFresh(capture.payload);
-      const result = await service.deliverControl({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256,
-        occurrenceId: capture.request.occurrence_id, deliveryId: capture.delivery.delivery_id, eventId, write: true });
+      if (shadowHash(snapshot()) !== capture.request.context_sha256) fail("PROCESS_CONTROL_CONTEXT_CHANGED");
+      // Provider I/O has its own bounded verification. The reducer receives a
+      // private, single-invocation witness and keeps its five-second local gate.
+      const delivery = await controls.verifyDelivery(id);
+      if (shadowHash(controls.read(id)) !== shadowHash(capture)
+        || shadowHash(snapshot()) !== capture.request.context_sha256
+        || shadowHash(delivery) !== shadowHash(capture.delivery)) fail("PROCESS_CONTROL_CONTEXT_CHANGED");
+      if (capture.contract_version === "process-control-inbox.v3") pretriageMerge.assertCaptureFresh(capture.payload);
+      const result = await controlVerification.run({ capture_sha256: shadowHash(capture),
+        delivery_sha256: shadowHash(delivery), delivery }, () => service.deliverControl({
+        instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256,
+        occurrenceId: capture.request.occurrence_id, deliveryId: capture.delivery.delivery_id, eventId, write: true }));
       controls.acknowledge(id, result.record.instance_sha256);
       return result;
     },
