@@ -74,7 +74,11 @@ export function createStandardOperatorSession({ targetRoot, configuration, envir
   const run = options => enter({ request, environment, ...options });
   function recordedReceipt(pointer, messageEvidence) {
     if (!pointer) return null;
-    const options = { targetRoot: resolved.target_root, stateMode: resolveConfigStateMode(readAidnProjectConfig(resolved.target_root).data) ?? "files" };
+    const options = {
+      targetRoot: resolved.target_root,
+      stateMode: resolveConfigStateMode(readAidnProjectConfig(resolved.target_root).data) ?? "files",
+      env: environment,
+    };
     const record = createProcessOperationJournalStore(options).read(pointer.operation_id).record;
     if (!record?.results.length || record.intent.instance_id !== resolved.instance_id) return null;
     createOperationJournalSigner(authority.readKey).verify(record);
