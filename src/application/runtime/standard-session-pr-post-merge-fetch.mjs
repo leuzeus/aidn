@@ -7,7 +7,7 @@ import { alignedReason, assertPostMergeAlignmentOutput, assertPostMergeFetchOutp
 
 const fail = (code, effect_status = 'no_effect') => { throw Object.assign(Error(code), { code, effect_status }); };
 
-export function createStandardSessionPrPostMergeFetch({ readAccepted, readPretriage, readCurrent, reviewPort }) {
+export function createStandardSessionPrPostMergeFetch({ readAccepted, readPretriage, readCurrent, reviewPort, readRetainedFetch }) {
   const port = reviewPort?.postMergeFetch;
   function source(instance, input) {
     const intent = instance.events.find(event => event.kind === 'operation_intent'
@@ -49,6 +49,8 @@ export function createStandardSessionPrPostMergeFetch({ readAccepted, readPretri
       observations: { fetch }, evidence_refs: [{ ref: 'git:' + fetch.proof_ref, sha256: shadowHash(fetch) }] });
   }
   function alignmentSource(instance, input) {
+    const retained = readRetainedFetch?.(instance, input);
+    if (retained) return retained;
     const { record, output } = readAccepted(instance, input.fetch_operation_id, postMergeFetchOperation,
       'STANDARD_PR_POST_MERGE_ALIGNMENT_FETCH_REQUIRED');
     const { observations: { fetch } } = assertPostMergeFetchOutput(output);

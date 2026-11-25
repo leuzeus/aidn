@@ -48,6 +48,7 @@ import { preWriteAdmit } from '../runtime/pre-write-admit.mjs';
 
 const { model: published } = loadStandardWorkflowAssets();
 const bindings = new Map(standardWorkflowOperationBindings().map(binding => [binding.id, binding]));
+const publishedModels = [published, ...published.call_targets.map(row => row.model)];
 const target = published.call_targets.find(row => row.model_id === 'aidn-standard-pr-review-completion');
 const captureTarget = published.call_targets.find(row => row.model_id === 'aidn-standard-pr-review-capture');
 const pretriageTarget = published.call_targets.find(row => row.model_id === 'aidn-standard-pr-pretriage-completion');
@@ -90,7 +91,7 @@ function fixtureModel(prefix, fetchOnly, external = false, pretriage = false) {
       .map(branch => ({ ...branch, node_id: rename(branch.node_id) })) } : {}) };
   });
   const node = id => {
-    const value = published.nodes.find(row => row.id === id) ?? reviewNodes.find(row => row.id === id);
+    const value = publishedModels.flatMap(model => model.nodes).find(row => row.id === id) ?? reviewNodes.find(row => row.id === id);
     const changedTarget = [target, pretriageTarget].find(row => row.model_id === value?.target?.model_id);
     return changedTarget ? { ...value, target: { ...value.target, model_sha256: changedTarget.model_sha256 } } : value;
   };
@@ -138,7 +139,7 @@ function fixtureModel(prefix, fetchOnly, external = false, pretriage = false) {
       policies: [], roles: [], entry: 'fixture', nodes: [
         { id: 'fixture', kind: 'sequence', participant_ref: 'project', children: ['session_pr_open', triage, call] },
         node('session_pr_open'), node(triage), { ...node(call), target: identity },
-      ], operation_pins: { session_pr_open: published.operation_pins.session_pr_open, [node(triage).binding_ref]: published.operation_pins[node(triage).binding_ref] },
+      ], operation_pins: { session_pr_open: publishedModels.find(model => model.operation_pins.session_pr_open).operation_pins.session_pr_open, [node(triage).binding_ref]: published.operation_pins[node(triage).binding_ref] },
       call_targets: [{ ...identity, model: child }],
       data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [], inputs: [
         input('session_pr_open', { contract_version: bindings.get('session_pr_open').input_contract, push_operation_id: dummy }),

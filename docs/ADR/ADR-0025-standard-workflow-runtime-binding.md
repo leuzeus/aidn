@@ -5907,3 +5907,21 @@ This bounded route adds no general receipt migration or expiry exception.
 The published graph preserves root size and call fact isolation. A fixed call
 holds the captured-disposition suffix; its generated one-space JSON fits the
 unchanged 256 KiB file bound. Historical two-space assets remain readable.
+
+## Retained R09 completion after an accepted captured merge
+
+A technical instance may continue the same session after the captured-merge
+instance has accepted its L1 disposition and fetch. Admit only that exact settled
+prefix, preserving every predecessor and its original authority. Use the
+accepted opening from the authenticated lineage instead of assuming it belongs
+to the successor. Preserve cross-instance order by the accepted continuation
+entry and exact source IDs; never synthesize reducer events or migrate receipts.
+
+The original provider binding remains necessary to authenticate its fetch
+witness. New execution uses the successor's current grant. The independent R09
+reader searches the bounded canonical process inventory for one authenticated
+completion matching the canonical opening. Missing or ambiguous proof refuses
+admission. This is a derived evidence lookup, not a new canonical store.
+
+This bounded route does not qualify arbitrary version migration, L2 incident
+continuation, Native execution or an uninterrupted STANDARD nominal journey.

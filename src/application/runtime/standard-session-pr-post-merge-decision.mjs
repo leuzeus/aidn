@@ -6,7 +6,7 @@ import { assertPostMergeSessionLink, postMergeSessionSource } from './standard-s
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: 'no_effect' }); };
 const required = 'STANDARD_PR_POST_MERGE_DIVERGENCE_REQUIRED';
 
-export function createStandardPostMergeDecision({ postMerge, readAccepted, artifacts, scopeSha, now }) {
+export function createStandardPostMergeDecision({ postMerge, readAccepted, artifacts, scopeSha, now, readRetainedOpening }) {
   async function observe(instance, input, signal) {
     const started = now();
     const { record, output } = readAccepted(instance, input.measurement_operation_id, postMergeMeasureOperation, required);
@@ -18,7 +18,7 @@ export function createStandardPostMergeDecision({ postMerge, readAccepted, artif
       || record.preview.prepared.fetch_receipt_sha256 !== fetch.receiptSha) fail(required);
 
     const alignment = await postMerge.measure(instance, fetchInput, fetch, signal);
-    const session = postMergeSessionSource({ instance, readAccepted, artifacts,
+    const session = postMergeSessionSource({ instance, readAccepted, artifacts, readRetainedOpening,
       readMissingSession: alignment.behind > 0 ? id => postMerge.readMergedSession(fetch, alignment, id, signal) : null });
     const { merge } = fetch, pull = merge.provider.pull_request;
     assertPostMergeSessionLink(session, merge, alignment);

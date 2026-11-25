@@ -1119,3 +1119,10 @@ another PR. Original journals remain immutable. Public PR record input v2 is
 empty; the fixed host selects the accepted current opening or this admitted
 historical opening. Internal v1 plans retain explicit references. No Native
 budget, review verdict or consent to merge is implied.
+
+The existing STANDARD workflow-run configuration also accepts the explicit
+parameters.entry_point kind retained_post_merge, with a protected hashed
+original_configuration and fetch_operation_id. It resumes one settled L1
+captured-merge prefix at a fresh R09 measurement. It does not repeat the accepted
+incident disposition or physical fetch, grant Native work, or authorize a merge.
+Preview and exact-action execution retain their existing effect classifications.

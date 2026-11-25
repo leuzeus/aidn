@@ -8172,3 +8172,15 @@ provider call, and refusal when the Git context changes during verification.
 The reserved capture survives that refusal and a new invocation authenticates
 it again. These checks cover the fixed-host/reducer handoff, separately from the
 inbox's I/O deadline fixtures; neither proves recovery of an expired capture.
+
+### Retained post-merge continuation
+
+The retained-external-merge fixture additionally exercises the closed v15 entry,
+selector v2, one settled L1 disposition/fetch/measurement prefix, changed or
+unaccepted receipts, UNKNOWN, retries, foreign identity, incident severity and
+fetch substitution. The published successor reaches a fresh measurement without
+replaying a Human disposition, fetch, provider event or Native activity.
+Historical opening lookup and the live authenticated source prototype are
+separate evidence; these synthetic boundary fixtures do not qualify installed
+post-merge completion. Keep the ordinary R09 fast-forward, historical admission
+and composition suites when changing its shared readers.

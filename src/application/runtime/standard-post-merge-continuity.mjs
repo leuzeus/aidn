@@ -14,6 +14,7 @@ import { agentRunPhysicalPath } from './agent-run-configuration-service.mjs';
 import { createStandardWorkflowArtifacts } from './standard-workflow-artifacts.mjs';
 import { createStandardSessionPrPostMergeFetch } from './standard-session-pr-post-merge-fetch.mjs';
 import { latestIntent, postMergeCompletionSource, postMergeProjectScope, readPrOpeningLocator } from './standard-session-pr-post-merge-completion.mjs';
+import { readRetainedPostMergeContinuity } from './standard-retained-post-merge-continuity.mjs';
 
 const required = 'STANDARD_PR_POST_MERGE_COMPLETION_PROOF_REQUIRED';
 const fail = () => { throw Object.assign(Error(required), { code: required }); };
@@ -107,10 +108,11 @@ export function readStandardPostMergeContinuity({ targetRoot, sessionId, session
     const host = readStandardHostInstance({ targetRoot: target, instanceId, environment });
     const signer = createOperationJournalSigner(host.readKey);
     const read = authenticatedJournal(journal, signer);
-    const instance = createAgenticProcessStore(options).read(instanceId).record;
+    const instances = createAgenticProcessStore(options), instance = instances.read(instanceId).record;
     if (!instance || !exact(read(marker.open_operation_id), opening)) fail();
     const completionIntent = latestIntent(instance, postMergeCompleteOperation);
-    if (!completionIntent) fail();
+    if (!completionIntent) return { managed: true, completion: readRetainedPostMergeContinuity({ targetRoot: target, sessionId, sourceBranch,
+      opening, artifacts, instances, journal, environment, acceptedOperation }) };
     const { record, output } = acceptedOperation(read, instance, completionIntent.operation_id, postMergeCompleteOperation);
     if (record.preview.binding.effect_class !== 'mutating' || !record.grant || record.intent.authorization_sha256 !== shadowHash(record.grant)
       || record.grant.authorized !== true) fail();

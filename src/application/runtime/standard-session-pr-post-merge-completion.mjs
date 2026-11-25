@@ -25,10 +25,12 @@ export function postMergeProjectScope(targetRoot, env) {
 
 // The opening marker supplies a lookup key. The accepted opening supplies
 // identity, including the original delivery (which can differ after correction).
-export function postMergeSessionSource({ instance, readAccepted, artifacts, readMissingSession = null }) {
-  const openId = latestIntent(instance, 'session_pr_open')?.operation_id;
+export function postMergeSessionSource({ instance, readAccepted, artifacts, readMissingSession = null, readRetainedOpening = null }) {
+  const retained = readRetainedOpening?.(instance);
+  if (retained && latestIntent(instance, 'session_pr_open')) fail(required);
+  const openId = latestIntent(instance, 'session_pr_open')?.operation_id ?? retained?.record.operation_id;
   if (!openId) fail(required);
-  const opening = readAccepted(instance, openId, 'session_pr_open', required);
+  const opening = retained ?? readAccepted(instance, openId, 'session_pr_open', required);
   const { session_id: sessionId, pull_request: link } = assertStandardOperationOutput(opening.output).observations;
   if (!/^S[0-9]{3,6}$/.test(sessionId ?? '') || validateJsonSchema(link, linkSchema, '$', { contractKind: 'workflow-definition' }).length
     || link.state !== 'OPEN' || link.draft || opening.output.facts.session_pr_open_confirmed !== true)
@@ -59,8 +61,8 @@ export function assertPostMergeSessionLink({ link, sourceBranch }, merge, measur
     fail(required);
 }
 
-export function postMergeCompletionSource({ instance, input, readAccepted, readAlignmentSource, artifacts, scopeSha }) {
-  const session = postMergeSessionSource({ instance, readAccepted, artifacts });
+export function postMergeCompletionSource({ instance, input, readAccepted, readAlignmentSource, artifacts, scopeSha, readRetainedOpening, assertRetainedOrder }) {
+  const session = postMergeSessionSource({ instance, readAccepted, artifacts, readRetainedOpening });
   const { openId, opening, sessionId, link } = session;
   const measurement = latestIntent(instance, postMergeMeasureOperation)?.operation_id === input.alignment_operation_id;
   const alignment = readAccepted(instance, input.alignment_operation_id, measurement ? postMergeMeasureOperation : postMergeAlignmentOperation, required);
@@ -75,7 +77,7 @@ export function postMergeCompletionSource({ instance, input, readAccepted, readA
 
   const ids = [openId, fetch.merge_operation_id, measured.fetch_operation_id, input.alignment_operation_id];
   const positions = ids.map(id => instance.events.findIndex(event => event.kind === 'operation_intent' && event.intent.operation_id === id));
-  if (positions.some((index, i) => index < 0 || i && index <= positions[i - 1])) fail(required);
+  if (!assertRetainedOrder?.(instance, ids) && positions.some((index, i) => index < 0 || i && index <= positions[i - 1])) fail(required);
 
   const plan = assertPostMergeCompletePlan({ contract_version: 'standard-pr-post-merge-complete-plan.v1',
     project_scope_sha256: scopeSha(), session_id: sessionId, opening_operation_id: openId,

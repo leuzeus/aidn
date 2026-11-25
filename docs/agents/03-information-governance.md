@@ -205,3 +205,9 @@ stored by the same canonical FILES/SQLite/PostgreSQL record-store authority. Its
 signed attempts retain exact original scope, configuration, journals, physical
 event/run/document digests and lock/fence identity. It does not rewrite session
 state, historical operation results, Human decisions or Native accounting.
+
+Retained post-merge completion remains derived process-journal evidence. It
+creates neither a new canonical session nor copied receipts. The independent
+reader discovers one matching successor from a bounded canonical inventory,
+authenticates its entry and predecessor lineage, and refuses ambiguity. A
+PostgreSQL project never falls back to a checkout file for that discovery.

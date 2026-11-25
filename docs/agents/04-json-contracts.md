@@ -1349,3 +1349,9 @@ operation-journal evidence and retains all original UNKNOWN history. It reports
 `reconciled_checkpoint_only`, with session_closed/workflow_resumed/native_started
 false. Embedded process observations preserve their limited scope and grant no
 business effect. No new canonical information concept is introduced.
+
+Entry selection v15 adds the closed retained_post_merge variant. Its proof
+binds the accepted original L1 disposition, immutable capture lineage, original
+opening, confirmed fetch receipt and protected provider identity. Selector v2
+carries the retained fetch ID only after authenticating that entry. Historical
+v1-v14 entry outputs and selector v1 stay readable.
