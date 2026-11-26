@@ -554,6 +554,13 @@ function mixedFixture(stateMode = "files", options = {}) {
         { flow_id: "review", node_id: "review_path", event_key: "review_snapshot" }, { flow_id: "finish", node_id: "finish_without_review", event_key: "finish_snapshot" }] },
       { id: "review_path", kind: "sequence", participant_ref: "delivery", children: ["review", "after_review"] }, native("review"),
       op("after_review", "context_reload"), op("finish_without_review", "context_reload")] };
+  if (options.cancelWorkerGeneration) {
+    // A deterministic operation separates the two allocations without making
+    // this checkpoint test depend on the external control port.
+    const sequence = model.nodes[0];
+    sequence.children = ["reload", "admit", "initialize", "analyze", "after_native", "review", "after_review"];
+    model.nodes = model.nodes.filter(node => node === sequence || sequence.children.includes(node.id));
+  }
   fs.writeFileSync(f.configuration.model.path, JSON.stringify(model)); f.configuration.model.sha256 = sha(JSON.stringify(model));
   if (options.drift) {
     model.roles.find(row => row.id === "analysis").skills = ["drift-check"];

@@ -83,12 +83,7 @@ export function verifyNativePostAssignmentAssessmentContracts(original, check) {
 
 
 async function verifyInheritedCheckpoint({ mode, mixedFixture, bootstrapMixed, tree }) {
-  let claim;
-  const controlSource = { read: async () => claim, verify: async ({ source }) => {
-    assert.deepEqual(source, claim);
-    return { outcome: 'verified', authority_id: source.authority_id, source_sha256: H(source) };
-  } };
-  const f = mixedFixture(mode, { cancelWorkerGeneration: 2, controlSource });
+  const f = mixedFixture(mode, { cancelWorkerGeneration: 2 });
   const authorization = await bootstrapMixed(f), host = f.open();
   const first = await host.step({ write: true, authorization });
   assert.equal(first.journal_phase, 'closed');
@@ -96,15 +91,7 @@ async function verifyInheritedCheckpoint({ mode, mixedFixture, bootstrapMixed, t
   const priorState = host.readCheckpoint(1).state;
   assert.equal(priorState.resources.length, 1);
   assert.equal(priorState.results.length, 1);
-  await host.step({ write: true });
-  const state = host.inspect(), frame = state.cursor.occurrences.find(row => row.node_id === 'external_wait');
-  const subject = { expectedSha256: state.record.instance_sha256, occurrenceId: frame.occurrence_id };
-  const request = host.prepareControl(subject);
-  claim = { contract_version: 'process-control-source.v1', source_kind: 'external', authority_id: 'fixture_review', source_event_id: 'review-1',
-    subject_sha256: 'a'.repeat(64), request_sha256: H(request), event_key: 'review_snapshot', payload_sha256: 'b'.repeat(64),
-    evidence_refs: [{ ref: 'provider:review-1', sha256: 'c'.repeat(64) }] };
-  const captured = await host.captureControl({ ...subject, sourceRef: 'review', write: true });
-  await host.deliverControl(captured.inbox_id, { write: true });
+  assert.equal((await host.step({ write: true })).kind, 'operation');
   const beforeSecond = host.inspect().record;
   const second = await host.step({ write: true, authorization: { ...authorization, authorized_at_ms: Date.now() } });
   assert.equal(second.journal_phase, 'failed', second.first_failure);

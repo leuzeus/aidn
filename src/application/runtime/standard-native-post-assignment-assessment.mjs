@@ -66,6 +66,18 @@ export function observeNativePostAssignmentCheckpoint({ journal, entry, current,
     consumption_matches: consumptionMatches };
 }
 
+// Both no-assignment recovery steps require the same authenticated delta.
+export function observeNativeInheritedCheckpoint({ journal, entry, current, configuration, inventory }) {
+  const previous = inventory.resources.find(row => row.ref === 'native:' + journal.journal_id + '/' + (entry.generation - 1));
+  if (previous?.kind !== 'native_allocation' || !previous.details.accounting_known || !previous.details.tree_closed) return null;
+  const work = observeNativePostAssignmentCheckpoint({ journal, entry, current, configuration });
+  if (work === null || !work.history_preserved || work.prior_checkpoint_sha256 !== previous.details.checkpoint?.sha256
+    || work.generation_assignments !== 0 || work.generation_resources !== 0 || work.generation_results !== 0
+    || work.unresolved_assignments !== 0 || !work.worker_checkpoint_matches || !work.worker_parent_closed
+    || work.worker_generation_resources !== 0 || !work.consumption_matches) return null;
+  return work.prior_checkpoint_sha256;
+}
+
 export function createStandardNativePostAssignmentAssessment({ artifacts, configuration, signer, baseAssessment, capture }) {
   return Object.freeze({
     prepare(instanceId, input) {
