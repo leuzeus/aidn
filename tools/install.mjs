@@ -15,6 +15,7 @@ function parseArgs(argv) {
     sourceBranch: "",
     adapterFile: "",
     standardAuthorizationFile: "",
+    standardCodexConfigurationFile: "",
     windowsOperatorEnrollment: "",
     windowsOperatorPlan: null,
     initDefaults: false,
@@ -54,6 +55,10 @@ function parseArgs(argv) {
       const file = argv[++i];
       if (!file || file.startsWith("--") || args.standardAuthorizationFile) throw new Error("Expected one file for --standard-authorization");
       args.standardAuthorizationFile = file;
+    } else if (token === "--standard-codex-configuration") {
+      const file = argv[++i];
+      if (!file || file.startsWith("--") || args.standardCodexConfigurationFile) throw Error("Expected one file for --standard-codex-configuration");
+      args.standardCodexConfigurationFile = file;
     } else if (token === "--standard-windows-operator-enrollment") {
       const value = argv[++i];
       if (!value || value.startsWith("--") || args.windowsOperatorEnrollment) throw Error("Expected one Windows operator enrollment file");
@@ -138,6 +143,7 @@ function parseArgs(argv) {
   if (args.verifyOnly && args.standardAuthorizationFile) {
     throw new Error("--standard-authorization requires installation or --dry-run");
   }
+  if (args.verifyOnly && args.standardCodexConfigurationFile) throw Error("--standard-codex-configuration requires installation or --dry-run");
   if (args.windowsOperatorEnrollment) {
     const flags = ["--target", "--standard-windows-operator-enrollment", "--expect-windows-operator-plan", "--dry-run"];
     if (argv.some(token => token.startsWith("--") && !flags.includes(token)))
@@ -156,6 +162,7 @@ function printUsage() {
   console.log("  node tools/install.mjs --target ../repo --pack core --source-branch main");
   console.log("  node tools/install.mjs --target ../repo --pack core --adapter-file ./workflow.adapter.json");
   console.log("  node tools/install.mjs --target ../repo --standard-authorization ./approved-project-authorization.json");
+  console.log("  node tools/install.mjs --target ../repo --standard-codex-configuration FILE [--standard-authorization FILE]");
   console.log("  node tools/install.mjs --target ../repo --standard-windows-operator-enrollment ./windows-enrollment.json --dry-run");
   console.log("  node tools/install.mjs --target ../repo --standard-windows-operator-enrollment ./windows-enrollment.json --expect-windows-operator-plan SHA256");
   console.log("  node tools/install.mjs --target ../repo --pack core --init-defaults --project-name my-project --verify");

@@ -37,7 +37,7 @@ function classifySkill(skill, text) {
 
 // Keep source spans intact. Multiline strings and comments cannot manufacture
 // a skills table. Unsupported representations of the targeted table fail closed.
-function tomlLines(text) {
+export function tomlLines(text) {
   const lines = []; let offset = 0, multiline = null;
   for (const raw of text.match(/[^\n]*(?:\n|$)/g) ?? []) {
     if (!raw) continue;
@@ -72,7 +72,7 @@ function tomlString(value) {
   }
   fail("UNSUPPORTED_HOST_TOML_PATH");
 }
-function keys(value) {
+export function tomlKeys(value) {
   const parts = []; let tail = value.trim();
   while (tail) {
     const match = /^(?:([A-Za-z0-9_-]+)|("(?:[^"\\]|\\.)*")|('[^']*'))/u.exec(tail);
@@ -91,7 +91,7 @@ function skillConfigEntries(text) {
     const header = /^(\[\[?)(.*?)(\]\]?)$/u.exec(line.code);
     if (header) {
       if (entry) { entry.end = line.start; entry = null; }
-      section = keys(header[2]);
+      section = tomlKeys(header[2]);
       if (section[0] === "skills" && section[1] === "config") {
         if (section.length !== 2 || header[1] !== "[[" || header[3] !== "]]") fail("UNSUPPORTED_SKILLS_CONFIG_LAYOUT");
         entry = { start: line.start, end: text.length, fields: {} }; entries.push(entry);
@@ -100,7 +100,7 @@ function skillConfigEntries(text) {
     }
     const assignment = /^((?:[^="']|"(?:[^"\\]|\\.)*"|'[^']*')+)\s*=\s*(.*)$/u.exec(line.code);
     if (!assignment) continue;
-    const field = keys(assignment[1]);
+    const field = tomlKeys(assignment[1]);
     if ((!section.length && field[0] === "skills") || (section.join(".") === "skills" && field[0] === "config")) fail("UNSUPPORTED_SKILLS_CONFIG_LAYOUT");
     if (!entry) continue;
     if (field.length !== 1) fail("UNSUPPORTED_SKILLS_CONFIG_LAYOUT");

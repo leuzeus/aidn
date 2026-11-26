@@ -187,6 +187,23 @@ Package replacement and asset transactions are distinct stages: failures may
 leave a newer package with an older completion receipt, requiring diagnosis and
 existing installation recovery. Native approval is never inherited from setup.
 
+## STANDARD decision connector installation
+
+An explicit project installation can register a Windows Codex form connector
+under a project-scoped name after matching its existing protected
+authorization. The installation plan fixes the execution configuration and
+the Codex configuration preimage. The managed registration preserves other
+servers and refuses conflicting entries. It binds paths to the protected
+launcher inputs. The private key and any database credential stay outside
+the checkout and Codex configuration.
+
+A global registration uses the stable launcher. Its idle MCP connection
+holds no global operation lease. Each decision call admits the current
+verified generation and releases the lease on return. Updating the package
+preserves the connector registration, authorization and workflow receipts.
+An already open desktop may need to reload its servers after the initial
+registration.
+
 ## Verification
 
 The focused fixture set checks ownership, merge preservation, repeated install,

@@ -21,11 +21,19 @@ export async function addGlobalProject(options) {
   try {
     const runtime = lease ?? resolveGlobalRuntime({ home: options.home });
     readProjects(options.home);
+    const attachment = { standardAuthorizationFile: options.standardAuthorizationFile,
+      standardCodexConfigurationFile: options.standardCodexConfigurationFile };
+    const enrolling = Object.values(attachment).some(Boolean);
     if (options.postgresMode === 'install' || fs.existsSync(provisioningFile(options.home, targetRoot))) {
+      if (enrolling) throw new Error('STANDARD_CODEX_FORM_REQUIRES_PREPARED_POSTGRES');
       return await provisionGlobalProject({ ...options, target: targetRoot }, runtime);
     }
-    if (fs.existsSync(checkedHostPath(path.join(targetRoot, '.aidn/install/receipt.json'))) && !options.resume) throw new Error('GLOBAL_EXISTING_PROJECT_USE_MIGRATE');
-    const args = { pack: options.pack ?? 'core', initDefaults: true, projectName: path.basename(targetRoot),
+    const receiptPath = checkedHostPath(path.join(targetRoot, '.aidn/install/receipt.json'));
+    const receipt = fs.existsSync(receiptPath) ? JSON.parse(fs.readFileSync(receiptPath, 'utf8')) : null;
+    if (receipt && !options.resume && !(enrolling && receipt.global_runtime?.installation_id === runtime.state.installation_id))
+      throw new Error('GLOBAL_EXISTING_PROJECT_USE_MIGRATE');
+    const args = receipt && enrolling ? { ...attachment, persistencePolicy: 'verify-only' }
+      : { ...attachment, pack: options.pack ?? 'core', initDefaults: true, projectName: path.basename(targetRoot),
       runtimeStateMode: options.connectionRef ? 'db-only' : 'files', artifactImportStore: 'file',
       ...(options.connectionRef ? { runtimePersistenceBackend: 'postgres', runtimePersistenceConnectionRef: options.connectionRef,
         runtimePersistenceLocalProjectionPolicy: 'none' } : {}), persistencePolicy: 'verify-only' };

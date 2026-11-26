@@ -42,6 +42,10 @@ aidn doctor --target ..\client --json
 
 Replace `PLAN_ID` only after reviewing the first result, and keep the same
 options. `--pack` selects an installation pack; default is `core`.
+For the optional Windows STANDARD decision connector, setup can include the
+protected configuration and approved form issuer in this same project
+installation. See [the decision connector](WORKFLOW_CONSOLE.md#decisions-inside-codex).
+
 No project-local AIDN npm dependency is installed. Existing local installations
 use [project migration](UPGRADE.md#move-a-09x-project-to-the-global-engine).
 

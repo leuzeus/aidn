@@ -29,6 +29,10 @@ The classification keeps automation from confusing output format with write perm
 - `install --standard-authorization FILE` uses the existing installation
   transaction to enroll the administrator-approved public keys in the protected
   project host home. Its dry run verifies the input and previews the digest.
+- `--standard-codex-configuration FILE` previews the Windows connector
+  registration in the installation plan. Applying the installation writes
+  its scoped registration and protected binding. Project attachment requires
+  `--write --expect-plan`. Enrollment supplies installation authority only.
 - `install --standard-windows-operator-enrollment FILE` previews with
   `--dry-run` and requires `--expect-windows-operator-plan SHA256` to apply.
   Windows elevation and the local authenticator authorize the isolated registry

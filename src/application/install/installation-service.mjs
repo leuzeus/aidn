@@ -21,6 +21,7 @@ import { migrateWorkflowDbFile } from "../../lib/sqlite/workflow-db-schema-lib.m
 import { resolveEffectiveRuntimePersistence } from "../runtime/runtime-persistence-service.mjs";
 import { executeRuntimeBackendAdoption, planRuntimeBackendAdoption } from "../runtime/runtime-backend-adoption-service.mjs";
 import { globalProjectBinding, renderGlobalCommands } from "./global-project-integration.mjs";
+import { applyStandardCodexRegistration, prepareStandardCodexRegistration } from "./standard-codex-form-registration.mjs";
 import { installStandardAuthorization, prepareStandardAuthorizationInstallation } from "../../adapters/runtime/standard-project-authorization-store.mjs";
 
 const encoded = (text) => Buffer.from(text).toString("base64");
@@ -155,8 +156,11 @@ async function prepare(options) {
   if (args.codexMigrateCustom) effects.push({ id: "custom-file-llm-migration", state: "deferred", optional: true, reversible: false, paths: customCandidates.map((candidate) => candidate.targetRelative) });
   if (standardAuthorization) effects.push({ id: "standard-project-authorization", state: "deferred", reversible: false,
     revision: standardAuthorization.contract.revision, contract_sha256: standardAuthorization.contract_sha256 });
+  const codexForm = options.args?.standardCodexConfigurationFile ? prepareStandardCodexRegistration({ targetRoot, repoRoot, globalHome,
+    configuration: options.args.standardCodexConfigurationFile, approvedAuthorization: standardAuthorization?.contract }) : null;
+  if (codexForm) effects.push({ id: "standard-codex-form", state: "deferred" });
   const context = { args, version_before: currentConfig.install?.aidnVersion ?? null, version_after: version, current_config: currentConfig, next_config: nextConfig, verify_entries: required, external_effects: effects, compatibility, packs, strict, defaults, import_persistence: importPersistence, custom_candidates: customCandidates,
-    ...(standardAuthorization ? { standard_authorization: standardAuthorization } : {}) };
+    ...(standardAuthorization ? { standard_authorization: standardAuthorization } : {}), ...(codexForm ? { standard_codex_form: codexForm } : {}) };
   const installation = { operations: [...operations.values()], context };
   const assetPlan = planCodexAssets({ repoRoot, targetRoot, globalHome, action: options.action ?? "install", templateVars: vars, skipAgents: args.skipAgents, forceAgentsMerge: args.forceAgentsMerge });
   const journal = planInstallationAssets({ ...options, repoRoot, targetRoot, globalHome, templateVars: vars, installation });
@@ -273,6 +277,10 @@ async function finishExternal({ transaction, targetRoot, checkpoint }, repoRoot,
   if (context.standard_authorization) {
     await effect("standard-project-authorization", "protected-host", () => installStandardAuthorization({ targetRoot, plan: context.standard_authorization }));
     messages.push(`STANDARD project authorization: revision ${context.standard_authorization.contract.revision}`);
+  }
+  if (context.standard_codex_form) {
+    await effect("standard-codex-form", "protected-host", () => applyStandardCodexRegistration({ targetRoot, plan: context.standard_codex_form }));
+    messages.push("STANDARD Codex form registered: " + context.standard_codex_form.name);
   }
   messages.push("verified: OK");
 }

@@ -181,6 +181,8 @@ export async function runInstallUseCase({
     if (args.dryRun) for (const operation of result.operations ?? []) console.log(`[dry-run] ${operation.effect} ${operation.path} (${operation.owner})`);
     const authorization = args.dryRun && result.external_effects?.find(row => row.id === "standard-project-authorization");
     if (authorization) console.log(`[dry-run] STANDARD project authorization revision ${authorization.revision} ${authorization.contract_sha256}`);
+    if (args.dryRun && result.external_effects?.some(row => row.id === "standard-codex-form"))
+      console.log("[dry-run] register the STANDARD form connector in Codex");
     for (const message of result.messages ?? []) console.log(message);
     for (const warning of result.warnings ?? []) console.warn(warning);
     const precedence = collectInstructionPrecedenceWarnings(targetRoot);

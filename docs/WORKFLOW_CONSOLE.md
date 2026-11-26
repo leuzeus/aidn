@@ -8,11 +8,28 @@ answers once in the native form using the existing Codex session. Merge
 consent identifies the repository, pull request, target branch and full
 commit. Each choice uses the same installed software issuer.
 
-The trusted project setup registers this stdio command in Codex.
+Project setup installs the connector through the existing installation
+transaction. Supply the protected STANDARD execution configuration along
+with the approved issuer policy when it has yet to be installed.
 
-```sh
-node tools/runtime/standard-codex-decisions.mjs --serve PROJECT CONFIGURATION --form-issuer AUTHORITY_ID
+```powershell
+aidn project add --target PROJECT --standard-codex-configuration FILE --standard-authorization POLICY --json
+aidn project add --target PROJECT --standard-codex-configuration FILE --standard-authorization POLICY --write --expect-plan PLAN_ID --json
 ```
+
+The same configuration option is available to `aidn install`. A project
+already attached to the global engine can add the connector through the same
+reviewed project operation. The installed policy may be reused by omitting
+the authorization file. The installer checks the project scope and the
+issuer for the current chat. It adds a dedicated server in the user Codex
+configuration and preserves other entries. Reload the MCP servers in a
+desktop session that was already open during its first installation.
+
+The global registration names the stable AIDN launcher. After `aidn update`,
+each new call on the open connection uses the active verified package. The
+installed key and authorization are preserved. An in-flight decision keeps
+its current generation for the call. A workflow instance retains its own
+configuration and continuity checks.
 
 The launcher checks that the MCP process was started by the installed
 Microsoft Store Codex desktop package. The installed policy identifies
@@ -31,6 +48,11 @@ The trust boundary includes the installed desktop app and the provisioning
 service that protects the issuer key. This is software-origin evidence for
 the existing session. The form introduces no personal authentication prompt.
 Keep the host home and installed launcher outside AIDN work actor access.
+For a PostgreSQL process whose desktop environment omits the configured
+connection variable, setup can provision `codex-form-database.env` beneath
+the protected host home. The file contains only the project database
+variable already named by its runtime configuration. The Codex registration
+contains paths and arguments and leaves the credential in the protected home.
 
 ### Enroll a decision issuer at installation
 

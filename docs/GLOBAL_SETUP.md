@@ -190,6 +190,11 @@ fixture coverage; actual interrupted Windows process qualification is pending.
 
 ### Refreshing generated project guides
 
+The optional Windows STANDARD decision connector uses the stable global
+launcher after its one-time project registration. An idle connection
+can stay open during an update. The next tool call uses the active
+verified package. See [decision connector setup](WORKFLOW_CONSOLE.md#decisions-inside-codex).
+
 A global update does not regenerate project documents. After migration, an older
 generated view can therefore still describe the local engine. Starting with
 0.10.8, installation-scoped repair recovers the global binding from the receipt

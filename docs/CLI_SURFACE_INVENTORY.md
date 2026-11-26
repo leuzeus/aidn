@@ -237,6 +237,10 @@ These are the durable surfaces exposed through `aidn` today:
 - `aidn build-release`
 - `aidn setup`
 - `aidn update`
+- Windows STANDARD installation via `aidn install --standard-codex-configuration FILE`
+  or `aidn project add --standard-codex-configuration FILE`. An installed issuer
+  policy can be reused. `--standard-authorization FILE` enrolls an approved policy
+  in the same installation. The global launcher follows the active engine.
 - `aidn rollback`
 - `aidn doctor`
 - `aidn help` / `aidn --help` / `aidn -h`

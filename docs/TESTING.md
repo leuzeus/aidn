@@ -3898,6 +3898,13 @@ on dev, main and release:
 - `verify-workflow-candidate-fixtures.mjs`
 - `verify-workflow-console-fixtures.mjs`
 
+The Windows project-authorization fixture checks connector registration
+through the install CLI, including a read-only preview, changed-plan refusal,
+preservation of another server, recovery and idempotent reinstall.
+The global-runtime-store fixture keeps the stable launcher connected across a
+generation switch and checks that an idle connection holds no operation
+lease. These remain fixture results.
+
 The operator-session fixture installs a scoped Codex form issuer policy
 and exercises the public STANDARD FILES host with a fixture MCP client.
 Run `npm run perf:verify-standard-operator-session`. It checks the wrong chat,

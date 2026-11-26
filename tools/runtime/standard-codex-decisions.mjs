@@ -6,6 +6,8 @@ import { createStandardOperatorSession } from "../../src/adapters/workflow-conso
 import { createCodexDecisionChannel } from "../../src/adapters/workflow-console/codex-decision-channel.mjs";
 import { bindOperatorChat, codexMessageSelectorSchema } from "../../src/adapters/workflow-console/codex-message-recovery.mjs";
 import { loadWindowsCodexFormIssuer } from "../../src/adapters/workflow-console/windows-codex-form-issuer.mjs";
+import { readAgentRunFile } from "../../src/application/runtime/agent-run-configuration-service.mjs";
+import { parseEnv } from "node:util";
 
 const noArgs = { type: "object", properties: {}, additionalProperties: false };
 const baseMethods = [
@@ -15,8 +17,8 @@ const baseMethods = [
 ];
 const safeError = err => /^[A-Z][A-Z_0-9]{0,100}$/.test(err?.message) ? err.message : "CODEX_DECISION_UNAVAILABLE";
 const maxLine = 524288;
-export async function serveCodexDecisions({ session, formIssuer, input = process.stdin, output = process.stdout }) {
-  const methods = session.recoverMessage ? [...baseMethods, {
+export async function serveCodexDecisions({ session, formIssuer, useChannel, input = process.stdin, output = process.stdout }) {
+  const methods = session?.recoverMessage ? [...baseMethods, {
     name: "recover_message", description: "Recover an already attested Codex message for one pending AIDN operation, or read its existing receipt. Never presents a form.",
     inputSchema: codexMessageSelectorSchema,
   }] : baseMethods;
@@ -32,7 +34,8 @@ export async function serveCodexDecisions({ session, formIssuer, input = process
     });
   }
   let activeCall = null;
-  const channel = createCodexDecisionChannel({ session, formIssuer, elicit: params => elicit(params, activeCall), formSupported: () => form });
+  const transport = { elicit: params => elicit(params, activeCall), formSupported: () => form };
+  const channel = session && createCodexDecisionChannel({ session, formIssuer, ...transport });
   async function dispatch(m) {
     if (m.method === "initialize" && !started) {
       started = true;
@@ -56,10 +59,10 @@ export async function serveCodexDecisions({ session, formIssuer, input = process
     if (delivery && activeCall !== null) throw Error("CODEX_DECISION_IN_PROGRESS");
     if (delivery) activeCall = m.id;
     try {
-      let data;
-      if (name === "ask") data = await channel.decide(meta);
-      else if (name === "recover_message") data = await session.recoverMessage(args);
-      else data = name === "question" ? await channel.present(meta) : channel.describe(meta);
+      const handle = source => name === "ask" ? source.decide(meta)
+        : name === "question" ? source.present(meta) : source.describe(meta);
+      const data = name === "recover_message" ? await session.recoverMessage(args)
+        : await (useChannel ? useChannel(transport, handle) : handle(channel));
       return { content: [{ type: "text", text: JSON.stringify(data) }] };
     } catch (err) { return { isError: true, content: [{ type: "text", text: safeError(err) }] }; }
     finally { if (delivery) activeCall = null; }
@@ -113,12 +116,37 @@ export async function launchCodexDecisions({ targetRoot, configuration, operator
   return serveCodexDecisions({ session, formIssuer });
 }
 
+export function openManagedCodexForm(bindingFile, transport) {
+  const binding = readAgentRunFile(bindingFile, { maxBytes: 8192 }).value;
+  if (binding.schema_version !== 1 || !path.isAbsolute(binding.target_root ?? "") || !path.isAbsolute(binding.configuration ?? "")
+    || !/^[a-f0-9]{64}$/.test(binding.configuration_sha256 ?? "")) throw Error("CODEX_FORM_BINDING_INVALID");
+  const home = path.dirname(bindingFile);
+  readAgentRunFile(binding.configuration, { sha256: binding.configuration_sha256, maxBytes: 262144 });
+  const environment = { ...process.env, AIDN_STANDARD_HOST_HOME: home };
+  if (binding.connection_env && !environment[binding.connection_env]) {
+    if (!/^[A-Za-z_][A-Za-z_0-9]*$/.test(binding.connection_env)) throw Error("CODEX_FORM_BINDING_INVALID");
+    const file = readAgentRunFile(path.join(home, "codex-form-database.env"), { json: false, optional: true, maxBytes: 16384 });
+    if (file) {
+      const values = parseEnv(file.value.toString("utf8"));
+      if (Object.keys(values).length !== 1 || !Object.hasOwn(values, binding.connection_env)) throw Error("CODEX_FORM_DATABASE_ENV_INVALID");
+      environment[binding.connection_env] = values[binding.connection_env];
+    }
+  }
+  const session = createStandardOperatorSession({ targetRoot: binding.target_root, configuration: binding.configuration, environment });
+  const formIssuer = loadWindowsCodexFormIssuer({ authorityId: binding.authority_id, principals: session.session().principals, home });
+  return createCodexDecisionChannel({ session, formIssuer, ...transport });
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   const [intent, targetRoot, configuration, ...rest] = process.argv.slice(2);
-  const chat = rest.length === 3 && rest[0] === "--chat";
-  const installedForm = rest.length === 2 && rest[0] === "--form-issuer";
-  if (intent !== "--serve" || !targetRoot || !configuration || rest.length && !chat && !installedForm)
-    throw Error("AIDN_CODEX_PROJECT_CONFIGURATION_REQUIRED");
-  await launchCodexDecisions({ targetRoot: path.resolve(targetRoot), configuration,
-    operatorChat: chat ? bindOperatorChat(rest[1], rest[2]) : undefined, formAuthority: installedForm ? rest[1] : undefined });
+  if (intent === "--managed-form" && path.isAbsolute(targetRoot ?? "") && configuration === undefined) {
+    await serveCodexDecisions({ useChannel: (transport, handle) => handle(openManagedCodexForm(targetRoot, transport)) });
+  } else {
+    const chat = rest.length === 3 && rest[0] === "--chat";
+    const installedForm = rest.length === 2 && rest[0] === "--form-issuer";
+    if (intent !== "--serve" || !targetRoot || !configuration || rest.length && !chat && !installedForm)
+      throw Error("AIDN_CODEX_PROJECT_CONFIGURATION_REQUIRED");
+    await launchCodexDecisions({ targetRoot: path.resolve(targetRoot), configuration,
+      operatorChat: chat ? bindOperatorChat(rest[1], rest[2]) : undefined, formAuthority: installedForm ? rest[1] : undefined });
+  }
 }
