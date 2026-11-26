@@ -2,26 +2,35 @@
 
 ## Decisions inside Codex
 
-The packaged MCP server `tools/runtime/standard-codex-decisions.mjs` accepts
-`--serve <project> <standard-configuration>` from a trusted project launcher.
-It uses the configured host home. The `session` tool reports the connection's
-public key, enrollment status and last accepted receipt. The `question` tool
-reads the pending subject. Calling `ask` presents it in Codex through MCP
-form elicitation. The person answers in the chat. Merge consent identifies
-the repository, pull request, target branch and complete commit.
+In the installed Windows desktop app, the packaged MCP server presents the
+pending STANDARD question in the current Codex conversation. The operator
+answers once in the native form using the existing Codex session. Merge
+consent identifies the repository, pull request, target branch and full
+commit. Each choice uses the same installed software issuer.
 
-The `ask` tool accepts zero arguments. Only a correlated form result supplies
-the business answer. The connection signs it in memory and the workflow host
-verifies the enrolled principal and current subject. Closing a form leaves
-the question pending. A restarted host can consume a retained signed answer
-once. A second process generates a new public key. Enrollment of a live
-connection belongs to an independent authenticated project integration.
-The server refuses an unbound connection before presenting the form.
+The trusted project setup registers this stdio command in Codex.
 
-A configured MCP server and a discoverable tool establish transport
-availability. Proving that the authenticated project account owns the live
-connection is a separate qualification step. Plain-text chat history alone
-does not carry the host-source proof required by this version.
+```sh
+node tools/runtime/standard-codex-decisions.mjs --serve PROJECT CONFIGURATION --form-issuer AUTHORITY_ID
+```
+
+The launcher checks that the MCP process was started by the installed
+Microsoft Store Codex desktop package. The installed policy identifies
+the issuer and conversation. The `session` tool reports enrollment, whether
+the call is from the configured chat, and its last accepted receipt.
+The `question` tool reads the pending subject.
+
+The `ask` tool takes zero arguments. The issuer uses Codex-owned conversation
+metadata and the result returned on the same MCP connection for its outstanding
+form request. It signs the linked result in the background. The receipt
+binds the conversation, request, exact question, operation and answer.
+Closing the form leaves the question pending. A restarted host reuses a
+retained answer or reads the existing receipt from the journal.
+
+The trust boundary includes the installed desktop app and the provisioning
+service that protects the issuer key. This is software-origin evidence for
+the existing session. The form introduces no personal authentication prompt.
+Keep the host home and installed launcher outside AIDN work actor access.
 
 ### Enroll a decision issuer at installation
 
@@ -51,12 +60,19 @@ revision is idempotent. A signed successor can remove issuers or choices.
 Apply it on every execution host for the project. Installation asset rollback
 and uninstall leave this administrator-owned authority available.
 
-An anchored host requires the current enrollment for new human decisions.
-The authority checks the issuer key, question version, choice and signed Codex
-message reference before capture. The installed revision and digest appear as
-`project_authorization` in the decision tool's session status. The ordinary
-MCP connection key remains separate from the installed decision issuer. The
-authenticated Codex interface supplies the message proof to that issuer.
+For the native Windows form, add `"codex_form": {"thread_id": "THREAD_UUID",
+"client": "codex-desktop-windows"}` to the issuer principal. Provision its
+Ed25519 private key as `codex-form-issuers/AUTHORITY_ID.pem` under the
+protected host home. The setup service provisions this key separately from
+project content and the administrator key. The launcher reads it only after
+checking the desktop client. Enroll the matching public key using the signed
+project policy above. An ordinary connector restart reuses the key.
+
+The active authorization checks the exact question contract and choice.
+For a form issuer it verifies the signed `codex:form/…/request/…` evidence
+for the configured conversation. A principal without `codex_form` uses the
+signed Codex message reference described below. The active revision and
+digest appear as `project_authorization` in the session status.
 
 A trusted launcher can append `--chat <thread-uuid> <enrolled-human-authority>`
 to expose `recover_message`. These two selectors restrict delivery to that
@@ -80,11 +96,9 @@ process receipt across restarts, even after the transport copy is removed.
 
 ### Windows operator key and decision panel
 
-This panel is a qualification prototype. It requires Windows user verification
-for each decision. The intended operator flow uses a native form in the current
-Codex conversation. Windows verification takes place only during project
-installation or an AIDN update. The authenticated chat channel must provide
-independently verifiable evidence of each subsequent choice.
+This separate qualification prototype uses a WebAuthn verification for each
+panel decision. The native Codex form above uses the installed software issuer
+for subsequent choices in the existing conversation.
 
 An administrator can enroll an operator on Windows through an explicit
 installation action. A trusted launcher prepares the public enrollment plan

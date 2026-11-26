@@ -1,19 +1,29 @@
 import { createPublicKey, generateKeyPairSync, sign } from "node:crypto";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { assertOperatorClaim } from "./standard-operator-offer.mjs";
+import { codexFormEvidence, codexFormThreadId } from "./codex-form-evidence.mjs";
 
 const fail = code => { throw Error(code); };
 
-// Each live MCP connection owns a separate key. Starting a copy of this
-// process and fabricating a client reply produces a different public key.
-// Enrollment belongs to the authenticated host, outside this tool surface.
-export function createCodexDecisionChannel({ session, elicit, formSupported }) {
-  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+// The installed issuer is available only to the trusted launcher. Legacy
+// connections keep their own disposable key.
+export function createCodexDecisionChannel({ session, elicit, formSupported, formIssuer }) {
+  const privateKey = formIssuer?.privateKey ?? generateKeyPairSync("ed25519").privateKey;
+  const publicKey = createPublicKey(privateKey);
   const publicPem = publicKey.export({ format: "pem", type: "spki" });
   const publicDer = publicKey.export({ format: "der", type: "spki" });
   let active = false;
-  const enrolled = principals => principals.find(p => publicDer.equals(createPublicKey(p.public_key).export({ type: "spki", format: "der" })));
-  async function present() {
+  const enrolled = principals => principals.find(principal =>
+    publicDer.equals(createPublicKey(principal.public_key).export({ type: "spki", format: "der" }))
+      && (formIssuer ? principal.authority_id === formIssuer.authority_id
+        && principal.codex_form?.thread_id === formIssuer.thread_id && principal.codex_form.client === formIssuer.client
+        : !principal.codex_form));
+  const matchesChat = meta => !formIssuer || codexFormThreadId(meta) === formIssuer.thread_id;
+  function requireChat(meta) {
+    if (!matchesChat(meta)) fail("CODEX_DECISION_CHAT_CHANGED");
+  }
+  async function present(meta) {
+    requireChat(meta);
     const state = await session.question();
     if (state.status !== "question") return state;
     const { question, question_sha256, prompt, repository } = state.offer;
@@ -21,7 +31,8 @@ export function createCodexDecisionChannel({ session, elicit, formSupported }) {
       instance: question.instance_id, operation: question.operation_id, options: question.choices,
       repository, subject: question.subject ?? question.review ?? null };
   }
-  async function decide() {
+  async function decide(meta) {
+    requireChat(meta);
     if (active) fail("CODEX_DECISION_IN_PROGRESS");
     active = true;
     try {
@@ -29,10 +40,14 @@ export function createCodexDecisionChannel({ session, elicit, formSupported }) {
       if (state.status === "retained") return session.resume();
       if (state.status !== "question") return state;
       if (!formSupported()) fail("CODEX_FORM_UNAVAILABLE");
-      const principal = enrolled(session.session().principals);
-      if (!principal) fail("CODEX_DECISION_CHANNEL_NOT_ENROLLED");
+      const current = session.session();
+      const principal = enrolled(current.principals);
+      if (!principal || current.project_authorization && !formIssuer) fail("CODEX_DECISION_CHANNEL_NOT_ENROLLED");
       const { offer } = state, q = offer.question;
-      const form = codexDecisionForm(offer);
+      const rule = principal.decisions?.find(row => row.question_contract === q.contract_version);
+      const choices = formIssuer ? q.choices.filter(choice => rule?.choices.includes(choice)) : q.choices;
+      if (!choices.length) fail("STANDARD_AUTHORIZATION_DECISION_REFUSED");
+      const form = codexDecisionForm(offer, choices);
       const reply = await elicit(form.request);
       if (!reply || !["accept", "decline", "cancel"].includes(reply.action)) fail("CODEX_DECISION_REPLY_INVALID");
       if (reply.action !== "accept") return { status: "unanswered" };
@@ -43,19 +58,21 @@ export function createCodexDecisionChannel({ session, elicit, formSupported }) {
       const issued = Date.now(), expires = q.expires_at_ms ?? issued + minutes * 60000;
       if (issued < (q.issued_at_ms ?? 0) || issued >= expires) fail("OPERATOR_QUESTION_CHANGED");
       const payload = { ...fields, contract_version: offer.claim_version, source_kind: "human", authority_id: principal.authority_id,
-        source_event_id: offer.source_ref, subject_sha256: offer.subject_sha256, question_sha256: offer.question_sha256, choice,
-        evidence_refs: [{ ref: "aidn:question/" + q.operation_id, sha256: offer.question_sha256 }] };
+        source_event_id: offer.source_ref, subject_sha256: offer.subject_sha256, question_sha256: offer.question_sha256, choice };
+      payload.evidence_refs = formIssuer ? [codexFormEvidence(formIssuer.thread_id, reply.request_id, q, payload)]
+        : [{ ref: "aidn:question/" + q.operation_id, sha256: offer.question_sha256 }];
       assertOperatorClaim(payload, q, offer.source_ref);
       const body = { contract_version: "standard-host-source.v1", kind: "human", authority_id: principal.authority_id,
         source_ref: offer.source_ref, subject_sha256: offer.question_sha256, payload, issued_at_ms: issued, expires_at_ms: expires };
       return session.submit({ ...body, signature: sign(null, Buffer.from(shadowHash(body)), privateKey).toString("base64") });
     } finally { active = false; }
   }
-  return { present, decide, describe() {
+  return { present, decide, describe(meta) {
     const current = session.session();
     return { instance: current.instance, form_supported: formSupported(), enrolled: Boolean(enrolled(current.principals)),
       public_key: publicPem, ...(current.project_authorization ? { project_authorization: current.project_authorization } : {}),
-      last_receipt: current.last_receipt };
+      ...(formIssuer && { form_chat_matches: matchesChat(meta), issuer_client: formIssuer.client }),
+      last_receipt: matchesChat(meta) ? current.last_receipt : null };
   } };
 }
 
@@ -66,9 +83,9 @@ const labels = { rationale: "Motif", cycle_id: "Cycle", cycle_type: "Type du cyc
 const conditional = { selected_cycle: ["select_cycle", "create-correction-cycle"], selection: ["select_cycle", "convert-to-spike"],
   risk_acceptances: ["retain"], session_report: ["close"], handoff: ["handoff"], promotion: ["promote"] };
 
-export function codexDecisionForm(offer) {
+export function codexDecisionForm(offer, allowedChoices = offer.question.choices) {
   const q = offer.question;
-  const properties = { choice: { type: "string", title: "Ta décision", enum: q.choices } }, required = ["choice"];
+  const properties = { choice: { type: "string", title: "Ta décision", enum: allowedChoices } }, required = ["choice"];
   const readers = [], message = [offer.prompt, q.session_id ?? q.instance_id];
   if (q.subject?.head_oid) message.push(`${offer.repository ?? q.subject.repository_id} · PR #${q.subject.pull_request_number} → ${q.subject.base_ref}\n${q.subject.head_oid}`);
   const subject = q.review ?? q.subject;
@@ -115,7 +132,7 @@ export function codexDecisionForm(offer) {
     request: { mode: "form", message: message.join("\n\n"), requestedSchema: { type: "object", properties, required } },
     read(content) {
       if (!content || typeof content !== "object" || Object.keys(content).some(k => !Object.hasOwn(properties, k))
-        || !q.choices.includes(content.choice) || required.some(k => typeof content[k] !== "string" || !content[k].trim())) fail("CODEX_DECISION_FIELDS_INVALID");
+        || !allowedChoices.includes(content.choice) || required.some(k => typeof content[k] !== "string" || !content[k].trim())) fail("CODEX_DECISION_FIELDS_INVALID");
       const fields = Object.fromEntries(readers.map(([name, read]) => [name, read(content, content.choice)]));
       if (Object.hasOwn(offer.fields, "cycle_sha256")) {
         const selected = q.candidate_cycle ?? fields.selected_cycle;

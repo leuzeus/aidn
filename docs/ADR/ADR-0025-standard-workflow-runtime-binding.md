@@ -6002,9 +6002,14 @@ Projects with a shared database apply an approved revision on each execution
 host. Checkout configuration and installation assets supply no signing keys.
 
 The active contract narrows the human source verifier to the enrolled issuer
-and the listed question contract and choice. A signed Codex message reference
-is required on this path. The verifier binds the original question using the
-existing `standard-host-source.v1` envelope and rechecks the active authority.
+and the listed question contract and choice. A native Codex form issuer
+additionally binds the allowed desktop client and thread. Its protected
+private key signs the result correlated with one outstanding request on the
+desktop MCP connection. The verifier checks the evidence digest across the
+thread, request, operation, full question and normalized claim. Principals
+using historical message recovery provide the signed Codex message reference.
+The verifier binds the original question using the existing
+`standard-host-source.v1` envelope and rechecks the active authority.
 An anchored home requires its enrollment and refuses legacy human sources.
 Legacy unanchored homes retain their historical rules. An accepted matching
 receipt is independently readable from its original journal and process event.
@@ -6015,6 +6020,12 @@ from the authenticated interface, as a signed exact claim submitted through the
 ordinary inbox. Revocation and replacement require another approved revision.
 Installation enrollment adds no business acceptance or automatic promotion,
 merge, model use, or other execution permission.
+
+A form result establishes origin in the enrolled software channel of the
+current Codex session. The launcher checks that the process is a child of
+the trusted desktop package before loading its issuer key. The form requires
+only the business answer. Its trust boundary is the installed software and
+the protected project host, including the workstation administrator.
 
 ### Windows platform operator authority
 

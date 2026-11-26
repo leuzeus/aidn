@@ -14,6 +14,7 @@ import { createStandardHostResourceSource } from "./standard-host-resource-sourc
 import { readStandardProjectAuthorization } from "./standard-project-authorization-store.mjs";
 import { readStandardWindowsOperator, verifyWindowsPanelAnswer, windowsPanelSourceVersion } from "./standard-windows-operator-authority.mjs";
 import { signedCodexMessageReference } from "../workflow-console/codex-message-recovery.mjs";
+import { hasCodexFormEvidence } from "../workflow-console/codex-form-evidence.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const inside = (root, file) => { const r = path.relative(root, file); return r === "" || !path.isAbsolute(r) && r !== ".." && !r.startsWith(".." + path.sep); };
@@ -127,7 +128,10 @@ export function createStandardHostAuthority({ configuration, environment = proce
     if (installed) {
       const rule = principal.decisions.find(row => row.question_contract === subject.contract_version);
       if (!rule?.choices.includes(claim.choice)) fail("STANDARD_AUTHORIZATION_DECISION_REFUSED");
-      if (!signedCodexMessageReference(claim.evidence_refs)) fail("STANDARD_AUTHORIZATION_CODEX_EVIDENCE_REQUIRED");
+      const hasEvidence = principal.codex_form
+        ? hasCodexFormEvidence(principal.codex_form.thread_id, subject, claim)
+        : signedCodexMessageReference(claim.evidence_refs);
+      if (!hasEvidence) fail("STANDARD_AUTHORIZATION_CODEX_EVIDENCE_REQUIRED");
     }
     return envelope;
   }
@@ -217,7 +221,7 @@ export function createStandardHostAuthority({ configuration, environment = proce
       const installed = projectAuthorization();
       const humans = installed ? installed.current?.principals ?? [] : (registry()?.principals ?? []).filter(row => row.kinds.includes("human"));
       return humans
-        .map(({ authority_id, public_key }) => ({ authority_id, public_key }));
+        .map(({ authority_id, public_key, codex_form, decisions }) => ({ authority_id, public_key, ...(codex_form && { codex_form, decisions }) }));
     },
     verifyHumanEnvelope: (envelope, sourceRef, question) => verifyEnvelope("human", sourceRef, question, true, envelope),
     createHandoffResourceSource({ readInventory, readNativeHistory, observeNativeActivity, observeOperationActivity }) {

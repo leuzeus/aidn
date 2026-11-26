@@ -23,6 +23,15 @@
         "properties": {
           "authority_id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$" },
           "public_key": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "codex_form": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["thread_id", "client"],
+            "properties": {
+              "thread_id": { "type": "string", "pattern": "^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$", "minLength": 36, "maxLength": 36 },
+              "client": { "const": "codex-desktop-windows" }
+            }
+          },
           "decisions": {
             "type": "array",
             "minItems": 1,

@@ -3898,13 +3898,15 @@ on dev, main and release:
 - `verify-workflow-candidate-fixtures.mjs`
 - `verify-workflow-console-fixtures.mjs`
 
-The operator-session fixture exercises a Codex form and the public STANDARD
-FILES host with a disposable enrolled identity. Run
-`npm run perf:verify-standard-operator-session`. The stdio fixture in
-`tools/perf/verify-codex-decision-channel-fixtures.mjs` exercises transport
+The operator-session fixture installs a scoped Codex form issuer policy
+and exercises the public STANDARD FILES host with a fixture MCP client.
+Run `npm run perf:verify-standard-operator-session`. It checks the wrong chat,
+altered evidence, direct launch outside the desktop, cold resume, and a
+single accepted receipt. The stdio fixture in
+`tools/perf/verify-codex-decision-channel-fixtures.mjs` checks transport
 negotiation, signed capture, cancellation, stale subjects and refusal of
-answers supplied as tool arguments. A live, authenticated Codex account
-requires its own evidence.
+answers supplied as tool arguments. It also binds the result to the
+server-generated request ID. Live desktop acceptance uses its own evidence.
 
 The operator-session fixture also checks historical text recovery with an
 independently signed fixture source. It covers a missing attestation, a

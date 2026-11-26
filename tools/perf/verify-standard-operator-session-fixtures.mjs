@@ -6,6 +6,8 @@ import { createStandardConsoleFixture } from "./verify-standard-console-entry-fi
 import { createStandardOperatorSession } from "../../src/adapters/workflow-console/standard-operator-session.mjs";
 import { createCodexDecisionChannel } from "../../src/adapters/workflow-console/codex-decision-channel.mjs";
 import { bindOperatorChat, readCodexMessageReference } from "../../src/adapters/workflow-console/codex-message-recovery.mjs";
+import { codexFormEvidence } from "../../src/adapters/workflow-console/codex-form-evidence.mjs";
+import { loadWindowsCodexFormIssuer } from "../../src/adapters/workflow-console/windows-codex-form-issuer.mjs";
 import { operatorOffer, assertOperatorClaim } from "../../src/adapters/workflow-console/standard-operator-offer.mjs";
 import { runStandardWorkflowEntry } from "../../src/application/runtime/standard-workflow-entry.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
@@ -27,27 +29,50 @@ async function walkToQuestion(runEntry) {
   assert.fail("fixture did not reach a human question");
 }
 try {
+  const issuer = generateKeyPairSync("ed25519");
   const secondOperator = generateKeyPairSync("ed25519");
-  const other = { authority_id: "fixture_other", kinds: ["human"], public_key: secondOperator.publicKey.export({ format: "pem", type: "spki" }) };
-  const enroll = principals => fs.writeFileSync(path.join(dirs.authority, "principals.json"), JSON.stringify({ contract_version: "standard-host-principals.v1", principals }));
-  enroll([other]);
+  const administrator = generateKeyPairSync("ed25519");
+  const pem = key => key.export({ format: "pem", type: "spki" });
+  const threadId = "10000000-0000-4000-8000-000000000001", requestId = "20000000-0000-4000-8000-000000000002";
+  const profile = { thread_id: threadId, client: "codex-desktop-windows" };
+  const formIssuer = { ...profile, authority_id: "fixture_codex", privateKey: issuer.privateKey };
+  const other = { authority_id: "fixture_other", public_key: pem(secondOperator.publicKey), codex_form: profile };
+  const principals = [{ authority_id: formIssuer.authority_id, public_key: pem(issuer.publicKey), codex_form: profile }, other]
+    .map(row => ({ ...row, decisions: [{ question_contract: "standard-mode-question.v1", choices: ["COMMITTING", "THINKING"] }] }));
+  const scope = resolveRuntimeProjectContext({ targetRoot: target, env: environment });
+  const bodyForPolicy = { contract_version: "standard-project-authorization.v1", project_id: scope.project_id,
+    runtime_scope_id: scope.runtime_scope_id, revision: 1, previous_sha256: null, principals };
+  const signed = (body, key) => ({ ...body, signature: sign(null, Buffer.from(shadowHash(body)), key).toString("base64") });
+  const file = path.join(fixture.base, "form-authorization.json");
+  fs.writeFileSync(path.join(dirs.authority, "project-authorization-admin.pem"), pem(administrator.publicKey));
+  fs.writeFileSync(file, JSON.stringify(signed(bodyForPolicy, administrator.privateKey)));
+  const setup = { targetRoot: target, file, environment };
+  installStandardAuthorization({ ...setup, plan: prepareStandardAuthorizationInstallation(setup) });
+  assert.throws(() => loadWindowsCodexFormIssuer({ authorityId: formIssuer.authority_id, principals, home: dirs.authority }),
+    /CODEX_DESKTOP_FORM_CLIENT_UNAVAILABLE/);
   const stopped = session({ enter: options => {
     if (options.execute) throw Error("FIXTURE_PROCESS_STOPPED");
     return runStandardWorkflowEntry(options);
   } });
   let answerCount = 0, lastAnswer;
   const channel = createCodexDecisionChannel({ session: { ...stopped, submit(e) { lastAnswer = e; return stopped.submit(e); } },
-    formSupported: () => true, elicit: async form => {
-      answerCount++; assert.deepEqual(form.requestedSchema.required, ["choice"]); return { action: "accept", content: { choice: "COMMITTING" } };
+    formIssuer, formSupported: () => true, elicit: async form => {
+      answerCount++;
+      assert.deepEqual(form.requestedSchema.required, ["choice"]);
+      return { action: "accept", content: { choice: "COMMITTING" }, request_id: requestId };
     } });
   const pub = channel.describe().public_key;
-  enroll([other, { authority_id: "fixture_codex", kinds: ["human"], public_key: pub }]); // Disposable fixture enrollment.
+  assert.equal(pub, principals[0].public_key);
   const q = await walkToQuestion(run);
   assert.equal(q.contract_version, "standard-mode-question.v1");
   const offer = (await session().question()).offer;
   assert.equal(offer.question_sha256, shadowHash(q));
   await assert.rejects(stopped.submit({ choice: "COMMITTING" }), /STANDARD_HOST_SOURCE_INVALID/);
-  await assert.rejects(channel.decide(), /FIXTURE_PROCESS_STOPPED/);
+  await assert.rejects(channel.decide(), /CODEX_DECISION_CHAT_CHANGED/);
+  await assert.rejects(channel.decide({ threadId: requestId }), /CODEX_DECISION_CHAT_CHANGED/);
+  await assert.rejects(channel.decide({ threadId, "x-codex-turn-metadata": { thread_id: requestId } }), /CODEX_DECISION_CHAT_CHANGED/);
+  assert.equal(answerCount, 0);
+  await assert.rejects(channel.decide({ "x-codex-turn-metadata": JSON.stringify({ thread_id: threadId }) }), /FIXTURE_PROCESS_STOPPED/);
   assert.equal(answerCount, 1);
   const { signature, ...body } = lastAnswer;
   assert(verify(null, Buffer.from(shadowHash(body)), pub, Buffer.from(signature, "base64")));
@@ -55,15 +80,22 @@ try {
   assert.equal((await cold.question()).status, "retained");
   const altered = structuredClone(lastAnswer); altered.payload.choice = "THINKING";
   await assert.rejects(cold.submit(altered), /STANDARD_HOST_SOURCE_NOT_AUTHENTICATED/);
-  const otherBody = { ...body, authority_id: other.authority_id, payload: { ...body.payload, authority_id: other.authority_id, choice: "THINKING" } };
-  const otherAnswer = { ...otherBody, signature: sign(null, Buffer.from(shadowHash(otherBody)), secondOperator.privateKey).toString("base64") };
+  const changedEvidence = { ...body, payload: { ...body.payload, choice: "THINKING" } };
+  await assert.rejects(cold.submit(signed(changedEvidence, issuer.privateKey)), /STANDARD_AUTHORIZATION_CODEX_EVIDENCE_REQUIRED/);
+  const changedChat = { ...body.payload, evidence_refs: [codexFormEvidence(requestId, threadId, q, body.payload)] };
+  await assert.rejects(cold.submit(signed({ ...body, payload: changedChat }, issuer.privateKey)), /STANDARD_AUTHORIZATION_CODEX_EVIDENCE_REQUIRED/);
+  const otherClaim = { ...body.payload, authority_id: other.authority_id, choice: "THINKING" };
+  otherClaim.evidence_refs = [codexFormEvidence(threadId, requestId, q, otherClaim)];
+  const otherAnswer = signed({ ...body, authority_id: other.authority_id, payload: otherClaim }, secondOperator.privateKey);
   await assert.rejects(cold.submit(otherAnswer), /OPERATOR_ANSWER_ALREADY_RECORDED/);
   const received = await cold.resume();
   assert.equal(received.choice, "COMMITTING"); assert.equal(received.outcome, "completed"); assert(received.receipt_id);
   assert.equal((await session().resume()).status, "workflow"); assert.deepEqual(session().session().last_receipt, received);
   await assert.rejects(session().submit(lastAnswer), /OPERATOR_QUESTION_CHANGED/);
   const record = JSON.parse(fs.readFileSync(path.join(target, "docs/audit/workflows/operation-records", q.operation_id + ".json")));
-  assert.equal(record.results.length, 1); assert.equal(record.results[0].receipt.receipt_id, received.receipt_id);
+  assert.equal(record.results.length, 1);
+  assert.equal(record.results[0].receipt.receipt_id, received.receipt_id);
+  assert.deepEqual(record.results[0].output.evidence_refs, body.payload.evidence_refs);
   const subject = { repository_id: "R_test", pull_request_id: "PR_test", pull_request_number: 12, base_ref: "dev", head_oid: "a".repeat(40) };
   const merge = { ...q, contract_version: "standard-pr-merge-consent-question.v2", issued_at_ms: Date.now(), subject, choices: ["approve_merge", "refused"] };
   const consent = { ...lastAnswer.payload, contract_version: "human-pr-merge-consent.v1", source_event_id: "test-merge",
@@ -71,8 +103,9 @@ try {
   assert.equal(operatorOffer(merge, "test-merge").subject_sha256, consent.subject_sha256);
   assertOperatorClaim(consent, merge, "test-merge");
   assert.throws(() => assertOperatorClaim(consent, { ...merge, subject: { ...subject, head_oid: "b".repeat(40) } }, "test-merge"), /OPERATOR_DECISION_CHANGED/);
-  console.log(JSON.stringify({ status: "PASS", proof: "Codex form fixture and public STANDARD FILES host", answers: answerCount, receipts: 1,
-    cold_resume: true, changed_merge_head_refused: true, genuine_codex_user: "SKIP" }));
+  console.log(JSON.stringify({ status: "PASS", proof: "installed Codex form issuer policy, fixture client and public STANDARD FILES host",
+    answers: answerCount, receipts: 1, cold_resume: true, changed_merge_head_refused: true,
+    wrong_conversation_refused: true, changed_form_evidence_refused: true, windows_live_client: "SKIP" }));
 } finally {
   for (const dir of [fixture.base, ...fixture.owned]) fs.rmSync(dir, { recursive: true, force: true });
 }

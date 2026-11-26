@@ -5,16 +5,17 @@ import { pathToFileURL } from "node:url";
 import { createStandardOperatorSession } from "../../src/adapters/workflow-console/standard-operator-session.mjs";
 import { createCodexDecisionChannel } from "../../src/adapters/workflow-console/codex-decision-channel.mjs";
 import { bindOperatorChat, codexMessageSelectorSchema } from "../../src/adapters/workflow-console/codex-message-recovery.mjs";
+import { loadWindowsCodexFormIssuer } from "../../src/adapters/workflow-console/windows-codex-form-issuer.mjs";
 
 const noArgs = { type: "object", properties: {}, additionalProperties: false };
 const baseMethods = [
   { name: "session", description: "Read the AIDN operator channel enrollment and last host receipt.", inputSchema: noArgs, annotations: { readOnlyHint: true } },
   { name: "question", description: "Read the exact pending STANDARD question in this project.", inputSchema: noArgs, annotations: { readOnlyHint: true } },
-  { name: "ask", description: "Present the pending AIDN question to the human in Codex and deliver their authenticated answer.", inputSchema: noArgs },
+  { name: "ask", description: "Present the pending AIDN question as a native Codex form and deliver its linked result.", inputSchema: noArgs },
 ];
 const safeError = err => /^[A-Z][A-Z_0-9]{0,100}$/.test(err?.message) ? err.message : "CODEX_DECISION_UNAVAILABLE";
 const maxLine = 524288;
-export async function serveCodexDecisions({ session, input = process.stdin, output = process.stdout }) {
+export async function serveCodexDecisions({ session, formIssuer, input = process.stdin, output = process.stdout }) {
   const methods = session.recoverMessage ? [...baseMethods, {
     name: "recover_message", description: "Recover an already attested Codex message for one pending AIDN operation, or read its existing receipt. Never presents a form.",
     inputSchema: codexMessageSelectorSchema,
@@ -31,7 +32,7 @@ export async function serveCodexDecisions({ session, input = process.stdin, outp
     });
   }
   let activeCall = null;
-  const channel = createCodexDecisionChannel({ session, elicit: params => elicit(params, activeCall), formSupported: () => form });
+  const channel = createCodexDecisionChannel({ session, formIssuer, elicit: params => elicit(params, activeCall), formSupported: () => form });
   async function dispatch(m) {
     if (m.method === "initialize" && !started) {
       started = true;
@@ -48,7 +49,7 @@ export async function serveCodexDecisions({ session, input = process.stdin, outp
     if (m.method === "resources/templates/list") return { resourceTemplates: [] };
     if (m.method === "prompts/list") return { prompts: [] };
     if (m.method !== "tools/call") throw Error("MCP_METHOD_UNAVAILABLE");
-    const { name, arguments: args = {} } = m.params ?? {};
+    const { name, arguments: args = {}, _meta: meta } = m.params ?? {};
     if (!methods.some(t => t.name === name) || !args || typeof args !== "object" || Array.isArray(args) || name !== "recover_message" && Object.keys(args).length)
       throw Error("MCP_ARGUMENTS_REFUSED");
     const delivery = name === "ask" || name === "recover_message";
@@ -56,9 +57,9 @@ export async function serveCodexDecisions({ session, input = process.stdin, outp
     if (delivery) activeCall = m.id;
     try {
       let data;
-      if (name === "ask") data = await channel.decide();
+      if (name === "ask") data = await channel.decide(meta);
       else if (name === "recover_message") data = await session.recoverMessage(args);
-      else data = name === "question" ? await channel.present() : channel.describe();
+      else data = name === "question" ? await channel.present(meta) : channel.describe(meta);
       return { content: [{ type: "text", text: JSON.stringify(data) }] };
     } catch (err) { return { isError: true, content: [{ type: "text", text: safeError(err) }] }; }
     finally { if (delivery) activeCall = null; }
@@ -75,7 +76,7 @@ export async function serveCodexDecisions({ session, input = process.stdin, outp
       const request = pending;
       pending = null;
       if (m.error) request.reject(Error("CODEX_FORM_UNAVAILABLE"));
-      else request.resolve(m.result);
+      else request.resolve({ ...m.result, request_id: request.id });
       return;
     }
     if (!Object.hasOwn(m, "id")) {
@@ -104,10 +105,20 @@ export async function serveCodexDecisions({ session, input = process.stdin, outp
     }
   } finally { closePending("CODEX_DECISION_CHANNEL_CLOSED"); }
 }
+export async function launchCodexDecisions({ targetRoot, configuration, operatorChat, formAuthority, environment = process.env }) {
+  const session = createStandardOperatorSession({ targetRoot, configuration, operatorChat, environment });
+  const formIssuer = formAuthority === undefined ? undefined : loadWindowsCodexFormIssuer({
+    authorityId: formAuthority, principals: session.session().principals, home: environment.AIDN_STANDARD_HOST_HOME,
+  });
+  return serveCodexDecisions({ session, formIssuer });
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   const [intent, targetRoot, configuration, ...rest] = process.argv.slice(2);
-  if (intent !== "--serve" || !targetRoot || !configuration || rest.length && (rest.length !== 3 || rest[0] !== "--chat"))
+  const chat = rest.length === 3 && rest[0] === "--chat";
+  const installedForm = rest.length === 2 && rest[0] === "--form-issuer";
+  if (intent !== "--serve" || !targetRoot || !configuration || rest.length && !chat && !installedForm)
     throw Error("AIDN_CODEX_PROJECT_CONFIGURATION_REQUIRED");
-  const operatorChat = rest.length ? bindOperatorChat(rest[1], rest[2]) : undefined;
-  await serveCodexDecisions({ session: createStandardOperatorSession({ targetRoot: path.resolve(targetRoot), configuration, operatorChat }) });
+  await launchCodexDecisions({ targetRoot: path.resolve(targetRoot), configuration,
+    operatorChat: chat ? bindOperatorChat(rest[1], rest[2]) : undefined, formAuthority: installedForm ? rest[1] : undefined });
 }
