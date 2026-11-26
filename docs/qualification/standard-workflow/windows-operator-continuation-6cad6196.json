@@ -30,11 +30,15 @@
   },
   "operator_interface": {
     "read_only_preview_in_codex": "PASS",
+    "required_decision_surface": "native form in the current Codex conversation",
+    "web_decision_surface": "out of scope",
     "installation_or_update_only_user_verification": "REQUIRED",
     "existing_panel_user_verification": "required per assertion",
     "active_panel_with_this_interaction": "NO_GO",
     "real_decision": "SKIP",
     "ordinary_codex_reply": {
+      "native_form_reported_by_connected_connector": true,
+      "connected_connector_enrolled": false,
       "wire_forms": [
         "answers",
         "action/content/optional metadata"
