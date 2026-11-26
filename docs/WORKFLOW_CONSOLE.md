@@ -25,11 +25,11 @@ issuer for the current chat. It adds a dedicated server in the user Codex
 configuration and preserves other entries. Reload the MCP servers in a
 desktop session that was already open during its first installation.
 
-The Codex client's permission profile controls whether a form is presented.
-A client can reject MCP elicitation automatically when its active policy
-does not allow it. An unanswered form leaves the pending question in AIDN.
-Configure an interactive profile that permits MCP elicitation when qualifying
-the form. Installation preserves the client's permission policy.
+Use a Codex permission profile that allows interactive MCP forms. In
+**Approve for me**, Codex can review its own permission requests automatically.
+The STANDARD decision remains a form that requires the operator to choose an
+answer. AIDN leaves the question pending when an automatic reviewer responds
+or the form is closed. Installation preserves the client's permission profile.
 [Codex approval configuration](https://learn.chatgpt.com/docs/config-file/config-reference).
 
 The global registration names the stable AIDN launcher. After `aidn update`,

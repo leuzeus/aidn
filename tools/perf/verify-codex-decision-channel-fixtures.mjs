@@ -99,12 +99,21 @@ try {
     const form = await installed.tool("ask", {}, 10, { threadId: chat.thread_id });
     assert.equal(form.method, "elicitation/create");
     assert.deepEqual(form.params.requestedSchema.properties.choice.enum, ["COMMITTING"]);
+    assert.deepEqual(form.params._meta, { codex_requires_user_input: true });
+    for (const reviewer of ["auto_review", "guardian_subagent"]) {
+      const auto = reviewer === "auto_review" ? form : await installed.tool("ask", {}, 10, { threadId: chat.thread_id });
+      const ignored = installed.next();
+      installed.send({ id: auto.id, result: { action: "accept", content: { choice: "COMMITTING" }, _meta: { approvals_reviewer: reviewer } } });
+      assert.deepEqual(JSON.parse((await ignored).result.content[0].text), { status: "unanswered" });
+      assert.equal(captured.length, 0);
+    }
+    const human = await installed.tool("ask", {}, 10, { threadId: chat.thread_id });
     const result = installed.next();
-    installed.send({ id: form.id, result: { action: "accept", content: { choice: "COMMITTING" }, request_id: chat.thread_id } });
+    installed.send({ id: human.id, result: { action: "accept", content: { choice: "COMMITTING" }, request_id: chat.thread_id } });
     assert.equal(JSON.parse((await result).result.content[0].text).choice, "COMMITTING");
     assert.equal(captured.length, 1);
-    assert.deepEqual(captured[0].payload.evidence_refs, [codexFormEvidence(chat.thread_id, form.id, q, captured[0].payload)]);
-    console.log(JSON.stringify({ status: "PASS", transport: "MCP stdio", conversation_bound: true, request_id_bound: true, live_desktop: "SKIP" }));
+    assert.deepEqual(captured[0].payload.evidence_refs, [codexFormEvidence(chat.thread_id, human.id, q, captured[0].payload)]);
+    console.log(JSON.stringify({ status: "PASS", transport: "MCP stdio", conversation_bound: true, request_id_bound: true, automatic_review_unanswered: true, live_desktop: "SKIP" }));
   } finally { await installed.close(); }
 } finally { captured = []; }
 

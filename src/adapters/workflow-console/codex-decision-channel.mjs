@@ -50,7 +50,9 @@ export function createCodexDecisionChannel({ session, elicit, formSupported, for
       const form = codexDecisionForm(offer, choices);
       const reply = await elicit(form.request);
       if (!reply || !["accept", "decline", "cancel"].includes(reply.action)) fail("CODEX_DECISION_REPLY_INVALID");
-      if (reply.action !== "accept") return { status: "unanswered" };
+      const reviewer = reply._meta?.approvals_reviewer;
+      if (reply.action !== "accept" || reviewer === "auto_review" || reviewer === "guardian_subagent")
+        return { status: "unanswered" };
       const { choice, fields, minutes } = form.read(reply.content);
       const latest = await session.question();
       if (latest.status !== "question" || latest.offer.source_ref !== offer.source_ref || latest.offer.question_sha256 !== offer.question_sha256)
@@ -129,7 +131,8 @@ export function codexDecisionForm(offer, allowedChoices = offer.question.choices
   const minutes = 60;
   if (!q.expires_at_ms) message.push("Validité de la réponse : 1 heure.");
   return {
-    request: { mode: "form", message: message.join("\n\n"), requestedSchema: { type: "object", properties, required } },
+    request: { mode: "form", _meta: { codex_requires_user_input: true }, message: message.join("\n\n"),
+      requestedSchema: { type: "object", properties, required } },
     read(content) {
       if (!content || typeof content !== "object" || Object.keys(content).some(k => !Object.hasOwn(properties, k))
         || !allowedChoices.includes(content.choice) || required.some(k => typeof content[k] !== "string" || !content[k].trim())) fail("CODEX_DECISION_FIELDS_INVALID");
