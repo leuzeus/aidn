@@ -1,0 +1,47 @@
+{
+  "observed_date": "2026-11-25",
+  "scope": "Windows enrollment and preserved PostgreSQL mode-question continuation",
+  "initial_candidate": "cb2c3ea1cc3c662558500bd9fc6c54a86ed445b7",
+  "installed_candidate": "6cad6196a8dc4abad9c36fedea37445e39ff7715",
+  "installed_archive_sha256": "d3f5d1691d656517f3c5c567b4f8e6622e3008d7b7465d8838ed9434824b8296",
+  "enrollment": {
+    "status": "PASS",
+    "native_credential_enrolled": true,
+    "machine_registry_owner": "administrator",
+    "protected_dacl": true,
+    "unelevated_write_access": "DENIED",
+    "reused_by_corrected_archive": true
+  },
+  "startup": {
+    "initial_attempt": "FAIL",
+    "initial_refusal": "STANDARD_STARTUP_IMPLEMENTATION_CHANGED",
+    "correction": "refreshed startup, cycle and full STANDARD binding catalogs",
+    "installed_file_parity": "PASS",
+    "public_entry_to_retained_session": "PASS"
+  },
+  "canonical_state": {
+    "backend": "PostgreSQL",
+    "status": "WAITING",
+    "original_session_and_worktree_preserved": true,
+    "original_instance_and_predecessor_journal_preserved": true,
+    "second_checkout_verified": true,
+    "decision_receipts": 0,
+    "native_allocations": 0
+  },
+  "operator_interface": {
+    "read_only_preview_in_codex": "PASS",
+    "installation_or_update_only_user_verification": "REQUIRED",
+    "existing_panel_user_verification": "required per assertion",
+    "active_panel_with_this_interaction": "NO_GO",
+    "real_decision": "SKIP",
+    "ordinary_codex_reply": {
+      "wire_forms": [
+        "answers",
+        "action/content/optional metadata"
+      ],
+      "verified_author_proof": "UNAVAILABLE",
+      "native_verification_provider": "providerUnavailable"
+    }
+  },
+  "complete_standard_workflow": false
+}
