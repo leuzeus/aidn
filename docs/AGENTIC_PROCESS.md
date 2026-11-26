@@ -888,7 +888,11 @@ for Native owner retirement. The read-only plan binds the actual unresolved
 Native generation and dispatch; application needs exact write intent and
 independent current operator permission. The fixed profile currently requires
 a signed no-assignment failure checkpoint and a terminated original creator.
-An unproved assignment/effect remains unresolved.
+On resume, the fixed host authenticates the immediate predecessor and compares
+its event prefix and complete resource and result histories. A failed allocation
+may retain those rows when no new assignment, resource, result or response is
+observed and the worker reports closure for the current generation. An unproved
+assignment/effect remains unresolved.
 
 The canonical disposition records durable fence intentions before effects and
 preserves the exact physical owner witness. An immutable retirement receipt

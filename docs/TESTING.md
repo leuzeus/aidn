@@ -6856,7 +6856,10 @@ Every normal observation preserves fixture bytes and directories.
 
 The `--contracts-only` selector covers Native dispatch DTOs and the pure
 reconciliation readers; allocation-assessment and owner-port cases require
-one of the three actual backend modes.
+one of the three actual backend modes. The focused `--native-post-assignment-mode` fixture also cancels a resumed worker before its next assignment. It checks
+that prior resources and results remain readable, the failed generation keeps
+its own debit, and changed predecessor bytes refuse. Native RPC and supervisor
+closure remain controlled in that fixture.
 Historical-source observations, actual interrupted trees, concurrent recovery,
 exact owner disposition, general R10/handoff, genuine Native and installed
 archive qualification remain separate. Existing required case order, argv and

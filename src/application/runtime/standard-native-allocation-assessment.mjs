@@ -1,9 +1,10 @@
-import { assertNativeAllocationAssessment } from '../../core/workflow/native-allocation-assessment.mjs';
+import { assertNativeAllocationAssessment, nativeCheckpointHasNoNewWork } from '../../core/workflow/native-allocation-assessment.mjs';
 import { assertNativeAllocationJournal, nativeJournalId } from '../../core/workflow/native-allocation-journal.mjs';
 import { assertNativeDispatchRecord, nativeDispatchPath } from '../../core/workflow/native-dispatch-record.mjs';
 import { checkShadowJson, shadowHash } from '../../core/workflow/shadow-json.mjs';
 import { readNativeAllocationCheckpoint } from './native-allocation-evidence.mjs';
 import { readAgentRunFile } from './agent-run-configuration-service.mjs';
+import { observeNativePostAssignmentCheckpoint } from './standard-native-post-assignment-assessment.mjs';
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const stableInventory = ({ authentication, observed_at_ms, ...material }) => shadowHash(material);
@@ -53,9 +54,21 @@ export function createStandardNativeAllocationAssessment({ artifacts, configurat
       && dispatch.result_sha256 === shadowHash({ contract_version: 'journaled-native-allocation-result.v1',
         owned_result: closure.value, journal_id: journal.journal_id, generation: entry.generation,
         journal_phase: 'failed', journal_sha256: journalHash, status: 'FAILED', first_failure: entry.first_failure, retry: false });
-    const noAssignment = Boolean(returned && checkpoint.parent_closed && checkpoint.os_tree_confirmed
-      && checkpoint.instance_sha256 === entry.initial_instance_sha256 && checkpoint.responses_observed === 0
-      && checkpoint.resources === 0 && checkpoint.results === 0);
+    const closedBeforeAssignment = returned && checkpoint.parent_closed && checkpoint.os_tree_confirmed
+      && checkpoint.instance_sha256 === entry.initial_instance_sha256 && checkpoint.responses_observed === 0;
+    if (closedBeforeAssignment && generation > 1) {
+      const previous = inventory.resources.find(row => row.ref === 'native:' + id + '/' + (generation - 1));
+      const work = previous?.details.accounting_known && previous.details.tree_closed
+        ? observeNativePostAssignmentCheckpoint({ journal, entry, current: instance, configuration }) : null;
+      const inherited = work !== null && work.history_preserved && work.generation_assignments === 0
+        && work.generation_resources === 0 && work.generation_results === 0 && work.unresolved_assignments === 0
+        && work.worker_checkpoint_matches && work.worker_parent_closed && work.worker_generation_resources === 0
+        && work.consumption_matches;
+      // Preserve the original shape when the empty-checkpoint test gives the same answer.
+      if (inherited !== nativeCheckpointHasNoNewWork(checkpoint))
+        checkpoint.inherited_checkpoint_sha256 = inherited ? work.prior_checkpoint_sha256 : null;
+    }
+    const noAssignment = Boolean(closedBeforeAssignment && nativeCheckpointHasNoNewWork(checkpoint));
     return { journal_id: id, journal_sha256: journalHash, allocation_sha256: shadowHash(entry), generation: entry.generation,
       allocation_phase: entry.phase, initial_instance_sha256: entry.initial_instance_sha256,
       dispatch_id: dispatchId, dispatch_sha256: shadowHash(dispatch), checkpoint,

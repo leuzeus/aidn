@@ -264,6 +264,7 @@ const checkFlags = new Set([
 ]);
 const checkPrefixes = [
   "--native-epoch-mode=", "--native-initial-epoch-mode=", "--dataflow-mode=",
+  "--native-post-assignment-mode=",
   "--drift-recovery-mode=", "--drift-finalize-mode=", "--drift-finalize-case=",
   "--drift-completion-mode=", "--drift-mode=", "--canonical-resume-native-mode=",
   "--standard-existing-open-work-mode=", "--standard-selected-root-mode=", "--standard-existing-complete-mode=",
@@ -495,8 +496,23 @@ function journalController(f, t, options = {}) {
         readProductSha256: () => native.preview().product_sha256, ...(f.environment ? { environment: f.environment } : {}) });
       const observedAuthority = options.observePreparationFailure ? observeFixtureNativePreparation(allocationAuthority.processAuthority,
         { controlRoot: request.cwd, generation: sent.allocation.generation }) : allocationAuthority.processAuthority;
-      native = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory, allocationAuthority, processAuthority: observedAuthority, ...(f.environment ? { environment: f.environment } : {}) });
-      const result = await native.run({ execute: true, authorization: sent.authorization });
+      const generation = sent.allocation.generation;
+      const cancellation = options.cancelWorkerGeneration === generation ? new AbortController() : null;
+      const processAuthority = cancellation === null ? observedAuthority : Object.freeze({
+        ...observedAuthority,
+        readExecutionAuthority() {
+          // The worker opens this directory before reading the retained instance.
+          // Its next authority read is in activity preparation, before assignment.
+          const workerOutput = path.join(f.configuration.control_root, f.configuration.instance_id + '.g' + generation);
+          if (!cancellation.signal.aborted && fs.existsSync(workerOutput)) {
+            cancellation.abort();
+            cancellation.signal.throwIfAborted();
+          }
+          return observedAuthority.readExecutionAuthority();
+        },
+      });
+      native = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory, allocationAuthority, processAuthority, ...(f.environment ? { environment: f.environment } : {}) });
+      const result = await native.run({ execute: true, authorization: sent.authorization, signal: cancellation?.signal });
       await options.afterWorker?.(f, result);
       await onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify(result)) });
       return { outcome: options.postAssignmentReturnFailure ? "failed" : "completed",
