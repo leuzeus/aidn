@@ -66,8 +66,11 @@ export function assertNativeAllocationJournal(value) {
   for (const [index, entry] of value.allocations.entries()) {
     if (entry.generation !== index + 1 || entry.limits.configuration_sha256 !== entry.configuration_sha256
       || entry.limits.workflow_deadline_ms > entry.limits.global_deadline_ms || entry.limits.authorized_at_ms >= entry.limits.global_deadline_ms) fail("NATIVE_ALLOCATION_GENERATION_INVALID");
-    if (index < value.allocations.length - 1 && entry.phase !== "closed"
-      && !(reconciled && nativeAllocationResolution(entry, value.reconciliations))) fail("NATIVE_ALLOCATION_PREDECESSOR_UNRESOLVED");
+    if (index < value.allocations.length - 1 && entry.phase !== "closed") {
+      const resolution = reconciled ? nativeAllocationResolution(entry, value.reconciliations) : null;
+      if (!resolution) fail("NATIVE_ALLOCATION_PREDECESSOR_UNRESOLVED");
+      if (resolution.kind === "reconciled_interrupted_assignment") fail("NATIVE_INTERRUPTED_ASSIGNMENT_REQUIRES_FRESH_CONTEXT");
+    }
     if (entry.phase === "reserved" && ([entry.owned_result_sha256, entry.tree_proof_sha256, entry.checkpoint, entry.closure_ref,
       entry.consumption, entry.owned_status, entry.first_failure].some(item => item !== null) || entry.tree_closed)) fail("NATIVE_ALLOCATION_RESERVATION_INVALID");
     if (entry.phase !== "reserved" && (entry.owned_status === null || entry.owned_result_sha256 === null || entry.tree_proof_sha256 === null)) fail("NATIVE_ALLOCATION_OBSERVATION_MISSING");

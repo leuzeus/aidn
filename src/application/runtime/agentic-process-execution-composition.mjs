@@ -74,6 +74,13 @@ export function readAgenticProductSnapshot(root, productFiles) {
 
 // This is the real project composition. Tests may replace native/SQL wires, but
 // not assignmentAuthority, resultAuthority, bindings, CAS or admission policy.
+// The Codex app-server reports completed responses. A paid turn can produce
+// several, and its protocol has no admission limit per response. The only
+// alternate transport here is the trusted, controlled fixture.
+export function assertNativeResponseLimitEnforceable(controlledFixture) {
+  if (controlledFixture !== true) fail("PROCESS_EXECUTION_RESPONSE_LIMIT_UNENFORCEABLE");
+}
+
 export function createProjectAgenticProcessExecution(configuration, { rpcFactory, artifactStoreFactory, environment = process.env, allocationAuthority, processAuthority } = {}) {
   if (allocationAuthority != null && typeof allocationAuthority.admit !== "function") fail("PROCESS_EXECUTION_ALLOCATION_AUTHORITY_INVALID");
   if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.read !== "function")) fail("PROCESS_EXECUTION_PROCESS_AUTHORITY_INVALID");
@@ -204,6 +211,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
         || authorization.configuration_sha256 !== shadowHash(config)
         || !Number.isSafeInteger(authorization.max_responses) || authorization.max_responses < 1 || authorization.max_responses > 120
         || !Number.isSafeInteger(authorization.max_bytes) || authorization.max_bytes < 1048576 || authorization.max_bytes > 471859200) fail("PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED");
+      assertNativeResponseLimitEnforceable(typeof rpcFactory === "function");
       readAuthority();
       const workDeadline = Math.min(authorization.workflow_deadline_ms, authorization.global_deadline_ms - 20000);
       if (Date.now() >= workDeadline) fail("PROCESS_EXECUTION_CLOSURE_RESERVE");

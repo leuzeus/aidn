@@ -7,7 +7,7 @@ import { assertNativeAllocationJournal, nativeJournalId, nativeJournalPath } fro
 import { assertNativeAuthorization } from '../../core/workflow/native-authorization-epoch.mjs';
 import { assertNativeReconciliationRequest, assertNativeReconciliationGrant, isNativePostAssignmentReconciliation,
   nativeReconciliationPostAssignmentSubject } from '../../core/workflow/native-allocation-reconciliation.mjs';
-import { assertNativePostAssignmentAssessment } from '../../core/workflow/native-post-assignment-assessment.mjs';
+import { assertNativePostAssignmentAssessment, nativePostAssignmentCanReconcileResources } from '../../core/workflow/native-post-assignment-assessment.mjs';
 import { assertNativeReconciliationPreparation, assertNativeReconciliationRecord, nativeReconciliationId, nativeReconciliationPath,
   retainedNativeReconciliationReceipt } from '../../core/workflow/native-allocation-reconciliation-record.mjs';
 import { assertNativeOwnerDispositionRecord } from '../../core/workflow/native-owner-disposition.mjs';
@@ -140,7 +140,7 @@ export function createStandardNativeAllocationReconciliation({ targetRoot, state
         journal_id: q.journal_id, generation: q.generation, journal_phase: 'failed', journal_sha256: H(original),
         status: 'FAILED', first_failure: entry.first_failure, retry: false })) fail(post ? 'NATIVE_RECONCILIATION_POST_ASSIGNMENT_CHANGED' : 'NATIVE_RECONCILIATION_NO_ASSIGNMENT_REQUIRED');
     if (post) {
-      const work = observeNativePostAssignmentCheckpoint({ journal: original, entry, current: fresh.instance, configuration });
+      const work = observeNativePostAssignmentCheckpoint({ journal: original, entry, current: fresh.instance, configuration, productSha256: fresh.context.native?.product_sha256 });
       if (data.responses_observed < 1 || entry.initial_instance_sha256 !== q.initial_instance_sha256
         || data.state.instance.instance_sha256 !== q.checkpoint_instance_sha256
         || H(data.state.resources) !== q.checkpoint_resources_sha256 || data.state.resources.length !== q.checkpoint_resource_count
@@ -219,7 +219,7 @@ export function createStandardNativeAllocationReconciliation({ targetRoot, state
       if (post) { signer.verify(postAssessment); signer.verify(postAssessment.base_assessment); signer.verify(observed.inventory); }
       const a = post ? postAssessment.base_assessment : observed.assessment;
       if ((!post && a.assignment_status !== 'no_assignment') || a.allocation_phase !== 'failed' || a.return_binding !== 'matched'
-        || post && postAssessment.evidence_profile !== 'admitted_closed_checkpoint')
+        || post && !nativePostAssignmentCanReconcileResources(postAssessment))
         fail(post ? 'NATIVE_RECONCILIATION_POST_ASSIGNMENT_REQUIRED' : 'NATIVE_RECONCILIATION_NO_ASSIGNMENT_REQUIRED');
       const owner = assertNativeOwnerDispositionRecord(readOwnerDisposition(a.dispatch_id));
       if (owner.phase !== 'confirmed') fail('NATIVE_RECONCILIATION_OWNER_RETIREMENT_REQUIRED');

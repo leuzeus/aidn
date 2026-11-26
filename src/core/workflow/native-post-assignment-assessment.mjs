@@ -7,14 +7,25 @@ const fail = code => { throw Object.assign(Error(code), { code }); };
 
 // This is a data classification, not authority to retire resources or to resume.
 export function nativePostAssignmentEvidenceProfile(base, work) {
-  return base.allocation_phase === 'failed' && base.return_binding === 'matched'
+  const closed = base.allocation_phase === 'failed' && base.return_binding === 'matched'
     && base.checkpoint !== null && base.checkpoint.parent_closed && base.checkpoint.os_tree_confirmed
     && base.checkpoint.responses_observed > 0 && work !== null && work.history_preserved
-    && work.generation_assignments > 0 && work.generation_results === work.generation_assignments
-    && work.generation_resources > 0 && work.unresolved_assignments === 0
-    && work.worker_checkpoint_matches && work.worker_parent_closed
-    && work.worker_generation_resources === work.generation_resources && work.consumption_matches
-    ? 'admitted_closed_checkpoint' : 'unknown';
+    && work.generation_resources > 0 && work.worker_checkpoint_matches && work.worker_parent_closed
+    && work.worker_generation_resources === work.generation_resources && work.consumption_matches;
+  if (!closed) return 'unknown';
+  const interrupted = work.interrupted_assignment;
+  if (interrupted) return work.prefix_relation === 'match' && work.generation_assignments === 1
+    && work.generation_results === 0 && work.unresolved_assignments === 1 && work.generation_resources === 1
+    && interrupted.initial_instance_sha256 === base.initial_instance_sha256
+    && interrupted.product_preimage_sha256 === interrupted.observed_product_sha256
+    && interrupted.authorized_responses < base.checkpoint.responses_observed
+    ? 'admitted_interrupted_checkpoint' : 'unknown';
+  return work.generation_assignments > 0 && work.generation_results === work.generation_assignments
+    && work.unresolved_assignments === 0 ? 'admitted_closed_checkpoint' : 'unknown';
+}
+
+export function nativePostAssignmentCanReconcileResources(assessment) {
+  return ['admitted_closed_checkpoint', 'admitted_interrupted_checkpoint'].includes(assessment.evidence_profile);
 }
 
 function assertWork(value) {

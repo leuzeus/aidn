@@ -4053,6 +4053,21 @@ if (process.argv[2] === "--mixed-continue") {
     f.configuration.implementation_sha256 = "a".repeat(64);
     assert.throws(() => createProjectAgenticProcessExecution(f.configuration), /IMPLEMENTATION_CHANGED/);
   });
+  await check("owned Native rejects an unenforceable response ceiling before allocation", async () => {
+    const f = fixture(), configuration = f.configuration;
+    const authorization = { ...f.authorize(), max_responses: 2 };
+    const refuse = { code: "PROCESS_EXECUTION_RESPONSE_LIMIT_UNENFORCEABLE" };
+    const observer = {
+      beforeLaunch() { assert.fail("allocation must not be reserved"); },
+      afterClosure() { assert.fail("worker must not be launched"); },
+    };
+    const execution = createProjectAgenticProcessExecution(configuration);
+    const before = fs.readdirSync(configuration.control_root);
+    assert.equal(execution.preview().native_started, false);
+    await assert.rejects(execution.run({ execute: true, authorization }), refuse);
+    await assert.rejects(runOwnedAgenticProcess({ configuration, authorization, execute: true }, { allocationObserver: observer }), refuse);
+    assert.deepEqual(fs.readdirSync(configuration.control_root), before);
+  });
   await check("owned reservation cannot spend the closure reserve and still launch a worker", async () => {
     const f = fixture(), worker = fileURLToPath(new URL("../../src/adapters/agents/agentic-process-worker.mjs", import.meta.url));
     f.configuration.controller = { node_sha256: sha(fs.readFileSync(process.execPath)), worker_sha256: sha(fs.readFileSync(worker)),

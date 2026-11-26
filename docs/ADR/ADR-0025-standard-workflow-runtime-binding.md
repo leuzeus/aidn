@@ -5970,3 +5970,24 @@ scope, retains bounds and refuses unsupported inventory; it does not fall back
 to a projection, raise the byte limit or change full-content listing. A worker
 output-limit refusal stays distinct from backend unavailability. Existing
 accepted completion receipts can be verified without replaying their effects.
+
+### Native response ceilings
+
+An explicit response ceiling authorizes consumption only within its bound.
+Admission requires a transport that applies the ceiling before starting a
+model response. The current Codex app-server reports responses after
+completion, so the default Native actor refuses before allocation. A
+controlled in-process fixture can exercise the remaining workflow without
+calling a model. Previously observed usage, including a response that crossed
+the ceiling, remains part of the original allocation.
+
+### Interrupted Native implementation
+
+A matched failed return with one scoped task implementation assignment can
+admit resource reconciliation after a response overrun. Its proof binds
+the unchanged product preimage, exact canonical prefix, assignment and
+independently confirmed resource closure. The prior allocation and assigned
+occurrence remain in the signed history with the complete observed debit.
+The original occurrence retains its unknown business outcome. The journal
+refuses subsequent generations on that interrupted instance and requires
+fresh context for a later attempt.

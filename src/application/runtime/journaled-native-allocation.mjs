@@ -1,7 +1,7 @@
 import { createNativeReconciliationHistoryReader } from "./native-reconciliation-history.mjs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { createProjectAgenticProcessExecution } from "./agentic-process-execution-composition.mjs";
+import { assertNativeResponseLimitEnforceable, createProjectAgenticProcessExecution } from "./agentic-process-execution-composition.mjs";
 import { runOwnedAgenticProcess } from "./agentic-process-owned-run.mjs";
 import { readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
 import { createNativeAllocationJournalStore } from "../../adapters/runtime/native-allocation-journal-store.mjs";
@@ -157,6 +157,7 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
         auth.max_responses -= consumed.responses; auth.max_bytes -= consumed.bytes;
       }
       if (!Number.isSafeInteger(auth.max_responses) || auth.max_responses < 1 || !Number.isSafeInteger(auth.max_bytes) || auth.max_bytes < 1048576) fail("NATIVE_ALLOCATION_BUDGET_EXHAUSTED");
+      assertNativeResponseLimitEnforceable(typeof controllerFactory === "function");
       let claim = null, observed = null, workerHuman = null;
       const observer = {
         async beforeLaunch({ preview: actual }) {

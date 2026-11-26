@@ -1108,6 +1108,12 @@ original failure observations and explicitly report workflow_completed false
 and native_started false. They do not claim all-resource closure.
 
 
+An admitted interrupted checkpoint binds one unresolved task work assignment
+to the signed prefix, matching product snapshot and observed overrun. Its
+resource disposition uses the existing v2 records and preserves the original
+failed allocation and response identifiers. The recorded business effect
+remains unknown and the instance cannot acquire a later Native epoch.
+
 The private native-post-assignment-assessment.v1 wraps the signed
 native-allocation-assessment.v1 and closed checkpoint-work data. Its fixed host
 authenticates canonical history and reads only the admitted protected checkpoint,
