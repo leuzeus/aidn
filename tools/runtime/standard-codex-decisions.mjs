@@ -116,22 +116,27 @@ export async function launchCodexDecisions({ targetRoot, configuration, operator
   return serveCodexDecisions({ session, formIssuer });
 }
 
+// STANDARD includes stores that obtain their environment from the host
+// process. This stdio process serves one installed binding throughout its
+// lifetime, so its database reference is available to those stores as well.
+export function loadManagedCodexDatabaseEnvironment(home, name) {
+  if (!name) return;
+  if (!/^[A-Za-z_][A-Za-z_0-9]*$/.test(name)) throw Error("CODEX_FORM_BINDING_INVALID");
+  const file = readAgentRunFile(path.join(home, "codex-form-database.env"), { json: false, optional: true, maxBytes: 16384 });
+  if (!file) return;
+  const values = parseEnv(file.value.toString("utf8"));
+  if (Object.keys(values).length !== 1 || !Object.hasOwn(values, name)) throw Error("CODEX_FORM_DATABASE_ENV_INVALID");
+  process.env[name] = values[name];
+}
+
 export function openManagedCodexForm(bindingFile, transport) {
   const binding = readAgentRunFile(bindingFile, { maxBytes: 8192 }).value;
   if (binding.schema_version !== 1 || !path.isAbsolute(binding.target_root ?? "") || !path.isAbsolute(binding.configuration ?? "")
     || !/^[a-f0-9]{64}$/.test(binding.configuration_sha256 ?? "")) throw Error("CODEX_FORM_BINDING_INVALID");
   const home = path.dirname(bindingFile);
   readAgentRunFile(binding.configuration, { sha256: binding.configuration_sha256, maxBytes: 262144 });
+  loadManagedCodexDatabaseEnvironment(home, binding.connection_env);
   const environment = { ...process.env, AIDN_STANDARD_HOST_HOME: home };
-  if (binding.connection_env && !environment[binding.connection_env]) {
-    if (!/^[A-Za-z_][A-Za-z_0-9]*$/.test(binding.connection_env)) throw Error("CODEX_FORM_BINDING_INVALID");
-    const file = readAgentRunFile(path.join(home, "codex-form-database.env"), { json: false, optional: true, maxBytes: 16384 });
-    if (file) {
-      const values = parseEnv(file.value.toString("utf8"));
-      if (Object.keys(values).length !== 1 || !Object.hasOwn(values, binding.connection_env)) throw Error("CODEX_FORM_DATABASE_ENV_INVALID");
-      environment[binding.connection_env] = values[binding.connection_env];
-    }
-  }
   const session = createStandardOperatorSession({ targetRoot: binding.target_root, configuration: binding.configuration, environment });
   const formIssuer = loadWindowsCodexFormIssuer({ authorityId: binding.authority_id, principals: session.session().principals, home });
   return createCodexDecisionChannel({ session, formIssuer, ...transport });

@@ -3,7 +3,10 @@ import { generateKeyPairSync, verify } from "node:crypto";
 import { PassThrough } from "node:stream";
 import { createInterface } from "node:readline";
 import { once } from "node:events";
-import { serveCodexDecisions } from "../runtime/standard-codex-decisions.mjs";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { serveCodexDecisions, loadManagedCodexDatabaseEnvironment } from "../runtime/standard-codex-decisions.mjs";
 import { operatorOffer, assertOperatorClaim } from "../../src/adapters/workflow-console/standard-operator-offer.mjs";
 import { codexFormEvidence } from "../../src/adapters/workflow-console/codex-form-evidence.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
@@ -104,3 +107,21 @@ try {
     console.log(JSON.stringify({ status: "PASS", transport: "MCP stdio", conversation_bound: true, request_id_bound: true, live_desktop: "SKIP" }));
   } finally { await installed.close(); }
 } finally { captured = []; }
+
+const host = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-codex-form-env-"));
+const envName = "AIDN_FORM_DATABASE_FIXTURE_URL";
+const previous = process.env[envName];
+try {
+  const envFile = path.join(host, "codex-form-database.env");
+  fs.writeFileSync(envFile, envName + "=postgresql://localhost/fixture\nUNRELATED=refused\n");
+  assert.throws(() => loadManagedCodexDatabaseEnvironment(host, envName), /CODEX_FORM_DATABASE_ENV_INVALID/);
+  assert.equal(process.env[envName], previous);
+  fs.writeFileSync(envFile, envName + "=postgresql://localhost/fixture\n");
+  loadManagedCodexDatabaseEnvironment(host, envName);
+  assert.equal(process.env[envName], "postgresql://localhost/fixture");
+  console.log(JSON.stringify({status:"PASS", managed_connector_process_environment:true, unexpected_variable_refused:true}));
+} finally {
+  if (previous === undefined) delete process.env[envName]; else process.env[envName] = previous;
+  fs.unlinkSync(path.join(host,"codex-form-database.env"));
+  fs.rmdirSync(host);
+}
