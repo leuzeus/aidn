@@ -6843,7 +6843,8 @@ PASS; genuine actors, installed execution and the full plan remain separate.
 
 ## Native allocation assessment candidate
 
-The controlled owned-run fixture checks that a two-response authorization
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --native-ceiling-only`
+checks that a two-response authorization
 refuses on the default Codex transport before reserving or launching a
 worker. The closed-data assessment cases cover an interrupted implementation
 with three retained responses. They reject missing proof, product changes,

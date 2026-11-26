@@ -257,7 +257,7 @@ const checkFlags = new Set([
   "--canonical-plan-work-only", "--drift-objective-mismatch-only", "--v2-only",
   "--native-human-port-only", "--historical-diagnostic-only", "--native-human-turn-only",
   "--checkpoint-only", "--large-checkpoint-only", "--journal-only",
-  "--journal-preview-only", "--owned-only", "--resume-only",
+  "--journal-preview-only", "--owned-only", "--native-ceiling-only", "--resume-only",
   "--worker-only", "--bpmn-control-only", "--native-permission-profile-only",
   "--drift-git-only", "--drift-contract-only",
   "--drift-finalize-contract-only", "--drift-published-rollback", "--drift-published-rollback-rediagnosis",
@@ -328,6 +328,7 @@ async function check(name, callback) { if (process.argv.includes("--host-resourc
   if (process.argv.includes("--journal-only") && !name.startsWith("journal ")) return;
   if (process.argv.includes("--journal-preview-only") && !name.startsWith("journal preview ")) return;
   if (process.argv.includes("--owned-only") && !/^(journal |owned )/.test(name)) return;
+  if (process.argv.includes("--native-ceiling-only") && !name.startsWith("owned Native rejects an unenforceable response ceiling")) return;
   if (process.argv.includes("--resume-only") && !name.startsWith("resume ")) return;
   if (process.argv.includes("--worker-only") && !name.startsWith("worker ")) return;
   if (process.argv.includes("--mixed-only") && !name.startsWith("mixed ")) return;
