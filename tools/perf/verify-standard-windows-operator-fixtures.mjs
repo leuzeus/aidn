@@ -8,6 +8,7 @@ import path from "node:path";
 import { once } from "node:events";
 import { fileURLToPath } from "node:url";
 import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
+import { loadStandardWorkflowAssets } from "../../src/application/runtime/standard-workflow-composition.mjs";
 import { createStandardHostAuthority } from "../../src/adapters/runtime/standard-host-authority.mjs";
 import { assertWindowsEnrollmentIntent, windowsAuthorityVersion, windowsEnrollmentVersion, windowsOperatorScopeSlot } from "../../src/adapters/runtime/standard-windows-operator-authority.mjs";
 import { operatorOffer } from "../../src/adapters/workflow-console/standard-operator-offer.mjs";
@@ -15,6 +16,8 @@ import { prepareWindowsPanelAnswer, serveWindowsDecisionPanel } from "../../src/
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
+// Enrollment and panel checks must qualify an archive whose public workflow loads.
+loadStandardWorkflowAssets();
 const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-windows-operator-fixture-"));
 const temporary = fs.realpathSync(os.tmpdir());
 let panel;
