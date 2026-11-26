@@ -80,6 +80,11 @@ process receipt across restarts, even after the transport copy is removed.
 
 ### Windows operator key and decision panel
 
+This panel is a qualification prototype. It requires Windows user verification
+for each decision. The intended operator flow uses Windows verification only
+during project installation or an AIDN update. The authenticated chat channel
+must provide independently verifiable evidence of the subsequent choice.
+
 An administrator can enroll an operator on Windows through an explicit
 installation action. A trusted launcher prepares the public enrollment plan
 with the packaged `tools/runtime/standard-windows-decisions.mjs` helper.
