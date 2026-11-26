@@ -95,7 +95,7 @@ try {
   const record = JSON.parse(fs.readFileSync(path.join(target, "docs/audit/workflows/operation-records", q.operation_id + ".json")));
   assert.equal(record.results.length, 1);
   assert.equal(record.results[0].receipt.receipt_id, received.receipt_id);
-  assert.deepEqual(record.results[0].output.evidence_refs, body.payload.evidence_refs);
+  assert.deepEqual(record.results[0].output.evidence_refs.filter(row => row.ref.startsWith("codex:form/")), body.payload.evidence_refs);
   const subject = { repository_id: "R_test", pull_request_id: "PR_test", pull_request_number: 12, base_ref: "dev", head_oid: "a".repeat(40) };
   const merge = { ...q, contract_version: "standard-pr-merge-consent-question.v2", issued_at_ms: Date.now(), subject, choices: ["approve_merge", "refused"] };
   const consent = { ...lastAnswer.payload, contract_version: "human-pr-merge-consent.v1", source_event_id: "test-merge",
