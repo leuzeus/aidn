@@ -7067,6 +7067,10 @@ post-assignment accounting, genuine actors or an installed archive.
 
 ## Post-assignment Native accounting candidate
 
+The Native history fixture also checks a v5 receipt created over an existing v4
+journal. Readback verifies the prior v4 proposal against the retained v4
+predecessor and rejects a change to its origin or receipts.
+
 The private native-post-assignment-reconciliation-contract-fixture-lib.mjs
 command covers the closed v2 request/grant/receipt and v5 journal data, retained
 v1-v4 origins, inherited receipts, non-refunded response/storage/usage, known
