@@ -6883,6 +6883,15 @@ finite Native grants are unchanged.
 
 ## Native owner disposition candidate
 
+Run `node tools/perf/verify-native-readonly-storage-recovery-fixtures.mjs db-only`
+for a retained storage stop with a missing checkpoint after a read-only
+assignment. The controlled common host builds a disposable legacy corpus with
+synthetic allocation evidence. A real creator process must terminate before
+retirement. Active ownership, changed product, unconfirmed tree and missing
+operator permission refuse. A fresh Node process rereads the same retirement
+receipt while original instance, dispatch, failure and unknown debit stay exact.
+The fixture uses SQLite and starts no genuine Native client or model.
+
 The existing three Native dispatch provenance commands also exercise exact
 Native owner retirement with real canonical stores, physical owner/fence ports
 and protected operator HMAC verification. The reviewed exact-action permit is

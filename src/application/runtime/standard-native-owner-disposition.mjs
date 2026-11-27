@@ -56,8 +56,12 @@ export function createStandardNativeOwnerDisposition({ targetRoot, stateMode, ar
     if (post) { signer.verify(post.inventory); signer.verify(post.assessment); assertNativePostAssignmentAssessment(post.assessment, post.inventory); }
     const observed = post ? { inventory: post.inventory, assessment: post.assessment.base_assessment } : assess(instanceId, input), a = observed.assessment;
     signer.verify(observed.inventory); signer.verify(a);
-    if (a.allocation_phase !== 'failed' || a.return_binding !== 'matched'
-      || profile === 'no_assignment' && a.assignment_status !== 'no_assignment'
+    const readOnly = profile === 'no_assignment' && observed.readOnlyStorageStop;
+    if (readOnly && (readOnly.instance_sha256 !== a.instance_sha256 || readOnly.journal_sha256 !== a.journal_sha256
+      || readOnly.dispatch_id !== a.dispatch_id || readOnly.dispatch_sha256 !== a.dispatch_sha256))
+      fail('NATIVE_OWNER_DISPOSITION_SUBJECT_CHANGED');
+    if (a.allocation_phase !== 'failed' || !readOnly && a.return_binding !== 'matched'
+      || profile === 'no_assignment' && !readOnly && a.assignment_status !== 'no_assignment'
       || profile === 'admitted_post_assignment' && !nativePostAssignmentCanReconcileResources(post.assessment))
       fail('NATIVE_OWNER_DISPOSITION_UNPROVEN_EFFECTS');
     const dispatch = assertNativeDispatchRecord(JSON.parse(artifacts.read(nativeDispatchPath(input.dispatchId), { required: true }).content));
@@ -69,6 +73,7 @@ export function createStandardNativeOwnerDisposition({ targetRoot, stateMode, ar
       allowRetired: Boolean(retained?.attempts.some(row => row.lease !== null)) });
     return { ...observed, dispatch, lease, intention, lock, post_assignment_assessment: post?.assessment ?? null,
       subject_sha256: H({ assessment: stableAssessment(a), inventory: material(observed.inventory, dispatch.dispatch_id),
+        ...(readOnly ? { read_only_storage_stop: readOnly } : {}),
         ...(post ? { post_assignment: stablePostAssessment(post.assessment) } : {}) }) };
   }
   function assertSubject(plan, observed) {

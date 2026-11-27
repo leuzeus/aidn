@@ -379,7 +379,7 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
       return { inventory, observation };
   }
   const nativeAssessment = createStandardNativeAllocationAssessment({ artifacts, configuration, signer,
-    capture: typeof readNativeSubject === "function" ? (id, expected) => capture(readNativeSubject, id, expected, true) : null });
+    capture: typeof readNativeSubject === "function" ? (id, expected) => capture(readNativeSubject, id, expected, true, null, true) : null });
   const postAssignment = createStandardNativePostAssignmentAssessment({ artifacts, configuration, signer, baseAssessment: nativeAssessment,
     capture: typeof readNativeSubject === "function" ? (id, expected) => capture(readNativeSubject, id, expected, true, null, true) : null });
   return Object.freeze({

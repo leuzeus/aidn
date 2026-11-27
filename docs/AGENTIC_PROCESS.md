@@ -903,6 +903,12 @@ for Native owner retirement. The read-only plan binds the actual unresolved
 Native generation and dispatch; application needs exact write intent and
 independent current operator permission. The fixed profile currently requires
 a signed no-assignment failure checkpoint and a terminated original creator.
+The same physical-retirement action also covers a missing checkpoint after a
+storage stop when the signed returned dispatch authenticates the exact prefix
+before one final read-only assignment. The recorded OS tree must be closed, the
+original creator terminated and the product equal to its last signed snapshot.
+Diagnostics retain the missing checkpoint and unknown debit. Fresh Native work
+uses a separately admitted continuation and execution authorization.
 On resume, the fixed host authenticates the immediate predecessor and compares
 its event prefix and complete resource and result histories. A failed allocation
 may retain those rows when no new assignment, resource, result or response is
