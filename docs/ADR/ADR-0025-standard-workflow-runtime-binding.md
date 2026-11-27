@@ -5970,3 +5970,38 @@ scope, retains bounds and refuses unsupported inventory; it does not fall back
 to a projection, raise the byte limit or change full-content listing. A worker
 output-limit refusal stays distinct from backend unavailability. Existing
 accepted completion receipts can be verified without replaying their effects.
+
+### Native response ceilings
+
+Native authorization expresses a numeric response ceiling or `max_responses:
+null`. The ordinary Codex app-server execution uses `null` and records every
+completed response. Its existing authorization, deadlines, storage and
+process supervision apply.
+
+A numeric ceiling still requires enforcement before starting a model
+response. The Codex app-server reports completed responses, so this
+configuration refuses a numeric ceiling before allocating a worker. Only
+an authenticated new epoch can widen an existing ceiling. The journal
+retains the observed response and storage debits across epochs.
+
+### Windows Native deployment qualification
+
+Windows deployment evidence identifies the exact AIDN archive and the Native
+client obtained through its documented publisher distribution channel. The
+qualification uses the normal installer or updater and a cold, bounded Native
+launch with the environment's ordinary endpoint protection active.
+A detection or the need for an exclusion blocks the deployment verdict for
+the affected candidate. Local transport prototypes and their build helpers
+stay outside the deployment package. Component tests of a prototype supply
+evidence for that component.
+
+### Interrupted Native implementation
+
+A matched failed return with one scoped task implementation assignment can
+admit resource reconciliation after a response overrun. Its proof binds
+the unchanged product preimage, exact canonical prefix, assignment and
+independently confirmed resource closure. The prior allocation and assigned
+occurrence remain in the signed history with the complete observed debit.
+The original occurrence retains its unknown business outcome. The journal
+refuses subsequent generations on that interrupted instance and requires
+fresh context for a later attempt.

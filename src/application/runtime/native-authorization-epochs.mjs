@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { assertNativeAuthorization, assertNativeEpochRequest, assertNativeEpochGrant, nativeAllocationTotals, nativeInitialScope } from "../../core/workflow/native-authorization-epoch.mjs";
 import { inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
+import { isInterruptedNativeReconciliation } from "../../core/workflow/native-allocation-reconciliation.mjs";
 import { shadowHash, freezeShadow } from "../../core/workflow/shadow-json.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
@@ -11,6 +12,8 @@ export function createNativeAuthorizationEpochs({ configuration, signer, read, w
   function snapshot(original) {
     const before = read(), journal = before.record;
     if ((journal?.allocations.length ?? 0) >= 32 || (journal?.epochs?.length ?? 0) >= 31) fail("NATIVE_EPOCH_HISTORY_REQUIRED");
+    if (journal?.reconciliations?.some(row => isInterruptedNativeReconciliation(row.request)))
+      fail('NATIVE_INTERRUPTED_ASSIGNMENT_REQUIRES_FRESH_CONTEXT');
     const allocations = journal?.allocations ?? [];
     if (allocations.some(entry => entry.phase !== 'closed' && !reconciliationHistory?.resolution(journal, entry)))
       fail('NATIVE_EPOCH_RESOURCE_RECONCILIATION_REQUIRED');

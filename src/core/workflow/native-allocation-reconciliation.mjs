@@ -4,7 +4,7 @@ import receiptSchema from '../contracts/workflow-definition/native-allocation-re
 import requestSchemaV2 from '../contracts/workflow-definition/native-allocation-reconciliation-request.v2.schema.json' with { type: 'json' };
 import grantSchemaV2 from '../contracts/workflow-definition/native-allocation-reconciliation-grant.v2.schema.json' with { type: 'json' };
 import receiptSchemaV2 from '../contracts/workflow-definition/native-allocation-reconciliation-receipt.v2.schema.json' with { type: 'json' };
-import { assertNativePostAssignmentEvidence } from './native-post-assignment-assessment.mjs';
+import { assertNativePostAssignmentEvidence, nativePostAssignmentCanReconcileResources } from './native-post-assignment-assessment.mjs';
 import { validateJsonSchema } from '../contracts/json-schema-validator.mjs';
 import { checkShadowJson, shadowHash as H } from './shadow-json.mjs';
 
@@ -14,6 +14,8 @@ const valid = (value, schema, code) => {
   return value;
 };
 export const isNativePostAssignmentReconciliation = request => request?.contract_version === 'native-allocation-reconciliation-request.v2';
+export const isInterruptedNativeReconciliation = request => isNativePostAssignmentReconciliation(request)
+  && request.post_assignment_assessment?.evidence_profile === 'admitted_interrupted_checkpoint';
 export function nativeReconciliationPostAssignmentSubject(assessment) {
   const { authentication, key_id, base_assessment, ...value } = assessment;
   const { authentication: baseAuthentication, key_id: baseKey, observed_at_ms, inventory_sha256, ...base } = base_assessment;
@@ -35,7 +37,7 @@ export function assertNativeReconciliationRequest(value) {
     const assessment = assertNativePostAssignmentEvidence(value.post_assignment_assessment), base = assessment.base_assessment, checkpoint = base.checkpoint, work = assessment.checkpoint_work;
     const sessions = value.resources.filter(row => row.kind === 'native_session');
     consumption(value.minimum_consumption, 'NATIVE_RECONCILIATION_CONSUMPTION_CHANGED');
-    if (assessment.evidence_profile !== 'admitted_closed_checkpoint'
+    if (!nativePostAssignmentCanReconcileResources(assessment)
       || base.assignment_status !== 'unknown'
       || value.post_assignment_sha256 !== H(nativeReconciliationPostAssignmentSubject(assessment))
       || assessment.key_id !== value.key_id || base.key_id !== value.key_id
@@ -115,5 +117,7 @@ export function nativeAllocationResolution(entry, reconciliations = []) {
   if (!matches.length) return null;
   if (matches.length !== 1) fail('NATIVE_RECONCILIATION_DUPLICATE');
   const receipt = assertNativeReconciliationReceipt(matches[0], { entry });
-  return { kind: isNativePostAssignmentReconciliation(receipt.request) ? 'reconciled_post_assignment' : 'reconciled_no_assignment', consumption: receipt.grant.consumption };
+  const kind = isInterruptedNativeReconciliation(receipt.request) ? 'reconciled_interrupted_assignment'
+    : isNativePostAssignmentReconciliation(receipt.request) ? 'reconciled_post_assignment' : 'reconciled_no_assignment';
+  return { kind, consumption: receipt.grant.consumption };
 }

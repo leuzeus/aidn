@@ -136,11 +136,10 @@
         "responses_observed": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 120
+          "maximum": 9007199254740991
         },
         "response_sha256": {
           "type": "array",
-          "maxItems": 120,
           "items": {
             "type": "string",
             "pattern": "^[a-f0-9]{64}$"
@@ -648,12 +647,51 @@
             },
             "consumption_matches": {
               "type": "boolean"
+            },
+            "interrupted_assignment": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "assignment_sha256",
+                "initial_instance_sha256",
+                "product_preimage_sha256",
+                "observed_product_sha256",
+                "authorized_responses",
+                "reason_code"
+              ],
+              "properties": {
+                "assignment_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "initial_instance_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "product_preimage_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "observed_product_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "authorized_responses": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 120
+                },
+                "reason_code": {
+                  "const": "PROCESS_EXECUTION_RESPONSE_LIMIT"
+                }
+              }
             }
           }
         },
         "evidence_profile": {
           "enum": [
             "admitted_closed_checkpoint",
+            "admitted_interrupted_checkpoint",
             "unknown"
           ]
         },

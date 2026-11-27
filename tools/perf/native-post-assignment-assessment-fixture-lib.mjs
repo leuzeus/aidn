@@ -78,7 +78,33 @@ export function verifyNativePostAssignmentAssessmentContracts(original, check) {
   check('post-assignment missing admitted work remains unknown');
   assert.throws(() => assertNativeAllocationAssessment(valid, inventory), { code: 'NATIVE_ALLOCATION_ASSESSMENT_INVALID' });
   check('legacy no-assignment assessment does not reinterpret the new profile');
-  return { checks: 27, native_calls: 0, authority: 'synthetic_closed_data_only' };
+  const interruptedBase = signer.seal({ ...base, checkpoint: { ...base.checkpoint, responses_observed: 3, results: 3 } });
+  const interruptedWork = { ...work, total_results: 3, generation_results: 0, unresolved_assignments: 1,
+    interrupted_assignment: { assignment_sha256: H('single-interrupted-assignment'),
+      initial_instance_sha256: interruptedBase.initial_instance_sha256, authorized_responses: 2,
+      product_preimage_sha256: H('unchanged-product'), observed_product_sha256: H('unchanged-product'),
+      reason_code: 'PROCESS_EXECUTION_RESPONSE_LIMIT' } };
+  const interrupted = assertNativePostAssignmentAssessment(seal(interruptedBase, interruptedWork), inventory);
+  assert.equal(interrupted.evidence_profile, 'admitted_interrupted_checkpoint');
+  assert.equal(interrupted.business_effect, 'unknown');
+  assert.equal(interrupted.permits_resume, false);
+  check('interrupted assignment keeps three responses and provides resource evidence only');
+  for (const [name, mutate] of [
+    ['removed proof', w => { delete w.interrupted_assignment; }],
+    ['changed product', w => { w.interrupted_assignment.observed_product_sha256 = H('changed-product'); }],
+    ['foreign pre-assignment prefix', w => { w.interrupted_assignment.initial_instance_sha256 = H('foreign-prefix'); }],
+    ['limit without overrun', w => { w.interrupted_assignment.authorized_responses = 3; }],
+    ['additional assignment', w => { w.generation_assignments = 2; }],
+    ['unclosed worker', w => { w.worker_parent_closed = false; }],
+  ]) {
+    const value = structuredClone(interruptedWork); mutate(value);
+    const observed = seal(interruptedBase, value);
+    assert.equal(assertNativePostAssignmentAssessment(observed, inventory).evidence_profile, 'unknown');
+    const forged = { ...observed, evidence_profile: 'admitted_interrupted_checkpoint' };
+    assert.throws(() => assertNativePostAssignmentAssessment(forged, inventory), { code: 'NATIVE_POST_ASSIGNMENT_ASSESSMENT_INVALID' });
+    check('interrupted Native assessment rejects ' + name);
+  }
+  return { checks: 34, native_calls: 0, authority: 'synthetic_closed_data_only' };
 }
 
 

@@ -1,4 +1,4 @@
-import { assertNativePostAssignmentAssessment } from '../../core/workflow/native-post-assignment-assessment.mjs';
+import { assertNativePostAssignmentAssessment, nativePostAssignmentCanReconcileResources } from '../../core/workflow/native-post-assignment-assessment.mjs';
 import { randomUUID } from 'node:crypto';
 import { createWorkflowRecordStore } from '../../adapters/runtime/workflow-record-store.mjs';
 import { observeLocalProcess, observeLocalProcessOwner } from '../../adapters/runtime/local-process-identity.mjs';
@@ -58,7 +58,7 @@ export function createStandardNativeOwnerDisposition({ targetRoot, stateMode, ar
     signer.verify(observed.inventory); signer.verify(a);
     if (a.allocation_phase !== 'failed' || a.return_binding !== 'matched'
       || profile === 'no_assignment' && a.assignment_status !== 'no_assignment'
-      || profile === 'admitted_post_assignment' && post.assessment.evidence_profile !== 'admitted_closed_checkpoint')
+      || profile === 'admitted_post_assignment' && !nativePostAssignmentCanReconcileResources(post.assessment))
       fail('NATIVE_OWNER_DISPOSITION_UNPROVEN_EFFECTS');
     const dispatch = assertNativeDispatchRecord(JSON.parse(artifacts.read(nativeDispatchPath(input.dispatchId), { required: true }).content));
     signer.verify(dispatch);

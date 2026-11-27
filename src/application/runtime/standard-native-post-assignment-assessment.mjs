@@ -1,17 +1,18 @@
 import path from 'node:path';
-import { assertAgenticProcessInstance } from '../../core/workflow/agentic-process.mjs';
+import { agenticProcessPrefixSha256, assertAgenticProcessInstance, inspectAgenticProcess } from '../../core/workflow/agentic-process.mjs';
 import { assertNativeAllocationJournal } from '../../core/workflow/native-allocation-journal.mjs';
 import { assertNativePostAssignmentAssessment, nativePostAssignmentEvidenceProfile } from '../../core/workflow/native-post-assignment-assessment.mjs';
 import { shadowHash as H } from '../../core/workflow/shadow-json.mjs';
 import { readNativeAllocationCheckpoint, nativeAllocationOutputId } from './native-allocation-evidence.mjs';
 import { readAgentRunFile } from './agent-run-configuration-service.mjs';
+import { CYCLE_TASK_WORK_CONTRACT } from '../../core/workflow/standard-cycle-work.mjs';
 
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const stable = ({ authentication, key_id, observed_at_ms, inventory_sha256, ...value }) => value;
 
 // Caller authenticates the journal and canonical history. Protected readers bind
 // the admitted file references; this function never imports a checkpoint.
-export function observeNativePostAssignmentCheckpoint({ journal, entry, current, configuration }) {
+export function observeNativePostAssignmentCheckpoint({ journal, entry, current, configuration, productSha256 = null }) {
   if (entry.checkpoint === null || entry.closure_ref === null) return null;
   const checkpoint = readNativeAllocationCheckpoint(entry, configuration, { scopeId: journal.scope_id, modelSha256: journal.model_sha256 });
   const state = checkpoint.state, original = state.instance;
@@ -63,7 +64,26 @@ export function observeNativePostAssignmentCheckpoint({ journal, entry, current,
     unresolved_assignments: unresolved, history_preserved: historyPreserved,
     worker_checkpoint_matches: Boolean(workerCheckpointMatches), worker_parent_closed: parent?.closed === true,
     worker_generation_resources: Number.isSafeInteger(parent?.resources) && parent.resources >= 0 ? parent.resources : null,
-    consumption_matches: consumptionMatches };
+    consumption_matches: consumptionMatches,
+    ...interruptedAssignment({ original, current, entry, state, beforeResources, configuration, productSha256, worker }) };
+}
+
+function interruptedAssignment({ original, current, entry, state, beforeResources, configuration, productSha256, worker }) {
+  // The closed recovery profile covers one scoped cycle implementation
+  // interrupted by a response overrun. It grants resource reconciliation only.
+  if (entry.first_failure !== 'PROCESS_EXECUTION_RESPONSE_LIMIT' || worker?.first_failure !== entry.first_failure
+    || entry.limits.max_responses === null || entry.consumption === null
+    || entry.consumption.responses_observed <= entry.limits.max_responses
+    || current.instance_sha256 !== original.instance_sha256 || !productSha256) return {};
+  const event = original.events.at(-1);
+  if (event?.kind !== 'assign' || event.request.role !== 'executor' || event.request.artifact_sha256 !== productSha256
+    || agenticProcessPrefixSha256(original, original.events.length - 1) !== entry.initial_instance_sha256
+    || state.resources[beforeResources]?.executor.execution_id !== event.decision.execution_id) return {};
+  const frame = inspectAgenticProcess(original).occurrences.find(row => row.occurrence_id === event.occurrence_id);
+  if (frame?.status !== 'RUNNING' || configuration.activity_outputs?.[frame.node_id] !== CYCLE_TASK_WORK_CONTRACT) return {};
+  return { interrupted_assignment: { assignment_sha256: H(event), initial_instance_sha256: entry.initial_instance_sha256,
+    product_preimage_sha256: event.request.artifact_sha256, observed_product_sha256: productSha256,
+    authorized_responses: entry.limits.max_responses, reason_code: entry.first_failure } };
 }
 
 // Both no-assignment recovery steps require the same authenticated delta.
@@ -91,8 +111,11 @@ export function createStandardNativePostAssignmentAssessment({ artifacts, config
       if (!entry || H(entry) !== base.allocation_sha256 || entry.generation !== base.generation) fail('NATIVE_POST_ASSIGNMENT_SUBJECT_CHANGED');
       // The diagnostic capture used by baseAssessment authenticates each current
       // operation/control event in addition to checking the Native prefix.
-      const current = capture(instanceId, input.expectedSha256).instance;
-      const work = observeNativePostAssignmentCheckpoint({ journal, entry, current, configuration });
+      const subject = capture(instanceId, input.expectedSha256);
+      signer.verify(subject.inventory);
+      if (H(subject.context) !== subject.inventory.context_sha256 || H(stable(before.inventory)) !== H(stable(subject.inventory)))
+        fail('NATIVE_POST_ASSIGNMENT_OBSERVATION_CHANGED');
+      const work = observeNativePostAssignmentCheckpoint({ journal, entry, current: subject.instance, configuration, productSha256: subject.context.native?.product_sha256 });
       const after = baseAssessment.prepare(instanceId, input);
       signer.verify(after.inventory); signer.verify(after.assessment);
       if (before.inventory.key_id !== after.inventory.key_id || base.key_id !== after.assessment.key_id

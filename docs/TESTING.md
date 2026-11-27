@@ -6843,6 +6843,18 @@ PASS; genuine actors, installed execution and the full plan remain separate.
 
 ## Native allocation assessment candidate
 
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --native-ceiling-only`
+checks admission and accounting for optional Native response ceilings. An
+explicit two-response authorization refuses on the default Codex transport
+before reserving or launching a
+worker. The closed-data assessment cases cover an interrupted implementation
+with three retained responses. They reject missing proof, product changes,
+a foreign prefix, an unclosed worker and more than one assignment.
+The uncapped fixture retains 123 response identities in its checkpoint
+and journal. A capped fixture refuses conversion to an uncapped allocation
+within the same authorization. The transport and process-tree observations
+for these cases are controlled.
+
 The existing Native dispatch provenance commands for `files`, `dual` and
 `db-only` also exercise `prepareNativeAllocationAssessment` with real canonical
 stores, signing and owner/fence ports. Their failed checkpoint, allocator return
@@ -7058,7 +7070,24 @@ results retain their source identities and do not qualify the combined candidate
 post-assignment accounting, genuine actors or an installed archive.
 
 
+## Endpoint protection in the Windows Native pilot
+
+Record the AIDN archive hash, its packaged executable inventory, and the
+publisher channel and hash of the installed Native client. Use the exact
+candidate for the normal installation or update and a cold, bounded Native
+launch under the environment's existing endpoint protection.
+
+Keep prototype build artifacts outside the package. If protection quarantines
+a file, stop the affected candidate and record the stage and sanitized
+detection. A run requiring an exclusion remains a deployment qualification
+failure. Archive inventory and component HTTP tests retain their own
+evidence scope. This is part of Windows pilot qualification.
+
 ## Post-assignment Native accounting candidate
+
+The Native history fixture also checks a v5 receipt created over an existing v4
+journal. Readback verifies the prior v4 proposal against the retained v4
+predecessor and rejects a change to its origin or receipts.
 
 The private native-post-assignment-reconciliation-contract-fixture-lib.mjs
 command covers the closed v2 request/grant/receipt and v5 journal data, retained

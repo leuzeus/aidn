@@ -13,6 +13,16 @@ const valid = (value, schema, code) => {
 };
 export const nativeLimitKeys = ["configuration_sha256", "authorized_at_ms", "global_deadline_ms", "workflow_deadline_ms", "max_turn_ms", "max_responses", "max_bytes"];
 export const nativeLimitsOf = auth => Object.fromEntries(nativeLimitKeys.map(key => [key, auth[key]]));
+export const isNativeResponseLimit = value => value === null || (Number.isSafeInteger(value) && value >= 1 && value <= 120);
+export function exceedsNativeLimits(candidate, ceiling) {
+  return (ceiling.max_responses !== null && (candidate.max_responses === null || candidate.max_responses > ceiling.max_responses))
+    || ["max_bytes", "max_turn_ms", "global_deadline_ms", "workflow_deadline_ms"].some(key => candidate[key] > ceiling[key]);
+}
+export function debitNativeAuthorization(authorization, { responses, bytes }) {
+  return { ...authorization,
+    max_responses: authorization.max_responses === null ? null : authorization.max_responses - responses,
+    max_bytes: authorization.max_bytes - bytes };
+}
 export function assertNativeAuthorization(value) {
   valid(value, authorizationSchema, "NATIVE_EPOCH_AUTHORIZATION_INVALID");
   if (value.authorized_at_ms >= value.workflow_deadline_ms || value.workflow_deadline_ms > value.global_deadline_ms
@@ -42,7 +52,8 @@ export function assertNativeEpochGrant(value, request) {
     || value.authorization.configuration_sha256 !== request.configuration_sha256
     || value.authorization.authorized_at_ms < request.issued_at_ms || value.authorization.authorized_at_ms > closure.observed_at_ms
     || closure.observed_at_ms >= request.expires_at_ms || closure.observed_at_ms < request.issued_at_ms
-    || value.authorization.max_responses <= counts.responses || value.authorization.max_bytes - counts.bytes < 1048576)
+    || (value.authorization.max_responses !== null && value.authorization.max_responses <= counts.responses)
+    || value.authorization.max_bytes - counts.bytes < 1048576)
     fail("NATIVE_EPOCH_GRANT_UNBOUND");
   return value;
 }
@@ -91,5 +102,5 @@ export function effectiveNativeEpochAuthorization(record, authorization) {
   if (shadowHash(authorization) !== shadowHash(active.grant.authorization)) fail("NATIVE_EPOCH_EXACT_GRANT_REQUIRED");
   const totals = nativeAllocationTotals(record.allocations, record.reconciliations);
   if (!totals.known) fail("NATIVE_ALLOCATION_CONSUMPTION_UNKNOWN");
-  return { ...authorization, max_responses: authorization.max_responses - totals.responses, max_bytes: authorization.max_bytes - totals.bytes };
+  return debitNativeAuthorization(authorization, totals);
 }
