@@ -1959,9 +1959,12 @@ Run `node tools/perf/verify-agentic-process-execution-fixtures.mjs
 The dual SQLite case writes and collects a checkpoint and instance projection
 both larger than 256 KiB, rejects substitution of either file and oversized
 generic evidence, then resumes in a fresh Node process with the original debit.
-The files case consumes enough
-retained storage at native close to refuse the checkpoint while preserving the
-footer reserve and blocking another allocation. The allocator, worker
+One files case stops when the working budget is exhausted. It reads the
+retained checkpoint, response debit and closure proof in a fresh Node process,
+checks the aggregate storage limit and refuses another allocation before
+reconciliation. A second files case injects late growth at Native close and
+checks the refusal when the checkpoint cannot fit alongside the footer reserve.
+The allocator, worker
 composition, signed journal and canonical stores are real. The fixture uses
 the existing RPC, process-controller and external control source doubles.
 

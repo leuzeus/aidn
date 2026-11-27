@@ -276,7 +276,8 @@ const checkPrefixes = [
   "--cycle-audit-mode=", "--cycle-task-mode=", "--cycle-verification-mode=",
   "--cycle-validation-mode=", "--drift-cr-mode=", "--drift-cycle-mode=",
 ];
-if (!process.argv.slice(2).some(argument => checkFlags.has(argument)
+const allocationResumeChild = process.argv[2] === "--resume-allocation" && process.argv.length === 4;
+if (!allocationResumeChild && !process.argv.slice(2).some(argument => checkFlags.has(argument)
   || checkPrefixes.some(prefix => argument.startsWith(prefix) && argument.length > prefix.length))) {
   throw Error("Select a focused execution fixture, for example --checkpoint-only or --standard-composed-mode=files");
 }
@@ -3260,6 +3261,51 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(f.open().readCheckpoint(2).state.results.length, 4);
     console.log(JSON.stringify({ checkpoint_bytes: checkpoint.length, projection_bytes: projection.length }));
   });
+  await check("journal large checkpoint survives a preventive storage stop", async () => {
+    const f = journalFixture({ largeCheckpoint: true }), { rpcFactory } = f.t;
+    let scratchCreated = false;
+    f.t.rpcFactory = configuration => {
+      const rpc = rpcFactory(configuration);
+      return { ...rpc, async request(method, ...args) {
+        if (method === "turn/start" && !scratchCreated) {
+          scratchCreated = true;
+          put(f.dirs.control, "case/fixture-turn-scratch.bin", Buffer.alloc(512 * 1024));
+        }
+        return rpc.request(method, ...args);
+      } };
+    };
+    const authorization = { ...f.authorize(), max_bytes: 2 * 1024 * 1024 };
+    const result = await f.actor.run({ execute: true, authorization });
+    const worker = result.owned_result.worker_result;
+    assert.equal(result.journal_phase, "failed", JSON.stringify(result));
+    assert.equal(result.first_failure, "PROCESS_EXECUTION_STORAGE_LIMIT");
+    assert.equal(worker.first_failure, result.first_failure);
+    assert.ok(worker.native_checkpoint);
+    assert.equal(result.owned_result.process_tree.termination_state, "confirmed");
+    assert.equal(result.owned_result.process_tree.termination_proof.active_processes, 0);
+    const allocation = f.open().inspect().allocations[0];
+    assert.ok(allocation.checkpoint && allocation.closure_ref && allocation.consumption);
+    assert.ok(allocation.consumption.storage_debit_bytes <= authorization.max_bytes);
+    assert.equal(allocation.consumption.responses_observed, 1);
+    assert.equal(allocation.consumption.responses_observed, worker.responses_observed);
+    const input = put(f.base, "storage-stop-reader.json", JSON.stringify({ configuration: f.configuration, key: f.key.toString("hex") }));
+    const reader = new URL("../../src/application/runtime/journaled-native-allocation.mjs", import.meta.url).href;
+    const script = `import fs from "node:fs";
+      import { createJournaledNativeAllocation } from ${JSON.stringify(reader)};
+      const input = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+      const allocator = createJournaledNativeAllocation({ configuration: input.configuration, readSigningKey: () => Buffer.from(input.key, "hex") });
+      const checkpoint = allocator.readCheckpoint(1);
+      process.stdout.write(JSON.stringify({ responses: checkpoint.response_sha256, parentClosed: checkpoint.state.parent_closed }));`;
+    const cold = spawnSync(process.execPath, ["--input-type=module", "-e", script, input],
+      { encoding: "utf8", shell: false, timeout: 30000 });
+    assert.equal(cold.status, 0, cold.stderr);
+    assert.deepEqual(JSON.parse(cold.stdout), { responses: allocation.consumption.response_sha256, parentClosed: true });
+    await assert.rejects(f.open().run({ execute: true, authorization, resume: true }), /NATIVE_ALLOCATION_TERMINAL_FAILURE/);
+    assert.equal(f.launches, 1);
+    console.log(JSON.stringify({ debit_bytes: allocation.consumption.storage_debit_bytes, authorized_bytes: authorization.max_bytes,
+      checkpoint_bytes: fs.statSync(allocation.checkpoint.path).size, responses: worker.responses_observed, controlled_native: true }));
+  });
+
   await check("journal large checkpoint cannot spend the aggregate footer reserve", async () => {
     const f = journalFixture({ largeCheckpoint: true }), { rpcFactory } = f.t;
     f.t.rpcFactory = configuration => {
@@ -3267,11 +3313,11 @@ if (process.argv[2] === "--mixed-continue") {
       return { ...rpc, async close() {
         // Grow retained bytes after the final canonical write so the refusal
         // must come from saving the checkpoint, not an earlier CAS guard.
-        put(f.dirs.control, "case/fixture-retained.bin", Buffer.alloc(1408 * 1024));
+        put(f.dirs.control, "case/fixture-retained.bin", Buffer.alloc(3456 * 1024));
         return rpc.close();
       } };
     };
-    const authorization = { ...f.authorize(), max_bytes: 2 * 1024 * 1024 };
+    const authorization = { ...f.authorize(), max_bytes: 4 * 1024 * 1024 };
     const result = await f.actor.run({ execute: true, authorization });
     const worker = result.owned_result.worker_result;
     assert.equal(result.journal_phase, "failed", JSON.stringify(result));

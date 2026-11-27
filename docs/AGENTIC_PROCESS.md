@@ -382,8 +382,11 @@ cannot be measured or written.
 
 Storage accounting covers retained evidence/native scratch, review snapshots,
 product-size growth, the instance projection and local SQLite file/WAL growth.
-It uses a preventive reserve and sampled metadata, not an OS disk quota; a native
-write can exceed a sample boundary. Such an observed breach fails. If disk
+Before a canonical Native write, the worker reserves space for the sized
+checkpoint and the next bounded evidence payload within the allocation's
+storage budget. At closure the checkpoint can use its reserve while the
+worker and supervisor footers keep their own space. Accounting uses sampled
+metadata. A native write can exceed a sample boundary. Such an observed breach fails. If disk
 sealing cannot fit, the bounded structured partial result travels on owned
 stdout; evidence is not deleted to hide the breach. The runner uses the existing
 configured canonical backend, SQLite or PostgreSQL, without migration, adoption

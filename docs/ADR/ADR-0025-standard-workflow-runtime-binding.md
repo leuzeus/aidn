@@ -5984,6 +5984,16 @@ configuration refuses a numeric ceiling before allocating a worker. Only
 an authenticated new epoch can widen an existing ceiling. The journal
 retains the observed response and storage debits across epochs.
 
+### Native storage stop evidence
+
+The worker deducts room for the sized Native checkpoint and the next bounded
+evidence payload from the working portion of the existing storage budget.
+Closure can spend that room on the checkpoint and retains the supervisor and
+worker footer reserve. A preventive storage stop keeps its failure and known
+debit in the authenticated allocation. If observed storage growth leaves
+insufficient room for sealing, the controlled stdout result carries that
+failure and the allocation remains subject to reconciliation.
+
 ### Windows Native deployment qualification
 
 Windows deployment evidence identifies the exact AIDN archive and the Native
