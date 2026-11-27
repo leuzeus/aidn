@@ -1078,6 +1078,14 @@ while separate attempt/fence records describe cold recovery. Original journals
 remain unchanged and all resume, renewal, accounting-reconciliation and
 complete-resource-closure permissions are false.
 
+The v1 physical-retirement plan can also bind a private diagnostic proof for a
+closed read-only assignment whose storage stop lost its checkpoint. The signed
+returned dispatch anchors its exact before-prefix and the last signed product
+snapshot must still match. The assessment keeps its unknown assignment outcome,
+absent checkpoint and unknown accounting. Only the retirement subject digest
+includes that private proof. The v1 receipt retains all its existing false
+execution, renewal, accounting and complete-closure flags.
+
 Private native-allocation reconciliation request, grant and receipt v1 are
 closed data contracts for the no-assignment profile. Their subject includes
 exact allocation/dispatch/checkpoint/prefix, inventory, physical root and owner

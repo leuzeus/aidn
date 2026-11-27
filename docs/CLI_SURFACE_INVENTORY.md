@@ -389,7 +389,11 @@ finalization; `--verify` retains its read-only verification behavior.
     `standard-workflow-native-action.v1`: `native_owner_retire`,
     `native_allocation_reconcile`, and `native_authorization_epoch`. A failed
     no-assignment allocation first offers physical-owner retirement, then
-    independently sourced accounting reconciliation. For admitted accepted work,
+    independently sourced accounting reconciliation. A closed read-only storage
+    stop with a missing checkpoint may retire only its abandoned physical owner
+    through the same v1 action after signed-prefix/product and termination checks.
+    Its missing checkpoint and unknown accounting stay in the original journal.
+    For admitted accepted work,
     action/result v2 adds the explicit `admitted_post_assignment` profile and
     closed owner/accounting v2 preparations through the same flags and source
     boundary. Unknown or unadmitted work remains refused. Before a later allocation,

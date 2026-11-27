@@ -5994,6 +5994,17 @@ debit in the authenticated allocation. If observed storage growth leaves
 insufficient room for sealing, the controlled stdout result carries that
 failure and the allocation remains subject to reconciliation.
 
+### Owner retirement after a read-only Native storage stop
+
+The existing v1 owner-retirement action also admits a closed read-only storage
+interruption without a final checkpoint. Its private diagnostic proof uses the
+signed returned dispatch as the exact pre-assignment anchor, validates the final
+read-only assignment and reobserves the signed product preimage and terminated
+creator. Execution history authentication retains its checkpoint requirements.
+The bounded diagnostic supplies no accepted result or known consumption. Exact
+operator consent, physical owner/fence checks and a separate retirement receipt
+remain required. A later continuation and Native grant have their own admission.
+
 ### Windows Native deployment qualification
 
 Windows deployment evidence identifies the exact AIDN archive and the Native

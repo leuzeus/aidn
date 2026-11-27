@@ -28,6 +28,7 @@ import { retainedCompletionContinuation } from '../../core/workflow/standard-ret
 import { retainObjectiveAlignment } from '../../core/workflow/standard-drift-retained-objective.mjs';
 import { createRetainedPromotionSource } from './standard-retained-promotion-source.mjs';
 import { retainedPromotionContinuation } from '../../core/workflow/standard-retained-promotion.mjs';
+import { observeReadOnlyNativeStorageStop } from './native-readonly-storage-interruption.mjs';
 import { createNativeReconciliationHistoryReader } from "./native-reconciliation-history.mjs";
 import { createRetainedValidationSource } from "./standard-retained-validation-source.mjs";
 import { retainedValidationAdmit, retainedTaskWork, workPhaseSelect, retainedValidationPins, assertRetainedValidationOutput, assertRetainedValidationProof } from "../../core/workflow/standard-retained-validation.mjs";
@@ -188,7 +189,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       || shadowHash(instance.policy_pins) !== shadowHash(authority.policy_pins)) fail(scopeMismatch);
     if (instance.instance_id !== configuration.instance_id || Object.keys(instance.initial_facts).length) fail("STANDARD_PROCESS_AUTHORITY_CHANGED");
     const journal = allocations.read(nativeJournalId(instance)).record;
-    let native = null, covered = 0;
+    let native = null, covered = 0, readOnlyStorageStop = null;
     if (journal) {
       signer.verify(journal); const latest = journal.allocations.at(-1);
       if (journal.instance_id !== instance.instance_id || journal.scope_id !== instance.scope_id || journal.model_sha256 !== instance.model_sha256)
@@ -199,7 +200,11 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
         if (!reservation || latest.phase !== "reserved" || latest.owner_id !== reservation.owner_id || latest.generation !== reservation.generation) fail("STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE");
       } else if (reservation) fail("STANDARD_PROCESS_NATIVE_ALLOCATION_CHANGED");
       const entry = reservation || diagnostic && latest?.phase === "reserved" ? journal.allocations.at(-2) : latest;
-      if (entry) {
+      if (diagnostic && entry?.checkpoint === null && typeof readProductSnapshot === 'function') {
+        readOnlyStorageStop = observeReadOnlyNativeStorageStop({ instance, journal, configuration, signer, artifacts,
+          productSha256: shadowHash(readProductSnapshot()) });
+      }
+      if (entry && !readOnlyStorageStop) {
         if (!diagnostic && entry.phase !== "closed" && !(entry === latest ? latestResolution : nativeReconciliationHistory.resolution(journal, entry)))
           fail("STANDARD_PROCESS_NATIVE_RECONCILIATION_REQUIRED");
         native = readNativeAllocationCheckpoint(entry, configuration, { scopeId: authority.scope_id, modelSha256: authority.model_sha256 }).state;
@@ -214,7 +219,10 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const observedRecords = journalIds && new Map(operationStore.readMany(journalIds).map(({ record }, index) => [journalIds[index], record]));
     for (const [index, event] of instance.events.entries()) {
       if (["assign", "result", "refusal"].includes(event.kind)) {
-        if (!native || index >= covered || shadowHash(event) !== shadowHash(native.instance.events[index])) fail("STANDARD_PROCESS_NATIVE_HISTORY_NOT_AUTHENTICATED");
+        // The signed dispatch authenticates its exact before-prefix. Only its
+        // final read-only assignment is admitted for this diagnostic observation.
+        if (!readOnlyStorageStop && (!native || index >= covered || shadowHash(event) !== shadowHash(native.instance.events[index])))
+          fail("STANDARD_PROCESS_NATIVE_HISTORY_NOT_AUTHENTICATED");
       } else if (["operation_intent", "operation_result"].includes(event.kind)) {
         const id = event.intent?.operation_id ?? event.receipt.operation_id;
         if (!seen.has(id)) {
