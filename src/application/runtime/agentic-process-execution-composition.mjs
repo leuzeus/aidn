@@ -15,6 +15,7 @@ import { DRIFT_REPORT_CONTRACT, nativeActivityOutputSkill, nativeActivityOutputI
 import { CYCLE_WORK_CONTRACT, CYCLE_TASK_WORK_CONTRACT, isStandardCycleWorkContract } from "../../core/workflow/standard-cycle-work.mjs";
 import { readWorkflowProjectExecutionAuthority } from "./workflow-instance-composition.mjs";
 import { agenticPolicyPins, assertAgenticProcessModel, processId, processFail as fail } from "../../core/workflow/agentic-process-model.mjs";
+import { isNativeResponseLimit } from "../../core/workflow/native-authorization-epoch.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { AGENT_ROLES, buildAgentProfile, canAgentRolePerform } from "../../core/agents/agent-role-model.mjs";
 import { assertCodexStartupArgumentsConfiguration } from "../../core/agents/codex-startup-arguments.mjs";
@@ -74,11 +75,9 @@ export function readAgenticProductSnapshot(root, productFiles) {
 
 // This is the real project composition. Tests may replace native/SQL wires, but
 // not assignmentAuthority, resultAuthority, bindings, CAS or admission policy.
-// The Codex app-server reports completed responses. A paid turn can produce
-// several, and its protocol has no admission limit per response. The only
-// alternate transport here is the trusted, controlled fixture.
-export function assertNativeResponseLimitEnforceable(controlledFixture) {
-  if (controlledFixture !== true) fail("PROCESS_EXECUTION_RESPONSE_LIMIT_UNENFORCEABLE");
+// The Codex app-server reports completed responses after consumption.
+export function assertNativeResponseLimitEnforceable(maxResponses, controlledFixture) {
+  if (maxResponses !== null && controlledFixture !== true) fail("PROCESS_EXECUTION_RESPONSE_LIMIT_UNENFORCEABLE");
 }
 
 export function createProjectAgenticProcessExecution(configuration, { rpcFactory, artifactStoreFactory, environment = process.env, allocationAuthority, processAuthority } = {}) {
@@ -209,9 +208,9 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
         || authorization.workflow_deadline_ms > authorization.global_deadline_ms
         || !Number.isSafeInteger(authorization.max_turn_ms) || authorization.max_turn_ms < 1 || authorization.max_turn_ms > 2700000
         || authorization.configuration_sha256 !== shadowHash(config)
-        || !Number.isSafeInteger(authorization.max_responses) || authorization.max_responses < 1 || authorization.max_responses > 120
+        || !isNativeResponseLimit(authorization.max_responses)
         || !Number.isSafeInteger(authorization.max_bytes) || authorization.max_bytes < 1048576 || authorization.max_bytes > 471859200) fail("PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED");
-      assertNativeResponseLimitEnforceable(typeof rpcFactory === "function");
+      assertNativeResponseLimitEnforceable(authorization.max_responses, typeof rpcFactory === "function");
       readAuthority();
       const workDeadline = Math.min(authorization.workflow_deadline_ms, authorization.global_deadline_ms - 20000);
       if (Date.now() >= workDeadline) fail("PROCESS_EXECUTION_CLOSURE_RESERVE");
@@ -305,7 +304,10 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
         remainingBytes: () => Math.max(1, authorization.max_bytes - used() - 262144),
         response(threadId, responseId) {
           responseIds.add(`${threadId}:${responseId}`);
-          if (responseIds.size > authorization.max_responses) { requestStop("PROCESS_EXECUTION_RESPONSE_LIMIT"); fail("PROCESS_EXECUTION_RESPONSE_LIMIT"); }
+          if (authorization.max_responses !== null && responseIds.size > authorization.max_responses) {
+            requestStop("PROCESS_EXECUTION_RESPONSE_LIMIT");
+            fail("PROCESS_EXECUTION_RESPONSE_LIMIT");
+          }
         },
       };
       let executionStage = "initialization";
@@ -453,7 +455,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
             if (controlIndex < controlScenario.events.length) fail("PROCESS_EXECUTION_CONTROL_EVENT_UNREACHABLE");
             break; // durable event wait, no model polling
           }
-          if (responseIds.size >= authorization.max_responses) fail("PROCESS_EXECUTION_RESPONSE_LIMIT");
+          if (authorization.max_responses !== null && responseIds.size >= authorization.max_responses) fail("PROCESS_EXECUTION_RESPONSE_LIMIT");
           const frame = current.cursor.occurrences.find(row => row.occurrence_id === occurrenceId), node = processFrameNode(model, frame);
           const component = processFrameModel(model, frame);
           const role = component.roles.find(row => row.id === node.role_ref), policy = component.policies.find(row => row.id === node.policy_ref);

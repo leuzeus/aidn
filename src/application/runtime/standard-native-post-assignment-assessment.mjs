@@ -72,7 +72,8 @@ function interruptedAssignment({ original, current, entry, state, beforeResource
   // The closed recovery profile covers one scoped cycle implementation
   // interrupted by a response overrun. It grants resource reconciliation only.
   if (entry.first_failure !== 'PROCESS_EXECUTION_RESPONSE_LIMIT' || worker?.first_failure !== entry.first_failure
-    || entry.consumption === null || entry.consumption.responses_observed <= entry.limits.max_responses
+    || entry.limits.max_responses === null || entry.consumption === null
+    || entry.consumption.responses_observed <= entry.limits.max_responses
     || current.instance_sha256 !== original.instance_sha256 || !productSha256) return {};
   const event = original.events.at(-1);
   if (event?.kind !== 'assign' || event.request.role !== 'executor' || event.request.artifact_sha256 !== productSha256

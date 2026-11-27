@@ -4,7 +4,7 @@ import { assertNativeReconciliationReceipt, nativeAllocationResolution } from ".
 import schema from "../contracts/workflow-definition/native-allocation-journal.v1.schema.json" with { type: "json" };
 import schemaV2 from "../contracts/workflow-definition/native-allocation-journal.v2.schema.json" with { type: "json" };
 import schemaV3 from "../contracts/workflow-definition/native-allocation-journal.v3.schema.json" with { type: "json" };
-import { assertNativeEpochHistory, nativeEpochForGeneration, nativeAllocationTotals, nativeLimitsOf } from "./native-authorization-epoch.mjs";
+import { assertNativeEpochHistory, debitNativeAuthorization, exceedsNativeLimits, nativeEpochForGeneration, nativeAllocationTotals, nativeLimitsOf } from "./native-authorization-epoch.mjs";
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { checkShadowJson, shadowHash } from "./shadow-json.mjs";
 import { assertNativeHostState } from "./native-host-state.mjs";
@@ -78,7 +78,8 @@ export function assertNativeAllocationJournal(value) {
       || entry.checkpoint === null || entry.closure_ref === null || entry.consumption === null)) fail("NATIVE_ALLOCATION_CLOSURE_UNCONFIRMED");
     if (entry.consumption && (entry.consumption.responses_observed !== entry.consumption.response_sha256.length
       || new Set(entry.consumption.response_sha256).size !== entry.consumption.response_sha256.length)) fail("NATIVE_ALLOCATION_CONSUMPTION_INVALID");
-    if (entry.phase === "closed" && (entry.consumption.responses_observed > entry.limits.max_responses
+    if (entry.phase === "closed" && ((entry.limits.max_responses !== null
+      && entry.consumption.responses_observed > entry.limits.max_responses)
       || entry.consumption.storage_debit_bytes > entry.limits.max_bytes)) fail("NATIVE_ALLOCATION_CONSUMPTION_EXCEEDS_LIMIT");
     const epoch = nativeEpochForGeneration(value, entry.generation);
     const priorReconciliation = reconciled ? value.reconciliations.findLast(row => row.request.generation < entry.generation) : null;
@@ -86,12 +87,12 @@ export function assertNativeAllocationJournal(value) {
       fail("NATIVE_RECONCILIATION_NEW_AUTHORIZATION_REQUIRED");
     if (epoch) {
       const totals = nativeAllocationTotals(value.allocations.slice(0, index), value.reconciliations), grant = epoch.grant.authorization;
-      const effective = { ...grant, max_responses: grant.max_responses - totals.responses, max_bytes: grant.max_bytes - totals.bytes };
+      const effective = debitNativeAuthorization(grant, totals);
       if (!totals.known || shadowHash(entry.limits) !== shadowHash(nativeLimitsOf(effective))
         || entry.authorization_sha256 !== shadowHash(effective)) fail("NATIVE_EPOCH_ALLOCATION_UNBOUND");
     } else if (index) {
       const ceiling = value.allocations[0].limits;
-      if (["max_responses", "max_bytes", "max_turn_ms", "global_deadline_ms", "workflow_deadline_ms"].some(key => entry.limits[key] > ceiling[key])) fail("NATIVE_ALLOCATION_LIMIT_INCREASE_UNAUTHORIZED");
+      if (exceedsNativeLimits(entry.limits, ceiling)) fail("NATIVE_ALLOCATION_LIMIT_INCREASE_UNAUTHORIZED");
     }
   }
   return value;
@@ -99,7 +100,7 @@ export function assertNativeAllocationJournal(value) {
 export function assertNativeCheckpointEvidence(value, { instanceId, scopeId, modelSha256, authorizationSha256, limits }) {
   const fields = ["state", "response_sha256", "responses_observed", "authorized_budget_sha256", "authorized_limits", "resume_authority"];
   if (checkShadowJson(value) || !value || Object.keys(value).length !== fields.length || fields.some(key => !Object.hasOwn(value, key))
-    || !Array.isArray(value.response_sha256) || value.response_sha256.length > 120 || value.response_sha256.some(item => !digest(item))
+    || !Array.isArray(value.response_sha256) || value.response_sha256.some(item => !digest(item))
     || value.responses_observed !== value.response_sha256.length || new Set(value.response_sha256).size !== value.response_sha256.length
     || value.authorized_budget_sha256 !== authorizationSha256 || shadowHash(value.authorized_limits) !== shadowHash(limits)
     || value.resume_authority !== "NOT_ESTABLISHED_SUPERVISOR_AND_AUTHENTICATED_JOURNAL_REQUIRED") fail("NATIVE_ALLOCATION_CHECKPOINT_INVALID");

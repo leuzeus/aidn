@@ -64,6 +64,9 @@ export function transport(f, options = {}) {
         if (options.storage) put(f.dirs.control, "case/native-overflow.bin", Buffer.alloc(11 * 1024 * 1024));
         const notify = (method, params) => configuration.onNotification({ method, params });
         await notify("rawResponse/completed", { threadId: options.foreignThread ? "other-thread" : thread, turnId: turn, responseId: `response-${session.turns}` });
+        for (let response = 1; response < (options.responsesPerTurn ?? 1); response++) {
+          await notify("rawResponse/completed", { threadId: thread, turnId: turn, responseId: `response-${session.turns}-${response}` });
+        }
         const usage = { inputTokens: 10 * session.turns, cachedInputTokens: 0, outputTokens: session.turns, reasoningOutputTokens: 0, totalTokens: 11 * session.turns };
         if (!options.noUsage) await notify("thread/tokenUsage/updated", { threadId: thread, turnId: options.foreignTurn ? "other-turn" : turn,
           tokenUsage: { total: usage, last: usage } });

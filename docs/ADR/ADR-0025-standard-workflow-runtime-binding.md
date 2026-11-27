@@ -5973,13 +5973,16 @@ accepted completion receipts can be verified without replaying their effects.
 
 ### Native response ceilings
 
-An explicit response ceiling authorizes consumption only within its bound.
-Admission requires a transport that applies the ceiling before starting a
-model response. The current Codex app-server reports responses after
-completion, so the default Native actor refuses before allocation. A
-controlled in-process fixture can exercise the remaining workflow without
-calling a model. Previously observed usage, including a response that crossed
-the ceiling, remains part of the original allocation.
+Native authorization expresses a numeric response ceiling or `max_responses:
+null`. The ordinary Codex app-server execution uses `null` and records every
+completed response. Its existing authorization, deadlines, storage and
+process supervision apply.
+
+A numeric ceiling still requires enforcement before starting a model
+response. The Codex app-server reports completed responses, so this
+configuration refuses a numeric ceiling before allocating a worker. Only
+an authenticated new epoch can widen an existing ceiling. The journal
+retains the observed response and storage debits across epochs.
 
 ### Windows Native deployment qualification
 

@@ -328,7 +328,7 @@ async function check(name, callback) { if (process.argv.includes("--host-resourc
   if (process.argv.includes("--journal-only") && !name.startsWith("journal ")) return;
   if (process.argv.includes("--journal-preview-only") && !name.startsWith("journal preview ")) return;
   if (process.argv.includes("--owned-only") && !/^(journal |owned )/.test(name)) return;
-  if (process.argv.includes("--native-ceiling-only") && !name.startsWith("owned Native rejects an unenforceable response ceiling")) return;
+  if (process.argv.includes("--native-ceiling-only") && !name.startsWith("owned Native response ceiling:")) return;
   if (process.argv.includes("--resume-only") && !name.startsWith("resume ")) return;
   if (process.argv.includes("--worker-only") && !name.startsWith("worker ")) return;
   if (process.argv.includes("--mixed-only") && !name.startsWith("mixed ")) return;
@@ -4054,7 +4054,7 @@ if (process.argv[2] === "--mixed-continue") {
     f.configuration.implementation_sha256 = "a".repeat(64);
     assert.throws(() => createProjectAgenticProcessExecution(f.configuration), /IMPLEMENTATION_CHANGED/);
   });
-  await check("owned Native rejects an unenforceable response ceiling before allocation", async () => {
+  await check("owned Native response ceiling: explicit refusal before allocation", async () => {
     const f = fixture(), configuration = f.configuration;
     const authorization = { ...f.authorize(), max_responses: 2 };
     const refuse = { code: "PROCESS_EXECUTION_RESPONSE_LIMIT_UNENFORCEABLE" };
@@ -4067,7 +4067,33 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(execution.preview().native_started, false);
     await assert.rejects(execution.run({ execute: true, authorization }), refuse);
     await assert.rejects(runOwnedAgenticProcess({ configuration, authorization, execute: true }, { allocationObserver: observer }), refuse);
+    const withoutCeiling = { ...authorization, max_responses: null };
+    await assert.rejects(runOwnedAgenticProcess({ configuration, authorization: withoutCeiling, execute: true }, { allocationObserver: observer }),
+      { code: "PROCESS_EXECUTION_CONTROLLER_PIN_INVALID" });
+    const shortDeadline = withoutCeiling.authorized_at_ms + 15000;
+    await assert.rejects(execution.run({ execute: true, authorization: { ...withoutCeiling,
+      global_deadline_ms: shortDeadline, workflow_deadline_ms: shortDeadline } }), { code: "PROCESS_EXECUTION_CLOSURE_RESERVE" });
     assert.deepEqual(fs.readdirSync(configuration.control_root), before);
+  });
+  await check("owned Native response ceiling: journal retains observed responses without a ceiling", async () => {
+    const f = journalFixture({ responsesPerTurn: 41 });
+    const result = await f.actor.run({ execute: true, authorization: { ...f.authorize(), max_responses: null } });
+    assert.equal(result.status, "COMPLETED", JSON.stringify(result));
+    const allocation = f.open().inspect().allocations[0], checkpoint = f.open().readCheckpoint(1);
+    assert.equal(allocation.phase, "closed");
+    assert.equal(allocation.limits.max_responses, null);
+    assert.equal(allocation.consumption.responses_observed, 123);
+    assert.deepEqual(allocation.consumption.response_sha256, checkpoint.response_sha256);
+  });
+  await check("owned Native response ceiling: an existing capped authorization cannot be widened", async () => {
+    const f = journalFixture({ wait: true }), authorization = f.authorize();
+    const result = await f.actor.run({ execute: true, authorization });
+    assert.equal(result.journal_phase, "closed", JSON.stringify(result));
+    const journal = f.actor.inspect();
+    await assert.rejects(f.actor.run({ execute: true, authorization: { ...authorization, max_responses: null } }),
+      { code: "NATIVE_ALLOCATION_LIMIT_INCREASE_UNAUTHORIZED" });
+    assert.equal(f.launches, 1);
+    assert.deepEqual(f.open().inspect(), journal);
   });
   await check("owned reservation cannot spend the closure reserve and still launch a worker", async () => {
     const f = fixture(), worker = fileURLToPath(new URL("../../src/adapters/agents/agentic-process-worker.mjs", import.meta.url));

@@ -6844,11 +6844,16 @@ PASS; genuine actors, installed execution and the full plan remain separate.
 ## Native allocation assessment candidate
 
 `node tools/perf/verify-agentic-process-execution-fixtures.mjs --native-ceiling-only`
-checks that a two-response authorization
-refuses on the default Codex transport before reserving or launching a
+checks admission and accounting for optional Native response ceilings. An
+explicit two-response authorization refuses on the default Codex transport
+before reserving or launching a
 worker. The closed-data assessment cases cover an interrupted implementation
 with three retained responses. They reject missing proof, product changes,
 a foreign prefix, an unclosed worker and more than one assignment.
+The uncapped fixture retains 123 response identities in its checkpoint
+and journal. A capped fixture refuses conversion to an uncapped allocation
+within the same authorization. The transport and process-tree observations
+for these cases are controlled.
 
 The existing Native dispatch provenance commands for `files`, `dual` and
 `db-only` also exercise `prepareNativeAllocationAssessment` with real canonical

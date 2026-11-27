@@ -506,6 +506,12 @@ records and derive no new Human answer or Native authority. Internal v1 plans
 remain independently validated. This is derived journal evidence, not a new
 canonical store or generic receipt migration.
 
+Native authorization and retained allocation limits accept an integer
+`max_responses` for a response ceiling or `null` for response accounting
+without a ceiling. The value binds the grant and its projections. The
+observed response count and hashes remain recorded in checkpoints and
+journals. Signed numeric grants and their recorded consumption remain valid.
+
 ## Purpose
 
 Every stable public JSON output must have an explicit contract under `src/core/contracts/cli-output/`.

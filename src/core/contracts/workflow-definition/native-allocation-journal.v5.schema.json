@@ -130,7 +130,7 @@
                 "maximum": 2700000
               },
               "max_responses": {
-                "type": "integer",
+                "type": ["integer", "null"],
                 "minimum": 1,
                 "maximum": 120
               },
@@ -241,11 +241,10 @@
                   "responses_observed": {
                     "type": "integer",
                     "minimum": 0,
-                    "maximum": 120
+                    "maximum": 9007199254740991
                   },
                   "response_sha256": {
                     "type": "array",
-                    "maxItems": 120,
                     "items": {
                       "type": "string",
                       "pattern": "^[a-f0-9]{64}$"
@@ -353,7 +352,7 @@
           "maximum": 2700000
         },
         "max_responses": {
-          "type": "integer",
+          "type": ["integer", "null"],
           "minimum": 1,
           "maximum": 120
         },
@@ -524,7 +523,7 @@
                         "maximum": 2700000
                       },
                       "max_responses": {
-                        "type": "integer",
+                        "type": ["integer", "null"],
                         "minimum": 1,
                         "maximum": 120
                       },
@@ -635,11 +634,10 @@
                           "responses_observed": {
                             "type": "integer",
                             "minimum": 0,
-                            "maximum": 120
+                            "maximum": 9007199254740991
                           },
                           "response_sha256": {
                             "type": "array",
-                            "maxItems": 120,
                             "items": {
                               "type": "string",
                               "pattern": "^[a-f0-9]{64}$"
@@ -808,7 +806,7 @@
                   "maximum": 2700000
                 },
                 "max_responses": {
-                  "type": "integer",
+                  "type": ["integer", "null"],
                   "minimum": 1,
                   "maximum": 120
                 },
@@ -985,7 +983,7 @@
                         "maximum": 2700000
                       },
                       "max_responses": {
-                        "type": "integer",
+                        "type": ["integer", "null"],
                         "minimum": 1,
                         "maximum": 120
                       },
@@ -1096,11 +1094,10 @@
                           "responses_observed": {
                             "type": "integer",
                             "minimum": 0,
-                            "maximum": 120
+                            "maximum": 9007199254740991
                           },
                           "response_sha256": {
                             "type": "array",
-                            "maxItems": 120,
                             "items": {
                               "type": "string",
                               "pattern": "^[a-f0-9]{64}$"
@@ -1208,7 +1205,7 @@
                   "maximum": 2700000
                 },
                 "max_responses": {
-                  "type": "integer",
+                  "type": ["integer", "null"],
                   "minimum": 1,
                   "maximum": 120
                 },
@@ -1386,7 +1383,7 @@
                         "maximum": 2700000
                       },
                       "max_responses": {
-                        "type": "integer",
+                        "type": ["integer", "null"],
                         "minimum": 1,
                         "maximum": 120
                       },
@@ -1497,11 +1494,10 @@
                           "responses_observed": {
                             "type": "integer",
                             "minimum": 0,
-                            "maximum": 120
+                            "maximum": 9007199254740991
                           },
                           "response_sha256": {
                             "type": "array",
-                            "maxItems": 120,
                             "items": {
                               "type": "string",
                               "pattern": "^[a-f0-9]{64}$"
@@ -1609,7 +1605,7 @@
                   "maximum": 2700000
                 },
                 "max_responses": {
-                  "type": "integer",
+                  "type": ["integer", "null"],
                   "minimum": 1,
                   "maximum": 120
                 },
@@ -1780,7 +1776,7 @@
                                 "maximum": 2700000
                               },
                               "max_responses": {
-                                "type": "integer",
+                                "type": ["integer", "null"],
                                 "minimum": 1,
                                 "maximum": 120
                               },
@@ -1891,11 +1887,10 @@
                                   "responses_observed": {
                                     "type": "integer",
                                     "minimum": 0,
-                                    "maximum": 120
+                                    "maximum": 9007199254740991
                                   },
                                   "response_sha256": {
                                     "type": "array",
-                                    "maxItems": 120,
                                     "items": {
                                       "type": "string",
                                       "pattern": "^[a-f0-9]{64}$"
@@ -2064,7 +2059,7 @@
                           "maximum": 2700000
                         },
                         "max_responses": {
-                          "type": "integer",
+                          "type": ["integer", "null"],
                           "minimum": 1,
                           "maximum": 120
                         },
@@ -2241,7 +2236,7 @@
                                 "maximum": 2700000
                               },
                               "max_responses": {
-                                "type": "integer",
+                                "type": ["integer", "null"],
                                 "minimum": 1,
                                 "maximum": 120
                               },
@@ -2352,11 +2347,10 @@
                                   "responses_observed": {
                                     "type": "integer",
                                     "minimum": 0,
-                                    "maximum": 120
+                                    "maximum": 9007199254740991
                                   },
                                   "response_sha256": {
                                     "type": "array",
-                                    "maxItems": 120,
                                     "items": {
                                       "type": "string",
                                       "pattern": "^[a-f0-9]{64}$"
@@ -2464,7 +2458,7 @@
                           "maximum": 2700000
                         },
                         "max_responses": {
-                          "type": "integer",
+                          "type": ["integer", "null"],
                           "minimum": 1,
                           "maximum": 120
                         },
@@ -3792,11 +3786,10 @@
                       "responses_observed": {
                         "type": "integer",
                         "minimum": 1,
-                        "maximum": 120
+                        "maximum": 9007199254740991
                       },
                       "response_sha256": {
                         "type": "array",
-                        "maxItems": 120,
                         "items": {
                           "type": "string",
                           "pattern": "^[a-f0-9]{64}$"
@@ -4429,11 +4422,10 @@
                       "responses_observed": {
                         "type": "integer",
                         "minimum": 1,
-                        "maximum": 120
+                        "maximum": 9007199254740991
                       },
                       "response_sha256": {
                         "type": "array",
-                        "maxItems": 120,
                         "items": {
                           "type": "string",
                           "pattern": "^[a-f0-9]{64}$"

@@ -136,11 +136,10 @@
         "responses_observed": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 120
+          "maximum": 9007199254740991
         },
         "response_sha256": {
           "type": "array",
-          "maxItems": 120,
           "items": {
             "type": "string",
             "pattern": "^[a-f0-9]{64}$"

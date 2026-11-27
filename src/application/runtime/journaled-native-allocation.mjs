@@ -18,13 +18,11 @@ import { createProcessControlInboxStore } from "../../adapters/runtime/process-c
 import { readNativeAllocationCheckpoint, readNativeAllocationHistory, readNativeAllocationClosureEvidence, readNativeCheckpointFile, verifyNativeResultEvidence, nativeAllocationOutputId, assertNativeAllocationProjection } from "./native-allocation-evidence.mjs";
 import { createNativeAllocationControls, readNativeControlContext } from "./native-allocation-controls.mjs";
 import { createNativeAuthorizationEpochs } from "./native-authorization-epochs.mjs";
-import { effectiveNativeEpochAuthorization, nativeAllocationTotals } from "../../core/workflow/native-authorization-epoch.mjs";
+import { debitNativeAuthorization, effectiveNativeEpochAuthorization, exceedsNativeLimits, isNativeResponseLimit, nativeAllocationTotals, nativeLimitsOf } from "../../core/workflow/native-authorization-epoch.mjs";
 import { startNativeHumanVerificationPort } from "./native-human-verification-port.mjs";
 import { createNativeDispatchProvenance } from "./native-dispatch-provenance.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
-const limitKeys = ["configuration_sha256", "authorized_at_ms", "global_deadline_ms", "workflow_deadline_ms", "max_turn_ms", "max_responses", "max_bytes"];
-const limitsOf = auth => Object.fromEntries(limitKeys.map(key => [key, auth[key]]));
 const json = file => { const data = readAgentRunFile(file, { json: false, maxBytes: 262144 }); return { value: JSON.parse(data.value.toString("utf8")), sha256: data.sha256 }; };
 // The controller and RPC seams belong to the trusted embedding, never authored
 // configuration. The observer only denies launches or retains actual observations;
@@ -150,14 +148,15 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
         fail('NATIVE_RECONCILIATION_NEW_AUTHORIZATION_REQUIRED');
       let auth = structuredClone(authorization);
       if (checkShadowJson(auth) || auth?.approved !== true || auth.model_allowed !== true || auth.configuration_sha256 !== configurationSha) fail("PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED");
+      if (!isNativeResponseLimit(auth.max_responses)) fail("NATIVE_ALLOCATION_BUDGET_EXHAUSTED");
       if (before.record?.epochs) auth = effectiveNativeEpochAuthorization(before.record, auth);
       else if (previous) {
         const ceiling = before.record.allocations[0].limits;
-        if (["max_responses", "max_bytes", "max_turn_ms", "global_deadline_ms", "workflow_deadline_ms"].some(key => auth[key] > ceiling[key])) fail("NATIVE_ALLOCATION_LIMIT_INCREASE_UNAUTHORIZED");
-        auth.max_responses -= consumed.responses; auth.max_bytes -= consumed.bytes;
+        if (exceedsNativeLimits(auth, ceiling)) fail("NATIVE_ALLOCATION_LIMIT_INCREASE_UNAUTHORIZED");
+        auth = debitNativeAuthorization(auth, consumed);
       }
-      if (!Number.isSafeInteger(auth.max_responses) || auth.max_responses < 1 || !Number.isSafeInteger(auth.max_bytes) || auth.max_bytes < 1048576) fail("NATIVE_ALLOCATION_BUDGET_EXHAUSTED");
-      assertNativeResponseLimitEnforceable(typeof controllerFactory === "function");
+      if (!isNativeResponseLimit(auth.max_responses) || !Number.isSafeInteger(auth.max_bytes) || auth.max_bytes < 1048576) fail("NATIVE_ALLOCATION_BUDGET_EXHAUSTED");
+      assertNativeResponseLimitEnforceable(auth.max_responses, typeof controllerFactory === "function");
       let claim = null, observed = null, workerHuman = null;
       const observer = {
         async beforeLaunch({ preview: actual }) {
@@ -176,7 +175,7 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
           } else assertAgenticProcessStart(canonical, creation);
           const entry = { generation: (now.record?.allocations.length ?? 0) + 1, owner_id: randomUUID(), configuration_sha256: configurationSha,
             authorization_sha256: shadowHash(auth), initial_instance_sha256: canonical?.instance_sha256 ?? createAgenticProcess(creation).instance_sha256,
-            limits: limitsOf(auth), phase: "reserved", owned_result_sha256: null, tree_proof_sha256: null, tree_closed: false, owned_status: null,
+            limits: nativeLimitsOf(auth), phase: "reserved", owned_result_sha256: null, tree_proof_sha256: null, tree_closed: false, owned_status: null,
             first_failure: null, checkpoint: null, closure_ref: null, consumption: null };
           const body = { contract_version: now.record?.contract_version ?? "native-allocation-journal.v1", journal_id: journalId, instance_id: config.instance_id, scope_id: actual.scope_id,
             ...(now.record?.epochs ? { initial_authorization: now.record.initial_authorization, origin_journal: now.record.origin_journal, epochs: now.record.epochs } : {}),
