@@ -7065,6 +7065,19 @@ results retain their source identities and do not qualify the combined candidate
 post-assignment accounting, genuine actors or an installed archive.
 
 
+## Endpoint protection in the Windows Native pilot
+
+Record the AIDN archive hash, its packaged executable inventory, and the
+publisher channel and hash of the installed Native client. Use the exact
+candidate for the normal installation or update and a cold, bounded Native
+launch under the environment's existing endpoint protection.
+
+Keep prototype build artifacts outside the package. If protection quarantines
+a file, stop the affected candidate and record the stage and sanitized
+detection. A run requiring an exclusion remains a deployment qualification
+failure. Archive inventory and component HTTP tests retain their own
+evidence scope. This is part of Windows pilot qualification.
+
 ## Post-assignment Native accounting candidate
 
 The Native history fixture also checks a v5 receipt created over an existing v4

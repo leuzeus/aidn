@@ -5981,6 +5981,17 @@ controlled in-process fixture can exercise the remaining workflow without
 calling a model. Previously observed usage, including a response that crossed
 the ceiling, remains part of the original allocation.
 
+### Windows Native deployment qualification
+
+Windows deployment evidence identifies the exact AIDN archive and the Native
+client obtained through its documented publisher distribution channel. The
+qualification uses the normal installer or updater and a cold, bounded Native
+launch with the environment's ordinary endpoint protection active.
+A detection or the need for an exclusion blocks the deployment verdict for
+the affected candidate. Local transport prototypes and their build helpers
+stay outside the deployment package. Component tests of a prototype supply
+evidence for that component.
+
 ### Interrupted Native implementation
 
 A matched failed return with one scoped task implementation assignment can
