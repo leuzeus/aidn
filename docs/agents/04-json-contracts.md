@@ -1050,8 +1050,13 @@ The private `native-allocation-assessment.v1` is a closed signed read-only
 observation, linked to the exact canonical reconciliation inventory, Native
 journal/generation, original dispatch and retained checkpoint/closure. Its
 `no_assignment` claim requires the original failed allocator return and an
-unchanged empty checkpoint prefix with parent and owned tree closure. Missing
-proof remains unknown; contradictory evidence refuses. Legacy Native journal
+unchanged checkpoint prefix with parent and owned tree closure. A resumed
+allocation may retain resources and results from its authenticated previous
+checkpoint. The optional checkpoint field `inherited_checkpoint_sha256` binds
+that exact resolved predecessor when the current allocation added no work. A
+null value records an empty checkpoint whose inherited history could not be
+proved. Raw checkpoint counts remain cumulative. Missing proof leaves the
+assignment unknown. Contradictory evidence causes a refusal. Legacy journal
 readers and accounting keep their existing semantics. The observation grants
 no effect, resume, renewal, retirement or complete-resource-closure authority.
 
@@ -1103,7 +1108,7 @@ original failure observations and explicitly report workflow_completed false
 and native_started false. They do not claim all-resource closure.
 
 
-The private native-post-assignment-assessment.v1 wraps the unchanged signed
+The private native-post-assignment-assessment.v1 wraps the signed
 native-allocation-assessment.v1 and closed checkpoint-work data. Its fixed host
 authenticates canonical history and reads only the admitted protected checkpoint,
 result files and supervisor closure. It distinguishes an exact canonical prefix

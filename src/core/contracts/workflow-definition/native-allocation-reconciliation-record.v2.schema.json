@@ -534,6 +534,10 @@
                     },
                     "os_tree_confirmed": {
                       "type": "boolean"
+                    },
+                    "inherited_checkpoint_sha256": {
+                      "type": ["string", "null"],
+                      "pattern": "^[a-f0-9]{64}$"
                     }
                   }
                 },
@@ -7973,6 +7977,10 @@
                                       },
                                       "os_tree_confirmed": {
                                         "type": "boolean"
+                                      },
+                                      "inherited_checkpoint_sha256": {
+                                        "type": ["string", "null"],
+                                        "pattern": "^[a-f0-9]{64}$"
                                       }
                                     }
                                   },
@@ -12831,6 +12839,10 @@
                                         },
                                         "os_tree_confirmed": {
                                           "type": "boolean"
+                                        },
+                                        "inherited_checkpoint_sha256": {
+                                          "type": ["string", "null"],
+                                          "pattern": "^[a-f0-9]{64}$"
                                         }
                                       }
                                     },

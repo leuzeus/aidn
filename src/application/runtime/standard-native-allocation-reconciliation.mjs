@@ -20,7 +20,7 @@ import { LOCAL_ARTIFACT_FENCE_PATH } from './local-artifact-resource-fence.mjs';
 import { inspectNativeOwnerLock } from './local-native-owner-retirement.mjs';
 import { readNativeAllocationCheckpoint } from './native-allocation-evidence.mjs';
 import { readAgentRunFile } from './agent-run-configuration-service.mjs';
-import { observeNativePostAssignmentCheckpoint } from './standard-native-post-assignment-assessment.mjs';
+import { observeNativeInheritedCheckpoint, observeNativePostAssignmentCheckpoint } from './standard-native-post-assignment-assessment.mjs';
 
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const body = ({ authentication, key_id, ...value }) => value;
@@ -131,7 +131,7 @@ export function createStandardNativeAllocationReconciliation({ targetRoot, state
     if (entry.phase !== 'failed' || !entry.tree_closed || H(entry) !== q.allocation_sha256
       || entry.checkpoint.sha256 !== q.checkpoint_sha256 || entry.checkpoint.state_sha256 !== q.checkpoint_state_sha256
       || closure.sha256 !== q.closure_sha256 || !data.state.parent_closed
-      || !post && (data.responses_observed !== 0 || data.state.resources.length || data.state.results.length)
+      || !post && data.responses_observed !== 0
       || !post && data.state.instance.instance_sha256 !== q.instance_sha256
       || !post && q.instance_sha256 !== entry.initial_instance_sha256 || closure.value.process_tree?.termination_state !== 'confirmed'
       || closure.value.process_tree?.termination_proof?.active_processes !== 0
@@ -147,6 +147,11 @@ export function createStandardNativeAllocationReconciliation({ targetRoot, state
         || H(nativeSessions(data.state)) !== H(q.resources.filter(row => row.kind === 'native_session'))
         || H(entry.consumption) !== H(q.minimum_consumption) || H(work) !== H(q.post_assignment_assessment.checkpoint_work))
         fail('NATIVE_RECONCILIATION_POST_ASSIGNMENT_CHANGED');
+    } else {
+      const noNewWork = entry.generation === 1
+        ? data.state.resources.length === 0 && data.state.results.length === 0
+        : observeNativeInheritedCheckpoint({ journal: original, entry, current: fresh.instance, configuration, inventory: fresh.inventory }) !== null;
+      if (!noNewWork) fail('NATIVE_RECONCILIATION_NO_ASSIGNMENT_REQUIRED');
     }
     return owner.attempts.at(-1).released_fence;
   }
