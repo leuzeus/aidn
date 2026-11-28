@@ -6044,3 +6044,82 @@ inventory and context before returning a diagnostic. Content, row and transport
 bounds remain in force; an unsupported adapter or truncated inventory refuses
 the observation. A successful observation grants neither resource closure nor
 business resumption. A failed Native report remains failed.
+
+## Capturing an operator answer
+
+The Codex MCP transport presents a prepared STANDARD question using form
+elicitation. The registered operator connection holds its Ed25519 key in
+memory. The runtime checks the signed response against the enrolled registry
+before durable publication and verifies it again when accepting the operation.
+The source and the operation receipt remain available after a host restart.
+Chat history records the declared choice. Authenticating a historical message
+requires evidence from its issuing interface. A connection public key is
+eligible only after independent binding to the project operator.
+
+Historical text recovery uses the existing signed human source and the same
+decision inbox and journal. The trusted launcher narrows lookup to a thread
+and enrolled principal. The source signature covers the exact question,
+choice, thread/turn/message reference and digest of the original UTF-8 text.
+Codex history, account status and the lookup arguments grant no authority.
+Redelivery identifies the accepted source and message evidence in the signed
+operation result and confirms the same receipt on the workflow instance.
+
+### Project installation and issuer authority
+
+The protected STANDARD host admits an explicit
+`standard-project-authorization.v1` revision through the installation
+transaction. Admission checks the independent administrator's public key from
+the protected host home, the resolved project and runtime scope, the next
+revision and the exact previous digest. Atomic publication of each signed
+revision makes installation retryable and preserves the previous records.
+Projects with a shared database apply an approved revision on each execution
+host. Checkout configuration and installation assets supply no signing keys.
+
+The active contract narrows the human source verifier to the enrolled issuer
+and the listed question contract and choice. A native Codex form issuer
+additionally binds the allowed desktop client and thread. Its protected
+private key signs the result correlated with one outstanding request on the
+desktop MCP connection. The verifier checks the evidence digest across the
+thread, request, operation, full question and normalized claim. Principals
+using historical message recovery provide the signed Codex message reference.
+The verifier binds the original question using the existing
+`standard-host-source.v1` envelope and rechecks the active authority.
+An anchored home requires its enrollment and refuses legacy human sources.
+Legacy unanchored homes retain their historical rules. An accepted matching
+receipt is independently readable from its original journal and process event.
+Revocation stops further source verification under the revoked issuer.
+
+The project authority signs policy only. Business acceptance still comes
+from the authenticated interface, as a signed exact claim submitted through the
+ordinary inbox. Revocation and replacement require another approved revision.
+Installation enrollment adds no business acceptance or automatic promotion,
+merge, model use, or other execution permission.
+
+A form result establishes origin in the enrolled software channel of the
+current Codex session. The launcher checks that the process is a child of
+the trusted desktop package before loading its issuer key. The form requires
+only the business answer. Its trust boundary is the installed software and
+the protected project host, including the workstation administrator.
+
+### Windows platform operator authority
+
+A separate exact-plan installation action opens Windows elevation and creates
+an ES256 credential through the native platform WebAuthn API. The plan names
+the Windows user, resolved project and runtime scope, Codex thread, loopback
+origin and permitted question and choice pairs. Windows protects the private
+key. The elevated installer publishes the matching public authority under an
+administrator-owned machine registry key. Installation validates the exact
+plan and reuses an identical already-enrolled authority.
+
+An opted-in STANDARD request pins that public authority's digest. The fixed
+host reads it from the machine registry when it verifies a human source. It
+checks a top-level WebAuthn assertion with user presence and user verification
+against the enrolled key. The challenge covers the full human claim, exact
+question, source reference, random nonce and pinned authority. Evidence refers
+to the panel action in the bound chat. A missing or replaced authority refuses
+the request. Existing host-source and Codex message recovery contracts remain
+readable under their respective authority paths.
+
+The panel publishes a verified answer through the existing protected inbox.
+The canonical operation and process journals remain the receipt authority.
+Enrollment and an accepted business decision grant no Native execution budget.

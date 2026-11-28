@@ -14,6 +14,10 @@ function parseArgs(argv) {
     pack: "",
     sourceBranch: "",
     adapterFile: "",
+    standardAuthorizationFile: "",
+    standardCodexConfigurationFile: "",
+    windowsOperatorEnrollment: "",
+    windowsOperatorPlan: null,
     initDefaults: false,
     projectName: "",
     dryRun: false,
@@ -47,6 +51,22 @@ function parseArgs(argv) {
     } else if (token === "--adapter-file") {
       args.adapterFile = String(argv[i + 1] ?? "").trim();
       i += 1;
+    } else if (token === "--standard-authorization") {
+      const file = argv[++i];
+      if (!file || file.startsWith("--") || args.standardAuthorizationFile) throw new Error("Expected one file for --standard-authorization");
+      args.standardAuthorizationFile = file;
+    } else if (token === "--standard-codex-configuration") {
+      const file = argv[++i];
+      if (!file || file.startsWith("--") || args.standardCodexConfigurationFile) throw Error("Expected one file for --standard-codex-configuration");
+      args.standardCodexConfigurationFile = file;
+    } else if (token === "--standard-windows-operator-enrollment") {
+      const value = argv[++i];
+      if (!value || value.startsWith("--") || args.windowsOperatorEnrollment) throw Error("Expected one Windows operator enrollment file");
+      args.windowsOperatorEnrollment = value;
+    } else if (token === "--expect-windows-operator-plan") {
+      const value = argv[++i];
+      if (!/^[a-f0-9]{64}$/.test(value ?? "") || args.windowsOperatorPlan !== null) throw Error("Expected one Windows operator plan digest");
+      args.windowsOperatorPlan = value;
     } else if (token === "--init-defaults") {
       args.initDefaults = true;
     } else if (token === "--project-name") {
@@ -120,6 +140,17 @@ function parseArgs(argv) {
     args.verifyOnly = false;
     args.verifyAfterInstall = true;
   }
+  if (args.verifyOnly && args.standardAuthorizationFile) {
+    throw new Error("--standard-authorization requires installation or --dry-run");
+  }
+  if (args.verifyOnly && args.standardCodexConfigurationFile) throw Error("--standard-codex-configuration requires installation or --dry-run");
+  if (args.windowsOperatorEnrollment) {
+    const flags = ["--target", "--standard-windows-operator-enrollment", "--expect-windows-operator-plan", "--dry-run"];
+    if (argv.some(token => token.startsWith("--") && !flags.includes(token)))
+      throw Error("Windows operator enrollment is a separate installation action");
+  } else if (args.windowsOperatorPlan !== null) {
+    throw Error("--expect-windows-operator-plan requires Windows operator enrollment");
+  }
 
   return args;
 }
@@ -130,6 +161,10 @@ function printUsage() {
   console.log("  node tools/install.mjs --target ../repo --pack core");
   console.log("  node tools/install.mjs --target ../repo --pack core --source-branch main");
   console.log("  node tools/install.mjs --target ../repo --pack core --adapter-file ./workflow.adapter.json");
+  console.log("  node tools/install.mjs --target ../repo --standard-authorization ./approved-project-authorization.json");
+  console.log("  node tools/install.mjs --target ../repo --standard-codex-configuration FILE [--standard-authorization FILE]");
+  console.log("  node tools/install.mjs --target ../repo --standard-windows-operator-enrollment ./windows-enrollment.json --dry-run");
+  console.log("  node tools/install.mjs --target ../repo --standard-windows-operator-enrollment ./windows-enrollment.json --expect-windows-operator-plan SHA256");
   console.log("  node tools/install.mjs --target ../repo --pack core --init-defaults --project-name my-project --verify");
   console.log("  node tools/install.mjs --target . --pack core --dry-run");
   console.log("  node tools/install.mjs --target . --pack core --verify");
@@ -154,6 +189,18 @@ async function main() {
     const scriptDir = path.dirname(fileURLToPath(import.meta.url));
     const repoRoot = path.resolve(scriptDir, "..");
     const targetRoot = path.resolve(process.cwd(), args.target);
+    if (args.windowsOperatorEnrollment) {
+      const { installWindowsOperator, prepareWindowsOperatorInstallation } = await import("./runtime/standard-windows-decisions.mjs");
+      const file = args.windowsOperatorEnrollment;
+      if (args.dryRun) {
+        const { sha256 } = prepareWindowsOperatorInstallation(targetRoot, file, args.windowsOperatorPlan);
+        console.log(`STANDARD Windows operator plan: ${sha256}`);
+      } else {
+        const installed = installWindowsOperator(targetRoot, file, args.windowsOperatorPlan);
+        console.log(`STANDARD Windows operator authority: ${installed.authority_sha256}`);
+      }
+      return;
+    }
     await runInstallUseCase({
       args,
       repoRoot,

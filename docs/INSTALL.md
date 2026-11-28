@@ -1,5 +1,9 @@
 # Installation Guide
 
+For a Windows STANDARD pilot that uses an authenticated Codex decision panel,
+enroll the operator once during setup. The exact-plan enrollment is independent
+of the installed project assets. See [Windows operator enrollment](WORKFLOW_CONSOLE.md#windows-operator-key-and-decision-panel).
+
 ## Current installation: one engine per user
 
 The global model shipped in 0.10.0. Install one verified package under
@@ -38,6 +42,10 @@ aidn doctor --target ..\client --json
 
 Replace `PLAN_ID` only after reviewing the first result, and keep the same
 options. `--pack` selects an installation pack; default is `core`.
+For the optional Windows STANDARD decision connector, setup can include the
+protected configuration and approved form issuer in this same project
+installation. See [the decision connector](WORKFLOW_CONSOLE.md#decisions-inside-codex).
+
 No project-local AIDN npm dependency is installed. Existing local installations
 use [project migration](UPGRADE.md#move-a-09x-project-to-the-global-engine).
 

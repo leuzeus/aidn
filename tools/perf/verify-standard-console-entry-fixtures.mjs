@@ -13,7 +13,7 @@ import outputSchema from "../../src/core/contracts/cli-output/runtime-workflow-a
 
 // Real public console CLI, published model, authority, journal and local ports.
 // No Native transport is launchable and no human/provider source is supplied.
-export function verifyStandardConsoleEntry() {
+export function createStandardConsoleFixture() {
   const owned = [], target = createFreshStandardWorkflowFixture("files", owned);
   const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-standard-console-"));
   const dirs = Object.fromEntries(["control", "review", "home", "authority"].map(name => { const p = path.join(base, name); fs.mkdirSync(p); return [name, p]; }));
@@ -31,6 +31,10 @@ export function verifyStandardConsoleEntry() {
     parameters: { session: { session_id: "S001", session_branch: "S001-console", objective: "STANDARD console qualification" },
       cycle: { cycle_id: "C001", cycle_type: "FEATURE", title: "Unused cycle", objective: "No cycle in prefix" } } };
   fs.writeFileSync(config, JSON.stringify(configuration));
+  return { base, target, dirs, owned, config, requestFile, pin, configuration };
+}
+export function verifyStandardConsoleEntry() {
+  const { target, base, dirs, config, requestFile, pin } = createStandardConsoleFixture();
   const cli = fileURLToPath(new URL("../../bin/aidn.mjs", import.meta.url));
   const environment = { ...process.env, AIDN_STANDARD_HOST_HOME: dirs.authority };
   let calls = 0;

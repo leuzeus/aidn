@@ -229,11 +229,18 @@ Purpose:
 
 These are the durable surfaces exposed through `aidn` today:
 
-- `aidn install`
+- `aidn install` with optional `--standard-authorization FILE` for an approved
+  STANDARD decision issuer policy. `--standard-windows-operator-enrollment FILE`
+  previews a Windows authority plan with `--dry-run`. Applying that action
+  requires `--expect-windows-operator-plan SHA256` and Windows consent.
 - `aidn bootstrap`
 - `aidn build-release`
 - `aidn setup`
 - `aidn update`
+- Windows STANDARD installation via `aidn install --standard-codex-configuration FILE`
+  or `aidn project add --standard-codex-configuration FILE`. An installed issuer
+  policy can be reused. `--standard-authorization FILE` enrolls an approved policy
+  in the same installation. The global launcher follows the active engine.
 - `aidn rollback`
 - `aidn doctor`
 - `aidn help` / `aidn --help` / `aidn -h`

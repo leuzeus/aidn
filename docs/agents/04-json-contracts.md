@@ -1,5 +1,11 @@
 # 04 JSON Contracts
 
+`standard-windows-operator-authority.v1` is the public enrollment record read
+from the Windows machine registry. `standard-host-source.webauthn.v1` is the
+verified panel source. Its assertion carries the original bytes signed by the
+authenticator. The workflow operation still validates its existing exact
+Human claim and writes the canonical receipt.
+
 Entry selection v17 keeps all earlier contracts readable and clears
 `cycle_work_requested` for the four retained external-merge/R09 entries. Their
 explicit merge route still runs, but returning from it must not enter the

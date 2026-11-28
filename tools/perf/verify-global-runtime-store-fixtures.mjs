@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { once } from 'node:events';
+import { createInterface } from 'node:readline';
 import {
   sealRuntimeGeneration, planGlobalSwitch, applyGlobalSwitch, resolveGlobalRuntime,
   acquireGlobalRuntime, readGlobalState, resumeGlobalSwitch, resolveGlobalRecoveryRuntime,
@@ -23,6 +25,18 @@ function generation(version) {
   fs.writeFileSync(path.join(packageRoot, 'VERSION'), version);
   fs.writeFileSync(path.join(packageRoot, 'package.json'), JSON.stringify({ name: 'aidn-workflow', version }));
   fs.writeFileSync(path.join(packageRoot, 'bin', 'aidn.mjs'), `console.log('${version}');\n`);
+  const tool = path.join(packageRoot, 'tools/runtime/standard-codex-decisions.mjs');
+  fs.mkdirSync(path.dirname(tool), { recursive: true });
+  fs.writeFileSync(tool, [
+    'import { createInterface } from "node:readline";',
+    'export async function serveCodexDecisions({ useChannel }) {',
+    '  for await (const line of createInterface({ input: process.stdin })) {',
+    '    const reply = await useChannel({}, channel => channel.describe());',
+    '    console.log(JSON.stringify(reply));',
+    '  }',
+    '}',
+    'export function openManagedCodexForm() { return { describe: () => ' + JSON.stringify(version) + ' }; }',
+  ].join('\n'));
   return sealRuntimeGeneration({ home, directory, packageRoot, provenance: { sha256: digest(version), source: 'fixture' } });
 }
 function plan(candidate, content, extra = {}) {
@@ -108,7 +122,30 @@ try {
   assert.notEqual(child.status, 0);
   assert.match(child.stderr, /GLOBAL_BUSY/);
   fs.unlinkSync(path.join(home, 'admission.lock'));
-  apply(update);
+  // The real global launcher spans an engine switch with the same open MCP pipe.
+  const launcher = path.join(home, 'bin/global-launcher.mjs');
+  fs.mkdirSync(path.dirname(launcher), { recursive: true });
+  fs.copyFileSync(new URL('../setup/global-launcher.mjs', import.meta.url), launcher);
+  fs.copyFileSync(new URL('../../src/lib/fs/atomic-write-lib.mjs', import.meta.url), path.join(home, 'bin/atomic-write-lib.mjs'));
+  const store = fs.readFileSync(new URL('../../src/application/install/global-runtime-store.mjs', import.meta.url), 'utf8');
+  fs.writeFileSync(path.join(home, 'bin/global-runtime-store.mjs'), store.replace('../../lib/fs/atomic-write-lib.mjs', './atomic-write-lib.mjs'));
+  const bridge = spawn(process.execPath, [launcher, '__aidn-codex-form', path.join(home, 'fixture-codex-form.json')],
+    { stdio: ['pipe', 'pipe', 'inherit'], windowsHide: true });
+  const bridgeExit = once(bridge, 'close');
+  const lines = createInterface({ input: bridge.stdout });
+  const call = async () => {
+    const response = once(lines, 'line');
+    bridge.stdin.write('call\n');
+    const [line] = await response;
+    return JSON.parse(line);
+  };
+  try {
+    assert.equal(await call(), '0.10.0');
+    assert.deepEqual(fs.readdirSync(path.join(home, 'leases')), [], 'an idle form connection holds no lease');
+    apply(update);
+    assert.equal(await call(), '0.11.0');
+  } finally { bridge.stdin.end(); lines.close(); }
+  assert.deepEqual(await bridgeExit, [0, null]);
   assert.equal(resolveGlobalRuntime({ home }).version, '0.11.0');
   assert.equal(readGlobalState(home).installation_id, installed.installation_id);
   assert.throws(() => plan(first, 'old'), /GLOBAL_DOWNGRADE_REFUSED/);
