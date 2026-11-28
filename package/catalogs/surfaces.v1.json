@@ -13373,6 +13373,54 @@
       "migration": ""
     },
     {
+      "id": "option:aidn doctor:--standard-authorization",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --standard-authorization",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn doctor:--standard-codex-configuration",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn doctor --standard-codex-configuration",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn doctor:--target",
       "kind": "option",
       "status": "active",
@@ -13555,6 +13603,30 @@
         "role": "effect-override",
         "rule": "dry-run-is-preview",
         "effect_class": "preview"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/install.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn install:--expect-windows-operator-plan",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/install.mjs",
+      "entrypoint": "aidn install --expect-windows-operator-plan",
+      "implementation": "tools/install.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
       },
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
@@ -13912,6 +13984,54 @@
       "owner": "CLI maintainer",
       "source": "tools/install.mjs",
       "entrypoint": "aidn install --standard-authorization",
+      "implementation": "tools/install.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/install.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn install:--standard-codex-configuration",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/install.mjs",
+      "entrypoint": "aidn install --standard-codex-configuration",
+      "implementation": "tools/install.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/install.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn install:--standard-windows-operator-enrollment",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/install.mjs",
+      "entrypoint": "aidn install --standard-windows-operator-enrollment",
       "implementation": "tools/install.mjs",
       "effects": {
         "role": "effect-neutral",
@@ -28781,6 +28901,54 @@
       "migration": ""
     },
     {
+      "id": "option:aidn project add:--standard-authorization",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --standard-authorization",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project add:--standard-codex-configuration",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project add --standard-codex-configuration",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn project add:--target",
       "kind": "option",
       "status": "active",
@@ -29654,6 +29822,54 @@
       "migration": ""
     },
     {
+      "id": "option:aidn project list:--standard-authorization",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --standard-authorization",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project list:--standard-codex-configuration",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project list --standard-codex-configuration",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn project list:--target",
       "kind": "option",
       "status": "active",
@@ -30079,6 +30295,54 @@
       "owner": "CLI maintainer",
       "source": "tools/setup/global-cli.mjs",
       "entrypoint": "aidn project migrate --sha256",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--standard-authorization",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --standard-authorization",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project migrate:--standard-codex-configuration",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project migrate --standard-codex-configuration",
       "implementation": "tools/setup/global-cli.mjs",
       "effects": {
         "role": "effect-neutral",
@@ -30533,6 +30797,54 @@
       "owner": "CLI maintainer",
       "source": "tools/setup/global-cli.mjs",
       "entrypoint": "aidn project remove --sha256",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--standard-authorization",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --standard-authorization",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn project remove:--standard-codex-configuration",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn project remove --standard-codex-configuration",
       "implementation": "tools/setup/global-cli.mjs",
       "effects": {
         "role": "effect-neutral",
@@ -31037,6 +31349,54 @@
       "owner": "CLI maintainer",
       "source": "tools/setup/global-cli.mjs",
       "entrypoint": "aidn rollback --sha256",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--standard-authorization",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --standard-authorization",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn rollback:--standard-codex-configuration",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn rollback --standard-codex-configuration",
       "implementation": "tools/setup/global-cli.mjs",
       "effects": {
         "role": "effect-neutral",
@@ -42886,6 +43246,54 @@
       "migration": ""
     },
     {
+      "id": "option:aidn setup:--standard-authorization",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --standard-authorization",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn setup:--standard-codex-configuration",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn setup --standard-codex-configuration",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn setup:--target",
       "kind": "option",
       "status": "active",
@@ -43324,6 +43732,54 @@
       "owner": "CLI maintainer",
       "source": "tools/setup/global-cli.mjs",
       "entrypoint": "aidn update --sha256",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--standard-authorization",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --standard-authorization",
+      "implementation": "tools/setup/global-cli.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/setup/global-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn update:--standard-codex-configuration",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/setup/global-cli.mjs",
+      "entrypoint": "aidn update --standard-codex-configuration",
       "implementation": "tools/setup/global-cli.mjs",
       "effects": {
         "role": "effect-neutral",
