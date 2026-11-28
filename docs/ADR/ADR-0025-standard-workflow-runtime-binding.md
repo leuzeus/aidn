@@ -6079,7 +6079,13 @@ Closing transmits that displayed report and a rationale derived from the explici
 choice; refusal, defer and cancellation transmit no report. Other contexts keep
 the explicit report fields. The Human schema and runtime admission stay unchanged.
 A malformed captured reply remains historical evidence, not an accepted decision.
-Markdown link rendering in a particular client requires separate desktop evidence.
+The desktop elicitation message is plain text. It names the principal documents
+without Markdown or paths. On first preparation, delivery returns a `review_ready`
+packet whose Markdown links must be presented in the chat before calling delivery
+again. That notice neither consumes a decision nor proves that anyone read the
+documents. The subsequent form still requires only one Human choice. Previously
+prepared copies remain verified and reusable; no additional Human confirmation
+or signature is introduced by document preparation.
 
 The Codex MCP transport presents a prepared STANDARD question using form
 elicitation. The registered operator connection holds its Ed25519 key in

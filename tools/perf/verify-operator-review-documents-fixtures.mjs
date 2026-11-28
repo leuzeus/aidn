@@ -9,6 +9,7 @@ import { createOperatorReviewDocuments } from '../../src/adapters/workflow-conso
 import { operatorOffer, assertOperatorClaim } from '../../src/adapters/workflow-console/standard-operator-offer.mjs';
 import { codexDecisionForm, createCodexDecisionChannel } from '../../src/adapters/workflow-console/codex-decision-channel.mjs';
 import { codexChoiceLabel } from '../../src/adapters/workflow-console/codex-decision-presentation.mjs';
+import { presentCodexDecision } from '../../src/adapters/workflow-console/codex-decision-presentation.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 
 const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aidn-review-documents-'));
@@ -57,12 +58,17 @@ try {
   for (const row of prepared.review_documents) assert.equal(hash(fs.readFileSync(row.path)), row.sha256);
   assert.equal(fs.readFileSync(prepared.review_documents[0].path, 'utf8'), rows[0][1]);
   assert.equal(fs.readFileSync(path.join(target, 'docs/audit/sessions/S001.md'), 'utf8'), 'Stale checkout');
-  assert.deepEqual(await materialize(offer), prepared); assert.equal(shadowHash(offer), before); cases++;
+  assert.equal(prepared.review_documents_prepared, true);
+  assert.deepEqual(await materialize(offer), { ...prepared, review_documents_prepared: false });
+  assert.equal(shadowHash(offer), before); cases++;
   const form = codexDecisionForm(prepared);
   assert.deepEqual(Object.keys(form.request.requestedSchema.properties), ['choice']);
-  assert(form.request.message.includes('[Plan de réalisation — C001](<'));
-  assert(form.request.message.includes('[Exigences et tests — C001](<'));
-  assert(form.request.message.includes('[Audit du résultat — C001](<'));
+  const view = presentCodexDecision(prepared);
+  assert(view.review_message.includes('[Plan de réalisation — C001](<'));
+  assert(view.review_message.includes('[Exigences et tests — C001](<'));
+  assert(view.review_message.includes('[Audit du résultat — C001](<'));
+  assert(!form.request.message.includes('](<')); assert(!form.request.message.includes('operator-reviews'));
+  assert(!form.request.message.includes(home)); assert(form.request.message.includes('Pièces disponibles dans le fil'));
   assert(form.request.message.includes('Verify interval boundaries'));
   assert(!form.request.message.includes('audit:')); assert(!form.request.message.includes('gate satisfied'));
   assert(form.request.message.includes('livraison reste à réaliser')); cases++;
@@ -84,6 +90,21 @@ try {
     { ...prepared.review_context, cycles: [{ id: 'C001', state: 'DONE', owner: 'S002' }] }, { cycles: [] }]) {
     assert(Object.hasOwn(codexDecisionForm({ ...prepared, review_context: context }).request.requestedSchema.properties, 'session_report_summary')); cases++;
   }
+  const noticeHome = path.join(base, 'notice-authority'); fs.mkdirSync(noticeHome);
+  const noticeDocuments = createOperatorReviewDocuments({ home: noticeHome, artifacts, readEvaluation: () => output });
+  let noticeForms = 0, noticeSubmissions = 0, noticePrincipals = [];
+  const notice = createCodexDecisionChannel({ session: { question: async () => ({ status: 'question', offer }),
+    session: () => ({ principals: noticePrincipals }), prepareReview: noticeDocuments,
+    submit: envelope => { assertOperatorClaim(envelope.payload, question, offer.source_ref); noticeSubmissions++;
+      return { status: 'received', choice: envelope.payload.choice }; } }, formSupported: () => true,
+    elicit: async request => { noticeForms++; assert(!request.message.includes('](<'));
+      return { action: 'accept', content: { choice: 'Reporter la décision' } }; } });
+  noticePrincipals = [{ authority_id: 'fixture', public_key: notice.describe({}).public_key }];
+  const ready = await notice.decide({});
+  assert.equal(ready.status, 'review_ready'); assert(ready.message.includes('[Plan de réalisation'));
+  assert.equal(ready.question_sha256, offer.question_sha256); assert.equal(noticeForms, 0); assert.equal(noticeSubmissions, 0);
+  const choice = await notice.decide({}); assert.equal(choice.choice, 'deferred');
+  assert.equal(noticeForms, 1); assert.equal(noticeSubmissions, 1); cases++;
   const changed = structuredClone(offer); changed.question.review.documents[0].metadata_sha256 = '9'.repeat(64);
   await assert.rejects(materialize(changed), /OPERATOR_REVIEW_SOURCE_CHANGED/); cases++;
   const traversal = structuredClone(offer); traversal.question.review.documents[0].ref = 'audit:../outside.md';

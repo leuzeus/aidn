@@ -50,6 +50,9 @@ export function createCodexDecisionChannel({ session, elicit, formSupported, for
       const choices = formIssuer ? q.choices.filter(choice => rule?.choices.includes(choice)) : q.choices;
       if (!choices.length) fail("STANDARD_AUTHORIZATION_DECISION_REFUSED");
       if (session.prepareReview) offer = await session.prepareReview(offer);
+      if (offer.review_documents_prepared) return { status: 'review_ready', question_sha256: offer.question_sha256,
+        message: presentCodexDecision(offer, choices).review_message,
+        next: 'Display these document links in the chat, then call ask again for the single Human choice. No decision has been consumed.' };
       const form = codexDecisionForm(offer, choices);
       const reply = await elicit(form.request);
       if (!reply || !["accept", "decline", "cancel"].includes(reply.action)) fail("CODEX_DECISION_REPLY_INVALID");

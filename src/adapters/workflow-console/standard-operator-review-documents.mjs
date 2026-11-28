@@ -64,6 +64,8 @@ export function createOperatorReviewDocuments({ home, artifacts, readEvaluation 
     });
     const physicalHome = agentRunPhysicalPath(home, { directory: true });
     const root = path.join(physicalHome, 'operator-reviews', questionSha);
+    const preparedBefore = readAgentRunFile(path.join(root, 'manifest.json'), { optional: true,
+      maxBytes: STANDARD_ARTIFACT_INVENTORY_MAX_BYTES });
     for (const row of documents) write(path.join(root, 'documents', row.relative), row.bytes);
     const links = documents.map(row => ({ ref: row.ref, label: label(row.ref),
       path: href(path.join(root, 'documents', row.relative)), sha256: row.sha256 }));
@@ -84,6 +86,7 @@ export function createOperatorReviewDocuments({ home, artifacts, readEvaluation 
     if (shadowHash(artifacts.readMany(names, { required: names, includeMetadata: true })) !== shadowHash(snapshot))
       fail('OPERATOR_REVIEW_SOURCE_CHANGED');
     return { ...offer, review_documents: links, review_index: href(path.join(root, 'LIRE-MOI.md')),
+      review_documents_prepared: !preparedBefore,
       review_context: { session_objective: objective ?? null, cycles } };
   };
 }
