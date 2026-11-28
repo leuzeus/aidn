@@ -6,7 +6,10 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { initGitRepo, removePathWithRetry, createTrackedFixtureFilter } from "./test-git-fixture-lib.mjs";
 import { captureContextIdentity } from "../../src/adapters/codex/context-provenance.mjs";
-import { deriveRuntimeStateRepairSummary } from "../../src/application/runtime/runtime-state-projector-use-case.mjs";
+import { deriveRuntimeStateRepairSummary, prepareRuntimeStateProjection, buildRuntimeStateMarkdown } from "../../src/application/runtime/runtime-state-projector-use-case.mjs";
+import { evaluateRepairRouting } from '../../src/application/runtime/workflow-transition-lib.mjs';
+import { createRuntimeArtifactStore } from '../../src/application/runtime/runtime-persistence-service.mjs';
+import { seedSqliteFixture } from './test-sqlite-fixture-lib.mjs';
 
 const DECISION_FINDING = Object.freeze({
   severity: "warning",
@@ -94,7 +97,9 @@ function verifyScenario(tempRoot, name, payload, expectations, options = {}) {
     config.runtime = { stateMode: options.stateMode ?? "dual", indexStoreMode: "file" };
     writeJson(configPath, config);
     initGitRepo(repo, { sourceBranch: "dev" });
-    const identity = captureContextIdentity({ targetRoot: repo });
+    // Historical cache provenance is pure input data, never an active FILES
+    // configuration. Current SQL observations still reject this reuse below.
+    const identity = { ...captureContextIdentity({ targetRoot: repo }), state_mode: options.stateMode ?? 'files' };
     assert(identity.status === "captured", name + ": live context unavailable");
     payload = observePayload(payload, identity);
     if (options.changeAfterCapture) fs.writeFileSync(path.join(repo, "freshness-input.txt"), "changed after observation");
@@ -118,13 +123,18 @@ function verifyScenario(tempRoot, name, payload, expectations, options = {}) {
     assert(fs.readFileSync(outFile).equals(before), `${name}: refused projection changed the existing digest`);
     return;
   }
-  const result = runJson("tools/runtime/project-runtime-state.mjs", [
-    "--target",
-    repo,
-    "--json",
-    "--write",
-  ]);
-  const markdown = fs.readFileSync(outFile, "utf8");
+  // Keep historical cache selection/rendering as producer tests. The current
+  // public IO boundary always supplies SQL; it is exercised separately below.
+  const liveContext = { ...captureContextIdentity({ targetRoot: repo }), state_mode: options.stateMode ?? 'files' };
+  const repair = deriveRuntimeStateRepairSummary(payload, options.contextPayload, liveContext);
+  const absent = { source: 'fixture', exists: false, logicalPath: 'none' };
+  const digest = prepareRuntimeStateProjection({ workspace: { project_id: 'fixture', workspace_id: 'fixture', worktree_id: 'fixture' },
+    dbBackedMode: true, effectiveStateMode: 'dual', hydrated: payload, fallbackContext: options.contextPayload,
+    liveContext, repairRouting: evaluateRepairRouting(repair), sharedRuntimeValidation: { status: 'clear' },
+    sharedPlanning: { active_backlog: 'none' }, consistency: { pass: true },
+    currentStateResolution: absent, sessionResolution: absent, cycleStatusResolution: absent });
+  const result = { digest, proof_class: 'historical-cache-producer-only', written: false };
+  const markdown = buildRuntimeStateMarkdown(digest);
   assert(markdown.includes(`repair_layer_status: ${expectations.status}`), `${name}: status missing`);
   assert(markdown.includes(`repair_layer_advice: ${expectations.advice}`), `${name}: advice missing`);
   assert(markdown.includes(`repair_primary_reason: ${expectations.primaryReason}`), `${name}: primary reason missing`);
@@ -372,7 +382,7 @@ function verifyLatestTimestampMutant(tempRoot) {
 
   const mutantPath = path.join(tempRoot, "runtime-state-projector-latest-mutant.mjs");
   fs.writeFileSync(mutantPath, mutatedSource, "utf8");
-  const liveContext = { status: "captured", state_mode: "dual", fingerprint: "a".repeat(64) };
+  const liveContext = { status: "captured", state_mode: "files", fingerprint: "a".repeat(64) };
   const probePayload = observePayload(canonicalDecisionPayload({
     decisionTs: "2026-03-09T02:00:00Z",
     repairPayloadTs: "2026-03-09T02:10:00Z",
@@ -402,6 +412,30 @@ function verifyLatestTimestampMutant(tempRoot) {
       && mutantSummary?.findings?.[0]?.finding_type === REPAIR_PAYLOAD_FINDING.finding_type,
     "latest-by-timestamp mutant was not rejected by canonical decision fixtures",
   );
+}
+
+function verifySqlAuthority(tempRoot) {
+  const repo = path.join(tempRoot, 'canonical-sql');
+  const source = path.resolve('tests/fixtures/repo-installed-core');
+  fs.cpSync(source, repo, { recursive: true, filter: createTrackedFixtureFilter(source) });
+  seedSqliteFixture(repo);
+  const store = createRuntimeArtifactStore({ targetRoot: repo, backend: 'sqlite' });
+  const payload = store.loadSnapshot().payload;
+  payload.migration_runs = [{ migration_run_id: 'canonical-fixture', engine_version: 'fixture', started_at: '2026-03-09T00:00:00Z', status: 'completed', target_root: repo }];
+  payload.migration_findings = [{ migration_run_id: 'canonical-fixture', severity: 'error', finding_type: 'CANONICAL_FIXTURE_BLOCK', entity_type: 'session', entity_id: 'S101', created_at: '2026-03-09T00:00:00Z',
+    message: 'Fresh SQL finding must not be hidden by cached clean output.' }];
+  store.writeIndexProjection({ payload });
+  seedHydratedContext(repo, { state_mode: 'dual', ts: '2099-01-01T00:00:00Z', repair_layer: {
+    status: 'clean', advice: 'Untrusted future cache says clean.', blocking: false, top_findings: [] } });
+  for (const mode of ['dual', 'db-only']) {
+    const file = path.join(repo, '.aidn/config.json'), config = JSON.parse(fs.readFileSync(file));
+    config.runtime.stateMode = mode; writeJson(file, config);
+    const result = runJson('tools/runtime/project-runtime-state.mjs', ['--target', repo, '--write', '--json']);
+    assert(result.digest.repair_layer_status === 'block', mode + ': fresh SQL must own repair status');
+    assert(result.digest.blocking_findings.some(value => value.includes('CANONICAL_FIXTURE_BLOCK')),
+      mode + ': SQL finding must survive a contradictory cached digest');
+    assert(result.shared_state_backend.projection_backend_kind === 'sqlite');
+  }
 }
 
 function main() {
@@ -584,6 +618,7 @@ function main() {
     verifyCanonicalDecisionSelection(tempRoot);
     verifyFallbackWithoutCanonicalDecision(tempRoot);
     verifyLatestTimestampMutant(tempRoot);
+    verifySqlAuthority(tempRoot);
 
     console.log("PASS");
   } catch (error) {

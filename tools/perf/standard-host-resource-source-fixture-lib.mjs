@@ -2,6 +2,7 @@ import fs from 'node:fs';import os from 'node:os';import path from 'node:path';i
 import {createStandardHostAuthority} from '../../src/adapters/runtime/standard-host-authority.mjs';
 import {createStandardHandoffResources} from '../../src/application/runtime/standard-handoff-resources.mjs';
 import {createStandardWorkflowArtifacts} from '../../src/application/runtime/standard-workflow-artifacts.mjs';
+import { createArtifactStore } from '../../src/adapters/runtime/artifact-store.mjs';
 import {createOperationJournalSigner} from '../../src/core/workflow/process-operation-journal.mjs';
 import {RECONCILIATION_DISCOVERY_DOMAINS} from '../../src/core/workflow/process-reconciliation-inventory.mjs';
 import {agenticProcessImplementationPins} from '../../src/application/runtime/agentic-process-implementation-pins.mjs';
@@ -23,6 +24,7 @@ for(const name of ['project','control','review','native-home','authority']){dirs
 const git=fs.realpathSync.native(execFileSync(path.join(process.env.SystemRoot,'System32/where.exe'),['git.exe'],{encoding:'utf8',windowsHide:true}).trim().split(/\r?\n/)[0]);
 execFileSync(git,['-C',dirs.project,'-c','init.templateDir=','init','--initial-branch=work'],{windowsHide:true,stdio:'pipe'});
 fs.mkdirSync(path.join(dirs.project,'.aidn'));fs.writeFileSync(path.join(dirs.project,'.aidn','config.json'),JSON.stringify({runtime:{stateMode:'dual',persistence:{backend:'sqlite'}}}));
+createArtifactStore({sqliteFile:path.join(dirs.project,'.aidn/runtime/index/workflow-index.sqlite')}).close();
 const {manifest}=verificationWindowsController(owned);
 const scopedNativeExecutable=path.join(owned,'aidn-resource-fixture-native-'+randomUUID()+'.exe');
 fs.copyFileSync(manifest.helper_path,scopedNativeExecutable);

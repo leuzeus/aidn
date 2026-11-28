@@ -144,7 +144,7 @@ function main() {
     const defaultBefore = fs.existsSync(defaultFilesOut) ? fs.readFileSync(defaultFilesOut, "utf8") : null;
     for (const flags of [[], ["--out", filesOut], ["--out", filesOut, "--dry-run"], ["--out", filesOut, "--write"]]) {
       const filesResult = runJson("tools/runtime/project-runtime-state.mjs", ["--target", filesRepo, "--json", ...flags], { AIDN_STATE_MODE: "dual", AIDN_INDEX_STORE_MODE: "dual-sqlite" });
-      assert(filesResult.shared_state_backend === null, "files mode must explicitly report no shared backend");
+      assert(filesResult.shared_state_backend?.projection_backend_kind === 'sqlite', "the SQL profile must report its canonical SQLite backend explicitly");
       assert(validateJsonSchema(filesResult, schema).length === 0, "files-mode projector output must match its public contract");
       for (const invalidBackend of [false, "files", [], {}]) {
         assert(validateJsonSchema({ ...filesResult, shared_state_backend: invalidBackend }, schema).length > 0, "the backend contract must reject malformed values and incomplete objects");

@@ -441,15 +441,18 @@ try {
     assert.equal(result.decision, "wait"); assert.equal(result.reason_code, "OBSERVATION_NOT_AUTHENTICATED");
   });
   await check("real service: preview is read-only, durable assignment precedes authenticated result acceptance", async () => {
-    const c = composition(); assert.equal(c.initialize(false).written, false); assert.deepEqual(fs.readdirSync(c.targetRoot), []);
+    const c = composition(), database = path.join(c.targetRoot, '.aidn/runtime/index/workflow-index.sqlite');
+    const before = fs.readFileSync(database);
+    assert.equal(c.initialize(false).written, false); assert.deepEqual(fs.readFileSync(database), before);
     const start = c.initialize();
     const assignment = await c.service.assign({ instanceId: "fixture", expectedSha256: start.record.instance_sha256, occurrenceId: "root", eventId: "assigned", write: true });
     assert.equal(assignment.decision.decision, "reuse"); c.state.result = resultFor(inspect(assignment.record).occurrences[0]);
+    const assignedContentSha256 = c.store.read('fixture').content_sha256;
     const accepted = await c.service.accept({ instanceId: "fixture", expectedSha256: assignment.record.instance_sha256, occurrenceId: "root", eventId: "accepted", resultId: c.state.result.result_id, write: true });
     assert.equal(accepted.cursor.status, "COMPLETED"); assert.equal(createAgenticProcessStore({ targetRoot: c.targetRoot, stateMode: "dual" }).read("fixture").record.instance_sha256, accepted.record.instance_sha256);
     const repeated = await c.service.accept({ instanceId: "fixture", expectedSha256: accepted.record.instance_sha256, occurrenceId: "root", eventId: "accepted", resultId: c.state.result.result_id, write: true });
     assert.equal(repeated.written, false); assert.equal(repeated.record.revision, accepted.record.revision);
-    assert.throws(() => c.store.compareAndSwap(assignment.record, assignment.content_sha256), /REVISION_CONFLICT/);
+    assert.throws(() => c.store.compareAndSwap(assignment.record, assignedContentSha256), /REVISION_CONFLICT/);
   });
   await check("R01/R02/R03/R04/R07: independent review checks identity, lineage, copied context and missing resource", async () => {
     const m = model({ ...leaf("review"), role_ref: "review", policy_ref: "review" }), c = composition(m);

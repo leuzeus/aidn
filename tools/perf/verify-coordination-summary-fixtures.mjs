@@ -120,6 +120,9 @@ function main() {
     runJson(handoffProjectScript, ["--target", readyTarget, "--write", "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", blockedTarget, "--write", "--json"], repoRoot, 0);
     runJson(handoffProjectScript, ["--target", dbOnlyTarget, "--write", "--json"], repoRoot, 0);
+    // The public projector creates a local projection, not a canonical write.
+    // Import these prepared fixture packets before exercising canonical reads.
+    for (const target of [readyTarget, blockedTarget, dbOnlyTarget]) seedSqliteFixture(target);
     appendEscalationSeedHistory(readyTarget);
     const readyExecute = runJson(dispatchExecuteScript, ["--target", readyTarget, "--execute", "--json"], repoRoot, 1);
     const blockedExecute = runJson(dispatchExecuteScript, ["--target", blockedTarget, "--execute", "--json"], repoRoot, 0);

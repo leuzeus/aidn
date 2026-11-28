@@ -116,7 +116,7 @@ export async function verifyArtifactTaskQueries() {
       }
       const indexed=cli(['perf','index','--store','sqlite','--with-content','--json']);assert.equal(indexed.status,0,indexed.stderr);
       const before=fingerprint(),q=await query(),full=(await withWorkflowObservation({targetRoot:target,contextFile:'.aidn/runtime/context/codex-context.json'},()=>preWriteAdmit({targetRoot:target,skill:'context-reload'}))).value;
-      assert.equal(q.status,'ok',JSON.stringify(q.errors));assert.equal(q.source_backend,mode==='files'?'files':'sqlite');
+      assert.equal(q.status,'ok',JSON.stringify(q.errors));assert.equal(q.source_backend,'sqlite');
       assert.deepEqual(validateJsonSchema(q,schema),[]);assert.deepEqual(q.admissions[0].checks,full.checks);
       assert.equal(q.admissions[0].ok,full.ok);assert.deepEqual(q.admissions[0].blocking_reasons,full.blocking_reasons);
       assert.deepEqual(q.authorities.map(u=>u.unit_id),['evidence','rules']);assert(q.authorities[1].content_excerpt.includes('expired proof'));
@@ -232,16 +232,20 @@ export async function verifyArtifactTaskQueries() {
     writeWorkflowAdapterConfig(target,{governanceAdoption:unaccepted});const noPolicy=await query();assert.equal(noPolicy.status,'blocked');assert(noPolicy.errors.some(e=>e.code==='ARTIFACT_QUERY_ACCEPTED_POLICY_REQUIRED'));
     writeWorkflowAdapterConfig(target,{governanceAdoption:adoption});
     const proof=target+'/docs/audit/QUERY-EVIDENCE.md',original=fs.readFileSync(proof);
-    fs.unlinkSync(proof);const missing=await query();assert.equal(missing.status,'blocked');assert(missing.authority_selection.errors.some(e=>e.reason==='mandatory_unavailable'));fs.writeFileSync(proof,original);
+    fs.unlinkSync(proof);
+    assert.equal((await query()).status,'ok','a missing local projection does not remove the SQL authority');
+    assert.equal(cli(['perf','index','--store','sqlite','--with-content','--json']).status,0);
+    const missing=await query();assert.equal(missing.status,'blocked');assert(missing.authority_selection.errors.some(e=>e.reason==='mandatory_unavailable'));fs.writeFileSync(proof,original);
     fs.writeFileSync(proof,'## Evidence\nExpired or changed proof.\n');
     fs.writeFileSync(target+'/.aidn/config.json',JSON.stringify(config));
+    assert.equal(cli(['perf','index','--store','sqlite','--with-content','--json']).status,0);
     const changed=await query();assert.equal(changed.status,'blocked');assert(changed.authority_selection.errors.some(e=>e.reason==='source_revision_mismatch'));
-    fs.writeFileSync(proof,original);
-    await assert.rejects(query(profile,params,{afterRead:()=>fs.appendFileSync(proof,'Concurrent change\n')}),/(ARTIFACT_QUERY_SOURCE_CHANGED|WORKFLOW_OBSERVATION_INVALIDATED)/);fs.writeFileSync(proof,original);
+    fs.writeFileSync(proof,original);assert.equal(cli(['perf','index','--store','sqlite','--with-content','--json']).status,0);
+    await assert.rejects(query(profile,params,{afterRead:()=>{fs.appendFileSync(proof,'Concurrent change\n');assert.equal(cli(['perf','index','--store','sqlite','--with-content','--json']).status,0);}}),/(ARTIFACT_QUERY_SOURCE_CHANGED|WORKFLOW_OBSERVATION_INVALIDATED)/);fs.writeFileSync(proof,original);
     checks.push('foreign scope, unaccepted policy, changed proof and concurrent modification refuse without weakening checks');
     fs.writeFileSync(target+'/.aidn/config.json',JSON.stringify({runtime:{stateMode:'db-only',persistence:{backend:'postgres',connectionRef:'env:AIDN_TASK_QUERY_UNAVAILABLE'}}}));
     await assert.rejects(query());checks.push('configured unavailable PostgreSQL never falls back to local files or SQLite');
-    return {status:'PASS',checks:checks.length,details:checks,files:true,sqlite:'REAL_DUAL_AND_DB_ONLY',postgres:'UNAVAILABLE_NEGATIVE_ONLY',native:'NOT_EXECUTED'};
+    return {status:'PASS',checks:checks.length,details:checks,files:'RETIRED',sqlite:'REAL_DUAL_AND_DB_ONLY',postgres:'UNAVAILABLE_NEGATIVE_ONLY',native:'NOT_EXECUTED'};
   } finally {if(previous===undefined)delete process.env.AIDN_TASK_QUERY_UNAVAILABLE;else process.env.AIDN_TASK_QUERY_UNAVAILABLE=previous;
     const p=path.resolve(root);assert.equal(path.dirname(p),path.resolve(os.tmpdir()));fs.rmSync(p,{recursive:true,force:true});}
 }

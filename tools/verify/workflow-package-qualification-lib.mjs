@@ -42,7 +42,7 @@ export async function qualifyWorkflowPackage({ tarball, root, descriptors }) {
   const version = fs.readFileSync(path.join(packageRoot, "VERSION"), "utf8").trim();
   const packageBefore = snapshot(packageRoot), passed = [];
   const put = (file, value) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(value)); };
-  const context = { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: version, workflow_version: 7, state_mode: "files" };
+  const context = { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: version, workflow_version: 7, state_mode: "dual" };
   for (const historical of descriptors) {
     const definition = structuredClone(historical); definition.compatibility.product_version = version;
     const result = compileShadowWorkflow(definition, context);

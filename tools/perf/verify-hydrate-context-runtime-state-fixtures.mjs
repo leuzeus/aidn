@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { seedSqliteFixture } from './test-sqlite-fixture-lib.mjs';
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
@@ -38,6 +39,7 @@ function main() {
     const target = path.join(tempRoot, "repo");
     fs.cpSync(sourceTarget, target, { recursive: true, filter: (source) => isActivationFixtureSource(sourceTarget, source, { freshContext: true }) });
     prepareActivationFixture(target);
+    seedSqliteFixture(target);
 
     const hydrated = runJson("tools/codex/hydrate-context.mjs", [
       "--target",

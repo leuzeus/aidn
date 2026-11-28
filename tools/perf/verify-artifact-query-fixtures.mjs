@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
+import { seedSqliteFixture } from './test-sqlite-fixture-lib.mjs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { listCriticalMarkdownContracts } from '../../src/lib/workflow/markdown-contract-registry-lib.mjs';
@@ -170,9 +171,10 @@ export async function verifyArtifactQueryFixtures() {
     });
     for(const row of base.artifacts){const dest=path.join(target,'docs/audit',row.path);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.writeFileSync(dest,row.content);}
     fs.mkdirSync(path.join(target,'.aidn'));fs.writeFileSync(path.join(target,'.aidn/config.json'),JSON.stringify({runtime:{stateMode:'dual'}}));
+    seedSqliteFixture(target);
     const fingerprint=()=>hash(JSON.stringify(base.artifacts.map(row=>fs.readFileSync(path.join(target,'docs/audit',row.path),'utf8'))));
     const before=fingerprint(),files=await queryProjectArtifacts({targetRoot:target,params:{schema_version:1}});
-    check('real files consultation is read-only and equals pure selection',()=>{assert.equal(files.status,'ok');assert.deepEqual(files.fields,selected.fields);assert.equal(fingerprint(),before);});
+    check('real SQL consultation is read-only and equals pure historical selection',()=>{assert.equal(files.status,'ok');assert.deepEqual(files.fields,selected.fields);assert.equal(fingerprint(),before);});
     const filesV2=await queryProjectArtifacts({targetRoot:target,profile:ACTIVE_STATE_RECHECK_PROFILE,params:recheckParams});
     check('public v2 files service returns all twenty facts read-only',()=>{assertTwenty(filesV2);assert.equal(fingerprint(),before);});
     for(const invalid of [{runtime:{stateMode:'dual',persistence:{backend:'postgres-typo'}}},{runtime:{stateMode:'invalid'}},{version:999}]){
@@ -180,11 +182,13 @@ export async function verifyArtifactQueryFixtures() {
       await assert.rejects(queryProjectArtifacts({targetRoot:target,params:{schema_version:1},snapshotReader:async()=>{throw Error('SHOULD_NOT_READ_BACKEND');}}),/ARTIFACT_QUERY_CONFIG_INVALID/);checks++;
     }
     fs.writeFileSync(path.join(target,'.aidn/config.json'),JSON.stringify({runtime:{stateMode:'dual'}}));
-    await assert.rejects(queryProjectArtifacts({targetRoot:target,params:{schema_version:1},afterRead:()=>fs.appendFileSync(path.join(target,'docs/audit/CURRENT-STATE.md'),'\nConcurrent update\n')}),/SOURCE_CHANGED/);checks++;
+    await assert.rejects(queryProjectArtifacts({targetRoot:target,params:{schema_version:1},afterRead:()=>fs.writeFileSync(path.join(target,'.aidn/config.json'),JSON.stringify({runtime:{stateMode:'db-only'}}))}),/SOURCE_CHANGED/);checks++;
+    fs.writeFileSync(path.join(target,'.aidn/config.json'),JSON.stringify({runtime:{stateMode:'dual'}}));
     fs.writeFileSync(path.join(target,'docs/audit/CURRENT-STATE.md'),base.artifacts[0].content);
-    await assert.rejects(queryProjectArtifacts({targetRoot:target,params:{schema_version:1},afterRead:()=>{
+    const withoutProjectionAuthority = await queryProjectArtifacts({targetRoot:target,params:{schema_version:1},afterRead:()=>{
       fs.mkdirSync(path.join(target,'docs/audit/cycles/C101-duplicate'));fs.writeFileSync(path.join(target,'docs/audit/cycles/C101-duplicate/status.md'),base.artifacts[3].content);
-    }}),/SOURCE_CHANGED/);checks++;
+    }});
+    assert.equal(withoutProjectionAuthority.status, 'ok'); assert.deepEqual(withoutProjectionAuthority.fields, files.fields); checks++;
     fs.unlinkSync(path.join(target,'docs/audit/cycles/C101-duplicate/status.md'));fs.rmdirSync(path.join(target,'docs/audit/cycles/C101-duplicate'));
     fs.writeFileSync(path.join(target,'.aidn/config.json'),JSON.stringify({runtime:{stateMode:'dual',persistence:{backend:'sqlite'}}}));
     const seed=spawnSync(process.execPath,[path.join(root,'tools/perf/index-sync.mjs'),'--target',target,'--store','dual-sqlite','--with-content','--json'],{encoding:'utf8',windowsHide:true,timeout:60000,maxBuffer:4*1024*1024});

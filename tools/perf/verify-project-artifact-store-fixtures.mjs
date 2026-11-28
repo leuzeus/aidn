@@ -236,11 +236,17 @@ export async function verifyProjectArtifactCommands() {
     const audit = path.join(target, 'docs/audit'); fs.mkdirSync(audit, { recursive: true });
     fs.writeFileSync(path.join(audit, 'one.md'), 'one');
     const files = createStandardWorkflowArtifacts({ targetRoot: target, env: {} });
+    assert.throws(() => files.inventory(), { code: 'STANDARD_CANONICAL_STORE_UNAVAILABLE' });
+    assert.equal(fs.existsSync(path.join(target, '.aidn')), false);
+    const canonical = createArtifactStore({ sqliteFile: path.join(target, '.aidn/runtime/index/workflow-index.sqlite') });
+    try { canonical.upsertArtifact({ path: 'one.md', content: 'one', content_format: 'utf8', kind: 'other', family: 'support' }); }
+    finally { canonical.close(); }
     assert.deepEqual(files.inventory().paths,['one.md']);count++;
     const batch = files.readMany(['absent.md', 'one.md'], { required: ['one.md'], includeMetadata: true });
-    assert.deepEqual(batch.map(row => [row.content, row.metadata_sha256]), [[null, null], ['one', null]]);
+    assert.deepEqual(batch.map(row => row.content), [null, 'one']);
+    assert.equal(batch[0].metadata_sha256, null); assert.match(batch[1].metadata_sha256, /^[a-f0-9]{64}$/);
     assert.throws(() => files.readMany(['absent.md'], { required: ['absent.md'] }), { code: 'STANDARD_REQUIRED_ARTIFACT_MISSING' });
-    assert.equal(fs.existsSync(path.join(target, '.aidn')), false); count++;
+    assert.equal(fs.existsSync(path.join(target, '.aidn/runtime/index/workflow-index.sqlite')), true); count++;
   } finally {
     assert.equal(path.dirname(path.resolve(target)), path.resolve(os.tmpdir())); fs.rmSync(target, { recursive: true, force: true });
   }

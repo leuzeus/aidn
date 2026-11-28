@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { createArtifactStore } from '../../src/adapters/runtime/artifact-store.mjs';
 import path from "node:path";
 import { resolveActivationTarget, planAuthorization, applyAuthorization } from "../../src/application/install/project-activation-service.mjs";
 import { artifactContentHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
@@ -7,6 +8,7 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 // Neutral install/activation evidence on a disposable target, never executed as
 // hooks or substituted for native qualification.
 export function activateWorkflowConsoleFixture(targetRoot, packageRoot) {
+  createArtifactStore({ sqliteFile: path.join(targetRoot, '.aidn/runtime/index/workflow-index.sqlite') }).close();
   const version = fs.readFileSync(new URL("../../VERSION", import.meta.url), "utf8").trim();
   const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); };
   fs.mkdirSync(targetRoot, { recursive: true }); put(packageRoot, "VERSION", version + "\n"); put(packageRoot, "bin/aidn.mjs", "// neutral fixture, never executed\n");

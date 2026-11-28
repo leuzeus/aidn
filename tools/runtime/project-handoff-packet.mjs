@@ -446,7 +446,7 @@ export async function projectHandoffPacket({
     warning: "",
   };
   const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
-  const preferDb = canonicalReader ? dbBackedMode : dbBackedMode && (effectiveStateMode === "db-only" || dbSource === "postgres");
+  const preferDb = dbBackedMode;
   if (canonicalBinding?.database && dbSource !== canonicalBinding.backend) throw Error("Canonical handoff backend binding changed");
   if (preferDb && (!sqliteFallback.exists || sqliteFallback.warning)) {
     throw new Error("canonical runtime backend is unavailable for handoff projection");

@@ -6,7 +6,7 @@ import { readAidnProjectConfig, normalizeStateMode, normalizeRuntimePersistenceB
 import { createArtifactStore } from '../../adapters/runtime/artifact-store.mjs';
 import { createRuntimeArtifactStore, createRuntimePersistenceAdmin, resolveRuntimeSqliteFile } from './runtime-persistence-service.mjs';
 import { buildStrictDbOnlyPolicy } from '../install/project-config-service.mjs';
-import { agentRunPhysicalPath } from './agent-run-configuration-service.mjs';
+import { agentRunPhysicalPath, readAgentRunFile } from './agent-run-configuration-service.mjs';
 import { analyzeStructuredArtifact } from '../../lib/workflow/structured-artifact-parser-lib.mjs';
 import { shadowHash as H } from '../../core/workflow/shadow-json.mjs';
 import { projectArtifactMetadata } from '../../adapters/runtime/artifact-projector-adapter.mjs';
@@ -37,7 +37,8 @@ function fileSource(root, auditRoot) {
       if (entry.isSymbolicLink()) fail('AIDN_MODE_MIGRATION_SYMLINK');
       if (entry.isDirectory()) { walk(file); continue; }
       if (!entry.isFile() || /\.(?:lock|tmp)$/.test(entry.name)) fail('AIDN_MODE_MIGRATION_SOURCE_UNSETTLED');
-      const relative = path.relative(directory, file).replaceAll('\\', '/'), content = fs.readFileSync(file);
+      const relative = path.relative(directory, file).replaceAll('\\', '/');
+      const content = readAgentRunFile(file, { json: false, maxBytes: maxBytes - bytes }).value;
       if (names.has(relative.toLowerCase())) fail('AIDN_MODE_MIGRATION_IDENTITY_AMBIGUOUS');
       names.add(relative.toLowerCase()); bytes += content.length;
       if (rows.length >= maxRows || bytes > maxBytes) fail('AIDN_MODE_MIGRATION_SOURCE_LIMIT');
@@ -148,6 +149,10 @@ export async function migrateStateMode({ targetRoot, from = '', to, backend = ''
   next.runtime.persistence.localProjectionPolicy = targetBackend === 'postgres' ? 'none' : 'keep-local-sqlite';
   if (targetMode === 'db-only') next.runtime.dbOnly = buildStrictDbOnlyPolicy(next.runtime.dbOnly, { canonicalBackend: targetBackend });
   const sqliteFile = resolveRuntimeSqliteFile({ targetRoot: root });
+  if (targetBackend === 'sqlite') {
+    agentRunPhysicalPath(sqliteFile, { missing: true });
+    if (fs.existsSync(sqliteFile) && fs.lstatSync(sqliteFile).nlink !== 1) fail('AIDN_MODE_MIGRATION_INDEX_UNSAFE');
+  }
   if (indexFile && path.resolve(root, indexFile) !== sqliteFile) fail('AIDN_MODE_MIGRATION_CANONICAL_SQLITE_PATH_REQUIRED');
   const options = { targetRoot: root, backend: targetBackend, connectionRef: next.runtime.persistence.connectionRef,
     configData: next, sqliteFile, env: { ...env, AIDN_STATE_MODE: targetMode } };
@@ -158,7 +163,11 @@ export async function migrateStateMode({ targetRoot, from = '', to, backend = ''
   const read = await openStore(options, true);
   let before; try { before = status.exists && hasScope ? await inventory(read) : []; } finally { await read.close(); }
   if (!sourceIsFiles && (!status.exists || !hasScope)) fail('AIDN_MODE_MIGRATION_CANONICAL_STORE_REQUIRED');
-  const source = sourceIsFiles ? fileSource(root, auditRoot) : before, business = verifyBusiness(source);
+  const source = sourceIsFiles ? fileSource(root, auditRoot) : before;
+  const business = sourceIsFiles ? verifyBusiness(source) : {
+    sessions: source.filter(row => /^sessions\/S\d+.*\.md$/.test(row.path)).length,
+    cycles: source.filter(row => /^cycles\/C\d+[^/]*\/status\.md$/.test(row.path)).length,
+    history_records: source.filter(row => row.path.startsWith('workflows/')).length };
   const targetRows = new Map(before.map(row => [row.path, row]));
   const conflict = sourceIsFiles && before.some(row => !source.some(source => source.path === row.path && source.sha256 === row.sha256 && H(links(source)) === H(links(row))));
   const rebuildIndex = conflict && targetBackend === 'sqlite';
@@ -171,7 +180,8 @@ export async function migrateStateMode({ targetRoot, from = '', to, backend = ''
     sync_result: null, export_result: null, repair_layer_result: null, repair_layer_autofix_result: null, repair_layer_triage_result: null,
     config_update: { config_file: config.path, runtime: next.runtime, applied: false, write_required: true },
     verification: { ...business, artifacts: source.length, content_sha256: H(pins(source)), history_bytes_preserved: true,
-      source_authority: sourceIsFiles ? 'legacy-files' : originalBackend, no_record_conversion: true },
+      source_authority: sourceIsFiles ? 'legacy-files' : originalBackend, no_record_conversion: true,
+      semantic_validation: sourceIsFiles ? 'verified-legacy-source' : 'existing-sql-preserved' },
     legacy_index: { rebuild_required: rebuildIndex, backup: null, source_rows: before.length },
     mode_migrate_diagnostic: { scope: 'runtime-mode-migrate', from_mode: sourceMode, to_mode: targetMode,
       step_count: sourceIsFiles ? 3 : 2, schema_pending_after_count: status.pending_ids?.length ?? 0,
@@ -204,7 +214,9 @@ export async function migrateStateMode({ targetRoot, from = '', to, backend = ''
       const after = await inventory(store);
       if (H(pins(after)) !== H(pins(source)) || !sourceIsFiles && H(after) !== H(before)) fail('AIDN_MODE_MIGRATION_POSTIMAGE_CHANGED');
       if (sourceIsFiles && after.some((row, i) => H(links(row)) !== H(links(source[i])))) fail('AIDN_MODE_MIGRATION_LINKAGE_CHANGED');
-      verifyBusiness(after); await onBoundary('before_config');
+      if (sourceIsFiles) verifyBusiness(after);
+      await onBoundary('before_config');
+      if (H(await inventory(store)) !== H(after)) fail('AIDN_MODE_MIGRATION_POSTIMAGE_CHANGED');
       if (sourceIsFiles && H(pins(fileSource(root, auditRoot))) !== H(pins(source))) fail('AIDN_MODE_MIGRATION_SOURCE_CHANGED');
       if (rawBefore === null ? fs.existsSync(config.path) : !fs.readFileSync(config.path).equals(rawBefore)) fail('AIDN_MODE_MIGRATION_CONFIG_CHANGED');
       outcomeUnknown = true; writeAidnProjectConfig(root, next); outcomeUnknown = false; written = true; output.config_update.applied = true; output.config_update.write_required = false;

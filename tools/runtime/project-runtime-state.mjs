@@ -137,7 +137,7 @@ export async function projectRuntimeState({
     warning: "",
   };
   const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
-  const preferDb = dbBackedMode && (effectiveStateMode === "db-only" || dbSource === "postgres");
+  const preferDb = dbBackedMode;
   if (preferDb && (!sqliteFallback.exists || sqliteFallback.warning)) {
     throw new Error("canonical runtime backend is unavailable for runtime projection");
   }

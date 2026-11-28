@@ -188,6 +188,9 @@ const CASES = [
       }
       const sessionFile = path.join(targetRoot, "docs", "audit", "sessions", "S201-multi.md");
       fs.appendFileSync(sessionFile, "\n\nstate: CLOSED\n### PR Orchestration\n- pr_status: `merged`\n- pr_review_status: `approved`\n- post_merge_sync_status: `required`\n\n### Session close gate satisfied?\n- [x] Yes\n", "utf8");
+      // The parent reference is indexed too. Establish its closed history so
+      // this case has no unrelated, incomplete parent session to resume.
+      fs.writeFileSync(path.join(targetRoot, "docs/audit/sessions/S200-previous.md"), "# Session S200\nstate: CLOSED\nsession_branch: S200-previous\n");
     },
   },
   {

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { seedSqliteFixture } from "./test-sqlite-fixture-lib.mjs";
 import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -173,6 +174,7 @@ function runCase(tmpRoot, testCase, onTargetCreated) {
   fs.appendFileSync(path.join(targetRoot, '.git/info/exclude'), '\n/.aidn/runtime/\n');
   execFileSync("git", ["-C", targetRoot, "add", "."], { stdio: "pipe" });
   execFileSync("git", ["-C", targetRoot, "commit", "--amend", "--no-edit"], { stdio: "pipe" });
+  seedSqliteFixture(targetRoot);
   if (testCase.warm) runJson('tools/perf/reload-check.mjs', ['--target', targetRoot, '--write-cache', '--json']);
 
   const hook = runJson("tools/perf/branch-cycle-audit-hook.mjs", [
@@ -236,6 +238,7 @@ function verifyDriftCompletion(tmpRoot, onCreated) {
   initGitRepo(root, { workingBranch: 'feature/C101-alpha' });
   prepareActivationFixture(root);
   prepareWorkflowDocumentsFixture(root);
+  seedSqliteFixture(root);
   fs.appendFileSync(path.join(root, '.git/info/exclude'), '\n/.aidn/runtime/\n');
   execFileSync('git', ['-C', root, 'add', '.'], { stdio: 'pipe' });
   execFileSync('git', ['-C', root, 'commit', '--amend', '--no-edit'], { stdio: 'pipe' });
@@ -285,6 +288,7 @@ function verifyDriftCompletion(tmpRoot, onCreated) {
   // A real unresolved objective change must still refuse completion.
   const session = path.join(root, 'docs/audit/sessions/S101-alpha.md');
   fs.appendFileSync(session, '\nsession_objective: replace the unrelated payment system\n');
+  seedSqliteFixture(root);
   const failed = run('tools/codex/run-json-hook.mjs', ['--skill', 'drift-check', '--strict']);
   assert.equal(failed.ok, false);
   assert.equal(failed.result, 'warn');
@@ -381,6 +385,7 @@ async function verifySessionObjectives(tmpRoot, onCreated) {
     const caseStatus = status.replace(`current goal: ${goal}`, `current goal: ${cycleGoal}`);
     fs.writeFileSync(statusFile, caseStatus);
     fs.writeFileSync(sessionFile, testCase.text);
+    seedSqliteFixture(root);
     const before = snapshot();
     const observed = await observations(null);
     const gate = runJson('tools/perf/gating-evaluate.mjs', [

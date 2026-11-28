@@ -42,6 +42,8 @@ New installs use SQLite/dual unless another SQL profile is selected. Existing
 FILES installations migrate before normal install/update or runtime execution.
 There is no implicit conversion during an update. SQL profile changes preserve
 canonical rows and metadata; backend adoption remains a separate operation.
+Their verification proves invariance of existing SQL data. It does not repair
+or assert business admission for an already incomplete session/cycle history.
 
 Git product files, distribution assets, administrative configuration, host
 keys, locks, evidence and historical qualification reports remain files. Their

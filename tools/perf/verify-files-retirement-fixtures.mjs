@@ -52,7 +52,10 @@ try {
     assert.throws(() => resolveEffectiveRuntimePersistence({ targetRoot: target, backend: 'sqlite', env: { AIDN_STATE_MODE: 'dual' } }), { code: 'AIDN_FILES_STATE_MODE_RETIRED' });
     assert.equal(preview.preview, true); assert.deepEqual(preview.verification.sessions, 1); assert.equal(preview.verification.cycles, 1);
     assert.equal(preview.verification.history_records, 1); assert.deepEqual(bytes(target), before); assert.equal(fs.existsSync(dbFile), false);
-    const result = await migrateStateMode({ targetRoot: target, to: mode, write: true });
+    const applied = spawnSync(process.execPath, [path.join(repo, 'bin/aidn.mjs'), 'runtime', 'mode-migrate', '--target', target, '--to', mode, '--write', '--json'],
+      { cwd: repo, encoding: 'utf8', windowsHide: true, timeout: 30000 });
+    assert.equal(applied.status, 0, applied.stderr);
+    const result = JSON.parse(applied.stdout); assert.deepEqual(validateJsonSchema(result, outputSchema), []);
     assert.equal(result.config_update.applied, true);
     const artifacts = createStandardWorkflowArtifacts({ targetRoot: target }); assert.equal(artifacts.describe().state_mode, mode);
     assert.equal(artifacts.describe().backend, 'sqlite');
@@ -65,9 +68,11 @@ try {
     const sqlBefore = createProjectArtifactStore({ targetRoot: target, readOnly: true }); let rows;
     try { rows = sqlBefore.listArtifacts(100); } finally { sqlBefore.close(); }
     fs.writeFileSync(path.join(target, 'docs/audit/sessions/S901.md'), '# stale local session\n');
-    await migrateStateMode({ targetRoot: target, to: mode === 'dual' ? 'db-only' : 'dual', write: true });
+    const sqlProfile = await migrateStateMode({ targetRoot: target, to: mode === 'dual' ? 'db-only' : 'dual', write: true });
+    assert.equal(sqlProfile.verification.semantic_validation, 'existing-sql-preserved');
     const sqlAfter = createProjectArtifactStore({ targetRoot: target, readOnly: true });
     try { assert.deepEqual(sqlAfter.listArtifacts(100), rows); } finally { sqlAfter.close(); }
+    assert.equal(result.verification.semantic_validation, 'verified-legacy-source');
     checks.push(mode + ': exact migration and SQL-authority preservation');
   }
   const interrupted = fixture('interrupted'); let stopped = false;
@@ -93,11 +98,39 @@ try {
   const badBefore = bytes(invalid);
   await assert.rejects(migrateStateMode({ targetRoot: invalid, to: 'dual', write: true }), { code: 'AIDN_MODE_MIGRATION_CYCLE_OWNER_INVALID' });
   assert.deepEqual(bytes(invalid), badBefore); checks.push('invalid ownership refused before effects');
+  const existing = fixture('sql-history-not-repaired');
+  await migrateStateMode({ targetRoot: existing, to: 'dual', write: true });
+  const sql = createProjectArtifactStore({ targetRoot: existing }); let retained;
+  try {
+    sql.upsertArtifact({ path: 'cycles/C901-feature-work/status.md', kind: 'cycle_status', family: 'normative', cycle_id: 'C901',
+      content_format: 'utf8', content: '# incomplete historical owner\nstate: OPEN\nsession_owner: S999\n' });
+    retained = sql.listArtifacts(100);
+  } finally { sql.close(); }
+  const changedProfile = await migrateStateMode({ targetRoot: existing, to: 'db-only', write: true });
+  assert.equal(changedProfile.verification.semantic_validation, 'existing-sql-preserved');
+  const preserved = createProjectArtifactStore({ targetRoot: existing, readOnly: true });
+  try { assert.deepEqual(preserved.listArtifacts(100), retained); } finally { preserved.close(); }
+  await assert.rejects(migrateStateMode({ targetRoot: existing, to: 'dual', backend: 'postgres', connectionRef: 'env:UNUSED' }), { code: 'AIDN_MODE_MIGRATION_USE_PERSISTENCE_ADOPT' });
+  checks.push('SQL profile preserves incomplete history without repair or backend adoption');
+  const linked = fixture('linked-source');
+  fs.linkSync(path.join(linked, 'docs/audit/sessions/S901.md'), path.join(linked, 'docs/audit/session-link.md'));
+  const linkedBefore = bytes(linked);
+  await assert.rejects(migrateStateMode({ targetRoot: linked, to: 'dual', write: true }), { code: 'AGENT_RUN_FILE_INVALID' });
+  assert.deepEqual(bytes(linked), linkedBefore); checks.push('hard-linked source refuses before effects');
   const target = fixture('source-drift');
   await assert.rejects(migrateStateMode({ targetRoot: target, to: 'dual', write: true }, { onBoundary(name) {
     if (name === 'before_config') fs.appendFileSync(path.join(target, 'docs/audit/sessions/S901.md'), '\nchanged: true\n');
   } }), { code: 'AIDN_MODE_MIGRATION_SOURCE_CHANGED' });
   assert.equal(JSON.parse(fs.readFileSync(path.join(target, '.aidn/config.json'))).runtime.stateMode, 'files'); checks.push('source drift refuses publication');
+  const destinationDrift = fixture('destination-drift');
+  await assert.rejects(migrateStateMode({ targetRoot: destinationDrift, to: 'dual', write: true }, { onBoundary(name) {
+    if (name !== 'before_config') return;
+    const changed = createArtifactStore({ sqliteFile: path.join(destinationDrift, '.aidn/runtime/index/workflow-index.sqlite') });
+    try { changed.upsertArtifact({ path: 'concurrent.md', kind: 'other', content_format: 'utf8', content: 'concurrent destination change' }); }
+    finally { changed.close(); }
+  } }), { code: 'AIDN_MODE_MIGRATION_POSTIMAGE_CHANGED' });
+  assert.equal(JSON.parse(fs.readFileSync(path.join(destinationDrift, '.aidn/config.json'))).runtime.stateMode, 'files');
+  checks.push('late destination drift refuses configuration publication');
   const command = spawnSync(process.execPath, [path.join(repo,'tools/runtime/mode-migrate.mjs'),'--target',root,'--to','files','--json'],
     { cwd: repo, encoding:'utf8', windowsHide:true });
   assert.notEqual(command.status,0); assert.equal(JSON.parse(command.stdout).code, 'AIDN_FILES_STATE_MODE_RETIRED'); checks.push('CLI cannot select FILES destination');

@@ -323,7 +323,7 @@ export function createStandardNativeAllocationReconciliation({ targetRoot, state
       }
       await boundary('native_reconciliation_journal_cas', id); permit(); fence.assert(lease);
       native = readNative(q.journal_id); if (H(native.record) !== H(proposal)) fail('NATIVE_RECONCILIATION_JOURNAL_CHANGED');
-      if (stateMode !== 'db-only' && artifacts.read(nativeJournalPath(q.journal_id), { required: true }).source !== 'files') {
+      if (stateMode === 'dual') {
         permit(); fence.assert(lease); nativeStore.materialize(q.journal_id, { write: true });
       }
       const commit = retained.record.commit ?? { proposal_sha256: H(proposal), proposal_content_sha256: native.content_sha256,

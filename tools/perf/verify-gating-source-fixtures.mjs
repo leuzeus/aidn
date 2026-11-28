@@ -384,8 +384,8 @@ try {
     }); } finally { defaultStore.close(); }
     git(f.root, ["add", "."]); git(f.root, ["commit", "--quiet", "-m", "canonical fixture indices"]);
     const result = invoke(f, { args: ["--index-file", indexFile, "--index-backend", "sqlite"] });
-    const payload = successful(result, mode === "dual" ? "warn" : "ok");
-    assert.deepEqual(payload.levels.level2.active_signals, mode === "dual" ? ["objective_delta"] : []);
+    const payload = successful(result);
+    assert.deepEqual(payload.levels.level2.active_signals, []);
     assert.equal(result.reads.length, 0);
   });
   check("json_db_only_honors_explicit_canonical_index", () => {

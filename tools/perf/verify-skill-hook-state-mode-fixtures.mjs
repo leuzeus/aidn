@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { seedSqliteFixture } from "./test-sqlite-fixture-lib.mjs";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
@@ -188,6 +189,7 @@ function main() {
     const tmpRoot = path.resolve(process.cwd(), args.tmpRoot);
     tmpTarget = copyFixtureToTmp(sourceTarget, tmpRoot, "tmp-skill-hook-state-mode");
     initGitRepo(tmpTarget);
+    seedSqliteFixture(tmpTarget);
 
     const runs = [];
     for (const stateMode of ["dual", "db-only"]) {

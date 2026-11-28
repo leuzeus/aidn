@@ -94,6 +94,7 @@ function verifySourceOfTruthHelpers() {
   const policies = sourceOfTruthPoliciesForPreWriteAdmission("dual");
   assert(Boolean(policies.session_state), "pre-write source-of-truth helper should resolve session_state policy");
   assert(knownPreWriteStateMode("db-only") === true, "db-only should be a known pre-write state mode");
+  assert(knownPreWriteStateMode("files") === false, "FILES is not an active pre-write state mode");
   assert(knownPreWriteStateMode("weird") === false, "unknown mode should not be accepted");
   const issues = [];
   const warnings = [];

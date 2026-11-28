@@ -15,6 +15,7 @@ import { createAgenticProcessStore } from "../../adapters/runtime/agentic-proces
 import { resolveWorkflowEngine } from "../../core/workflow/workflow-engine-policy.mjs";
 import { agenticProcessPersistence } from "./agentic-process-persistence.mjs";
 import { runProjectWorkflow } from "./workflow-run-service.mjs";
+import { readActivation } from '../install/project-activation-service.mjs';
 
 export function createProjectWorkflowConsole({ targetRoot }) {
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
@@ -23,9 +24,12 @@ export function createProjectWorkflowConsole({ targetRoot }) {
   function readRecords({ instanceId, workflowId, engine }) {
     const stateMode = resolveConfigStateMode(readAidnProjectConfig(root).data) ?? "dual";
     const persistence = resolveEffectiveRuntimePersistence({ targetRoot: root });
-    if (persistence.backend === "sqlite" && !fs.existsSync(resolveRuntimeSqliteFile({ targetRoot: root }))) throw new Error("WORKFLOW_CONSOLE_CANONICAL_STORE_UNAVAILABLE");
     const options = { targetRoot: root, stateMode }, found = { instances: [], selections: [], truncated: false,
       defaultEngine: resolveWorkflowEngine({ config: readAidnProjectConfig(root).data }) };
+    // No configured state exists on an uninstalled target. Preserve its
+    // admission preview without inventing a store or falling back to files.
+    if (!readActivation({ targetRoot: root }).active && !fs.existsSync(path.join(root, '.aidn/config.json'))) return found;
+    if (persistence.backend === "sqlite" && !fs.existsSync(resolveRuntimeSqliteFile({ targetRoot: root }))) throw new Error("WORKFLOW_CONSOLE_CANONICAL_STORE_UNAVAILABLE");
     try { found.agenticScopeId = shadowHash({ project: readWorkflowProjectAuthority({ targetRoot: root }).scope,
       persistence: agenticProcessPersistence({ targetRoot: root }).binding_sha256 }); } catch (cause) { found.agenticAdmissionError = workflowConsoleCode(cause); }
     const exact = (id, type) => {

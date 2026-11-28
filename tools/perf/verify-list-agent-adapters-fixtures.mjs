@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { seedSqliteFixture } from "./test-sqlite-fixture-lib.mjs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -65,6 +66,7 @@ function main() {
     const target = path.join(tempRoot, "target");
     fs.cpSync(sourceTarget, target, { recursive: true });
 
+    seedSqliteFixture(target);
     const defaultResult = runJson(script, ["--target", target, "--json"], repoRoot, 0);
 
     const externalAgentDir = path.join(target, ".aidn", "runtime", "agents");
@@ -103,6 +105,7 @@ function main() {
       "",
     ].join("\n"), "utf8");
 
+    seedSqliteFixture(target);
     const externalResult = runJson(script, ["--target", target, "--json"], repoRoot, 0);
 
     fs.writeFileSync(path.join(target, "docs", "audit", "AGENT-ROSTER.md"), [
@@ -123,6 +126,7 @@ function main() {
       "adapter_export: createMissingAuditorAdapter",
       "",
     ].join("\n"), "utf8");
+    seedSqliteFixture(target);
     const brokenResult = runJson(script, ["--target", target, "--json"], repoRoot, 0);
 
     assert(Array.isArray(defaultResult.adapters) && defaultResult.adapters.length >= 3, "default listing should expose built-in adapters");

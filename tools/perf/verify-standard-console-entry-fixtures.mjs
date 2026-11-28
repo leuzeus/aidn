@@ -36,7 +36,7 @@ export function createStandardConsoleFixture() {
 export function verifyStandardConsoleEntry() {
   const { target, base, dirs, config, requestFile, pin } = createStandardConsoleFixture();
   const cli = fileURLToPath(new URL("../../bin/aidn.mjs", import.meta.url));
-  const environment = { ...process.env, AIDN_STANDARD_HOST_HOME: dirs.authority };
+  const environment = { ...Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^GIT_/i.test(name))), AIDN_STANDARD_HOST_HOME: dirs.authority };
   let calls = 0;
   const request = { operation: "run", input: { configuration: config } };
   const inventory = () => {
@@ -60,12 +60,13 @@ export function verifyStandardConsoleEntry() {
   console.log(JSON.stringify({ proof_class: "offline-public-console-cli-real-standard-ports", target, base }));
   for (const kind of ["prepare_host", "initialize"]) {
     const before = inventory(), preview = good(run(request));
+    assert.deepEqual(preview.action.preview.errors, [], 'fixture must reach the STANDARD host before inspecting its prepared action');
     assert.equal(preview.action.request.input.preparedAction.kind, kind); assert.equal(inventory(), before);
     assert.equal(apply(preview).written, true);
   }
   const before = inventory(), operation = good(run(request));
   const prepared = operation.action.request.input.preparedAction;
-  assert.equal(prepared.kind, "operation"); assert.equal(prepared.payload.preview.binding.id, "context_reload");
+  assert.equal(prepared.kind, "operation"); assert.equal(prepared.payload.preview.binding.id, "workflow_entry_select");
   assert.equal(good(run(operation.action.request)).action_sha256, operation.action_sha256, "retain the original timed plan across cold CLI invocations");
   assert.equal(inventory(), before);
   assert.deepEqual(run(request, ["--execute", "--expect-plan", operation.action_sha256]).errors, ["WORKFLOW_CONSOLE_STANDARD_PREPARED_ACTION_REQUIRED"]);
@@ -80,16 +81,23 @@ export function verifyStandardConsoleEntry() {
   const completed = apply(operation);
   assert.equal(completed.result.result.operation_outcome, "completed");
   assert.equal(completed.result.result.effect_status, "no_effect"); assert.equal(completed.result.result.workflow_completed, false);
-  const after = inventory();
+  let after = inventory();
   const stale = run(operation.action.request);
   assert.deepEqual(stale.action.preview.errors, ["STANDARD_ENTRY_PRECONDITIONS_CHANGED"]);
   assert.equal(inventory(), after, "the accepted operation changes CAS and cannot be applied again");
+  const reload = good(run(request));
+  assert.equal(reload.action.request.input.preparedAction.payload.preview.binding.id, "context_reload");
+  assert.equal(inventory(), after);
+  const reloaded = apply(reload);
+  assert.equal(reloaded.result.result.operation_outcome, "completed");
+  assert.equal(reloaded.result.result.effect_status, "no_effect");
+  after = inventory();
   const replay = good(run({ operation: "run", input: { configuration: config, observation: "replay" } }));
   const simulation = good(run({ operation: "run", input: { configuration: config, observation: "simulate" } }));
   assert.equal(replay.can_apply, false); assert.equal(simulation.can_apply, false);
   assert.equal(replay.action.preview.result.instance_sha256, simulation.action.preview.result.instance_sha256);
   assert.equal(inventory(), after); assert.equal(fs.readdirSync(dirs.control).length, 0);
-  const result = { status: "PASS", proof_class: "offline-public-console-cli-real-standard-ports", mode: "files", calls, target, base,
+  const result = { status: "PASS", proof_class: "offline-public-console-cli-real-standard-ports", mode: "dual", calls, target, base,
     completed_operation: "context_reload", same_reducer_replay_simulation: true, native: "NOT_RUN", genuine_human: "NOT_RUN", installed: "NOT_RUN", complete_standard: false };
   console.log(JSON.stringify(result)); return result;
 }

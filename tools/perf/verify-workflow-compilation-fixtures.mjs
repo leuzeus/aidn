@@ -15,7 +15,8 @@ const json = p => JSON.parse(read(p));
 const current = json("tests/fixtures/workflow-shadow/audit-informed.v1.json");
 const alternate = json("tests/fixtures/workflow-shadow/diagnostic-correction.v1.json");
 const expected = json("tests/fixtures/workflow-shadow/compilation-expectations.v1.json");
-const context = { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: "0.11.0", workflow_version: 7, state_mode: "dual" };
+// Historical compiler input, not a currently selectable runtime state mode.
+const context = { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: "0.11.0", workflow_version: 7, state_mode: "files" };
 const profile = { contractKind: "workflow-definition" };
 let count = 0;
 function check(name, fn) { try { fn(); count++; } catch (error) { throw new Error(`${name}: ${error.message}`, { cause: error }); } }
@@ -103,7 +104,7 @@ check("deterministic_normalization_and_golden_hashes", () => {
 
 check("all_state_modes_are_pure_context_data", () => {
   const hashes = new Set();
-  for (const state_mode of ["dual", "db-only"]) {
+  for (const state_mode of ["files", "dual", "db-only"]) {
     const result = compile(current, { ...context, state_mode });
     hashes.add(result.compilation_sha256);
     assert.equal(result.context.state_mode, state_mode);

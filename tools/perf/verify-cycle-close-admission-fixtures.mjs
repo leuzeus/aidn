@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { seedSqliteFixture } from "./test-sqlite-fixture-lib.mjs";
 import path from "node:path";
 import os from "node:os";
 import { execFileSync } from "node:child_process";
@@ -132,6 +133,7 @@ function runCase(tmpRoot, testCase) {
     workingBranch: testCase.workingBranch,
   });
   prepareActivationFixture(targetRoot);
+  seedSqliteFixture(targetRoot);
 
   const hook = runJson("tools/perf/cycle-close-hook.mjs", [
     "--target",
