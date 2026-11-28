@@ -1406,3 +1406,12 @@ proof names the immutable receipted/unaccepted fast-forward choice, original
 Human inbox and inherited R09 evidence. Selection v3 routes that choice to the
 existing Git executor before the ordinary R09 suffix. Historical contracts
 remain readable; no timestamp, receipt or original reducer event is rewritten.
+
+`standard-retained-promotion-entry.v2` is a separate, closed checkpoint origin
+for an ordinary session with accepted closure, promotion record and checkpoint,
+followed by a rejected read-only R05 answer whose owner has been retired with a
+confirmed disposition. Its proof preserves the old journals, failure and unknown
+accounting; `new_native_required` is true and `accounting_reconciled` is false.
+Entry selection v18 distinguishes this route from v1 finalization-only reuse.
+It issues no Native grant. Catalogue v8 admits at most 264 bindings; historical
+catalogues keep their 256-binding bound. The root graph remains at most 288 nodes.

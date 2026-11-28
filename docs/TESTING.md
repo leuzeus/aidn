@@ -8323,3 +8323,12 @@ Installed execution and final P0 qualification require their own evidence.
 ## Retired FILES migration verification
 
 `npm run perf:verify-files-retirement` verifies both SQLite SQL profiles, explicit legacy migration, byte preservation of COMMITTING and opaque historical records, session/cycle ownership, interruption and source drift. It also proves read-only preview and rejection of FILES runtime selections. Existing SQL profile changes ignore stale visible Markdown and preserve canonical rows. It makes no model call. Live PostgreSQL migration and installed cross-version workflow continuation require separate evidence. Historical FILES reports and versioned schemas retain their original meaning. See [ADR-0027](ADR/ADR-0027-retire-files-state-authority.md).
+
+The same retained-promotion fixture also checks v2 checkpoint provenance,
+required retirement evidence, rejection of invented accounting reconciliation,
+and reducer routing to a fresh read-only R05 after two deterministic selections.
+It does not simulate a real Native answer or prove source-reader acceptance.
+A separate local read-only campaign must authenticate the original SQL journals,
+Human sources, checkpoint, rejected Native assignment and confirmed retirement;
+record its candidate and counterexamples. Installed public continuation and all
+later workflow effects require their own evidence. No old failure is overwritten.

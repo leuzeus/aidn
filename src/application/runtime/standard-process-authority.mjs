@@ -1538,7 +1538,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   async function readRetainedObjectiveAlignment(instance, input, verified, options) {
     if (instance.initial_parameters?.entry_point?.kind === 'retained_promotion') {
       const retained = await readRetainedPromotion(instance, options, 'alignment');
-      return retainObjectiveAlignment(retained.alignment, input, verified);
+      return retained.alignment ? retainObjectiveAlignment(retained.alignment, input, verified) : null;
     }
     const retained = await readRetainedCompletion(instance, options, true);
     return retained.alignment === null ? null : retainObjectiveAlignment(retained.alignment, input, verified);

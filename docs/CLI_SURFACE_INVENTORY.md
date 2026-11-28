@@ -1159,3 +1159,16 @@ Entry selection v17 ends retained external-merge/R09 work after its completion
 call; it does not request ordinary session integration a second time. Completion
 discovery inventories canonical paths without loading every stored body. This
 adds no CLI flag, historical receipt mutation or new fusion permission.
+
+The `runtime workflow-run --configuration` retained-promotion entry also accepts
+`version: 2` with an exact `original_instance_sha256`,
+`checkpoint_operation_id`, `native_dispatch_id`, `native_generation`,
+`native_owner_disposition_sha256`, and protected, pinned
+`original_configuration` / `native_assessment` file references. This bounded
+origin is an ordinary session stopped after a confirmed promotion checkpoint and
+one rejected read-only R05 answer. Preview authenticates the original signed
+history, accepted Human choices, retired owner witness, unchanged SQL project
+scope, product, Git HEAD, session ownership and postimages. It carries the DONE
+cycle and COMMITTING choice into a distinct technical instance, requests a fresh
+R05, and never reuses the rejected answer as a report or renews an expired grant.
+The v1 settled-finalization origin remains supported independently.

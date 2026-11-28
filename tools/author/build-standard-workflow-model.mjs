@@ -972,6 +972,16 @@ inputs.push({ node_id: 'retained_promotion_finish', fields: {
   evaluation_operation_id: { source: 'operation_id', node_id: 'entry_select' },
   record_operation_id: { source: 'operation_output', node_id: 'entry_select', path: ['observations', 'continuation', 'record_operation_id'] } } });
 
+// A checkpointed promotion with a retired rejected read-only answer needs a
+// new R05 occurrence. Accepted choice, record and checkpoint are not replayed.
+nodes.find(row => row.id === 'promotion_eligibility').branches.unshift({ flow_id: 'refresh', node_id: 'retained_promotion_refresh', condition: 'retained_promotion_refresh_required' });
+seq('retained_promotion_refresh', ['retained_promotion_drift_report', 'retained_promotion_drift_evaluate', 'retained_promotion_drift_finalize', 'retained_promotion_finalize']);
+native('retained_promotion_drift_report', 'drift_auditor', 'drift', 'standard-drift-report.v1', ['drift-check'], ['SPEC-R05', 'SPEC-R11']);
+op('retained_promotion_drift_evaluate', 'drift_report_evaluate', occurrence('retained_promotion_drift_report'));
+node('retained_promotion_drift_finalize', 'call', { target: correctiveDriftRef });
+inputs.push({ node_id: 'retained_promotion_drift_finalize', fields: operation(null, 'evaluation_operation_id', 'retained_promotion_drift_evaluate') });
+op('retained_promotion_finalize', 'baseline_promotion_finalize', { record_operation_id: { source: 'operation_output', node_id: 'entry_select', path: ['observations', 'continuation', 'record_operation_id'] } });
+
 // Retained session closure skips the settled prefix without importing events.
 const sessionSuffix = closureParent.children.splice(closureParent.children.indexOf('session_close_record'));
 nodes.find(row => row.id === 'cycle_work_route').branches.unshift({ flow_id: 'retained_session', node_id: 'session_close_retained_ready', condition: 'retained_session_closure_requested' });
@@ -1066,6 +1076,30 @@ const retainedValidationRef = pinTarget(retainedValidationTarget);
 node('retained_validation', 'call', { target: retainedValidationRef });
 inputs.push({ node_id: 'retained_validation', fields: { implementation_operation_id: { source: 'operation_output', node_id: 'work_phase_select', path: ['observations', 'implementation_operation_id'] } } });
 
+// Keep the existing root bound by grouping the deterministic preparation
+// already isolated from integration. Its routing, effects and inputs are
+// unchanged; the target contains no Native activity and takes no caller data.
+const deliveryPreparationNames = new Set();
+function collectDeliveryPreparation(id) {
+  const row = nodes.find(row => row.id === id);
+  if (!row || row.kind === 'activity') throw Error('STANDARD_DELIVERY_PREPARATION_CHANGED');
+  deliveryPreparationNames.add(id);
+  for (const child of [...(row.children ?? []), ...(row.branches ?? []).map(branch => branch.node_id)]) collectDeliveryPreparation(child);
+}
+collectDeliveryPreparation('session_integration_prepare');
+const deliveryPreparationNodes = nodes.filter(row => deliveryPreparationNames.has(row.id));
+const deliveryPreparationInputs = inputs.filter(row => deliveryPreparationNames.has(row.node_id));
+for (const row of deliveryPreparationInputs) for (const field of Object.values(row.fields))
+  if (field.source === 'parameter' || field.node_id && !deliveryPreparationNames.has(field.node_id)) throw Error('STANDARD_DELIVERY_PREPARATION_INPUT_CHANGED');
+for (let i = nodes.length - 1; i >= 0; i--) if (deliveryPreparationNames.has(nodes[i].id)) nodes.splice(i, 1);
+for (let i = inputs.length - 1; i >= 0; i--) if (deliveryPreparationNames.has(inputs[i].node_id)) inputs.splice(i, 1);
+const deliveryPreparationTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-delivery-preparation', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'session_integration_prepare', nodes: deliveryPreparationNodes,
+  operation_pins: pinsFor(deliveryPreparationNodes), call_interface: { parameters: {}, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [], inputs: deliveryPreparationInputs } };
+const deliveryPreparationRef = pinTarget(deliveryPreparationTarget);
+node('session_integration_prepare', 'call', { target: deliveryPreparationRef }); inputs.push({ node_id: 'session_integration_prepare', fields: {} });
+
 const policy = (id, assurance_profile, allowed_permissions, independent_review = false) => ({ id, version: 1, assurance_profile, mode: "COMMITTING",
   independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });
 const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard", revision: 1,
@@ -1083,6 +1117,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...policy("exploring_planning", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" }, policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
     policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
   operation_pins: pinsFor(nodes), call_targets: [
+    { ...deliveryPreparationRef, model: deliveryPreparationTarget },
     { ...integrationPreparationRef, model: integrationPreparationTarget },
     { ...sessionPreparationRef, model: sessionPreparationTarget },
     { ...preparationGroupRef, model: preparationGroupTarget },
@@ -1123,7 +1158,7 @@ assertAgenticProcessModel(model);
 const components = processModels(model);
 const specification = read("docs/SPEC.md");
 const skillSource = path => ({ path, sha256: standardAssetHash(read(path)) });
-const catalog = { contract_version: "standard-workflow-catalog.v7",
+const catalog = { contract_version: "standard-workflow-catalog.v8",
   component_id: "aidn-standard", revision: model.revision,
   scope: { kind: "composed_committing_cycle_component", complete_standard_workflow: false,
     entry_conditions: ["fresh_or_existing_session_admission", "fresh_owned_or_explicitly_selected_active_cycle"], remaining_activities: ["thinking_session_closure", "exploring_experiments_and_spike_conversion",

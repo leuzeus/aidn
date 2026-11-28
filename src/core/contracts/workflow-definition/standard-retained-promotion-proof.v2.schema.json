@@ -1,0 +1,149 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "original_instance_id",
+    "original_instance_sha256",
+    "original_configuration_sha256",
+    "journals_sha256",
+    "native_journal_sha256",
+    "question_sha256",
+    "product_sha256",
+    "record_operation_id",
+    "record_plan_sha256",
+    "record_output_sha256",
+    "checkpoint_operation_id",
+    "checkpoint_output_sha256",
+    "session_id",
+    "cycle_id",
+    "cycle_path",
+    "version",
+    "closure_operation_id",
+    "terminal_operation_id",
+    "terminal_checkpoint_operation_id",
+    "completed_cycle_material_sha256",
+    "native_dispatch_id",
+    "native_generation",
+    "native_assessment_sha256",
+    "native_owner_disposition_sha256",
+    "native_readonly_witness_sha256",
+    "retired_lock_sha256",
+    "new_native_required",
+    "accounting_reconciled"
+  ],
+  "properties": {
+    "original_instance_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96
+    },
+    "original_instance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "original_configuration_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "journals_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "native_journal_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "question_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "product_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "record_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "record_plan_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "record_output_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "checkpoint_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "checkpoint_output_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{3,6}$"
+    },
+    "cycle_id": {
+      "type": "string",
+      "pattern": "^C[0-9]{3,6}$"
+    },
+    "cycle_path": {
+      "type": "string",
+      "pattern": "^cycles/C[0-9]{3,6}-[A-Za-z0-9_-]+$"
+    },
+    "version": {
+      "const": 2
+    },
+    "closure_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "terminal_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "terminal_checkpoint_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "completed_cycle_material_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "native_dispatch_id": {
+      "type": "string",
+      "pattern": "^native_dispatch_[a-f0-9]{40}$"
+    },
+    "native_generation": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "native_assessment_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "native_owner_disposition_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "native_readonly_witness_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "retired_lock_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "new_native_required": {
+      "const": true
+    },
+    "accounting_reconciled": {
+      "const": false
+    }
+  },
+  "$id": "aidn://contracts/workflow-definition/standard-retained-promotion-proof.v2",
+  "x-aidn-contract-version": "standard-retained-promotion-proof.v2"
+}

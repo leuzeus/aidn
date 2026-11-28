@@ -1,3 +1,4 @@
+import standardCatalogSchemaV8 from "../contracts/workflow-definition/standard-workflow-catalog.v8.schema.json" with { type: "json" };
 import { createHash } from "node:crypto";
 import catalogSchema from "../contracts/workflow-definition/standard-workflow-startup-catalog.v1.schema.json" with { type: "json" };
 import cycleCatalogSchema from "../contracts/workflow-definition/standard-cycle-create-catalog.v1.schema.json" with { type: "json" };
@@ -27,6 +28,7 @@ const catalogSchemas = new Map([
   ["standard-workflow-catalog.v4", standardCatalogSchemaV4],
   ["standard-workflow-catalog.v5", standardCatalogSchemaV5],
   ["standard-workflow-catalog.v6", standardCatalogSchemaV6],
+  ["standard-workflow-catalog.v8", standardCatalogSchemaV8],
   ["standard-workflow-catalog.v7", standardCatalogSchemaV7],
 ]);
 const composedCatalog = catalog => Object.hasOwn(catalog, "activities");
@@ -44,7 +46,7 @@ export function assertStandardWorkflowComponentCatalog(catalog, model) {
     || catalog.model.model_id !== model.model_id || catalog.model.revision !== model.revision || catalog.revision !== model.revision) fail("STANDARD_STARTUP_MODEL_CHANGED");
   const [, ...targets] = processModels(model);
   if (targets.some(target => target.nodes.some(node => node.kind === "activity"))) fail("STANDARD_EMBEDDED_ACTIVITY_UNSUPPORTED");
-  const embeddedCatalog = [standardCatalogSchemaV3, standardCatalogSchemaV4, standardCatalogSchemaV5, standardCatalogSchemaV6, standardCatalogSchemaV7].includes(schema);
+  const embeddedCatalog = [standardCatalogSchemaV3, standardCatalogSchemaV4, standardCatalogSchemaV5, standardCatalogSchemaV6, standardCatalogSchemaV7, standardCatalogSchemaV8].includes(schema);
   if (embeddedCatalog) for (const target of targets) {
     const events = target.nodes.filter(node => node.kind === "event");
     if (!events.length) continue;

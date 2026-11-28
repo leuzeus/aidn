@@ -6,6 +6,8 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 // their separately retained build-lock/installed-version pins. npm distributions
 // exclude package-lock.json; direct code pins must use distributed assets only.
 const files = [
+  "src/application/runtime/standard-checkpointed-promotion-source.mjs",
+  ...["standard-workflow-catalog.v8", "standard-retained-promotion-entry.v2", "standard-retained-promotion-proof.v2", "standard-workflow-entry-selection-output.v18"].map(name => `src/core/contracts/workflow-definition/${name}.schema.json`),
   "src/application/runtime/standard-retained-post-merge-decision-source.mjs",
   "src/core/workflow/standard-retained-post-merge-decision.mjs",
   "src/core/contracts/workflow-definition/standard-retained-post-merge-decision-entry.v1.schema.json",

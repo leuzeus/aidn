@@ -1,3 +1,4 @@
+import catalogSchemaV8 from "../../src/core/contracts/workflow-definition/standard-workflow-catalog.v8.schema.json" with { type: "json" };
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { createHash } from "node:crypto";
@@ -94,7 +95,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
   // Fresh and corrective R05 share the target's finalizer binding.
-  assert.equal(assets.catalog.bindings.length, 256); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 258); assert.equal(assets.catalog.activities.length, 24);
   assert.deepEqual(assets.catalog.bindings.filter(row => row.model_ref?.model_id === "aidn-standard-mode-handoff")
     .map(row => [row.node_id, row.binding.id]).sort(), [
       ["mode_handoff_decide", "mode_work_continue_decision"], ["mode_handoff_summary", "handoff_summary_prepare"],
@@ -645,7 +646,7 @@ test("the published recovery call routes confirmed findings to the selected CR, 
   }
 });
 test("published cycle entry preserves creation preconditions and separates owned progress from explicit selection", () => {
-  assert.equal(assets.catalog.contract_version, "standard-workflow-catalog.v7");
+  assert.equal(assets.catalog.contract_version, "standard-workflow-catalog.v8");
   assert.deepEqual(assets.catalog.scope.entry_conditions, ["fresh_or_existing_session_admission", "fresh_owned_or_explicitly_selected_active_cycle"]);
   const node = id => assets.model.nodes.find(row => row.id === id);
   assert.deepEqual(node("committing").children, ["cycle_refresh_before", "cycle_entry_observe", "cycle_entry_route", "prework_select", "prework_route"]);
@@ -703,15 +704,19 @@ test("published cycle entry preserves creation preconditions and separates owned
     { flow_id: "fresh", node_id: "plan_record", condition: "cycle_plan_record_required" },
     { flow_id: "canonical", node_id: "prework_record_inapplicable", condition: null }]);
   assert.equal(node("cycle_drift_report").kind, "activity");
-  assert.equal(assets.model.nodes.filter(row => row.kind === "activity").length, 23);
+  assert.equal(assets.model.nodes.filter(row => row.kind === "activity").length, 24);
   assert.equal(assets.model.nodes.length, 288); assert.ok(assets.model.nodes.length <= 288);
 });
-test("catalog v7 declares typed initial audits while the closed v4-v6 formats retain their scopes", () => {
-  assert.deepEqual(validateJsonSchema(assets.catalog, catalogSchemaV7, "$", { contractKind: "workflow-definition" }), []);
+test("catalog v8 admits the bounded continuation while closed v4-v7 formats retain their scopes", () => {
+  assert.deepEqual(validateJsonSchema(assets.catalog, catalogSchemaV8, "$", { contractKind: "workflow-definition" }), []);
   assert.ok(validateJsonSchema(assets.catalog, catalogSchemaV5, "$", { contractKind: "workflow-definition" }).length > 0);
   assert.ok(validateJsonSchema(assets.catalog, catalogSchemaV4, "$", { contractKind: "workflow-definition" }).length > 0);
   // Schema-only legacy DATA fixtures; no historical record or model identity is converted.
   const legacy = structuredClone(assets.catalog);
+  legacy.contract_version = "standard-workflow-catalog.v7";
+  assert.ok(validateJsonSchema(legacy, catalogSchemaV7, "$", { contractKind: "workflow-definition" }).length > 0);
+  legacy.bindings = legacy.bindings.slice(0, 256);
+  assert.deepEqual(validateJsonSchema(legacy, catalogSchemaV7, "$", { contractKind: "workflow-definition" }), []);
   for (const activity of legacy.activities) if (activity.output_contract === "standard-cycle-prework-report.v1") activity.output_contract = "standard-cycle-plan-proposal.v1";
   legacy.contract_version = "standard-workflow-catalog.v6";
   assert.deepEqual(validateJsonSchema(legacy, catalogSchemaV6, "$", { contractKind: "workflow-definition" }), []);
@@ -801,7 +806,17 @@ test("the composed entry reuses authored session setup and rereads canonical mod
   assert.equal(assets.model.data_bindings.inputs.some(input => Object.values(input.fields).some(field =>
     field.source === "operation_input" && field.node_id === "session_initialize")), false);
 });
-const legacyCatalogScope = (catalog, version) => {
+const legacyCatalogScope = ({ catalog, model }, version) => {
+  // Keep the synthetic historical corpus within its original 256-row limit.
+  // The newer refresh branch is never relabeled as a historical capability.
+  const refresh = new Set(['retained_promotion_refresh', 'retained_promotion_drift_report', 'retained_promotion_drift_evaluate', 'retained_promotion_drift_finalize', 'retained_promotion_finalize']);
+  const eligibility = model.nodes.find(row => row.id === 'promotion_eligibility');
+  if (eligibility) eligibility.branches = eligibility.branches.filter(row => !refresh.has(row.node_id));
+  model.nodes = model.nodes.filter(row => !refresh.has(row.id));
+  if (model.data_bindings) model.data_bindings.inputs = model.data_bindings.inputs.filter(row => !refresh.has(row.node_id));
+  catalog.activities = catalog.activities.filter(row => !refresh.has(row.node_id));
+  catalog.bindings = catalog.bindings.filter(row => row.model_ref || !refresh.has(row.node_id));
+  catalog.model.sha256 = shadowHash(model);
   // Synthetic closed-reader fixtures only; never convert retained history or claim execution.
   for (const activity of catalog.activities) if (activity.output_contract === "standard-cycle-prework-report.v1")
     activity.output_contract = "standard-cycle-plan-proposal.v1";
@@ -839,13 +854,14 @@ test("the ordinary loader authenticates the two final-verification operations fo
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV5, "#", { contractKind: "workflow-definition" }), []);
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV6, "#", { contractKind: "workflow-definition" }), []);
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV7, "#", { contractKind: "workflow-definition" }), []);
+  assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV8, "#", { contractKind: "workflow-definition" }), []);
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 288);
-  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 126);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 130);
+  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 127);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 131);
   assert.ok(read('package/catalogs/process-models/aidn-standard.v1.json').length <= 262144);
   const target = loaded.model.call_targets.find(row => row.model_id === 'aidn-standard-final-verification'), { model: child, ...identity } = target;
-  assert.equal(loaded.model.call_targets.length, 26);
+  assert.equal(loaded.model.call_targets.length, 27);
   assert.equal(child.model_id, "aidn-standard-final-verification");
   assert.deepEqual(identity, processModelIdentity(child));
   const retainedValidation = loaded.model.call_targets.find(row => row.model_id === 'aidn-standard-retained-validation').model;
@@ -920,7 +936,7 @@ for (const version of [1, 2]) test("catalog v" + version + " still retains exact
   model.operation_pins = { [operation.binding.id]: model.operation_pins[operation.binding.id] };
   delete model.data_bindings;
   delete model.call_targets;
-  legacyCatalogScope(catalog, version);
+  legacyCatalogScope(input, version);
   catalog.bindings = [operation];
   catalog.activities = [activity];
   catalog.model.sha256 = shadowHash(model);
@@ -929,16 +945,16 @@ for (const version of [1, 2]) test("catalog v" + version + " still retains exact
   assertStandardWorkflowActivityOutputs(loaded.source, loaded.model, { [activity.node_id]: activity.output_contract });
 });
 test("catalog v3 keeps its original fresh-only scope and embedded rows", () => {
-  const input = fresh(); legacyCatalogScope(input.catalog, 3);
+  const input = fresh(); legacyCatalogScope(input, 3);
   assert.deepEqual(loadFixture(input).source.catalog, input.catalog);
 });
-rejectFixture("catalog v2 keeps its closed rows", x => { legacyCatalogScope(x.catalog, 2); }, "STANDARD_STARTUP_CATALOG_INVALID");
+rejectFixture("catalog v2 keeps its closed rows", x => { legacyCatalogScope(x, 2); }, "STANDARD_STARTUP_CATALOG_INVALID");
 rejectFixture("legacy catalog rows cannot cover the embedded operations", x => {
-  legacyCatalogScope(x.catalog, 2);
+  legacyCatalogScope(x, 2);
   for (const row of x.catalog.bindings) delete row.model_ref;
 }, "STANDARD_STARTUP_COVERAGE_INVALID");
 rejectFixture("historical rows do not cover the moved operations", x => {
-  legacyCatalogScope(x.catalog, 2);
+  legacyCatalogScope(x, 2);
   const formerTargets = x.catalog.bindings.filter(row => row.model_ref);
   // Keep the historical schema bound: replace the moved identities with their
   // former root convention instead of appending a second full set of rows.

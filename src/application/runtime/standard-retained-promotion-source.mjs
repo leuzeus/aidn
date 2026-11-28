@@ -1,3 +1,4 @@
+import { createCheckpointedPromotionSource } from './standard-checkpointed-promotion-source.mjs';
 import path from 'node:path';
 import { createAgenticProcessStore } from '../../adapters/runtime/agentic-process-store.mjs';
 import { createProcessOperationJournalStore } from '../../adapters/runtime/process-operation-journal-store.mjs';
@@ -30,6 +31,7 @@ const sequence = ['workflow_entry_select', 'cycle_close_completed_select', 'base
 // Only the exact settled no-effect promotion refusal is supported. The original
 // technical instance, Human receipt and Native accounting remain immutable.
 export function createRetainedPromotionSource({ configuration, environment, createAuthority }) {
+  const checkpointed = createCheckpointedPromotionSource({ configuration, environment });
   const artifacts = createStandardWorkflowArtifacts({ targetRoot: configuration.target_root, env: environment });
   const options = { targetRoot: artifacts.root, stateMode: artifacts.describe().state_mode, env: environment };
   const instances = createAgenticProcessStore(options), journals = createProcessOperationJournalStore(options);
@@ -149,7 +151,9 @@ export function createRetainedPromotionSource({ configuration, environment, crea
       && H(authority.inspectDiagnostic(instance).journal) === H(diagnostic.journal));
     return { proof, completed, promotion, evaluation, alignment, instance, records, checkpoint: { record: checkpoint, output: cpOutput } };
   }
-  return Object.freeze({ inspect: (entry, options) => read(entry, options, true),
+  const readers = { inspect: (entry, options) => read(entry, options, true),
     readRecorded: (entry, options) => read(entry, options), readEvaluation: (entry, options) => read(entry, options, false, true),
-    readAlignment: (entry, options) => read(entry, options, false, false, true) });
+    readAlignment: (entry, options) => read(entry, options, false, false, true) };
+  return Object.freeze(Object.fromEntries(Object.entries(readers).map(([key, reader]) =>
+    [key, (entry, options) => entry?.version === 2 ? checkpointed[key](entry, options) : reader(entry, options)])));
 }
