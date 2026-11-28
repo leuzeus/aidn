@@ -10,8 +10,8 @@ import { createStandardHostAuthority } from '../../src/adapters/runtime/standard
 import { readNativeAllocationClosureEvidence } from '../../src/application/runtime/native-allocation-evidence.mjs';
 import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
 
-const mode = process.argv[2] ?? 'files';
-assert(['files', 'dual', 'db-only'].includes(mode));
+const mode = process.argv[2] ?? 'dual';
+assert(['dual', 'db-only'].includes(mode));
 assert(process.argv.slice(3).every(arg => ['--reconciled', '--handoff-resources', '--handoff-context'].includes(arg)));
 assert(!process.argv.includes('--handoff-resources') || process.argv.includes('--reconciled'));
 assert(!process.argv.includes('--handoff-context') || process.argv.includes('--handoff-resources'));

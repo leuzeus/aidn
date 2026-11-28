@@ -139,7 +139,7 @@ if (path.resolve(process.argv[1] ?? "") === script) {
   } else {
     const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7), fault = process.argv.find(arg => arg.startsWith("--fault="))?.slice(8) ?? null,
       selectCurrent = process.argv.includes("--select-current");
-    if (!process.argv.includes("--contracts-only") && !["files", "dual", "db-only"].includes(mode) || mode && process.argv.includes("--contracts-only")
+    if (!process.argv.includes("--contracts-only") && !["dual", "db-only"].includes(mode) || mode && process.argv.includes("--contracts-only")
       || selectCurrent && mode !== "files" || fault && (mode !== "files" || selectCurrent || !["grant_after_ref", "index_ack"].includes(fault))) throw Error("FOCUS_CHECKPOINT_FIXTURE_SCOPE_INVALID");
     contracts();
     if (mode) await verifyCanonicalCycleChoiceRecord(mode, { childScript: script, pass, checkpoint: true, activation: true, selectedCheckpoint: true, selectedFocus: true, focusCheckpoint: true,

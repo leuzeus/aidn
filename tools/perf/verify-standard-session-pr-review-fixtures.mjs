@@ -16,7 +16,7 @@ import { agenticPolicyPins } from '../../src/core/workflow/agentic-process-model
 import { standardWorkflowOperationBindings } from '../../src/application/runtime/standard-workflow-operations.mjs';
 const content = process.argv.includes('--content'), bindingRef = content ? 'session_pr_review_content_observe' : 'session_pr_review_observe';
 const createObservation = content ? createStandardSessionPrReviewContentObservation : createStandardSessionPrReviewObservation;
-const parent = fs.realpathSync(os.tmpdir()), owned = [], mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files';
+const parent = fs.realpathSync(os.tmpdir()), owned = [], mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'dual';
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
 let checks = 0; const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + name); };
 const grant = ready => ({ write: true, expectPlan: ready.plan_sha256, assertAuthorized() {} });

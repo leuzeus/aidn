@@ -24,7 +24,8 @@ const model = { contract_version: 'agentic-process-model.v2', model_id: 'invento
   nodes: [{ id: 'reload', kind: 'operation', participant_ref: 'project', binding_ref: 'context_reload' }] };
 let authorizations = 0, store;
 try {
-  const host = createStandardWorkflowOperationHost({ targetRoot: root, model, readSigningKey: () => key,
+  const environment = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^GIT_/i.test(name)));
+  const host = createStandardWorkflowOperationHost({ targetRoot: root, environment, model, readSigningKey: () => key,
     authorize: async () => { authorizations++; throw Error('UNEXPECTED_AUTHORIZATION'); } });
   const initial = host.initialize({ instanceId: 'inventory' });
   host.initialize({ instanceId: 'inventory', write: true, expectedResultSha256: initial.record.instance_sha256 });

@@ -790,3 +790,5 @@ fast-forward effects still require current successor grants. Measurement is
 fresh, and only the existing R09 strategy may advance a behind-only checkout.
 UNKNOWN, pending ownership, changed bindings, moved source or remote, a partial
 prefix and an L2 incident are refused by this bounded continuation.
+
+FILES is retired by [ADR-0027](../ADR/ADR-0027-retire-files-state-authority.md). Both active profiles use canonical SQLite or optional PostgreSQL; neither may fall back to local Markdown when the database is unavailable.

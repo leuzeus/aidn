@@ -85,7 +85,7 @@ export async function verifyArtifactTaskQueries() {
     const payload=artifactQueryFixturePayload(scope);
     payload.artifacts[2].content+='\n### Final closure exception\nDo not certify missing or expired proof.\n';
     for(const row of payload.artifacts){const p=target+'/docs/audit/'+row.path;fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,row.content);}
-    const config={version:1,runtime:{stateMode:'files',indexStoreMode:'dual-sqlite'},workflow:{sourceBranch:'dev'}};
+    const config={version:1,runtime:{stateMode:'dual',indexStoreMode:'dual-sqlite'},workflow:{sourceBranch:'dev'}};
     fs.writeFileSync(target+'/.aidn/config.json',JSON.stringify(config));
     fs.rmSync(target+'/docs/audit/HANDOFF-PACKET.md',{force:true});
     const docs={'QUERY-RULES.md':'## Admission\nUse fresh canonical admission and retain every refusal.\n### Exception\nAn expired proof never authorizes closure.\n## Closure\nREQ, TEST, GAP and CR must be reconciled by the existing closure checks.\n',
@@ -109,14 +109,14 @@ export async function verifyArtifactTaskQueries() {
     const consumers=manifest.profiles.filter(p=>p.requires_client_task_policy),ids=new Set(consumers.flatMap(p=>[...p.mandatory,...Object.values(p.conditional).flat(),...p.optional]));
     assert.deepEqual({profiles:consumers,consumed:manifest.artifacts.map(c=>({artifact_type:c.artifact_type,contract_version:c.contract_version,fields:c.fields.filter(f=>ids.has(f.id)),sections:c.sections}))},compatibility);
     checks.push('three versioned consumers pin semantic fields and complete closure sections');
-    for(const mode of ['files','dual','db-only']) {
+    for(const mode of ["dual","db-only"]) {
       fs.writeFileSync(target+'/.aidn/config.json',JSON.stringify({...config,runtime:{...config.runtime,stateMode:mode}}));
       for(const name of ['CURRENT-STATE.md','RUNTIME-STATE.md']){
         const file=target+'/docs/audit/'+name;fs.writeFileSync(file,fs.readFileSync(file,'utf8').replace(/^runtime_state_mode:.*$/m,'runtime_state_mode: '+mode));
       }
       const indexed=cli(['perf','index','--store','sqlite','--with-content','--json']);assert.equal(indexed.status,0,indexed.stderr);
       const before=fingerprint(),q=await query(),full=(await withWorkflowObservation({targetRoot:target,contextFile:'.aidn/runtime/context/codex-context.json'},()=>preWriteAdmit({targetRoot:target,skill:'context-reload'}))).value;
-      assert.equal(q.status,'ok',JSON.stringify(q.errors));assert.equal(q.source_backend,mode==='files'?'files':'sqlite');
+      assert.equal(q.status,'ok',JSON.stringify(q.errors));assert.equal(q.source_backend,'sqlite');
       assert.deepEqual(validateJsonSchema(q,schema),[]);assert.deepEqual(q.admissions[0].checks,full.checks);
       assert.equal(q.admissions[0].ok,full.ok);assert.deepEqual(q.admissions[0].blocking_reasons,full.blocking_reasons);
       assert.deepEqual(q.authorities.map(u=>u.unit_id),['evidence','rules']);assert(q.authorities[1].content_excerpt.includes('expired proof'));
@@ -232,16 +232,20 @@ export async function verifyArtifactTaskQueries() {
     writeWorkflowAdapterConfig(target,{governanceAdoption:unaccepted});const noPolicy=await query();assert.equal(noPolicy.status,'blocked');assert(noPolicy.errors.some(e=>e.code==='ARTIFACT_QUERY_ACCEPTED_POLICY_REQUIRED'));
     writeWorkflowAdapterConfig(target,{governanceAdoption:adoption});
     const proof=target+'/docs/audit/QUERY-EVIDENCE.md',original=fs.readFileSync(proof);
-    fs.unlinkSync(proof);const missing=await query();assert.equal(missing.status,'blocked');assert(missing.authority_selection.errors.some(e=>e.reason==='mandatory_unavailable'));fs.writeFileSync(proof,original);
+    fs.unlinkSync(proof);
+    assert.equal((await query()).status,'ok','a missing local projection does not remove the SQL authority');
+    assert.equal(cli(['perf','index','--store','sqlite','--with-content','--json']).status,0);
+    const missing=await query();assert.equal(missing.status,'blocked');assert(missing.authority_selection.errors.some(e=>e.reason==='mandatory_unavailable'));fs.writeFileSync(proof,original);
     fs.writeFileSync(proof,'## Evidence\nExpired or changed proof.\n');
     fs.writeFileSync(target+'/.aidn/config.json',JSON.stringify(config));
+    assert.equal(cli(['perf','index','--store','sqlite','--with-content','--json']).status,0);
     const changed=await query();assert.equal(changed.status,'blocked');assert(changed.authority_selection.errors.some(e=>e.reason==='source_revision_mismatch'));
-    fs.writeFileSync(proof,original);
-    await assert.rejects(query(profile,params,{afterRead:()=>fs.appendFileSync(proof,'Concurrent change\n')}),/(ARTIFACT_QUERY_SOURCE_CHANGED|WORKFLOW_OBSERVATION_INVALIDATED)/);fs.writeFileSync(proof,original);
+    fs.writeFileSync(proof,original);assert.equal(cli(['perf','index','--store','sqlite','--with-content','--json']).status,0);
+    await assert.rejects(query(profile,params,{afterRead:()=>{fs.appendFileSync(proof,'Concurrent change\n');assert.equal(cli(['perf','index','--store','sqlite','--with-content','--json']).status,0);}}),/(ARTIFACT_QUERY_SOURCE_CHANGED|WORKFLOW_OBSERVATION_INVALIDATED)/);fs.writeFileSync(proof,original);
     checks.push('foreign scope, unaccepted policy, changed proof and concurrent modification refuse without weakening checks');
     fs.writeFileSync(target+'/.aidn/config.json',JSON.stringify({runtime:{stateMode:'db-only',persistence:{backend:'postgres',connectionRef:'env:AIDN_TASK_QUERY_UNAVAILABLE'}}}));
     await assert.rejects(query());checks.push('configured unavailable PostgreSQL never falls back to local files or SQLite');
-    return {status:'PASS',checks:checks.length,details:checks,files:true,sqlite:'REAL_DUAL_AND_DB_ONLY',postgres:'UNAVAILABLE_NEGATIVE_ONLY',native:'NOT_EXECUTED'};
+    return {status:'PASS',checks:checks.length,details:checks,files:'RETIRED',sqlite:'REAL_DUAL_AND_DB_ONLY',postgres:'UNAVAILABLE_NEGATIVE_ONLY',native:'NOT_EXECUTED'};
   } finally {if(previous===undefined)delete process.env.AIDN_TASK_QUERY_UNAVAILABLE;else process.env.AIDN_TASK_QUERY_UNAVAILABLE=previous;
     const p=path.resolve(root);assert.equal(path.dirname(p),path.resolve(os.tmpdir()));fs.rmSync(p,{recursive:true,force:true});}
 }

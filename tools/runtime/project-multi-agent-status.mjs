@@ -485,7 +485,7 @@ export async function projectMultiAgentStatus({
       stateMode: effectiveStateMode,
     })
     : null;
-  const write = effectiveStateMode === "files" || materializeVisibleArtifacts === true
+  const write = materializeVisibleArtifacts === true
     ? writeUtf8IfChanged(outPath, markdown)
     : {
       path: outPath,

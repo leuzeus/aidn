@@ -191,7 +191,7 @@ This baseline makes AIDN's governed architecture and release path executable end
 - `--json` is format-only; writes require explicit `--write`, `--apply`, `--execute`, or the documented equivalent, and atomic replacements preserve the previous state on failure.
 - public machine-readable commands emit one complete JSON document on `stdout`, while bounded diagnostics remain on `stderr`.
 - installed Codex integration includes project skills, bounded custom agents, a trusted-project session hook, real installed-client discovery, and preserved failure/cleanup diagnostics.
-- `files`, `dual`, and `db-only` remain distinct modes; PostgreSQL persistence is optional, SQLite remains available for local compatibility and migration, and shared coordination is explicit opt-in.
+- `dual` and `db-only` remain distinct modes; PostgreSQL persistence is optional, SQLite remains supported for local projects and migration, and shared coordination is explicit opt-in.
 - protected-branch CI and the release workflow verify from locked dependencies;
   a merged, version-matched `release/vX.Y.Z` PR is published from exact `main`
   `GITHUB_SHA` with an annotated tag, ZIP and npm `.tgz`, checksums, and provenance assets, never
@@ -316,3 +316,5 @@ to preserve its runtime binding, local edits and canonical persistence before sw
 Preview an upgrade with `aidn bootstrap --target <client-repo> --mode upgrade --dry-run --json`, then bind application with the same inputs plus `--expect-plan PLAN_ID` and without `--dry-run`. `--persistence-policy verify-only` checks an existing backend without requesting schema migration, persistence adoption or import. A mismatch fails before installation writes.
 
 Repair, resume and rollback preserve revocation. Reauthorization requires the explicit `bootstrap --authorize` preview and matching `--write --expect-plan PLAN_ID`; native client trust is still a separate human action. Public skills now use the `aidn-` prefix, while internal CLI identifiers remain compatible. See [project activation](CODEX_INTEGRATION.md#project-activation-and-skill-names).
+
+Before updating a FILES project, run the [verified state migration](INSTALL.md#retired-files-state-migration). The updater refuses legacy FILES rather than replacing its authority.

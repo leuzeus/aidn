@@ -73,7 +73,7 @@ preparation does not authorize push, PR creation, merge or post-merge sync.
 3) Run the runtime admission:
 - `npx aidn codex run-json-hook --skill pr-orchestrate --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
-- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`dual|db-only`).
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill pr-orchestrate --project-runtime-state --json`.
 - in dual/db-only, use the hydrated payload to read `repair_layer_status`, `repair_layer_advice`, prioritized artifacts, and continuity hints before acting.
 - prefer `docs/audit/RUNTIME-STATE.md` as the short runtime digest when it has just been refreshed by hydration.

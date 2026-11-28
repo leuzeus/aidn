@@ -445,7 +445,7 @@
       "family": "runtime",
       "script": "perf:verify-state-mode-parity",
       "job": "governance-admission/gates",
-      "surfaces": ["files", "dual", "db-only"],
+      "surfaces": ["dual", "db-only", "legacy FILES migration"],
       "condition": "always",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },

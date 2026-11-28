@@ -17,9 +17,9 @@ import { createLocalProcessAdapter } from "../../src/adapters/runtime/local-proc
 // Current source-installed component. Historical expiry attempts remain in
 // their original qualification records; legacy reader tests use a separate,
 // explicitly synthetic receipt corpus.
-const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "files";
+const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "dual";
 const agedCheckpoint = process.argv.includes("--aged-checkpoint") || process.argv.includes("--expire-checkpoint");
-if (!["files", "dual", "db-only"].includes(mode)) throw Error("CYCLE_PLAN_AGE_MODE_INVALID");
+if (!["dual", "db-only"].includes(mode)) throw Error("CYCLE_PLAN_AGE_MODE_INVALID");
 const temporary = fs.realpathSync(os.tmpdir()), owned = [], assets = loadStandardWorkflowCycleAssets();
 const H = "a".repeat(64), hash = bytes => createHash("sha256").update(bytes).digest("hex");
 const git = (root, ...args) => execFileSync("git", ["-C", root, ...args],

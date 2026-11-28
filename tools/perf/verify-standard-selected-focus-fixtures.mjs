@@ -170,7 +170,7 @@ if (["--accept-record", "--accept-focus", "--inspect-focus"].includes(process.ar
 } else {
   const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7), fault = process.argv.find(arg => arg.startsWith("--fault="))?.slice(8) ?? null,
     phase = process.argv.find(arg => arg.startsWith("--phase="))?.slice(8) ?? "VERIFYING", selectCurrent = process.argv.includes("--select-current");
-  if (!process.argv.includes("--contracts-only") && !["files", "dual", "db-only"].includes(mode) || mode && process.argv.includes("--contracts-only")
+  if (!process.argv.includes("--contracts-only") && !["dual", "db-only"].includes(mode) || mode && process.argv.includes("--contracts-only")
     || !["OPEN", "IMPLEMENTING", "VERIFYING"].includes(phase) || fault && (fault !== "cas_ack" || mode !== "files" || selectCurrent)
     || selectCurrent && mode !== "files" || phase !== "VERIFYING" && mode !== "files") throw Error("FOCUS_FIXTURE_SCOPE_INVALID");
   contracts();

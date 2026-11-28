@@ -41,11 +41,11 @@ export async function inspectGlobalProjectCompatibility({ targetRoot, candidateI
       configData: config, ignoreSourceDriftWhenTargetReady: true });
     if (result.blocked !== false || result.action !== 'noop') fail('GLOBAL_PROJECT_DATABASE_MIGRATION_REQUIRED');
     persistence = { backend, compatible: true };
-  } else if (config.runtime?.stateMode !== 'files' || ['sqlite', 'dual-sqlite', 'all'].includes(config.install?.artifactImportStore)) {
+  } else {
     const status = inspectWorkflowDbSchema({ sqliteFile: path.join(root, '.aidn/runtime/index/workflow-index.sqlite'), readOnly: true });
     if (!status.exists || status.pending_ids.length || Number(status.schema_version) !== getLatestWorkflowSchemaVersion()) fail('GLOBAL_PROJECT_DATABASE_MIGRATION_REQUIRED');
     persistence = { backend, schema_version: Number(status.schema_version), compatible: true };
-  } else persistence = { backend: 'files', compatible: true };
+  }
   // Recheck observed metadata after the possibly slow backend probe. Return only
   // a digest, not receipt preimages or connection credentials.
   if (read('.aidn/config.json') !== configRaw || read('.aidn/project/workflow.adapter.json') !== adapterRaw

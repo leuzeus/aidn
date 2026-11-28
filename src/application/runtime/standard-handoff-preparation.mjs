@@ -181,8 +181,7 @@ export function createStandardHandoffPreparation({ targetRoot, readAccepted, rea
         const evidence = [];
         const guard = async () => { await assertAuthorized(); active(signal); assertCurrent(); current(instance, plan); projected(rows(plan.session_id)); };
         try {
-          if (plan.state_mode === 'files') observed.skipped_stages = ['hook', 'hydration', 'sync'];
-          else {
+          {
             const hookContextStore = createHookContextStoreAdapter();
             const hook = await runJsonHookUseCase({ targetRoot: root, hookContextStore, agentAdapter: createCodexAgentAdapter(),
               args: { skill: 'handoff-close', mode: plan.mode, target: root, stateMode: plan.state_mode, strict: true, noAutoSkipGate: true,
@@ -217,8 +216,8 @@ export function createStandardHandoffPreparation({ targetRoot, readAccepted, rea
               if (fs.existsSync(physical(ref))) evidence.push({ ref, sha256: readAgentRunFile(physical(ref), { json: false, maxBytes: 2097152 }).sha256 });
           }
           await guard();
-          const computed = await projectRuntimeState({ targetRoot: root, contextFile: plan.state_mode === 'files' ? '' : contextFile,
-            hydratedFile: plan.state_mode === 'files' ? '' : hydratedFile, write: false, dryRun: true });
+          const computed = await projectRuntimeState({ targetRoot: root, contextFile,
+            hydratedFile, write: false, dryRun: true });
           await guard();
           if (computed.consistency?.pass === false || computed.digest.repair_layer_status === 'block') fail('STANDARD_HANDOFF_RUNTIME_BLOCKED');
           const selected = rows(plan.session_id), runtime = buildRuntimeStateMarkdown(computed.digest);

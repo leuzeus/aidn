@@ -15,6 +15,7 @@ const json = p => JSON.parse(read(p));
 const current = json("tests/fixtures/workflow-shadow/audit-informed.v1.json");
 const alternate = json("tests/fixtures/workflow-shadow/diagnostic-correction.v1.json");
 const expected = json("tests/fixtures/workflow-shadow/compilation-expectations.v1.json");
+// Historical compiler input, not a currently selectable runtime state mode.
 const context = { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: "0.11.0", workflow_version: 7, state_mode: "files" };
 const profile = { contractKind: "workflow-definition" };
 let count = 0;

@@ -269,12 +269,7 @@ export async function projectCoordinationSummary({
       stateMode: effectiveStateMode,
     })
     : null;
-  const write = effectiveStateMode === "files"
-    ? writeUtf8IfChanged(outPath, markdown)
-    : {
-      path: outPath,
-      written: Boolean(dbFirstWrite?.ok),
-    };
+  const write = { path: outPath, written: Boolean(dbFirstWrite?.ok) };
   return {
     target_root: absoluteTargetRoot,
     workspace: effectiveWorkspace,

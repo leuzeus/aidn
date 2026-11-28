@@ -22,7 +22,7 @@ import outputSchema from "../../src/core/contracts/workflow-definition/standard-
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
-const selected = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "files";
+const selected = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "dual";
 const agedPlan = process.argv.includes("--aged-plan");
 const agedHook = process.argv.includes("--aged-hook");
 if (agedHook && !process.argv.includes("--final-hook")) throw Error("CLOSE_AGED_HOOK_ARGUMENT_INVALID");
@@ -35,7 +35,7 @@ if (finalFault && !["event", "suffix", "projection", "grant_after"].includes(fin
 const terminalCheckpoint = process.argv.includes("--terminal-checkpoint");
 const agedCheckpoint = process.argv.includes("--aged-checkpoint");
 if (agedCheckpoint && !terminalCheckpoint) throw Error("CLOSE_AGED_CHECKPOINT_ARGUMENT_INVALID");
-if (terminalCheckpoint && (!process.argv.includes("--final-hook") || !["files", "dual", "db-only"].includes(selected)))
+if (terminalCheckpoint && (!process.argv.includes("--final-hook") || !["dual", "db-only"].includes(selected)))
   throw Error("TERMINAL_CHECKPOINT_FIXTURE_REQUIRES_PHYSICAL_FINAL_HOOK_CASE");
 const terminalGrantFault = process.argv.includes("--terminal-checkpoint-fault=grant_after_git");
 if (terminalGrantFault && !terminalCheckpoint) throw Error("TERMINAL_FAULT_REQUIRES_CHECKPOINT");

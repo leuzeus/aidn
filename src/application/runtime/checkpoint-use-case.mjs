@@ -90,6 +90,11 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
   if (canonicalPostgres) {
     reloadIndex.indexBackend = 'postgres';
     syncCheckIndex.indexBackend = 'postgres';
+  } else {
+    // Export format preferences never replace canonical SQL for admission or
+    // checkpoint verification. Import/export remains an explicit operation.
+    reloadIndex.indexBackend = syncCheckIndex.indexBackend = 'sqlite';
+    reloadIndex.indexFile = syncCheckIndex.indexFile = indexSqliteOutputPath;
   }
 
   const reloadStarted = Date.now();
@@ -104,8 +109,8 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
     targetRoot,
     cachePath,
     stateMode: args.stateMode,
-    indexFile: args.stateMode !== "files" ? reloadIndex.indexFile : "",
-    indexBackend: args.stateMode !== "files" ? reloadIndex.indexBackend : "",
+    indexFile: reloadIndex.indexFile,
+    indexBackend: reloadIndex.indexBackend,
     writeCache: true,
   });
   const reloadDurationMs = Date.now() - reloadStarted;

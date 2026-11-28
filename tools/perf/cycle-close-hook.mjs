@@ -79,9 +79,9 @@ function parseArgs(argv) {
   if (!["THINKING", "EXPLORING", "COMMITTING", "UNKNOWN"].includes(args.mode)) {
     throw new Error("Invalid --mode. Expected THINKING|EXPLORING|COMMITTING|UNKNOWN");
   }
-  args.stateMode = String(args.stateMode ?? "").trim().toLowerCase() || "files";
-  if (!["files", "dual", "db-only"].includes(args.stateMode)) {
-    throw new Error("Invalid AIDN_STATE_MODE. Expected files|dual|db-only");
+  args.stateMode = String(args.stateMode ?? "").trim().toLowerCase() || "dual";
+  if (!["dual", "db-only"].includes(args.stateMode)) {
+    throw new Error("Invalid AIDN_STATE_MODE. Expected dual|db-only");
   }
   if (!args.indexStore) {
     args.indexStore = resolveDefaultIndexStore(args.stateMode);

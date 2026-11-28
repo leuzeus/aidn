@@ -22,13 +22,13 @@ function main() {
     });
     const coordination = deriveGovernedRuntimeArtifactMetadata({
       workspace,
-      runtimeStateMode: "files",
+      runtimeStateMode: "dual",
       sourceOfTruthConcept: "coordination_records",
       lifecycleStatus: "refreshed",
     });
     const fallback = deriveGovernedRuntimeArtifactMetadata({
       workspace: {},
-      runtimeStateMode: "files",
+      runtimeStateMode: "dual",
       lifecycleStatus: "",
       owner: "",
       steward: "",

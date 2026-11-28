@@ -130,7 +130,7 @@ if (["--accept-record", "--accept-selected", "--inspect-selected"].includes(proc
 } else {
   const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7), selectCurrent = process.argv.includes("--select-current"),
     fault = process.argv.find(arg => arg.startsWith("--fault="))?.slice(8) ?? null;
-  if (!process.argv.includes("--contracts-only") && !["files", "dual", "db-only"].includes(mode)
+  if (!process.argv.includes("--contracts-only") && !["dual", "db-only"].includes(mode)
     || mode && process.argv.includes("--contracts-only") || selectCurrent && mode !== "files"
     || fault && (mode !== "files" || selectCurrent || !["grant_after_ref", "index_ack"].includes(fault))) throw Error("SELECTED_CONTEXT_FIXTURE_SCOPE_INVALID");
   contracts();

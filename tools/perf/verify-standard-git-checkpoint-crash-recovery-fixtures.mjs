@@ -16,13 +16,13 @@ import { verifyPublicCheckpointReceiptBoundary } from './standard-git-checkpoint
 import { verifyPublicCheckpointBeforeEffectBoundary } from './standard-git-checkpoint-before-effect-fixture-lib.mjs';
 
 const cut = process.argv.find(arg => arg.startsWith('--cut='))?.slice(6) ?? 'effect_returned';
-const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'files';
+const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'dual';
 const workerBoundMs = Number(process.argv.find(arg => arg.startsWith('--checkpoint-worker-bound-ms='))?.split('=')[1] ?? 120000);
 const publicEntryService = process.argv.includes('--public-entry-service');
 assert(!publicEntryService || mode === 'files', 'PUBLIC_GIT_ENTRY_FIXTURE_SCOPE_INVALID');
 assert(['dispatch_reserved', 'effect_returned', 'receipted', 'accepted'].includes(cut), 'GIT_RECOVERY_CUT_INVALID');
 assert(cut !== 'dispatch_reserved' || publicEntryService && mode === 'files', 'BEFORE_EFFECT_PUBLIC_FILES_REQUIRED');
-assert(['files', 'dual'].includes(mode), 'GIT_RECOVERY_MODE_INVALID');
+assert(["dual"].includes(mode), 'GIT_RECOVERY_MODE_INVALID');
 assert([120000, 300000].includes(workerBoundMs), 'GIT_CHECKPOINT_WORKER_BOUND_INVALID');
 const wiring = await verifyCommonGitCheckpointBoundaryWiring();
 console.error(JSON.stringify(wiring));

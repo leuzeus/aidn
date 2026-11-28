@@ -43,7 +43,7 @@ export async function verifyDriftPreparedPlanValidity(check) {
           source_event_id: "fixture", session_objective: "Current objective", cycle_objective: "Current objective",
           rationale: "Controlled validity fixture", prepared_at_ms: clock };
         const state = {
-          artifacts: { root, describe: () => ({ state_mode: "files" }), ownerPending: () => owner,
+          artifacts: { root, describe: () => ({ state_mode: "dual" }), ownerPending: () => owner,
             read(name) { const content = rows.get(name); return { path: name, content: content ?? null,
               sha256: content === undefined ? null : artifactContentHash(content) }; },
             async withLocalEffectOwner(_id, action) { assert.equal(owner, false); owner = true;

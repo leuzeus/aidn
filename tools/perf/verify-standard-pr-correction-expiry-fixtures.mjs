@@ -9,8 +9,8 @@ import { createCorrectionRealPortFixture, bindCorrectionRealPorts, acceptFixture
   correctionFixtureSigner as signer, fixtureOp } from './standard-pr-correction-real-port-fixture-lib.mjs';
 
 const here = fileURLToPath(import.meta.url), owned = [];
-const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'files';
-assert.ok(['files', 'dual', 'db-only'].includes(mode));
+const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'dual';
+assert.ok(['dual', 'db-only'].includes(mode));
 const child = process.argv.find(arg => arg.startsWith('--child='));
 if (child) {
   const data = signer.verify(JSON.parse(fs.readFileSync(child.slice(8), 'utf8'))), f = bindCorrectionRealPorts(data.fixture);

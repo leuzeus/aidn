@@ -33,6 +33,11 @@ function prepare({ version, artifact }) {
   const packageRoot = path.join(directory, 'node_modules/aidn-workflow');
   fs.mkdirSync(packageRoot, { recursive: true });
   for (const name of ['src', 'tools/setup', 'bin', 'scaffold', 'package', 'packs', 'docs']) copy(path.join(source, name), path.join(packageRoot, name));
+  // New local installs initialize their canonical SQLite state through the
+  // packaged importer; this minimal runtime double must include that entry.
+  fs.mkdirSync(path.join(packageRoot, 'tools/perf'), { recursive: true });
+  fs.copyFileSync(path.join(source, 'tools/perf/index-sync.mjs'), path.join(packageRoot, 'tools/perf/index-sync.mjs'));
+  copy(path.join(source, 'tools/perf/sql'), path.join(packageRoot, 'tools/perf/sql'));
   fs.writeFileSync(path.join(packageRoot, 'VERSION'), version);
   fs.writeFileSync(path.join(packageRoot, 'package.json'), JSON.stringify({ name: 'aidn-workflow', version, type: 'module' }));
   return { packageRoot, pointer: sealRuntimeGeneration({ home, directory, packageRoot, provenance: { sha256: artifact.packageSha256 } }) };
@@ -94,7 +99,7 @@ try {
   const target = path.join(root, 'projet été'); fs.mkdirSync(target);
   assert.equal(spawnSync('git', ['init', target], { windowsHide: true }).status, 0);
   const installed = await executeInstallation({ repoRoot: source, targetRoot: target, dryRun: false,
-    args: { pack: 'core', initDefaults: true, projectName: 'neutral', runtimeStateMode: 'files', artifactImportStore: 'file', sourceBranch: 'dev' } });
+    args: { pack: 'core', initDefaults: true, projectName: 'neutral', runtimeStateMode: 'dual', artifactImportStore: 'dual-sqlite', sourceBranch: 'dev' } });
   assert.equal(installed.ok, true, JSON.stringify(installed.errors));
   fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({ name: 'neutral', dependencies: { 'aidn-workflow': '0.9.1', other: '1.2.3' } }));
   fs.writeFileSync(path.join(target, 'package-lock.json'), JSON.stringify({ lockfileVersion: 3, packages: { '': { dependencies: { 'aidn-workflow': '0.9.1', other: '1.2.3' } }, 'node_modules/aidn-workflow': { version: '0.9.1' }, 'node_modules/other': { version: '1.2.3' } } }));

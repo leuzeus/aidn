@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { seedSqliteFixture } from "./test-sqlite-fixture-lib.mjs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -69,6 +70,7 @@ function main() {
     const target = path.join(tempRoot, "target");
     fs.cpSync(sourceTarget, target, { recursive: true });
 
+    seedSqliteFixture(target);
     const defaultResult = runJson(script, ["--target", target, "--json"], repoRoot, 0);
     const defaultSummaryText = fs.readFileSync(defaultResult.out_file, "utf8");
     assert(Array.isArray(defaultResult.summary.adapters), "default selection should expose adapters array");
@@ -109,6 +111,7 @@ function main() {
       "",
     ].join("\n"), "utf8");
 
+    seedSqliteFixture(target);
     const externalResult = runJson(script, ["--target", target, "--json"], repoRoot, 0);
     const externalSummaryText = fs.readFileSync(externalResult.out_file, "utf8");
 

@@ -44,18 +44,6 @@ export async function runSyncDbFirstUseCase({
   const strictByState = requiresStrictRuntime(runtimeMode.stateMode);
   const strict = args.strict || strictByState;
 
-  if (runtimeMode.stateMode === "files" && !args.forceInFiles) {
-    return {
-      ts: new Date().toISOString(),
-      ok: true,
-      skipped: true,
-      reason: "state_mode_files",
-      target_root: targetRoot,
-      state_mode: runtimeMode.stateMode,
-      strict,
-    };
-  }
-
   const payload = processAdapter.runJsonNodeScript(perfIndexSyncScript, [
     "--target",
     targetRoot,

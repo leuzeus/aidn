@@ -1171,7 +1171,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, environment = 
   const signer = createOperationJournalSigner(readSigningKey), generation = randomUUID();
   const initialExecution = readWorkflowProjectExecutionAuthority({ targetRoot }), initial = initialExecution.project;
   const options = { targetRoot, stateMode: initial.stateMode }, store = createAgenticProcessStore(options), journal = createProcessOperationJournalStore(options);
-  const projectionRequired = initial.stateMode === "dual" || initial.stateMode === "files" && initialExecution.persistence.backend === "postgres";
+  const projectionRequired = initial.stateMode === "dual";
   const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, source: humanSource,
     projectionRequired });
   const objectiveDisposition = createStandardObjectiveDisposition({ now, human,

@@ -1,6 +1,6 @@
 import { listGovernanceCoverageExceptions } from "../governance/concept-coverage.mjs";
 
-const STATE_MODES = Object.freeze(["files", "dual", "db-only"]);
+const STATE_MODES = Object.freeze(["dual", "db-only"]);
 
 function freezeDeep(value) {
   if (!value || typeof value !== "object") {
@@ -18,7 +18,8 @@ function normalizeKey(value) {
 
 function normalizeStateMode(value) {
   const normalized = String(value ?? "").trim().toLowerCase();
-  if (normalized === "files" || normalized === "dual" || normalized === "db-only") {
+  if (normalized === "files") throw Error("AIDN_FILES_STATE_MODE_RETIRED");
+  if (normalized === "dual" || normalized === "db-only") {
     return normalized;
   }
   return null;
@@ -355,7 +356,6 @@ const CONCEPT_GOVERNANCE = freezeDeep({
 function policy({
   concept,
   label,
-  files,
   dual,
   dbOnly,
   projection = "none",
@@ -373,12 +373,10 @@ function policy({
     concept: normalizedConcept,
     label,
     by_mode: {
-      files,
       dual,
       "db-only": dbOnly,
     },
     canonical_mode_by_state: {
-      files: "files",
       dual: "dual",
       "db-only": "db-only",
     },
@@ -405,7 +403,6 @@ function policy({
 const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "agent_working_memory", label: "Derived agent working memory",
-    files: "referenced checkout evidence and agent-authored checkpoint input",
     dual: "configured canonical runtime snapshot and referenced checkout evidence; fresh revision binding required",
     dbOnly: "configured canonical runtime snapshot and referenced checkout evidence; fresh revision binding required",
     projection: ".aidn/runtime/context/agents/* hook store and explicit handoff resume_capsule",
@@ -413,7 +410,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   }),
   policy({
     concept: "workflow_selection", label: "Reviewed workflow definition selection",
-    files: "docs/audit/workflows/definitions/<workflow-id>.json; configured PostgreSQL remains canonical",
     dual: "configured runtime artifact store; visible JSON is derived",
     dbOnly: "configured runtime artifact store; no automatic visible projection",
     projection: "definition JSON, deterministic Markdown/Mermaid and the derived CLI/dashboard view carrying compiler identities and hashes",
@@ -421,15 +417,13 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   }),
   policy({
     concept: "workflow_instance", label: "Durable workflow instance",
-    files: "docs/audit/workflows/instances/<id>.json; configured PostgreSQL remains canonical",
     dual: "configured runtime artifact store; visible JSON is a derived projection",
     dbOnly: "configured runtime artifact store; no automatic visible projection",
-    projection: "docs/audit/workflows/instances/<id>.json in dual or files with configured PostgreSQL; common CLI/dashboard read model is derived, never write authority",
+    projection: "docs/audit/workflows/instances/<id>.json in dual; common CLI/dashboard read model is derived, never write authority",
     notes: "ADR-0018 internal opt-in composition; SPEC remains rule authority. SQLite uses existing artifact tables; PostgreSQL uses existing contextual artifacts and reservation fence. Sequential human checkpoints require no PostgreSQL. Agent segments retain exclusive existing supervisor admission. No new shared coordination table or automatic client activation.",
   }),
   policy({
     concept: "agentic_process_instance", label: "Structured agentic process instance",
-    files: "docs/audit/workflows/process-instances/<id>.json; configured PostgreSQL remains canonical",
     dual: "configured runtime artifact store; visible JSON is a derived projection",
     dbOnly: "configured runtime artifact store; no automatic visible projection",
     projection: "workflows/process-instances/<id>.json only through the existing explicit artifact materialization",
@@ -437,7 +431,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   }),
   policy({
     concept: "process_local_effect_owner", label: "Local process operation owner",
-    files: ".aidn/runtime/standard-workflow/effects.lock",
     dual: ".aidn/runtime/standard-workflow/effects.lock",
     dbOnly: ".aidn/runtime/standard-workflow/effects.lock",
     projection: "none; machine-local collision guard only",
@@ -445,7 +438,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   }),
   policy({
     concept: "standard_workflow_model", label: "Packaged standard process model components",
-    files: "published STANDARD resources selected by package/catalogs/standard.workflow-package.json and separately pinned startup and cycle-create components",
     dual: "same versioned package assets; project instances and operation journals use their configured canonical artifact store",
     dbOnly: "same versioned package assets; no fallback from canonical project state to package fixtures",
     projection: "source descriptor retained in signed operation previews; component IR embedded in its process instance; derived evaluation envelopes reference the host observation and versioned package evaluator",
@@ -453,7 +445,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   }),
   policy({
     concept: "native_allocation_journal", label: "Authenticated native allocation journal",
-    files: "docs/audit/workflows/native-allocations/<id>.json, docs/audit/workflows/native-dispatches/<id>.json and docs/audit/workflows/native-owner-dispositions/<id>.json and docs/audit/workflows/native-allocation-reconciliations/<id>.json; configured PostgreSQL remains canonical",
     dual: "configured runtime artifact store; visible JSON is derived",
     dbOnly: "configured runtime artifact store; no automatic visible projection",
     projection: "workflows/native-allocations/<id>.json, workflows/native-dispatches/<id>.json and workflows/native-owner-dispositions/<id>.json and workflows/native-allocation-reconciliations/<id>.json only when the configured projection is required",
@@ -461,7 +452,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   }),
   policy({
     concept: "process_control_inbox", label: "Authenticated process control inbox",
-    files: "docs/audit/workflows/control-inbox/<id>.json; configured PostgreSQL remains canonical",
     dual: "configured runtime artifact store; visible JSON is derived",
     dbOnly: "configured runtime artifact store; no automatic visible projection",
     projection: "workflows/control-inbox/<id>.json only when the configured derived projection is required",
@@ -469,7 +459,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   }),
   policy({
     concept: "process_decision_inbox", label: "Authenticated human decision inbox",
-    files: "docs/audit/workflows/decision-inbox/<id>.json; configured PostgreSQL remains canonical",
     dual: "configured runtime artifact store; visible JSON is derived",
     dbOnly: "configured runtime artifact store; no automatic visible projection",
     projection: "workflows/decision-inbox/<id>.json for required dual projection; the common human decision view derives its choice and evidence from the original verified source",
@@ -477,7 +466,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   }),
   policy({
     concept: "process_operation_journal", label: "Authenticated process operation journal",
-    files: "docs/audit/workflows/operation-records/<id>.json and workflows/validation-launch-recoveries/<id>.json; configured PostgreSQL remains canonical",
     dual: "configured runtime artifact store; visible JSON is derived",
     dbOnly: "configured runtime artifact store; no automatic visible projection",
     projection: "workflows/operation-records/<id>.json for required dual projection only",
@@ -486,7 +474,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   ...["execution_run", "delegated_task", "execution_attempt"].map((concept) => policy({
     concept,
     label: { execution_run: "Bounded execution run", delegated_task: "Delegated task", execution_attempt: "Execution attempt" }[concept],
-    files: "PostgreSQL supervised execution authority; canonical runtime must share the same transaction; explicit qualified composition required",
     dual: "PostgreSQL supervised execution authority; canonical runtime must share the same transaction; explicit qualified composition required",
     dbOnly: "PostgreSQL supervised execution authority; canonical runtime must share the same transaction; explicit qualified composition required",
     projection: "read-only runtime agent-run* JSON status and action previews",
@@ -498,7 +485,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "project_activation",
     label: "Project workflow activation",
-    files: "Git common directory aidn/authorization.json; non-Git fallback .aidn/install/authorization.json",
     dual: "Git common directory aidn/authorization.json; non-Git fallback .aidn/install/authorization.json",
     dbOnly: "Git common directory aidn/authorization.json; non-Git fallback .aidn/install/authorization.json",
     projection: "compact activation in bootstrap diagnostics and runtime admission",
@@ -507,7 +493,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "standard_project_authorization",
     label: "STANDARD decision issuer authorization",
-    files: "protected STANDARD host home, administrator public key and signed authorization revisions",
     dual: "protected STANDARD host home, administrator public key and signed authorization revisions",
     dbOnly: "protected STANDARD host home, administrator public key and signed authorization revisions",
     projection: "installed revision and digest in Codex session status and install preview",
@@ -516,7 +501,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "install_assets",
     label: "Local installation ownership",
-    files: ".aidn/install/receipt.json and referenced local transactions",
     dual: ".aidn/install/receipt.json and referenced local transactions",
     dbOnly: ".aidn/install/receipt.json and referenced local transactions",
     projection: "bootstrap asset plans, installation diagnostics and config install.aidnVersion",
@@ -525,7 +509,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "workflow_rules",
     label: "Workflow rules",
-    files: "docs/audit/SPEC.md projected from package docs/SPEC.md",
     dual: "docs/audit/SPEC.md projected from package docs/SPEC.md",
     dbOnly: "protected workflow bootstrap rules, hidden runtime config and minimal re-anchor anchors; detailed visible runtime state is materialized on demand",
     projection: "WORKFLOW_SUMMARY.md and WORKFLOW-KERNEL.md are generated summaries",
@@ -534,7 +517,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "project_policy",
     label: "Project policy",
-    files: ".aidn/project/workflow.adapter.json",
     dual: ".aidn/project/workflow.adapter.json",
     dbOnly: ".aidn/project/workflow.adapter.json",
     projection: "WORKFLOW.md, CODEX_ONLINE.md and index.md",
@@ -543,7 +525,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "runtime_defaults",
     label: "Runtime defaults",
-    files: ".aidn/config.json",
     dual: ".aidn/config.json",
     dbOnly: ".aidn/config.json",
     projection: "runtime status outputs",
@@ -552,7 +533,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "workspace_identity",
     label: "Workspace identity",
-    files: "Git plus workspace resolver",
     dual: "Git plus workspace resolver and local runtime context",
     dbOnly: "Git plus workspace resolver and local runtime context",
     projection: "workspace fields in runtime JSON",
@@ -561,7 +541,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "runtime_project_context",
     label: "Runtime project context",
-    files: "workspace resolver with optional shared-runtime locator or env identity",
     dual: "runtime_scope_registry plus workspace resolver",
     dbOnly: "runtime_scope_registry plus workspace resolver",
     projection: "project_context fields in runtime JSON status outputs",
@@ -571,7 +550,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "session_state",
     label: "Session state",
-    files: "docs/audit/sessions/S*.md",
     dual: "runtime DB/index canonical state with visible Markdown projection",
     dbOnly: "runtime DB canonical state with protected minimal Markdown re-anchor pointer",
     projection: "CURRENT-STATE.md and runtime heads",
@@ -579,7 +557,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "cycle_state",
     label: "Cycle state",
-    files: "docs/audit/cycles/*/status.md",
     dual: "runtime DB/index canonical state with visible Markdown projection",
     dbOnly: "runtime DB canonical state with protected minimal Markdown re-anchor pointer",
     projection: "CURRENT-STATE.md and runtime heads",
@@ -587,7 +564,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "artifact_inventory",
     label: "Artifact inventory",
-    files: "checkout scan of docs/audit/*",
     dual: "runtime artifact store",
     dbOnly: "runtime artifact store",
     projection: "SQLite/local exports and materialized docs",
@@ -596,7 +572,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "decision",
     label: "Decision",
-    files: "docs/audit/USER-ARBITRATION.md and coordination history markdown",
     dual: "coordination_records runtime tables with visible Markdown projection",
     dbOnly: "coordination_records runtime tables with visible Markdown materialization on demand",
     projection: "USER-ARBITRATION.md and COORDINATION-SUMMARY.md",
@@ -606,17 +581,15 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "incident",
     label: "Incident",
-    files: "docs/audit/incidents/*.md for active temporary tracking",
     dual: "configured project artifact records for temporary incident tracking, with visible Markdown projection",
     dbOnly: "configured project artifact records for temporary incident tracking, with Markdown materialization on demand",
     projection: "active temporary incident tracking; concise session/snapshot trace after verified resume",
     sharedRuntime: "not_shared",
-    notes: "Workflow incidents are distinct from repair findings. Explicitly configured PostgreSQL artifact persistence remains canonical even in files mode; a visible file is never its fallback. Archived incident history is a concise session/snapshot trace, not a retained resolved temporary tracker. Source declarations add no incident executor, cleanup capability, implicit import or shared synchronization.",
+    notes: "Workflow incidents are distinct from repair findings. Explicitly configured PostgreSQL artifact persistence remains canonical; a visible file is never its fallback. Archived incident history is a concise session/snapshot trace, not a retained resolved temporary tracker. Source declarations add no incident executor, cleanup capability, implicit import or shared synchronization.",
   }),
   policy({
     concept: "coordination_summary",
     label: "Coordination summary",
-    files: "docs/audit/COORDINATION-SUMMARY.md",
     dual: "coordination_records runtime tables with visible Markdown projection",
     dbOnly: "coordination_records runtime tables with visible Markdown materialization on demand",
     projection: "COORDINATION-SUMMARY.md",
@@ -626,7 +599,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "coordination_log",
     label: "Coordination log",
-    files: "docs/audit/COORDINATION-LOG.md",
     dual: "coordination_records runtime tables with visible Markdown projection",
     dbOnly: "coordination_records runtime tables with visible Markdown materialization on demand",
     projection: "COORDINATION-LOG.md",
@@ -636,7 +608,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "user_arbitration",
     label: "User arbitration",
-    files: "docs/audit/USER-ARBITRATION.md",
     dual: "coordination_records runtime tables with visible Markdown projection",
     dbOnly: "coordination_records runtime tables with visible Markdown materialization on demand",
     projection: "USER-ARBITRATION.md",
@@ -646,7 +617,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "baseline",
     label: "Baseline",
-    files: "docs/audit/baseline/current.md and docs/audit/baseline/history.md",
     dual: "local snapshot store with visible Markdown projection",
     dbOnly: "runtime snapshot store with visible Markdown materialization on demand",
     projection: "baseline/current.md and baseline/history.md",
@@ -655,7 +625,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "snapshot",
     label: "Snapshot",
-    files: "docs/audit/snapshots/context-snapshot.md",
     dual: "local snapshot store with visible Markdown projection",
     dbOnly: "runtime snapshot store with visible Markdown materialization on demand",
     projection: "snapshots/context-snapshot.md",
@@ -664,7 +633,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "runtime_digests",
     label: "Runtime digests",
-    files: "generated Markdown digest files",
     dual: "runtime store plus generated Markdown",
     dbOnly: "runtime store plus protected minimal digest anchors and generated Markdown on demand",
     projection: "RUNTIME-STATE.md and HANDOFF-PACKET.md; aidn runtime state-reanchor repairs CURRENT-STATE.md, RUNTIME-STATE.md and HANDOFF-PACKET.md from canonical runtime evidence",
@@ -673,7 +641,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "repair_findings",
     label: "Repair findings",
-    files: "local scan or report",
     dual: "repair-layer runtime tables",
     dbOnly: "repair-layer runtime tables",
     projection: "repair reports and summaries",
@@ -681,7 +648,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "coordination_records",
     label: "Coordination records",
-    files: ".aidn/runtime/context/*",
     dual: "local runtime context or explicit shared backend",
     dbOnly: "local runtime context or explicit shared backend",
     projection: "COORDINATION-LOG.md and COORDINATION-SUMMARY.md",
@@ -690,7 +656,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "agent_roster",
     label: "Agent roster",
-    files: "docs/audit/AGENT-ROSTER.md",
     dual: "docs/audit/AGENT-ROSTER.md",
     dbOnly: "runtime/configured agent registry with visible Markdown materialization on demand",
     projection: "agent health and selection summaries",
@@ -698,7 +663,6 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
     concept: "cli_output_contracts",
     label: "CLI output contracts",
-    files: "package src/core/contracts/cli-output/*.schema.json",
     dual: "package src/core/contracts/cli-output/*.schema.json",
     dbOnly: "package src/core/contracts/cli-output/*.schema.json",
     projection: "future generated CLI contract docs",

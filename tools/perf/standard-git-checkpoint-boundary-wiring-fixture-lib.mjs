@@ -13,7 +13,7 @@ import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
 // the first real read-only operation of the published common model. It proves
 // the interruption adapter reaches the real port, not Git crash recovery.
 export async function verifyCommonGitCheckpointBoundaryWiring() {
-  const owned = [], root = createFreshStandardWorkflowFixture('files', owned);
+  const owned = [], root = createFreshStandardWorkflowFixture('dual', owned);
   const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aidn-git-boundary-wiring-'));
   const dirs = Object.fromEntries(['control', 'review', 'home'].map(name => {
     const directory = path.join(base, name); fs.mkdirSync(directory); return [name, directory];

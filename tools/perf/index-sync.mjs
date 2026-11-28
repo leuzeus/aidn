@@ -24,7 +24,7 @@ function parseArgs(argv) {
     target: ".",
     output: ".aidn/runtime/index/workflow-index.json",
     store: envStore || "",
-    stateMode: envStateMode || "files",
+    stateMode: envStateMode || "dual",
     storeExplicit: false,
     sqlOutput: ".aidn/runtime/index/workflow-index.sql",
     sqliteOutput: ".aidn/runtime/index/workflow-index.sqlite",
@@ -90,9 +90,9 @@ function parseArgs(argv) {
   if (!args.output) {
     throw new Error("Missing value for --output");
   }
-  args.stateMode = String(args.stateMode ?? "").trim().toLowerCase() || "files";
-  if (!["files", "dual", "db-only"].includes(args.stateMode)) {
-    throw new Error("Invalid AIDN_STATE_MODE. Expected files|dual|db-only");
+  args.stateMode = String(args.stateMode ?? "").trim().toLowerCase() || "dual";
+  if (!["dual", "db-only"].includes(args.stateMode)) {
+    throw new Error("Invalid AIDN_STATE_MODE. Expected dual|db-only");
   }
   if (!args.store) {
     args.store = resolveDefaultIndexStore(args.stateMode);

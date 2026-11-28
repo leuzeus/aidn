@@ -67,7 +67,7 @@ function checkOne(root, relativePath, patterns) {
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
-    const stateModeLine = "state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).";
+    const stateModeLine = "state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`dual|db-only`).";
     const mandatoryDbLine = "in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).";
     const contextInjectionLine = "read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.";
     const wrap = (skill, mode) => `npx aidn codex run-json-hook --skill ${skill} --mode ${mode} --target . --json`;

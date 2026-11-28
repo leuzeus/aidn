@@ -20,7 +20,7 @@ import { evaluateCurrentStateConsistency } from "./verify-current-state-consiste
 // The canonical plan is fixture arrangement, never historical Native work.
 // The host loads the delivered model; this case does not alter its graph.
 export async function verifyPublishedExistingOpenWork(check, { mixedFixture, selectedMode }) {
-  for (const mode of selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) await check(`standard existing open work ${mode}: delivered root executes two owned current-instance tasks through verification`, async () => {
+  for (const mode of selectedMode ? [selectedMode] : ["dual", "db-only"]) await check(`standard existing open work ${mode}: delivered root executes two owned current-instance tasks through verification`, async () => {
     let root, diagnostics = 0, initialAudits = 0, work = 0;
     const f = mixedFixture(mode, { standardModel: true, planning: true, readiness: true, work: true, validation: true,
       taskProgress: true, taskFinalValue: 3, hostTrace: true, async answer({ params }) {

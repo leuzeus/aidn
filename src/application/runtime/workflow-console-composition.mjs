@@ -15,17 +15,21 @@ import { createAgenticProcessStore } from "../../adapters/runtime/agentic-proces
 import { resolveWorkflowEngine } from "../../core/workflow/workflow-engine-policy.mjs";
 import { agenticProcessPersistence } from "./agentic-process-persistence.mjs";
 import { runProjectWorkflow } from "./workflow-run-service.mjs";
+import { readActivation } from '../install/project-activation-service.mjs';
 
 export function createProjectWorkflowConsole({ targetRoot }) {
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
   // Resolve mode/backend on every request, never retain an old store across a
   // dashboard lifetime or silently fall back after a configured backend fails.
   function readRecords({ instanceId, workflowId, engine }) {
-    const stateMode = resolveConfigStateMode(readAidnProjectConfig(root).data) ?? "files";
+    const stateMode = resolveConfigStateMode(readAidnProjectConfig(root).data) ?? "dual";
     const persistence = resolveEffectiveRuntimePersistence({ targetRoot: root });
-    if (stateMode !== "files" && persistence.backend === "sqlite" && !fs.existsSync(resolveRuntimeSqliteFile({ targetRoot: root }))) throw new Error("WORKFLOW_CONSOLE_CANONICAL_STORE_UNAVAILABLE");
     const options = { targetRoot: root, stateMode }, found = { instances: [], selections: [], truncated: false,
       defaultEngine: resolveWorkflowEngine({ config: readAidnProjectConfig(root).data }) };
+    // No configured state exists on an uninstalled target. Preserve its
+    // admission preview without inventing a store or falling back to files.
+    if (!readActivation({ targetRoot: root }).active && !fs.existsSync(path.join(root, '.aidn/config.json'))) return found;
+    if (persistence.backend === "sqlite" && !fs.existsSync(resolveRuntimeSqliteFile({ targetRoot: root }))) throw new Error("WORKFLOW_CONSOLE_CANONICAL_STORE_UNAVAILABLE");
     try { found.agenticScopeId = shadowHash({ project: readWorkflowProjectAuthority({ targetRoot: root }).scope,
       persistence: agenticProcessPersistence({ targetRoot: root }).binding_sha256 }); } catch (cause) { found.agenticAdmissionError = workflowConsoleCode(cause); }
     const exact = (id, type) => {
@@ -39,7 +43,7 @@ export function createProjectWorkflowConsole({ targetRoot }) {
       if (workflowId) exact(workflowId, "selections");
       return found;
     }
-    if (stateMode !== "files" || persistence.backend === "postgres") {
+    {
       const store = createProjectArtifactStore({ targetRoot: root, readOnly: true });
       try {
         const rows = store.listArtifacts(10000); found.truncated = rows.length >= 10000;
@@ -53,12 +57,6 @@ export function createProjectWorkflowConsole({ targetRoot }) {
           found[match[1] !== "definitions" ? "instances" : "selections"].push(value);
         }
       } finally { store.close(); }
-    } else for (const folder of ["instances", "process-instances", "definitions"]) {
-      const location = agentRunPhysicalPath(path.join(root, "docs/audit/workflows", folder), { missing: true });
-      if (!fs.existsSync(location)) continue;
-      const names = fs.readdirSync(location).filter(name => name.endsWith(".json")).sort();
-      found.truncated ||= names.length > 256;
-      for (const name of names.slice(0, 256)) exact(name.slice(0, -5), folder === "definitions" ? "selections" : folder);
     }
     for (const type of ["instances", "selections"]) found[type].sort((a, b) => (a.instance_id ?? a.workflow_id).localeCompare(b.instance_id ?? b.workflow_id, "en"));
     return found;

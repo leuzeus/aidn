@@ -33,7 +33,7 @@ function fixture() {
   git("config", "user.email", "fixture@example.invalid");
   git("config", "commit.gpgSign", "false");
   git("config", "core.autocrlf", "false");
-  write(".aidn/config.json", JSON.stringify({ runtime: { stateMode: "files" } }));
+  write(".aidn/config.json", JSON.stringify({ runtime: { stateMode: "dual" } }));
   write(".gitignore", ".aidn/runtime/\n/docs/audit/" + LOCAL_ARTIFACT_FENCE_PATH + "\n");
   write("docs/audit/CURRENT-STATE.md", "# Continuity\n");
   write("unrelated.txt", "owned elsewhere\n");

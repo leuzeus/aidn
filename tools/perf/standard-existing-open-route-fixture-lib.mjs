@@ -18,7 +18,7 @@ import { evaluateCurrentStateConsistency } from "./verify-current-state-consiste
 // The preimage is fixture data through real ports/CAS, not historical Native
 // planning or completed work. The process executes the delivered root itself.
 export async function verifyPublishedExistingOpen(check, { mixedFixture, selectedMode, complete = false }) {
-  for (const mode of selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) await check(`standard existing ${complete ? "complete" : "open"} ${mode}: published entry preserves canonical planning and reaches its actual current phase`, async () => {
+  for (const mode of selectedMode ? [selectedMode] : ["dual", "db-only"]) await check(`standard existing ${complete ? "complete" : "open"} ${mode}: published entry preserves canonical planning and reaches its actual current phase`, async () => {
     let initialAudits = 0;
     const f = mixedFixture(mode, { standardModel: true, planning: true, hostTrace: true, ...(complete ? { validation: true } : {}), async answer({ params }) {
       try {

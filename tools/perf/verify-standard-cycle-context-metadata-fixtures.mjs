@@ -3,8 +3,8 @@ import { execFileSync } from 'node:child_process';
 import { createPrCorrectionReopenFixture } from './standard-pr-correction-fixture-lib.mjs';
 import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
 import { artifactMetadataHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
-const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'files', owned = [];
-assert.ok(['files', 'dual', 'db-only'].includes(mode));
+const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'dual', owned = [];
+assert.ok(['dual', 'db-only'].includes(mode));
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: 'pipe', windowsHide: true }).trim();
 try {
   const f = await createPrCorrectionReopenFixture(mode, owned), head = git(f.root, 'rev-parse', 'HEAD'), count = git(f.root, 'rev-list', '--count', 'HEAD');

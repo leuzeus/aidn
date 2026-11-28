@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { seedSqliteFixture } from './test-sqlite-fixture-lib.mjs';
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
@@ -69,6 +70,9 @@ function main() {
     const sourceTarget = path.resolve(process.cwd(), args.target);
     const tmpRoot = path.resolve(process.cwd(), args.tmpRoot);
     tmpTarget = copyFixtureToTmp(sourceTarget, tmpRoot);
+    seedSqliteFixture(tmpTarget);
+    const sqliteFile = path.join(tmpTarget, '.aidn/runtime/index/workflow-index.sqlite');
+    const canonicalBefore = fs.readFileSync(sqliteFile);
 
     const dual = runJson("tools/perf/checkpoint.mjs", [
       "--target",
@@ -93,13 +97,14 @@ function main() {
 
     const checks = {
       dual_enabled: dual?.index_sync_check?.enabled === true,
-      dual_backend_json: String(dual?.index_sync_check?.index_backend ?? "") === "json",
-      dual_index_file_json: String(dual?.index_sync_check?.index_file ?? "").toLowerCase().endsWith("workflow-index.json"),
+      dual_backend_sqlite: String(dual?.index_sync_check?.index_backend ?? "") === "sqlite",
+      dual_index_file_sqlite: String(dual?.index_sync_check?.index_file ?? "").toLowerCase().endsWith("workflow-index.sqlite"),
       dual_output_exists: fs.existsSync(String(dual?.index_sync_check?.output_file ?? "")),
       sqlite_enabled: sqlite?.index_sync_check?.enabled === true,
       sqlite_backend_sqlite: String(sqlite?.index_sync_check?.index_backend ?? "") === "sqlite",
       sqlite_index_file_sqlite: String(sqlite?.index_sync_check?.index_file ?? "").toLowerCase().endsWith("workflow-index.sqlite"),
       sqlite_output_exists: fs.existsSync(String(sqlite?.index_sync_check?.output_file ?? "")),
+      canonical_unchanged: fs.readFileSync(sqliteFile).equals(canonicalBefore),
     };
 
     const pass = Object.values(checks).every((value) => value === true);

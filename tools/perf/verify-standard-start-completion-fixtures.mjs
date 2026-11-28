@@ -15,9 +15,9 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 export async function verifyStandardStartCompletion({ selectedMode } = {}) {
   const owned = [], temporary = fs.realpathSync(os.tmpdir()), runtimeDir = fileURLToPath(new URL("./", import.meta.url)); let checks = 0, success = false;
   const pass = text => { checks++; console.log("PASS " + text); };
-  if (selectedMode && !["files", "dual", "db-only"].includes(selectedMode)) throw Error("FIXTURE_MODE_INVALID");
+  if (selectedMode && !["dual", "db-only"].includes(selectedMode)) throw Error("FIXTURE_MODE_INVALID");
   try {
-    for (const mode of selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) {
+    for (const mode of selectedMode ? [selectedMode] : ["dual", "db-only"]) {
       const targetRoot = createFreshStandardWorkflowFixture(mode, owned), ops = createStandardWorkflowOperations({ targetRoot }), artifacts = createStandardWorkflowArtifacts({ targetRoot });
       const git = (...args) => execFileSync("git", ["-C", targetRoot, "-c", `core.hooksPath=${process.platform === "win32" ? "NUL" : "/dev/null"}`, ...args], { encoding: "utf8", windowsHide: true }).trim();
       const checkpoint = message => { git("add", "."); git("commit", "--allow-empty", "-m", message); };

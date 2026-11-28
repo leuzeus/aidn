@@ -15,7 +15,7 @@ Rule/State boundary:
 ## Summary
 
 updated_at: 2026-03-09T11:10:22.800Z
-runtime_state_mode: files
+runtime_state_mode: dual
 repair_layer_status: unknown
 repair_layer_advice: unknown
 repair_routing_hint: reanchor

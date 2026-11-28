@@ -19,7 +19,7 @@ import { captureCyclePreworkActorFixture, configureCanonicalPreworkFixture, exec
 // Canonical planning here is an explicit fixture preimage written through real
 // ports/CAS. It is not evidence that a prior Native planner or task ran.
 export async function verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePlanProposal, selectedMode, readiness = false, selection = false }) {
-  for (const mode of selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) await check(`cycle plan ${selection ? "selection" : readiness ? "readiness" : "adoption"} ${mode}: actual canonical source, guarded observation and signed cold acceptance`, async () => {
+  for (const mode of selectedMode ? [selectedMode] : ["dual", "db-only"]) await check(`cycle plan ${selection ? "selection" : readiness ? "readiness" : "adoption"} ${mode}: actual canonical source, guarded observation and signed cold acceptance`, async () => {
     const f = mixedFixture(mode, { planning: true, ...(readiness ? { answer({ params }) {
       const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
       assert.equal(observed.context.subject.kind, "canonical_plan");

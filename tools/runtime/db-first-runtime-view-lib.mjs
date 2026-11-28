@@ -224,7 +224,7 @@ function findArtifactByPath(sqlitePayload, artifactPath) {
   return findUniqueAuditArtifact(sqlitePayload, artifactPath);
 }
 
-export function resolveDbBackedMode(targetRoot, requestedStateMode = "files") {
+export function resolveDbBackedMode(targetRoot, requestedStateMode = "dual") {
   const effectiveStateMode = resolveEffectiveStateMode({
     targetRoot,
     stateMode: requestedStateMode,
@@ -237,9 +237,7 @@ export function resolveDbBackedMode(targetRoot, requestedStateMode = "files") {
 }
 
 function requiresWorkflowCanonical(targetRoot) {
-  return workflowObservationActive(targetRoot)
-    && (["dual", "db-only"].includes(resolveDbBackedMode(targetRoot).effectiveStateMode)
-      || resolveEffectiveRuntimePersistence({ targetRoot }).backend === "postgres");
+  return ["dual", "db-only"].includes(resolveDbBackedMode(targetRoot).effectiveStateMode);
 }
 
 export function resolveAuditArtifactText({
@@ -470,7 +468,7 @@ export function resolveCyclePlanArtifact({
   sqlitePayload = null,
   dbSource = "sqlite",
 } = {}) {
-  if (cycleStatusResolution?.filePath) {
+  if (!dbBacked && cycleStatusResolution?.filePath) {
     const filePath = path.join(path.dirname(cycleStatusResolution.filePath), "plan.md");
     if (exists(filePath)) {
       return {

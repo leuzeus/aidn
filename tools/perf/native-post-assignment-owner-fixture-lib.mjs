@@ -65,7 +65,7 @@ async function produce(mode, home, scenario, held = false) {
 // A new controlled allocation for the separately qualified accounting producer.
 // Earlier qualification arenas are never reused by this creator.
 export async function createRetiredNativePostAssignmentOwnerFixture(mode) {
-  assert.ok(['files', 'dual', 'db-only'].includes(mode));
+  assert.ok(['dual', 'db-only'].includes(mode));
   const home = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aidn-post-reconciliation-owner-'));
   const produced = await produce(mode, home, 'confirmed_return_failure');
   createNativeOwnerDispositionFixtureAuthority(produced.data).ensureKey();
@@ -78,7 +78,7 @@ export async function createRetiredNativePostAssignmentOwnerFixture(mode) {
 }
 
 export async function verifyNativePostAssignmentOwnerFixture(mode) {
-  assert.ok(['files', 'dual', 'db-only'].includes(mode));
+  assert.ok(['dual', 'db-only'].includes(mode));
   const home = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aidn-post-owner-authority-'));
   const produced = await produce(mode, home, 'confirmed_return_failure', true), data = produced.data;
   assert.equal(data.proof_class, 'controlled-Native-RPC-and-supervisor-common-host-only');

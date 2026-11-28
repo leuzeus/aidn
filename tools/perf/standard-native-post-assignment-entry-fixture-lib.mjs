@@ -89,7 +89,7 @@ async function retainPostAssignmentFailure({ data, configuration, key, modelSour
     generation: 1, expectedSha256: current.instance_sha256 } };
 }
 export async function verifyPublicPostAssignmentNativeEntryFixture(mode) {
-  assert.ok(['files', 'dual', 'db-only'].includes(mode));
+  assert.ok(['dual', 'db-only'].includes(mode));
   const proof = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aidn-public-post-native-proof-')), file = path.join(proof, 'fixture.json');
   worker(['produce', mode, file]); const data = read(file), a = artifacts(data), original = canonical(data);
   const nativeRows = a.observeInventory().rows.filter(row => row.path.startsWith('workflows/native-allocations/'));

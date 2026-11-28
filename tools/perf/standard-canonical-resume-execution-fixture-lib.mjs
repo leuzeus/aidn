@@ -64,7 +64,7 @@ async function verifyIntegrationOnlyRefusal({ phase, host, f, data, execute, ver
 // controlled fixture actors. Imported task completion is canonical DATA only.
 export async function verifyCanonicalResumeExecution(check, { mixedFixture, selectedMode, phase = "IMPLEMENTING", intent = "import_now" }) {
   if (!selectedMode) return;
-  if (!["files", "dual", "db-only"].includes(selectedMode) || !["OPEN", "IMPLEMENTING", "VERIFYING"].includes(phase)
+  if (!["dual", "db-only"].includes(selectedMode) || !["OPEN", "IMPLEMENTING", "VERIFYING"].includes(phase)
     || !["import_now", "integrate_now"].includes(intent)) throw Error("CANONICAL_RESUME_EXECUTION_FIXTURE_SCOPE_INVALID");
   await check(`canonical resume native ${selectedMode}: ${phase} ${intent}`, async () => {
     let f, verifier, humanSourceAuthority, now = Date.now(), writes = 0, workContext = null, auditContext = null;

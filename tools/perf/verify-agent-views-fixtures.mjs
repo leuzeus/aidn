@@ -235,7 +235,7 @@ try {
   const hook = extra => {
     // The wrapped command is synthetic fixture data, not native execution proof.
     const code = "console.log(JSON.stringify({ok:false,decision:'deny',result:'error',reason_codes:['fixture-refusal'],blocking_reasons:['preserve refusal']}));process.exit(7)";
-    return command(["codex", "run-json-hook", "--skill", "context-reload", "--mode", "THINKING", "--state-mode", "files", "--no-db-sync", "--no-force-json", "--fail-on-error", "--json", ...extra,
+    return command(["codex", "run-json-hook", "--skill", "context-reload", "--mode", "THINKING", "--state-mode", "dual", "--no-db-sync", "--no-force-json", "--fail-on-error", "--json", ...extra,
       "--", process.execPath, "-e", code]);
   };
   const hookFull = hook([]), hookAgent = hook(["--view", "agent"]), hookReceipt = hook(["--view", "agent", "--write"]);

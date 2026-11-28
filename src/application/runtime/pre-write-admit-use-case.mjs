@@ -368,7 +368,7 @@ const SOURCE_OF_TRUTH_ADMISSION_CONCEPTS = Object.freeze([
 
 export function knownPreWriteStateMode(value) {
   const normalized = String(value ?? "").trim().toLowerCase();
-  return normalized === "files" || normalized === "dual" || normalized === "db-only";
+  return normalized === "dual" || normalized === "db-only";
 }
 
 export function sourceOfTruthPoliciesForPreWriteAdmission(stateMode) {

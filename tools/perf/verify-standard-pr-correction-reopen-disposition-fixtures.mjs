@@ -42,8 +42,8 @@ function open(config, boundary = null, entryDispositionSource = null) {
     nodes: [{ id: "start", kind: "sequence", participant_ref: "project", children: ["reopen", "checkpoint"] },
       { id: "reopen", kind: "operation", participant_ref: "project", binding_ref: opBinding },
       { id: "checkpoint", kind: "operation", participant_ref: "project", binding_ref: checkpointBinding }] };
-  const instances = createAgenticProcessStore({ targetRoot: root, stateMode: "files" });
-  const journal = createProcessOperationJournalStore({ targetRoot: root, stateMode: "files" });
+  const instances = createAgenticProcessStore({ targetRoot: root, stateMode: "dual" });
+  const journal = createProcessOperationJournalStore({ targetRoot: root, stateMode: "dual" });
   const readInstance = id => instances.read(id).record;
   const readOperation = id => { const row = journal.read(id); signer.verify(row.record); signer.verify(row.record.preview); return row; };
   const persist = (row, expected) => {
@@ -87,7 +87,7 @@ function open(config, boundary = null, entryDispositionSource = null) {
     fs.writeFileSync(config.stopFile, JSON.stringify({ phase, fence, pid: process.pid }), { flag: "wx", flush: true });
     process.exit(42);
   };
-  const disposition = createStandardOperationDisposition({ targetRoot: root, stateMode: "files", signer, artifacts, readOperation, readInstance,
+  const disposition = createStandardOperationDisposition({ targetRoot: root, stateMode: "dual", signer, artifacts, readOperation, readInstance,
     readAuthority, readContext, inventory, appendResult, makeReceipt, onLocalResource: stop,
     async onBoundary(phase) { if (phase === "disposition_recorded" && faults.revokeAfterRecord) faults.grant = "operation_disposition"; stop(phase); },
     async confirmInterruptedReopen(instance, record, original, options) {

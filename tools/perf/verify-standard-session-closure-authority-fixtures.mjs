@@ -12,7 +12,7 @@ const owned = [], temporary = fs.realpathSync(os.tmpdir()), id = n => "op_" + St
 let checks = 0, completed = false;
 const pass = name => { checks++; console.log("PASS " + name); };
 try {
-  const root = createFreshStandardWorkflowFixture("files", owned), ops = createStandardWorkflowOperations({ targetRoot: root }), artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
+  const root = createFreshStandardWorkflowFixture("dual", owned), ops = createStandardWorkflowOperations({ targetRoot: root }), artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
   let plan = await ops.prepareSession({ session_id: "S001", session_branch: "S001-close-proof", objective: "Verify physical R05 closure proofs" });
   assert.equal((await ops.initializeSession(plan, { write: true, expectPlan: plan.plan_sha256 })).outcome, "completed");
   plan = await ops.prepareMode({ session_id: "S001", mode: "COMMITTING" });

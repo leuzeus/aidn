@@ -116,7 +116,7 @@ if (process.argv[2] === "--deliver") {
   const state = await open(root, privateRoot, eventOnly === "yes", true, parameters === "yes").deliverControl(id, { write: true });
   console.log(JSON.stringify({ instance_sha256: state.record.instance_sha256 }));
 } else try {
-  for (const mode of process.argv[2] === "--safety-only" ? [] : process.argv[2] === "--files-only" ? ["files"] : ["files", "dual", "db-only"]) {
+  for (const mode of process.argv[2] === "--safety-only" ? [] : process.argv[2] === "--files-only" ? ["files"] : ["dual", "db-only"]) {
     const root = createStandardWorkflowFixture(mode, owned), privateRoot = fs.mkdtempSync(path.join(temporary, "aidn-standard-control-")); owned.push(privateRoot);
     fs.writeFileSync(path.join(privateRoot, "host.key"), randomBytes(32));
     const business = createStandardWorkflowArtifacts({ targetRoot: root }); let host = open(root, privateRoot);

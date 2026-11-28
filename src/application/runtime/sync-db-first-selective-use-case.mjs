@@ -313,18 +313,6 @@ export async function runSyncDbFirstSelectiveUseCase({
   const strict = args.strict || strictByState;
   const runtimePersistenceBackend = resolveRuntimePersistenceBackend(targetRoot);
 
-  if (stateMode === "files" && !args.forceInFiles) {
-    return {
-      ts: new Date().toISOString(),
-      ok: true,
-      skipped: true,
-      reason: "state_mode_files",
-      target_root: targetRoot,
-      state_mode: stateMode,
-      strict,
-    };
-  }
-
   const auditRoot = String(args.auditRoot).replace(/\\/g, "/");
   let changedPaths = [];
   let requiresFullSync = false;
@@ -489,7 +477,7 @@ export async function runSyncDbFirstSelectiveUseCase({
 
   let repairLayerResult = null;
   let repairLayerTriageResult = null;
-  if (fallback == null && stateMode !== "files") {
+  if (fallback == null) {
     repairLayerResult = await runRepairLayerUseCase({
       args: {
         indexFile: args.sqliteFile,

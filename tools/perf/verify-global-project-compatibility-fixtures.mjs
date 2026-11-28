@@ -20,7 +20,7 @@ function snapshot() {
 try {
   fs.mkdirSync(root);
   const install = await executeInstallation({ repoRoot, targetRoot: root, dryRun: false,
-    args: { pack: 'core', initDefaults: true, projectName: 'neutral', runtimeStateMode: 'files', artifactImportStore: 'file', sourceBranch: 'dev' } });
+    args: { pack: 'core', initDefaults: true, projectName: 'neutral', runtimeStateMode: 'dual', artifactImportStore: 'dual-sqlite', sourceBranch: 'dev' } });
   assert.equal(install.ok, true, JSON.stringify(install.errors));
   rememberProject(root, home);
   let before = snapshot();

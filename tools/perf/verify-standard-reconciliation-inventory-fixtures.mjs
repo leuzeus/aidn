@@ -442,7 +442,7 @@ export async function verifyStandardReconciliationInventory(mode, pass, { proces
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const mode = process.argv[2];
-  if (!["files", "dual", "db-only"].includes(mode)) throw Error("INVENTORY_FIXTURE_MODE_REQUIRED");
+  if (!["dual", "db-only"].includes(mode)) throw Error("INVENTORY_FIXTURE_MODE_REQUIRED");
   let checks = 0;
   await verifyStandardReconciliationInventory(mode, name => { checks++; console.log("PASS " + name); },
     { processOwnerObservation: process.argv.includes("--process-owner-observation") });

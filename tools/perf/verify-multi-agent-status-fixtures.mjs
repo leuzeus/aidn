@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { seedSqliteFixture } from "./test-sqlite-fixture-lib.mjs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -41,6 +42,7 @@ function main() {
     const target = path.join(tempRoot, "target");
     fs.cpSync(sourceTarget, target, { recursive: true });
 
+    seedSqliteFixture(target);
     const result = runJson(script, ["--target", target, "--json"], repoRoot, 0);
     const text = fs.readFileSync(result.output_file, "utf8");
 
@@ -83,6 +85,7 @@ function main() {
       "roles: auditor",
       "",
     ].join("\n"), "utf8");
+    seedSqliteFixture(target);
     const invalidResult = runJson(script, ["--target", target, "--json"], repoRoot, 0);
     const invalidText = fs.readFileSync(invalidResult.output_file, "utf8");
 
@@ -153,6 +156,7 @@ function main() {
       "1. investigate audit findings before implementation",
       "",
     ].join("\n"), "utf8");
+    seedSqliteFixture(target);
     const environmentResult = runJson(script, ["--target", target, "--json"], repoRoot, 0);
     const environmentText = fs.readFileSync(environmentResult.output_file, "utf8");
 
@@ -179,6 +183,7 @@ function main() {
 
     const integrationTarget = path.join(tempRoot, "integration-target");
     fs.cpSync(path.join(integrationFixturesRoot, "integration-cycle"), integrationTarget, { recursive: true });
+    seedSqliteFixture(integrationTarget);
     const integrationResult = runJson(script, ["--target", integrationTarget, "--json"], repoRoot, 0);
     const integrationText = fs.readFileSync(integrationResult.output_file, "utf8");
     assert(integrationResult.integration_risk.recommended_strategy === "integration_cycle", "multi-agent status should expose the integration strategy");

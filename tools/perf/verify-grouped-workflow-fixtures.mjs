@@ -35,7 +35,7 @@ try {
     ["add", "docs", ".aidn/config.json"], ["commit", "-m", "fixture"]]) assert.equal(run("git", args).status, 0);
   prepareActivationFixture(target, repo);
   const packet = fs.readFileSync(packetFile); fs.unlinkSync(packetFile);
-  for (const mode of ["files", "dual", "db-only"]) {
+  for (const mode of ["dual", "db-only"]) {
     fs.writeFileSync(configFile, JSON.stringify({ version: 1, runtime: { stateMode: mode, indexStoreMode: "dual-sqlite" }, workflow: { sourceBranch: "dev" } }));
     for (const name of ["CURRENT-STATE.md", "RUNTIME-STATE.md"]) {
       const file = path.join(target, "docs/audit", name);
@@ -86,7 +86,7 @@ try {
     assert.equal(fs.readFileSync(hydrationFile, "utf8"), cached);
     checks.push(`${mode}: compact profile preserves common revision, every admission and complete context unit`);
   }
-  for (const mode of ["files", "dual"]) {
+  for (const mode of ["dual"]) {
     fs.writeFileSync(configFile, JSON.stringify({ version: 1, runtime: { stateMode: mode, indexStoreMode: "dual-sqlite" } }));
     for (const name of ["CURRENT-STATE.md", "RUNTIME-STATE.md"]) {
       const file = path.join(target, "docs/audit", name);

@@ -94,13 +94,14 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log('  --view agent returns metadata and SHA256 without duplicate document bodies; default JSON remains complete.');
-  console.log('  Replacements require canonical SQLite (dual/db-only) or PostgreSQL; files use complete sources.');
+  console.log('  Replacements require canonical SQLite (dual/db-only) or PostgreSQL; legacy FILES must migrate first.');
   console.log('  --replace \'[{"old":"unique exact text","new":"replacement"}]\' --expect-sha256 <canonical-content-sha256> uses atomic compare-and-swap; no content or identity flags.');
   console.log("  npx aidn runtime db-first-artifact --target . --path snapshots/context-snapshot.md --source-file docs/audit/snapshots/context-snapshot.md --kind snapshot --family normative --json");
   console.log("  npx aidn runtime db-first-artifact --target . --path sessions/S001.md --content \"# Session\" --kind session --family normative --materialize --json");
 }
 
 export function resolveStateMode(targetRoot, requested) {
+  const configured = resolveConfigStateMode(readAidnProjectConfig(targetRoot).data);
   const requestedMode = normalizeStateMode(requested);
   if (requestedMode) {
     return requestedMode;
@@ -109,8 +110,7 @@ export function resolveStateMode(targetRoot, requested) {
   if (envMode) {
     return envMode;
   }
-  const config = readAidnProjectConfig(targetRoot);
-  return resolveConfigStateMode(config.data) ?? "files";
+  return configured ?? "dual";
 }
 
 export function inferKind(relPath, explicitKind) {
@@ -174,7 +174,7 @@ export function shouldMaterialize(stateMode, materializeFlag) {
   if (materializeFlag === "false") {
     return false;
   }
-  return stateMode === "dual" || stateMode === "files";
+  return stateMode === "dual";
 }
 
 export function loadContent(targetRoot, sourceFile, inlineContent) {
@@ -205,7 +205,7 @@ export function upsertDbFirstArtifact(options = {}) {
       summary: `db-first artifact refreshed for ${String(out?.artifact?.path ?? "unknown").trim() || "unknown"}`,
       recommended_action: out?.materialized === true
         ? "review the materialized audit artifact and sqlite payload before relying on the updated db-first state"
-        : "materialize the artifact if files or dual mode projections must be refreshed immediately",
+        : "materialize the artifact if dual mode projections must be refreshed immediately",
     },
   };
 }

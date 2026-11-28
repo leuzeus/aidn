@@ -247,9 +247,8 @@ async function readArtifactQuerySources({targetRoot,params,profile=ACTIVE_STATE_
   try{config=validateAidnProjectConfig(readAidnProjectConfig(targetRoot).data);}catch{fail('ARTIFACT_QUERY_CONFIG_INVALID');}
   const persistence=resolveConfigRuntimePersistence(config);
   const scope=resolveRuntimeProjectContext({targetRoot});
-  const database=persistence?.backend==='postgres'||(resolveConfigStateMode(config)??'files')!=='files';
-  let backend='files',payload,observed=[],directories=[];
-  if(database){if(persistence?.backend!=='postgres')physicalPath(targetRoot,'.aidn/runtime/index/workflow-index.sqlite');
+  let backend,payload;
+  {if(persistence?.backend!=='postgres')physicalPath(targetRoot,'.aidn/runtime/index/workflow-index.sqlite');
     const snapshot=await snapshotReader({targetRoot,backend:persistence?.backend??'sqlite',
     indexFile:path.resolve(targetRoot,'.aidn/runtime/index/workflow-index.sqlite'),connectionRef:persistence?.connectionRef??'',configData:config});
     if(snapshot.backend!==(persistence?.backend??'sqlite'))fail('ARTIFACT_QUERY_CANONICAL_UNAVAILABLE');
@@ -261,29 +260,10 @@ async function readArtifactQuerySources({targetRoot,params,profile=ACTIVE_STATE_
       if(typeof payload?.target_root!=='string'||path.resolve(payload.target_root)!==path.resolve(targetRoot))fail('ARTIFACT_QUERY_SCOPE_MISMATCH');
       payload.project_context=scope;
     }
-  }else{
-    const audit='docs/audit', rows=[];
-    const take=relative=>{const read=readPhysical(targetRoot,`${audit}/${relative}`);if(!read)return null;observed.push(read);
-      const row={path:relative,content:read.bytes.toString('utf8'),content_format:'utf8',sha256:read.fingerprint};rows.push(row);return row;};
-    const current=take('CURRENT-STATE.md');take('RUNTIME-STATE.md');
-    if(current)for(const [key,prefix,dir,status]of [['active_session','S','sessions',false],['active_cycle','C','cycles',true]]){
-      const id=inspectStructuredField(current.content,key).scalar;if(!validId(id,prefix))continue;
-      const folder=path.join(targetRoot,audit,dir);
-      if(fs.lstatSync(folder,{throwIfNoEntry:false})?.isSymbolicLink())fail('ARTIFACT_QUERY_SYMLINK');
-      const names=fs.existsSync(folder)?fs.readdirSync(folder).sort():null;
-      directories.push({folder,names});if(!names)continue;
-      for(const name of names)if(new RegExp(status?`^${id}(?:[-_].+)?$`:`^${id}(?:[-_.].*)?\\.md$`).test(name))take(`${dir}/${name}${status?'/status.md':''}`);
-    }
-    for(const name of extraPaths)if(!rows.some(r=>r.path===name))take(name);
-    payload={project_context:scope,artifacts:rows};
   }
   if(afterRead)await afterRead();
-  for(const d of directories){if(fs.lstatSync(d.folder,{throwIfNoEntry:false})?.isSymbolicLink()
-    || !isDeepStrictEqual(fs.existsSync(d.folder)?fs.readdirSync(d.folder).sort():null,d.names))fail('ARTIFACT_QUERY_SOURCE_CHANGED');}
-  for(const read of [...observed,...(configObservation?[configObservation]:[])]){
-    if(readPhysical(targetRoot,read.relative)?.fingerprint!==read.fingerprint)fail('ARTIFACT_QUERY_SOURCE_CHANGED');
-  }
+  if(configObservation && readPhysical(targetRoot,configObservation.relative)?.fingerprint!==configObservation.fingerprint)fail('ARTIFACT_QUERY_SOURCE_CHANGED');
   if(!configObservation && readPhysical(targetRoot,'.aidn/config.json'))fail('ARTIFACT_QUERY_SOURCE_CHANGED');
   if(!isDeepStrictEqual(identity(resolveRuntimeProjectContext({targetRoot})),identity(scope)))fail('ARTIFACT_QUERY_SCOPE_CHANGED');
-  return {payload,backend,scope,stateMode:resolveConfigStateMode(config)??'files'};
+  return {payload,backend,scope,stateMode:resolveConfigStateMode(config)?? "dual"};
 }

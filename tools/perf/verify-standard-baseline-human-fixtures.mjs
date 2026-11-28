@@ -84,7 +84,7 @@ await test("review preparation authenticates scope through its capability, remai
 });
 const owned = [], temporary = fs.realpathSync(os.tmpdir());
 try {
-  for (const mode of ["files", "dual", "db-only"]) await test("signed v4 capture survives reopening the actual canonical inbox: " + mode, async () => {
+  for (const mode of ["dual", "db-only"]) await test("signed v4 capture survives reopening the actual canonical inbox: " + mode, async () => {
     const root = createStandardWorkflowFixture(mode, owned), makeInbox = () => createProcessDecisionInboxStore({ targetRoot: root, stateMode: mode });
     const f = fixture(makeInbox); f.sources.set("fixture:answer", f.claim()); const capture = await f.human().reserve(f.record, "fixture:answer");
     const output = f.human().output(f.record, capture), receipt = { receipt_id: "fixture_receipt" }; f.record.results.push({ output, receipt });

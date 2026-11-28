@@ -56,7 +56,7 @@ try {
     assert.equal(output.outcome, "completed");
     assert.equal(output.effect_status, "no_effect");
     assert.deepEqual(output.facts, { context_loaded: true });
-    const expected = await runReloadCheckUseCase({ targetRoot: target, args: { cache, stateMode: "files", stateModeExplicit: true,
+    const expected = await runReloadCheckUseCase({ targetRoot: target, args: { cache, stateMode: "dual", stateModeExplicit: true,
       indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto", writeCache: false } });
     const observed = output.observations.reload;
     assert.deepEqual(observed, { ...expected, ts: observed.ts });

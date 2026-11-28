@@ -10,7 +10,7 @@ import { createStandardSessionPrUpdatePush } from '../../src/application/runtime
 import { createStandardSessionPrReviewAuthority } from '../../src/application/runtime/standard-session-pr-review-authority.mjs';
 import { assertStandardOperationInput, assertStandardOperationOutput } from '../../src/core/workflow/standard-operation-contracts.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
-const owned = [], mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files';
+const owned = [], mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'dual';
 const agedPlan = process.argv.includes('--aged-plan');
 let planClock = null;
 const op = n => 'op_' + n.repeat(40), git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();

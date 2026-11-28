@@ -24,3 +24,5 @@ Architectural decisions for the workflow product.
 - [ADR-0024-default-agentic-workflow-engine.md](ADR-0024-default-agentic-workflow-engine.md) (implemented; default for every new workflow)
 - [ADR-0025-standard-workflow-runtime-binding.md](ADR-0025-standard-workflow-runtime-binding.md) (L1 contracts; typed operations/control, actual standard adapters and resume pending)
 - [ADR-0026-explicit-native-authorization-epochs.md](ADR-0026-explicit-native-authorization-epochs.md) (internal explicit authorization epochs; genuine approval/resource closure qualification pending)
+
+- [ADR-0027-retire-files-state-authority.md](ADR-0027-retire-files-state-authority.md) (implemented; SQLite or optional PostgreSQL, explicit legacy migration)

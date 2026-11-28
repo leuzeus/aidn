@@ -230,7 +230,7 @@ async function main() {
     };
     let reservationRefused = false;
     try {
-      await runSessionPlan({ targetRoot: tempTarget, sessionId: 'S401', promote: true, dbFirst: 'false', stateMode: 'files',
+      await runSessionPlan({ targetRoot: tempTarget, sessionId: 'S401', promote: true, dbFirst: 'false', stateMode: 'dual',
         nextStep: 'must not replace the accepted projection', sharedCoordination: reservedCoordination });
     } catch (error) {
       reservationRefused = error.code === 'ARTIFACT_EXECUTION_SCOPE_RESERVED';

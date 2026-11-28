@@ -34,7 +34,7 @@ if (process.argv[2] === '--worker') {
   await new Promise(()=>{});
 } else if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){ console.log(JSON.stringify(await verifyStandardHandoffBeforeimageObservation(process.argv[2]))); }
 export async function verifyStandardHandoffBeforeimageObservation(mode){
-assert(['files','dual','db-only'].includes(mode));
+assert(["dual","db-only"].includes(mode));
 const owned=[],root=createFreshStandardWorkflowFixture(mode,owned,{absentOptionalDocuments:['HANDOFF-PACKET.md']}),artifacts=createStandardWorkflowArtifacts({targetRoot:root}),key=Buffer.alloc(32,149),signer=createOperationJournalSigner(()=>key);
 const control=fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()),'aidn-handoff-operation-control-'));owned.push(control);
 let clock=Date.now(),allowed=true,sourceAllowed=true,sourceReads=0;const sourceExpiry=clock+3600000;

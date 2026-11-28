@@ -6,6 +6,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
+import { seedSqliteFixture } from './test-sqlite-fixture-lib.mjs';
 
 function assert(condition, message) {
   if (!condition) {
@@ -23,7 +24,7 @@ function runAidn(repoRoot, args, env = {}, expectStatus = 0) {
     maxBuffer: 10 * 1024 * 1024,
   });
   if ((result.status ?? 1) !== expectStatus) {
-    throw new Error(`Command failed (aidn ${args.join(" ")}): ${String(result.stderr ?? result.stdout ?? "").trim()}`);
+    throw new Error(`Command failed (aidn ${args.join(" ")}): ${String(result.stderr ?? "").trim()}\n${String(result.stdout ?? "").trim()}`);
   }
   return JSON.parse(String(result.stdout ?? "{}"));
 }
@@ -201,6 +202,9 @@ function main() {
     for (const targetRoot of [malformedTarget, invalidPathTarget, mismatchTarget, disabledPostgresTarget]) {
       fs.cpSync(readyTarget, targetRoot, { recursive: true, filter: (source) => isActivationFixtureSource(readyTarget, source) });
       prepareActivationFixture(targetRoot, repoRoot);
+      const runtimeFile = path.join(targetRoot, 'docs/audit/RUNTIME-STATE.md');
+      fs.writeFileSync(runtimeFile, fs.readFileSync(runtimeFile, 'utf8').replace('repair_layer_status: unknown', 'repair_layer_status: clean'));
+      seedSqliteFixture(targetRoot);
     }
     fs.mkdirSync(appAlphaRoot, { recursive: true });
     fs.mkdirSync(appBetaRoot, { recursive: true });
@@ -323,8 +327,10 @@ function main() {
       "requirements-delta",
       "--strict",
       "--json",
-    ]);
-    assert(repairedInvalidPathAdmission.ok === true, "pre-write admission should pass after trusted shared-root repair");
+    ], {}, 1);
+    assert(repairedInvalidPathAdmission.ok === false, "changing the shared project scope must not adopt the old SQLite state implicitly");
+    assert(repairedInvalidPathAdmission.blocking_reasons.includes('canonical runtime backend is unavailable for pre-write admission'), "a new scope needs explicit canonical state adoption");
+    assert(repairedInvalidPathAdmission.shared_runtime_validation.status === 'clear', "locator repair remains valid independently of canonical state availability");
     assert(repairedInvalidPathAdmission.workspace.shared_runtime_mode === "shared-runtime", "repaired shared runtime should remain enabled");
 
     const mismatchBefore = runAidn(repoRoot, [
@@ -381,8 +387,9 @@ function main() {
       "--json",
     ], {
       AIDN_WORKSPACE_ID: "workspace-override",
-    });
-    assert(mismatchAfter.ok === true, "workspace mismatch should stop blocking pre-write admission after re-anchor");
+    }, 1);
+    assert(mismatchAfter.ok === false, "workspace repair must not silently import old state into its new canonical scope");
+    assert(mismatchAfter.blocking_reasons.includes('canonical runtime backend is unavailable for pre-write admission'), "new workspace scope requires explicit canonical state adoption");
     assert(mismatchAfter.shared_runtime_validation.status === "clear", "workspace mismatch repair should restore clear validation");
 
     const inspectDisabledPostgres = runAidn(repoRoot, [

@@ -123,7 +123,7 @@ At the **start of every session**, the following MUST occur in order:
     - If current branch is `session`, it MUST map to one active session file and declare integration intent
     - If mapping fails: **STOP** and remediate before proceeding
 
-5. **Runtime state gate (`files|dual|db-only`)**
+5. **Runtime state gate (`dual|db-only`)**
     - If runtime state mode is `dual` or `db-only`, performance skill hooks are mandatory and blocking (strict behavior).
     - In `dual` or `db-only`, workflow checks MUST use DB-backed execution path; file-only fallback is not a valid primary path.
 

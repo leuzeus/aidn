@@ -8,6 +8,7 @@ import {
 import { shouldPreserveDbFirstArtifactPath } from "../../lib/workflow/db-first-artifact-path-policy.mjs";
 
 export function resolveStateMode(targetRoot, requested) {
+  const configured = resolveConfigStateMode(readAidnProjectConfig(targetRoot).data);
   const requestedMode = normalizeStateMode(requested);
   if (requestedMode) {
     return requestedMode;
@@ -16,8 +17,7 @@ export function resolveStateMode(targetRoot, requested) {
   if (envMode) {
     return envMode;
   }
-  const config = readAidnProjectConfig(targetRoot);
-  return resolveConfigStateMode(config.data) ?? "files";
+  return configured ?? "dual";
 }
 
 export function inferKind(relPath, explicitKind) {
@@ -80,7 +80,7 @@ export function shouldMaterialize(stateMode, materializeFlag) {
   if (materializeFlag === "false") {
     return false;
   }
-  return stateMode === "dual" || stateMode === "files";
+  return stateMode === "dual";
 }
 
 export function loadContent(targetRoot, sourceFile, inlineContent) {

@@ -36,13 +36,14 @@ export async function qualifyWorkflowPackage({ tarball, root, descriptors }) {
   const { activateWorkflowConsoleFixture } = await load("tools/perf/workflow-console-fixture-lib.mjs");
   const { startWorkflowDashboard } = await load("src/adapters/workflow-console/dashboard-server.mjs");
   const { createWorkflowInstance } = await load("src/core/workflow/workflow-instance.mjs");
+  const { createProjectArtifactStore } = await load("src/application/runtime/project-artifact-store-service.mjs");
   const { readWorkflowProjectAuthority } = await load("src/application/runtime/workflow-instance-composition.mjs");
   const { planAuthorization, applyAuthorization } = await load("src/application/install/project-activation-service.mjs");
   const { compileShadowWorkflow } = await load("src/core/workflow/workflow-shadow-compiler.mjs");
   const version = fs.readFileSync(path.join(packageRoot, "VERSION"), "utf8").trim();
   const packageBefore = snapshot(packageRoot), passed = [];
   const put = (file, value) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(value)); };
-  const context = { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: version, workflow_version: 7, state_mode: "files" };
+  const context = { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: version, workflow_version: 7, state_mode: "dual" };
   for (const historical of descriptors) {
     const definition = structuredClone(historical); definition.compatibility.product_version = version;
     const result = compileShadowWorkflow(definition, context);
@@ -145,6 +146,9 @@ export async function qualifyWorkflowPackage({ tarball, root, descriptors }) {
     const old = createWorkflowInstance({ instanceId: "historical", definition: historical,
       context: { ...context, product_version: historical.compatibility.product_version }, scope: readWorkflowProjectAuthority({ targetRoot: target }).scope });
     put(path.join(target, "docs/audit/workflows/instances/historical.json"), old);
+    const artifacts = createProjectArtifactStore({ targetRoot: target });
+    try { artifacts.upsertArtifact({ path: 'workflows/instances/historical.json', kind: 'other', content_format: 'utf8', content: JSON.stringify(old) }); }
+    finally { artifacts.close(); }
     const historicalBefore = snapshot(target);
     const view = (await cli("workflow-inspect")).view.instances.find(row => row.instance_id === "historical");
     assert(view.blockers.includes("WORKFLOW_INSTANCE_AUTHORITY_CHANGED"));

@@ -141,7 +141,7 @@ async function verifyRuntimeGitScope(targetRoot) {
   const beforeStatus = status();
   const before = observe();
 
-  const options = { targetRoot, stateMode: "files" };
+  const options = { targetRoot, stateMode: "dual" };
   const readAuthority = () => readWorkflowProjectAuthority({ targetRoot });
   const authority = readAuthority();
   assert.equal(authority.stateMode, options.stateMode);

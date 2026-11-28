@@ -173,7 +173,7 @@ async function verifyInheritedCheckpoint({ mode, mixedFixture, bootstrapMixed, t
 // Real common-host and allocator ports with controlled Native RPC and controlled
 // supervisor closure. No historical fixture bytes or authorization are edited.
 export async function verifyNativePostAssignmentHostFixture({ mode, mixedFixture, bootstrapMixed }) {
-  assert.ok(['files', 'dual', 'db-only'].includes(mode));
+  assert.ok(['dual', 'db-only'].includes(mode));
   const rows = [];
   const hash = bytes => createHash('sha256').update(bytes).digest('hex');
   const tree = root => {
@@ -255,7 +255,7 @@ export async function verifyNativePostAssignmentHostFixture({ mode, mixedFixture
 
 
 export async function createNativePostAssignmentHostFixture({ mode, scenario = 'confirmed_return_failure', protectedHome = null, mixedFixture, bootstrapMixed }) {
-  assert.ok(['files', 'dual', 'db-only'].includes(mode));
+  assert.ok(['dual', 'db-only'].includes(mode));
   assert.ok(['confirmed_return_failure', 'unknown_native_tree'].includes(scenario));
   const f = mixedFixture(mode, { postAssignmentReturnFailure: scenario === 'confirmed_return_failure', treeUnknown: scenario === 'unknown_native_tree' });
   if (protectedHome) f.configuration.native.protected_roots = [...(f.configuration.native.protected_roots ?? []), protectedHome];

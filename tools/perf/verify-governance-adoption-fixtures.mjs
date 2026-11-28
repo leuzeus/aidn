@@ -105,7 +105,7 @@ export function verifyGovernanceAdoptionFixtures() {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-adoption-"));
     const adapterSource = path.join(tempRoot, "adapter-source.json");
     fs.writeFileSync(adapterSource, JSON.stringify({ projectName: "synthetic adoption client", governanceAdoption: client }));
-    for (const stateMode of ["files", "dual", "db-only"]) {
+    for (const stateMode of ["dual", "db-only"]) {
       const target = path.join(tempRoot, stateMode);
       fs.mkdirSync(target);
       const env = { AIDN_STATE_MODE: stateMode };

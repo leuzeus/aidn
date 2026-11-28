@@ -54,8 +54,8 @@ if (process.argv[2] === "--worker") {
   try { await host.accept(config.operation_id, { write: true }); throw Error("ACCEPTANCE_CUT_NOT_REACHED"); }
   catch (cause) { process.send({ error: cause.code ?? cause.message, stack: cause.stack }); process.exitCode = 1; }
 } else {
-  const mode = process.argv[2] ?? "files";
-  if (!["files", "dual", "db-only"].includes(mode) || process.argv.length > 3) throw Error("FIXTURE_MODE_INVALID");
+  const mode = process.argv[2] ?? "dual";
+  if (!["dual", "db-only"].includes(mode) || process.argv.length > 3) throw Error("FIXTURE_MODE_INVALID");
   const owned = [], evidence = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-accepted-control-evidence-"));
   const config = { root: createStandardWorkflowFixture(mode, owned), instance: "accepted-control", mode };
   const home = path.join(evidence, "protected-home"); fs.mkdirSync(home);

@@ -478,7 +478,7 @@ function verifyInitialContextReload(repoRoot, tempRoot, source) {
     }).sort(([a], [b]) => a.localeCompare(b)));
   };
   const results = [];
-  for (const stateMode of ["files", "dual", "db-only"]) {
+  for (const stateMode of ["dual", "db-only"]) {
     const target = path.join(tempRoot, `initial-context-${stateMode}`);
     fs.cpSync(source, target, { recursive: true });
     const current = path.join(target, "docs/audit/CURRENT-STATE.md");
@@ -631,7 +631,7 @@ function verifyCanonicalSourceSelection(repoRoot, tempRoot, source) {
   }
   const cases = [];
   const genericSkills = ["context-reload", "start-session", "cycle-create", "requirements-delta", "close-session", "handoff-close"];
-  for (const stateMode of ["files", "dual", "db-only"]) {
+  for (const stateMode of ["dual", "db-only"]) {
     for (const skill of genericSkills) cases.push({ id: `postgres-${stateMode}-${skill}`, backend: "postgres", stateMode, skill, source: "postgres", mode: "EXPLORING" });
     for (const skill of ["context-reload", "start-session", "cycle-create"]) cases.push({ id: `postgres-${stateMode}-unavailable-${skill}`, backend: "postgres", stateMode, skill, unavailable: true, blocked: true });
     for (const missing of ["CURRENT-STATE.md", "RUNTIME-STATE.md", "sessions/S101-alpha.md", "cycles/C101-feature-alpha/status.md", "cycles/C101-feature-alpha/plan.md"])
@@ -645,7 +645,7 @@ function verifyCanonicalSourceSelection(repoRoot, tempRoot, source) {
     cases.push({ id: `postgres-${defect}`, backend: "postgres", stateMode: "dual", skill: "start-session", defect, blocked: true });
   cases.push({ id: "postgres-historical-current-head", backend: "postgres", stateMode: "dual", skill: "start-session", defect: "historical-head", source: "postgres", mode: "EXPLORING" });
   for (const strict of [false, true]) cases.push({ id: `postgres-head-cli-${strict ? "strict" : "default"}`, backend: "postgres", stateMode: "dual", skill: "start-session", defect: "head-mismatch", cli: true, strict, blocked: true });
-  for (const stateMode of ["files", "dual", "db-only"]) for (const strict of [false, true])
+  for (const stateMode of ["dual", "db-only"]) for (const strict of [false, true])
     cases.push({ id: `postgres-${stateMode}-empty-head-cli-${strict ? "strict" : "default"}`, backend: "postgres", stateMode,
       skill: "start-session", defect: "empty-historical-head", cli: true, strict, blocked: true, mode: "unknown" });
   for (const skill of ["context-reload", "start-session", "cycle-create"])
@@ -655,7 +655,7 @@ function verifyCanonicalSourceSelection(repoRoot, tempRoot, source) {
   cases.push({ id: "sqlite-dual-empty-head-fileless-current-compatible", backend: "sqlite", stateMode: "dual", skill: "start-session", defect: "empty-historical-head", visibleCurrentMissing: true, source: "file", currentSource: "sqlite", mode: "EXPLORING" });
   cases.push({ id: "sqlite-db-only-unavailable", backend: "sqlite", stateMode: "db-only", skill: "start-session", unavailable: true, blocked: true });
   cases.push({ id: "sqlite-db-only-missing-current", backend: "sqlite", stateMode: "db-only", skill: "start-session", missing: "CURRENT-STATE.md", blocked: true });
-  cases.push({ id: "files-optional-no-backend-read", backend: "sqlite", stateMode: "files", skill: "start-session", source: "file", mode: "THINKING", noRead: true });
+  cases.push({ id: "files-optional-no-backend-read", backend: "sqlite", stateMode: "dual", skill: "start-session", source: "file", mode: "THINKING", noRead: true });
   return cases.map(testCase => {
     const { root, payload: initial } = fixture(testCase.backend, testCase.stateMode);
     const payload = structuredClone(initial);

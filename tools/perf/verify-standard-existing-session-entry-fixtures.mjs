@@ -15,11 +15,11 @@ import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-
 
 export async function verifyStandardExistingSessionEntry({ selectedMode: selected } = {}) {
 const owned = [], temporary = fs.realpathSync(os.tmpdir()), H = "a".repeat(64);
-if (selected && !["files", "dual", "db-only"].includes(selected)) throw Error("FIXTURE_MODE_INVALID");
+if (selected && !["dual", "db-only"].includes(selected)) throw Error("FIXTURE_MODE_INVALID");
 let checks = 0, success = false;
 const pass = name => { checks++; console.log("PASS " + name); };
 try {
-  for (const persistence of selected ? [selected] : ["files", "dual", "db-only"]) {
+  for (const persistence of selected ? [selected] : ["dual", "db-only"]) {
     for (const mode of ["THINKING", "EXPLORING", "COMMITTING"]) {
       const root = createFreshStandardWorkflowFixture(persistence, owned), ops = createStandardWorkflowOperations({ targetRoot: root });
       const artifacts = createStandardWorkflowArtifacts({ targetRoot: root });

@@ -59,10 +59,10 @@ try {
   passed += (await verifyStandardPreparedTimestampShapes()).checks;
   const timestampOnly = process.argv.includes("--timestamp-shape-only");
   const selectedMode = process.argv.find(value => value.startsWith("--mode="))?.slice(7);
-  if (selectedMode && !["files", "dual", "db-only"].includes(selectedMode)) throw Error("STARTUP_FIXTURE_MODE_INVALID");
-  const scenarios = timestampOnly ? [] : process.argv.includes("--source-installed") ? (selectedMode ? [selectedMode] : ["files", "dual", "db-only"]).map(mode => ({ mode, fresh: true }))
+  if (selectedMode && !["dual", "db-only"].includes(selectedMode)) throw Error("STARTUP_FIXTURE_MODE_INVALID");
+  const scenarios = timestampOnly ? [] : process.argv.includes("--source-installed") ? (selectedMode ? [selectedMode] : ["dual", "db-only"]).map(mode => ({ mode, fresh: true }))
     : process.argv.includes("--fresh-only") ? [{ mode: "db-only", fresh: true }]
-    : [...["files", "dual", "db-only"].map(mode => ({ mode, fresh: false })), { mode: "db-only", fresh: true }];
+    : [...["dual", "db-only"].map(mode => ({ mode, fresh: false })), { mode: "db-only", fresh: true }];
   for (const { mode, fresh } of scenarios) {
     const label = fresh ? `fresh ${mode}` : mode;
     const root = fresh ? createFreshStandardWorkflowFixture(mode, owned) : createStandardWorkflowFixture(mode, owned), privateRoot = fs.mkdtempSync(path.join(temp, "aidn-standard-mode-")); owned.push(privateRoot);

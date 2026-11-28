@@ -34,9 +34,9 @@ export async function addGlobalProject(options) {
       throw new Error('GLOBAL_EXISTING_PROJECT_USE_MIGRATE');
     const args = receipt && enrolling ? { ...attachment, persistencePolicy: 'verify-only' }
       : { ...attachment, pack: options.pack ?? 'core', initDefaults: true, projectName: path.basename(targetRoot),
-      runtimeStateMode: options.connectionRef ? 'db-only' : 'files', artifactImportStore: 'file',
+      runtimeStateMode: options.connectionRef ? 'db-only' : 'dual', artifactImportStore: options.connectionRef ? 'sqlite' : 'dual-sqlite',
       ...(options.connectionRef ? { runtimePersistenceBackend: 'postgres', runtimePersistenceConnectionRef: options.connectionRef,
-        runtimePersistenceLocalProjectionPolicy: 'none' } : {}), persistencePolicy: 'verify-only' };
+        runtimePersistenceLocalProjectionPolicy: 'none' } : {}), persistencePolicy: options.connectionRef ? 'verify-only' : 'adopt' };
     const input = { repoRoot: runtime.packageRoot, targetRoot, globalHome: options.home, args,
       ...(options.resume ? { action: 'resume' } : {}) };
     const plan = await planInstallation(input);

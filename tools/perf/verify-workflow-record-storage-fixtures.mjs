@@ -15,9 +15,9 @@ import { artifactContentHash, assertWorkflowRecordProjection } from "../../src/c
 const temporary = fs.realpathSync(os.tmpdir()), owned = [];
 let checks = 0;
 try {
-  const filesRoot = createStandardWorkflowFixture("files", owned);
+  const filesRoot = createStandardWorkflowFixture("dual", owned);
   const relative = "workflows/record-read-fixture/checkpoint.json";
-  const store = createWorkflowRecordStore({ targetRoot: filesRoot, stateMode: "files", descriptor: {
+  const store = createWorkflowRecordStore({ targetRoot: filesRoot, stateMode: "dual", descriptor: {
     pathForId: () => relative, validate: value => assert.equal(value.id, "checkpoint"),
     idOf: value => value.id, kind: "runtime",
   } });

@@ -13,7 +13,7 @@ import { verifyStandardHandoffDisposition } from './verify-standard-handoff-disp
 import { verifyPublicHandoffEntry } from './verify-standard-handoff-entry-recovery-fixtures.mjs';
 import { verifyStandardHandoffBeforeimageObservation } from './verify-standard-handoff-beforeimage-fixtures.mjs';
 import { verifyStandardHandoffBeforeEffectDisposition } from './verify-standard-handoff-before-effect-disposition-fixtures.mjs';
-const mode=process.argv[2];assert(['files','dual','db-only'].includes(mode));assert.equal(process.argv.length,3);
+const mode=process.argv[2];assert(["dual","db-only"].includes(mode));assert.equal(process.argv.length,3);
 const owned=[],root=createFreshStandardWorkflowFixture(mode,owned,{absentOptionalDocuments:['HANDOFF-PACKET.md']}),artifacts=createStandardWorkflowArtifacts({targetRoot:root}),key=Buffer.alloc(32,149),signer=createOperationJournalSigner(()=>key);
 const control=fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()),'aidn-handoff-operation-control-'));owned.push(control);
 let clock=Date.now(),allowed=true,sourceAllowed=true,sourceReads=0;const sourceExpiry=clock+3600000;

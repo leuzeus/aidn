@@ -162,7 +162,7 @@ export async function projectAgentSelectionSummary({
       stateMode: effectiveStateMode,
     })
     : null;
-  const write = effectiveStateMode === "files" || materializeVisibleArtifacts === true
+  const write = materializeVisibleArtifacts === true
     ? writeUtf8IfChanged(outputPath, renderedMarkdown)
     : {
       path: outputPath,

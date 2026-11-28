@@ -131,7 +131,7 @@ export async function admitHandoff({
     warning: "",
   };
   const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
-  const preferDb = useDb && (effectiveStateMode === "db-only" || canonicalPostgres);
+  const preferDb = useDb;
   if (preferDb && (!sqliteFallback.exists || sqliteFallback.warning)) {
     throw new Error("canonical runtime backend is unavailable for handoff admission");
   }

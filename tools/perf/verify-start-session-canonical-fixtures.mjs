@@ -38,13 +38,13 @@ export async function verifyCanonicalStartSession() {
   const config = (mode, backend) => write('.aidn/config.json', JSON.stringify({ version: 1, workflow: { sourceBranch: 'main' }, runtime: { stateMode: mode, persistence: { backend, connectionRef: 'env:AIDN_TEST_UNAVAILABLE' } } }));
   const run = async (id, callback) => { try { await callback(); runs.push({ id, pass: true }); } catch (error) { error.message = `${id}: ${error.message}`; throw error; } };
   try {
-    config('files', 'sqlite');
+    config('dual', 'sqlite');
     write('docs/audit/CURRENT-STATE.md', current('S101'));
     write('docs/audit/sessions/S101.md', session('open', 'required'));
     write('docs/audit/sessions/S999-stale.md', session('open', 'required').replaceAll('S101', 'S999'));
     write('docs/audit/cycles/C999-stale/status.md', 'state: OPEN\nbranch_name: feature/C999-stale\nsession_owner: S999\n');
     initGitRepo(root, { sourceBranch: 'main' });
-    for (const mode of ['db-only', 'dual', 'files']) {
+    for (const mode of ["db-only","dual"]) {
       for (const [variant, pr, sync, expected] of [
         ['closed', 'merged', 'done', 'create_session_allowed'],
         ['pr_open', 'open', 'required', 'resume_current_session'],
@@ -60,7 +60,7 @@ export async function verifyCanonicalStartSession() {
         if (pr === 'open') assert.deepEqual(result.mapped_session.integration_target_cycles, ['C101', 'C102']);
       });
     }
-    for (const mode of ['db-only', 'dual', 'files']) await run(`canonical_${mode}_unavailable_refuses_local`, async () => {
+    for (const mode of ["db-only","dual"]) await run(`canonical_${mode}_unavailable_refuses_local`, async () => {
       config(mode, 'postgres'); const before = inventory(root);
       const result = await runStartSessionAdmitUseCase({ targetRoot: root, runtimeSnapshotReaderFactory: () => ({
         describeBackend: () => ({ backend_kind: 'postgres' }), readCanonicalSnapshot: async () => ({ exists: false, payload: null }),
@@ -93,10 +93,10 @@ export async function verifyCanonicalStartSession() {
         describeBackend: () => ({ backend_kind: 'postgres' }), readCanonicalSnapshot: async () => data,
       }) }), code); assert.deepEqual(inventory(root), before);
     });
-    await run('files_keeps_checkout_authority', async () => {
+    await run('retired_files_refuses_before_loading_database', async () => {
       config('files', 'sqlite'); const before = inventory(root);
-      const result = await runStartSessionAdmitUseCase({ targetRoot: root, runtimeSnapshotReaderFactory: () => { throw Error('must not load DB'); } });
-      assert.notEqual(result.action, 'create_session_allowed'); assert.equal(result.active_session, 'S101'); assert.deepEqual(inventory(root), before);
+      await assert.rejects(runStartSessionAdmitUseCase({ targetRoot: root, runtimeSnapshotReaderFactory: () => { throw Error('must not load DB'); } }), { code: 'AIDN_FILES_STATE_MODE_RETIRED' });
+      assert.deepEqual(inventory(root), before);
     });
     for (const mode of ['db-only', 'dual']) await run(`sqlite_${mode}_canonical_precedence`, async () => {
       config(mode, 'sqlite'); const store = createArtifactStore({ sqliteFile: path.join(root, '.aidn/runtime/index/workflow-index.sqlite') });

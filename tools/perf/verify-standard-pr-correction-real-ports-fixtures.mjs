@@ -18,10 +18,10 @@ import { artifactMetadataHash } from '../../src/core/workflow/artifact-compare-s
 
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: 'pipe', windowsHide: true }).trim();
 const here = fileURLToPath(import.meta.url), temporary = fs.realpathSync(os.tmpdir()), owned = [], evidence = [];
-const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'files';
+const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'dual';
 const positiveOnly = process.argv.includes('--positive-only'), retain = process.argv.includes('--retain-always');
 const grantOnly = process.argv.includes('--grant-only');
-assert.ok(['files', 'dual', 'db-only'].includes(mode), 'FIXTURE_STATE_MODE_INVALID');
+assert.ok(['dual', 'db-only'].includes(mode), 'FIXTURE_STATE_MODE_INVALID');
 const projectionCases = mode === 'db-only' ? [] : ['projection'];
 const canonicalCases = mode === 'files' ? [] : ['canonical', 'metadata'];
 const notApplicable = mode === 'db-only' && !positiveOnly && !grantOnly

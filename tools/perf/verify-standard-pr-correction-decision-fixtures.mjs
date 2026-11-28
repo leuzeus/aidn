@@ -16,7 +16,7 @@ import { createStandardWorkflowFixture } from './standard-workflow-fixture-lib.m
 const H = 'a'.repeat(64), O = 'b'.repeat(40), op = x => 'op_' + x.repeat(40), key = randomBytes(32), signer = createOperationJournalSigner(() => key);
 const baseReview = () => ({ session_id: 'S001', checkpoint_operation_id: op('a'), checkpoint_plan_sha256: H, checkpoint_output_sha256: H,
   reopen_operation_id: op('b'), triage_operation_id: op('c'), product_sha256: H, provider_subject_sha256: H,
-  head_oid: O, head_branch: 'S001-example', remote_head_oid: 'c'.repeat(40), base_oid: 'd'.repeat(40), state_mode: 'files',
+  head_oid: O, head_branch: 'S001-example', remote_head_oid: 'c'.repeat(40), base_oid: 'd'.repeat(40), state_mode: 'dual',
   postimages: ['sessions/S001.md', 'CURRENT-STATE.md', 'snapshots/context-snapshot.md'].map(path => ({ path, sha256: H, metadata_sha256: null })) });
 const candidate = () => ({ cycle_id: 'C002', title: 'review-correction', objective: 'Correct the current reviewed product boundary.' });
 function fixture(makeInbox, v2 = false) {
@@ -164,7 +164,7 @@ await test('v3 authenticates current inventory bytes and metadata without accept
 });
 const owned = [], temporary = fs.realpathSync(os.tmpdir()); let completed = false;
 try {
-  for (const mode of ['files', 'dual', 'db-only']) {
+  for (const mode of ['dual', 'db-only']) {
     const root = createStandardWorkflowFixture(mode, owned);
     await test(mode + ' v9 human-selected fields survive a cold signed inbox without a proposed candidate', async () => {
       const store = () => createProcessDecisionInboxStore({ targetRoot: root, stateMode: mode }), f = fixture(store, 3);

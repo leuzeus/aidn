@@ -108,14 +108,14 @@ import { createProjectWorkflowInstanceService } from "../../src/application/runt
 const selectedCanonicalResumeNativeMode = process.argv.find(value => value.startsWith("--canonical-resume-native-mode="))?.slice("--canonical-resume-native-mode=".length);
 const selectedCanonicalResumeNativePhase = process.argv.find(value => value.startsWith("--canonical-resume-native-phase="))?.split("=")[1] ?? "IMPLEMENTING";
 const selectedCanonicalResumeNativeIntent = process.argv.find(value => value.startsWith("--canonical-resume-native-intent="))?.split("=")[1] ?? "import_now";
-if (selectedCanonicalResumeNativeMode && !["files", "dual", "db-only"].includes(selectedCanonicalResumeNativeMode)) throw Error("CANONICAL_RESUME_NATIVE_MODE_INVALID");
+if (selectedCanonicalResumeNativeMode && !["dual", "db-only"].includes(selectedCanonicalResumeNativeMode)) throw Error("CANONICAL_RESUME_NATIVE_MODE_INVALID");
 
 const selectedRecoveryMode = process.argv.find(value => value.startsWith("--drift-recovery-mode="))?.slice("--drift-recovery-mode=".length);
 const publishedRollbackRediagnosis = process.argv.includes("--drift-published-rollback-rediagnosis");
 const publishedRollbackCase = publishedRollbackRediagnosis || process.argv.includes("--drift-published-rollback");
-if (selectedRecoveryMode !== undefined && !["files", "dual", "db-only"].includes(selectedRecoveryMode)) throw Error("RECOVERY_FIXTURE_MODE_INVALID");
+if (selectedRecoveryMode !== undefined && !["dual", "db-only"].includes(selectedRecoveryMode)) throw Error("RECOVERY_FIXTURE_MODE_INVALID");
 const selectedChangeRequestMode = process.argv.find(value => value.startsWith("--drift-cr-mode="))?.slice("--drift-cr-mode=".length);
-if (selectedChangeRequestMode !== undefined && !["files", "dual", "db-only"].includes(selectedChangeRequestMode)) throw Error("CHANGE_REQUEST_FIXTURE_MODE_INVALID");
+if (selectedChangeRequestMode !== undefined && !["dual", "db-only"].includes(selectedChangeRequestMode)) throw Error("CHANGE_REQUEST_FIXTURE_MODE_INVALID");
 const selectedRecoveryCycleMode = process.argv.find(value => value.startsWith("--drift-cycle-mode="))?.slice("--drift-cycle-mode=".length);
 const publishedRecoverySelection = process.argv.includes("--drift-cycle-published-selection");
 if (publishedRecoverySelection && selectedRecoveryCycleMode !== "files") throw Error("PUBLISHED_RECOVERY_SELECTION_FIXTURE_MODE_INVALID");
@@ -142,18 +142,18 @@ const standardComposedResume = process.argv.find(value => value.startsWith("--st
 const selectedStandardComposedMode = process.argv.find(value => value.startsWith("--standard-composed-mode="))?.slice("--standard-composed-mode=".length);
 const selectedCanonicalPlanAdoptionMode = process.argv.find(value => value.startsWith("--canonical-plan-adoption-mode="))?.slice("--canonical-plan-adoption-mode=".length);
 const selectedStandardExistingOpenWorkMode = process.argv.find(value => value.startsWith("--standard-existing-open-work-mode="))?.slice("--standard-existing-open-work-mode=".length);
-if (selectedStandardExistingOpenWorkMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardExistingOpenWorkMode)) throw Error("STANDARD_EXISTING_OPEN_WORK_FIXTURE_MODE_INVALID");
+if (selectedStandardExistingOpenWorkMode !== undefined && !["dual", "db-only"].includes(selectedStandardExistingOpenWorkMode)) throw Error("STANDARD_EXISTING_OPEN_WORK_FIXTURE_MODE_INVALID");
 const selectedPublishedChoiceMode = process.argv.find(value => value.startsWith("--standard-selected-root-mode="))?.slice("--standard-selected-root-mode=".length);
-if (selectedPublishedChoiceMode !== undefined && !["files", "dual", "db-only"].includes(selectedPublishedChoiceMode)) throw Error("STANDARD_SELECTED_ROOT_FIXTURE_MODE_INVALID");
+if (selectedPublishedChoiceMode !== undefined && !["dual", "db-only"].includes(selectedPublishedChoiceMode)) throw Error("STANDARD_SELECTED_ROOT_FIXTURE_MODE_INVALID");
 const selectedStandardExistingCompleteMode = process.argv.find(value => value.startsWith("--standard-existing-complete-mode="))?.slice("--standard-existing-complete-mode=".length);
-if (selectedStandardExistingCompleteMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardExistingCompleteMode)) throw Error("STANDARD_EXISTING_COMPLETE_FIXTURE_MODE_INVALID");
+if (selectedStandardExistingCompleteMode !== undefined && !["dual", "db-only"].includes(selectedStandardExistingCompleteMode)) throw Error("STANDARD_EXISTING_COMPLETE_FIXTURE_MODE_INVALID");
 const selectedStandardExistingOpenMode = process.argv.find(value => value.startsWith("--standard-existing-open-mode="))?.slice("--standard-existing-open-mode=".length);
-if (selectedStandardExistingOpenMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardExistingOpenMode)) throw Error("STANDARD_EXISTING_OPEN_FIXTURE_MODE_INVALID");
-if (selectedCanonicalPlanAdoptionMode && !["files", "dual", "db-only"].includes(selectedCanonicalPlanAdoptionMode)) throw Error("CANONICAL_PLAN_ADOPTION_FIXTURE_MODE_INVALID");
+if (selectedStandardExistingOpenMode !== undefined && !["dual", "db-only"].includes(selectedStandardExistingOpenMode)) throw Error("STANDARD_EXISTING_OPEN_FIXTURE_MODE_INVALID");
+if (selectedCanonicalPlanAdoptionMode && !["dual", "db-only"].includes(selectedCanonicalPlanAdoptionMode)) throw Error("CANONICAL_PLAN_ADOPTION_FIXTURE_MODE_INVALID");
 const selectedCanonicalPlanSelectionMode = process.argv.find(value => value.startsWith("--canonical-plan-selection-mode="))?.slice("--canonical-plan-selection-mode=".length);
-if (selectedCanonicalPlanSelectionMode && !["files", "dual", "db-only"].includes(selectedCanonicalPlanSelectionMode)) throw Error("CANONICAL_PLAN_SELECTION_FIXTURE_MODE_INVALID");
+if (selectedCanonicalPlanSelectionMode && !["dual", "db-only"].includes(selectedCanonicalPlanSelectionMode)) throw Error("CANONICAL_PLAN_SELECTION_FIXTURE_MODE_INVALID");
 const selectedCanonicalPlanReadinessMode = process.argv.find(value => value.startsWith("--canonical-plan-readiness-mode="))?.slice("--canonical-plan-readiness-mode=".length);
-if (selectedCanonicalPlanReadinessMode && !["files", "dual", "db-only"].includes(selectedCanonicalPlanReadinessMode)) throw Error("CANONICAL_PLAN_READINESS_FIXTURE_MODE_INVALID");
+if (selectedCanonicalPlanReadinessMode && !["dual", "db-only"].includes(selectedCanonicalPlanReadinessMode)) throw Error("CANONICAL_PLAN_READINESS_FIXTURE_MODE_INVALID");
 const selectedModeWorkResumeMode = process.argv.find(value => value.startsWith("--standard-mode-work-resume-mode="))?.split("=")[1];
 const selectedSpikeMode = process.argv.find(value => value.startsWith("--standard-spike-mode="))?.split("=")[1];
 const selectedSpikeChoice = process.argv.find(value => value.startsWith("--standard-spike-choice="))?.split("=")[1] ?? "convert-to-spike";
@@ -161,9 +161,9 @@ const selectedSpikeExperiment = process.argv.find(value => value.startsWith("--s
 const selectedSpikeSessionClose = process.argv.includes("--standard-spike-session-close");
 if (selectedSpikeSessionClose && !selectedSpikeExperiment) throw Error("STANDARD_SPIKE_SESSION_CLOSE_EXPERIMENT_REQUIRED");
 if (selectedSpikeExperiment && (!selectedSpikeMode || selectedSpikeChoice !== "convert-to-spike" || !["retain", "no_go", "drop"].includes(selectedSpikeExperiment))) throw Error("STANDARD_SPIKE_EXPERIMENT_FIXTURE_ARGUMENTS_INVALID");
-if (selectedSpikeMode && (!["files", "dual", "db-only"].includes(selectedSpikeMode)
+if (selectedSpikeMode && (!["dual", "db-only"].includes(selectedSpikeMode)
   || !["convert-to-spike", "refused", "deferred", "cancelled"].includes(selectedSpikeChoice))) throw Error("STANDARD_SPIKE_FIXTURE_ARGUMENTS_INVALID");
-if (selectedModeWorkResumeMode && !["files", "dual", "db-only"].includes(selectedModeWorkResumeMode)) throw Error("STANDARD_MODE_RESUME_FIXTURE_ARGUMENTS_INVALID");
+if (selectedModeWorkResumeMode && !["dual", "db-only"].includes(selectedModeWorkResumeMode)) throw Error("STANDARD_MODE_RESUME_FIXTURE_ARGUMENTS_INVALID");
 const selectedModeWorkMode = process.argv.find(value => value.startsWith("--standard-mode-work-mode="))?.split("=")[1];
 const selectedModeWorkClose = process.argv.includes("--standard-mode-work-close");
 const selectedModeClosureChoice = process.argv.find(value => value.startsWith("--standard-mode-closure-choice="))?.split("=")[1] ?? "close";
@@ -175,7 +175,7 @@ if (selectedModeWorkResumeMode && (!["THINKING", "EXPLORING"].includes(selectedM
   || !["continue_analysis", "refused", "deferred", "cancelled"].includes(selectedModeWorkResumeChoice)
   || !(selectedModeWorkSession === "EXPLORING" ? ["waiting", "retain_requested"] : ["waiting"]).includes(selectedModeWorkResumeDisposition))) throw Error("STANDARD_MODE_RESUME_FIXTURE_ARGUMENTS_INVALID");
 const selectedModeWorkDisposition = process.argv.find(value => value.startsWith("--standard-mode-work-disposition="))?.split("=")[1] ?? (selectedModeWorkSession === "THINKING" ? "thinking_complete" : "nonretained");
-if (selectedModeWorkMode !== undefined && (selectedStandardComposedMode || !["files", "dual", "db-only"].includes(selectedModeWorkMode)
+if (selectedModeWorkMode !== undefined && (selectedStandardComposedMode || !["dual", "db-only"].includes(selectedModeWorkMode)
   || !["THINKING", "EXPLORING"].includes(selectedModeWorkSession)
   || !(selectedModeWorkSession === "THINKING" ? ["thinking_complete", "waiting"] : ["nonretained", "waiting", "retain_requested"]).includes(selectedModeWorkDisposition))) throw Error("STANDARD_MODE_WORK_FIXTURE_ARGUMENTS_INVALID");
 const standardHostTrace = process.argv.includes('--standard-composed-host-trace');
@@ -185,7 +185,7 @@ const standardCheckpointRecoveryPrefix = process.argv.includes('--standard-compo
 const standardPublicCheckpointPrefix = process.argv.includes('--standard-composed-public-checkpoint-prefix');
 const retainAlways = process.argv.includes('--retain-always');
 if ((standardHostTrace || standardCheckpointAckLoss || standardCheckpointOwnerAckLoss) && !selectedStandardComposedMode) throw Error('STANDARD_FIXTURE_EXPERIMENT_MODE_REQUIRED');
-if (selectedStandardComposedMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardComposedMode)) throw Error("STANDARD_COMPOSED_FIXTURE_MODE_INVALID");
+if (selectedStandardComposedMode !== undefined && !["dual", "db-only"].includes(selectedStandardComposedMode)) throw Error("STANDARD_COMPOSED_FIXTURE_MODE_INVALID");
 const standardComposedBudgetText = process.argv.find(value => value.startsWith("--standard-composed-budget-ms="))?.slice("--standard-composed-budget-ms=".length);
 const standardComposedBudgetMs = standardComposedBudgetText === undefined ? 7200000 : Number(standardComposedBudgetText);
 if (standardComposedBudgetText !== undefined && (!selectedStandardComposedMode || !['promotion_decide', 'component_complete', 'pr_effects_pending', 'session_pr_correction_decide', 'nominal_post_merge_complete'].includes(standardComposedStop) || !/^[0-9]+$/.test(standardComposedBudgetText)
@@ -203,7 +203,7 @@ if (selectedCycleValidationMode !== undefined && !["contract", "files", "dual", 
 if (selectedCycleWorkMode !== undefined && !["contract", "files", "dual", "db-only", "report", "source"].includes(selectedCycleWorkMode)) throw Error("CYCLE_WORK_FIXTURE_MODE_INVALID");
 if (selectedCycleReadinessMode !== undefined && !["contract", "files", "dual", "db-only", "partial", "projection", "refusal", "stale"].includes(selectedCycleReadinessMode)) throw Error("CYCLE_READINESS_FIXTURE_MODE_INVALID");
 if (selectedCyclePlanMode !== undefined && !["contract", "files", "dual", "db-only", "partial", "projection"].includes(selectedCyclePlanMode)) throw Error("CYCLE_PLAN_FIXTURE_MODE_INVALID");
-if (selectedRecoveryCycleMode !== undefined && !["files", "dual", "db-only"].includes(selectedRecoveryCycleMode)) throw Error("RECOVERY_CYCLE_FIXTURE_MODE_INVALID");
+if (selectedRecoveryCycleMode !== undefined && !["dual", "db-only"].includes(selectedRecoveryCycleMode)) throw Error("RECOVERY_CYCLE_FIXTURE_MODE_INVALID");
 const sha = value => createHash("sha256").update(value).digest("hex");
 const standardResponseText = process.argv.find(value => value.startsWith("--standard-composed-max-responses="))?.slice("--standard-composed-max-responses=".length);
 if (standardResponseText !== undefined && (!selectedStandardComposedMode || !/^[1-9][0-9]*$/.test(standardResponseText)
@@ -215,10 +215,10 @@ if (nominalPostMerge && (selectedStandardComposedMode !== 'files' || standardSce
   throw Error('STANDARD_COMPOSED_NOMINAL_POST_MERGE_SCOPE_INVALID');
 if (standardCheckpointAckLoss && (selectedStandardComposedMode !== 'files' || standardScenarioName !== 'correction' || !['component_complete', 'session_pr_correction_decide'].includes(standardComposedStop)))
   throw Error('STANDARD_FIXTURE_CHECKPOINT_ACK_LOSS_SCOPE_INVALID');
-if (standardCheckpointOwnerAckLoss && (standardCheckpointAckLoss || !['files', 'dual'].includes(selectedStandardComposedMode)
+if (standardCheckpointOwnerAckLoss && (standardCheckpointAckLoss || !["dual"].includes(selectedStandardComposedMode)
   || standardScenarioName !== 'correction' || !['component_complete', 'session_pr_correction_decide'].includes(standardComposedStop))) throw Error('STANDARD_FIXTURE_CHECKPOINT_OWNER_ACK_LOSS_SCOPE_INVALID');
 if (standardCheckpointRecoveryPrefix && (standardCheckpointAckLoss || standardCheckpointOwnerAckLoss || !retainAlways
-  || !['files', 'dual'].includes(selectedStandardComposedMode) || standardScenarioName !== 'correction'
+  || !["dual"].includes(selectedStandardComposedMode) || standardScenarioName !== 'correction'
   || standardComposedStop !== 'session_pr_correction_decide')) throw Error('STANDARD_FIXTURE_CHECKPOINT_PREFIX_SCOPE_INVALID');
 if (standardPublicCheckpointPrefix && (!standardCheckpointRecoveryPrefix || selectedStandardComposedMode !== 'files'))
   throw Error('STANDARD_FIXTURE_PUBLIC_CHECKPOINT_PREFIX_SCOPE_INVALID');
@@ -309,10 +309,10 @@ async function check(name, callback) { if (process.argv.includes("--host-resourc
   if (publishedRollbackCase && !name.startsWith("drift published rollback:")) return;
   if (driftWorkerMode && !name.startsWith("drift worker current human:")) return;
   const epochMode = process.argv.find(value => value.startsWith("--native-epoch-mode="))?.slice("--native-epoch-mode=".length);
-  if (epochMode && !["files", "dual", "db-only"].includes(epochMode)) throw Error("NATIVE_EPOCH_FIXTURE_MODE_INVALID");
+  if (epochMode && !["dual", "db-only"].includes(epochMode)) throw Error("NATIVE_EPOCH_FIXTURE_MODE_INVALID");
   if (epochMode && !name.startsWith(`native epoch ${epochMode}:`)) return;
   const initialEpochMode = process.argv.find(value => value.startsWith("--native-initial-epoch-mode="))?.slice("--native-initial-epoch-mode=".length);
-  if (initialEpochMode && !["files", "dual", "db-only"].includes(initialEpochMode)) throw Error("NATIVE_EPOCH_FIXTURE_MODE_INVALID");
+  if (initialEpochMode && !["dual", "db-only"].includes(initialEpochMode)) throw Error("NATIVE_EPOCH_FIXTURE_MODE_INVALID");
   if (initialEpochMode && !name.startsWith(`native initial epoch ${initialEpochMode}:`)) return;
   if (selectedCyclePlanMode && !name.startsWith(`cycle plan ${selectedCyclePlanMode}`)) return;
   if (selectedCycleReadinessMode && !name.startsWith(`cycle readiness ${selectedCycleReadinessMode}:`)) return;
@@ -543,7 +543,7 @@ async function readyResumeFixture(options = {}) {
   if (!options.undelivered) await f.actor.deliverControl(f.capture.inbox_id, { write: true });
   return f;
 }
-function mixedFixture(stateMode = "files", options = {}) {
+function mixedFixture(stateMode = "dual", options = {}) {
   const projectRoot = options.projectRoot ?? createFreshStandardWorkflowFixture(stateMode, businessRoots), f = fixture({ projectRoot }), original = JSON.parse(fs.readFileSync(f.configuration.model.path));
   if (options.projectRoot) businessRoots.push(projectRoot);
   const op = (id, binding_ref) => ({ id, kind: "operation", participant_ref: "delivery", binding_ref });
@@ -900,7 +900,7 @@ async function bootstrapMixed(f) {
   const auth = f.authorize(); auth.global_deadline_ms += 1800000; auth.workflow_deadline_ms += 1800000;
   return auth;
 }
-function finalizationFixture(mode = "files", options = {}) {
+function finalizationFixture(mode = "dual", options = {}) {
   const f = mixedFixture(mode, { drift: true, finalize: true, ...options, answer({ params }) {
     const context = JSON.parse(params.input[0].text.split("\n").at(-1));
     return { outcome: "completed", summary: "Scoped diagnostic fixture.", report: { contract_version: "standard-drift-report.v1", context_sha256: context.context_sha256,
@@ -1013,7 +1013,7 @@ if (process.argv[2] === "--mixed-continue") {
 } else if (readOnlyStorageChild) {
   const { createReadOnlyStorageStopFixture } = await import('./native-readonly-storage-fixture-lib.mjs');
   const mode = process.argv[2].slice('--native-readonly-storage-create='.length), output = process.argv[3];
-  assert(['files', 'dual', 'db-only'].includes(mode));
+  assert(['dual', 'db-only'].includes(mode));
   assert(path.isAbsolute(output) && !fs.existsSync(output));
   const data = await createReadOnlyStorageStopFixture({ mode, operatorHome: fs.realpathSync(path.dirname(output)), mixedFixture, bootstrapMixed });
   fs.writeFileSync(output, JSON.stringify(data), { flag: 'wx' });
@@ -1970,7 +1970,7 @@ if (process.argv[2] === "--mixed-continue") {
   });
   await check("cycle closure contract: typed review and authenticated inbox preserve pending lifecycle", () => {
     const cases = [["verify-standard-cycle-closure-decision-fixtures.mjs"], ["verify-standard-cycle-closure-review-fixtures.mjs"],
-      ...["files", "dual", "db-only"].map(mode => ["verify-standard-cycle-closure-inbox-fixtures.mjs", "--mode=" + mode])];
+      ...["dual", "db-only"].map(mode => ["verify-standard-cycle-closure-inbox-fixtures.mjs", "--mode=" + mode])];
     for (const [name, ...args] of cases) {
       const child = spawnSync(process.execPath, [fileURLToPath(new URL("./" + name, import.meta.url)), ...args], { encoding: "utf8", windowsHide: true, shell: false, timeout: 60000 });
       assert.equal(child.status, 0, (child.stdout + child.stderr).slice(-8192)); process.stdout.write(child.stdout);
@@ -2011,7 +2011,7 @@ if (process.argv[2] === "--mixed-continue") {
   await verifyCanonicalPlanAdoption(check, { mixedFixture, cyclePlanProposal, selectedMode: selectedCanonicalPlanSelectionMode, readiness: true, selection: true });
   await verifyCanonicalPlanWork(check, { mixedFixture, script: fileURLToPath(import.meta.url) });
   await verifyCycleWorkContracts(check, { mixedFixture });
-  await verifyCycleReadinessContracts(check, { createFixture: () => createFreshStandardWorkflowFixture("files", businessRoots) });
+  await verifyCycleReadinessContracts(check, { createFixture: () => createFreshStandardWorkflowFixture("dual", businessRoots) });
   await check("cycle plan contract refuses a writable native planning profile before any session", async () => {
     const f = mixedFixture("files", { planning: true }), model = structuredClone(f.model);
     const node = model.nodes.find(row => row.id === "analyze"); model.policies.find(row => row.id === node.policy_ref).allowed_permissions.push("write:product");
@@ -2047,7 +2047,7 @@ if (process.argv[2] === "--mixed-continue") {
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true, taskProgress: true, audit: true });
   if (selectedCycleClosureMode) await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true, taskProgress: true, audit: true, closure: true });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true, taskProgress: true, audit: true, closure: true, closeRecord: true });
-  for (const mode of ["files", "dual", "db-only"]) await check(`dataflow ${mode}: the IR resolves durable parameters and accepted result identities through real ports`, async () => {
+  for (const mode of ["dual", "db-only"]) await check(`dataflow ${mode}: the IR resolves durable parameters and accepted result identities through real ports`, async () => {
     const claims = new Map(), humanSource = { read: ({ sourceRef }) => claims.get(sourceRef) ?? null,
       verify: ({ source, sourceRef }) => claims.has(sourceRef) && shadowHash(claims.get(sourceRef)) === shadowHash(source)
         ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" } };
@@ -2103,7 +2103,7 @@ if (process.argv[2] === "--mixed-continue") {
       policyPins: final.record.policy_pins, parameters: final.record.initial_parameters, events: final.record.events });
     assert.equal(completedSimulation.trace.at(-1).instance_sha256, final.record.instance_sha256);
   });
-  for (const mode of ["files", "dual", "db-only"]) await check(`drift cycle ${mode}: authenticated recovery waits for Git reconciliation and ${publishedRecoverySelection
+  for (const mode of ["dual", "db-only"]) await check(`drift cycle ${mode}: authenticated recovery waits for Git reconciliation and ${publishedRecoverySelection
     ? "selects and initializes a fresh cycle through the published call" : "initializes a real cycle with exact simulation"}`, async () => {
     const claims = new Map(), humanSource = { read: ({ sourceRef }) => claims.get(sourceRef) ?? null,
       verify: ({ source, sourceRef }) => claims.has(sourceRef) && shadowHash(claims.get(sourceRef)) === shadowHash(source)
@@ -2214,7 +2214,7 @@ if (process.argv[2] === "--mixed-continue") {
       scopeId: after.record.scope_id, policyPins: after.record.policy_pins, events: after.record.events });
     assert.equal(simulated.trace.at(-1).instance_sha256, after.record.instance_sha256); assert.equal(f.t.sessions.length, 1); assert.ok(f.t.sessions.every(row => row.closed));
   });
-  for (const mode of ["files", "dual", "db-only"]) await check(`drift CR ${mode}: IR consumes confirmed recovery and creates a pending CR through admitted canonical ports`, async () => {
+  for (const mode of ["dual", "db-only"]) await check(`drift CR ${mode}: IR consumes confirmed recovery and creates a pending CR through admitted canonical ports`, async () => {
     const claims = new Map(), humanSource = {
       read: ({ sourceRef }) => claims.get(sourceRef) ?? null,
       verify: ({ source, sourceRef }) => claims.has(sourceRef) && shadowHash(claims.get(sourceRef)) === shadowHash(source)
@@ -2392,7 +2392,7 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(simulation.trace.at(-1).instance_sha256, record.instance_sha256);
     assert.equal(f.t.sessions.length, publishedRollbackRediagnosis ? 2 : 1);
   });
-  for (const mode of ["files", "dual", "db-only"]) await check(`drift recovery ${mode}: authenticated human review records actual findings without completing recovery`, async () => {
+  for (const mode of ["dual", "db-only"]) await check(`drift recovery ${mode}: authenticated human review records actual findings without completing recovery`, async () => {
     const claims = new Map(), humanSource = {
       read: ({ sourceRef }) => claims.get(sourceRef) ?? null,
       verify: ({ source, sourceRef, question }) => sourceRef !== "forged" && shadowHash(claims.get(sourceRef)) === shadowHash(source) && source.question_sha256 === shadowHash(question)
@@ -2726,7 +2726,7 @@ if (process.argv[2] === "--mixed-continue") {
     }
   });
   await verifyDriftPreparedPlanValidity(check);
-  for (const mode of ["files", "dual", "db-only"]) await check(`drift finalize ${mode}: aged plan persists its real report and own R05 hook without another model call`, async () => {
+  for (const mode of ["dual", "db-only"]) await check(`drift finalize ${mode}: aged plan persists its real report and own R05 hook without another model call`, async () => {
     let deny = false, preparedClock = null;
     const f = finalizationFixture(mode, { now: () => preparedClock ?? Date.now(), authorize: async ({ binding }) => deny && binding.id === "drift_check_finalize" ? { authorized: false }
       : { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) } });
@@ -2969,7 +2969,7 @@ if (process.argv[2] === "--mixed-continue") {
       fs.appendFileSync(file, "\n"); assert.throws(() => f.open().inspect(), /EVIDENCE_CHANGED/); fs.writeFileSync(file, bytes);
     }
   });
-  for (const stateMode of ["files", "dual", "db-only"]) await check(`mixed ${stateMode}: real session bootstrap, native boundaries, signed control and durable review share one IR`, async () => {
+  for (const stateMode of ["dual", "db-only"]) await check(`mixed ${stateMode}: real session bootstrap, native boundaries, signed control and durable review share one IR`, async () => {
     let claim = null;
     const controlSource = { async read() { return claim; }, async verify({ source }) { assert.deepEqual(source, claim); return { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) }; } };
     const f = mixedFixture(stateMode, { controlSource, async beforeWorker(f) {
@@ -3090,7 +3090,7 @@ if (process.argv[2] === "--mixed-continue") {
     }
   });
   await check("resume refuses a self-hashed control event without authenticated inbox provenance", async () => {
-    const f = await readyResumeFixture({ uncaptured: true }), store = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "files" }), before = store.read("case");
+    const f = await readyResumeFixture({ uncaptured: true }), store = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "dual" }), before = store.read("case");
     const delivery = controlDelivery(f.request, f.claim), forged = advanceAgenticProcess(before.record, { event_id: "forged_control", kind: "control", occurrence_id: f.request.occurrence_id, delivery });
     store.compareAndSwap(forged, before.content_sha256);
     await assert.rejects(f.open().run({ execute: true, authorization: f.auth, resume: true }), /CONTROL_NOT_AUTHENTICATED/);
@@ -3119,7 +3119,7 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(result.status, "WAITING_FOR_RECONCILIATION"); assert.equal(result.first_failure, "PROCESS_WORKER_ALLOCATION_CHANGED");
     assert.equal(f.t.sessions.length, 2); assert.equal(f.actor.inspect().allocations.at(-1).phase, "reserved");
   });
-  for (const stateMode of ["files", "dual", "db-only"]) await check(`resume ${stateMode}: authenticated event resumes owned native allocation with historical review exclusions and exact replay`, async () => {
+  for (const stateMode of ["dual", "db-only"]) await check(`resume ${stateMode}: authenticated event resumes owned native allocation with historical review exclusions and exact replay`, async () => {
     let claim = null, reads = 0, verifies = 0;
     const controlSource = {
       async read() { reads++; return claim; },
@@ -3349,7 +3349,7 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(worker.native_checkpoint, null);
     assert.equal(worker.responses_observed, 3);
     assert.equal(worker.native_parent_closure.closed, true);
-    const current = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "files" }).read("case").record;
+    const current = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "dual" }).read("case").record;
     assert.equal(inspectAgenticProcess(current).status, "COMPLETED");
     assert.ok(worker.storage_budget_debit_bytes <= authorization.max_bytes - 262144);
     assert.ok(worker.storage_budget_debit_bytes + 262144 > authorization.max_bytes - 262144);
@@ -3455,7 +3455,7 @@ if (process.argv[2] === "--mixed-continue") {
     const { result, sessions } = await run(f);
     assert.equal(result.status, "COMPLETED", JSON.stringify(result)); assert.equal(result.responses_observed, 3);
     assert.equal(sessions.length, 2); assert.equal(result.native_parent_closure.closed, true);
-    const retained = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "files" }).read("case").record;
+    const retained = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "dual" }).read("case").record;
     assert.equal(retained.contract_version, "agentic-process-instance.v2"); assert.equal(retained.profile, "structured-agentic-process.v2");
     assert.equal(retained.events.filter(event => event.kind === "assign").length, 3);
     assert.equal(retained.events.filter(event => event.kind === "result").length, 3);
@@ -3475,7 +3475,7 @@ if (process.argv[2] === "--mixed-continue") {
     const text = JSON.stringify(model); fs.writeFileSync(f.configuration.model.path, text); f.configuration.model.sha256 = sha(text);
     const { result, sessions } = await run(f); assert.equal(result.status, "WAITING", JSON.stringify(result));
     assert.equal(result.responses_observed, 3); assert.equal(sessions.length, 2); assert.equal(result.native_parent_closure.closed, true);
-    const retained = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "files" }).read("case").record;
+    const retained = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "dual" }).read("case").record;
     assert.equal(inspectAgenticProcess(retained).status, "WAITING");
     const t = transport(f);
     const reopened = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory });
@@ -3551,7 +3551,7 @@ if (process.argv[2] === "--mixed-continue") {
     const result = await composition.run({ execute: true, authorization: auth });
     assert.equal(result.status, "COMPLETED", JSON.stringify(result)); assert.equal(result.responses_observed, 10);
     assert.equal(result.control_scenario.events_applied, 2); assert.deepEqual(t.sessions.map(s => s.turns), [9, 1]);
-    const retained = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "files" }).read("case").record;
+    const retained = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "dual" }).read("case").record;
     assert.equal(retained.events.filter(e => e.kind === "message").length, 1);
     assert.equal(retained.events.filter(e => e.kind === "facts").length, 1);
     assert.equal(retained.events.filter(e => e.kind === "result").length, 10);
@@ -3958,7 +3958,7 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(observations.length, 3); assert(observations.every(text => !text.includes("private command/output")));
     assert.notEqual(sessions[0].configuration.cwd, sessions[1].configuration.cwd);
     assert.equal(fs.readFileSync(path.join(sessions[1].configuration.cwd, "app.mjs"), "utf8"), "export const value = 2;\n");
-    const state = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "files" }).read("case").record;
+    const state = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "dual" }).read("case").record;
     const assignments = state.events.filter(row => row.kind === "assign");
     assert.equal(assignments[0].decision.execution_id, assignments[1].decision.execution_id);
     assert.notEqual(assignments[1].decision.lineage_id, assignments[2].decision.lineage_id);
@@ -3966,7 +3966,7 @@ if (process.argv[2] === "--mixed-continue") {
     const next = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: () => { throw Error("must not restart"); } });
     await assert.rejects(() => next.run({ execute: true, authorization: f.authorize() }), /EXISTING_INSTANCE_REQUIRES_RECONCILIATION/);
   });
-  for (const backend of ["sqlite", "postgres"]) for (const mode of ["files", "dual", "db-only"])
+  for (const backend of ["sqlite", "postgres"]) for (const mode of ["dual", "db-only"])
     await check(`configured ${backend}/${mode}: real canonical CAS, review and projection contract`, async () => {
       const f = fixture(); persistenceFixture(f, backend, mode);
       const { result, sessions } = await run(f);
@@ -4101,7 +4101,7 @@ if (process.argv[2] === "--mixed-continue") {
   });
   await check("authenticated rejection remains terminal failure, never replaced by a favorable retry", async () => {
     const f = fixture(), { result } = await run(f, { reject: true }); assert.equal(result.status, "FAILED");
-    const state = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "files" }).read("case").record;
+    const state = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "dual" }).read("case").record;
     assert.equal(state.events.at(-1).result.outcome, "rejected"); assert.equal(result.responses_observed, 3);
   });
   await check("unexpected native storage overflow preserves first reason and structured stdout partial instead of masking it with seal failure", async () => {
@@ -4258,7 +4258,7 @@ if (process.argv[2] === "--mixed-continue") {
     host.initialize({ write: true, expectedResultSha256: initial.record.instance_sha256 });
     const preview = await host.prepareOperation({ expectedSha256: initial.record.instance_sha256, occurrenceId: initial.cursor.ready[0] });
     const staged = await host.stageOperation(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
-    const instance = host.inspect().record, options = { targetRoot: f.configuration.target_root, stateMode: "files" };
+    const instance = host.inspect().record, options = { targetRoot: f.configuration.target_root, stateMode: "dual" };
     const signer = createOperationJournalSigner(() => key), operations = createProcessOperationJournalStore(options);
     const original = operations.read(staged.operation_id);
     const dispatching = signer.seal({ ...original.record, phase: "dispatching", revision: original.record.revision + 1,

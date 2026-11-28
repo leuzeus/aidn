@@ -152,7 +152,7 @@ export function persistHookContext(options) {
       skill,
       mode: normalized.mode ?? "UNKNOWN",
       ok: Boolean(normalized.ok),
-      state_mode: normalized.state_mode ?? "files",
+      state_mode: normalized.state_mode ?? "dual",
       strict: Boolean(normalized.strict),
       decision: normalized.decision ?? null,
       fallback: normalized.fallback ?? null,

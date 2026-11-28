@@ -86,7 +86,7 @@ export async function verifyArtifactIntentPreparation() {
     ["partial text", f => delete f.observation.artifacts[0].content],
     ["foreign session", f => { f.observation.artifacts[0].session_id = "S002"; bind(f); }],
     ["foreign artifact project", f => f.observation.artifacts[0].project_id = "foreign"],
-    ["files index is not canonical", f => f.observation.state_mode = "files"],
+    ["files index is not canonical", f => f.observation.state_mode = "dual"],
     ["unavailable PostgreSQL", f => f.observation.backend = "unavailable"],
     ["duplicate source alias", f => f.observation.artifacts.push({ ...f.observation.artifacts[0], path: status.toUpperCase() })],
     ["foreign cycle", f => f.request.items[0].path = "cycles/C002-feature/status.md"],

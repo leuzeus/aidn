@@ -125,10 +125,10 @@ Continuity validation by rule:
 - record the next safe action instead of leaving inferred ownership implicit
 - keep `repair_layer_status` and `repair_primary_reason` aligned with the latest hydrated/runtime digest when repair context is relevant
 
-8) Performance hook (mandatory in dual/db-only; optional in files):
+8) Performance hook (mandatory in dual/db-only):
 - run `npx aidn codex run-json-hook --skill branch-cycle-audit --mode COMMITTING --target . --json`
 - the runtime `aidn-branch-cycle-audit` hook applies branch-ownership admission before delegating to generic gating evaluation
-- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill branch-cycle-audit --project-runtime-state --json`.
 - in dual/db-only, use the hydrated payload to read `repair_layer_status`, `repair_layer_advice`, prioritized artifacts, and continuity hints before acting.

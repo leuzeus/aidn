@@ -409,7 +409,7 @@ export async function collectGatingObservations({ targetRoot, eventFile, indexSy
   const configData = readAidnProjectConfig(targetRoot).data;
   const persistence = resolveConfigRuntimePersistence(configData);
   const backend = persistence?.backend === "postgres" ? "postgres" : detectIndexBackend(indexFile, indexBackend);
-  const canonicalRequired = backend === "postgres" || stateMode === "db-only";
+  const canonicalRequired = true;
   const sessionsRoot = path.join(targetRoot, "docs", "audit", "sessions");
   let sessionObjective = null;
   let cycleGoal = null;
@@ -453,16 +453,12 @@ export async function collectGatingObservations({ targetRoot, eventFile, indexSy
         visibleCurrentState: { audit_root: auditRoot, file_path: path.join(auditRoot, "CURRENT-STATE.md") },
         runtimeSnapshotReaderFactory: readerFactory });
       ({ sessionObjective, cycleGoal, canonicalIntentUncertain } = canonicalIntent(continuity, targetRoot, gitAdapter.getCurrentBranch(targetRoot)));
-    } else if (!completionContext) {
-      const latestSession = getLatestFileByPattern(sessionsRoot, /^S\d+.*\.md$/i);
-      sessionObjective = extractSessionObjective(latestSession);
-      cycleGoal = getActiveCycleGoal(targetRoot);
     }
     if (completionContext) {
       const cyclePath = `cycles/${completionContext.cycle_dir}/status.md`;
       let statusText;
       let sessionText;
-      if (stateMode !== "files" || backend === "postgres") {
+      {
         const snapshot = await readerFactory().readCanonicalSnapshot({ includePayload: true, includeRuntimeHeads: true });
         if (!snapshot?.exists || !snapshot.payload) throw new CanonicalIntentError("REQUIRED_ARTIFACT_MISSING");
         statusText = decodeArtifact(findUniqueAuditArtifact(snapshot.payload, cyclePath));
@@ -470,11 +466,6 @@ export async function collectGatingObservations({ targetRoot, eventFile, indexSy
           String(artifact.path).replace(/\\/g, "/").replace(/^docs\/audit\//i, "")
             .match(/^sessions\/(S\d+)(?:[^\d/][^/]*)?\.md$/i)?.[1] === completionContext.session_id);
         sessionText = sessions.length === 1 ? decodeArtifact(sessions[0]) : "";
-      } else {
-        statusText = readTextSafe(path.join(targetRoot, "docs/audit", cyclePath));
-        const files = fs.existsSync(sessionsRoot) ? fs.readdirSync(sessionsRoot).filter(file =>
-          file.match(/^(S\d+)(?:[^\d/][^/]*)?\.md$/i)?.[1] === completionContext.session_id) : [];
-        sessionText = files.length === 1 ? readTextSafe(path.join(sessionsRoot, files[0])) : "";
       }
       cycleGoal = parseKeyValues(statusText).current_goal ?? null;
       sessionObjective = extractObjective(sessionText);
@@ -504,14 +495,6 @@ export async function collectGatingObservations({ targetRoot, eventFile, indexSy
   const indexSyncTargetMatch = indexSyncTargetRoot === targetRoot;
   const repairLayer = snapshotAttempted
     ? summarizeRepairLayer(canonicalSnapshot?.payload, Boolean(canonicalSnapshot?.payload))
-    : stateMode === "files" && backend !== "postgres"
-    ? {
-      exists: false,
-      blocking: false,
-      openCount: 0,
-      severityCounts: {},
-      topFindings: [],
-    }
     : await readRepairLayerSummary(targetRoot, indexFile, backend);
 
   return {

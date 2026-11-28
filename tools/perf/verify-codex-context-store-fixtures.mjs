@@ -127,7 +127,7 @@ async function verify(tempRoot) {
   write(path.join(rules, "package.json"), '{"name":"fixture","version":"1.0.0"}');
   write(path.join(rules, "src", "rule.mjs"), "export const rule = 1;\n");
   initGitRepo(root, { sourceBranch: "main" });
-  const capture = (stateMode = "files") => captureContextIdentity({ targetRoot: root, stateMode, packageRoot: rules });
+  const capture = (stateMode = "dual") => captureContextIdentity({ targetRoot: root, stateMode, packageRoot: rules });
   const current = capture();
   check("capture binds Git branch HEAD worktree content and package rules", current.status === "captured"
     && current.branch === "main" && current.head_commit.length === 40 && current.worktree_id && current.rules_sha256.length === 64);
@@ -196,7 +196,7 @@ async function verify(tempRoot) {
   const hookContextStore = createHookContextStoreAdapter({ packageRoot: rules });
   const agentAdapter = createCodexAgentAdapter();
   const args = {
-    skill: "probe", target: root, stateMode: "files", mode: "", command: [process.execPath, "-e", "process.stdout.write(JSON.stringify({ok:true,repair_layer_status:'clean'}))"],
+    skill: "probe", target: root, stateMode: "dual", mode: "", command: [process.execPath, "-e", "process.stdout.write(JSON.stringify({ok:true,repair_layer_status:'clean'}))"],
     forceJson: false, strict: false, dbSyncExplicit: true, dbSync: false, maxEntries: 50,
   };
   const output = await runJsonHookUseCase({ args, targetRoot: root, hookContextStore, agentAdapter });

@@ -31,7 +31,7 @@ export function readWorkflowProjectExecutionAuthority({ targetRoot, env = proces
 }
 
 function projectAuthority(root, activation) {
-  const mode = () => resolveConfigStateMode(readAidnProjectConfig(root).data) ?? "files";
+  const mode = () => resolveConfigStateMode(readAidnProjectConfig(root).data) ?? "dual";
   if (!activation.active || activation.state !== "active" || activation.authorization?.status !== "authorized") fail("WORKFLOW_INSTANCE_ACTIVATION_REQUIRED");
   const context = resolveRuntimeProjectContext({ targetRoot: root });
   return { stateMode: mode(), productVersion: readAgentRunFile(fileURLToPath(new URL("../../../VERSION", import.meta.url)), { json: false }).value.toString("utf8").trim(),
@@ -43,7 +43,7 @@ function projectAuthority(root, activation) {
 // Explicit compatibility composition for pinned sequential definitions.
 export function createLegacyProjectWorkflowInstanceService({ targetRoot }) {
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
-  const mode = () => resolveConfigStateMode(readAidnProjectConfig(root).data) ?? "files";
+  const mode = () => resolveConfigStateMode(readAidnProjectConfig(root).data) ?? "dual";
   const readAuthority = () => readWorkflowProjectAuthority({ targetRoot: root });
   return createWorkflowInstanceService({ store: createWorkflowInstanceStore({ targetRoot: root, stateMode: mode() }), readAuthority,
     lifecycle: { invoke: (args, options) => createPublicAgentRunLifecycle({ workflowInstance: options.workflowInstance }).invoke(args) },
@@ -59,7 +59,7 @@ export function createLegacyProjectWorkflowInstanceService({ targetRoot }) {
 // JSON, uses the structured reducer. Reading a history never changes its engine.
 export function createProjectWorkflowInstanceService({ targetRoot, engine } = {}) {
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
-  const options = () => ({ targetRoot: root, stateMode: resolveConfigStateMode(readAidnProjectConfig(root).data) ?? "files" });
+  const options = () => ({ targetRoot: root, stateMode: resolveConfigStateMode(readAidnProjectConfig(root).data) ?? "dual" });
   const selected = requested => resolveWorkflowEngine({ engine: requested ?? engine, config: readAidnProjectConfig(root).data });
   function existing(instanceId, requested) {
     if (requested != null) resolveWorkflowEngine({ engine: requested });

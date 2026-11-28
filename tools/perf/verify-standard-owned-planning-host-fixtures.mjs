@@ -13,7 +13,7 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { artifactContentHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
 
 const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7);
-assert(["files", "db-only"].includes(mode), "Expected --mode=files or --mode=db-only");
+assert(["dual", "db-only"].includes(mode), "Expected --mode=files or --mode=db-only");
 const owned = [], root = createFreshStandardWorkflowFixture(mode, owned), base = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-owned-planning-"));
 const artifacts = createStandardWorkflowArtifacts({targetRoot:root}), operations = createStandardWorkflowOperations({targetRoot:root});
 const git = (...args) => execFileSync("git", ["-C",root,"-c","core.hooksPath=NUL",...args], {encoding:"utf8",windowsHide:true,stdio:"pipe"}).trim();

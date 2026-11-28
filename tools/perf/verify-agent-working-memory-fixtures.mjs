@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { seedSqliteFixture } from './test-sqlite-fixture-lib.mjs';
 import os from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
@@ -12,6 +13,7 @@ import { validateJsonSchema } from "../../src/core/contracts/json-schema-validat
 import handoffSchema from "../../src/core/contracts/cli-output/runtime-project-handoff-packet.v1.schema.json" with { type: "json" };
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { createSqliteRuntimeArtifactStore } from "../../src/adapters/runtime/sqlite-runtime-artifact-store.mjs";
+import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
 import { createPostgresRuntimeArtifactStore } from "../../src/adapters/runtime/postgres-runtime-artifact-store.mjs";
 import { createRuntimePersistenceFakePgClientFactory } from "./runtime-persistence-fake-pg-lib.mjs";
 import { createArtifactProjectorAdapter } from "../../src/adapters/runtime/artifact-projector-adapter.mjs";
@@ -48,11 +50,12 @@ try {
     || trackedFixtureFiles.has(path.relative(repo, source).replaceAll("\\", "/")) });
   prepareWorkflowDocumentsFixture(root);
   const currentFile = path.join(root, "docs/audit/CURRENT-STATE.md");
-  fs.writeFileSync(currentFile, fs.readFileSync(currentFile, "utf8").replace("runtime_state_mode: dual", "runtime_state_mode: files"));
+  fs.writeFileSync(currentFile, fs.readFileSync(currentFile, "utf8").replace("runtime_state_mode: files", "runtime_state_mode: dual"));
   const runtimeFile = path.join(root, "docs/audit/RUNTIME-STATE.md");
   fs.writeFileSync(runtimeFile, fs.readFileSync(runtimeFile, "utf8").replace("repair_layer_status: unknown", "repair_layer_status: clean").replace("repair_layer_advice: unknown", "repair_layer_advice: none"));
   fs.mkdirSync(path.join(root, ".aidn"), { recursive: true });
-  fs.writeFileSync(path.join(root, ".aidn/config.json"), JSON.stringify({ runtime: { stateMode: "files", indexStoreMode: "file" } }));
+  fs.writeFileSync(path.join(root, ".aidn/config.json"), JSON.stringify({ runtime: { stateMode: "dual", indexStoreMode: "dual-sqlite" } }));
+  seedSqliteFixture(root);
   fs.writeFileSync(path.join(root, ".gitignore"), ".aidn/runtime/\n");
   initGitRepo(root, { workingBranch: "feature/C101-alpha" });
   prepareActivationFixture(root, repo);
@@ -122,11 +125,14 @@ try {
     fs.writeFileSync(inputFile, original);
   });
   await check("live admission refusal leaves latest memory intact", async () => {
-    const before = fs.readFileSync(capture.working_memory.context_file); const original = fs.readFileSync(runtimeFile);
-    fs.writeFileSync(runtimeFile, original.toString().replace("repair_layer_status: clean", "repair_layer_status: block"));
-    const out = command("tools/perf/checkpoint.mjs", ["--working-memory", inputRef, "--write", "--mode", "THINKING", "--json"]);
-    assert.notEqual(out.status, 0); assert.match(out.stderr, /WORKING_MEMORY_CHECKPOINT_REFUSED/);
-    assert.deepEqual(fs.readFileSync(capture.working_memory.context_file), before); fs.writeFileSync(runtimeFile, original);
+    const before = fs.readFileSync(capture.working_memory.context_file);
+    const artifacts = createProjectArtifactStore({ targetRoot: root }), original = artifacts.getArtifact('RUNTIME-STATE.md');
+    try {
+      artifacts.upsertArtifact({ ...original, content: original.content.replace('repair_layer_status: clean', 'repair_layer_status: block') });
+      const out = command("tools/perf/checkpoint.mjs", ["--working-memory", inputRef, "--write", "--mode", "THINKING", "--json"]);
+      assert.notEqual(out.status, 0); assert.match(out.stderr, /WORKING_MEMORY_CHECKPOINT_REFUSED/);
+      assert.deepEqual(fs.readFileSync(capture.working_memory.context_file), before);
+    } finally { artifacts.upsertArtifact(original); artifacts.close(); }
   });
   await check("explicitly skipped gate cannot capture memory", async () => {
     const out = command("tools/perf/checkpoint.mjs", ["--working-memory", inputRef, "--write", "--skip-gate-evaluate", "--json"]);
@@ -153,13 +159,15 @@ try {
       assert.equal(resumed.status, "invalid_evidence"); assert.equal(resumed.capsule, null);
     } finally { fs.writeFileSync(rawFile, raw); fs.writeFileSync(contextFile, context); }
   });
-  await check("state-mode change invalidates files capsule before DB-bound reconstruction", async () => {
+  await check("state-mode change invalidates SQL capsule and missing DB refuses reconstruction", async () => {
     const file = path.join(root, ".aidn/config.json"); const original = fs.readFileSync(file);
     fs.writeFileSync(file, JSON.stringify({ runtime: { stateMode: "db-only" } }));
     assert.equal((await resumeAgentWorkingMemory({ targetRoot: root, agentId: "agent-1" })).status, "stale");
     const sqliteFile = path.join(root, ".aidn/runtime/index/workflow-index.sqlite");
-    assert.equal(fs.existsSync(sqliteFile), false, "Untracked warm fixture databases must not be copied");
-    await assert.rejects(() => prepareAgentWorkingMemory({ targetRoot: root, inputFile: inputRef }), /WORKING_MEMORY_REVISION_UNAVAILABLE/);
+    assert.equal(fs.existsSync(sqliteFile), true, "this database was explicitly seeded for the SQL fixture");
+    fs.renameSync(sqliteFile, sqliteFile + '.retained');
+    try { await assert.rejects(() => prepareAgentWorkingMemory({ targetRoot: root, inputFile: inputRef }), /WORKING_MEMORY_REVISION_UNAVAILABLE/); }
+    finally { fs.renameSync(sqliteFile + '.retained', sqliteFile); }
     const { payload } = createArtifactProjectorAdapter().projectArtifacts({ targetRoot: root,
       auditRoot: path.join(root, "docs/audit"), embedContent: true });
     await createSqliteRuntimeArtifactStore({ sqliteFile }).writeIndexProjection({ payload });
@@ -259,7 +267,7 @@ try {
     fs.writeFileSync(inputFile, JSON.stringify(memory));
   });
   for (const backend of ["sqlite", "postgres"]) {
-    for (const stateMode of ["dual", "db-only", ...(backend === "postgres" ? ["files"] : [])]) {
+    for (const stateMode of ["dual", "db-only"]) {
       await check(`${backend}/${stateMode} canonical binding, concurrent change and unavailable refusal`, async () => {
         const configFile = path.join(root, ".aidn/config.json"); const oldConfig = fs.readFileSync(configFile);
         const sqliteFile = path.join(root, ".aidn/runtime/index/workflow-index.sqlite");

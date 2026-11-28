@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
 import path from "node:path";
+import fs from 'node:fs';
+import os from 'node:os';
+import { createStandardWorkflowFixture } from './standard-workflow-fixture-lib.mjs';
 
 function assert(condition, message) {
   if (!condition) {
@@ -25,8 +28,9 @@ function runNodeJson(script, args = []) {
 }
 
 function main() {
+  const owned = [];
   try {
-    const targetRoot = "tests/fixtures/repo-installed-core";
+    const targetRoot = createStandardWorkflowFixture('dual', owned);
     const runtimeDiagnostics = runJson(["runtime", "governance-diagnostics", "--target", targetRoot, "--json"]);
     const perfDiagnostics = runNodeJson(path.resolve(process.cwd(), "tools/perf/verify-governance-completeness.mjs"), ["--json"]);
 
@@ -75,7 +79,12 @@ function main() {
     console.log("PASS");
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
-    process.exit(1);
+    process.exitCode = 1;
+  } finally {
+    for (const root of owned) {
+      assert(path.dirname(fs.realpathSync(root)) === fs.realpathSync(os.tmpdir()), 'owned fixture bounds');
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   }
 }
 

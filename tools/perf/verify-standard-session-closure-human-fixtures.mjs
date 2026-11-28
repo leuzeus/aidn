@@ -15,7 +15,7 @@ import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-sche
 import { createStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
 const H = "a".repeat(64), op = x => "op_" + x.repeat(40), key = randomBytes(32), signer = createOperationJournalSigner(() => key);
 const selectedMode = process.argv.find(value => value.startsWith("--mode="))?.slice(7);
-if (selectedMode && !["files", "dual", "db-only"].includes(selectedMode)) throw Error("FIXTURE_MODE_INVALID");
+if (selectedMode && !["dual", "db-only"].includes(selectedMode)) throw Error("FIXTURE_MODE_INVALID");
 const baseReview = () => ({ session_id: "S001", session_path: "sessions/S001.md", mode: "COMMITTING", branch: "C001-feature-example", session_branch: "S001-example", head: "a".repeat(40),
   admission_operation_id: op("a"), admission_output_sha256: H, drift_evaluation_operation_id: op("b"), drift_evaluation_output_sha256: H,
   drift_finalization_operation_id: op("c"), drift_finalization_output_sha256: H, context_sha256: H, scope_sha256: H,
@@ -95,7 +95,7 @@ await test("review checks correlated admission/R05 capability results and detect
 if (!process.argv.includes("--contract-only")) {
   const owned = [], temporary = fs.realpathSync(os.tmpdir());
   try {
-    for (const mode of selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) await test("real canonical v5 inbox, cold capture, no implicit DB export and tamper refusal: " + mode, async () => {
+    for (const mode of selectedMode ? [selectedMode] : ["dual", "db-only"]) await test("real canonical v5 inbox, cold capture, no implicit DB export and tamper refusal: " + mode, async () => {
       const root = createStandardWorkflowFixture(mode, owned), makeInbox = () => createProcessDecisionInboxStore({ targetRoot: root, stateMode: mode }), f = fixture(makeInbox);
       f.sources.set("fixture:answer", f.claim()); const capture = await f.human().reserve(f.record, "fixture:answer"), receipt = { receipt_id: "fixture_receipt" };
       f.record.results.push({ output: f.human().output(f.record, capture), receipt }); const cold = fixture(makeInbox); cold.human().acknowledge(capture.inbox_id, receipt);

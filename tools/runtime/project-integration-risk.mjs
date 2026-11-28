@@ -196,12 +196,7 @@ export function projectIntegrationRisk({
       stateMode: effectiveStateMode,
     })
     : null;
-  const write = effectiveStateMode === "files"
-    ? writeUtf8IfChanged(outputPath, markdown)
-    : {
-      path: outputPath,
-      written: Boolean(dbFirstWrite?.ok),
-    };
+  const write = { path: outputPath, written: Boolean(dbFirstWrite?.ok) };
   return {
     ...assessment,
     output_file: write.path,

@@ -17,7 +17,7 @@ export function createNativeDispatchProvenance({ configuration, options, signer,
   const store = createWorkflowRecordStore({ ...options, descriptor: { pathForId: nativeDispatchPath,
     validate: assertNativeDispatchRecord, idOf: value => value.dispatch_id, hashOf: shadowHash, kind: 'native_allocation_journal' } });
   const configurationSha = shadowHash(configuration), root = agentRunPhysicalPath(configuration.target_root);
-  const projection = options.stateMode === 'dual' || options.stateMode === 'files' && projectionRequired === true;
+  const projection = options.stateMode === 'dual';
   const journalHash = () => { const value = readJournal().record; return value ? shadowHash(value) : null; };
   const boundary = (name, id) => { if (onBoundary(name, id) !== undefined) fail('NATIVE_DISPATCH_BOUNDARY_INVALID'); };
   const read = id => { const value = store.read(id); if (value.record) signer.verify(value.record); return value; };

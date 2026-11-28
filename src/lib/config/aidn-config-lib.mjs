@@ -4,7 +4,13 @@ import { writeFileAtomicSync } from "../fs/atomic-write-lib.mjs";
 
 export const AIDN_CONFIG_SCHEMA_VERSION = 1;
 
-export const VALID_STATE_MODES = new Set(["files", "dual", "db-only"]);
+export const VALID_STATE_MODES = new Set(["dual", "db-only"]);
+export const DEFAULT_STATE_MODE = "dual";
+
+export function retiredFilesStateMode() {
+  return Object.assign(new Error("AIDN_FILES_STATE_MODE_RETIRED: migrate this project with aidn runtime mode-migrate --to dual --write (or --to db-only). SQLite and PostgreSQL remain supported."),
+    { code: "AIDN_FILES_STATE_MODE_RETIRED" });
+}
 export const VALID_INDEX_STORE_MODES = new Set(["file", "sql", "dual", "sqlite", "dual-sqlite", "all"]);
 export const VALID_RUNTIME_PERSISTENCE_BACKENDS = new Set(["sqlite", "postgres"]);
 export const VALID_RUNTIME_LOCAL_PROJECTION_POLICIES = new Set(["keep-local-sqlite", "keep-json", "keep-sql", "none"]);
@@ -116,6 +122,7 @@ function signaturesMatch(left, right) {
 
 export function normalizeStateMode(value) {
   const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "files") throw retiredFilesStateMode();
   if (!VALID_STATE_MODES.has(normalized)) {
     return null;
   }
@@ -147,14 +154,14 @@ export function normalizeRuntimeLocalProjectionPolicy(value) {
 }
 
 export function defaultIndexStoreFromStateMode(stateMode) {
-  const normalized = normalizeStateMode(stateMode) ?? "files";
+  const normalized = normalizeStateMode(stateMode) ?? DEFAULT_STATE_MODE;
   if (normalized === "dual") {
     return "dual-sqlite";
   }
   if (normalized === "db-only") {
     return "sqlite";
   }
-  return "file";
+  return "dual-sqlite";
 }
 
 export function stateModeFromIndexStore(storeMode) {
@@ -165,7 +172,7 @@ export function stateModeFromIndexStore(storeMode) {
   if (normalized === "sqlite") {
     return "db-only";
   }
-  return "files";
+  return DEFAULT_STATE_MODE;
 }
 
 export function resolveAidnConfigPath(targetRoot) {
@@ -302,7 +309,7 @@ export function validateAidnProjectConfig(data) {
     throw new Error("Invalid AIDN config version: expected supported schema version 1");
   }
   if (data.profile != null && !normalizeStateMode(data.profile)) {
-    throw new Error("Invalid AIDN config profile: expected files|dual|db-only");
+    throw new Error("Invalid AIDN config profile: expected dual|db-only");
   }
   for (const section of ["install", "runtime", "workflow"]) {
     assertOptionalObject(data, section);
@@ -486,6 +493,9 @@ export function resolveConfigStateMode(configData) {
     return null;
   }
   const runtime = isPlainObject(configData.runtime) ? configData.runtime : {};
+  // A retired profile must not silently become a new database authority through
+  // an environment or index-format override. Only mode-migrate reads it raw.
+  if (String(configData.profile ?? "").trim().toLowerCase() === "files") throw retiredFilesStateMode();
   const runtimeMode = normalizeStateMode(runtime.stateMode);
   if (runtimeMode) {
     return runtimeMode;
@@ -494,6 +504,9 @@ export function resolveConfigStateMode(configData) {
   if (profileMode) {
     return profileMode;
   }
+  // Legacy installations could omit stateMode while selecting a file/SQL text
+  // export as their only index. They need the same explicit source migration.
+  if (["file", "sql", "dual"].includes(resolveConfigIndexStore(configData))) throw retiredFilesStateMode();
   return null;
 }
 

@@ -31,7 +31,7 @@ if (mode === '--replay') {
     { write: true, expectedPlanSha256: H(plan) });
   console.log(JSON.stringify(result));
 } else {
-  assert(['files', 'dual', 'db-only'].includes(mode));
+  assert(['dual', 'db-only'].includes(mode));
   const home = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aidn-readonly-storage-stop-'));
   const fixture = path.join(home, 'fixture.json'), planFile = path.join(home, 'plan.json');
   const creator = fileURLToPath(new URL('./verify-agentic-process-execution-fixtures.mjs', import.meta.url));

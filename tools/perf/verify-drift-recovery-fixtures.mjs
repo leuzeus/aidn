@@ -365,12 +365,12 @@ const admissionMode = process.argv.find(arg => arg.startsWith("--cr-admission-mo
 const cycleMode = process.argv.find(arg => arg.startsWith("--cycle-port-mode="))?.slice("--cycle-port-mode=".length);
 const crWriteMode = process.argv.find(arg => arg.startsWith("--cr-write-mode="))?.slice("--cr-write-mode=".length);
 if (cycleMode !== undefined && !["files", "dual", "db-only", "partial", "projection"].includes(cycleMode)) throw Error("RECOVERY_CYCLE_FIXTURE_MODE_INVALID");
-if (admissionMode !== undefined && !["files", "dual", "db-only"].includes(admissionMode)) throw Error("CR_ADMISSION_FIXTURE_MODE_INVALID");
-if (crWriteMode !== undefined && !["files", "dual", "db-only"].includes(crWriteMode)) throw Error("CR_WRITE_FIXTURE_MODE_INVALID");
+if (admissionMode !== undefined && !["dual", "db-only"].includes(admissionMode)) throw Error("CR_ADMISSION_FIXTURE_MODE_INVALID");
+if (crWriteMode !== undefined && !["dual", "db-only"].includes(crWriteMode)) throw Error("CR_WRITE_FIXTURE_MODE_INVALID");
 try {
   if (cycleMode) await verifyDriftCyclePort({ mode: cycleMode, owned, pass, agedPlan });
   else if (crWriteMode) await verifyPartialChangeRequest(crWriteMode, false, true);
-  else if (process.argv.includes("--cr-fault-only") || admissionMode) await verifyPartialChangeRequest(admissionMode ?? "files", Boolean(admissionMode));
+  else if (process.argv.includes("--cr-fault-only") || admissionMode) await verifyPartialChangeRequest(admissionMode ?? "dual", Boolean(admissionMode));
   else {
   const targetRoot = createFreshStandardWorkflowFixture("dual", owned), operations = createStandardWorkflowOperations({ targetRoot });
   const preparedSession = await operations.prepareSession({ session_id: "S001", session_branch: "S001-recovery", objective: "Verify authorized recovery documentation and exact effects" });
@@ -542,7 +542,7 @@ try {
 }
 console.log(JSON.stringify({ status: "PASS", checks, skips, proof: "offline-synthetic-human-capture-real-git-and-canonical-ports", real_human_channel: "NOT_RUN", native: "NOT_RUN", full_standard_workflow: "NOT_YET_DELIVERED" }));
 
-async function verifyPartialChangeRequest(mode = "files", admissionOnly = false, positiveOnly = false) {
+async function verifyPartialChangeRequest(mode = "dual", admissionOnly = false, positiveOnly = false) {
   const instance = { instance_id: "port_fixture", instance_sha256: H }, crInput = { recovery_record_operation_id: id };
   const faultRoot = createFreshStandardWorkflowFixture(mode, owned), faultOps = createStandardWorkflowOperations({ targetRoot: faultRoot });
   const faultArtifacts = createStandardWorkflowArtifacts({ targetRoot: faultRoot }), faultProduct = path.join(faultRoot, "product");

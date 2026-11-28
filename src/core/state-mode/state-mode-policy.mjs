@@ -8,7 +8,7 @@ import {
 } from "../../lib/config/aidn-config-lib.mjs";
 
 export function isDbBackedStateMode(stateMode) {
-  const normalized = normalizeStateMode(stateMode);
+  const normalized = normalizeStateMode(stateMode) ?? "dual";
   return normalized === "dual" || normalized === "db-only";
 }
 
@@ -46,10 +46,10 @@ export function resolveEffectiveRuntimeMode({
   const envStateModeSet = String(env.AIDN_STATE_MODE ?? "").trim().length > 0;
   const envIndexStoreSet = String(env.AIDN_INDEX_STORE_MODE ?? "").trim().length > 0;
   const config = readAidnProjectConfig(targetRoot);
+  const configStateMode = resolveConfigStateMode(config.data);
 
-  let effectiveStateMode = normalizeStateMode(stateMode) ?? "files";
+  let effectiveStateMode = normalizeStateMode(stateMode) ?? "dual";
   if (!envStateModeSet) {
-    const configStateMode = resolveConfigStateMode(config.data);
     if (configStateMode) {
       effectiveStateMode = configStateMode;
     }
@@ -57,7 +57,7 @@ export function resolveEffectiveRuntimeMode({
     effectiveStateMode = normalizeStateMode(env.AIDN_STATE_MODE) ?? effectiveStateMode;
   }
   if (!effectiveStateMode) {
-    throw new Error("Invalid effective AIDN_STATE_MODE. Expected files|dual|db-only");
+    throw new Error("Invalid effective AIDN_STATE_MODE. Expected dual|db-only");
   }
 
   let effectiveIndexStore = indexStore;

@@ -13,7 +13,7 @@ import { CODEX_STARTUP_ENVIRONMENT_PROFILES } from "../../src/core/agents/codex-
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 
 const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-ordinary-github-"));
-const target = createFreshStandardWorkflowFixture("files");
+const target = createFreshStandardWorkflowFixture("dual");
 const dirs = Object.fromEntries(["control", "review", "native", "host"].map(name => {
   const dir = path.join(base, name);
   fs.mkdirSync(dir);

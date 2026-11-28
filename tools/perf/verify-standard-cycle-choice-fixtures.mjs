@@ -146,11 +146,11 @@ if (process.argv[2] === "--accept") {
   console.log(JSON.stringify({ instance_sha256: state.record.instance_sha256, status: state.cursor.status }));
 } else {
   const owned = [], temporary = fs.realpathSync(os.tmpdir()), selectedMode = process.argv.find(value => value.startsWith("--mode="))?.slice(7);
-  if (selectedMode && !["files", "dual", "db-only"].includes(selectedMode)) throw Error("CYCLE_CHOICE_FIXTURE_MODE_INVALID");
+  if (selectedMode && !["dual", "db-only"].includes(selectedMode)) throw Error("CYCLE_CHOICE_FIXTURE_MODE_INVALID");
   let success = false;
   try {
     await contracts();
-    for (const persistence of process.argv.includes("--contracts-only") ? [] : selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) {
+    for (const persistence of process.argv.includes("--contracts-only") ? [] : selectedMode ? [selectedMode] : ["dual", "db-only"]) {
       const targetRoot = createFreshStandardWorkflowFixture(persistence, owned), operations = createStandardWorkflowOperations({ targetRoot }), artifacts = createStandardWorkflowArtifacts({ targetRoot });
       const privateRoot = fs.mkdtempSync(path.join(temporary, "aidn-cycle-choice-")); owned.push(privateRoot);
       const keyFile = path.join(privateRoot, "host.key"), sourcesFile = path.join(privateRoot, "sources.json");

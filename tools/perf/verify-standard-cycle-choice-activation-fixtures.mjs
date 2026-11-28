@@ -148,7 +148,7 @@ if (["--accept-record", "--accept-activation", "--inspect-activation"].includes(
 } else {
   const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7), selectCurrent = process.argv.includes("--select-current"),
     fault = process.argv.find(arg => arg.startsWith("--fault="))?.slice(8) ?? null;
-  if (!process.argv.includes("--contracts-only") && !["files", "dual", "db-only"].includes(mode)
+  if (!process.argv.includes("--contracts-only") && !["dual", "db-only"].includes(mode)
     || mode && process.argv.includes("--contracts-only") || fault && (mode !== "files" || selectCurrent || !["index_ack", "grant_after_index", "product_ack"].includes(fault)))
     throw Error("CHOICE_ACTIVATION_FIXTURE_SCOPE_INVALID");
   contracts();

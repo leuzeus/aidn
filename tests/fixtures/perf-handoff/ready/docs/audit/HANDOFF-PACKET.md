@@ -35,7 +35,7 @@ first_plan_step: implement alpha feature validation
 
 ## Runtime Signals
 
-runtime_state_mode: files
+runtime_state_mode: dual
 repair_layer_status: unknown
 repair_routing_hint: reanchor
 current_state_freshness: ok

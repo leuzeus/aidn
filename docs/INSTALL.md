@@ -49,7 +49,7 @@ installation. See [the decision connector](WORKFLOW_CONSOLE.md#decisions-inside-
 No project-local AIDN npm dependency is installed. Existing local installations
 use [project migration](UPGRADE.md#move-a-09x-project-to-the-global-engine).
 
-PostgreSQL is optional. The wizard offers files without PostgreSQL, already
+PostgreSQL is optional. The wizard offers local SQLite without PostgreSQL, already
 provisioned dedicated resources, or explicitly pinned local server installation.
 For an existing server, scripted attachment uses `--connection-ref
 env:AIDN_PG_PROJECT`. Keep the value out of commands, registry and Git. This path
@@ -390,7 +390,7 @@ Notes:
 - Artifact import policy:
   - after install (non-verify mode), installer automatically imports `docs/audit/*` artifacts into `.aidn/runtime/index/*`,
   - import store precedence: `--artifact-import-store` > `AIDN_INDEX_STORE_MODE` > `AIDN_STATE_MODE` mapping,
-  - `AIDN_STATE_MODE` fallback import mapping remains: `files -> file`, `dual -> dual-sqlite`, `db-only -> sqlite` when no PostgreSQL runtime backend is configured,
+  - `AIDN_STATE_MODE` fallback import mapping remains: `dual -> dual-sqlite`, `db-only -> sqlite` when no PostgreSQL runtime backend is configured,
   - default install profile is DB-backed: `runtime.stateMode=dual` and `install.artifactImportStore=dual-sqlite`,
   - in strict `db-only`, install creates or preserves the minimal re-anchor anchors (`CURRENT-STATE.md`, `RUNTIME-STATE.md`, `HANDOFF-PACKET.md`, snapshot and baseline pointers) but does not create or refresh detailed session/cycle projections, coordination summaries, agent health summaries, or other runtime/state exports unless `--materialize-visible-artifacts` or a dedicated projection command is supplied,
   - workflow bootstrap assets from the scaffold (`AGENTS.md`, `.codex` skills, `SPEC.md`, `WORKFLOW.md`, `WORKFLOW-KERNEL.md`, `WORKFLOW_SUMMARY.md`, `CODEX_ONLINE.md`) are protected workflow surfaces, not cleanup candidates,
@@ -724,7 +724,7 @@ Recommended first reload path in client repos:
   - `npx aidn perf session-close --target . --mode COMMITTING --json`
 - Runtime artifacts are written under `<target>/.aidn/runtime/*` (not in `<target>/tools`).
 - Optional runtime state mode:
-  - `AIDN_STATE_MODE=files|dual|db-only`
+  - `AIDN_STATE_MODE=dual|db-only`
   - fallback import mapping: `files -> file`, `dual -> dual-sqlite`, `db-only -> sqlite` only when PostgreSQL is not configured as the canonical runtime backend
   - default fresh install uses `dual` (DB-backed) when no override is provided
   - explicit CLI `--index-store` still has priority.
@@ -735,3 +735,44 @@ Recommended first reload path in client repos:
 Use `aidn bootstrap --target <client-repo> --dry-run --json` to obtain the installation plan; `--expect-plan PLAN_ID` binds nominal bootstrap to that preview. Use `--persistence-policy verify-only` when existing persistence must be verified without migration, adoption or import.
 
 Project authorization is inspected with `aidn bootstrap --target <client-repo> --diagnose --json`. Explicit `--authorize` and `--revoke` actions preview by default and require `--write --expect-plan PLAN_ID` to apply. They share repository authorization across Git worktrees while preserving per-worktree installation receipts. See [project activation](CODEX_INTEGRATION.md#project-activation-and-skill-names).
+
+## Retired FILES state migration
+
+The active state profiles are `dual` and `db-only`. SQLite is the local
+default; PostgreSQL remains optional. Configuration or environment selection of
+FILES refuses with `AIDN_FILES_STATE_MODE_RETIRED` and a migration instruction.
+Normal install/update does not silently reinterpret a legacy project's state.
+
+Stop other writers and retain a project backup. Use the new candidate package's
+CLI for this transition; an older installed CLI still has its old migration
+behavior. An unpacked package can run `node <package>/bin/aidn.mjs runtime
+mode-migrate --target <project> --to dual --json` before global activation.
+From a shell using that candidate CLI:
+
+```powershell
+aidn runtime mode-migrate --to dual --json
+aidn runtime mode-migrate --to dual --write --json
+```
+
+For shared use, select `--to db-only --backend postgres --connection-ref env:AIDN_PG_PROJECT`.
+The referenced environment variable holds the connection value; keep it outside
+commands and Git. Provision the isolated database separately.
+
+Preview changes nothing. Apply verifies session IDs, cycle ownership and
+attachment, active focus, and exact UTF-8 content hashes before publishing the
+new configuration. Existing history and decisions are copied without rewriting
+or resigning them. A stale legacy SQLite index is retained as a hash-bound
+backup before reconstruction from FILES. Existing SQL authority is never rebuilt
+from projections. A conflicting PostgreSQL destination, unsettled effect owner,
+unavailable database or changed source refuses the switch. A copy interrupted
+before publication retains FILES authority. After a controlled interruption that
+released its lock, an explicit retry may match the copied rows. An abandoned
+owner lock refuses automatic takeover; it requires separate recovery evidence.
+No source file is deleted.
+
+When SQL was already canonical, including PostgreSQL under an old FILES label,
+mode migration only changes the profile; it does not import local projections.
+Use persistence adoption for a change between existing SQL backends. Projection
+materialization and repair remain separate explicit commands. A state migration
+does not grant Native execution or resume an incompatible historical instance.
+See [ADR-0027](ADR/ADR-0027-retire-files-state-authority.md).

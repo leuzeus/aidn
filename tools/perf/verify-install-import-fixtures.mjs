@@ -546,61 +546,27 @@ function checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
 function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const target = prepareTmp(repoRoot, sourceTarget, tmpRoot, "env-precedence");
   const out = runInstall(repoRoot, target, codexStubBin, [], {
-    AIDN_STATE_MODE: "db-only",
-    AIDN_INDEX_STORE_MODE: "file",
+    AIDN_STATE_MODE: "db-only", AIDN_INDEX_STORE_MODE: "file",
   });
-  const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");
-  const indexSqlite = path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite");
-  const configPath = path.join(target, ".aidn", "config.json");
-  const installedSkillsRoot = path.join(target, ".agents", "skills");
+  const indexRoot = path.join(target, ".aidn/runtime/index");
+  const configPath = path.join(target, ".aidn/config.json");
   const config = readConfigSafe(configPath);
-  const reanchor = collectReanchorArtifactDetails(target);
-  const skillCoverage = runCurrentStateSkillCoverageJson(repoRoot, installedSkillsRoot);
-  const preWriteSkillCoverage = runPreWriteAdmitSkillCoverageJson(repoRoot, installedSkillsRoot);
-  const currentStateConsistency = runCurrentStateConsistencyJson(repoRoot, target);
+  const noIndex = !fs.existsSync(path.join(indexRoot, "workflow-index.json"))
+    && !fs.existsSync(path.join(indexRoot, "workflow-index.sqlite"));
   return {
-    name: "env_index_store_over_state_mode",
+    name: "non_sql_env_store_cannot_restore_files_mode",
     target_root: target,
-    ok: out.status === 0
-      && includes(out.stdout, "artifact import: OK")
-      && includes(out.stdout, "store=file")
-      && fs.existsSync(indexJson)
-      && !fs.existsSync(indexSqlite)
-      && fs.existsSync(configPath)
-      && String(config?.runtime?.stateMode ?? "") === "files"
-      && Object.values(reanchor).every((value) => value === true)
-      && skillCoverage.ok
-      && skillCoverage.payload?.pass === true
-      && preWriteSkillCoverage.ok
-      && preWriteSkillCoverage.payload?.pass === true
-      && currentStateConsistency.ok
-      && currentStateConsistency.payload?.pass === true,
-    details: {
-      ...installDiagnostics(out),
-      has_import_ok_line: includes(out.stdout, "artifact import: OK"),
-      has_store_file: includes(out.stdout, "store=file"),
-      index_json_exists: fs.existsSync(indexJson),
-      index_sqlite_exists: fs.existsSync(indexSqlite),
-      config_exists: fs.existsSync(configPath),
-      config_runtime_state_mode: config?.runtime?.stateMode ?? null,
-      reanchor_artifacts: reanchor,
-      current_state_skill_coverage_ok: skillCoverage.ok,
-      current_state_skill_coverage_pass: skillCoverage.payload?.pass ?? false,
-      current_state_skill_coverage_stderr_tail: tail(skillCoverage.stderr),
-      pre_write_skill_coverage_ok: preWriteSkillCoverage.ok,
-      pre_write_skill_coverage_pass: preWriteSkillCoverage.payload?.pass ?? false,
-      pre_write_skill_coverage_stderr_tail: tail(preWriteSkillCoverage.stderr),
-      current_state_consistency_ok: currentStateConsistency.ok,
-      current_state_consistency_pass: currentStateConsistency.payload?.pass ?? false,
-      current_state_consistency_stderr_tail: tail(currentStateConsistency.stderr),
-    },
+    ok: out.status !== 0 && includes(out.stdout + out.stderr, "AIDN_INSTALL_SQL_STORE_REQUIRED")
+      && noIndex && !fs.existsSync(configPath),
+    details: { ...installDiagnostics(out), index_absent: noIndex,
+      config_absent: !fs.existsSync(configPath), config_runtime_state_mode: config?.runtime?.stateMode ?? null },
   };
 }
 
 function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const target = prepareTmp(repoRoot, sourceTarget, tmpRoot, "cli-override");
   const out = runInstall(repoRoot, target, codexStubBin, ["--artifact-import-store", "dual-sqlite"], {
-    AIDN_STATE_MODE: "files",
+    AIDN_STATE_MODE: "dual",
     AIDN_INDEX_STORE_MODE: "file",
   });
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");

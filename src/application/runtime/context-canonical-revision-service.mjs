@@ -7,7 +7,6 @@ import { resolveRuntimeProjectContext } from "./runtime-project-context-service.
 export async function observeContextCanonicalRevision({ targetRoot, stateMode,
   readerFactory = createRuntimeCanonicalSnapshotReader } = {}) {
   const persistence = resolveEffectiveRuntimePersistence({ targetRoot });
-  if (stateMode === "files" && persistence.backend !== "postgres") return { backend: "files", revision: null };
   try {
     const reader = readerFactory({ targetRoot, backend: persistence.backend,
       connectionRef: persistence.connectionRef ?? "" });

@@ -4,7 +4,7 @@
 
 updated_at: 2026-03-10T00:00:00Z
 structure_profile: modern
-runtime_state_mode: files
+runtime_state_mode: dual
 repair_layer_status: unknown
 
 ## Active Context

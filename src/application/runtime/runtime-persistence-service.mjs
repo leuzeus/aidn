@@ -3,6 +3,8 @@ import {
   normalizeRuntimePersistenceBackend,
   readAidnProjectConfig,
   resolveConfigRuntimePersistence,
+  resolveConfigStateMode,
+  normalizeStateMode,
 } from "../../lib/config/aidn-config-lib.mjs";
 import { createSqliteRuntimeArtifactStore } from "../../adapters/runtime/sqlite-runtime-artifact-store.mjs";
 import { createSqliteRuntimePersistenceAdmin } from "../../adapters/runtime/sqlite-runtime-persistence-admin.mjs";
@@ -34,9 +36,12 @@ export function resolveEffectiveRuntimePersistence({
   configData = null,
   env = process.env,
 } = {}) {
+  const resolvedConfigData = configData ?? readAidnProjectConfig(targetRoot).data;
+  resolveConfigStateMode(resolvedConfigData);
+  normalizeStateMode(env.AIDN_STATE_MODE);
   const explicitBackend = normalizeRuntimePersistenceBackend(backend);
   if (explicitBackend) {
-    const configured = resolveConfigRuntimePersistence(configData ?? readAidnProjectConfig(targetRoot).data);
+    const configured = resolveConfigRuntimePersistence(resolvedConfigData);
     const configuredRef = configured?.backend === explicitBackend ? configured.connectionRef : null;
     return {
       backend: explicitBackend,
@@ -58,7 +63,6 @@ export function resolveEffectiveRuntimePersistence({
     };
   }
 
-  const resolvedConfigData = configData ?? readAidnProjectConfig(targetRoot).data;
   const configPersistence = resolveConfigRuntimePersistence(resolvedConfigData);
   if (configPersistence?.backend) {
     return {

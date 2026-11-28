@@ -15,8 +15,8 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
 import { createProjectArtifactStore } from "../../src/application/runtime/project-artifact-store-service.mjs";
 const H = "a".repeat(64), op = char => "op_" + char.repeat(40), temp = fs.realpathSync(os.tmpdir());
-const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7) ?? "files", owned = [];
-if (!["files", "dual", "db-only"].includes(mode)) throw Error("CLOSURE_INBOX_FIXTURE_MODE_INVALID");
+const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7) ?? "dual", owned = [];
+if (!["dual", "db-only"].includes(mode)) throw Error("CLOSURE_INBOX_FIXTURE_MODE_INVALID");
 const root = mode === "files" ? fs.mkdtempSync(path.join(temp, "aidn-closure-inbox-")) : createFreshStandardWorkflowFixture(mode, owned);
 if (mode === "files") owned.push(root);
 const readBytes = id => {

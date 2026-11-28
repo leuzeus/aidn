@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 function normalizeScalar(value) {
   return String(value ?? "").trim();
 }
@@ -271,7 +273,7 @@ export function buildCoordinatorDispatchEntryPlan({
     if (hasSqliteIndex) {
       plan.entrypoint_name = "repair-layer-triage";
       plan.steps = [
-        buildStep("npx", ["aidn", "runtime", "repair-layer-triage", "--target", targetArg, "--json"], "repair-layer-triage", platform),
+        buildStep(process.execPath, [fileURLToPath(new URL('../../../tools/runtime/repair-layer-triage.mjs', import.meta.url)), "--target", targetArg, "--json"], "repair-layer-triage", platform),
         buildStep("npx", ["aidn", "runtime", "project-runtime-state", "--target", targetArg, "--json"], "project-runtime-state-after-repair", platform),
       ];
     } else {

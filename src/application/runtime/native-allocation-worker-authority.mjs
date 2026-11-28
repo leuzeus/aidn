@@ -45,16 +45,14 @@ export function createNativeAllocationWorkerAuthority({ configuration, authoriza
       let history = null;
       if (processAuthority) {
         history = processAuthority.authenticate(retained ?? createAgenticProcess(creation), { reservation: admission, productSha256, checkControlContext: true, forNative: true });
-        assertNativeAllocationProjection(retained, configuration, project.stateMode === "dual"
-          || project.stateMode === "files" && agenticProcessPersistence({ targetRoot: configuration.target_root, env: environment }).backend === "postgres");
+        assertNativeAllocationProjection(retained, configuration, project.stateMode === "dual");
       }
       else if (entry.generation === 1) assertAgenticProcessStart(retained, creation);
       else {
         if (!retained) fail("PROCESS_WORKER_ALLOCATION_CHANGED");
         history = readNativeAllocationHistory({ journal, entry: journal.allocations.at(-2), current: retained, configuration, signer, controls, reconciliationHistory,
           controlContext: () => readNativeControlContext(configuration, productSha256) });
-        assertNativeAllocationProjection(retained, configuration, project.stateMode === "dual"
-          || project.stateMode === "files" && agenticProcessPersistence({ targetRoot: configuration.target_root, env: environment }).backend === "postgres");
+        assertNativeAllocationProjection(retained, configuration, project.stateMode === "dual");
       }
       return { history, output_id: nativeAllocationOutputId(configuration.instance_id, entry.generation), generation: entry.generation,
         canonical_sha256: retained?.instance_sha256 ?? null };

@@ -12,8 +12,8 @@ import { createStandardSessionPrAdmission } from '../../src/application/runtime/
 import { assertStandardOperationOutput } from '../../src/core/workflow/standard-operation-contracts.mjs';
 import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-schema-validator.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
-const mode = process.argv.find(v => v.startsWith('--mode='))?.slice(7) ?? 'files';
-if (!['files', 'dual', 'db-only'].includes(mode)) throw Error('FIXTURE_MODE_INVALID');
+const mode = process.argv.find(v => v.startsWith('--mode='))?.slice(7) ?? 'dual';
+if (!['dual', 'db-only'].includes(mode)) throw Error('FIXTURE_MODE_INVALID');
 const H = 'a'.repeat(64), op = x => 'op_' + x.repeat(40), owned = [], temporary = fs.realpathSync(os.tmpdir());
 const git = (root, ...args) => execFileSync('git', ['-C', root, '-c', 'core.hooksPath=NUL', ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');

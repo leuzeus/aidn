@@ -55,7 +55,7 @@ export function evaluateHandoffAdmission({
   sharedRuntimeValidation,
   transitionEvaluator,
   consistency,
-  effectiveStateMode = "files",
+  effectiveStateMode = "dual",
   dbBackedMode = false,
   packetFile = "docs/audit/HANDOFF-PACKET.md",
   packetRef = "shared-coordination://handoff_relays",

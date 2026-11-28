@@ -13,7 +13,7 @@ import { evaluateCurrentStateConsistency } from "./verify-current-state-consiste
 // Canonical preconditions are DATA. The delivered root captures its own fresh
 // current-question choice through an identified H port; no old choice is reused.
 export async function verifyPublishedSelectedRoot(check, { mixedFixture, selectedMode }) {
-  for (const mode of selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) await check("standard selected root " + mode + ": fresh choice and selected calls reach actual current verification", async () => {
+  for (const mode of selectedMode ? [selectedMode] : ["dual", "db-only"]) await check("standard selected root " + mode + ": fresh choice and selected calls reach actual current verification", async () => {
     const objective = "Resume selected canonical progress through the delivered STANDARD root";
     const data = await verifyCanonicalCycleChoiceRecord(mode, { arrangeOnly: true, cycleObjective: objective,
       pass() { assert.fail("Arrangement must not execute the old choice process"); },

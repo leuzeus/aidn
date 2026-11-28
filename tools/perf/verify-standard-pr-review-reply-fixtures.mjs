@@ -61,7 +61,7 @@ const pin = path => ({ path, sha256: createHash('sha256').update(fs.readFileSync
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const save = (file, data) => fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
 const incidentModeArguments = process.argv.filter(value => value.startsWith('--incident-state-mode='));
-const incidentStateMode = incidentModeArguments[0]?.slice('--incident-state-mode='.length) ?? 'files';
+const incidentStateMode = incidentModeArguments[0]?.slice('--incident-state-mode='.length) ?? 'dual';
 const continuationRaceArguments = process.argv.filter(value => value.startsWith('--incident-continuation-race='));
 const continuationRace = continuationRaceArguments[0]?.slice('--incident-continuation-race='.length) ?? null;
 const continuationHistoryArguments = process.argv.filter(value => value.startsWith('--incident-continuation-history='));
@@ -73,7 +73,7 @@ const continuationCutArguments = process.argv.filter(value => value.startsWith('
 const continuationCut = continuationCutArguments[0]?.slice('--incident-continuation-cut='.length) ?? null;
 if (continuationCutArguments.length > 1 || continuationCut !== null && !['disposition_recorded', 'disposition_receipted', 'disposition_acceptance_committed'].includes(continuationCut))
   throw Error('FIXTURE_INCIDENT_CONTINUATION_CUT_UNSUPPORTED');
-if (incidentModeArguments.length > 1 || !['files', 'dual', 'db-only'].includes(incidentStateMode)
+if (incidentModeArguments.length > 1 || !['dual', 'db-only'].includes(incidentStateMode)
   || incidentModeArguments.length && (!['--case=external-premerge', '--case=external-pretriage-session'].includes(process.argv[2])
     || !['--incident-receipt-loss', '--incident-partial-write'].some(flag => process.argv.includes(flag))))
   throw Error('FIXTURE_INCIDENT_STATE_MODE_UNSUPPORTED');
@@ -171,7 +171,7 @@ function open(base, { initializeKey = false, providerNow, closeReceiptLoss = fal
   const pretriage = behavior.startsWith('external-pretriage-');
   const exception = behavior.startsWith('exception-'), external = behavior.startsWith('external-');
   const instanceId = configuration.instance_id, targetRoot = configuration.target_root;
-  const options = { targetRoot, stateMode: data.state_mode ?? 'files' };
+  const options = { targetRoot, stateMode: data.state_mode ?? 'dual' };
   assert.equal(createStandardWorkflowArtifacts({ targetRoot }).describe().state_mode, options.stateMode);
   const providerFile = path.join(base, 'provider.json'), state = json(providerFile);
   const fixture = createGithubReviewFixture({ workingDirectory: base, pullRequest: pr });
@@ -562,7 +562,7 @@ function configureActionFixture(base, configuration, graph) {
       environment_names: [...CODEX_STARTUP_ENVIRONMENT_PROFILES.worker], log_dir: configuration.control_root, sqlite_home: configuration.control_root } });
 }
 
-function arrange(prefix, behavior, stateMode = 'files') {
+function arrange(prefix, behavior, stateMode = 'dual') {
   const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), behavior.startsWith('resolve-') ? 'aidn-source121-r08-' : 'aidn-source120-r08-'));
   const targetRoot = createFreshStandardWorkflowFixture(stateMode);
   const dirs = Object.fromEntries(['host', 'control', 'review', 'native'].map(name => {
@@ -1872,7 +1872,7 @@ async function qualifyIncidentReceiptLoss(base, first, close, gitState) {
   assert.equal(child.live_assessment, 'unknown');
   const fresh = open(base), data = json(path.join(base, 'configuration.json'));
   const targetRoot = data.configuration.target_root;
-  const capsules = createProcessDispatchRecordStore({ targetRoot, stateMode: data.state_mode ?? 'files' });
+  const capsules = createProcessDispatchRecordStore({ targetRoot, stateMode: data.state_mode ?? 'dual' });
   const capsule = capsules.read(id).record;
   fresh.signer.verify(capsule);
   assert.equal(shadowHash(capsule), child.capsule_sha256);
@@ -2930,7 +2930,7 @@ if (process.argv[2] === '--continue-incident-controller') {
   assert.equal((await f.host.dispatch(id, { write: true })).status, 'receipted');
   await f.host.accept(id, { write: true }); assert.equal(stopped, true);
   const partial = f.host.readJournal(id); assert.equal(partial.results[0].receipt.effect_status, 'unknown');
-  const capsule = createProcessDispatchRecordStore({ targetRoot: data.configuration.target_root, stateMode: data.state_mode ?? 'files' }).read(id).record;
+  const capsule = createProcessDispatchRecordStore({ targetRoot: data.configuration.target_root, stateMode: data.state_mode ?? 'dual' }).read(id).record;
   f.signer.verify(capsule); assert.equal(capsule.phase, 'returned'); assert.equal(capsule.leases[0].status, 'released');
   const live = await f.host.prepareOperationDisposition(id, { expectedSha256: f.inspect().record.instance_sha256 });
   assert.equal(live.assessment, 'unknown');
@@ -2941,7 +2941,7 @@ if (process.argv[2] === '--continue-incident-controller') {
   assert.equal(original.intent.binding_ref, 'session_pr_incident_close');
   f.allow(shadowHash(original.preview));
   await assert.rejects(f.host.dispatch(id, { write: true }), { code: 'FIXTURE_CLOSE_RECEIPT_LOST' });
-  const { configuration: { target_root: targetRoot }, state_mode: stateMode = 'files' } = json(path.join(base, 'configuration.json'));
+  const { configuration: { target_root: targetRoot }, state_mode: stateMode = 'dual' } = json(path.join(base, 'configuration.json'));
   const capsule = createProcessDispatchRecordStore({ targetRoot, stateMode }).read(id).record;
   f.signer.verify(capsule);
   assert.equal(capsule.phase, 'returned');

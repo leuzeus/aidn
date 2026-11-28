@@ -163,7 +163,7 @@ if (["--accept-record", "--accept-checkpoint", "--inspect-checkpoint"].includes(
   console.log(JSON.stringify(await acceptRecordedChoice({ root, keyFile, sourcesFile, operationId, clock: Number(clock), inspectOnly: process.argv[2] === "--inspect-checkpoint" })));
 } else {
   const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7), fault = process.argv.includes("--fault-after-index-ack"), selectCurrent = process.argv.includes("--select-current");
-  if (!process.argv.includes("--contracts-only") && !["files", "dual", "db-only"].includes(mode)
+  if (!process.argv.includes("--contracts-only") && !["dual", "db-only"].includes(mode)
     || mode && process.argv.includes("--contracts-only") || fault && mode !== "files" || selectCurrent && !mode) throw Error("CHOICE_CHECKPOINT_FIXTURE_SCOPE_INVALID");
   contracts();
   if (mode) await verifyCanonicalCycleChoiceRecord(mode, { childScript, pass, checkpoint: true, selectedCycleId: selectCurrent ? "C002" : "C001", afterRecordedChoice: f => checkpointCase(f, fault) });

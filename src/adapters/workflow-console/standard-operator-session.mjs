@@ -77,7 +77,7 @@ export function createStandardOperatorSession({ targetRoot, configuration, envir
     if (!pointer) return null;
     const options = {
       targetRoot: resolved.target_root,
-      stateMode: resolveConfigStateMode(readAidnProjectConfig(resolved.target_root).data) ?? "files",
+      stateMode: resolveConfigStateMode(readAidnProjectConfig(resolved.target_root).data) ?? "dual",
       env: environment,
     };
     const record = createProcessOperationJournalStore(options).read(pointer.operation_id).record;

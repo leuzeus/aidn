@@ -43,7 +43,7 @@ function canonicalSnapshot(root) {
     return rows.filter(row => row.path !== LOCAL_ARTIFACT_FENCE_PATH).sort((a, b) => a.path.localeCompare(b.path));
   } finally { store.close(); }
 }
-const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files';
+const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'dual';
 let checks = 0, cleanup = false;
 const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + name); };
 try {

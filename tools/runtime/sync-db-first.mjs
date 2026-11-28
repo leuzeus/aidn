@@ -22,12 +22,8 @@ function buildSyncDbFirstDiagnostic(out) {
     output_count: outputs.length,
     repair_layer_status: String(out?.repair_layer_result?.action ?? "").trim() || "not-run",
     triage_status: out?.repair_layer_triage_result ? "written" : "not-run",
-    summary: out?.skipped === true
-      ? "db-first sync skipped because the workspace remains in files mode"
-      : `db-first sync refreshed ${outputs.length} output target(s)`,
-    recommended_action: out?.skipped === true
-      ? "rerun with --force-in-files only when an explicit db-first refresh is required"
-      : "review repair-layer and triage outputs before relying on the refreshed db-first state",
+    summary: `db-first sync refreshed ${outputs.length} output target(s)`,
+    recommended_action: "review repair-layer and triage outputs before relying on the refreshed db-first state",
   };
 }
 
@@ -36,7 +32,6 @@ function parseArgs(argv) {
     target: ".",
     stateMode: "",
     store: "",
-    forceInFiles: false,
     repairLayer: true,
     repairLayerAutofixSafeOnly: false,
     repairLayerIndexFile: ".aidn/runtime/index/workflow-index.sqlite",
@@ -58,8 +53,6 @@ function parseArgs(argv) {
     } else if (token === "--store") {
       args.store = String(argv[i + 1] ?? "").trim().toLowerCase();
       i += 1;
-    } else if (token === "--force-in-files") {
-      args.forceInFiles = true;
     } else if (token === "--no-repair-layer") {
       args.repairLayer = false;
     } else if (token === "--repair-layer-autofix-safe-only") {
@@ -99,7 +92,6 @@ function printUsage() {
   console.log("Usage:");
   console.log("  npx aidn runtime sync-db-first --target . --json");
   console.log("  npx aidn runtime sync-db-first --target . --state-mode dual --strict --json");
-  console.log("  npx aidn runtime sync-db-first --target . --force-in-files --json");
   console.log("  npx aidn runtime sync-db-first --target . --no-repair-layer --json");
   console.log("  npx aidn runtime sync-db-first --target . --no-repair-layer-triage --json");
   console.log("  npx aidn runtime sync-db-first --target . --repair-layer-autofix-safe-only --json");

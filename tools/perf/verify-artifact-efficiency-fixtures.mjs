@@ -151,26 +151,27 @@ try {
     } finally { store.close(); }
   });
   check('ordinary full writes still support explicit files projection', () => {
-    runDbFirstArtifactUseCase({ target: temp, path: 'notes.md', content: '# File\n', stateMode: 'files' });
+    runDbFirstArtifactUseCase({ target: temp, path: 'notes.md', content: '# File\n', stateMode: 'dual' });
     assert.equal(fs.readFileSync(path.join(temp, 'docs/audit/notes.md'), 'utf8'), '# File\n');
   });
-  check('configured files remain authoritative over a stale SQLite index', () => {
+  check('retired FILES selection refuses a delta even with a stale SQLite index', () => {
     const target = path.join(temp, 'file-primary');fs.mkdirSync(path.join(target, '.aidn'), { recursive: true });
-    fs.writeFileSync(path.join(target, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'files', persistence: { backend: 'sqlite' } } }));
+    fs.writeFileSync(path.join(target, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'dual', persistence: { backend: 'sqlite' } } }));
     const original = '# Session\nmode: THINKING\n', edited = '# Session\nmode: EXPLORING\n';
     const first = runDbFirstArtifactUseCase({ target, path: 'sessions/S009.md', content: original });
     assert.equal(first.materialized, true);
     prepareActivationFixture(target, root);
     const file = path.join(target, 'docs/audit/sessions/S009.md');fs.writeFileSync(file, edited);
     const index = path.join(target, '.aidn/runtime/index/workflow-index.sqlite'), before = fs.readFileSync(index);
-    assert.throws(() => runDbFirstArtifactUseCase({ target, path: 'sessions/S009.md', replacements: [{ old: 'THINKING', new: 'COMMITTING' }], expectedSha256: first.artifact.sha256 }), /CANONICAL_DATABASE_REQUIRED/);
+    fs.writeFileSync(path.join(target, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'files' } }));
+    assert.throws(() => runDbFirstArtifactUseCase({ target, path: 'sessions/S009.md', replacements: [{ old: 'THINKING', new: 'COMMITTING' }], expectedSha256: first.artifact.sha256 }), /AIDN_FILES_STATE_MODE_RETIRED/);
     const rejected = cli('db-first-artifact', ['--path', 'sessions/S009.md', '--replace', JSON.stringify([{ old: 'THINKING', new: 'COMMITTING' }]), '--expect-sha256', first.artifact.sha256, '--state-mode', 'db-only', '--no-materialize'], target);
-    assert.notEqual(rejected.status, 0);assert.match(rejected.stderr, /ARTIFACT_REPLACEMENTS_CANONICAL_DATABASE_REQUIRED/);
+    assert.notEqual(rejected.status, 0);assert.match(rejected.stderr, /AIDN_FILES_STATE_MODE_RETIRED/);
     assert.equal(fs.readFileSync(file, 'utf8'), edited);assert(fs.readFileSync(index).equals(before));
   });
   check('projection-mode override cannot turn an index into canonical state', () => {
     const target = path.join(temp, 'file-primary');
-    assert.throws(() => runDbFirstArtifactUseCase({ target, path: 'sessions/S009.md', stateMode: 'db-only', replacements: [{ old: 'THINKING', new: 'COMMITTING' }], expectedSha256: artifactContentHash('# Session\nmode: THINKING\n') }), /CANONICAL_DATABASE_REQUIRED/);
+    assert.throws(() => runDbFirstArtifactUseCase({ target, path: 'sessions/S009.md', stateMode: 'db-only', replacements: [{ old: 'THINKING', new: 'COMMITTING' }], expectedSha256: artifactContentHash('# Session\nmode: THINKING\n') }), /AIDN_FILES_STATE_MODE_RETIRED/);
     assert.equal(fs.readFileSync(path.join(target, 'docs/audit/sessions/S009.md'), 'utf8'), '# Session\nmode: EXPLORING\n');
   });
   check('configured PostgreSQL cannot be replaced by an environment-selected SQLite index', () => {
@@ -192,7 +193,7 @@ try {
   });
   check('configured PostgreSQL remains canonical in files presentation mode', () => {
     const target = path.join(temp, 'pg-files');fs.mkdirSync(path.join(target, '.aidn'), { recursive: true });
-    fs.writeFileSync(path.join(target, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'files', persistence: { backend: 'postgres', connectionRef: 'env:AIDN_EFFICIENCY_UNAVAILABLE' } } }));
+    fs.writeFileSync(path.join(target, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'dual', persistence: { backend: 'postgres', connectionRef: 'env:AIDN_EFFICIENCY_UNAVAILABLE' } } }));
     assert.throws(() => runDbFirstArtifactUseCase({ target, path: 'notes.md', replacements: [{ old: 'a', new: 'b' }], expectedSha256: '0'.repeat(64) }), /ARTIFACT_POSTGRES_/);
     assert(!fs.existsSync(path.join(target, '.aidn/runtime/index/workflow-index.sqlite')));
   });
@@ -302,14 +303,15 @@ try {
   const filesTarget=path.join(temp,'template-files');fs.mkdirSync(filesTarget);
   fs.cpSync(path.join(root,'scaffold/docs_audit'),path.join(filesTarget,'docs/audit'),{recursive:true});
   prepareActivationFixture(filesTarget, root);
-  check('files discovery reads project authority without creating SQLite', () => {
-    const result=cli('artifact-store',['list','--templates'],filesTarget);assert.equal(result.status,0,result.stderr);
-    const data=JSON.parse(result.stdout);assert.equal(data.backend,'files');
-    for(const asset of data.artifacts) { assert.equal(asset.read_method,'file'); assert.equal(artifactContentHash(fs.readFileSync(path.join(filesTarget,asset.projection_path),'utf8')),asset.sha256); }
+  check('visible template copies cannot replace a missing canonical SQLite store', () => {
+    const result=cli('artifact-store',['list','--templates'],filesTarget);assert.notEqual(result.status,0);assert.match(result.stderr,/SQLite index file not found/);
     assert(!fs.existsSync(path.join(filesTarget,'.aidn/runtime/index/workflow-index.sqlite')));
   });
+  const templateStore = createProjectArtifactStore({ targetRoot: filesTarget });
+  try { for (const asset of templates.slice(1)) templateStore.upsertArtifact({ path: asset.path, content: fs.readFileSync(path.join(root,'scaffold/docs_audit',asset.path),'utf8'), content_format: 'utf8', kind: 'other', family: 'normative' }); }
+  finally { templateStore.close(); }
   check('required distributed model absent is a hard failure without replacement', () => {
-    fs.unlinkSync(path.join(filesTarget,'docs/audit',templates[0].path));
+    assert(fs.existsSync(path.join(filesTarget,'docs/audit',templates[0].path)), 'a visible projection cannot repair absent canonical content');
     const result=cli('artifact-store',['list','--templates'],filesTarget);assert.notEqual(result.status,0);assert.match(result.stderr,/TEMPLATE_REQUIRED_UNAVAILABLE/);assert.equal(result.stdout.trim(),'');
   });
   await assert.rejects(discoverProjectTemplates({targetRoot:temp,snapshotReader:async()=>({backend:'sqlite',payload:{artifacts:[{path:templates[0].path},{path:templates[0].path}]}})}),/TEMPLATE_REFERENCE_AMBIGUOUS/);checks++;
@@ -339,12 +341,10 @@ try {
       const refused=cli('artifact-store',['list','--view','agent',...flags]);assert.notEqual(refused.status,0);assert.equal(refused.stdout.trim(),'');
     }
   });
-  check('compact file inventory ignores stale index and preserves authoritative file', () => {
+  check('compact inventory refuses retired FILES and preserves the visible copy', () => {
     const target=path.join(temp,'file-primary'),file=path.join(target,'docs/audit/sessions/S009.md'),before=fs.readFileSync(file);
     const result=cli('artifact-store',['list','--view','agent','--limit','10000'],target);
-    assert.equal(result.status,0,result.stderr);const inventory=JSON.parse(result.stdout);
-    assert.equal(inventory.backend,'files');assert.equal(inventory.inventory.complete,true);
-    assert.equal(inventory.artifacts.find(a=>a.path==='sessions/S009.md').sha256,artifactContentHash(before));
+    assert.notEqual(result.status,0);assert.match(result.stderr,/AIDN_FILES_STATE_MODE_RETIRED/);
     assert(fs.readFileSync(file).equals(before));
   });
   for (const rows of [[{path:'same.md',sha256}], [{path:'same.md',sha256},{path:'SAME.md',sha256}], [{path:'../escape.md',sha256}]]) {

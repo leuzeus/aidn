@@ -81,7 +81,7 @@ if (process.argv[2] === "--resume") {
     assert.throws(() => compileBpmnProject(forbidden), { code: "PROCESS_OPERATION_RETRY_UNSUPPORTED" });
     console.log("PASS authored windows and budgets round-trip; changed provider pins and unsupported mutating bindings reject retries");
 
-    const root = createStandardWorkflowFixture("files", owned);
+    const root = createStandardWorkflowFixture("dual", owned);
     const privateRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-reliability-key-"));
     owned.push(privateRoot);
     const key = path.join(privateRoot, "key"); fs.writeFileSync(key, randomBytes(32));
@@ -116,7 +116,7 @@ if (process.argv[2] === "--resume") {
     initialize(observer, "unknown");
     const pending = await stage(observer, await preview(observer, "unknown"));
     await observer.dispatch(pending.operation_id, { write: true });
-    const journal = createProcessOperationJournalStore({ targetRoot: root, stateMode: "files" });
+    const journal = createProcessOperationJournalStore({ targetRoot: root, stateMode: "dual" });
     const observed = journal.read(pending.operation_id), result = observed.record.results[0];
     const output = { ...result.output, outcome: "reconciliation_required", effect_status: "unknown", facts: {},
       observations: { reason_code: "FIXTURE_ACK_LOST" }, evidence_refs: [] };

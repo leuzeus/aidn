@@ -74,10 +74,10 @@ if (process.argv.includes("--worker")) {
     process.send({ unexpected_completion: true });
   } catch (cause) { process.send({ error: cause.code ?? cause.message, stack: cause.stack }); process.exitCode = 1; }
 } else if (process.argv[1] && path.resolve(process.argv[1]) === here) {
-  await verifyStandardOperationDisposition(process.argv[2] ?? "files", undefined, process.argv.find(arg => arg.startsWith("--case="))?.slice(7) ?? null);
+  await verifyStandardOperationDisposition(process.argv[2] ?? "dual", undefined, process.argv.find(arg => arg.startsWith("--case="))?.slice(7) ?? null);
 }
-export async function verifyStandardOperationDisposition(mode = "files", report = name => process.stdout.write(JSON.stringify({ pass: name }) + "\n"), only = null) {
-  if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
+export async function verifyStandardOperationDisposition(mode = "dual", report = name => process.stdout.write(JSON.stringify({ pass: name }) + "\n"), only = null) {
+  if (!["dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
   const cases = ["dispatch_reserved", "effect_returned", "redelivery", "disposition_recorded", "disposition_receipted", "concurrency", "foreign-fence", "fence-lost-after-write", ...WRITE_DISPOSITION_CASES, "prefix-change-during-grant", "disposition_control_reserved", "disposition_fence_acquired", "control-expired", "control-revoked", "acquired-revoked", "audit-revoked", ...WRITE_OWNER_INTENTION_CASES];
   if (only !== null && !cases.includes(only)) throw Error("FIXTURE_CASE_INVALID");
   const selected = name => only === null || only === name;

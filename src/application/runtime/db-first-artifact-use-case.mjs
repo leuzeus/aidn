@@ -30,12 +30,7 @@ export function runDbFirstArtifactUseCase(options = {}, { storeFactory = createP
     const configuredBackend = resolveConfigRuntimePersistence(config.data)?.backend;
     const backend = resolveEffectiveRuntimePersistence({ targetRoot, configData: config.data }).backend;
     if (configuredBackend === 'postgres' && backend !== 'postgres') throw new Error('ARTIFACT_REPLACEMENTS_CANONICAL_BACKEND_CONFLICT');
-    // In files mode SQLite is an index, not the canonical preimage. Never
-    // materialize a delta built from it over a newer authoritative file. The
-    // legacy state-mode flag controls projection and cannot transfer authority.
-    if ((resolveConfigStateMode(config.data) ?? 'files') === 'files' && backend !== 'postgres') {
-      throw new Error('ARTIFACT_REPLACEMENTS_CANONICAL_DATABASE_REQUIRED');
-    }
+
   }
   const fullContent = replacing ? null : loadContent(targetRoot, options.sourceFile ?? "", options.content ?? "");
   const pathCycleId = relPath.match(/^cycles\/(C\d+)[^/]*\/status\.md$/i)?.[1]?.toUpperCase();
