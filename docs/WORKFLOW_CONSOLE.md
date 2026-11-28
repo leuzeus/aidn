@@ -5,8 +5,24 @@
 In the installed Windows desktop app, the packaged MCP server presents the
 pending STANDARD question in the current Codex conversation. The operator
 answers once in the native form using the existing Codex session. Merge
-consent identifies the repository, pull request, target branch and full
-commit. Each choice uses the same installed software issuer.
+consent identifies the repository, pull request, target branch and the exact
+commit, with a link to inspect it. Each choice uses the same installed software issuer.
+
+Forms show a title, a readable summary and the consequences of the available
+choices. Internal JSON, operation identifiers and evidence digests stay in the
+protocol and receipts. French option labels map back to the same exact allowed
+choices; presentation never changes the canonical question or grants an effect.
+
+For a completed cycle without pending work or risk, one choice retains or
+declines the result. A baseline form proposes the next numeric reference and a
+summary for the completed cycle before the operator answers. Promoting accepts
+the displayed proposal; continuing without promotion preserves the current
+reference. Deferring allows the operator to request a different proposal in
+the conversation. No promotion is selected automatically. A prerelease or other
+version without a safe numeric successor keeps the explicit version fields.
+The recorded rationale for these confirmation forms identifies the selected
+choice; it does not pretend to be a separately authored personal explanation.
+Risk acceptance continues to require its explicit rationale.
 
 Project setup installs the connector through the existing installation
 transaction. Supply the protected STANDARD execution configuration along

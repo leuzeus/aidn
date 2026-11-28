@@ -2,12 +2,13 @@ import { createPublicKey, generateKeyPairSync, sign } from "node:crypto";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { assertOperatorClaim } from "./standard-operator-offer.mjs";
 import { codexFormEvidence, codexFormThreadId } from "./codex-form-evidence.mjs";
+import { presentCodexDecision, codexChoiceLabel } from "./codex-decision-presentation.mjs";
 
 const fail = code => { throw Error(code); };
 
 // The installed issuer is available only to the trusted launcher. Legacy
 // connections keep their own disposable key.
-export function createCodexDecisionChannel({ session, elicit, formSupported, formIssuer }) {
+export function createCodexDecisionChannel({ session, elicit, formSupported, formIssuer, observeReply = null }) {
   const privateKey = formIssuer?.privateKey ?? generateKeyPairSync("ed25519").privateKey;
   const publicKey = createPublicKey(privateKey);
   const publicPem = publicKey.export({ format: "pem", type: "spki" });
@@ -53,6 +54,7 @@ export function createCodexDecisionChannel({ session, elicit, formSupported, for
       const reviewer = reply._meta?.approvals_reviewer;
       if (reply.action !== "accept" || reviewer === "auto_review" || reviewer === "guardian_subagent")
         return { status: "unanswered" };
+      if (observeReply) await observeReply(structuredClone({ question: q, request: form.request, reply }));
       const { choice, fields, minutes } = form.read(reply.content);
       const latest = await session.question();
       if (latest.status !== "question" || latest.offer.source_ref !== offer.source_ref || latest.offer.question_sha256 !== offer.question_sha256)
@@ -81,18 +83,22 @@ export function createCodexDecisionChannel({ session, elicit, formSupported, for
 const labels = { rationale: "Motif", cycle_id: "Cycle", cycle_type: "Type du cycle", title: "Titre", objective: "Objectif",
   summary: "Résumé", next_entry_point: "Prochain point de reprise", open_loops: "Points ouverts", blockers: "Blocages",
   version: "Version", action: "Traitement", outcome: "Résultat", severity: "Gravité", chosen_mode: "Mode",
-  branch_action: "Branche", learning_goal: "Objectif d’apprentissage", timebox: "Durée", decision_target: "Décision visée" };
+  branch_action: "Branche", learning_goal: "Objectif d’apprentissage", timebox: "Durée", decision_target: "Décision visée",
+  risk_acceptances: "Risques à accepter", selected_cycle: "Cycle à reprendre", selection: "Sélection",
+  session_report: "Bilan de la session", promotion: "Proposition de référence", handoff: "Relais" };
 const conditional = { selected_cycle: ["select_cycle", "create-correction-cycle"], selection: ["select_cycle", "convert-to-spike"],
   risk_acceptances: ["retain"], session_report: ["close"], handoff: ["handoff"], promotion: ["promote"] };
 
 export function codexDecisionForm(offer, allowedChoices = offer.question.choices) {
   const q = offer.question;
-  const properties = { choice: { type: "string", title: "Ta décision", enum: allowedChoices } }, required = ["choice"];
-  const readers = [], message = [offer.prompt, q.session_id ?? q.instance_id];
-  if (q.subject?.head_oid) message.push(`${offer.repository ?? q.subject.repository_id} · PR #${q.subject.pull_request_number} → ${q.subject.base_ref}\n${q.subject.head_oid}`);
-  const subject = q.review ?? q.subject;
-  if (subject) message.push(JSON.stringify(subject, null, 2));
-  message.push("Sujet " + offer.question_sha256);
+  const view = presentCodexDecision(offer, allowedChoices);
+  const choiceByLabel = new Map(view.choices.map(row => [row.label, row.id]));
+  const properties = { choice: { type: "string", title: "Votre choix", enum: view.choices.map(row => row.label) } }, required = ["choice"];
+  const readers = [], message = [view.message];
+  const nominalClosure = q.contract_version === "standard-cycle-closure-question.v1" && q.review?.work_complete === true
+    && ["requirements", "usages", "documents", "tests", "blocking_findings", "risk_findings_requiring_human_decision"]
+      .every(key => Array.isArray(q.review.pending[key]) && q.review.pending[key].length === 0);
+  const proposalForm = q.contract_version === "standard-baseline-promotion-question.v1" && view.proposal !== null;
   function field(name, spec, chain, title, optional) {
     if (Object.hasOwn(spec, "const")) return () => spec.const;
     const schema = (spec.oneOf ?? spec.anyOf)?.find(s => s.type !== "null") ?? spec;
@@ -121,27 +127,35 @@ export function codexDecisionForm(offer, allowedChoices = offer.question.choices
   }
   for (const [name, spec] of Object.entries(offer.fields)) {
     if (name === "cycle_sha256") continue;
+    if (name === "rationale" && (nominalClosure || proposalForm)) {
+      readers.push([name, (_data, choice) => "Choix exprimé dans le formulaire Codex sur le résultat présenté : " + codexChoiceLabel(choice) + "."]);
+      continue;
+    }
+    if (name === "promotion" && proposalForm) {
+      readers.push([name, (_data, choice) => choice === "promote" ? { ...view.proposal } : null]);
+      continue;
+    }
     const choices = conditional[name];
-    const title = (labels[name] ?? name) + (choices ? " (" + choices.join(", ") + ")" : "");
+    const title = (labels[name] ?? name.replace(/_/g, " ")) + (choices ? " — " + choices.map(codexChoiceLabel).join(" / ") : "");
     const read = field(name, spec, name, title, Boolean(choices));
     readers.push([name, (data, choice) => !choices || choices.includes(choice) ? read(data) : name === "risk_acceptances" ? [] : null]);
   }
   // Duration is a disclosed issuer limit. The business form has one answer
   // field for mode; the operator need not confirm technical signing settings.
   const minutes = 60;
-  if (!q.expires_at_ms) message.push("Validité de la réponse : 1 heure.");
   return {
     request: { mode: "form", _meta: { codex_requires_user_input: true }, message: message.join("\n\n"),
       requestedSchema: { type: "object", properties, required } },
     read(content) {
       if (!content || typeof content !== "object" || Object.keys(content).some(k => !Object.hasOwn(properties, k))
-        || !allowedChoices.includes(content.choice) || required.some(k => typeof content[k] !== "string" || !content[k].trim())) fail("CODEX_DECISION_FIELDS_INVALID");
-      const fields = Object.fromEntries(readers.map(([name, read]) => [name, read(content, content.choice)]));
+        || !choiceByLabel.has(content.choice) || required.some(k => typeof content[k] !== "string" || !content[k].trim())) fail("CODEX_DECISION_FIELDS_INVALID");
+      const choice = choiceByLabel.get(content.choice);
+      const fields = Object.fromEntries(readers.map(([name, read]) => [name, read(content, choice)]));
       if (Object.hasOwn(offer.fields, "cycle_sha256")) {
         const selected = q.candidate_cycle ?? fields.selected_cycle;
         fields.cycle_sha256 = selected ? shadowHash(selected) : null;
       }
-      return { choice: content.choice, fields, minutes };
+      return { choice, fields, minutes };
     },
   };
 }

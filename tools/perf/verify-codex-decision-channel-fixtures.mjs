@@ -9,8 +9,10 @@ import path from "node:path";
 import { serveCodexDecisions, loadManagedCodexDatabaseEnvironment } from "../runtime/standard-codex-decisions.mjs";
 import { operatorOffer, assertOperatorClaim } from "../../src/adapters/workflow-console/standard-operator-offer.mjs";
 import { codexFormEvidence } from "../../src/adapters/workflow-console/codex-form-evidence.mjs";
+import { codexChoiceLabel } from "../../src/adapters/workflow-console/codex-decision-presentation.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { bindOperatorChat, codexMessageEvidence } from "../../src/adapters/workflow-console/codex-message-recovery.mjs";
+import "./verify-codex-decision-presentation-fixtures.mjs";
 
 const q = { contract_version: "standard-mode-question.v1", operation_id: "op_" + "a".repeat(40), session_id: "S001",
   instance_id: "fixture", scope_id: "b".repeat(64), occurrence_id: "root/1", intent_sha256: "c".repeat(64),
@@ -64,15 +66,17 @@ try {
   const form = await a.tool("ask");
   assert.equal(form.method, "elicitation/create");
   assert.deepEqual(form.params.requestedSchema.required, ["choice"]);
-  assert.deepEqual(form.params.requestedSchema.properties.choice.enum, q.choices);
+  assert.deepEqual(form.params.requestedSchema.properties.choice.enum, q.choices.map(codexChoiceLabel));
+  assert(!form.params.message.includes(q.intent_sha256));
+  assert(!form.params.message.includes("contract_version"));
   let ack = a.next(); a.send({ id: form.id, result: { action: "decline", content: null } });
   assert.deepEqual(JSON.parse((await ack).result.content[0].text), { status: "unanswered" });
   const stale = await a.tool("ask"); current = { ...q, intent_sha256: "d".repeat(64) };
-  ack = a.next(); a.send({ id: stale.id, result: { action: "accept", content: { choice: "COMMITTING" } } });
+  ack = a.next(); a.send({ id: stale.id, result: { action: "accept", content: { choice: codexChoiceLabel("COMMITTING") } } });
   assert.equal((await ack).result.content[0].text, "OPERATOR_QUESTION_CHANGED");
   assert.equal(captured.length, 0);
   const fresh = await a.tool("ask");
-  ack = a.next(); a.send({ id: fresh.id, result: { action: "accept", content: { choice: "COMMITTING" } } });
+  ack = a.next(); a.send({ id: fresh.id, result: { action: "accept", content: { choice: codexChoiceLabel("COMMITTING") } } });
   assert.equal(JSON.parse((await ack).result.content[0].text).status, "received");
   a.send({ id: fresh.id, result: { action: "accept", content: { choice: "THINKING" } } });
   assert.equal(JSON.parse((await a.tool("ask")).result.content[0].text).status, "workflow");
@@ -98,7 +102,7 @@ try {
     assert.equal(refused.result.content[0].text, "CODEX_DECISION_CHAT_CHANGED");
     const form = await installed.tool("ask", {}, 10, { threadId: chat.thread_id });
     assert.equal(form.method, "elicitation/create");
-    assert.deepEqual(form.params.requestedSchema.properties.choice.enum, ["COMMITTING"]);
+    assert.deepEqual(form.params.requestedSchema.properties.choice.enum, [codexChoiceLabel("COMMITTING")]);
     assert.deepEqual(form.params._meta, { codex_requires_user_input: true });
     for (const reviewer of ["auto_review", "guardian_subagent"]) {
       const auto = reviewer === "auto_review" ? form : await installed.tool("ask", {}, 10, { threadId: chat.thread_id });
@@ -109,7 +113,7 @@ try {
     }
     const human = await installed.tool("ask", {}, 10, { threadId: chat.thread_id });
     const result = installed.next();
-    installed.send({ id: human.id, result: { action: "accept", content: { choice: "COMMITTING" }, request_id: chat.thread_id } });
+    installed.send({ id: human.id, result: { action: "accept", content: { choice: codexChoiceLabel("COMMITTING") }, request_id: chat.thread_id } });
     assert.equal(JSON.parse((await result).result.content[0].text).choice, "COMMITTING");
     assert.equal(captured.length, 1);
     assert.deepEqual(captured[0].payload.evidence_refs, [codexFormEvidence(chat.thread_id, human.id, q, captured[0].payload)]);

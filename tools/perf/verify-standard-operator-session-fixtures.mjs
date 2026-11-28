@@ -9,6 +9,7 @@ import { bindOperatorChat, readCodexMessageReference } from "../../src/adapters/
 import { codexFormEvidence } from "../../src/adapters/workflow-console/codex-form-evidence.mjs";
 import { loadWindowsCodexFormIssuer } from "../../src/adapters/workflow-console/windows-codex-form-issuer.mjs";
 import { operatorOffer, assertOperatorClaim } from "../../src/adapters/workflow-console/standard-operator-offer.mjs";
+import { codexChoiceLabel } from "../../src/adapters/workflow-console/codex-decision-presentation.mjs";
 import { runStandardWorkflowEntry } from "../../src/application/runtime/standard-workflow-entry.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
@@ -59,7 +60,7 @@ try {
     formIssuer, formSupported: () => true, elicit: async form => {
       answerCount++;
       assert.deepEqual(form.requestedSchema.required, ["choice"]);
-      return { action: "accept", content: { choice: "COMMITTING" }, request_id: requestId };
+      return { action: "accept", content: { choice: codexChoiceLabel("COMMITTING") }, request_id: requestId };
     } });
   const pub = channel.describe().public_key;
   assert.equal(pub, principals[0].public_key);
