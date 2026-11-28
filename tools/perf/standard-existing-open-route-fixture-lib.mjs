@@ -188,7 +188,7 @@ export async function verifyPublishedExistingOpen(check, { mixedFixture, selecte
     assert.match(artifacts.read(cyclePath + "/status.md").content, new RegExp("^state:\\s*" + (complete ? "VERIFYING" : "IMPLEMENTING") + "\\s*$", "m"));
     assert.equal(evaluateCurrentStateConsistency({ targetRoot: root }).pass, true); assert.equal(artifacts.ownerPending(), false);
     const assets = loadStandardWorkflowAssets(); assert.equal(final.record.model_sha256, assets.source.model_sha256);
-    assert.equal(assets.catalog.contract_version, "standard-workflow-catalog.v7");
+    assert.equal(assets.catalog.contract_version, "standard-workflow-catalog.v8");
     const simulation = simulateAgenticProcess({ instanceId: final.record.instance_id, model: final.record.model, parameters: final.record.initial_parameters,
       policyPins: final.record.policy_pins, scopeId: final.record.scope_id, events: final.record.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, final.record.instance_sha256);

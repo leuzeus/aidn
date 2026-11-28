@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-retained-promotion-entry.v2",
+  "x-aidn-contract-version": "standard-retained-promotion-entry.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "version",
+    "original_configuration",
+    "original_instance_sha256",
+    "checkpoint_operation_id",
+    "native_dispatch_id",
+    "native_generation",
+    "native_owner_disposition_sha256",
+    "native_assessment"
+  ],
+  "properties": {
+    "kind": {
+      "const": "retained_promotion"
+    },
+    "version": {
+      "const": 2
+    },
+    "original_configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "original_instance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "checkpoint_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "native_dispatch_id": {
+      "type": "string",
+      "pattern": "^native_dispatch_[a-f0-9]{40}$"
+    },
+    "native_generation": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "native_owner_disposition_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "native_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  }
+}

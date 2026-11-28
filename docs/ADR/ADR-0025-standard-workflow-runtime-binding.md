@@ -6141,3 +6141,38 @@ readable under their respective authority paths.
 The panel publishes a verified answer through the existing protected inbox.
 The canonical operation and process journals remain the receipt authority.
 Enrollment and an accepted business decision grant no Native execution budget.
+
+### Checkpointed promotion after a rejected read-only diagnosis
+
+A separate `retained_promotion` v2 origin handles an ordinary session stopped
+immediately after its accepted promotion checkpoint. All original operation
+journals must be signed, receipted and settled. The last Native allocation must
+be the single read-only R05 assignment supported by the rejected-answer observer,
+with its original configuration and signed assessment pinned under protected
+roots and a confirmed owner retirement matching the same dispatch and generation.
+The retired physical witness remains required; this entry does not release locks.
+
+The reader authenticates accepted cycle retention and promotion, current product,
+SQL session/cycle ownership and COMMITTING focus, Git branch/HEAD, clean worktree,
+and promotion postimages/metadata before entry. Original provider, model, host
+and binding scope must remain compatible; all protected roots are retained.
+Changed or missing evidence, unresolved operation effects or a foreign owner
+refuse admission. A distinct technical instance records the source proof. The
+old instance, signed receipts, failure and unknown Native accounting stay intact.
+
+The graph skips session initialization, mode choice, implementation, cycle closure,
+promotion choice, business record and checkpoint. It requests a fresh read-only
+R05 under the current execution grant, then the ordinary objective review,
+promotion finalization and session preclosure. A rejected answer cannot be used
+as an accepted evaluation. Existing v1 continuation remains finalization-only.
+
+Entry selection v18 and the closed v2 proof are derived journal evidence, not a
+new store or effect authority. Catalogue v8 raises only its binding inventory
+bound from 256 to 264 (258 authored bindings); previous schemas are unchanged.
+The deterministic session-delivery preparation is grouped into a pinned call
+with the same leaves, routing and empty interface, keeping the 288-node root
+bound and 256 KiB model-file bound. This grouping adds no Human question or grant.
+
+Source acceptance, fixture routing and installed real execution are reported
+separately. Neither source proof nor owner retirement reconciles unknown model
+consumption, closes the old Native journal, grants execution, or proves P0.

@@ -1,3 +1,4 @@
+import catalogSchemaV8 from "../../src/core/contracts/workflow-definition/standard-workflow-catalog.v8.schema.json" with { type: "json" };
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { createHash } from "node:crypto";
@@ -645,7 +646,7 @@ test("the published recovery call routes confirmed findings to the selected CR, 
   }
 });
 test("published cycle entry preserves creation preconditions and separates owned progress from explicit selection", () => {
-  assert.equal(assets.catalog.contract_version, "standard-workflow-catalog.v7");
+  assert.equal(assets.catalog.contract_version, "standard-workflow-catalog.v8");
   assert.deepEqual(assets.catalog.scope.entry_conditions, ["fresh_or_existing_session_admission", "fresh_owned_or_explicitly_selected_active_cycle"]);
   const node = id => assets.model.nodes.find(row => row.id === id);
   assert.deepEqual(node("committing").children, ["cycle_refresh_before", "cycle_entry_observe", "cycle_entry_route", "prework_select", "prework_route"]);
@@ -703,15 +704,19 @@ test("published cycle entry preserves creation preconditions and separates owned
     { flow_id: "fresh", node_id: "plan_record", condition: "cycle_plan_record_required" },
     { flow_id: "canonical", node_id: "prework_record_inapplicable", condition: null }]);
   assert.equal(node("cycle_drift_report").kind, "activity");
-  assert.equal(assets.model.nodes.filter(row => row.kind === "activity").length, 23);
+  assert.equal(assets.model.nodes.filter(row => row.kind === "activity").length, 24);
   assert.equal(assets.model.nodes.length, 288); assert.ok(assets.model.nodes.length <= 288);
 });
-test("catalog v7 declares typed initial audits while the closed v4-v6 formats retain their scopes", () => {
-  assert.deepEqual(validateJsonSchema(assets.catalog, catalogSchemaV7, "$", { contractKind: "workflow-definition" }), []);
+test("catalog v8 admits the bounded continuation while closed v4-v7 formats retain their scopes", () => {
+  assert.deepEqual(validateJsonSchema(assets.catalog, catalogSchemaV8, "$", { contractKind: "workflow-definition" }), []);
   assert.ok(validateJsonSchema(assets.catalog, catalogSchemaV5, "$", { contractKind: "workflow-definition" }).length > 0);
   assert.ok(validateJsonSchema(assets.catalog, catalogSchemaV4, "$", { contractKind: "workflow-definition" }).length > 0);
   // Schema-only legacy DATA fixtures; no historical record or model identity is converted.
   const legacy = structuredClone(assets.catalog);
+  legacy.contract_version = "standard-workflow-catalog.v7";
+  assert.ok(validateJsonSchema(legacy, catalogSchemaV7, "$", { contractKind: "workflow-definition" }).length > 0);
+  legacy.bindings = legacy.bindings.slice(0, 256);
+  assert.deepEqual(validateJsonSchema(legacy, catalogSchemaV7, "$", { contractKind: "workflow-definition" }), []);
   for (const activity of legacy.activities) if (activity.output_contract === "standard-cycle-prework-report.v1") activity.output_contract = "standard-cycle-plan-proposal.v1";
   legacy.contract_version = "standard-workflow-catalog.v6";
   assert.deepEqual(validateJsonSchema(legacy, catalogSchemaV6, "$", { contractKind: "workflow-definition" }), []);
@@ -839,13 +844,14 @@ test("the ordinary loader authenticates the two final-verification operations fo
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV5, "#", { contractKind: "workflow-definition" }), []);
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV6, "#", { contractKind: "workflow-definition" }), []);
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV7, "#", { contractKind: "workflow-definition" }), []);
+  assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV8, "#", { contractKind: "workflow-definition" }), []);
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 288);
-  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 126);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 130);
+  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 127);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 131);
   assert.ok(read('package/catalogs/process-models/aidn-standard.v1.json').length <= 262144);
   const target = loaded.model.call_targets.find(row => row.model_id === 'aidn-standard-final-verification'), { model: child, ...identity } = target;
-  assert.equal(loaded.model.call_targets.length, 26);
+  assert.equal(loaded.model.call_targets.length, 27);
   assert.equal(child.model_id, "aidn-standard-final-verification");
   assert.deepEqual(identity, processModelIdentity(child));
   const retainedValidation = loaded.model.call_targets.find(row => row.model_id === 'aidn-standard-retained-validation').model;

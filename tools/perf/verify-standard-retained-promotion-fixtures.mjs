@@ -63,4 +63,56 @@ test('closed new contracts use supported vocabulary and keep original v6 separat
     assert.deepEqual(validateJsonSchemaDefinition(read('src/core/contracts/workflow-definition/'+name+'.schema.json'),'#',{contractKind:'workflow-definition'}),[]);
   assert.equal(read('src/core/contracts/workflow-definition/standard-workflow-entry-selection-output.v6.schema.json')['x-aidn-contract-version'],'standard-workflow-entry-selection-output.v6');
 });
+// The original session/checkpoint origin is explicit and cannot masquerade as
+// the v1 finalization-only origin with an already accepted Native evaluation.
+const proofV2Schema=read('src/core/contracts/workflow-definition/standard-retained-promotion-proof.v2.schema.json');
+const proofV2=Object.fromEntries(proofV2Schema.required.map(key=>[key,key.endsWith('_operation_id')?op('a'):sha]));
+Object.assign(proofV2,{version:2,original_instance_id:'original-session',session_id:'S001',cycle_id:'C001',cycle_path:'cycles/C001-feature-fixture',record_operation_id:op('b'),native_dispatch_id:'native_dispatch_'+'a'.repeat(40),native_generation:6,new_native_required:true,accounting_reconciled:false});
+const entryV2={kind:'retained_promotion',version:2,original_configuration:entry.original_configuration,original_instance_sha256:sha,checkpoint_operation_id:proofV2.checkpoint_operation_id,native_dispatch_id:proofV2.native_dispatch_id,native_generation:6,native_owner_disposition_sha256:sha,native_assessment:{path:'neutral-assessment.json',sha256:sha}};
+const parametersV2={entry_point:entryV2,session:{session_id:'S001'},cycle:{cycle_id:'C001'}};
+test('checkpointed promotion selects a new R05 without granting execution or reconciling old accounting',()=>{
+ assertRetainedPromotionEntry(entryV2);assertRetainedPromotionProof(proofV2);
+ const output=selectStandardEntry(parametersV2,null,retainedPromotionContinuation(proofV2));assertStandardOperationOutput(output);
+ assert.equal(output.facts.retained_promotion_refresh_required,true);assert.equal(output.facts.mode_committing,true);
+ assert.equal(output.facts.baseline_promotion_requested,undefined);assert.equal(output.effect_status,'no_effect');
+ for(const value of [false,undefined]) {const changed=structuredClone(output);changed.facts.retained_promotion_refresh_required=value;if(value===undefined)delete changed.facts.retained_promotion_refresh_required;assert.throws(()=>assertStandardOperationOutput(changed));}
+});
+for(const field of ['native_assessment','native_generation','native_owner_disposition_sha256','original_instance_sha256','checkpoint_operation_id'])
+ test('checkpointed entry requires '+field,()=>{const changed=structuredClone(entryV2);delete changed[field];assert.throws(()=>assertRetainedPromotionEntry(changed));});
+for(const [field,value] of [['accounting_reconciled',true],['new_native_required',false],['native_generation',0],['cycle_path','cycles/C002-other'],['evaluation_operation_id',op('d')]])
+ test('checkpointed proof refuses unsupported '+field,()=>assert.throws(()=>assertRetainedPromotionProof({...proofV2,[field]:value})));
+test('checkpoint and dispatch identities cannot be swapped in entry routing',()=>{
+ for(const change of [{checkpoint_operation_id:op('f')},{native_dispatch_id:'native_dispatch_'+'b'.repeat(40)},{version:1}])
+  assert.throws(()=>selectStandardEntry(parametersV2,null,{...retainedPromotionContinuation(proofV2),...change}));
+ assert.throws(()=>assertRetainedPromotionEntry({...entryV2,failed_finalization_operation_id:op('d')}));
+});
+test('actual reducer reaches only the fresh read-only R05 after two deterministic selections',()=>{
+ const model=read('package/catalogs/process-models/aidn-standard.v1.json'),bindings=standardWorkflowOperationBindings(),journals=new Map(),visited=[];
+ let state=createAgenticProcess({instanceId:'checkpointed-promotion-fixture',model,policyPins:agenticPolicyPins(model),scopeId:'fixture',parameters:parametersV2}),serial=0;
+ for(let i=0;i<8;i++){
+  const cursor=inspectAgenticProcess(state),frame=cursor.occurrences.find(row=>row.status==='READY');assert(frame);
+  const node=processFrameNode(model,frame);
+  if(node.kind==='activity'){
+   assert.equal(node.id,'retained_promotion_drift_report');assert.equal(node.role_ref,'drift_auditor');assert.equal(node.policy_ref,'drift');
+   assert.deepEqual(model.policies.find(row=>row.id==='drift').allowed_permissions,['read:product']);
+   const evaluation=model.data_bindings.inputs.find(row=>row.node_id==='retained_promotion_drift_evaluate');
+   assert.deepEqual(evaluation.fields.report_occurrence_id,{source:'occurrence_id',node_id:node.id});break;
+  }
+  assert.equal(node.kind,'operation');visited.push(node.binding_ref);
+  const input=resolveProcessOperationInput({instance:state,occurrenceId:frame.occurrence_id,readOperation:id=>journals.get(id)}).input;
+  let output;if(node.binding_ref==='workflow_entry_select')output=selectStandardEntry(parametersV2,null,retainedPromotionContinuation(proofV2));
+  else {assert.equal(node.binding_ref,'cycle_close_completed_select');output={facts:{},observations:{closure_operation_id:op('c'),terminal_checkpoint_operation_id:op('d'),receipt_sha256:sha,output_sha256:sha}};}
+  const id=op(String(visited.length)),binding=bindings.find(b=>b.id===node.binding_ref),intent={contract_version:'process-operation-intent.v1',operation_id:id,binding_ref:binding.id,binding_sha256:H(binding),input_sha256:H(input),preconditions_sha256:sha,authorization_sha256:null,authority_id:'fixture',scope_id:state.scope_id,instance_id:state.instance_id,instance_sha256:state.instance_sha256,model_sha256:state.model_sha256,occurrence_id:frame.occurrence_id,instance_revision:state.revision};
+  state=advanceAgenticProcess(state,{event_id:'event-'+ ++serial,kind:'operation_intent',occurrence_id:frame.occurrence_id,intent});
+  const receipt={contract_version:'process-operation-receipt.v1',receipt_id:'receipt-'+serial,operation_id:id,intent_sha256:H(intent),authority_id:'fixture',outcome:'completed',effect_status:'no_effect',output_sha256:H(output),facts:output.facts,evidence_refs:[{ref:'fixture:routing',sha256:H(output)}]};
+  journals.set(id,{operation_id:id,phase:'receipted',intent,preview:{input},results:[{receipt,output}]});state=advanceAgenticProcess(state,{event_id:'event-'+ ++serial,kind:'operation_result',occurrence_id:frame.occurrence_id,receipt});
+ }
+ assert.deepEqual(visited,['workflow_entry_select','cycle_close_completed_select']);assert.equal(state.events.length,4);
+ assert.equal(processFrameNode(model,inspectAgenticProcess(state).occurrences.find(row=>row.status==='READY')).id,'retained_promotion_drift_report');
+});
+test('checkpointed and historical catalogue/entry versions retain closed independent contracts',()=>{
+ for(const name of ['standard-retained-promotion-entry.v2','standard-retained-promotion-proof.v2','standard-workflow-entry-selection-output.v18','standard-workflow-catalog.v8'])
+  assert.deepEqual(validateJsonSchemaDefinition(read('src/core/contracts/workflow-definition/'+name+'.schema.json'),'#',{contractKind:'workflow-definition'}),[]);
+ assert.equal(read('src/core/contracts/workflow-definition/standard-workflow-catalog.v7.schema.json').properties.bindings.maxItems,256);
+});
 console.log(JSON.stringify({status:'PASS',checks,proof:'closed-contracts-and-actual-reducer-with-synthetic-receipts',human:'NOT_RUN',native:'NOT_RUN',business_effects:0,public_entry:'NOT_RUN'}));
