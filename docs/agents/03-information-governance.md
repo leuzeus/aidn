@@ -1,5 +1,11 @@
 # 03 Information Governance
 
+Operator review copies are derived from the configured canonical artifact
+backend and the evidence of the accepted operation bound to the pending
+question. They live outside the checkout, under the protected host home, and
+retain their question identity and content hashes. They cannot replace canonical
+documents, establish a verdict, consume a decision or grant an effect.
+
 Canonical path inventory uses the artifact adapter's `listArtifactPaths`
 capability on PostgreSQL and SQLite. It reads names in the selected scope,
 without transferring all document bodies or falling back to local projections.

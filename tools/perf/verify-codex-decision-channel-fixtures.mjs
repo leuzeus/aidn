@@ -13,6 +13,7 @@ import { codexChoiceLabel } from "../../src/adapters/workflow-console/codex-deci
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { bindOperatorChat, codexMessageEvidence } from "../../src/adapters/workflow-console/codex-message-recovery.mjs";
 import "./verify-codex-decision-presentation-fixtures.mjs";
+import "./verify-operator-review-documents-fixtures.mjs";
 
 const q = { contract_version: "standard-mode-question.v1", operation_id: "op_" + "a".repeat(40), session_id: "S001",
   instance_id: "fixture", scope_id: "b".repeat(64), occurrence_id: "root/1", intent_sha256: "c".repeat(64),

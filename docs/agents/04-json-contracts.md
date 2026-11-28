@@ -1,5 +1,12 @@
 # 04 JSON Contracts
 
+The Codex decision view may attach verified local document links and a disclosed
+session report proposal. These are internal presentation data; the canonical
+question and existing Human claim contracts stay unchanged. A nominal COMMITTING
+session with verified owned DONE cycles offers one choice against the displayed
+report. Other cases retain explicit report fields. Required text fields expose
+their existing minimum length to the form client; an empty reply is not a receipt.
+
 `standard-native-owner-recovery.v1` locates one retained SQL instance, dispatch
 and generation and pins its original resolved configuration file. The prepared
 `standard-native-owner-recovery-action.v1` binds that request and the current

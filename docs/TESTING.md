@@ -1,5 +1,19 @@
 # Testing Guide
 
+## Operator review documents and session closure form
+
+`tools/perf/verify-codex-decision-channel-fixtures.mjs` includes the review-document
+fixture. It uses SQLite/db-only with a deliberately stale visible projection,
+checks the exact copied bytes and labeled Markdown links, and validates every
+session-close choice against the unchanged Human contract. Missing documents,
+changed content or metadata, invalid paths, altered review copies and a changed
+evaluation refuse before form delivery or decision consumption. The captured
+empty-rationale failure remains distinct from a valid single-choice reply to
+the fully displayed report. Read-only question/session tools do not export files;
+only the explicitly invoked decision-delivery tool prepares review copies.
+These checks call no model. Actual desktop rendering and PostgreSQL evidence
+are separate qualification observations.
+
 ## Recorded promotion continuation
 
 `tools/perf/verify-standard-retained-promotion-fixtures.mjs` checks closed entry
