@@ -6,12 +6,15 @@ import { createStandardHostAuthority } from '../../adapters/runtime/standard-hos
 import { createOperationJournalSigner } from '../../core/workflow/process-operation-journal.mjs';
 import { shadowHash as H } from '../../core/workflow/shadow-json.mjs';
 import { assertRetainedSessionClosureEntry, assertRetainedSessionClosureProof } from '../../core/workflow/standard-retained-session-closure.mjs';
+import { assertAcceptedSessionClosureBoundary } from '../../core/workflow/standard-retained-session-closure-boundary.mjs';
 import { readAgentRunFile } from './agent-run-configuration-service.mjs';
 import { createStandardWorkflowArtifacts } from './standard-workflow-artifacts.mjs';
 import { readAgenticProductSnapshot } from './agentic-process-execution-composition.mjs';
 import { createStandardHumanDecisions } from './standard-workflow-human-decisions.mjs';
 import { createStandardSessionClosureAuthority } from './standard-session-closure-authority.mjs';
 import { createStandardSessionClosureReview } from './standard-session-closure-review.mjs';
+import { createCheckpointedPromotionSource } from './standard-checkpointed-promotion-source.mjs';
+import { retainedPromotionContinuation } from '../../core/workflow/standard-retained-promotion.mjs';
 
 const require = (value, code = 'STANDARD_RETAINED_SESSION_CLOSURE_SOURCE_CHANGED') => {
   if (!value) throw Object.assign(Error(code), { code });
@@ -50,17 +53,20 @@ export function createRetainedSessionClosureSource({ configuration, environment,
     assertRetainedSessionClosureEntry(entry);
     const origin = captureConfiguration(entry.original_configuration), start = captureConfiguration(entry.start_configuration);
     const { instance, records, signer, host } = origin, record = records.at(-1);
-    require(instance.initial_parameters?.entry_point?.kind === 'retained_promotion'
-      && H(records.map(row => row.intent.binding_ref)) === H(sequence)
-      && record.operation_id === entry.decision_operation_id, 'STANDARD_RETAINED_SESSION_CLOSURE_BOUNDARY_CHANGED');
-    for (const row of records) {
-      const result = row.results[0], last = row === record;
-      require(row.phase === 'receipted' && row.results.length === 1 && result.receipt.outcome === 'completed'
-        && result.output.outcome === 'completed' && result.receipt.output_sha256 === H(result.output)
-        && result.receipt.effect_status === result.output.effect_status
-        && (last ? result.output.effect_status === 'no_effect' : ['no_effect', 'confirmed'].includes(result.output.effect_status)), 'STANDARD_RETAINED_SESSION_CLOSURE_EFFECT_UNSETTLED');
-      const accepted = instance.events.some(event => event.kind === 'operation_result' && H(event.receipt) === H(result.receipt));
-      require(last ? !accepted : accepted, 'STANDARD_RETAINED_SESSION_CLOSURE_BOUNDARY_CHANGED');
+    const acceptedBoundary = entry.version === 2 ? assertAcceptedSessionClosureBoundary(entry, instance, records) : null;
+    if (!acceptedBoundary) {
+      require(instance.initial_parameters?.entry_point?.kind === 'retained_promotion'
+        && H(records.map(row => row.intent.binding_ref)) === H(sequence)
+        && record.operation_id === entry.decision_operation_id, 'STANDARD_RETAINED_SESSION_CLOSURE_BOUNDARY_CHANGED');
+      for (const row of records) {
+        const result = row.results[0], last = row === record;
+        require(row.phase === 'receipted' && row.results.length === 1 && result.receipt.outcome === 'completed'
+          && result.output.outcome === 'completed' && result.receipt.output_sha256 === H(result.output)
+          && result.receipt.effect_status === result.output.effect_status
+          && (last ? result.output.effect_status === 'no_effect' : ['no_effect', 'confirmed'].includes(result.output.effect_status)), 'STANDARD_RETAINED_SESSION_CLOSURE_EFFECT_UNSETTLED');
+        const accepted = instance.events.some(event => event.kind === 'operation_result' && H(event.receipt) === H(result.receipt));
+        require(last ? !accepted : accepted, 'STANDARD_RETAINED_SESSION_CLOSURE_BOUNDARY_CHANGED');
+      }
     }
     const human = createStandardHumanDecisions({ inbox, signer, source: host.humanSource, projectionRequired: false });
     const captured = human.captured(record), question = human.question(record);
@@ -72,7 +78,7 @@ export function createRetainedSessionClosureSource({ configuration, environment,
       && result.output.effect_status === 'confirmed' && result.output.facts.session_started === true
       && started.preview.input.session_id === question.review.session_id && start.instance.initial_parameters.session.session_id === question.review.session_id
       && start.instance.events.some(row => row.kind === 'operation_result' && H(row.receipt) === H(result.receipt)), 'STANDARD_RETAINED_SESSION_CLOSURE_START_REQUIRED');
-    return { ...origin, start, started: { record: started, output: result.output }, human, captured, question, record,
+    return { ...origin, start, started: { record: started, output: result.output }, human, captured, question, record, acceptedBoundary,
       pins: { instance: H(instance), configuration: H(origin.execution), journals: records.map(row => H(row)), inbox: H(captured),
         start_instance: H(start.instance), start_configuration: H(start.execution), start_journals: start.records.map(row => H(row)) } };
   }
@@ -85,7 +91,21 @@ export function createRetainedSessionClosureSource({ configuration, environment,
       readProductSnapshot: product, readProductSha256: () => H(product()), environment });
     const authority = authorityFor(before), diagnostic = authority.inspectDiagnostic(before.instance), startAuthority = authorityFor(before.start);
     const startDiagnostic = startAuthority.inspectDiagnostic(before.start.instance);
-    for (const observed of [diagnostic, startDiagnostic]) require(!observed.journal || observed.journal.allocations.every(row => row.phase === 'closed' && row.tree_closed === true), 'STANDARD_RETAINED_SESSION_CLOSURE_NATIVE_UNSETTLED');
+    require(!diagnostic.journal || diagnostic.journal.allocations.every(row => row.phase === 'closed' && row.tree_closed === true), 'STANDARD_RETAINED_SESSION_CLOSURE_NATIVE_UNSETTLED');
+    let retirementProof = null;
+    if (before.acceptedBoundary) {
+      // The checkpointed origin explicitly retains one rejected read-only
+      // allocation and unknown accounting. Reauthenticate its exact admitted
+      // retirement; never relabel that historical journal as closed.
+      const retired = await createCheckpointedPromotionSource({ configuration, environment }).readRecorded(before.instance.initial_parameters.entry_point, { signal });
+      require(retired.proof.original_instance_id === before.start.instance.instance_id
+        && retired.proof.original_instance_sha256 === before.start.instance.instance_sha256
+        && retired.proof.native_journal_sha256 === H(startDiagnostic.journal)
+        && H(before.records[0].results[0].output.observations.continuation) === H(retainedPromotionContinuation(retired.proof)),
+      'STANDARD_RETAINED_SESSION_CLOSURE_NATIVE_UNSETTLED');
+      retirementProof = retired.proof;
+    } else require(!startDiagnostic.journal || startDiagnostic.journal.allocations.every(row => row.phase === 'closed' && row.tree_closed === true),
+      'STANDARD_RETAINED_SESSION_CLOSURE_NATIVE_UNSETTLED');
     require(diagnostic.journal?.allocations.length > 0, 'STANDARD_RETAINED_SESSION_CLOSURE_NATIVE_REQUIRED');
     await before.human.verifyCaptured(before.record, signal, { historical: true, acknowledged: true });
     const accepted = (instance, id, binding) => {
@@ -111,7 +131,8 @@ export function createRetainedSessionClosureSource({ configuration, environment,
       await createStandardSessionClosureReview({ readSource: source.readSource }).assertFresh(before.instance, before.record.preview.prepared.plan);
       require(!artifacts.ownerPending(), 'STANDARD_RETAINED_SESSION_CLOSURE_OWNER_UNSETTLED');
     }
-    const proof = assertRetainedSessionClosureProof({ original_instance_id: before.instance.instance_id, original_instance_sha256: before.instance.instance_sha256,
+    const proof = assertRetainedSessionClosureProof({ ...(before.acceptedBoundary ? { ...before.acceptedBoundary,
+      start_retirement_proof_sha256: H(retirementProof), start_native_closure_claimed: false } : {}), original_instance_id: before.instance.instance_id, original_instance_sha256: before.instance.instance_sha256,
       original_configuration_sha256: H(before.execution), journals_sha256: H(before.pins.journals), decision_operation_id: before.record.operation_id,
       decision_material_sha256: H({ question: before.question, decision: before.captured.source }), native_journal_sha256: H(diagnostic.journal),
       start_instance_sha256: before.start.instance.instance_sha256, start_configuration_sha256: H(before.start.execution), start_journals_sha256: H(before.pins.start_journals),

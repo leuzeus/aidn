@@ -18,11 +18,13 @@ timestamps and no acknowledgement. A new entry binds their hashes after current
 provider and canonical-state revalidation. The existing Human disposition owns
 the decision to proceed to R09; this adds no canonical store or merge permission.
 
-Retained session closure uses the same derived journal evidence category. The
-old Human receipt remains unaccepted in its immutable technical instance; a new
-entry authenticates its exact question and current subject. The original start
-run must still be physically open. Canonical session state changes only through
-the existing granted close writer, checkpoint and final hook.
+Retained session closure uses the same derived journal evidence category. V1
+retains an unaccepted Human receipt. V2 pins an already accepted close and its
+sole later call into an empty-fact routing wait. Both preserve the old technical
+instance, question and receipt. V2 reauthenticates the checkpointed origin's exact
+owner-retirement proof; its historical Native journal is never claimed closed.
+The original start run must still be physically open. Canonical session state
+changes only through the existing granted close writer, checkpoint and final hook.
 
 Retained completed-cycle provenance remains derived evidence in the current
 process operation journal. The original instance, operation receipts, Human

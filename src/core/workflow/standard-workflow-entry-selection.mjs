@@ -170,7 +170,9 @@ export function selectStandardEntry(parameters, admission = null, continuation =
       observations: { entry_point: point, admission: null, continuation }, evidence_refs: [] });
   }
   if (point === 'retained_session_closure') {
-    if (admission !== null || continuation?.decision_operation_id !== parameters.entry_point.decision_operation_id) fail('STANDARD_ENTRY_CONTINUATION_REQUIRED');
+    if (admission !== null || continuation?.decision_operation_id !== parameters.entry_point.decision_operation_id
+      || parameters.entry_point.version === 2 && continuation.source_instance_sha256 !== parameters.entry_point.original_instance_sha256)
+      fail('STANDARD_ENTRY_CONTINUATION_REQUIRED');
     return selected({ contract_version: 'standard-workflow-entry-selection-output.v18', operation_ref: workflowEntrySelectOperation,
       outcome: 'completed', effect_status: 'no_effect', facts: { retained_external_merge_capture_requested: false, retained_external_merge_requested: false, retained_session_pr_open_requested: false, retained_session_integration_requested: false, retained_session_delivery_requested: false, retained_session_checkpoint_requested: false, owned_cycle_continuation_requested: true, retained_preparation_requested: true,
         retained_validation_requested: false, retained_verification_requested: false, retained_audit_requested: false, retained_closure_requested: false,

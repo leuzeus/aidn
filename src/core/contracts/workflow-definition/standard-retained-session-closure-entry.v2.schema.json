@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-retained-session-closure-entry.v2",
+  "x-aidn-contract-version": "standard-retained-session-closure-entry.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "original_configuration",
+    "start_configuration",
+    "decision_operation_id",
+    "version",
+    "boundary",
+    "original_instance_sha256"
+  ],
+  "properties": {
+    "kind": {
+      "const": "retained_session_closure"
+    },
+    "original_configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "start_configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "decision_operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "version": {
+      "const": 2
+    },
+    "boundary": {
+      "const": "accepted_close_route_wait"
+    },
+    "original_instance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

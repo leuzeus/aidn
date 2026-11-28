@@ -12,6 +12,7 @@ import { resolveProcessOperationInput } from '../../src/core/workflow/process-in
 import { standardWorkflowOperationBindings } from '../../src/application/runtime/standard-workflow-operations.mjs';
 import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-schema-validator.mjs';
 import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
+import './verify-accepted-session-closure-boundary-fixtures.mjs';
 
 const digest='a'.repeat(64), decisionId='op_'+'1'.repeat(40), entryId='op_'+'2'.repeat(40);
 const entry={kind:'retained_session_closure',decision_operation_id:decisionId,original_configuration:{path:'origin.json',sha256:digest},start_configuration:{path:'start.json',sha256:digest}};
@@ -26,6 +27,18 @@ await check('closed entry refers to an old response and start proof without supp
   assert.equal(output.facts.retained_session_closure_requested,true);assert.equal(output.facts.session_close_completed,undefined);
   assert.throws(()=>assertRetainedSessionClosureEntry({...entry,choice:'close'}));
   assert.throws(()=>selectStandardEntry(parameters,null,{...retainedSessionClosureContinuation(proof),decision_operation_id:entryId}));
+});
+await check('accepted routing-wait entry pins its old instance and retains explicit non-closure of the historical Native journal',()=>{
+  const acceptedEntry={...entry,version:2,boundary:'accepted_close_route_wait',original_instance_sha256:digest};
+  const acceptedProof={...proof,version:2,boundary:acceptedEntry.boundary,post_decision_events_sha256:digest,
+    start_retirement_proof_sha256:digest,start_native_closure_claimed:false};
+  assertRetainedSessionClosureEntry(acceptedEntry);assertRetainedSessionClosureProof(acceptedProof);
+  const selected=selectStandardEntry({...parameters,entry_point:acceptedEntry},null,retainedSessionClosureContinuation(acceptedProof));
+  assert.equal(selected.facts.session_closure_requested,true);assert.equal(selected.facts.session_close_completed,undefined);
+  assert.throws(()=>selectStandardEntry({...parameters,entry_point:acceptedEntry},null,retainedSessionClosureContinuation({...acceptedProof,original_instance_sha256:'b'.repeat(64)})));
+  assert.throws(()=>assertRetainedSessionClosureProof({...acceptedProof,start_native_closure_claimed:true}));
+  const missing=structuredClone(acceptedProof);delete missing.start_retirement_proof_sha256;assert.throws(()=>assertRetainedSessionClosureProof(missing));
+  const legacy=structuredClone(acceptedProof);delete legacy.version;assert.throws(()=>assertRetainedSessionClosureProof(legacy));
 });
 for(const field of ['decision_material_sha256','native_journal_sha256','start_configuration_sha256','start_journals_sha256','start_native_journal_sha256'])
   await check('missing '+field+' refuses the proof',()=>{const p=structuredClone(proof);delete p[field];assert.throws(()=>assertRetainedSessionClosureProof(p));});
@@ -58,12 +71,27 @@ await check('published reducer reaches the close writer without a new Human ques
     instance=advanceAgenticProcess(instance,{event_id:'prepare-call-'+(++calls),kind:'call_enter',occurrence_id:waiting.occurrence_id,...data});
   }
   const cursor=inspectAgenticProcess(instance),frame=cursor.occurrences.find(row=>row.occurrence_id===cursor.ready[0]);
+  assert.equal(cursor.occurrences.some(row=>row.wait_reason==='routing_fact'),false,'entry routing must stay outside the empty-fact call scope');
   assert.equal(processFrameNode(model,frame).binding_ref,'session_close_record');
   assert.deepEqual(resolveProcessOperationInput({instance,occurrenceId:frame.occurrence_id}).input,{});
   assert.equal(instance.events.length,2+calls);assert(model.nodes.length<=288);
 });
+await check('delivery routing belongs to the root and called preparation contains no inherited routing fact',()=>{
+  const model=JSON.parse(fs.readFileSync(new URL('../../package/catalogs/process-models/aidn-standard.v1.json',import.meta.url)));
+  const route=model.nodes.find(row=>row.id==='session_integration_preparation_route');
+  assert.deepEqual(route.branches.map(row=>row.condition),['retained_session_integration_requested','retained_session_delivery_requested','retained_session_checkpoint_requested',null]);
+  for(const id of ['aidn-standard-delivery-preparation','aidn-standard-checkpoint-delivery-preparation']){
+    const target=model.call_targets.find(row=>row.model_id===id).model;
+    assert(target.nodes.every(row=>['sequence','operation','call'].includes(row.kind)));
+    assert.deepEqual(target.call_interface,{parameters:{},returns:{}});
+  }
+  const shared=model.call_targets.find(row=>row.model_id==='aidn-standard-session-close-preparation');
+  const corrective=model.nodes.find(row=>row.id==='correction_session_close_record');
+  assert.equal(corrective.kind,'call');assert.equal(corrective.target.model_sha256,shared.model_sha256);
+  assert.deepEqual(shared.model.nodes.find(row=>row.id===shared.model.entry).children,['session_close_record','session_close_checkpoint','session_close_finalize']);
+});
 await check('all new contracts use supported closed schema vocabulary',()=>{
-  for(const name of ['standard-retained-session-closure-entry.v1','standard-retained-session-closure-proof.v1','standard-workflow-entry-selection-output.v8','standard-session-close-input.v2']){
+  for(const name of ['standard-retained-session-closure-entry.v1','standard-retained-session-closure-proof.v1','standard-retained-session-closure-entry.v2','standard-retained-session-closure-proof.v2','standard-workflow-entry-selection-output.v8','standard-session-close-input.v2']){
     const schema=JSON.parse(fs.readFileSync(new URL('../../src/core/contracts/workflow-definition/'+name+'.schema.json',import.meta.url)));
     assert.deepEqual(validateJsonSchemaDefinition(schema,'#',{contractKind:'workflow-definition'}),[]);
   }

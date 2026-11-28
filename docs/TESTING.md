@@ -1,5 +1,26 @@
 # Testing Guide
 
+## Session delivery routing across call scopes
+
+Run `node tools/perf/verify-standard-retained-session-closure-fixtures.mjs` and
+the retained session checkpoint/delivery fixtures for the published reducer
+route from an accepted close choice to its writer, final hook or delivery
+checkpoint. Entry routing must remain at the root; deterministic preparation
+calls have no inherited routing facts. The closure fixture reproduces the
+former empty-ready `routing_fact` wait and requires the real close writer to
+become ready without another Human choice or Native occurrence. It also checks
+the unchanged three-leaf close call shared by ordinary and corrective paths.
+These are synthetic receipts and controlled source ports, not installed
+PostgreSQL effects or full STANDARD qualification.
+The same command includes `verify-accepted-session-closure-boundary-fixtures.mjs`.
+Its real reducer constructs the historical empty-fact call boundary with synthetic
+receipts. V2 refuses another source hash, decision, unsettled or unknown result,
+missing acceptance, extra operation, later event, alternate boundary or invented
+choice. V1 stays closed. Proof v2 requires the retirement digest and refuses any
+claim that the historical Native journal was closed. Authentication of the real
+signed source, current subject and physical retirement requires separate host
+evidence; these fixture cases call no model and grant no business effect.
+
 ## Operator review documents and session closure form
 
 `tools/perf/verify-codex-decision-channel-fixtures.mjs` includes the review-document

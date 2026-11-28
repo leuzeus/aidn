@@ -313,7 +313,13 @@ for(const historical of [false,true]) await test('recorded R09 returns to '+(his
  const entryOutput=selectStandardEntry(params,null,retainedPostMergeDecisionContinuation(p));
  assert.equal(entryOutput.facts.cycle_work_requested,false);assertStandardOperationOutput(entryOutput);
  assert.throws(()=>assertStandardOperationOutput({...entryOutput,facts:{...entryOutput.facts,cycle_work_requested:true}}));
- if(historical){entryOutput.contract_version='standard-workflow-entry-selection-output.v16';entryOutput.facts.cycle_work_requested=true;assertStandardOperationOutput(entryOutput);}
+ if(historical){
+  entryOutput.contract_version='standard-workflow-entry-selection-output.v16';entryOutput.facts.cycle_work_requested=true;
+  // This is schema-only historical DATA: v16 never carried the later v18 fact.
+  assert.throws(()=>assertStandardOperationOutput(entryOutput));
+  delete entryOutput.facts.retained_promotion_refresh_required;
+  assertStandardOperationOutput(entryOutput);
+ }
  const outputs=[entryOutput,retainedMergeCaptureSelection(false,p.fetch_operation_id,p.recorded_decision_operation_id),
    {effect_status:'confirmed',facts:{}},{effect_status:'no_effect',facts:{session_pr_post_merge_diverged:false}},
    {effect_status:'no_effect',facts:{}}];
