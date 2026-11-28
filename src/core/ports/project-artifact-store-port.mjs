@@ -14,6 +14,15 @@ export function assertProjectArtifactPathInventory(store) {
   return store;
 }
 
+// Atomic canonical discovery for reconciliation. All identities and metadata
+// remain present; the fixed projection selects the bodies used by one instance.
+// A missing adapter capability has no full-content fallback.
+export function assertProjectReconciliationArtifactInventory(store) {
+  assertProjectArtifactStore(store);
+  if (typeof store.listReconciliationArtifacts !== 'function') throw new TypeError('ProjectArtifactStore requires listReconciliationArtifacts');
+  return store;
+}
+
 // Additive capability for durable checkpoints. Existing callers and doubles
 // retain the original port; no fallback to read-then-upsert is safe.
 export function assertProjectArtifactCompareSwap(store) {

@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { readAidnProjectConfig, resolveConfigStateMode, validateAidnProjectConfig } from "../../lib/config/aidn-config-lib.mjs";
 import { resolveEffectiveRuntimePersistence, resolveRuntimeSqliteFile } from "./runtime-persistence-service.mjs";
 import { createProjectArtifactStore } from "./project-artifact-store-service.mjs";
-import { assertProjectArtifactPathInventory } from "../../core/ports/project-artifact-store-port.mjs";
+import { assertProjectArtifactPathInventory, assertProjectReconciliationArtifactInventory } from "../../core/ports/project-artifact-store-port.mjs";
 import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { artifactContentHash, artifactMetadataHash } from "../../core/workflow/artifact-compare-swap.mjs";
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
@@ -249,14 +249,21 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
   // A single canonical list statement supplies DB content and metadata together.
   // Do not enumerate a projection and then import it as a recovery authority.
   // This is an observation, not a transaction fence or an effect disposition.
-  function observeInventory() {
+  function observeInventory({ instanceId = null } = {}) {
     const selected = describe(); let rows;
     if (selected.database) {
       const store = open(true);
-      try { rows = store.listArtifacts(10000); }
+      try { rows = instanceId === null ? store.listArtifacts(10000)
+        : assertProjectReconciliationArtifactInventory(store).listReconciliationArtifacts(instanceId, 10000); }
       finally { store.close(); }
       if (rows.length >= 10000) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED");
       rows = rows.map(row => {
+        if (instanceId !== null) {
+          if (!/^[a-f0-9]{64}$/.test(row.sha256 ?? '') || !/^[a-f0-9]{64}$/.test(row.metadata_sha256 ?? '')
+            || row.content !== null && (typeof row.content !== 'string' || artifactContentHash(row.content) !== row.sha256))
+            fail('STANDARD_ARTIFACT_INTEGRITY_INVALID');
+          return row;
+        }
         if (row.content_format !== "utf8" || typeof row.content !== "string" || artifactContentHash(row.content) !== row.sha256)
           fail("STANDARD_ARTIFACT_INTEGRITY_INVALID");
         return { path: row.path, content: row.content, sha256: row.sha256, metadata_sha256: artifactMetadataHash(row) };
@@ -265,7 +272,7 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     let bytes = 0;
     for (const row of rows) {
       relative(row.path);
-      bytes += Buffer.byteLength(row.content);
+      bytes += Buffer.byteLength(row.content ?? '');
       if (bytes > STANDARD_ARTIFACT_INVENTORY_MAX_BYTES) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED");
     }
     rows.sort((a, b) => a.path.localeCompare(b.path, "en"));

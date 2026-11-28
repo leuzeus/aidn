@@ -1,5 +1,6 @@
 import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifact-parser-lib.mjs";
 import fs from "node:fs";
+import { projectReconciliationArtifacts } from '../../core/workflow/reconciliation-artifact-projection.mjs';
 import path from "node:path";
 import crypto from "node:crypto";
 import { assertArtifactCompareDelete, assertArtifactCompareDeleteRequest, assertArtifactCompareSwap } from "../../core/workflow/artifact-compare-swap.mjs";
@@ -470,6 +471,10 @@ export function createArtifactStore(options = {}) {
     listArtifactPaths(limit = 50) {
       const safeLimit = Math.max(1, Math.min(10000, Math.floor(Number(limit) || 50)));
       return db.prepare('SELECT path FROM v_materializable_artifacts ORDER BY path LIMIT ?').all(safeLimit).map(row => row.path);
+    },
+    listReconciliationArtifacts(instanceId, limit = 10000) {
+      const safeLimit = Math.max(1, Math.min(10000, Math.floor(Number(limit) || 10000)));
+      return projectReconciliationArtifacts(listStmt.all(safeLimit).map(mapArtifactRow), instanceId);
     },
     materializeArtifacts(options = {}) {
       const targetRoot = path.resolve(process.cwd(), options.targetRoot ?? ".");

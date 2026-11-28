@@ -249,3 +249,4 @@ export async function verifyProjectArtifactCommands() {
 
 await verifyProjectArtifactCommands();
 await import('./verify-artifact-compare-delete-fixtures.mjs');
+await import('./verify-reconciliation-artifact-projection-fixtures.mjs');

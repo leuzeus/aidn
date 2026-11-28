@@ -39,7 +39,7 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
   const readObservationSubject = readDiagnosticSubject ?? readRetainedSubject;
   function observe(instance) {
     assertAgenticProcessInstance(instance);
-    const observed = artifacts.observeInventory(), resources = [], operations = [], records = new Map(), prefixes = new Map(), dispatches = [], nativeDispositions = [];
+    const observed = artifacts.observeInventory({ instanceId: instance.instance_id }), resources = [], operations = [], records = new Map(), prefixes = new Map(), dispatches = [], nativeDispositions = [];
     const accounting = { native_known: true, responses_observed_minimum: 0, storage_debit_bytes_minimum: 0,
       unresolved_native_allocations: 0, operation_attempts: 0, unknown_operations: 0 };
     const add = (ref, kind, sha256, details) => {
@@ -58,7 +58,7 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
     // These exact signed preimages are historical DATA, never an effect grant.
     // Read them from the same captured canonical inventory before crosslinking
     // old dispatches/owners to a newer Native journal container.
-    for (const row of observed.rows.filter(value => value.path.startsWith('workflows/native-allocation-reconciliations/'))) {
+    for (const row of observed.rows.filter(value => value.content !== null && value.path.startsWith('workflows/native-allocation-reconciliations/'))) {
       const record = assertNativeReconciliationRecord(JSON.parse(row.content));
       if (row.path !== nativeReconciliationPath(record.reconciliation_id)) fail('PROCESS_RECONCILIATION_RESOURCE_CHANGED');
       if (record.instance_id !== instance.instance_id) continue;
@@ -73,9 +73,10 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
     }
     const reconciliationHistory = createNativeReconciliationHistoryReader({ targetRoot: artifacts.root, configuration, signer, artifacts,
       readRecord: id => nativeReconciliations.get(nativeReconciliationPath(id)) ?? null,
-      readOwner: id => { const row = observed.rows.find(value => value.path === nativeOwnerDispositionPath(id)); return row ? JSON.parse(row.content) : null; } });
+      readOwner: id => { const row = observed.rows.find(value => value.path === nativeOwnerDispositionPath(id)); return row && row.content !== null ? JSON.parse(row.content) : null; } });
     for (const row of observed.rows) {
       add("artifact:" + row.path, "artifact", row.sha256, { metadata_sha256: row.metadata_sha256, source: observed.source });
+      if (row.content === null) continue;
       // Unknown record namespaces are retained as artifacts, never treated as
       // an understood or closed resource. The external-discovery gaps stay open.
       if (!/^workflows\/(operation-records|decision-inbox|control-inbox|native-allocations|dispatch-records|native-dispatches|native-owner-dispositions|native-allocation-reconciliations)\//.test(row.path)) continue;

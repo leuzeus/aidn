@@ -10,7 +10,7 @@ import { assertProjectArtifactStore } from '../../core/ports/project-artifact-st
 
 const workerModule = new URL('./project-artifact-store-worker.mjs', import.meta.url);
 const workerOutputBytes = 32 * 1024 * 1024;
-const readActions = new Set(['get', 'get-many', 'list', 'list-paths']);
+const readActions = new Set(['get', 'get-many', 'list', 'list-paths', 'list-reconciliation']);
 let postgresReadWorker;
 
 function runPostgresRead(input, timeout) {
@@ -101,6 +101,7 @@ export function createProjectArtifactStore(options = {}) {
     },
     listArtifacts: limit => call('list', { limit }),
     listArtifactPaths: limit => call('list-paths', { limit }),
+    listReconciliationArtifacts: (instanceId, limit = 10000) => call('list-reconciliation', { instanceId, limit }),
     materializeArtifacts(materialize = {}) {
       const dryRun = materialize.dryRun === true;
       if (options.readOnly && !dryRun) throw new Error('Artifact store is read-only');
