@@ -128,12 +128,21 @@ export function presentCodexDecision(offer, allowedChoices = offer.question.choi
       lines.push(`Commit à examiner : [${review.head_oid.slice(0, 8)}](https://github.com/${offer.repository}/commit/${review.head_oid})`);
     lines.push(...facts(offer.review_documents ? Object.fromEntries(Object.entries(review ?? {}).filter(([key]) => key !== "documents")) : review));
   }
+  let reviewMessage = null;
   if (offer.review_documents?.length) {
+    const primary = ['/plan.md', '/traceability.md', '/audit-spec.md', 'audit:baseline/current.md']
+      .map(suffix => offer.review_documents.find(row => row.ref.endsWith(suffix))).filter(Boolean);
+    const shown = primary.length ? primary : offer.review_documents.slice(0, 4);
+    // Elicitation messages are plain text in the desktop client. Markdown and
+    // local paths belong in the chat review packet, never in this modal.
+    lines.push('Pièces disponibles dans le fil : ' + shown.map(row => row.label).join(', ') + '.',
+      'Consultez les liens dans le fil avant de répondre. Le dossier complet contient ' + offer.review_documents.length + ' pièces.');
     const link = row => `[${row.label}](<${row.path}>)`;
-    lines.push("Documents examinés — copies vérifiées depuis le backend canonique :\n"
-      + offer.review_documents.map(row => "• " + link(row)).join("\n"));
-    if (offer.review_index) lines.push(`[Ouvrir le dossier de revue](<${offer.review_index}>)`);
+    reviewMessage = 'Documents pour la décision' + (q.session_id ? ' — ' + q.session_id : '')
+      + '\n\nCopies vérifiées depuis le backend canonique :\n\n'
+      + shown.map(row => '- ' + link(row)).join('\n');
+    if (offer.review_index) reviewMessage += `\n\n[Ouvrir toutes les pièces (${offer.review_documents.length})](<${offer.review_index}>)`;
   }
   if (q.expires_at_ms) lines.push("Décision attendue avant le " + new Intl.DateTimeFormat("fr-CA", { dateStyle: "medium", timeStyle: "short" }).format(q.expires_at_ms) + ".");
-  return { message: lines.filter(Boolean).join("\n\n"), choices, proposal, session_report: report };
+  return { message: lines.filter(Boolean).join("\n\n"), choices, proposal, session_report: report, review_message: reviewMessage };
 }

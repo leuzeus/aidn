@@ -13,6 +13,10 @@ the fully displayed report. Read-only question/session tools do not export files
 only the explicitly invoked decision-delivery tool prepares review copies.
 These checks call no model. Actual desktop rendering and PostgreSQL evidence
 are separate qualification observations.
+The desktop elicitation message is treated as plain text: review Markdown and
+absolute paths must stay out of it. A first delivery prepares a chat review
+packet without elicitation or submission; the next delivery presents one form.
+The fixture verifies one Human response and one unchanged-contract submission.
 
 ## Recorded promotion continuation
 

@@ -13,7 +13,7 @@ const noArgs = { type: "object", properties: {}, additionalProperties: false };
 const baseMethods = [
   { name: "session", description: "Read the AIDN operator channel enrollment and last host receipt.", inputSchema: noArgs, annotations: { readOnlyHint: true } },
   { name: "question", description: "Read the exact pending STANDARD question in this project.", inputSchema: noArgs, annotations: { readOnlyHint: true } },
-  { name: "ask", description: "Present the pending AIDN question as a native Codex form and deliver its linked result.", inputSchema: noArgs },
+  { name: "ask", description: "Present the pending AIDN question as a native Codex form and deliver its linked result. When review_ready is returned, display its document links in the chat before calling ask again. Preparing review copies consumes no Human decision.", inputSchema: noArgs },
 ];
 const safeError = err => /^[A-Z][A-Z_0-9]{0,100}$/.test(err?.message) ? err.message : "CODEX_DECISION_UNAVAILABLE";
 const maxLine = 524288;

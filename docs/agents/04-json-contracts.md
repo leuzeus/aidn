@@ -6,6 +6,10 @@ question and existing Human claim contracts stay unchanged. A nominal COMMITTING
 session with verified owned DONE cycles offers one choice against the displayed
 report. Other cases retain explicit report fields. Required text fields expose
 their existing minimum length to the form client; an empty reply is not a receipt.
+The native form message is plain text. The first explicit delivery that prepares
+documents returns `review_ready` with named Markdown links for the chat; a
+subsequent delivery presents the single Human choice. This availability notice
+is not a receipt, proof of reading or review acceptance.
 
 `standard-native-owner-recovery.v1` locates one retained SQL instance, dispatch
 and generation and pins its original resolved configuration file. The prepared
