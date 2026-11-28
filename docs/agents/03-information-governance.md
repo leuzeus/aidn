@@ -59,6 +59,12 @@ The source of truth, metadata, lifecycle status, and scope of each concept must 
 
 ## Modes
 
+STANDARD decision issuer authorization is owned by the project administrator.
+Its signed revisions live in the protected STANDARD host home in each storage
+mode. The checkout and canonical workflow database carry decisions and receipts
+under their existing authorities. Each execution host applies the same approved
+revision explicitly before relying on its authorization.
+
 - `files`: checkout-bound Markdown and project files are authoritative
 - `dual`: runtime DB/index is canonical for runtime state and Markdown projection is required
 - `db-only`: runtime DB is canonical; minimal re-anchor Markdown anchors may stay visible, while detailed Markdown projections are materialized on demand

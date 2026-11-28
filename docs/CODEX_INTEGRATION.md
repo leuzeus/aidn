@@ -6,6 +6,15 @@ extensions and activation. The integration calls the same AIDN CLI and core admi
 other adapters. It adds no second workflow engine, persistent server, mandatory
 API key or model call to the nominal installation and admission paths.
 
+STANDARD can present a pending human decision inside a Codex chat using
+MCP form elicitation. The registered session signs the exact answer and the
+workflow host records its receipt. Project integration must bind the authenticated
+operator to that connection for live use. [Operator session](WORKFLOW_CONSOLE.md#decisions-inside-codex)
+
+For a prior text answer the client can resolve its original Codex item and
+call `recover_message` with its identifiers and digest. An enrolled
+issuer must have attested that message and question for AIDN to accept it.
+
 The activation base shipped in [v0.8.0](https://github.com/leuzeus/aidn/releases/tag/v0.8.0)
 on 2026-09-24 after PRs #62/#63. Subsequent global releases retain specific
 native-write admission. The [bounded qualification record](qualification/GLOBAL_WINDOWS.md)

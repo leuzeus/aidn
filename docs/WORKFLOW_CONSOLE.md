@@ -1,5 +1,185 @@
 # Workflow console
 
+## Decisions inside Codex
+
+In the installed Windows desktop app, the packaged MCP server presents the
+pending STANDARD question in the current Codex conversation. The operator
+answers once in the native form using the existing Codex session. Merge
+consent identifies the repository, pull request, target branch and the exact
+commit, with a link to inspect it. Each choice uses the same installed software issuer.
+
+Forms show a title, a readable summary and the consequences of the available
+choices. Internal JSON, operation identifiers and evidence digests stay in the
+protocol and receipts. French option labels map back to the same exact allowed
+choices; presentation never changes the canonical question or grants an effect.
+
+For a completed cycle without pending work or risk, one choice retains or
+declines the result. A baseline form proposes the next numeric reference and a
+summary for the completed cycle before the operator answers. Promoting accepts
+the displayed proposal; continuing without promotion preserves the current
+reference. Deferring allows the operator to request a different proposal in
+the conversation. No promotion is selected automatically. A prerelease or other
+version without a safe numeric successor keeps the explicit version fields.
+The recorded rationale for these confirmation forms identifies the selected
+choice; it does not pretend to be a separately authored personal explanation.
+Risk acceptance continues to require its explicit rationale.
+
+Project setup installs the connector through the existing installation
+transaction. Supply the protected STANDARD execution configuration along
+with the approved issuer policy when it has yet to be installed.
+
+```powershell
+aidn project add --target PROJECT --standard-codex-configuration FILE --standard-authorization POLICY --json
+aidn project add --target PROJECT --standard-codex-configuration FILE --standard-authorization POLICY --write --expect-plan PLAN_ID --json
+```
+
+The same configuration option is available to `aidn install`. A project
+already attached to the global engine can add the connector through the same
+reviewed project operation. The installed policy may be reused by omitting
+the authorization file. The installer checks the project scope and the
+issuer for the current chat. It adds a dedicated server in the user Codex
+configuration and preserves other entries. Reload the MCP servers in a
+desktop session that was already open during its first installation.
+
+Use a Codex permission profile that allows interactive MCP forms. In
+**Approve for me**, Codex can review its own permission requests automatically.
+The STANDARD decision remains a form that requires the operator to choose an
+answer. AIDN leaves the question pending when an automatic reviewer responds
+or the form is closed. Installation preserves the client's permission profile.
+[Codex approval configuration](https://learn.chatgpt.com/docs/config-file/config-reference).
+
+The global registration names the stable AIDN launcher. After `aidn update`,
+each new call on the open connection uses the active verified package. The
+installed key and authorization are preserved. An in-flight decision keeps
+its current generation for the call. A workflow instance retains its own
+configuration and continuity checks.
+
+The launcher checks that the MCP process was started by the installed
+Microsoft Store Codex desktop package. The installed policy identifies
+the issuer and conversation. The `session` tool reports enrollment, whether
+the call is from the configured chat, and its last accepted receipt.
+The `question` tool reads the pending subject.
+
+The `ask` tool takes zero arguments. The issuer uses Codex-owned conversation
+metadata and the result returned on the same MCP connection for its outstanding
+form request. It signs the linked result in the background. The receipt
+binds the conversation, request, exact question, operation and answer.
+Closing the form leaves the question pending. A restarted host reuses a
+retained answer or reads the existing receipt from the journal.
+
+The trust boundary includes the installed desktop app and the provisioning
+service that protects the issuer key. This is software-origin evidence for
+the existing session. The form introduces no personal authentication prompt.
+Keep the host home and installed launcher outside AIDN work actor access.
+For a PostgreSQL process whose desktop environment omits the configured
+connection variable, setup can provision `codex-form-database.env` beneath
+the protected host home. The file contains only the project database
+variable already named by its runtime configuration. The Codex registration
+contains paths and arguments and leaves the credential in the protected home.
+
+### Enroll a decision issuer at installation
+
+An authenticated project setup service provisions its administrator's
+Ed25519 public key as `project-authorization-admin.pem` in the protected
+`AIDN_STANDARD_HOST_HOME`. The home is dedicated to the project and lives
+outside the checkout. The setup service keeps its signing authority and the
+decision issuer's private key outside the requesting agent.
+
+The service approves a closed `standard-project-authorization.v1` contract
+for the resolved project and runtime scope. Each principal contains one public
+key, an authority ID, and explicit pairs of question contract and allowed
+choices. The initial revision is `1` with `previous_sha256: null`. The next
+revision names the digest of the full signed predecessor. The administrator
+signs the UTF-8 hex SHA-256 of the canonical unsigned body using Ed25519.
+Installation receives only the signed public enrollment data.
+
+```sh
+aidn install --target . --standard-authorization approved-project-authorization.json --dry-run
+aidn install --target . --standard-authorization approved-project-authorization.json
+```
+
+The preview reports the revision and contract digest. The installation
+transaction publishes the approved revision after verifying the installation.
+Resuming the transaction reuses its validated input. Reapplying the same
+revision is idempotent. A signed successor can remove issuers or choices.
+Apply it on every execution host for the project. Installation asset rollback
+and uninstall leave this administrator-owned authority available.
+
+For the native Windows form, add `"codex_form": {"thread_id": "THREAD_UUID",
+"client": "codex-desktop-windows"}` to the issuer principal. Provision its
+Ed25519 private key as `codex-form-issuers/AUTHORITY_ID.pem` under the
+protected host home. The setup service provisions this key separately from
+project content and the administrator key. The launcher reads it only after
+checking the desktop client. Enroll the matching public key using the signed
+project policy above. An ordinary connector restart reuses the key.
+
+The active authorization checks the exact question contract and choice.
+For a form issuer it verifies the signed `codex:form/…/request/…` evidence
+for the configured conversation. A principal without `codex_form` uses the
+signed Codex message reference described below. The active revision and
+digest appear as `project_authorization` in the session status.
+
+A trusted launcher can append `--chat <thread-uuid> <enrolled-human-authority>`
+to expose `recover_message`. These two selectors restrict delivery to that
+chat and principal. For an existing text answer the Codex client reads the
+item through `thread/items/list`. The packaged `readCodexMessageReference`
+helper uses two single-item requests and hashes the exact UTF-8 text,
+including any trailing newline. The client supplies the resulting
+`turn_id`, `message_id` and `content_sha256` together with the original
+`operation_id` and `question_sha256`. This path never opens a form.
+
+An independent authenticated integration must attest the author's choice for
+that question. It publishes the ordinary signed human `standard-host-source.v1`
+at the offered source reference in the protected host inbox. Its signed
+`evidence_refs` include exactly one Codex message reference
+`codex:thread/<thread-uuid>/turn/<turn-uuid>/message/<message-uuid>` and the
+text digest. The workflow host checks the enrolled principal, complete claim,
+signature and current question. While the source is missing, recovery returns
+`awaiting_attestation` with the required reference and records no decision.
+After acceptance, the same lookup reads the matching signed journal result and
+process receipt across restarts, even after the transport copy is removed.
+
+### Windows operator key and decision panel
+
+This separate qualification prototype uses a WebAuthn verification for each
+panel decision. The native Codex form above uses the installed software issuer
+for subsequent choices in the existing conversation.
+
+An administrator can enroll an operator on Windows through an explicit
+installation action. A trusted launcher prepares the public enrollment plan
+with the packaged `tools/runtime/standard-windows-decisions.mjs` helper.
+`--prepare-enrollment` takes the project root, Codex thread UUID, a local port
+and a file of question contracts and allowed choices. The plan also binds the
+resolved project and runtime scope and the current Windows account.
+
+```sh
+aidn install --target . --standard-windows-operator-enrollment windows-enrollment.json --dry-run
+aidn install --target . --standard-windows-operator-enrollment windows-enrollment.json --expect-windows-operator-plan SHA256
+```
+
+Use the SHA-256 printed by the preview. Windows asks for administrator consent
+to install the authority. The same Windows user enrolls the key through the
+platform authenticator. The installer obtains the public key from the native
+WebAuthn API and records it under an administrator-owned machine registry key.
+The workflow receives only public data. Reapplying the same enrollment reuses
+the key. A different scope, thread, account or set of choices requires a new
+administrator-approved enrollment. Enrollment supplies no business decision.
+
+Pin the returned authority digest in `windows_operator_authority_sha256` in
+the STANDARD execution request. The packaged helper starts the loopback panel
+with `--serve <project> <standard-configuration> <thread-uuid>`. The launcher
+opens its URL in the browser panel of that same Codex chat. The panel presents
+the exact pending subject and its authorized choices. The operator chooses
+once. Windows can request device verification for the selected action. The
+private key stays with the authenticator throughout the workflow.
+
+The workflow host verifies the assertion against the machine enrollment before
+publishing the answer and again at the operation boundary. The signed
+challenge covers the exact claim, profile, thread, question and source. The
+accepted receipt and its canonical journal entry support reopening the panel
+without another choice. The signature authenticates an approved panel action.
+The separate Codex message recovery path continues to verify message evidence.
+
 The experimental workflow console shares its read model and action service
 between the CLI and a local browser dashboard. It requires no dashboard install
 or PostgreSQL for human-only workflows. New workflows default to the structured

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Décision AIDN</title>
+<style>
+  html { color-scheme: light dark; font-family: system-ui, sans-serif; }
+  body { max-width: 42rem; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.45rem; margin: 0 0 1rem; }
+  #subject { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+  .field { display: grid; gap: .3rem; margin: .75rem 0; }
+  button, input, select, textarea { font: inherit; padding: .55rem .7rem; }
+  .choices { display: flex; flex-wrap: wrap; gap: .65rem; margin: 1rem 0; }
+  #status { min-height: 1.5rem; }
+</style>
+<main>
+  <h1>Décision AIDN</h1>
+  <p id="subject"></p>
+  <form id="decision" hidden>
+    <div id="fields"></div>
+    <div id="choices" class="choices"></div>
+  </form>
+  <p id="status" role="status">Lecture de la question en cours…</p>
+</main>
+<script type="module" src="./panel.mjs"></script>
+</html>

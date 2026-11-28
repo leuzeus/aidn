@@ -54,7 +54,8 @@ export function resolveStandardWorkflowConfiguration(request) {
 export async function runStandardWorkflowEntry({ request, actionFile = null, preparedAction = null, decisionSource = null, controlSource = null, observation = null,
   authorization = null, execute = false, expectPlan = null, environment = process.env, signal } = {}, { providerTransport } = {}) {
   const resolved = resolveStandardWorkflowConfiguration(request), { configuration, parameters, modelSource, validationProfile } = resolved;
-  const authority = createStandardHostAuthority({ configuration, environment }, { providerTransport, useProvider: observation === null });
+  const authority = createStandardHostAuthority({ configuration, environment,
+    windowsOperatorAuthoritySha256: request.windows_operator_authority_sha256 }, { providerTransport, useProvider: observation === null });
   const provider = authority.githubProvider;
   const compose = (authorize, dispositionSource, nativeSources) => {
     let host;

@@ -3780,6 +3780,20 @@ When a change affects the simplified install/upgrade orchestrator, run:
 - `npm run perf:verify-project-config`
 - `npm run perf:verify-install-idempotence`
 
+Run `npm run perf:verify-standard-project-authorization` for the opt-in
+STANDARD installation authority. It covers read-only planning, installation
+and retry of an administrator-approved public key, refused foreign or stale
+policies, scoped signed decisions and revocation. The operator-session
+fixture exercises one accepted message and cold receipt recovery under the
+installed policy. These checks use controlled local issuers.
+
+Run `npm run perf:verify-standard-windows-operator` for the Windows panel proof.
+It checks the exact plan and non-mutating public install preview on Windows,
+and uses a controlled credential for signature, scope, origin, user
+verification, replay and single delivery checks. A real Windows registration,
+one operator selection in Codex and a canonical runtime receipt are separate
+qualification evidence.
+
 The install idempotence fixture checks that a core install and reinstall
 preserve user ignore rules and add the private dispatch directory and exact
 local artifact fence path. On a disposable source-installed FILES project,
@@ -3886,6 +3900,29 @@ on dev, main and release:
 - `verify-workflow-instance-fixtures.mjs`
 - `verify-workflow-candidate-fixtures.mjs`
 - `verify-workflow-console-fixtures.mjs`
+
+The Windows project-authorization fixture checks connector registration
+through the install CLI, including a read-only preview, changed-plan refusal,
+preservation of another server, recovery and idempotent reinstall.
+The global-runtime-store fixture keeps the stable launcher connected across a
+generation switch and checks that an idle connection holds no operation
+lease. These remain fixture results.
+
+The operator-session fixture installs a scoped Codex form issuer policy
+and exercises the public STANDARD FILES host with a fixture MCP client.
+Run `npm run perf:verify-standard-operator-session`. It checks the wrong chat,
+altered evidence, direct launch outside the desktop, cold resume, and a
+single accepted receipt. The stdio fixture in
+`tools/perf/verify-codex-decision-channel-fixtures.mjs` checks transport
+negotiation, signed capture, cancellation, stale subjects and refusal of
+answers supplied as tool arguments. It also binds the result to the
+server-generated request ID. Live desktop acceptance uses its own evidence.
+
+The operator-session fixture also checks historical text recovery with an
+independently signed fixture source. It covers a missing attestation, a
+different enrolled author, a changed question or message, and a cold retry
+after removal of the transport copy. One operation receipt carries the signed
+message reference. The real deployment requires evidence from its own issuer.
 
 The console suite is also available as `perf:verify-workflow-console`. It
 compares complete CLI and HTTP read/action payloads on disposable files/SQLite

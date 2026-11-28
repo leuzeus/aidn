@@ -193,6 +193,15 @@ const METADATA_POLICIES = freezeDeep([
     notes: "Repository-local authorization revision is distinct from each worktree installation receipt and native client trust. Integrity checks detect corruption, not an adversarial local editor. Public diagnostics expose only state, active, scope, authority_id, revision and errors.",
   }),
   policy({
+    concept: "standard_project_authorization",
+    label: "STANDARD decision issuer authorization",
+    required: ["contract_version", "project_id", "runtime_scope_id", "revision", "previous_sha256", "principals", "signature"],
+    sourceOfTruthConcept: "standard_project_authorization",
+    evidenceTargets: ["src/adapters/runtime/standard-project-authorization-store.mjs", "src/core/contracts/workflow-definition/standard-project-authorization.v1.schema.json"],
+    lifecycle: "anchored -> enrolled -> replaced or revoked by a signed successor",
+    notes: "Approved public keys authorize only listed question contracts and choices. Each answer requires the issuer signature and a Codex message reference. Project identity and the predecessor digest bind admission and replacement.",
+  }),
+  policy({
     concept: "install_assets",
     label: "Local installation ownership",
     required: ["schema_version", "scope", "root_id", "package", "assets", "last_transaction", "last_action"],

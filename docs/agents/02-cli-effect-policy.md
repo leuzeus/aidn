@@ -26,6 +26,17 @@ The classification keeps automation from confusing output format with write perm
   combinations instead of silently choosing an effect.
 - Read-only and preview commands must not modify the checkout.
 - Local writes require explicit intent such as `--write`.
+- `install --standard-authorization FILE` uses the existing installation
+  transaction to enroll the administrator-approved public keys in the protected
+  project host home. Its dry run verifies the input and previews the digest.
+- `--standard-codex-configuration FILE` previews the Windows connector
+  registration in the installation plan. Applying the installation writes
+  its scoped registration and protected binding. Project attachment requires
+  `--write --expect-plan`. Enrollment supplies installation authority only.
+- `install --standard-windows-operator-enrollment FILE` previews with
+  `--dry-run` and requires `--expect-windows-operator-plan SHA256` to apply.
+  Windows elevation and the local authenticator authorize the isolated registry
+  write. This action leaves the checkout and canonical project state untouched.
 - Global management previews require `--write --expect-plan` for application.
   `setup` is an interactive executor whose confirmation dispatches the same
   exact-plan write operation; JSON output alone never authorizes it.

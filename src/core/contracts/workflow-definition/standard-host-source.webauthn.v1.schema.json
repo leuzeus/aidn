@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-host-source.webauthn.v1",
+  "x-aidn-contract-version": "standard-host-source.webauthn.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "kind", "authority_id", "source_ref", "subject_sha256", "issued_at_ms", "expires_at_ms", "nonce", "payload", "assertion"],
+  "properties": {
+    "contract_version": { "const": "standard-host-source.webauthn.v1" },
+    "kind": { "const": "human" },
+    "authority_id": { "const": "windows-operator" },
+    "source_ref": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$" },
+    "subject_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "issued_at_ms": { "type": "integer", "minimum": 0 },
+    "expires_at_ms": { "type": "integer", "minimum": 1 },
+    "nonce": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+    "payload": { "type": "object" },
+    "assertion": {
+      "type": "object", "additionalProperties": false, "required": ["id", "client_data", "authenticator_data", "signature"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,1366}$" },
+        "client_data": { "type": "string", "pattern": "^[A-Za-z0-9_-]{32,5462}$" },
+        "authenticator_data": { "type": "string", "pattern": "^[A-Za-z0-9_-]{50}$" },
+        "signature": { "type": "string", "pattern": "^[A-Za-z0-9_-]{11,96}$" }
+      }
+    }
+  }
+}

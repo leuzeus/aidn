@@ -125,6 +125,15 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     replacement: "explicit authorize or revoke after preview; authority revision and byte preconditions are compared under a common lock",
     evidence_targets: ["src/application/install/project-activation-service.mjs"],
   },
+  standard_project_authorization: {
+    owner: "authenticated project administrator",
+    lifecycle: "anchored -> enrolled -> replaced or revoked by a signed successor",
+    scope: "one logical project and runtime scope per opted-in protected STANDARD host home",
+    retention: "retain signed revisions in the protected host home; the newest installed revision governs decision intake",
+    migration: "legacy principals remain available on hosts without an authorization anchor; installation of a new policy requires explicit approval",
+    replacement: "a project-bound administrator signature and the exact predecessor digest authorize only the immediate next revision; protected publication is idempotent",
+    evidence_targets: ["src/adapters/runtime/standard-project-authorization-store.mjs", "src/core/contracts/workflow-definition/standard-project-authorization.v1.schema.json"],
+  },
   install_assets: {
     owner: "local installation maintainer",
     lifecycle: "planned -> applying -> installed|interrupted -> repaired|rolled_back|uninstalled",
@@ -494,6 +503,15 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dbOnly: "Git common directory aidn/authorization.json; non-Git fallback .aidn/install/authorization.json",
     projection: "compact activation in bootstrap diagnostics and runtime admission",
     notes: "Authorization and per-worktree preparation are both required; copied configuration, stale cache and native trust are not activation authority. Revocation dominates local receipts and cannot be undone implicitly by asset recovery.",
+  }),
+  policy({
+    concept: "standard_project_authorization",
+    label: "STANDARD decision issuer authorization",
+    files: "protected STANDARD host home, administrator public key and signed authorization revisions",
+    dual: "protected STANDARD host home, administrator public key and signed authorization revisions",
+    dbOnly: "protected STANDARD host home, administrator public key and signed authorization revisions",
+    projection: "installed revision and digest in Codex session status and install preview",
+    notes: "The protected host enforces the current installed policy independently of the project checkout or artifact backend. Each execution host must receive new approved revisions. The authorized issuer retains its private key outside the agent process.",
   }),
   policy({
     concept: "install_assets",

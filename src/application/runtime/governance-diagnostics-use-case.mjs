@@ -64,6 +64,13 @@ export const GOVERNED_CONCEPTS = Object.freeze([
     required: ["source_of_truth", "metadata", "cli_contract"],
   },
   {
+    concept: "standard_project_authorization",
+    source_of_truth_concept: "standard_project_authorization",
+    metadata_concept: "standard_project_authorization",
+    required: ["source_of_truth", "metadata"],
+    coverage_note: "Installed signed, scoped issuer authorization. The authenticated external Codex interface remains a separate execution dependency.",
+  },
+  {
     concept: "install_assets",
     source_of_truth_concept: "install_assets",
     metadata_concept: "install_assets",

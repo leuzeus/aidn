@@ -12,13 +12,14 @@ import { resolveCliEffectClass } from '../../src/core/cli/effect-policy.mjs';
 const actions = ['setup', 'update', 'rollback', 'doctor', 'project-add', 'project-migrate', 'project-list', 'project-remove'];
 const allowed = {
   setup: ['release', 'packagePath', 'packageSha256'], update: ['release', 'packagePath', 'packageSha256', 'check', 'resume', 'recoverLocks'],
-  rollback: ['resume'], doctor: [], 'project-add': ['pack', 'connectionRef', 'resume', 'postgresMode', 'postgresVersion', 'adminConnectionRef'], 'project-migrate': ['resume'],
+  rollback: ['resume'], doctor: [], 'project-add': ['pack', 'connectionRef', 'resume', 'postgresMode', 'postgresVersion', 'adminConnectionRef', 'standardAuthorizationFile', 'standardCodexConfigurationFile'], 'project-migrate': ['resume'],
   'project-list': [], 'project-remove': ['id'],
 };
 export function parseArgs(argv) {
   const values = { '--target': 'target', '--release': 'release', '--package': 'packagePath', '--sha256': 'packageSha256',
     '--expect-plan': 'expectedPlanId', '--id': 'id', '--pack': 'pack', '--connection-ref': 'connectionRef',
-    '--postgres-mode': 'postgresMode', '--postgres-version': 'postgresVersion', '--admin-connection-ref': 'adminConnectionRef' };
+    '--postgres-mode': 'postgresMode', '--postgres-version': 'postgresVersion', '--admin-connection-ref': 'adminConnectionRef',
+    '--standard-authorization': 'standardAuthorizationFile', '--standard-codex-configuration': 'standardCodexConfigurationFile' };
   const flags = { '--write': 'write', '--check': 'check', '--resume': 'resume', '--recover-locks': 'recoverLocks', '--json': 'json', '--help': 'help', '-h': 'help' };
   const [action, ...args] = argv;
   if (!actions.includes(action)) throw new Error('GLOBAL_COMMAND_INVALID');
@@ -40,7 +41,7 @@ export function parseArgs(argv) {
   return options;
 }
 const command = action => `aidn ${action.startsWith('project-') ? action.replace('project-', 'project ') : action}`;
-const help = action => `${command(action)} [--target PATH] [--json]\nMutations: --write --expect-plan PLAN_ID\nupdate: --check | --release latest|VERSION | --package FILE --sha256 HASH --release VERSION\nproject add: --pack PROFILE [--connection-ref env:NAME]\nLocal PostgreSQL: --postgres-mode install --postgres-version VERSION --connection-ref env:AIDN_PG_PROJECT --admin-connection-ref env:AIDN_PG_ADMIN\nproject remove: --id ID; project add/migrate/update/rollback: --resume\nsetup: interactive wizard; --json prints a non-interactive preview.\n`;
+const help = action => `${command(action)} [--target PATH] [--json]\nMutations: --write --expect-plan PLAN_ID\nupdate: --check | --release latest|VERSION | --package FILE --sha256 HASH --release VERSION\nproject add: --pack PROFILE [--connection-ref env:NAME]\nproject add decisions: --standard-codex-configuration FILE [--standard-authorization FILE]\nLocal PostgreSQL: --postgres-mode install --postgres-version VERSION --connection-ref env:AIDN_PG_PROJECT --admin-connection-ref env:AIDN_PG_ADMIN\nproject remove: --id ID; project add/migrate/update/rollback: --resume\nsetup: interactive wizard; --json prints a non-interactive preview.\n`;
 export async function runGlobalCommand(options) {
   if (options.help) return { written: false, help: help(options.action) };
   const input = { ...options, home: options.home ?? globalHome() };
