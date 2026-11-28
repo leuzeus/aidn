@@ -12,6 +12,8 @@ import { createProcessOperationJournalStore } from "../runtime/process-operation
 import { readAidnProjectConfig, resolveConfigStateMode } from "../../lib/config/aidn-config-lib.mjs";
 import { decisionInboxId } from "../../core/workflow/process-decision-inbox.mjs";
 import { bindOperatorChat, codexMessageEvidence, assertCodexMessageEvidence } from "./codex-message-recovery.mjs";
+import { createOperatorReviewDocuments } from "./standard-operator-review-documents.mjs";
+import { createStandardWorkflowArtifacts } from "../../application/runtime/standard-workflow-artifacts.mjs";
 
 const fail = code => { throw Error(code); };
 const read = file => readAgentRunFile(file, { maxBytes: 262144 }).value;
@@ -27,6 +29,23 @@ export function createStandardOperatorSession({ targetRoot, configuration, envir
   const { identity } = readStandardHostInstance({ targetRoot: resolved.target_root, instanceId: resolved.instance_id, environment });
   const lastAnswer = path.join(authority.home, identity + ".operator-answer.json");
   const inbox = path.join(authority.home, "inbox");
+  const prepareDocuments = createOperatorReviewDocuments({ home: authority.home,
+    artifacts: createStandardWorkflowArtifacts({ targetRoot: resolved.target_root, env: environment }),
+    readEvaluation(q) {
+      const options = { targetRoot: resolved.target_root, env: environment,
+        stateMode: resolveConfigStateMode(readAidnProjectConfig(resolved.target_root).data) ?? "dual" };
+      const record = createProcessOperationJournalStore(options).read(q.review.drift_evaluation_operation_id).record;
+      createOperationJournalSigner(authority.readKey).verify(record);
+      if (record.intent.instance_id !== resolved.instance_id || record.intent.scope_id !== q.scope_id
+        || record.intent.binding_ref !== "drift_report_evaluate" || record.phase !== "receipted") fail("OPERATOR_REVIEW_SOURCE_CHANGED");
+      const instance = createAgenticProcessStore(options).read(resolved.instance_id).record;
+      const result = record.results.find(row => shadowHash(row.output) === q.review.drift_evaluation_output_sha256
+        && row.receipt.outcome === "completed" && row.receipt.effect_status === "no_effect"
+        && instance?.events.some(event => event.kind === "operation_result" && event.occurrence_id === record.intent.occurrence_id
+          && shadowHash(event.receipt) === shadowHash(row.receipt)));
+      if (!result) fail("OPERATOR_REVIEW_SOURCE_CHANGED");
+      return result.output;
+    } });
   function repositoryFor(q) {
     if (!q.subject?.repository_id) return null;
     const binding = readAgentRunFile(path.join(authority.home, identity + ".github.json"), { optional: true })?.value;
@@ -172,6 +191,17 @@ export function createStandardOperatorSession({ targetRoot, configuration, envir
       if (!state.q) return state;
       if (state.slot.envelope) return { status: "retained", question_sha256: shadowHash(state.q) };
       return { status: "question", offer: { ...operatorOffer(state.q, state.slot.ref), repository: repositoryFor(state.q) } };
+    },
+    async prepareReview(offer) {
+      const check = async () => {
+        const state = await pending();
+        if (!state.q || state.slot.envelope || shadowHash(state.q) !== offer.question_sha256 || state.slot.ref !== offer.source_ref)
+          fail("OPERATOR_QUESTION_CHANGED");
+      };
+      await check();
+      const prepared = await prepareDocuments(offer);
+      await check();
+      return prepared;
     },
     submit: envelope => receive(envelope),
     resume: () => receive(null),

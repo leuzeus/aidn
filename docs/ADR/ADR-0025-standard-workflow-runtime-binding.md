@@ -6065,6 +6065,22 @@ business resumption. A failed Native report remains failed.
 
 ## Capturing an operator answer
 
+The delivery tool prepares immutable review copies under the protected host home
+from the configured canonical artifact port. It verifies content and available
+metadata hashes from the exact question; supplementary R05 documents require its
+bound, authenticated, accepted evaluation. A second observation and pending-question
+check precede presentation. The view labels local Markdown links to the copies
+and an index. It never substitutes checkout projections for PostgreSQL or SQLite.
+Question/session reads remain free from materialization.
+
+For a nominal COMMITTING session whose owned cycles are DONE, the form displays
+the complete proposed session report and next delivery step before the choice.
+Closing transmits that displayed report and a rationale derived from the explicit
+choice; refusal, defer and cancellation transmit no report. Other contexts keep
+the explicit report fields. The Human schema and runtime admission stay unchanged.
+A malformed captured reply remains historical evidence, not an accepted decision.
+Markdown link rendering in a particular client requires separate desktop evidence.
+
 The Codex MCP transport presents a prepared STANDARD question using form
 elicitation. The registered operator connection holds its Ed25519 key in
 memory. The runtime checks the signed response against the enrolled registry

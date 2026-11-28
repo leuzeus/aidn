@@ -77,6 +77,17 @@ function nextVersion(current) {
   return "v" + parts.join(".");
 }
 
+function sessionReport(offer) {
+  const q = offer.question, review = q.review, context = offer.review_context;
+  const objective = context?.session_objective, cycles = context?.cycles;
+  if (q.contract_version !== "standard-session-closure-question.v1" || review?.mode !== "COMMITTING"
+    || !Array.isArray(review.open_cycles) || review.open_cycles.length || review.session_close_gate_satisfied !== false
+    || typeof objective !== "string" || !objective.trim() || objective.length > 1536 || /[\r\n\x00-\x1f]/.test(objective)
+    || !cycles?.length || cycles.some(row => row.state !== "DONE" || row.owner !== q.session_id)) return null;
+  return { summary: `Travail terminé pour l’objectif « ${objective} ». Cycles clôturés : ${cycles.map(row => row.id).join(", ")}.`,
+    open_loops: [], blockers: [], next_entry_point: "Préparer la livraison par pull request, sa revue puis la synchronisation après fusion." };
+}
+
 // This is a view of an already prepared question. It never grants an effect
 // or changes the canonical question, its identifiers or allowed choices.
 export function presentCodexDecision(offer, allowedChoices = offer.question.choices) {
@@ -88,6 +99,7 @@ export function presentCodexDecision(offer, allowedChoices = offer.question.choi
   const cycle = review?.cycle_id ?? q.cycle_id;
   lines.push([q.session_id && "Session " + q.session_id, cycle && "Cycle " + cycle].filter(Boolean).join(" · "));
   let proposal = null;
+  const report = sessionReport(offer);
   if (kind === "baseline-promotion") {
     const version = nextVersion(review?.current_version);
     if (version && cycle) proposal = Object.freeze({ version, summary: `Résultat validé et clôturé du cycle ${cycle}.` });
@@ -103,12 +115,25 @@ export function presentCodexDecision(offer, allowedChoices = offer.question.choi
     lines.push(pending.length ? pending.map(([key, rows]) => `${labels[key] ?? readable(key)} : ${rows.join(", ")}`).join("\n") : "Aucun élément en attente ni risque à accepter.");
     for (const finding of review.findings ?? []) lines.push(`${{ informational: "Information", risk: "Risque", blocking: "Point bloquant" }[finding.severity] ?? "Constat"} : ${finding.rationale}`);
     lines.push("Retenir conserve le résultat et demande la clôture. Les autres choix permettent de ne pas le retenir, de l’abandonner ou de reporter la décision.");
+  } else if (kind === "session-closure" && report) {
+    lines.push("Mode COMMITTING. Aucun cycle ne reste ouvert dans cette session.",
+      "Bilan proposé : " + report.summary,
+      "Points ouverts dans le bilan : aucun. Blocage de clôture : aucun.",
+      "Prochaine étape : " + report.next_entry_point,
+      "Clore valide le bilan affiché et demande la clôture de la session. La livraison reste à réaliser.",
+      "Pour modifier ce bilan, reportez la décision et indiquez la modification souhaitée dans le chat.");
   } else {
     if (offer.repository) lines.push("Dépôt : " + offer.repository);
     if (/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(offer.repository ?? "") && /^[a-f0-9]{40}$/i.test(review?.head_oid ?? ""))
       lines.push(`Commit à examiner : [${review.head_oid.slice(0, 8)}](https://github.com/${offer.repository}/commit/${review.head_oid})`);
-    lines.push(...facts(review));
+    lines.push(...facts(offer.review_documents ? Object.fromEntries(Object.entries(review ?? {}).filter(([key]) => key !== "documents")) : review));
+  }
+  if (offer.review_documents?.length) {
+    const link = row => `[${row.label}](<${row.path}>)`;
+    lines.push("Documents examinés — copies vérifiées depuis le backend canonique :\n"
+      + offer.review_documents.map(row => "• " + link(row)).join("\n"));
+    if (offer.review_index) lines.push(`[Ouvrir le dossier de revue](<${offer.review_index}>)`);
   }
   if (q.expires_at_ms) lines.push("Décision attendue avant le " + new Intl.DateTimeFormat("fr-CA", { dateStyle: "medium", timeStyle: "short" }).format(q.expires_at_ms) + ".");
-  return { message: lines.filter(Boolean).join("\n\n"), choices, proposal };
+  return { message: lines.filter(Boolean).join("\n\n"), choices, proposal, session_report: report };
 }

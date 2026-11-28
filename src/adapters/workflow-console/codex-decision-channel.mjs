@@ -44,10 +44,12 @@ export function createCodexDecisionChannel({ session, elicit, formSupported, for
       const current = session.session();
       const principal = enrolled(current.principals);
       if (!principal || current.project_authorization && !formIssuer) fail("CODEX_DECISION_CHANNEL_NOT_ENROLLED");
-      const { offer } = state, q = offer.question;
+      let { offer } = state;
+      const q = offer.question;
       const rule = principal.decisions?.find(row => row.question_contract === q.contract_version);
       const choices = formIssuer ? q.choices.filter(choice => rule?.choices.includes(choice)) : q.choices;
       if (!choices.length) fail("STANDARD_AUTHORIZATION_DECISION_REFUSED");
+      if (session.prepareReview) offer = await session.prepareReview(offer);
       const form = codexDecisionForm(offer, choices);
       const reply = await elicit(form.request);
       if (!reply || !["accept", "decline", "cancel"].includes(reply.action)) fail("CODEX_DECISION_REPLY_INVALID");
@@ -99,6 +101,7 @@ export function codexDecisionForm(offer, allowedChoices = offer.question.choices
     && ["requirements", "usages", "documents", "tests", "blocking_findings", "risk_findings_requiring_human_decision"]
       .every(key => Array.isArray(q.review.pending[key]) && q.review.pending[key].length === 0);
   const proposalForm = q.contract_version === "standard-baseline-promotion-question.v1" && view.proposal !== null;
+  const sessionClosureForm = view.session_report !== null;
   function field(name, spec, chain, title, optional) {
     if (Object.hasOwn(spec, "const")) return () => spec.const;
     const schema = (spec.oneOf ?? spec.anyOf)?.find(s => s.type !== "null") ?? spec;
@@ -117,7 +120,8 @@ export function codexDecisionForm(offer, allowedChoices = offer.question.choices
     }
     const list = schema.type === "array", choices = schema.enum;
     properties[chain] = { type: "string", title, ...(choices ? { enum: choices.map(v => v ?? "sans_objet") } : {}),
-      ...(list ? { description: "Un élément par ligne." } : {}), ...(schema.maxLength ? { maxLength: schema.maxLength } : {}) };
+      ...(list ? { description: "Un élément par ligne." } : {}), ...(schema.maxLength ? { maxLength: schema.maxLength } : {}),
+      ...(!list && schema.minLength ? { minLength: schema.minLength } : {}) };
     if (!optional && !list && (choices || schema.minLength)) required.push(chain);
     return data => {
       const value = data[chain] ?? "";
@@ -127,8 +131,12 @@ export function codexDecisionForm(offer, allowedChoices = offer.question.choices
   }
   for (const [name, spec] of Object.entries(offer.fields)) {
     if (name === "cycle_sha256") continue;
-    if (name === "rationale" && (nominalClosure || proposalForm)) {
+    if (name === "rationale" && (nominalClosure || proposalForm || sessionClosureForm)) {
       readers.push([name, (_data, choice) => "Choix exprimé dans le formulaire Codex sur le résultat présenté : " + codexChoiceLabel(choice) + "."]);
+      continue;
+    }
+    if (name === "session_report" && sessionClosureForm) {
+      readers.push([name, (_data, choice) => choice === "close" ? structuredClone(view.session_report) : null]);
       continue;
     }
     if (name === "promotion" && proposalForm) {
