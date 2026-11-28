@@ -179,8 +179,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-perf-history-${{ github.event.pull_request.head.ref || github.ref_name }}-
 
+      - name: Initialize Canonical SQLite Fixture
+        run: node tools/perf/index-sync.mjs --target "$PERF_TARGET" --store dual-sqlite --with-content --json > "$PERF_RUNTIME_INDEX/bootstrap-import.json"
+
       - name: Session Start Hook
-        run: npm run perf:session-start -- --target "$PERF_TARGET" --mode COMMITTING --index-store dual
+        run: npm run perf:session-start -- --target "$PERF_TARGET" --mode COMMITTING --index-store dual-sqlite
 
       - name: Delivery Start
         run: npm run perf:delivery-start -- --target "$PERF_TARGET" --mode COMMITTING
@@ -192,7 +195,7 @@ jobs:
         run: npm run perf:delivery-end -- --target "$PERF_TARGET" --mode COMMITTING
 
       - name: Session Close Hook
-        run: npm run perf:session-close -- --target "$PERF_TARGET" --mode COMMITTING --index-store dual
+        run: npm run perf:session-close -- --target "$PERF_TARGET" --mode COMMITTING --index-store dual-sqlite
 
       - name: Build KPI JSON
         run: |
