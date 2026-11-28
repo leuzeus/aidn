@@ -128,4 +128,3 @@ export function applyStandardCodexRegistration({ plan, targetRoot, environment =
     fs.unlinkSync(lock);
   }
 }
-

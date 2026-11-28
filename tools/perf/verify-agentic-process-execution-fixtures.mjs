@@ -257,13 +257,14 @@ const checkFlags = new Set([
   "--canonical-plan-work-only", "--drift-objective-mismatch-only", "--v2-only",
   "--native-human-port-only", "--historical-diagnostic-only", "--native-human-turn-only",
   "--checkpoint-only", "--large-checkpoint-only", "--journal-only",
-  "--journal-preview-only", "--owned-only", "--resume-only",
+  "--journal-preview-only", "--owned-only", "--native-ceiling-only", "--resume-only",
   "--worker-only", "--bpmn-control-only", "--native-permission-profile-only",
   "--drift-git-only", "--drift-contract-only",
   "--drift-finalize-contract-only", "--drift-published-rollback", "--drift-published-rollback-rediagnosis",
 ]);
 const checkPrefixes = [
   "--native-epoch-mode=", "--native-initial-epoch-mode=", "--dataflow-mode=",
+  "--native-post-assignment-mode=",
   "--drift-recovery-mode=", "--drift-finalize-mode=", "--drift-finalize-case=",
   "--drift-completion-mode=", "--drift-mode=", "--canonical-resume-native-mode=",
   "--standard-existing-open-work-mode=", "--standard-selected-root-mode=", "--standard-existing-complete-mode=",
@@ -275,7 +276,9 @@ const checkPrefixes = [
   "--cycle-audit-mode=", "--cycle-task-mode=", "--cycle-verification-mode=",
   "--cycle-validation-mode=", "--drift-cr-mode=", "--drift-cycle-mode=",
 ];
-if (!process.argv.slice(2).some(argument => checkFlags.has(argument)
+const allocationResumeChild = process.argv[2] === "--resume-allocation" && process.argv.length === 4;
+const readOnlyStorageChild = process.argv[2]?.startsWith("--native-readonly-storage-create=") && process.argv.length >= 4;
+if (!allocationResumeChild && !readOnlyStorageChild && !process.argv.slice(2).some(argument => checkFlags.has(argument)
   || checkPrefixes.some(prefix => argument.startsWith(prefix) && argument.length > prefix.length))) {
   throw Error("Select a focused execution fixture, for example --checkpoint-only or --standard-composed-mode=files");
 }
@@ -327,6 +330,7 @@ async function check(name, callback) { if (process.argv.includes("--host-resourc
   if (process.argv.includes("--journal-only") && !name.startsWith("journal ")) return;
   if (process.argv.includes("--journal-preview-only") && !name.startsWith("journal preview ")) return;
   if (process.argv.includes("--owned-only") && !/^(journal |owned )/.test(name)) return;
+  if (process.argv.includes("--native-ceiling-only") && !name.startsWith("owned Native response ceiling:")) return;
   if (process.argv.includes("--resume-only") && !name.startsWith("resume ")) return;
   if (process.argv.includes("--worker-only") && !name.startsWith("worker ")) return;
   if (process.argv.includes("--mixed-only") && !name.startsWith("mixed ")) return;
@@ -495,8 +499,23 @@ function journalController(f, t, options = {}) {
         readProductSha256: () => native.preview().product_sha256, ...(f.environment ? { environment: f.environment } : {}) });
       const observedAuthority = options.observePreparationFailure ? observeFixtureNativePreparation(allocationAuthority.processAuthority,
         { controlRoot: request.cwd, generation: sent.allocation.generation }) : allocationAuthority.processAuthority;
-      native = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory, allocationAuthority, processAuthority: observedAuthority, ...(f.environment ? { environment: f.environment } : {}) });
-      const result = await native.run({ execute: true, authorization: sent.authorization });
+      const generation = sent.allocation.generation;
+      const cancellation = options.cancelWorkerGeneration === generation ? new AbortController() : null;
+      const processAuthority = cancellation === null ? observedAuthority : Object.freeze({
+        ...observedAuthority,
+        readExecutionAuthority() {
+          // The worker opens this directory before reading the retained instance.
+          // Its next authority read is in activity preparation, before assignment.
+          const workerOutput = path.join(f.configuration.control_root, f.configuration.instance_id + '.g' + generation);
+          if (!cancellation.signal.aborted && fs.existsSync(workerOutput)) {
+            cancellation.abort();
+            cancellation.signal.throwIfAborted();
+          }
+          return observedAuthority.readExecutionAuthority();
+        },
+      });
+      native = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory, allocationAuthority, processAuthority, ...(f.environment ? { environment: f.environment } : {}) });
+      const result = await native.run({ execute: true, authorization: sent.authorization, signal: cancellation?.signal });
       await options.afterWorker?.(f, result);
       await onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify(result)) });
       return { outcome: options.postAssignmentReturnFailure ? "failed" : "completed",
@@ -538,6 +557,13 @@ function mixedFixture(stateMode = "files", options = {}) {
         { flow_id: "review", node_id: "review_path", event_key: "review_snapshot" }, { flow_id: "finish", node_id: "finish_without_review", event_key: "finish_snapshot" }] },
       { id: "review_path", kind: "sequence", participant_ref: "delivery", children: ["review", "after_review"] }, native("review"),
       op("after_review", "context_reload"), op("finish_without_review", "context_reload")] };
+  if (options.cancelWorkerGeneration) {
+    // A deterministic operation separates the two allocations without making
+    // this checkpoint test depend on the external control port.
+    const sequence = model.nodes[0];
+    sequence.children = ["reload", "admit", "initialize", "analyze", "after_native", "review", "after_review"];
+    model.nodes = model.nodes.filter(node => node === sequence || sequence.children.includes(node.id));
+  }
   fs.writeFileSync(f.configuration.model.path, JSON.stringify(model)); f.configuration.model.sha256 = sha(JSON.stringify(model));
   if (options.drift) {
     model.roles.find(row => row.id === "analysis").skills = ["drift-check"];
@@ -972,6 +998,18 @@ if (process.argv[2] === "--mixed-continue") {
     const owned = fs.realpathSync(root);
     assert.equal(path.dirname(owned), fs.realpathSync(os.tmpdir())); assert.ok(path.basename(owned).startsWith("aidn-agentic-execution-"));
     fs.rmSync(owned, { recursive: true, force: true });
+  }
+} else if (readOnlyStorageChild) {
+  const { createReadOnlyStorageStopFixture } = await import('./native-readonly-storage-fixture-lib.mjs');
+  const mode = process.argv[2].slice('--native-readonly-storage-create='.length), output = process.argv[3];
+  assert(['files', 'dual', 'db-only'].includes(mode));
+  assert(path.isAbsolute(output) && !fs.existsSync(output));
+  const data = await createReadOnlyStorageStopFixture({ mode, operatorHome: fs.realpathSync(path.dirname(output)), mixedFixture, bootstrapMixed });
+  fs.writeFileSync(output, JSON.stringify(data), { flag: 'wx' });
+  console.log(JSON.stringify({ status: 'SYNTHETIC_READ_ONLY_STORAGE_STOP', model_calls: 0 }));
+  if (process.send) {
+    process.send({ ready: 'read_only_storage_owner_active' });
+    await new Promise(resolve => process.once('message', resolve));
   }
 } else if (process.argv[2] === "--resume-allocation") {
   try {
@@ -3236,6 +3274,51 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(f.open().readCheckpoint(2).state.results.length, 4);
     console.log(JSON.stringify({ checkpoint_bytes: checkpoint.length, projection_bytes: projection.length }));
   });
+  await check("journal large checkpoint survives a preventive storage stop", async () => {
+    const f = journalFixture({ largeCheckpoint: true }), { rpcFactory } = f.t;
+    let scratchCreated = false;
+    f.t.rpcFactory = configuration => {
+      const rpc = rpcFactory(configuration);
+      return { ...rpc, async request(method, ...args) {
+        if (method === "turn/start" && !scratchCreated) {
+          scratchCreated = true;
+          put(f.dirs.control, "case/fixture-turn-scratch.bin", Buffer.alloc(512 * 1024));
+        }
+        return rpc.request(method, ...args);
+      } };
+    };
+    const authorization = { ...f.authorize(), max_bytes: 2 * 1024 * 1024 };
+    const result = await f.actor.run({ execute: true, authorization });
+    const worker = result.owned_result.worker_result;
+    assert.equal(result.journal_phase, "failed", JSON.stringify(result));
+    assert.equal(result.first_failure, "PROCESS_EXECUTION_STORAGE_LIMIT");
+    assert.equal(worker.first_failure, result.first_failure);
+    assert.ok(worker.native_checkpoint);
+    assert.equal(result.owned_result.process_tree.termination_state, "confirmed");
+    assert.equal(result.owned_result.process_tree.termination_proof.active_processes, 0);
+    const allocation = f.open().inspect().allocations[0];
+    assert.ok(allocation.checkpoint && allocation.closure_ref && allocation.consumption);
+    assert.ok(allocation.consumption.storage_debit_bytes <= authorization.max_bytes);
+    assert.equal(allocation.consumption.responses_observed, 1);
+    assert.equal(allocation.consumption.responses_observed, worker.responses_observed);
+    const input = put(f.base, "storage-stop-reader.json", JSON.stringify({ configuration: f.configuration, key: f.key.toString("hex") }));
+    const reader = new URL("../../src/application/runtime/journaled-native-allocation.mjs", import.meta.url).href;
+    const script = `import fs from "node:fs";
+      import { createJournaledNativeAllocation } from ${JSON.stringify(reader)};
+      const input = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+      const allocator = createJournaledNativeAllocation({ configuration: input.configuration, readSigningKey: () => Buffer.from(input.key, "hex") });
+      const checkpoint = allocator.readCheckpoint(1);
+      process.stdout.write(JSON.stringify({ responses: checkpoint.response_sha256, parentClosed: checkpoint.state.parent_closed }));`;
+    const cold = spawnSync(process.execPath, ["--input-type=module", "-e", script, input],
+      { encoding: "utf8", shell: false, timeout: 30000 });
+    assert.equal(cold.status, 0, cold.stderr);
+    assert.deepEqual(JSON.parse(cold.stdout), { responses: allocation.consumption.response_sha256, parentClosed: true });
+    await assert.rejects(f.open().run({ execute: true, authorization, resume: true }), /NATIVE_ALLOCATION_TERMINAL_FAILURE/);
+    assert.equal(f.launches, 1);
+    console.log(JSON.stringify({ debit_bytes: allocation.consumption.storage_debit_bytes, authorized_bytes: authorization.max_bytes,
+      checkpoint_bytes: fs.statSync(allocation.checkpoint.path).size, responses: worker.responses_observed, controlled_native: true }));
+  });
+
   await check("journal large checkpoint cannot spend the aggregate footer reserve", async () => {
     const f = journalFixture({ largeCheckpoint: true }), { rpcFactory } = f.t;
     f.t.rpcFactory = configuration => {
@@ -3243,11 +3326,11 @@ if (process.argv[2] === "--mixed-continue") {
       return { ...rpc, async close() {
         // Grow retained bytes after the final canonical write so the refusal
         // must come from saving the checkpoint, not an earlier CAS guard.
-        put(f.dirs.control, "case/fixture-retained.bin", Buffer.alloc(1408 * 1024));
+        put(f.dirs.control, "case/fixture-retained.bin", Buffer.alloc(3456 * 1024));
         return rpc.close();
       } };
     };
-    const authorization = { ...f.authorize(), max_bytes: 2 * 1024 * 1024 };
+    const authorization = { ...f.authorize(), max_bytes: 4 * 1024 * 1024 };
     const result = await f.actor.run({ execute: true, authorization });
     const worker = result.owned_result.worker_result;
     assert.equal(result.journal_phase, "failed", JSON.stringify(result));
@@ -4029,6 +4112,47 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(t.sessions.length, 0);
     f.configuration.implementation_sha256 = "a".repeat(64);
     assert.throws(() => createProjectAgenticProcessExecution(f.configuration), /IMPLEMENTATION_CHANGED/);
+  });
+  await check("owned Native response ceiling: explicit refusal before allocation", async () => {
+    const f = fixture(), configuration = f.configuration;
+    const authorization = { ...f.authorize(), max_responses: 2 };
+    const refuse = { code: "PROCESS_EXECUTION_RESPONSE_LIMIT_UNENFORCEABLE" };
+    const observer = {
+      beforeLaunch() { assert.fail("allocation must not be reserved"); },
+      afterClosure() { assert.fail("worker must not be launched"); },
+    };
+    const execution = createProjectAgenticProcessExecution(configuration);
+    const before = fs.readdirSync(configuration.control_root);
+    assert.equal(execution.preview().native_started, false);
+    await assert.rejects(execution.run({ execute: true, authorization }), refuse);
+    await assert.rejects(runOwnedAgenticProcess({ configuration, authorization, execute: true }, { allocationObserver: observer }), refuse);
+    const withoutCeiling = { ...authorization, max_responses: null };
+    await assert.rejects(runOwnedAgenticProcess({ configuration, authorization: withoutCeiling, execute: true }, { allocationObserver: observer }),
+      { code: "PROCESS_EXECUTION_CONTROLLER_PIN_INVALID" });
+    const shortDeadline = withoutCeiling.authorized_at_ms + 15000;
+    await assert.rejects(execution.run({ execute: true, authorization: { ...withoutCeiling,
+      global_deadline_ms: shortDeadline, workflow_deadline_ms: shortDeadline } }), { code: "PROCESS_EXECUTION_CLOSURE_RESERVE" });
+    assert.deepEqual(fs.readdirSync(configuration.control_root), before);
+  });
+  await check("owned Native response ceiling: journal retains observed responses without a ceiling", async () => {
+    const f = journalFixture({ responsesPerTurn: 41 });
+    const result = await f.actor.run({ execute: true, authorization: { ...f.authorize(), max_responses: null } });
+    assert.equal(result.status, "COMPLETED", JSON.stringify(result));
+    const allocation = f.open().inspect().allocations[0], checkpoint = f.open().readCheckpoint(1);
+    assert.equal(allocation.phase, "closed");
+    assert.equal(allocation.limits.max_responses, null);
+    assert.equal(allocation.consumption.responses_observed, 123);
+    assert.deepEqual(allocation.consumption.response_sha256, checkpoint.response_sha256);
+  });
+  await check("owned Native response ceiling: an existing capped authorization cannot be widened", async () => {
+    const f = journalFixture({ wait: true }), authorization = f.authorize();
+    const result = await f.actor.run({ execute: true, authorization });
+    assert.equal(result.journal_phase, "closed", JSON.stringify(result));
+    const journal = f.actor.inspect();
+    await assert.rejects(f.actor.run({ execute: true, authorization: { ...authorization, max_responses: null } }),
+      { code: "NATIVE_ALLOCATION_LIMIT_INCREASE_UNAUTHORIZED" });
+    assert.equal(f.launches, 1);
+    assert.deepEqual(f.open().inspect(), journal);
   });
   await check("owned reservation cannot spend the closure reserve and still launch a worker", async () => {
     const f = fixture(), worker = fileURLToPath(new URL("../../src/adapters/agents/agentic-process-worker.mjs", import.meta.url));

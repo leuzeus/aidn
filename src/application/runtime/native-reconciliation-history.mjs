@@ -9,6 +9,20 @@ import { shadowHash as H } from '../../core/workflow/shadow-json.mjs';
 import { inspectRetiredNativeOwnerWitness } from './local-native-owner-retirement.mjs';
 
 const fail = code => { throw Object.assign(Error(code), { code }); };
+
+// Both journals have been authenticated by the reader. The first v5
+// reconciliation retains the entire v4 predecessor as its origin.
+export function retainsNativeReconciliationProposal(journal, proposal) {
+  const retained = journal.contract_version === 'native-allocation-journal.v5'
+    && proposal.contract_version === 'native-allocation-journal.v4' ? journal.origin_journal : journal;
+  return retained.contract_version === proposal.contract_version
+    && H(retained.origin_journal) === H(proposal.origin_journal)
+    && H(retained.initial_authorization) === H(proposal.initial_authorization)
+    && H(retained.allocations.slice(0, proposal.allocations.length)) === H(proposal.allocations)
+    && H(retained.epochs.slice(0, proposal.epochs.length)) === H(proposal.epochs)
+    && H(retained.reconciliations.slice(0, proposal.reconciliations.length)) === H(proposal.reconciliations);
+}
+
 // Internal capabilities select the configured canonical store, or the exact
 // rows of one inventory observation. Authored JSON cannot select these readers.
 // The result describes resolved Native history; every later effect still needs
@@ -50,10 +64,7 @@ export function createNativeReconciliationHistoryReader({ targetRoot, stateMode,
     if (record.journal_id !== journal.journal_id || q.instance_id !== journal.instance_id || q.scope_id !== journal.scope_id || q.model_sha256 !== journal.model_sha256
       || q.configuration_sha256 !== H(configuration) || q.physical_root_sha256 !== H(artifacts.root)
       || H(entry) !== q.allocation_sha256 || H(receipt) !== H(actualReceipt)
-      || H(journal.allocations.slice(0, proposal.allocations.length)) !== H(proposal.allocations)
-      || H(journal.epochs.slice(0, proposal.epochs.length)) !== H(proposal.epochs)
-      || H(journal.reconciliations.slice(0, proposal.reconciliations.length)) !== H(proposal.reconciliations)
-      || H(journal.origin_journal) !== H(proposal.origin_journal) || H(journal.initial_authorization) !== H(proposal.initial_authorization))
+      || !retainsNativeReconciliationProposal(journal, proposal))
       fail('NATIVE_RECONCILIATION_CONFIRMED_HISTORY_CHANGED');
     const owner = assertNativeOwnerDispositionRecord(readOwner ? readOwner(q.dispatch_id)
       : JSON.parse(artifacts.read(nativeOwnerDispositionPath(q.dispatch_id), { required: true }).content));

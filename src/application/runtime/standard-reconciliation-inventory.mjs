@@ -185,7 +185,7 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
             authorization_sha256: entry.authorization_sha256, configuration_sha256: entry.configuration_sha256,
             consumption: entry.consumption, checkpoint: entry.checkpoint, closure_ref: entry.closure_ref,
             tree_closed: entry.tree_closed, accounting_known: known,
-            ...(['reconciled_no_assignment', 'reconciled_post_assignment'].includes(resolution?.kind) ? { reconciled_consumption: resolution.consumption,
+            ...(['reconciled_no_assignment', 'reconciled_post_assignment', 'reconciled_interrupted_assignment'].includes(resolution?.kind) ? { reconciled_consumption: resolution.consumption,
               reconciliation_receipt_sha256: resolution.receipt_sha256, reconciliation_record_sha256: resolution.record_sha256 } : {}) });
         }
       } else {
@@ -379,9 +379,9 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
       return { inventory, observation };
   }
   const nativeAssessment = createStandardNativeAllocationAssessment({ artifacts, configuration, signer,
-    capture: typeof readNativeSubject === "function" ? (id, expected) => capture(readNativeSubject, id, expected, true) : null });
+    capture: typeof readNativeSubject === "function" ? (id, expected) => capture(readNativeSubject, id, expected, true, null, true) : null });
   const postAssignment = createStandardNativePostAssignmentAssessment({ artifacts, configuration, signer, baseAssessment: nativeAssessment,
-    capture: typeof readNativeSubject === "function" ? (id, expected) => capture(readNativeSubject, id, expected, true) : null });
+    capture: typeof readNativeSubject === "function" ? (id, expected) => capture(readNativeSubject, id, expected, true, null, true) : null });
   return Object.freeze({
     prepareNativePostAssignmentAssessment: (id, input) => postAssignment.prepare(id, input),
     prepareNativeAllocationAssessment: (id, input) => nativeAssessment.prepare(id, input),

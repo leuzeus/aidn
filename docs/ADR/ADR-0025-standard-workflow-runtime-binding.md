@@ -5971,6 +5971,62 @@ to a projection, raise the byte limit or change full-content listing. A worker
 output-limit refusal stays distinct from backend unavailability. Existing
 accepted completion receipts can be verified without replaying their effects.
 
+### Native response ceilings
+
+Native authorization expresses a numeric response ceiling or `max_responses:
+null`. The ordinary Codex app-server execution uses `null` and records every
+completed response. Its existing authorization, deadlines, storage and
+process supervision apply.
+
+A numeric ceiling still requires enforcement before starting a model
+response. The Codex app-server reports completed responses, so this
+configuration refuses a numeric ceiling before allocating a worker. Only
+an authenticated new epoch can widen an existing ceiling. The journal
+retains the observed response and storage debits across epochs.
+
+### Native storage stop evidence
+
+The worker deducts room for the sized Native checkpoint and the next bounded
+evidence payload from the working portion of the existing storage budget.
+Closure can spend that room on the checkpoint and retains the supervisor and
+worker footer reserve. A preventive storage stop keeps its failure and known
+debit in the authenticated allocation. If observed storage growth leaves
+insufficient room for sealing, the controlled stdout result carries that
+failure and the allocation remains subject to reconciliation.
+
+### Owner retirement after a read-only Native storage stop
+
+The existing v1 owner-retirement action also admits a closed read-only storage
+interruption without a final checkpoint. Its private diagnostic proof uses the
+signed returned dispatch as the exact pre-assignment anchor, validates the final
+read-only assignment and reobserves the signed product preimage and terminated
+creator. Execution history authentication retains its checkpoint requirements.
+The bounded diagnostic supplies no accepted result or known consumption. Exact
+operator consent, physical owner/fence checks and a separate retirement receipt
+remain required. A later continuation and Native grant have their own admission.
+
+### Windows Native deployment qualification
+
+Windows deployment evidence identifies the exact AIDN archive and the Native
+client obtained through its documented publisher distribution channel. The
+qualification uses the normal installer or updater and a cold, bounded Native
+launch with the environment's ordinary endpoint protection active.
+A detection or the need for an exclusion blocks the deployment verdict for
+the affected candidate. Local transport prototypes and their build helpers
+stay outside the deployment package. Component tests of a prototype supply
+evidence for that component.
+
+### Interrupted Native implementation
+
+A matched failed return with one scoped task implementation assignment can
+admit resource reconciliation after a response overrun. Its proof binds
+the unchanged product preimage, exact canonical prefix, assignment and
+independently confirmed resource closure. The prior allocation and assigned
+occurrence remain in the signed history with the complete observed debit.
+The original occurrence retains its unknown business outcome. The journal
+refuses subsequent generations on that interrupted instance and requires
+fresh context for a later attempt.
+
 ## Capturing an operator answer
 
 The Codex MCP transport presents a prepared STANDARD question using form

@@ -1959,9 +1959,12 @@ Run `node tools/perf/verify-agentic-process-execution-fixtures.mjs
 The dual SQLite case writes and collects a checkpoint and instance projection
 both larger than 256 KiB, rejects substitution of either file and oversized
 generic evidence, then resumes in a fresh Node process with the original debit.
-The files case consumes enough
-retained storage at native close to refuse the checkpoint while preserving the
-footer reserve and blocking another allocation. The allocator, worker
+One files case stops when the working budget is exhausted. It reads the
+retained checkpoint, response debit and closure proof in a fresh Node process,
+checks the aggregate storage limit and refuses another allocation before
+reconciliation. A second files case injects late growth at Native close and
+checks the refusal when the checkpoint cannot fit alongside the footer reserve.
+The allocator, worker
 composition, signed journal and canonical stores are real. The fixture uses
 the existing RPC, process-controller and external control source doubles.
 
@@ -6880,6 +6883,18 @@ PASS; genuine actors, installed execution and the full plan remain separate.
 
 ## Native allocation assessment candidate
 
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --native-ceiling-only`
+checks admission and accounting for optional Native response ceilings. An
+explicit two-response authorization refuses on the default Codex transport
+before reserving or launching a
+worker. The closed-data assessment cases cover an interrupted implementation
+with three retained responses. They reject missing proof, product changes,
+a foreign prefix, an unclosed worker and more than one assignment.
+The uncapped fixture retains 123 response identities in its checkpoint
+and journal. A capped fixture refuses conversion to an uncapped allocation
+within the same authorization. The transport and process-tree observations
+for these cases are controlled.
+
 The existing Native dispatch provenance commands for `files`, `dual` and
 `db-only` also exercise `prepareNativeAllocationAssessment` with real canonical
 stores, signing and owner/fence ports. Their failed checkpoint, allocator return
@@ -6893,7 +6908,10 @@ Every normal observation preserves fixture bytes and directories.
 
 The `--contracts-only` selector covers Native dispatch DTOs and the pure
 reconciliation readers; allocation-assessment and owner-port cases require
-one of the three actual backend modes.
+one of the three actual backend modes. The focused `--native-post-assignment-mode` fixture also cancels a resumed worker before its next assignment. It checks
+that prior resources and results remain readable, the failed generation keeps
+its own debit, and changed predecessor bytes refuse. Native RPC and supervisor
+closure remain controlled in that fixture.
 Historical-source observations, actual interrupted trees, concurrent recovery,
 exact owner disposition, general R10/handoff, genuine Native and installed
 archive qualification remain separate. Existing required case order, argv and
@@ -6901,6 +6919,15 @@ finite Native grants are unchanged.
 
 
 ## Native owner disposition candidate
+
+Run `node tools/perf/verify-native-readonly-storage-recovery-fixtures.mjs db-only`
+for a retained storage stop with a missing checkpoint after a read-only
+assignment. The controlled common host builds a disposable legacy corpus with
+synthetic allocation evidence. A real creator process must terminate before
+retirement. Active ownership, changed product, unconfirmed tree and missing
+operator permission refuse. A fresh Node process rereads the same retirement
+receipt while original instance, dispatch, failure and unknown debit stay exact.
+The fixture uses SQLite and starts no genuine Native client or model.
 
 The existing three Native dispatch provenance commands also exercise exact
 Native owner retirement with real canonical stores, physical owner/fence ports
@@ -7092,7 +7119,24 @@ results retain their source identities and do not qualify the combined candidate
 post-assignment accounting, genuine actors or an installed archive.
 
 
+## Endpoint protection in the Windows Native pilot
+
+Record the AIDN archive hash, its packaged executable inventory, and the
+publisher channel and hash of the installed Native client. Use the exact
+candidate for the normal installation or update and a cold, bounded Native
+launch under the environment's existing endpoint protection.
+
+Keep prototype build artifacts outside the package. If protection quarantines
+a file, stop the affected candidate and record the stage and sanitized
+detection. A run requiring an exclusion remains a deployment qualification
+failure. Archive inventory and component HTTP tests retain their own
+evidence scope. This is part of Windows pilot qualification.
+
 ## Post-assignment Native accounting candidate
+
+The Native history fixture also checks a v5 receipt created over an existing v4
+journal. Readback verifies the prior v4 proposal against the retained v4
+predecessor and rejects a change to its origin or receipts.
 
 The private native-post-assignment-reconciliation-contract-fixture-lib.mjs
 command covers the closed v2 request/grant/receipt and v5 journal data, retained

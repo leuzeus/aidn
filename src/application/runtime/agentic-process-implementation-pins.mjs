@@ -67,6 +67,7 @@ const files = [
   "src/core/contracts/workflow-definition/native-owner-disposition-receipt.v2.schema.json",
   "src/core/contracts/workflow-definition/native-owner-disposition-record.v2.schema.json",
   "src/application/runtime/standard-native-owner-disposition.mjs",
+  "src/application/runtime/native-readonly-storage-interruption.mjs",
   "src/core/workflow/native-owner-disposition.mjs",
   ...["native-owner-disposition-plan.v1", "native-owner-disposition-record.v1", "native-owner-disposition-receipt.v1", "native-owner-disposition-authorization-request.v1"].map(name => `src/core/contracts/workflow-definition/${name}.schema.json`),
   "src/application/runtime/standard-native-allocation-assessment.mjs",

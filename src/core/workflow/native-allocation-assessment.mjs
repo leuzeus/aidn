@@ -5,6 +5,12 @@ import { assertProcessReconciliationInventory } from './process-reconciliation-i
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 
+export function nativeCheckpointHasNoNewWork(checkpoint) {
+  return checkpoint.inherited_checkpoint_sha256 === undefined
+    ? checkpoint.resources === 0 && checkpoint.results === 0
+    : checkpoint.inherited_checkpoint_sha256 !== null;
+}
+
 // This reader checks DATA consistency. The fixed runtime host separately
 // authenticates the original journal, checkpoint, dispatch and inventory MACs.
 export function assertNativeAllocationAssessment(value, inventory) {
@@ -25,11 +31,19 @@ export function assertNativeAllocationAssessment(value, inventory) {
     || dispatch.details.journal_id !== value.journal_id || value.native_accounting_known !== inventory.accounting.native_known
     || shadowHash(value.lease_statuses) !== shadowHash(dispatch.details.leases.map(row => row.status)))
     fail('NATIVE_ALLOCATION_ASSESSMENT_SUBJECT_CHANGED');
-  const checkpoint = value.checkpoint;
+  const checkpoint = value.checkpoint, inherited = checkpoint?.inherited_checkpoint_sha256;
+  if (inherited !== undefined && value.generation === 1) fail('NATIVE_ALLOCATION_ASSESSMENT_INVALID');
+  if (inherited != null) {
+    const previous = inventory.resources.find(row => row.ref === 'native:' + value.journal_id + '/' + (value.generation - 1));
+    if (previous?.kind !== 'native_allocation' || previous.details.generation !== value.generation - 1
+      || previous.details.checkpoint?.sha256 !== inherited || !previous.details.closure_ref?.sha256
+      || !previous.details.tree_closed || !previous.details.accounting_known)
+      fail('NATIVE_ALLOCATION_ASSESSMENT_SUBJECT_CHANGED');
+  }
   const noAssignment = value.allocation_phase === 'failed' && dispatch.details.phase === 'returned'
     && value.return_binding === 'matched' && checkpoint !== null && checkpoint.parent_closed
     && checkpoint.os_tree_confirmed && checkpoint.instance_sha256 === value.initial_instance_sha256
-    && checkpoint.responses_observed === 0 && checkpoint.resources === 0 && checkpoint.results === 0;
+    && checkpoint.responses_observed === 0 && nativeCheckpointHasNoNewWork(checkpoint);
   if ((value.assignment_status === 'no_assignment') !== noAssignment
     || value.return_binding === 'matched' && (value.allocation_phase !== 'failed' || checkpoint === null
       || dispatch.details.phase !== 'returned')

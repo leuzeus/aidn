@@ -78,9 +78,97 @@ export function verifyNativePostAssignmentAssessmentContracts(original, check) {
   check('post-assignment missing admitted work remains unknown');
   assert.throws(() => assertNativeAllocationAssessment(valid, inventory), { code: 'NATIVE_ALLOCATION_ASSESSMENT_INVALID' });
   check('legacy no-assignment assessment does not reinterpret the new profile');
-  return { checks: 27, native_calls: 0, authority: 'synthetic_closed_data_only' };
+  const interruptedBase = signer.seal({ ...base, checkpoint: { ...base.checkpoint, responses_observed: 3, results: 3 } });
+  const interruptedWork = { ...work, total_results: 3, generation_results: 0, unresolved_assignments: 1,
+    interrupted_assignment: { assignment_sha256: H('single-interrupted-assignment'),
+      initial_instance_sha256: interruptedBase.initial_instance_sha256, authorized_responses: 2,
+      product_preimage_sha256: H('unchanged-product'), observed_product_sha256: H('unchanged-product'),
+      reason_code: 'PROCESS_EXECUTION_RESPONSE_LIMIT' } };
+  const interrupted = assertNativePostAssignmentAssessment(seal(interruptedBase, interruptedWork), inventory);
+  assert.equal(interrupted.evidence_profile, 'admitted_interrupted_checkpoint');
+  assert.equal(interrupted.business_effect, 'unknown');
+  assert.equal(interrupted.permits_resume, false);
+  check('interrupted assignment keeps three responses and provides resource evidence only');
+  for (const [name, mutate] of [
+    ['removed proof', w => { delete w.interrupted_assignment; }],
+    ['changed product', w => { w.interrupted_assignment.observed_product_sha256 = H('changed-product'); }],
+    ['foreign pre-assignment prefix', w => { w.interrupted_assignment.initial_instance_sha256 = H('foreign-prefix'); }],
+    ['limit without overrun', w => { w.interrupted_assignment.authorized_responses = 3; }],
+    ['additional assignment', w => { w.generation_assignments = 2; }],
+    ['unclosed worker', w => { w.worker_parent_closed = false; }],
+  ]) {
+    const value = structuredClone(interruptedWork); mutate(value);
+    const observed = seal(interruptedBase, value);
+    assert.equal(assertNativePostAssignmentAssessment(observed, inventory).evidence_profile, 'unknown');
+    const forged = { ...observed, evidence_profile: 'admitted_interrupted_checkpoint' };
+    assert.throws(() => assertNativePostAssignmentAssessment(forged, inventory), { code: 'NATIVE_POST_ASSIGNMENT_ASSESSMENT_INVALID' });
+    check('interrupted Native assessment rejects ' + name);
+  }
+  return { checks: 34, native_calls: 0, authority: 'synthetic_closed_data_only' };
 }
 
+
+async function verifyInheritedCheckpoint({ mode, mixedFixture, bootstrapMixed, tree }) {
+  const f = mixedFixture(mode, { cancelWorkerGeneration: 2 });
+  const authorization = await bootstrapMixed(f), host = f.open();
+  const first = await host.step({ write: true, authorization });
+  assert.equal(first.journal_phase, 'closed');
+  const prior = host.inspectAllocations().allocations[0];
+  const priorState = host.readCheckpoint(1).state;
+  assert.equal(priorState.resources.length, 1);
+  assert.equal(priorState.results.length, 1);
+  assert.equal((await host.step({ write: true })).kind, 'operation');
+  const beforeSecond = host.inspect().record;
+  const second = await host.step({ write: true, authorization: { ...authorization, authorized_at_ms: Date.now() } });
+  assert.equal(second.journal_phase, 'failed', second.first_failure);
+  assert.equal(second.first_failure, 'PROCESS_EXECUTION_CANCELLED');
+  const journal = host.inspectAllocations(), entry = journal.allocations.at(-1);
+  assert.deepEqual(journal.allocations[0], prior);
+  assert.equal(entry.generation, 2);
+  assert.equal(entry.initial_instance_sha256, beforeSecond.instance_sha256);
+  assert.equal(entry.checkpoint.instance_sha256, beforeSecond.instance_sha256);
+  assert.equal(entry.consumption.responses_observed, 0);
+  assert.ok(entry.consumption.storage_debit_bytes > 0);
+  assert.equal(f.t.sessions.length, 1);
+
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root });
+  const dispatch = artifacts.observeInventory().rows.filter(row => row.path.startsWith('workflows/native-dispatches/'))
+    .map(row => JSON.parse(row.content)).find(row => row.native_journal_after_sha256 === H(journal));
+  const input = { expectedSha256: beforeSecond.instance_sha256, dispatchId: dispatch.dispatch_id, generation: 2 };
+  const signer = createOperationJournalSigner(() => f.key);
+  const beforeRead = { project: tree(f.configuration.target_root), native: tree(f.base) };
+  const { inventory, assessment } = f.reopen().prepareNativeAllocationAssessment(input);
+  signer.verify(inventory); signer.verify(assessment);
+  assertNativeAllocationAssessment(assessment, inventory);
+  assert.equal(assessment.assignment_status, 'no_assignment');
+  assert.equal(assessment.checkpoint.inherited_checkpoint_sha256, prior.checkpoint.sha256);
+  assert.equal(assessment.checkpoint.resources, priorState.resources.length);
+  assert.equal(assessment.checkpoint.results, priorState.results.length);
+  assert.equal(assessment.native_accounting_known, false);
+  assert.equal(assessment.permits_owner_retirement, false);
+  assert.equal(assessment.business_effect, 'unknown');
+  for (const inherited of [undefined, null, entry.checkpoint.sha256]) {
+    const invalid = structuredClone(assessment);
+    if (inherited === undefined) delete invalid.checkpoint.inherited_checkpoint_sha256;
+    else invalid.checkpoint.inherited_checkpoint_sha256 = inherited;
+    assert.throws(() => assertNativeAllocationAssessment(signer.seal(invalid), inventory),
+      error => /NATIVE_ALLOCATION_ASSESSMENT_/.test(error.code));
+  }
+  const post = f.reopen().prepareNativePostAssignmentAssessment(input);
+  assertNativePostAssignmentAssessment(post.assessment, post.inventory);
+  assert.equal(post.assessment.evidence_profile, 'unknown');
+  for (const kind of ['assignments', 'resources', 'results']) assert.equal(post.assessment.checkpoint_work['generation_' + kind], 0);
+  const original = fs.readFileSync(prior.checkpoint.path);
+  try {
+    fs.appendFileSync(prior.checkpoint.path, '\n');
+    assert.throws(() => f.reopen().prepareNativeAllocationAssessment(input), { code: 'NATIVE_ALLOCATION_EVIDENCE_CHANGED' });
+  } finally { fs.writeFileSync(prior.checkpoint.path, original); }
+  assert.deepEqual({ project: tree(f.configuration.target_root), native: tree(f.base) }, beforeRead);
+  console.log('PASS native resumed assessment ' + mode + ': inherited resources/results, zero new work, altered predecessor refused');
+  return { scenario: 'cancelled_before_assignment_with_inherited_work', mode, launches: f.launches,
+    first_failure: entry.first_failure, consumption: entry.consumption, work: post.assessment.checkpoint_work,
+    assignment_status: assessment.assignment_status, history_retained: true };
+}
 
 // Real common-host and allocator ports with controlled Native RPC and controlled
 // supervisor closure. No historical fixture bytes or authorization are edited.
@@ -159,6 +247,7 @@ export async function verifyNativePostAssignmentHostFixture({ mode, mixedFixture
       ordinary_resume_and_legacy_no_assignment_writers_refused: true });
     console.log('PASS native post-assignment ' + mode + ': ' + scenario + ' through actual common-host/allocator/assignment/result/checkpoint ports, cold read and no replay');
   }
+  rows.push(await verifyInheritedCheckpoint({ mode, mixedFixture, bootstrapMixed, tree }));
   return { mode, scenarios: rows, Native_RPC: 'controlled', supervisor_Native_tree_proof: 'controlled',
     common_host_and_canonical_ports: 'actual', model_calls: 0, genuine_native_client: 'NOT_RUN',
     post_assignment_retirement_reconciliation_resume: 'NOT_RUN', published_STANDARD: 'NOT_QUALIFIED', full_plan: false };

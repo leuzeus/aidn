@@ -120,6 +120,21 @@ export function verifyNativeReconciliationKernel(check) {
     const reserved = signer.seal({ ...activated, revision: activated.revision + 1, allocations: [...activated.allocations, next] });
     assertNativeAllocationJournal(reserved); assert.deepEqual(reserved.origin_journal, origin);
   });
+  check('reconciliation kernel binds a new uncapped epoch to all prior consumption', () => {
+    const epoch = epochFor(closedOrigin);
+    epoch.grant.authorization.max_responses = null;
+    const activated = signer.seal({ ...v2, epochs: [epoch], allocations: closedOrigin.allocations });
+    assertNativeAllocationJournal(activated);
+    const effective = effectiveNativeEpochAuthorization(activated, epoch.grant.authorization);
+    assert.equal(effective.max_responses, null);
+    assert.equal(effective.max_bytes, epoch.grant.authorization.max_bytes - 1024);
+    assert.equal(epoch.request.consumption.responses, 1);
+    const continued = signer.seal({ ...activated, revision: activated.revision + 1,
+      allocations: [...activated.allocations, entryFor(2, effective)] });
+    assertNativeAllocationJournal(continued);
+    assert.deepEqual(continued.allocations[0], firstClosed);
+  });
+
   const base = reconcile(v1), proof = base.reconciliations[0];
   check('reconciliation kernel retains two distinct failed generations and rejects reused source events', () => {
     const epoch = epochFor(base, false, 4000000), activated = signer.seal({ ...base, revision: base.revision + 1, epochs: [epoch] });

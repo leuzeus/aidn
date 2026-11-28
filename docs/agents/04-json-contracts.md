@@ -512,6 +512,12 @@ records and derive no new Human answer or Native authority. Internal v1 plans
 remain independently validated. This is derived journal evidence, not a new
 canonical store or generic receipt migration.
 
+Native authorization and retained allocation limits accept an integer
+`max_responses` for a response ceiling or `null` for response accounting
+without a ceiling. The value binds the grant and its projections. The
+observed response count and hashes remain recorded in checkpoints and
+journals. Signed numeric grants and their recorded consumption remain valid.
+
 ## Purpose
 
 Every stable public JSON output must have an explicit contract under `src/core/contracts/cli-output/`.
@@ -1056,8 +1062,13 @@ The private `native-allocation-assessment.v1` is a closed signed read-only
 observation, linked to the exact canonical reconciliation inventory, Native
 journal/generation, original dispatch and retained checkpoint/closure. Its
 `no_assignment` claim requires the original failed allocator return and an
-unchanged empty checkpoint prefix with parent and owned tree closure. Missing
-proof remains unknown; contradictory evidence refuses. Legacy Native journal
+unchanged checkpoint prefix with parent and owned tree closure. A resumed
+allocation may retain resources and results from its authenticated previous
+checkpoint. The optional checkpoint field `inherited_checkpoint_sha256` binds
+that exact resolved predecessor when the current allocation added no work. A
+null value records an empty checkpoint whose inherited history could not be
+proved. Raw checkpoint counts remain cumulative. Missing proof leaves the
+assignment unknown. Contradictory evidence causes a refusal. Legacy journal
 readers and accounting keep their existing semantics. The observation grants
 no effect, resume, renewal, retirement or complete-resource-closure authority.
 
@@ -1072,6 +1083,14 @@ Native execution grant. The signed physical-effect receipt remains immutable
 while separate attempt/fence records describe cold recovery. Original journals
 remain unchanged and all resume, renewal, accounting-reconciliation and
 complete-resource-closure permissions are false.
+
+The v1 physical-retirement plan can also bind a private diagnostic proof for a
+closed read-only assignment whose storage stop lost its checkpoint. The signed
+returned dispatch anchors its exact before-prefix and the last signed product
+snapshot must still match. The assessment keeps its unknown assignment outcome,
+absent checkpoint and unknown accounting. Only the retirement subject digest
+includes that private proof. The v1 receipt retains all its existing false
+execution, renewal, accounting and complete-closure flags.
 
 Private native-allocation reconciliation request, grant and receipt v1 are
 closed data contracts for the no-assignment profile. Their subject includes
@@ -1109,7 +1128,13 @@ original failure observations and explicitly report workflow_completed false
 and native_started false. They do not claim all-resource closure.
 
 
-The private native-post-assignment-assessment.v1 wraps the unchanged signed
+An admitted interrupted checkpoint binds one unresolved task work assignment
+to the signed prefix, matching product snapshot and observed overrun. Its
+resource disposition uses the existing v2 records and preserves the original
+failed allocation and response identifiers. The recorded business effect
+remains unknown and the instance cannot acquire a later Native epoch.
+
+The private native-post-assignment-assessment.v1 wraps the signed
 native-allocation-assessment.v1 and closed checkpoint-work data. Its fixed host
 authenticates canonical history and reads only the admitted protected checkpoint,
 result files and supervisor closure. It distinguishes an exact canonical prefix

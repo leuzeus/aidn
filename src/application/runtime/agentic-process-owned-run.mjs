@@ -4,9 +4,10 @@ import { createHash, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { performance } from "node:perf_hooks";
 import { createWindowsProcessTreeController } from "../../adapters/agents/process-tree/windows-process-tree-controller.mjs";
+import { isNativeResponseLimit } from "../../core/workflow/native-authorization-epoch.mjs";
 import { processFail as fail } from "../../core/workflow/agentic-process-model.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
-import { createProjectAgenticProcessExecution } from "./agentic-process-execution-composition.mjs";
+import { assertNativeResponseLimitEnforceable, createProjectAgenticProcessExecution } from "./agentic-process-execution-composition.mjs";
 import { createAgenticProcessWorkerEnvironment } from "./agentic-process-persistence.mjs";
 
 const worker = fileURLToPath(new URL("../../adapters/agents/agentic-process-worker.mjs", import.meta.url));
@@ -28,9 +29,10 @@ export async function runOwnedAgenticProcess({ configuration, authorization, exe
     || !Number.isSafeInteger(authorization.workflow_deadline_ms) || authorization.workflow_deadline_ms > authorization.global_deadline_ms
     || authorization.workflow_deadline_ms <= allocatedAt || !Number.isSafeInteger(authorization.max_turn_ms)
     || authorization.max_turn_ms < 1 || authorization.max_turn_ms > 2700000
-    || !Number.isSafeInteger(authorization.max_responses) || authorization.max_responses < 1 || authorization.max_responses > 120
+    || !isNativeResponseLimit(authorization.max_responses)
     || !Number.isSafeInteger(authorization.max_bytes) || authorization.max_bytes < 1048576 || authorization.max_bytes > 471859200)
     fail("PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED");
+  assertNativeResponseLimitEnforceable(authorization.max_responses, controllerFactory !== createWindowsProcessTreeController);
   const pins = configuration.controller;
   if (!pins || !validHash(pins.worker_sha256) || hashFile(worker) !== pins.worker_sha256
     || !validHash(pins.node_sha256) || hashFile(process.execPath) !== pins.node_sha256) fail("PROCESS_EXECUTION_CONTROLLER_PIN_INVALID");

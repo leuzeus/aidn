@@ -70,7 +70,8 @@ export function prepareStandardNativeEpoch(host, authorization) {
   const reconciliation = journal?.reconciliations?.at(-1);
   const newEpochRequired = reconciliation && !(epoch?.start_generation > reconciliation.request.generation);
   const expired = current && Date.now() >= Math.min(current.global_deadline_ms, current.workflow_deadline_ms);
-  const exhausted = current && consumption.known && (consumption.responses >= current.max_responses || current.max_bytes - consumption.bytes < 1048576);
+  const exhausted = current && consumption.known
+    && ((current.max_responses !== null && consumption.responses >= current.max_responses) || current.max_bytes - consumption.bytes < 1048576);
   if (!newEpochRequired && !expired && !exhausted) return null;
   return { kind: 'native_authorization_epoch', payload: { request: host.prepareNativeAuthorizationEpoch({ originalAuthorization: original }), source_ref: null } };
 }

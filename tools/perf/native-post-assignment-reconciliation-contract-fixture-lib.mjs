@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { retainsNativeReconciliationProposal } from '../../src/application/runtime/native-reconciliation-history.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createOperationJournalSigner } from '../../src/core/workflow/process-operation-journal.mjs';
@@ -57,6 +58,20 @@ export function verifyNativePostAssignmentReconciliationContracts(check) {
       consumption: { storage_debit_bytes: 2048 * generation } });
     return seal({ ...activated, revision: activated.revision + 2, allocations: [...activated.allocations, entry] });
   }
+  check('v5 reconciliation retains the confirmed v4 proposal in its authenticated predecessor', () => {
+    const proposal = legacy.journals[0], { origin, journal } = reconcile(appendFailure(proposal));
+    assertNativeAllocationJournal(journal);
+    assert(retainsNativeReconciliationProposal(origin, proposal));
+    assert(retainsNativeReconciliationProposal(journal, proposal));
+    assert(retainsNativeReconciliationProposal(journal, journal));
+    const changed = structuredClone(journal);
+    changed.origin_journal.origin_journal = legacy.origins.at(-1);
+    assert(!retainsNativeReconciliationProposal(changed, proposal));
+    const missing = structuredClone(journal);
+    missing.origin_journal.reconciliations = [];
+    assert(!retainsNativeReconciliationProposal(missing, proposal));
+  });
+
   const origins = [...legacy.origins.map(journal => { const copy = structuredClone(journal); copy.allocations[copy.allocations.length - 1] = accepted(copy.allocations.at(-1)); return seal(copy); }),
     ...legacy.journals.map(appendFailure)];
   function reconcile(origin) {

@@ -15,6 +15,7 @@ import { DRIFT_REPORT_CONTRACT, nativeActivityOutputSkill, nativeActivityOutputI
 import { CYCLE_WORK_CONTRACT, CYCLE_TASK_WORK_CONTRACT, isStandardCycleWorkContract } from "../../core/workflow/standard-cycle-work.mjs";
 import { readWorkflowProjectExecutionAuthority } from "./workflow-instance-composition.mjs";
 import { agenticPolicyPins, assertAgenticProcessModel, processId, processFail as fail } from "../../core/workflow/agentic-process-model.mjs";
+import { isNativeResponseLimit } from "../../core/workflow/native-authorization-epoch.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { AGENT_ROLES, buildAgentProfile, canAgentRolePerform } from "../../core/agents/agent-role-model.mjs";
 import { assertCodexStartupArgumentsConfiguration } from "../../core/agents/codex-startup-arguments.mjs";
@@ -74,6 +75,11 @@ export function readAgenticProductSnapshot(root, productFiles) {
 
 // This is the real project composition. Tests may replace native/SQL wires, but
 // not assignmentAuthority, resultAuthority, bindings, CAS or admission policy.
+// The Codex app-server reports completed responses after consumption.
+export function assertNativeResponseLimitEnforceable(maxResponses, controlledFixture) {
+  if (maxResponses !== null && controlledFixture !== true) fail("PROCESS_EXECUTION_RESPONSE_LIMIT_UNENFORCEABLE");
+}
+
 export function createProjectAgenticProcessExecution(configuration, { rpcFactory, artifactStoreFactory, environment = process.env, allocationAuthority, processAuthority } = {}) {
   if (allocationAuthority != null && typeof allocationAuthority.admit !== "function") fail("PROCESS_EXECUTION_ALLOCATION_AUTHORITY_INVALID");
   if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.read !== "function")) fail("PROCESS_EXECUTION_PROCESS_AUTHORITY_INVALID");
@@ -202,8 +208,9 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
         || authorization.workflow_deadline_ms > authorization.global_deadline_ms
         || !Number.isSafeInteger(authorization.max_turn_ms) || authorization.max_turn_ms < 1 || authorization.max_turn_ms > 2700000
         || authorization.configuration_sha256 !== shadowHash(config)
-        || !Number.isSafeInteger(authorization.max_responses) || authorization.max_responses < 1 || authorization.max_responses > 120
+        || !isNativeResponseLimit(authorization.max_responses)
         || !Number.isSafeInteger(authorization.max_bytes) || authorization.max_bytes < 1048576 || authorization.max_bytes > 471859200) fail("PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED");
+      assertNativeResponseLimitEnforceable(authorization.max_responses, typeof rpcFactory === "function");
       readAuthority();
       const workDeadline = Math.min(authorization.workflow_deadline_ms, authorization.global_deadline_ms - 20000);
       if (Date.now() >= workDeadline) fail("PROCESS_EXECUTION_CLOSURE_RESERVE");
@@ -261,18 +268,22 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
         + Math.max(0, diskBytes(productRoot, true) - productBaseline)
         + databaseFiles.reduce((sum, file, index) => sum + Math.max(0, diskBytes(file) - baseline[index]), 0);
       const used = () => localUsed() + (persistence.backend === "postgres" ? canonicalPayloadAttempted : 0);
+      const evidenceMaxBytes = 262144;
+      const beforeFooters = authorization.max_bytes - 262144;
+      let checkpointReserve = 0;
+      const workLimit = () => beforeFooters - checkpointReserve;
       const requestStop = code => { firstFailure ??= code; stop.abort(); };
       const onAbort = () => requestStop("PROCESS_EXECUTION_CANCELLED"); signal?.addEventListener("abort", onAbort, { once: true });
       if (signal?.aborted) onAbort();
       const timer = setTimeout(() => requestStop("PROCESS_EXECUTION_GLOBAL_DEADLINE"), Math.max(1, workDeadline - Date.now()));
       const storageTimer = setInterval(() => {
-        try { if (used() > authorization.max_bytes - 262144) requestStop("PROCESS_EXECUTION_STORAGE_LIMIT"); }
+        try { if (used() > workLimit()) requestStop("PROCESS_EXECUTION_STORAGE_LIMIT"); }
         catch { requestStop("PROCESS_EXECUTION_STORAGE_UNVERIFIABLE"); }
       }, 100);
       const nextEvidenceFile = kind => `${String(++sequence).padStart(5, "0")}-${kind}.json`;
-      const save = (name, value, maxBytes = 262144) => {
+      const save = (name, value, maxBytes = evidenceMaxBytes, limit = workLimit()) => {
         const data = Buffer.from(JSON.stringify(value) + "\n");
-        if (data.length > maxBytes || used() + data.length > authorization.max_bytes - 262144) { requestStop("PROCESS_EXECUTION_STORAGE_LIMIT"); fail("PROCESS_EXECUTION_STORAGE_LIMIT"); }
+        if (data.length > maxBytes || used() + data.length > limit) { requestStop("PROCESS_EXECUTION_STORAGE_LIMIT"); fail("PROCESS_EXECUTION_STORAGE_LIMIT"); }
         const file = path.join(output, name); fs.writeFileSync(file, data, { flag: "wx" }); retainedBytes += data.length;
         return { ref: `execution/${outputId}/${name}`, sha256: hash(data) };
       };
@@ -294,10 +305,13 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       };
       const budget = {
         maxTurnMs: authorization.max_turn_ms,
-        remainingBytes: () => Math.max(1, authorization.max_bytes - used() - 262144),
+        remainingBytes: () => Math.max(1, workLimit() - used()),
         response(threadId, responseId) {
           responseIds.add(`${threadId}:${responseId}`);
-          if (responseIds.size > authorization.max_responses) { requestStop("PROCESS_EXECUTION_RESPONSE_LIMIT"); fail("PROCESS_EXECUTION_RESPONSE_LIMIT"); }
+          if (authorization.max_responses !== null && responseIds.size > authorization.max_responses) {
+            requestStop("PROCESS_EXECUTION_RESPONSE_LIMIT");
+            fail("PROCESS_EXECUTION_RESPONSE_LIMIT");
+          }
         },
       };
       let executionStage = "initialization";
@@ -317,7 +331,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
               for (const row of snapshot.filter(row => row.present)) {
                 const original = path.join(productRoot, row.path), data = bytes(original, 1024 * 1024);
                 if (hash(data) !== row.sha256) fail("PROCESS_EXECUTION_REVIEW_SNAPSHOT_CHANGED");
-                if (used() + data.length > authorization.max_bytes - 262144) fail("PROCESS_EXECUTION_STORAGE_LIMIT");
+                if (used() + data.length > workLimit()) fail("PROCESS_EXECUTION_STORAGE_LIMIT");
                 try { republishBrokerProductFile(original, data); }
                 catch (error) {
                   brokerRepublishFailure = { fs_code: error.fs_code ?? "UNKNOWN", path_sha256: error.path_sha256 ?? null,
@@ -336,7 +350,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
               const destination = path.join(directory, row.path); fs.mkdirSync(path.dirname(destination), { recursive: true });
               const data = bytes(path.join(productRoot, row.path), 1024 * 1024);
               if (hash(data) !== row.sha256) fail("PROCESS_EXECUTION_REVIEW_SNAPSHOT_CHANGED");
-              if (used() + data.length > authorization.max_bytes - 262144) fail("PROCESS_EXECUTION_STORAGE_LIMIT");
+              if (used() + data.length > workLimit()) fail("PROCESS_EXECUTION_STORAGE_LIMIT");
               fs.writeFileSync(destination, data, { flag: "wx" });
             }
             input.review_root = directory;
@@ -395,14 +409,33 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
         governanceEnvironment: storeEnvironment, ...(rpcFactory ? { rpcFactory } : {}) });
       const host = createAgenticProcessExecutionHost({ sessionFactory: sessions, inputs, evidence, deadline: workDeadline, retainedState: admitted?.history ?? null,
         readPriorContributors: processAuthority?.retainedContributors ? instance => processAuthority.retainedContributors(instance) : null });
+      const authorizedBudgetSha256 = shadowHash(authorization);
+      const authorizedLimits = Object.fromEntries(["configuration_sha256", "authorized_at_ms", "global_deadline_ms", "workflow_deadline_ms",
+        "max_turn_ms", "max_responses", "max_bytes"].map(key => [key, authorization[key]]));
+      const checkpointDocument = (state, digests) => ({
+        state, response_sha256: digests, responses_observed: responseIds.size,
+        authorized_budget_sha256: authorizedBudgetSha256, authorized_limits: authorizedLimits,
+        resume_authority: "NOT_ESTABLISHED_SUPERVISOR_AND_AUTHENTICATED_JOURNAL_REQUIRED",
+      });
+      function reserveForCheckpoint(instance) {
+        const snapshot = checkpointDocument(host.checkpointSnapshot(instance), []);
+        // Each digest adds 64 ASCII characters, two quotes and a separator.
+        const bytes = Buffer.byteLength(JSON.stringify(snapshot) + "\n") + Math.max(0, 67 * responseIds.size - 1);
+        if (bytes > NATIVE_CHECKPOINT_MAX_BYTES) fail("PROCESS_EXECUTION_STORAGE_LIMIT");
+        // Between canonical writes, a Native activity can contribute one
+        // bounded proof to the measured state.
+        return Math.min(NATIVE_CHECKPOINT_MAX_BYTES, bytes + evidenceMaxBytes);
+      }
       const profile = buildAgentProfile({ id: "codex-agentic-session", label: "Owned Codex session", defaultRole: "coordinator", roles: AGENT_ROLES });
       const guardedStore = { ...store, compareAndSwap(instance, expected) {
         readAuthority();
         const payloadBytes = Buffer.byteLength(JSON.stringify(instance) + "\n");
-        if (used() + 2 * payloadBytes > authorization.max_bytes - 262144) fail("PROCESS_EXECUTION_STORAGE_LIMIT");
+        const nextReserve = reserveForCheckpoint(instance);
+        if (used() + 2 * payloadBytes > beforeFooters - nextReserve) fail("PROCESS_EXECUTION_STORAGE_LIMIT");
         canonicalPayloadAttempted += payloadBytes;
         const retained = store.compareAndSwap(instance, expected);
         canonicalPayloadAcknowledged += payloadBytes;
+        checkpointReserve = nextReserve;
         return retained;
       } };
       const service = createAgenticProcessService({ store: guardedStore, readAuthority, readBinding: host.readBinding,
@@ -422,6 +455,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
           current = service.initialize({ instanceId: config.instance_id, model, facts: controlScenario.initial_facts, write: true, expectedResultSha256: initial.record.instance_sha256 });
         }
         requireProjection();
+        checkpointReserve = reserveForCheckpoint(current.record);
         while (!["COMPLETED", "FAILED", "CANCELLED"].includes(current.cursor.status)) {
           if (stop.signal.aborted) fail(firstFailure ?? "PROCESS_EXECUTION_CANCELLED");
           while (controlIndex < controlScenario.events.length && controlScenario.events[controlIndex].after_results === completedResults) {
@@ -445,7 +479,8 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
             if (controlIndex < controlScenario.events.length) fail("PROCESS_EXECUTION_CONTROL_EVENT_UNREACHABLE");
             break; // durable event wait, no model polling
           }
-          if (responseIds.size >= authorization.max_responses) fail("PROCESS_EXECUTION_RESPONSE_LIMIT");
+          if (authorization.max_responses !== null && responseIds.size >= authorization.max_responses) fail("PROCESS_EXECUTION_RESPONSE_LIMIT");
+          if (used() >= workLimit()) fail("PROCESS_EXECUTION_STORAGE_LIMIT");
           const frame = current.cursor.occurrences.find(row => row.occurrence_id === occurrenceId), node = processFrameNode(model, frame);
           const component = processFrameModel(model, frame);
           const role = component.roles.find(row => row.id === node.role_ref), policy = component.policies.find(row => row.id === node.policy_ref);
@@ -482,15 +517,8 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       if (current?.record) {
         try {
           const state = await host.checkpoint(current.record);
-          nativeCheckpoint = save(nextEvidenceFile("native-host-state"), {
-            state,
-            response_sha256: [...responseIds].map(id => hash(Buffer.from(id))),
-            responses_observed: responseIds.size,
-            authorized_budget_sha256: shadowHash(authorization),
-            authorized_limits: Object.fromEntries(["configuration_sha256", "authorized_at_ms", "global_deadline_ms", "workflow_deadline_ms",
-              "max_turn_ms", "max_responses", "max_bytes"].map(key => [key, authorization[key]])),
-            resume_authority: "NOT_ESTABLISHED_SUPERVISOR_AND_AUTHENTICATED_JOURNAL_REQUIRED",
-          }, NATIVE_CHECKPOINT_MAX_BYTES);
+          nativeCheckpoint = save(nextEvidenceFile("native-host-state"), checkpointDocument(state,
+            [...responseIds].map(id => hash(Buffer.from(id)))), NATIVE_CHECKPOINT_MAX_BYTES, beforeFooters);
         }
         catch (error) { firstFailure ??= /^(PROCESS_|ARTIFACT_|WORKFLOW_INSTANCE_)[A-Z_]+$/.test(error.code ?? "") ? error.code : "PROCESS_EXECUTION_CHECKPOINT_UNCONFIRMED"; }
       }

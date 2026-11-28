@@ -169,7 +169,14 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
         request_sha256: shadowHash(request), execution_id: row.resource };
     },
   });
-  return Object.freeze({ prepare, readBinding, assignmentAuthority, resultAuthority, execute,
+  // This snapshot also sizes the checkpoint before a storage-bound write.
+  // Only checkpoint() validates and supplies evidence to the allocation owner.
+  const checkpointSnapshot = instance => ({ contract_version: "native-host-state.v1", authority_id: authorityId,
+    instance: structuredClone(instance), parent_closed: parentClosed,
+    resources: [...(history?.resources ?? []), ...[...resources.values()].map(resource => ({ executor: describe(resource), binding_sha256: resource.binding, skills: [...resource.skills] }))],
+    results: [...results.values()].map(row => ({ result: structuredClone(row.result), resource: row.resource, reference: structuredClone(row.reference) })),
+    native_usage: typeof sessionFactory.metrics === "function" ? checked(sessionFactory.metrics()) : null });
+  return Object.freeze({ prepare, readBinding, assignmentAuthority, resultAuthority, execute, checkpointSnapshot,
     // A read-only snapshot of host-issued identities and results. This is not a
     // resume credential: the owning composition must authenticate/persist it and
     // attach the supervisor's process-tree closure and cumulative accounting.
@@ -194,10 +201,7 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
         await evidence.verify(row.reference);
         for (const reference of row.result.evidence_refs) await evidence.verify(reference);
       }
-      return assertNativeHostState(checked({ contract_version: "native-host-state.v1", authority_id: authorityId, instance: structuredClone(instance), parent_closed: parentClosed,
-        resources: [...(history?.resources ?? []), ...[...resources.values()].map(resource => ({ executor: describe(resource), binding_sha256: resource.binding, skills: [...resource.skills] }))],
-        results: [...results.values()].map(row => ({ result: structuredClone(row.result), resource: row.resource, reference: structuredClone(row.reference) })),
-        native_usage: typeof sessionFactory.metrics === "function" ? checked(sessionFactory.metrics()) : null }));
+      return assertNativeHostState(checked(checkpointSnapshot(instance)));
     },
     async close() {
       stopped = true; let failure = false;
