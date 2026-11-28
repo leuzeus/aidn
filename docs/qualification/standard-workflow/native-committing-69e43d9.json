@@ -1,0 +1,172 @@
+{
+  "candidate": "69e43d9296d7ebf2616ec16d2170be4dad3c83b4",
+  "archive_sha256": "99774809339ccafb5c47656b7db728986f1f005b21c9951b1a298f03c94860d3",
+  "model_revision": 422,
+  "backend": "FILES",
+  "phase": "First Native allocation failed at startup",
+  "transitions": [
+    {
+      "action": "prepare_host",
+      "action_sha256": "7759d22d4181e15d60c59e99bef6edd5a69a4f23a440c1c8ebffe8da62674f33",
+      "process_status": null,
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
+    },
+    {
+      "action": "initialize",
+      "action_sha256": "8b6859c37a8ca5e5b3f191fb5813ffdcf1b4bad80f05d3af7bd3382a8ff63efa",
+      "process_status": "RUNNING",
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
+    },
+    {
+      "action": "operation",
+      "binding": "context_reload",
+      "action_sha256": "10912dc7cb0eb670d5d1b9e3f70e6e1ecb95b7b43d8f01ece2227622a766eb25",
+      "process_status": "WAITING",
+      "operation_outcome": "completed",
+      "effect_status": "no_effect",
+      "receipt_sha256": "545d67fa34197c12e19060cd7e2c880b9f1727332906a7c34235fa42d8fa20b3"
+    },
+    {
+      "action": "call",
+      "action_sha256": "f78d16ba631657e0cefa63cd8be29e9a9f246099b6f328b0d86bbf1a436e8c8a",
+      "process_status": "RUNNING",
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
+    },
+    {
+      "action": "operation",
+      "binding": "session_entry_admit",
+      "action_sha256": "de9c8334e1796c7c0937b2dd4b03285282cff4ebca9769d138f1458510136a35",
+      "process_status": "RUNNING",
+      "operation_outcome": "completed",
+      "effect_status": "no_effect",
+      "receipt_sha256": "4e4383ebf98179f7d62c5fd2bdbb8e0e2e9812563fd4037d9d8b5438933006c8"
+    },
+    {
+      "action": "operation",
+      "binding": "session_initialize",
+      "action_sha256": "7a93834e8b61e6bd8766f96df00d6eeadbfed5da109abbaa062546e45f9e0104",
+      "process_status": "RUNNING",
+      "operation_outcome": "completed",
+      "effect_status": "confirmed",
+      "receipt_sha256": "3ec9be1f99f7f4b4d974505706f287f5408023a2da85000b7c35f58bfe52d6c1"
+    },
+    {
+      "action": "operation",
+      "binding": "mode_decision",
+      "action_sha256": "5ad6628e461ce3d666b3ff43fd68461158838f75aaabe2c66e8104b907afe5d4",
+      "process_status": "WAITING",
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
+    },
+    {
+      "action": "decision",
+      "action_sha256": "7c33a656d31ca6ba71e0879f30e7229416e1a81a515845bc9e7c7aacb566fd33",
+      "process_status": "RUNNING",
+      "operation_outcome": "completed",
+      "effect_status": "no_effect",
+      "receipt_sha256": "b2c28a11ecf8b4d90f9a6de37121242e69090ef101bdbace29828aeb14ff0f1a"
+    },
+    {
+      "action": "operation",
+      "binding": "session_mode_apply",
+      "action_sha256": "7106394f7ce98251ca238a1b32a5d9aa963c842045cd1b2cecc19882d1bf7ef2",
+      "process_status": "WAITING",
+      "operation_outcome": "completed",
+      "effect_status": "confirmed",
+      "receipt_sha256": "381b88ea1406a34896f78af5b06088de0734156b3a43925a2a6cbbcb83125ea6"
+    },
+    {
+      "action": "call",
+      "action_sha256": "00f45aeed97b4d98a24df530cd8538708590be8b355489a7f33edb111b3ccc7b",
+      "process_status": "RUNNING",
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
+    },
+    {
+      "action": "operation",
+      "binding": "session_entry_admit",
+      "action_sha256": "e2a96590c0b0562af875d6b2c98f644ec8586c2656074f5a84a465cc5c151f80",
+      "process_status": "RUNNING",
+      "operation_outcome": "completed",
+      "effect_status": "no_effect",
+      "receipt_sha256": "ce355d50d68088094730aa8024bd6c9799768ce8e54310a88f73bf7e4d6f1f0f"
+    },
+    {
+      "action": "native",
+      "action_sha256": "c72602efa344bdda84c752d5ccd213e4d0a6ec0454609bfa57ecdedbac295c65",
+      "process_status": "RUNNING",
+      "operation_outcome": null,
+      "effect_status": null,
+      "receipt_sha256": null
+    }
+  ],
+  "physical_observation": {
+    "session_document_sha256": "a5069d68089dc7edf7282fdd5da6c4de7a54aecd9f9cb08c1e60fb65e977ffb6",
+    "matches_session_id": true,
+    "observed_mode": "UNKNOWN",
+    "session_branch_active": true
+  },
+  "human_wait": {
+    "status": "WAITING",
+    "question_contract": "standard-mode-question.v1",
+    "question_sha256": "124385d25cffc5d69ecc557cc62482bd7c8d7373699cb519f45f445028e51b1a",
+    "permitted_choices": [
+      "THINKING",
+      "EXPLORING",
+      "COMMITTING",
+      "refused",
+      "deferred",
+      "cancelled"
+    ],
+    "distinct_preview_processes": 2,
+    "action_sha256": "1f18d5a8aff956172eff811e10591e4a7ca0bec565d26fee10531722e6b89b11",
+    "stable_across_processes": true
+  },
+  "terminal": {
+    "process_status": "RUNNING",
+    "workflow_completed": false,
+    "p0_go": false,
+    "windows_installed_nominal": "SKIP",
+    "post_merge_sync": "SKIP"
+  },
+  "signed_mode": {
+    "status": "PASS",
+    "choice": "COMMITTING",
+    "authority_kind": "human",
+    "signature_algorithm": "Ed25519",
+    "signed_envelope_sha256": "582bb0a8dd58f609ec700faba3399a4fd3e83f09d6b0c1e8d629e296af012a81",
+    "question_sha256": "124385d25cffc5d69ecc557cc62482bd7c8d7373699cb519f45f445028e51b1a",
+    "decision_receipt_sha256": "b2c28a11ecf8b4d90f9a6de37121242e69090ef101bdbace29828aeb14ff0f1a",
+    "matching_result_events_in_instance": 1,
+    "apply_receipt_sha256": "381b88ea1406a34896f78af5b06088de0734156b3a43925a2a6cbbcb83125ea6",
+    "session_document_sha256": "42057cccfba11df6b8e77eefdbae57392dd0587f68a15d1b5e754af162733444",
+    "observed_mode": "COMMITTING",
+    "session_branch_active": true
+  },
+  "native_attempt": {
+    "status": "FAIL",
+    "activity": "startup_drift_report",
+    "role": "drift_auditor",
+    "occurrence": "root/3/committing/0",
+    "generation": 1,
+    "configuration_sha256": "7a883c93d72a26ec015685ad298e5b82929847062b51c329131e4fe0baa225f7",
+    "authorization_sha256": "afdb42f2788921b88091f1a0c41a91de4ff831c9c4a531796ccfd594a35880ca",
+    "journal_sha256": "c5884e0c4dc33db2077153aae03e33b91c7cb3247ce9ea3a1848809931c841b4",
+    "first_failure": "PROCESS_RPC_CLOSED",
+    "responses_observed": 0,
+    "assignment_events": 0,
+    "process_tree_method": "windows-job-object",
+    "active_processes_after_close": 0,
+    "elapsed_global_ms": 30708,
+    "product_tracked_and_untracked_clean": true,
+    "next_preview": "native_owner_retire"
+  }
+}

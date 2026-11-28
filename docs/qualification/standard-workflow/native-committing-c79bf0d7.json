@@ -1,0 +1,239 @@
+{
+  "candidate": "c79bf0d79ae4af0d3fa40ef59d13100a07a61eee",
+  "archive_sha256": "97c31cdf05ade66eb1d9cc3384b4d7d716a31c599aaf8df843696ac8cc194ccd",
+  "predecessor": "edd5dd2294d0a3ecbb84caeee530799657e71403",
+  "model_revision": 425,
+  "backend": "Windows/FILES",
+  "package_installation": "PASS",
+  "source_installed_inventory": {
+    "models": 16,
+    "provider_bindings": 131,
+    "implementation_files": 689,
+    "implementation_sha256": "62e19d9f5f9ffde386a6765be3874093c492a7eb7ea537e016cdb643428910f6"
+  },
+  "github_provider_identity": "PASS",
+  "native_hooks": {
+    "expected": 2,
+    "observed": 2,
+    "status": "PASS"
+  },
+  "cycle_validation": {
+    "host_material_check": "PASS",
+    "configuration_sha256": "295f80bef75f6fde799d35ec50e38229cf341441fc03352cb43673b223d18e1a",
+    "executable_sha256": "21f6fb0b01ba12a687f5fcd33546c0008ebd45654fdb23d84732ee8d62ee980b",
+    "interval_check_sha256": "3068288486aa95825e6063d1c19a8d11ed66c1d91df251453aca24f6912ad16a",
+    "oracle": {
+      "baseline": "failed",
+      "positive": "passed"
+    },
+    "before_hook_approval": {
+      "plan_sha256": "79b554c50aa3a298dba5606fa55832cac2dc887afc17bcae5ce036dc0d4696c6",
+      "admission": "FAIL",
+      "reason": "Trusting the new pilot changed the protected client configuration after preparation.",
+      "executed_cases": 0
+    },
+    "process_plan_sha256": "90dc1bcb3453d470067c36661551cd378656c6b0467cdae5ef2efb5cb393ff2c",
+    "case_limit_ms": 60000,
+    "signed_boundary": "PASS",
+    "cases": {
+      "filesystem_access": "PASS",
+      "timeout": "PASS",
+      "cancel": "PASS",
+      "callback": "PASS"
+    },
+    "assurance_profile": "codex-cooperative-access.v1",
+    "filesystem_evidence_method": "windows-access-check.v1",
+    "collection": "READY_FOR_INDEPENDENT_REVIEW",
+    "process_observations": [
+      {
+        "case": "filesystem_access",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "result_sha256": "bbb2224f78bde1cc8bd46eaa2b6228654d695810b4655865d9af809f14f881c4",
+        "elapsed_ms": 10643,
+        "termination": "confirmed",
+        "active_processes": 0,
+        "companion_active_processes": 0
+      },
+      {
+        "case": "timeout",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "result_sha256": "a005dc0d9041b95ff511e3746a16fcf01d07e593a3956443b69759144fc4b106",
+        "elapsed_ms": 8881,
+        "termination": "confirmed",
+        "active_processes": 0
+      },
+      {
+        "case": "cancel",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "result_sha256": "09056179c55b0198bdffba1826464bcc8e3e16c7c389725f6b8ea880e5a7adfd",
+        "elapsed_ms": 6240,
+        "termination": "confirmed",
+        "active_processes": 0
+      },
+      {
+        "case": "callback",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "result_sha256": "cd0d46ee110493aef29d2ce495f907613d248387a4a38a32f9026c65faa9ed92",
+        "elapsed_ms": 6287,
+        "termination": "confirmed",
+        "active_processes": 0
+      }
+    ],
+    "qualification_payload_sha256": "ac82811e8239f3271dbc3ee714b4ef1b358befb24839c7e2b190aee7975cb2d2",
+    "native_availability": true,
+    "signed_qualification_sha256": "1859807dbaf751f3436cdf06aa761514ff4b7b808e67260a9df52e7f614fd8d0",
+    "validation_profile_sha256": "48c3fb6f3abb78b150d7627f3cb13b2bedc076a053316ae219bfa965a8badb1e"
+  },
+  "public_full_nominal": "SKIP",
+  "windows_installed_nominal": "SKIP",
+  "p0_go": false,
+  "complete_standard_workflow": false,
+  "public_entry": {
+    "status": "PASS",
+    "instance_id": "standard-vertical-pr202",
+    "initialized": true,
+    "workflow_configuration_sha256": "f1e8324607ac65b242de0dfe3f843c971b61c572c972d5d4f0d73b7ab765eeb9",
+    "request_sha256": "dd8a6401a3c66950bbf73b58153f3546f5a822aadc6aade431550c3e52caa048",
+    "native_configuration_sha256": "d4e923d05e77fdc03a1ac07461eed134d00453556bbc951c980462f1f3fa6640",
+    "profile_sha256": "48c3fb6f3abb78b150d7627f3cb13b2bedc076a053316ae219bfa965a8badb1e"
+  },
+  "initial_human_question": {
+    "type": "standard-mode-question.v1",
+    "session": "S001",
+    "question_sha256": "5a885eaeffece1e1043ea435314172a748f7e62f3b9ba27e5a9e4d835a3bed6e",
+    "action_sha256": "8a984985b27df30832f6f4d31bfcd4f1a9da6756ada4bf48c25d45534fafe612",
+    "ordinary_actions_before_question": 7,
+    "native_actor_starts_before_question": 0,
+    "same_question_on_fresh_process": true
+  },
+  "resumed_local_pilot": {
+    "observed_at": "2026-11-22T16:31:11.157Z",
+    "configuration_sha256": "d4e923d05e77fdc03a1ac07461eed134d00453556bbc951c980462f1f3fa6640",
+    "connector": "1b666e1a6434afa360ee683904f14699a053518c",
+    "local_relay": {
+      "mode_sha256": "85e26d339b3e6dc0a2702a81d67b4aeb554e98ecf7dd749217c54f09070908ea",
+      "alignment_sha256": "32c4821b0016edb2753f0f8d00a9b42ce567934016919187133d21fb1409d011"
+    },
+    "human_decisions": [
+      {
+        "kind": "mode",
+        "operation_id": "op_43c033c3c30747f792bfe09ff94ccc76074c5041",
+        "receipt_id": "receipt_43c033c3c30747f792bfe09ff94ccc76074c5041",
+        "choice": "COMMITTING",
+        "record_sha256": "3cb26502c8970f3f18c37fa3f7605c15bdc434e83b28180156c3eccceba01901",
+        "output_sha256": "89a32bed75e996904a54f2d14ad85d25322bf3a8b68df031059cb789124a36c1",
+        "result_count": 1,
+        "evidence_class": "operator-accepted-local-history-observation",
+        "independent_original_author_proof": false,
+        "manual_signature_steps": 0
+      },
+      {
+        "kind": "objective_alignment",
+        "operation_id": "op_e4c7deed26e587f88189321f60fcbe929498638a",
+        "receipt_id": "receipt_e4c7deed26e587f88189321f60fcbe929498638a",
+        "choice": "confirm_alignment",
+        "record_sha256": "368f908fdcde5845ddf34f352c4112a2d0eec1d87ab1471dcf1d97a80888ef70",
+        "output_sha256": "208987da62ed0a36cf7da210b594148155c9e20e1a5e5c2e25c16941c096a314",
+        "result_count": 1,
+        "evidence_class": "operator-accepted-local-history-observation",
+        "independent_original_author_proof": false,
+        "manual_signature_steps": 0
+      }
+    ],
+    "native_runs": [
+      {
+        "generation": 1,
+        "status": "RUNNING",
+        "first_failure": null,
+        "journal_phase": "closed",
+        "trace_sha256": "51619c4e1bc9b474a86bf4dc8c4af992ac14fbca6d8a9dfb92f038fa1369aeff",
+        "journal_sha256": "0222b8658341934107de778fc121e22d14dc81ab231d1fe6de05ecf2109f1c21",
+        "exit_code": 0,
+        "process_closure": "confirmed",
+        "active_processes": 0,
+        "elapsed_ms": 96933
+      },
+      {
+        "generation": 2,
+        "status": "RUNNING",
+        "first_failure": null,
+        "journal_phase": "closed",
+        "trace_sha256": "09f37ca68403d09e858e23da03d26d2bff5419f2f6f78e87105ad7cb7208670e",
+        "journal_sha256": "90639eb0416a9e6c624b0a00b1df8ddc47bcd689ed219a4baa9fc708482adf94",
+        "exit_code": 0,
+        "process_closure": "confirmed",
+        "active_processes": 0,
+        "elapsed_ms": 106613
+      }
+    ],
+    "consumption": [
+      {
+        "generation": 1,
+        "phase": "closed",
+        "tree_closed": true,
+        "responses": 1,
+        "storage_debit_bytes": 1924150,
+        "native_usage_sha256": "0d306e49be80b9d58b603a8d00fb726532dcf995c754e92077fcccaed09c24cf"
+      },
+      {
+        "generation": 2,
+        "phase": "closed",
+        "tree_closed": true,
+        "responses": 1,
+        "storage_debit_bytes": 2516667,
+        "native_usage_sha256": "7853fd9d456754622ef89425320ded1146ec344b9de4299493db4f1415702bd9"
+      }
+    ],
+    "totals": {
+      "responses": 2,
+      "storage_debit_bytes": 4440817,
+      "deadline": "2026-11-22T17:07:54.451Z"
+    },
+    "physical_artifacts": [
+      {
+        "kind": "session",
+        "sha256": "e8b40ebdc55ff2f5358b44a87c8962815eb85574c541455459c46df2eaef2e33"
+      },
+      {
+        "kind": "current_state",
+        "sha256": "e7e68d801f56e3667f61277d62018e1ae7068c9cd94282b4a141844742577b0d"
+      },
+      {
+        "kind": "cycle_status",
+        "sha256": "348fca954346fcfef50a15f9369f32a409b7c2d772a87442a05bca576bbbee0d"
+      }
+    ],
+    "progress": {
+      "session_mode_applied": "PASS",
+      "cycle_initialized": "PASS",
+      "objective_alignment_received": "PASS",
+      "drift_finalization": "PASS",
+      "plan_implementation_validation": "SKIP"
+    },
+    "first_unexpected_transition": {
+      "binding": "drift_completion_decision",
+      "operation_id": "op_1d476067e7cb80db07aa3859f8475b9ef3d3fdd9",
+      "question_sha256": "603f3280c498487968a5476983d9ec320d0fdbfc9efaecdf93588106a2038414",
+      "workflow_status": "WAITING",
+      "accepted_alignment_operation_id": "op_e4c7deed26e587f88189321f60fcbe929498638a",
+      "completed_finalization_operation_id": "op_0c64498b8f6484969971f18cac6ca894cde7d863",
+      "same_evaluation_and_context": true,
+      "new_answer_requested_from_operator": false,
+      "second_source_submitted": false,
+      "reason": "The authored shared checkpoint call unconditionally asks for a linked completion opinion after accepting the alignment and confirming the physical finalizer.",
+      "correction_status": "merged",
+      "correction_pr": "https://github.com/leuzeus/aidn/pull/204",
+      "correction_head": "78460371b48e75e63b0ac884bb27cf6a14a95d4f",
+      "successor_candidate": "2fe9c20caffce69e7c888f4d04975e85ca20d2b8",
+      "successor_archive_sha256": "ae8f5b6f13b8c3e0daacdbb7b1da09d5461a5482a4fb15b12c030b7eeef0731f",
+      "regression": {
+        "original_model": "FAIL",
+        "corrected_model": "PASS",
+        "cold_checkpoint_with_one_source_and_receipt": "PASS",
+        "governance_admission": "PASS",
+        "native_nominal_on_successor": "SKIP"
+      }
+    },
+    "evidence_scope": "Source runtime with installed connector and an operator-accepted local-history observer; independent original-author proof remains open."
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "observed_date": "2026-11-25",
+  "scope": "Packaged Windows STANDARD operator enrollment and decision panel",
+  "candidate": "cb2c3ea1cc3c662558500bd9fc6c54a86ed445b7",
+  "archive_sha256": "bace5c14d3ed484c85d56628f7f6de1ab742c65722e3bcbe73c1098347751a6d",
+  "product_pr": 203,
+  "installed_file_parity": {
+    "status": "PASS",
+    "files": 14
+  },
+  "verification": {
+    "source_windows_authority_fixture": "PASS",
+    "installed_windows_authority_fixture": "PASS",
+    "installed_native_availability_probe": "PASS",
+    "installed_registry_api_probe": "PASS",
+    "existing_project_authorization_fixture": "PASS",
+    "existing_mcp_stdio_fixture": "PASS",
+    "installed_panel_browser_fixture": {
+      "status": "PASS",
+      "authenticator": "virtual",
+      "choice_count": 1,
+      "verified_source_deliveries": 1,
+      "receipt_reread": true
+    },
+    "governance_admission": "PASS",
+    "draft_gate_families": "SKIP"
+  },
+  "first_live_installation_attempt": {
+    "public_install_preview": "PASS",
+    "plan_sha256": "8c2bf9cd65bde085fa0f31f8d0b027f923dc500abbacaf1b63530c4e828b73b0",
+    "status": "FAIL",
+    "boundary": "Windows administrator consent before credential creation",
+    "observed_result": "Start-Process reported operation canceled",
+    "execution_code": "STANDARD_WINDOWS_OPERATOR_ENROLLMENT_NOT_COMPLETED",
+    "genuine_credential_enrolled": false,
+    "project_untouched": true
+  },
+  "live_workflow": {
+    "backend": "PostgreSQL",
+    "mode_question_status": "WAITING",
+    "original_question_and_canonical_session_unchanged": true,
+    "operator_receipts": 0,
+    "live_panel_decision": "SKIP",
+    "resumption_after_answer": "SKIP"
+  },
+  "complete_standard_workflow": false,
+  "final_p0": "OPEN"
+}

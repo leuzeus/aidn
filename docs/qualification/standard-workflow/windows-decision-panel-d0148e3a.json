@@ -1,0 +1,59 @@
+{
+  "observed_date": "2026-11-25",
+  "candidate": "d0148e3a90155b31e376ff87d00cb3e7bd9d552b",
+  "archive_sha256": "90c647293ceba3f0b0f0b40314ec7e6270e74341b48012c13e10a9465754cff8",
+  "windows_codex": {
+    "version": "0.171.0-alpha.13.2",
+    "binary_sha256": "2a1ec3f1dd463fd30224be4c0c67d3fe83d3d863a3d7539ccad366952436d2aa",
+    "native_user_verification": "UNAVAILABLE",
+    "reason": "providerUnavailable",
+    "same_chat_side_panel": {
+      "status": "PASS",
+      "secure_top_level_context": true,
+      "public_key_credential_permission": true,
+      "user_verifying_platform_authenticator_available": true,
+      "real_enrollment_or_assertion": "SKIP"
+    },
+    "tpm_device_detected": true,
+    "tpm_attestation": "SKIP"
+  },
+  "isolated_prototype": {
+    "status": "PASS",
+    "browser": "Chrome 158.0.8127.37",
+    "authenticator": "virtual platform credential",
+    "business_clicks": 1,
+    "verified_ui_proofs": 1,
+    "issuer_enrollment": "fixture only",
+    "refusals": [
+      "different request challenge",
+      "different question or choice",
+      "subject changed during verification",
+      "unexpected origin",
+      "missing user verification",
+      "expiration",
+      "duplicate confirmation"
+    ],
+    "cross_origin_fixture": "WebAuthn refused without delegation and verified with explicit delegation",
+    "installed_fixture": {
+      "status": "PASS",
+      "backend": "FILES fixture",
+      "signed_evidence": "synthetic Codex event reference with WebAuthn assertion digest",
+      "accepted_decision_receipts": 1,
+      "same_receipt_recovered_from_new_operator_adapter": true,
+      "first_attempts": "Harness stopped on inherited Git context and on reinitializing an already prepared fixture. Successful replay isolated the Git context and installed only the signed grant."
+    }
+  },
+  "live_project": {
+    "status": "WAITING",
+    "backend": "PostgreSQL",
+    "same_question_observed": true,
+    "phase": "staged",
+    "enrolled_operator_principals": 0,
+    "human_receipts": 0,
+    "real_issuer_enrollment": "SKIP",
+    "genuine_panel_decision": "SKIP",
+    "continued_after_mode_decision": "SKIP",
+    "project_writes": 0
+  },
+  "final_p0": "OPEN"
+}

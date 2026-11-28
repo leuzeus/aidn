@@ -1,0 +1,78 @@
+{
+  "observed_date": "2026-11-25",
+  "scope": "Installed STANDARD project authorization and retained Windows PostgreSQL session continuation",
+  "candidate": "d0148e3a90155b31e376ff87d00cb3e7bd9d552b",
+  "archive_sha256": "90c647293ceba3f0b0f0b40314ec7e6270e74341b48012c13e10a9465754cff8",
+  "installed_file_parity": {
+    "status": "PASS",
+    "files": 8
+  },
+  "project_authorization": {
+    "contract": "standard-project-authorization.v1",
+    "entry": "aidn install --standard-authorization FILE",
+    "source_fixture": "PASS",
+    "installed_fixture": "PASS",
+    "authority": "Fixture administrator and issuer keys scoped to a disposable project",
+    "checks": [
+      "read-only preview",
+      "approved initial enrollment",
+      "interrupted installation recovery",
+      "idempotent reinstall",
+      "wrong administrator",
+      "foreign project",
+      "unlisted choice",
+      "unlisted question",
+      "wrong issuer",
+      "missing message reference",
+      "revoked issuer",
+      "stale revision"
+    ],
+    "actual_project_authority_enrolled": false,
+    "operator_message_recovery_fixture": {
+      "status": "PASS",
+      "receipts": 1,
+      "after_revocation": "same accepted receipt",
+      "real_author": "SKIP"
+    }
+  },
+  "continuation": {
+    "status": "WAITING",
+    "canonical_backend": "postgres",
+    "existing_session_checkout_and_initial_instance_preserved": true,
+    "successor_operations_completed": [
+      "workflow_entry_select",
+      "context_reload",
+      "session_entry_admit",
+      "mode_decision"
+    ],
+    "same_session_admitted": true,
+    "second_checkout_read": "PASS",
+    "same_installed_connector_question": "PASS",
+    "waiting_on": "AUTHENTICATED_HUMAN_DECISION_REQUIRED",
+    "new_human_receipts": 0,
+    "native_calls": 0,
+    "forms_presented": 0,
+    "remote_writes": 0,
+    "evidence_sha256": "2957c0e2da728b316f09abdd354af570db7361f6be4bc35cc2450dd319f72efb"
+  },
+  "authenticated_chat": {
+    "status": "UNAVAILABLE",
+    "connected_windows_profile": true,
+    "observed_provider_reason": "providerUnavailable",
+    "authority_credential_reported": false,
+    "exact_question_observed_through_codex_mcp": true,
+    "refusal_before_display": "CODEX_DECISION_CHANNEL_NOT_ENROLLED",
+    "real_user_decision": "SKIP",
+    "evidence_sha256": "9b27693ec8a6992c0b746896382bf580a4c28023ad6b99e40e4191162f20e814",
+    "mcp_evidence_sha256": "d5f055176cfa171781872a9b353a9591e9ca7281aec2096ab096e08b7c438a5b"
+  },
+  "governance": {
+    "route": "ASSURED",
+    "status": "PASS",
+    "admission_run": 45674307871,
+    "perf_kpi_run": 45674307916,
+    "draft_gate_families": "SKIP"
+  },
+  "complete_standard_workflow": false,
+  "final_p0": "OPEN"
+}

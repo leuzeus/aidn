@@ -1,0 +1,195 @@
+{
+  "candidate": "020382a90184496d375629983a502103f694cf72",
+  "correction_pr": 209,
+  "archive_sha256": "920ba9588b66e044a36dded755cacae0b7ae4ce0088d8bb0e491f01f5d5dae6c",
+  "model_revision": 432,
+  "method": "Targeted replay of retained input with one real read-only Native activity",
+  "backend": "postgres",
+  "state_mode": "db-only",
+  "status": "PASS",
+  "source_input_candidate": "a2ebe87487291550bf2283da8bbd0f18158be5d1",
+  "first_refusal_preserved": {
+    "reason_code": "STANDARD_CYCLE_PLAN_EVIDENCE_INVALID",
+    "journal_sha256": "cf678a452396c7f123e90506ab583d6e857c12c40bd6433ef823387785c76978",
+    "original_result_sha256": "935d2899d84f3275120fd6d7ec072c41d3d3c6fc5dab1a02162743847cec0dfb",
+    "original_bytes_unchanged": true
+  },
+  "preparation": {
+    "status": "PASS",
+    "product_and_canonical_context_unchanged": true,
+    "supervision": "windows-job-object",
+    "reused": [
+      "trusted project and both live hooks",
+      "Native executable and model",
+      "Node and Job Object helper",
+      "PostgreSQL canonical input",
+      "accepted COMMITTING and alignment retained in original instance"
+    ],
+    "invalidated": [
+      "producer instructions and answer semantics",
+      "candidate implementation pins"
+    ]
+  },
+  "native": {
+    "status": "PASS",
+    "plan_sha256": "215bba32ea50b5003a83071ebca44735c44789367aa56de331c1aaf813195e2d",
+    "context_sha256": "bf6c5c7243835198f5fc167f76499566de296c678558a088cb9f95e4c86d6cb4",
+    "answer_sha256": "c023945ed24308b6a9b2e4390c416b7d15972799af7b4442200fb4c7c8ba3f2b",
+    "typed_report": "standard-cycle-prework-report.v1",
+    "proposal_has_own_spec": true,
+    "intent_rule_refs": [
+      "SPEC-R03"
+    ],
+    "architecture_rule_refs": [
+      "SPEC-R04"
+    ],
+    "prework_judgement": "passed",
+    "plan_evaluation": "completed",
+    "responses": 1,
+    "previous_responses_preserved": 5,
+    "bytes_retained": 2561560,
+    "native_metrics": {
+      "usage": [
+        {
+          "total": {
+            "totalTokens": 40559,
+            "inputTokens": 38109,
+            "cachedInputTokens": 0,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 2450,
+            "reasoningOutputTokens": 285
+          },
+          "last": {
+            "totalTokens": 40559,
+            "inputTokens": 38109,
+            "cachedInputTokens": 0,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 2450,
+            "reasoningOutputTokens": 285
+          },
+          "modelContextWindow": 475000
+        }
+      ],
+      "aggregation": "Single fresh thread; native cumulative snapshot, not a billed total"
+    },
+    "parent_closed": true,
+    "tree_closed": true,
+    "active_processes": 0,
+    "started_at": "2026-11-23T03:03:41.9722268Z",
+    "closed_at": "2026-11-23T03:05:41.9923948Z",
+    "result_sha256": "a51de68da19a2004d246029ebb6d9fab79711b0cf7e64c650b93a789b12ebf7c"
+  },
+  "human_authorization": {
+    "status": "PASS",
+    "delivery": "observed local chat response",
+    "manual_signature": false,
+    "identity_proof": "Local observation exception; independent original author identity not established"
+  },
+  "product_and_canonical_inputs_unchanged": true,
+  "live_workflow_dispatch": false,
+  "live_receipt_written": false,
+  "downstream_fixture": {
+    "status": "PASS",
+    "scope": "db-only plan recording, DoR, phase transition and durable receipt",
+    "native": "controlled wire"
+  },
+  "current_continuation": {
+    "entry": {
+      "outcome": "completed",
+      "action": "resume_cycle",
+      "facts": {
+        "cycle_entry_creation_allowed": false,
+        "cycle_entry_resume_allowed": true,
+        "cycle_entry_choice_required": false
+      },
+      "reason_code": null
+    },
+    "canonical_plan_projection": {
+      "status": "FAIL",
+      "reason_code": "STANDARD_CANONICAL_PLAN_UNREPRESENTABLE"
+    },
+    "scope": "Read-only current cycle entry and canonical plan projection, without a new process instance",
+    "next_dependency": "Admit planning for an existing owned OPEN cycle before a canonical plan exists"
+  },
+  "validation": [
+    {
+      "scope": "prework boundaries",
+      "checks": 39,
+      "status": "PASS"
+    },
+    {
+      "scope": "Native session adapter with controlled wire",
+      "checks": 5,
+      "status": "PASS"
+    },
+    {
+      "scope": "published startup",
+      "checks": 52,
+      "status": "PASS"
+    },
+    {
+      "scope": "published cycle db-only",
+      "checks": 32,
+      "status": "PASS"
+    },
+    {
+      "scope": "published composition",
+      "checks": 69,
+      "status": "PASS"
+    },
+    {
+      "scope": "db-only plan recording and readiness",
+      "checks": 1,
+      "status": "PASS",
+      "native_model": "NOT_RUN"
+    },
+    {
+      "scope": "retained real input at pure boundaries",
+      "status": "PASS",
+      "native_model": "NOT_RUN",
+      "state_written": false
+    },
+    {
+      "scope": "documentation references, Markdown, sensitivity, diff check",
+      "status": "PASS"
+    }
+  ],
+  "ci": [
+    {
+      "run": 45102720256,
+      "status": "PASS"
+    },
+    {
+      "run": 45102825599,
+      "status": "PASS"
+    },
+    {
+      "run": 45102720254,
+      "status": "PASS"
+    }
+  ],
+  "full_nominal": "SKIP",
+  "installed_nominal": "SKIP",
+  "same_session_resume": "SKIP",
+  "p0_complete": false,
+  "limitations": [
+    "New archive adapter and evaluator on retained inputs; old project installation and hooks remain pinned to a2ebe874. Not live-instance resume, installed nominal or P0.",
+    "This isolated actor result is not submitted to the historical instance; old receipts and UNKNOWN are untouched.",
+    "Passing the blocked planning boundary does not establish implementation, product tests, independent final audit or delivery."
+  ],
+  "observed_at": "2026-11-23T03:08:48.323Z",
+  "targeted_continuation": {
+    "candidate": "90261356953b3e15d4d9cd61e357102ed9004b0b",
+    "correction_prs": [
+      210,
+      211
+    ],
+    "report": "native-owned-continuation-90261356.json",
+    "status": "PASS",
+    "scope": "Installed public continuation on the retained PostgreSQL cycle through genuine Native planning, canonical plan recording, readiness and implementation entry",
+    "genuine_native_planning": "PASS",
+    "p0_complete": false,
+    "plan_recording": "PASS",
+    "following_admission": "PASS"
+  }
+}

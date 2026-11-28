@@ -1,0 +1,68 @@
+{
+  "observed_date": "2026-11-25",
+  "scope": "Lot 2b installed Windows connector on the retained source preflight and on a separately scoped PostgreSQL fixture",
+  "prior_preflight_report": "standard-p0-nominal-preflight-105a300a.json",
+  "candidate": "b895a0288f9acc75554e9b349293bb77c497fa9e",
+  "archive_sha256": "6929cace8f64cc4ea1ea3e0d5fdd285445f730d29a714922a5bbc0667ef3cb40",
+  "retained_preflight": {
+    "source_candidate": "105a300a6f52c8aaac6b34da39fba1adfe08b894",
+    "source_catalog_revision": 506,
+    "installed_catalog_revision": 507,
+    "read_canonical_instance": "PASS",
+    "cross_candidate_question": "REFUSED",
+    "refusal": "STANDARD_HOST_AUTHORITY_CHANGED",
+    "same_canonical_instance": true,
+    "matches_retained_authority": {
+      "original_source": {
+        "scope": true,
+        "model": true,
+        "policy": true
+      },
+      "installed_archive": {
+        "scope": false,
+        "model": false,
+        "policy": true
+      }
+    },
+    "postgres_and_git_unchanged": true,
+    "source_evidence_sha256": "78fd933e872bc96cbd9ae2127121bc0956ce5794ab7762affcdbec522ce184d2",
+    "authority_evidence_sha256": "7104f7b24d52b2bbc295ec5e6ee7f0eb08ac1d5721a6f5ea7527de1ac9f446f1"
+  },
+  "same_archive_control": {
+    "status": "PASS",
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "project": "Disposable PostgreSQL scope with synthetic product content",
+    "source_of_all_aidn_runtime_modules": "Installed archive",
+    "public_entry": "aidn runtime workflow-run",
+    "reached_question": "PASS",
+    "mode_question_matches_public_subject": true,
+    "mcp_refusal": "CODEX_DECISION_CHANNEL_NOT_ENROLLED",
+    "refused_before_form": true,
+    "forms": 0,
+    "human_decisions": 0,
+    "human_receipts": 0,
+    "native_calls": 0,
+    "new_principals": 0,
+    "git_and_canonical_journal_unchanged_after_mcp_calls": true,
+    "direct_child_closed": true,
+    "prior_preflight_unchanged": true,
+    "remote_writes": 0,
+    "evidence_sha256": "8c0ec9935b815d74535064420069bd600c794cf0ef992c93e93859044e0f4aa5",
+    "startup_summary_sha256": "8dc01d4714d27e28c10d64c1d6eb2a019e0d7b428b4ab16a9b6834a96242e313"
+  },
+  "genuine_author_proof": {
+    "status": "UNAVAILABLE",
+    "connected_windows_binary_version": "codex-cli 0.171.0-alpha.13.2",
+    "connected_windows_status": "providerUnavailable",
+    "public_codex_source": "https://github.com/openai/codex/blob/06f334aa4b053023c5b4199dde0ba9c004d64820/codex-rs/user-verification/src/lib.rs#L62-L91",
+    "public_native_provider_platform": "macOS",
+    "windows_and_linux_provider_in_examined_source": "UnsupportedProvider",
+    "live_author_enrollment": "SKIP",
+    "live_decision_acceptance_and_cold_resume": "SKIP"
+  },
+  "final_frozen_p0": {
+    "status": "OPEN",
+    "complete_workflow": "SKIP"
+  }
+}

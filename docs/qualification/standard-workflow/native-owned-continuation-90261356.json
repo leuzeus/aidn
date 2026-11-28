@@ -1,0 +1,3126 @@
+{
+  "candidate": "90261356953b3e15d4d9cd61e357102ed9004b0b",
+  "archive_sha256": "c73345bc46d45e8aec1ef4f73247d1a9ee7f02ba464a97d764be4ba872710e30",
+  "model_revision": 437,
+  "correction_prs": [
+    210,
+    211,
+    242
+  ],
+  "backend": "postgres",
+  "state_mode": "db-only",
+  "status": "FAIL",
+  "scope": "Installed public continuation through genuine planning and implementation; first validation dispatch remains UNKNOWN",
+  "method": "A new technical instance continues the same canonical business session and cycle; the original technical instance remains immutable",
+  "strategy": 1,
+  "strategy_complete": false,
+  "technical_decisions": [
+    {
+      "pr": 210,
+      "candidate": "0ca48011550b3c63deb19ea62be3222cb31e724c",
+      "verdict": "GO",
+      "scope": "Owned OPEN untouched-scaffold planning selector",
+      "evidence": "Controlled-host db-only planning/evaluation/recording/DoR/IMPLEMENTING and refusal cases; no genuine Native execution claimed"
+    },
+    {
+      "pr": 211,
+      "head": "54be133914edfe7ce5036eb04df69be76030a446",
+      "verdict": "GO",
+      "scope": "Bounded public checkpoint entry for the unchanged owned OPEN cycle",
+      "evidence": "Public SQLite/db-only fixture, seven negative cases, ordinary startup/recovery regressions and read-only retained PostgreSQL checkpoint prototype"
+    }
+  ],
+  "comparison": {
+    "baseline_candidate": "020382a90184496d375629983a502103f694cf72",
+    "baseline_entry": "resume_cycle",
+    "baseline_plan_projection": "STANDARD_CANONICAL_PLAN_UNREPRESENTABLE",
+    "baseline_reason": "Untouched initial planning documents were routed into existing canonical-plan projection",
+    "rejected_prototype": "Duplicating a shared suffix inside exclusive branches was not structurally valid; no effect or historical state was changed",
+    "delivered_selection": "Authenticate the checkpoint, reevaluate current R05 signals, then select planning from current canonical state"
+  },
+  "public_continuation": {
+    "status": "PASS",
+    "installed_cli": true,
+    "previous_instance_unchanged": true,
+    "source_instance_sha256": "84b5779f416e1a088a5db927a7e0f35e9a84ce3355389793c50621c7f96b2e63",
+    "new_instance_sha256": "eea2b9cace51f6a382aa11fc444d1cd6ed1efde8e86243913014b5541ef58c9e",
+    "checkpoint": {
+      "source_instance_sha256": "84b5779f416e1a088a5db927a7e0f35e9a84ce3355389793c50621c7f96b2e63",
+      "checkpoint_operation_id": "op_73cbfca3974e9727fde4e0a7f911e88091582a01",
+      "checkpoint_sha256": "5f8070113cedabf0f159dc23e9001af94c938727bebcdd7d68a74238c4148165",
+      "completion_operation_id": "op_16f94c0ddb8395b6d672b42608092972c7b018fa",
+      "completion_sha256": "894ce141f5ae5d9d86ed8ef2e0435ff2e143a22e592f1edbe443aed5bd9628ca",
+      "alignment_sha256": "9019760fe23eae4d3a4d4f65b9c0204f55e6f2d6bb0a9d218f4c077b4cd40f33",
+      "gate_sha256": "081f7f33430028b37742e7de417ec42aac780d5ed15c09d9cf48bcefedff6a43"
+    },
+    "accepted_mode_and_alignment_reused": true,
+    "bindings": [
+      {
+        "binding": "workflow_entry_select",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "journal_sha256": "b2e0a471d0f2dc5b42b769003a2fe3981d4caf390be09b94088f5d2789929220"
+      },
+      {
+        "binding": "cycle_context_refresh",
+        "outcome": "completed",
+        "effect_status": "confirmed",
+        "journal_sha256": "f391be0f86d44513a3f86448ece5b4d47295ce04bf9545050e8660c621bd0bf0"
+      },
+      {
+        "binding": "cycle_entry_observe",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "journal_sha256": "0a430238c855b402d7891e2f73d266cd35c3aa295aaa1f5f770d41d6fecabf9c"
+      },
+      {
+        "binding": "cycle_entry_admit",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "journal_sha256": "547e9c3ae5460dde749a8a68bf21e997b25772c94d5fbcfd085cbc9934d82fee"
+      },
+      {
+        "binding": "cycle_owned_planning_select",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "journal_sha256": "04e0fe2622147c208cad11e58597b23a9ad68653539cdd47c8c2a79d3eb19d37"
+      },
+      {
+        "binding": "cycle_prework_select",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "journal_sha256": "f27c2d66b05e77da68519722304443dce1f4f3c9a51a70fb0291db1031352dd1"
+      }
+    ],
+    "waiting": "native",
+    "mode_questions": 0,
+    "manual_signatures": 0,
+    "native_calls": 0,
+    "effect_owner_pending": false,
+    "canonical_session_and_cycle_preserved": true
+  },
+  "validation": {
+    "public_owned_fixture": "PASS",
+    "negative_cases": [
+      "missing checkpoint",
+      "unsupported phase",
+      "changed product",
+      "changed HEAD",
+      "changed origin key",
+      "missing physical checkpoint",
+      "changed canonical intent"
+    ],
+    "ordinary_public_entry": "PASS",
+    "ordinary_cli_calls": 43,
+    "resource_recovery_fixture": "PASS",
+    "revocation_before_epoch_cas_refused": true,
+    "source_failure_deadline_dispatch_debits_preserved": true,
+    "other_checks": [
+      {
+        "name": "entry selection/contracts",
+        "count": 5,
+        "status": "PASS"
+      },
+      {
+        "name": "published composition",
+        "count": 69,
+        "status": "PASS"
+      },
+      {
+        "name": "startup/implementation pins",
+        "count": 57,
+        "status": "PASS"
+      },
+      {
+        "name": "binding inputs",
+        "count": 6,
+        "boundaries": 85,
+        "status": "PASS"
+      },
+      {
+        "name": "docs references, Markdown contracts, CLI inventory, sensitivity and diff check",
+        "status": "PASS"
+      }
+    ],
+    "governance_route": {
+      "contract": "governance-route.v1",
+      "lane": "ASSURED",
+      "status": "PASS"
+    },
+    "ci": {
+      "head": "54be133914edfe7ce5036eb04df69be76030a446",
+      "governance_run": 45114851962,
+      "status": "PASS",
+      "perf_run": 45113720305,
+      "perf_status": "PASS"
+    }
+  },
+  "preparation": {
+    "validator_reused": true,
+    "validator_controls_reexecuted": false,
+    "public_key_identity_preserved": true,
+    "public_key_encoding_correction": "A new local profile copy supplies DER/SPKI bytes expected by the boundary instead of PEM bytes",
+    "initial_preview_refusal": "PROCESS_EXECUTION_PROTECTED_ROOT_INVALID",
+    "initial_refusal_cause": "Preparation added a seventeenth protected root",
+    "corrected_before_instance_creation": true,
+    "all_original_protected_roots_preserved": true,
+    "old_requests_and_receipts_preserved": true
+  },
+  "consumption": {
+    "historical_responses": 6,
+    "historical_bytes": 13295681,
+    "new_native_responses": 6,
+    "old_authorizations_expired": true,
+    "unused_authorization_transferred": false,
+    "new_native_storage_debit_bytes": 5048630,
+    "total_responses": 12,
+    "total_debit_bytes": 18344311,
+    "current_grant": {
+      "max_responses": 18,
+      "max_bytes": 53813183,
+      "remaining_responses": 12,
+      "remaining_bytes": 48764553
+    }
+  },
+  "human_channel": {
+    "manual_signatures": 0,
+    "identity_proof": "Accepted local-history observation exception; independent original author identity remains unproven"
+  },
+  "next_required": "Freeze a final candidate and measure one uninterrupted nominal public source run through internal PR review, merge and synchronization, including the corrected process exit. Then qualify same-candidate recovery/refusals and installed full nominal. The targeted historical instance remains immutable with its post-R09 exit refusal; external merge, external checkout preparation and local-observer identity limit remain explicit P0 gaps.",
+  "genuine_native_planning": "PASS",
+  "plan_recording": "PASS",
+  "following_admission": "PASS",
+  "full_nominal": "SKIP",
+  "same_candidate_recovery": "SKIP",
+  "installed_full_nominal": "SKIP",
+  "p0_complete": false,
+  "limitations": [
+    "This is one bounded cross-instance entry, not a general model/policy/implementation migration.",
+    "The same retained pilot and approved hooks are reused; this is not the final clean-client archive qualification.",
+    "Strategies 2 and broader 3 remain open; no lossy projection or receipt migration was introduced."
+  ],
+  "private_observation_sha256": "65184cc1158cef1951d0a06ad17dbe49b60238c97b8a467c9be15f489cb6cb80",
+  "observed_at": "2026-11-23T05:10:59.863Z",
+  "strategy_first_slice_complete": true,
+  "real_planning": {
+    "status": "PASS",
+    "cycle_state": "IMPLEMENTING",
+    "previous_instance_unchanged": true,
+    "branch_and_head_unchanged": true,
+    "product_unchanged_before_implementation": true,
+    "canonical_plan_matches_native_content": true,
+    "context_sha256": "4baba9dc8ae277d59c0b28bdf8a708f43daf431ba091826c43a130f28e5f345c",
+    "documents": [
+      {
+        "name": "status.md",
+        "sha256": "e2814dda2c18eaea426e06d05e9a969a089e879419922657924339f942228dd0"
+      },
+      {
+        "name": "brief.md",
+        "sha256": "0319d2f7dd151055bf24a6f7c33b3fcd475667bcb28da7726366ff517ba6944c"
+      },
+      {
+        "name": "plan.md",
+        "sha256": "62d0a65541b0483b24c5ca5679e24eb8f56506d7f021a44540857e97dc56db39"
+      },
+      {
+        "name": "change-requests.md",
+        "sha256": "56bc6e595e62acd23f2e6423df548d85e9d08343a7710805b146c1ff41beeb33"
+      },
+      {
+        "name": "hypotheses.md",
+        "sha256": "33eb61fc72efab0619f389c17bd8e197ca0fc8ef75aa43d1902ae669d82bc881"
+      },
+      {
+        "name": "audit-spec.md",
+        "sha256": "b7243dda5ced9332bbe7663501e60174a2eebfb3a96f05acb2e3fce6421759e5"
+      },
+      {
+        "name": "traceability.md",
+        "sha256": "0595ea2169ed69c9fdd8cec8ece752dfe40666c8525172abc7d91ac5e6396c0d"
+      },
+      {
+        "name": "decisions.md",
+        "sha256": "1bc46d41b6d61fdbd29c4b221741927459bc468d98002795762d8f0d6febc8f0"
+      }
+    ],
+    "operations": [
+      {
+        "binding": "cycle_prework_evaluate",
+        "journal_sha256": "fff02600aeb0a21453a92c25d0757d44b178a397da5f546ef4fb4517ab53be67",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_plan_record",
+        "journal_sha256": "ab6232d4df1cc71c499c6a1d5b3fef504f08693986c1f5be97ec5ea902e14373",
+        "outcome": "completed",
+        "effect_status": "confirmed"
+      },
+      {
+        "binding": "cycle_readiness_evaluate",
+        "journal_sha256": "cd99d6d1d577e333b047b8367e4fc9c74d1871b95ace77464441d1caf6b482b6",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_implementation_enter",
+        "journal_sha256": "ac41b4cec71fc05b0e620d274226834e18b98f1e29a635de41d6d8eb7538eb1b",
+        "outcome": "completed",
+        "effect_status": "confirmed"
+      }
+    ],
+    "native": {
+      "status": "PASS",
+      "generation": 1,
+      "answer_sha256": "abf9ac146fa045d7b4398f6d7777ce5f3acfff0e89ff05aa111123ef69d2af71",
+      "entry_result_sha256": "5bf4460c65798e1b8cb5ff4b4dd8d4799241f1d0e0552cb817add96c13ddf2d9",
+      "responses": 2,
+      "bytes_retained": 2726653,
+      "storage_budget_debit_bytes": 3041195,
+      "consumption": {
+        "snapshots": [
+          {
+            "total": {
+              "totalTokens": 79058,
+              "inputTokens": 76695,
+              "cachedInputTokens": 38016,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 2363,
+              "reasoningOutputTokens": 59
+            },
+            "last": {
+              "totalTokens": 40771,
+              "inputTokens": 38501,
+              "cachedInputTokens": 38016,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 2270,
+              "reasoningOutputTokens": 52
+            },
+            "modelContextWindow": 475000
+          }
+        ],
+        "aggregation": "latest observed cumulative snapshot per thread; not a billed total",
+        "incomplete_turns_may_be_unknown": true
+      },
+      "closure": {
+        "method": "windows-job-object",
+        "active_processes": 0,
+        "started_at": "2026-11-23T05:13:25.1585228Z",
+        "observed_at": "2026-11-23T05:15:57.0184950Z"
+      }
+    },
+    "proposed_tasks": 1,
+    "completed_tasks": 0,
+    "mode_questions": 0,
+    "alignment_questions": 0,
+    "manual_signatures": 0,
+    "private_observation_sha256": "333c04faa7269c66e3ec911cf5f5ddc3d6e87539948d7b25f55cd3559453c135"
+  },
+  "updated_at": "2026-11-25T04:42:39.399Z",
+  "real_implementation": {
+    "status": "PASS",
+    "native": {
+      "generation": 2,
+      "status": "PASS",
+      "answer_sha256": "0d6ceb8b03670e0f0167b97ca2f2a677fa9d0442d488f69c5c90da7b2d228dbc",
+      "entry_result_sha256": "f055442e32b7c2423f25c7fc599f5c3afc07f53f501bc30ddd4020eb0ca43b50",
+      "responses": 4,
+      "bytes_retained": 1652398,
+      "storage_budget_debit_bytes": 2007435,
+      "consumption": {
+        "snapshots": [
+          {
+            "total": {
+              "totalTokens": 131340,
+              "inputTokens": 130446,
+              "cachedInputTokens": 96640,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 894,
+              "reasoningOutputTokens": 35
+            },
+            "last": {
+              "totalTokens": 33651,
+              "inputTokens": 33442,
+              "cachedInputTokens": 32896,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 209,
+              "reasoningOutputTokens": 0
+            },
+            "modelContextWindow": 475000
+          }
+        ],
+        "aggregation": "latest observed cumulative snapshot per thread; not a billed total",
+        "incomplete_turns_may_be_unknown": true
+      },
+      "closure": {
+        "method": "windows-job-object",
+        "active_processes": 0,
+        "started_at": "2026-11-23T05:24:47.2518758Z",
+        "observed_at": "2026-11-23T05:27:07.2493207Z"
+      }
+    },
+    "product_file_count": 2,
+    "product_sha256": "b4ee8e768f6ce2a5fe8c0f1d2d981f395c52d891eb9eebcb182bb2ff69fec502",
+    "work_evaluation": {
+      "binding": "cycle_task_work_evaluate",
+      "journal_sha256": "2a949bac2610d71464fb010891b1d55bf2c6580d23c5fe42ace8a04cc97040cb",
+      "outcome": "completed",
+      "effect_status": "no_effect"
+    },
+    "test_verdict": "NOT_RUN",
+    "completed_tasks": 0,
+    "previous_instance_unchanged": true,
+    "mode_questions": 0,
+    "alignment_questions": 0,
+    "manual_signatures": 0
+  },
+  "first_validation": {
+    "status": "FAIL",
+    "operation_ref": "cycle_validation_execute",
+    "operation_id": "op_db22bc4c951bfde10a9794d744c8e2a8bf847843",
+    "journal_sha256": "10c019b0f6f2f01ffa96a9618c10cf7cffe9a036db6b666ee8ee27ebef6b9f53",
+    "outcome": "reconciliation_required",
+    "effect_status": "unknown",
+    "reason_code": "STANDARD_VALIDATION_STOP_UNCONFIRMED",
+    "boundary_operation_id": "c116c61f1783bc29e6b121414201ee640bd2f9457a2250f9b74e9ae549062ecd",
+    "request_sha256": "eda1035bd14cff4ea6240d10be53f50dc04e4b878c2d2f741690ee3e19124f77",
+    "configuration_sha256": "af1f505c847eb8ce564f8518835d382dcb14ec454087de70c33106d33c5ce945",
+    "boundary_termination": "unknown",
+    "client_outcome": "failed",
+    "client_exit_code": 1,
+    "outer_job_termination": "confirmed",
+    "outer_job_active_processes": 0,
+    "child_membership_observed": false,
+    "child_terminal_observed": false,
+    "stderr_bytes": 60,
+    "stderr_sha256": "311e9558202ebec4a3b65aafe3c51105be36d778c26cde6b0ae7e2746d037356",
+    "stderr_text_retained": false,
+    "evidence": [
+      {
+        "sha256": "3d0857c566ebd22c2d2859a39217c0de0f7f77d9188a702c7700e3f76757cd01",
+        "bytes": 574
+      },
+      {
+        "sha256": "7a6fe98da529e8837cf2a6de3768e442331e1ecfdc41ad903dd23f3f1d8a47db",
+        "bytes": 2355
+      }
+    ],
+    "tests_passed": false,
+    "retry_count": 0,
+    "reconciled": false,
+    "effect_owner_pending": true,
+    "interpretation": "Outer Job closure alone does not establish closure of an unobserved sandbox child. The original receipt and owner are retained; no retry was dispatched.",
+    "private_observation_sha256": "59e8d2ceac2c741f59c6b8a4ea138a2df9d1348b3aa6c248c5895d7b4b16d3df"
+  },
+  "validation_startup_diagnostic": {
+    "status": "FAIL",
+    "scope": "One separately authorized timeout probe; no model or product-test call",
+    "plan_sha256": "33d84ca7a0fb45b7142b3a0081f111e32cf39dc052283c087220e3c8748077df",
+    "case_id": "timeout",
+    "qualification_status": "FAIL",
+    "diagnostic": "NATIVE_PROBE_CHILD_NOT_OBSERVED",
+    "stderr_bytes": 60,
+    "stderr_sha256": "311e9558202ebec4a3b65aafe3c51105be36d778c26cde6b0ae7e2746d037356",
+    "error": "windows sandbox failed: CreateProcessWithLogonW failed: 267",
+    "first_failure_stderr_hash_match": true,
+    "interpretation": "The validation working directory was below a Native protected root with an inherited deny-read ACL for the shared Windows sandbox group. The isolated probe reproduced the exact retained startup stderr. This is a launcher failure, not a failed product test.",
+    "diagnosis_evidence_sha256": "52a6e6956d12861113f6e7d3b05614f9779c3e7202095965de24855a7be29511",
+    "diagnostics_fix": {
+      "pull_request": 212,
+      "merge_sha": "3767621524358606c5ae0a199a7253a1be4aac2c"
+    },
+    "layout_preflight_fix": {
+      "pull_request": 213,
+      "head_sha": "f0b3d8293957a726ae187aba3c62bd93d7773568",
+      "local_checks": "PASS",
+      "retained_public_entry": "PASS",
+      "merge_sha": "cf84e7e5ea7f4310152a5d8f15cbe0227963d7db",
+      "ci": "PASS"
+    },
+    "old_unknown_reconciled": false,
+    "canonical_retry_count": 0,
+    "effect_owner_pending": true,
+    "manually_changed_permissions": false,
+    "native_model_calls": 0,
+    "next_required": "Qualify disjoint validation work paths and implement or establish admissible same-occurrence reconciliation before any product retry."
+  },
+  "validation_layout_qualification": {
+    "status": "PASS",
+    "scope": "Installed validator qualification in disjoint work directories, after Native deny ACLs were already present",
+    "candidate": "cf84e7e5ea7f4310152a5d8f15cbe0227963d7db",
+    "archive_sha256": "c358a4d78bdc964e8660ef40f26da0492594cf9ad6d91c52d71b9a495719fc97",
+    "configuration_sha256": "4d52e96373dc827102c05a16363783918508f8c60f8b26b1717943b6a4fe7a79",
+    "plan_sha256": "f494aee32b24e2102e1a5c0f501397d11263c9467c2722e5514dbd7b4128becf",
+    "cases": [
+      {
+        "id": "filesystem_access",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 10824,
+        "active_processes": 0,
+        "companion_active_processes": 0,
+        "sha256": "f6656f3a05e52b8fa22b2ab953c3ecc2e70d47080cd6447ae087b0fe91effb2e"
+      },
+      {
+        "id": "timeout",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 8483,
+        "active_processes": 0,
+        "sha256": "faf8e76dcba2e3d01dbbe191a855112e9bf16e969267b49f01d575b0b37453b5"
+      },
+      {
+        "id": "cancel",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 6199,
+        "active_processes": 0,
+        "sha256": "ccb17296e6f8a7c7b49ed3d85cf2d35816140ca9227f4581bd24cea7ea9aa5e2"
+      },
+      {
+        "id": "callback",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 6260,
+        "active_processes": 0,
+        "sha256": "1cb08223453be09aaf95318e15363a16e4ee1e71883b91f9680674b329fa7569"
+      }
+    ],
+    "review_accepted": true,
+    "attestation_sha256": "1f4bc0012e4b364097cb2c7a62e0f3bc115284708243fe63bcf84448511d8a97",
+    "qualification_sha256": "1a0ca5d7bf863afd08ee064efee7e92332995860c5cb7f6152b8c700fcf8ec62",
+    "profile_sha256": "fa3f8a1a8dae75e4024a55b96ea68bfc7692b7466fa74cf8f0a908a5ff4aa91b",
+    "review_evidence_class": "operator-accepted-local-history-observation",
+    "independent_original_author_proof": false,
+    "manual_signatures": 0,
+    "model_calls": 0,
+    "old_workflow_configuration_unchanged": true,
+    "old_workflow_preview": "WAITING_RECONCILIATION",
+    "canonical_product_retry_count": 0,
+    "old_unknown_reconciled": false,
+    "complete_standard_workflow": false
+  },
+  "validation_launch_recovery": {
+    "status": "PASS",
+    "scope": "Installed public historical recovery of the retained validation launch; no validation success or workflow continuation",
+    "candidate": "ce2803429b90dff460085a7ef9edca60f0fcfd24",
+    "archive_sha256": "4c6dcdd74ca69fa2666b01d34620abc05966f1e6e11fbd301040b9da71d39225",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/214",
+    "catalog_revision": 440,
+    "operation_id": "op_db22bc4c951bfde10a9794d744c8e2a8bf847843",
+    "record_sha256": "ed6d7a9f0532517c611b54e031e5c60fdfc516e2e2892e7c07fd92e5084e399a",
+    "attempts": 1,
+    "original_history_preserved": true,
+    "original_operation_receipt_effect_status": "unknown",
+    "original_instance_preserved": true,
+    "validation_command_status": "not_started",
+    "physical_owner_archived": true,
+    "resource_fence": "released",
+    "process_observations": [
+      {
+        "observed_at": "2026-11-23T15:37:39.652Z",
+        "active_count": 0,
+        "complete": true
+      },
+      {
+        "observed_at": "2026-11-23T15:37:41.408Z",
+        "active_count": 0,
+        "complete": true
+      }
+    ],
+    "repeat_execution_writes": 0,
+    "model_calls": 0,
+    "manual_signatures": 0,
+    "product_validation_executed": false,
+    "workflow_resumed": false,
+    "governance_admission": "PASS",
+    "gate_families": "PASS",
+    "perf_kpi": "PASS",
+    "complete_standard_workflow": false
+  },
+  "retained_validation_continuation": {
+    "status": "PASS",
+    "scope": "Installed compatible continuation through real product validation and accepted machine evaluation; task advancement and Native audit not qualified",
+    "candidate": "ea10b535518c450adea9d04cf4e96b15d01012ce",
+    "archive_sha256": "f20579f547c453013fbbd3937798b3bf9d65f91a3b4c05294b0607d4fe8a4ea4",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/215",
+    "merge_sha": "eda06d75cd42511a9eac5c39d33e224180aac9e0",
+    "catalog_revision": 442,
+    "configuration_sha256": "7539689736afeec89270869e5b73254bccf4fcdd55b8020bebd837b02feb3fc8",
+    "model_sha256": "15992ce61b441dbb942139f7d0f72f700a913c38beefea378e9a9afe80d1338e",
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "new_technical_instance": true,
+    "same_canonical_session": true,
+    "same_canonical_cycle": true,
+    "same_branch": true,
+    "original_instance_and_unknown_preserved": true,
+    "product_unchanged": true,
+    "accepted_operations": [
+      {
+        "binding": "workflow_entry_select",
+        "operation_id": "op_b24ddfadf26279f2e33e04f14ebb356c5c9cdb32",
+        "journal_sha256": "fb92c319bfb7082370471185ee78b6eacbe1f91ec2f1267b418939fc863359e3",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_retained_validation_admit",
+        "operation_id": "op_c312b202d924bfd46d755748c39b9625407e18dc",
+        "journal_sha256": "acafbdf7cccee4625e712c131604359c51e21dee2d3f96306a18c5f38d3af92c",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_work_phase_select",
+        "operation_id": "op_349f8490f09e2409e2b583500c578d8927efe640",
+        "journal_sha256": "0a7e5bd1b9c58f3e67726fa992581bf7646cc40dec433b771bcaff6c2ab68172",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_task_select",
+        "operation_id": "op_5bd65e1c3cabd2d9d774a9267df1b2876fcb66d1",
+        "journal_sha256": "7c07d0c42df2744faaf1aa33e6ede2265a0864c6659661a91cca4582bccbc16f",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_retained_task_work_observe",
+        "operation_id": "op_a12d91516bf9ef3b7fb1521472b4e3bf1319ce17",
+        "journal_sha256": "2f0820e82bb89c6533c367b772ac30207e6dc2ab77508111f06f01410eaa486f",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_validation_execute",
+        "operation_id": "op_39677a0d9f4cfe2180925532a58f1e74b7768800",
+        "journal_sha256": "fca0a2439c6e364659a03070de6e07cb8b5d75498bbc9b7e013474d40283b6fd",
+        "outcome": "completed",
+        "effect_status": "confirmed"
+      },
+      {
+        "binding": "cycle_validation_evaluate",
+        "operation_id": "op_7a995c1ca058c8fd7015855d59aeb9d6632afad5",
+        "journal_sha256": "8dcc6a9144186bba474aa9c9f36c47c3330ce09c3a57b82aa3ab7e6e1c7100e3",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      }
+    ],
+    "validation": {
+      "status": "PASS",
+      "operation_id": "op_39677a0d9f4cfe2180925532a58f1e74b7768800",
+      "manifest_sha256": "43bf3ce44e3559907075816050c74a18344f9876748693ef201db10be1f41ec8",
+      "product_sha256": "ed1fc8275ab99e7cd4e571b0419fbc2b57928bf93710b4d1da8709b956510c1a",
+      "proof_class": "native",
+      "witness_hashes_verified": true,
+      "checks": [
+        {
+          "test_ref": "TEST-001",
+          "status": "passed",
+          "exit_code": 0,
+          "termination_state": "confirmed",
+          "controller_active_processes": 0,
+          "child_active_processes": 0
+        }
+      ]
+    },
+    "preparation_correction": {
+      "status": "PASS",
+      "first_preview": "WORKFLOW_RUN_UNAVAILABLE",
+      "cause": "PEM bytes supplied to a DER SPKI byte port",
+      "same_ed25519_key": true,
+      "original_profile_sha256": "fa3f8a1a8dae75e4024a55b96ea68bfc7692b7466fa74cf8f0a908a5ff4aa91b",
+      "current_profile_sha256": "92177151ec0271ab5c4da9f1d338fcdfd3e12a21469dc5a22f31c1bc0ebcc99a",
+      "qualification_sha256": "1a0ca5d7bf863afd08ee064efee7e92332995860c5cb7f6152b8c700fcf8ec62",
+      "new_qualification_signature": false
+    },
+    "prior_contributors_retained": 2,
+    "new_mode_questions": 0,
+    "new_alignment_questions": 0,
+    "manual_signatures": 0,
+    "native_model_calls": 0,
+    "gate_families": "PASS",
+    "governance_admission": "PASS",
+    "perf_kpi": "PASS",
+    "complete_standard_workflow": false
+  },
+  "retained_task_advance_refusal": {
+    "status": "FAIL",
+    "candidate": "ea10b535518c450adea9d04cf4e96b15d01012ce",
+    "operation_id": "op_aea3142229dd1c5b1ca5344c0f3328b65d527e24",
+    "journal_sha256": "fc92fda6c62eb974aa1e2162fff786f1782933f1a5276af90cdc63a431734b29",
+    "reason_code": "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED",
+    "outcome": "blocked",
+    "effect_status": "no_effect",
+    "canonical_progress_writes": 0,
+    "effect_owner_pending": false,
+    "diagnosis": "Task advancement omitted its live-owner assertion during retained-work reobservation in the writer and host composition",
+    "correction_pull_request": "https://github.com/leuzeus/aidn/pull/216",
+    "correction_candidate": "07b345f36147c3cd00fe5cf4ba12b992d5843ad2",
+    "corrective_installed_qualification": "PASS",
+    "native_audit": "SKIP"
+  },
+  "closed_native_accounting": {
+    "responses": 12,
+    "bytes": 18355919,
+    "remaining_responses": 12,
+    "remaining_bytes": 48752945,
+    "source": "Retained earlier campaign accounting plus final signed closed allocation storage debits",
+    "new_allocation_count": 0,
+    "grant_expired": true
+  },
+  "task_owner_corrective_replay": {
+    "status": "PASS",
+    "scope": "Installed targeted continuation through real product validation, task progress, VERIFYING and independent-audit selection; Native audit has not run",
+    "candidate": "07b345f36147c3cd00fe5cf4ba12b992d5843ad2",
+    "archive_sha256": "f11c3dea73da55a7b6daacc53f2d0587e1cf7a383118ad5be70f13417d5ce360",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/216",
+    "merge_sha": "8236dff1e2208499fceaa97e66d87dadc39d39e8",
+    "catalog_revision": 443,
+    "configuration_sha256": "1b800c54564d5d0137179b378f95955b79a119480c7396505e4c621577e86ac7",
+    "model_sha256": "36e4c3e13461bced324990ee396dbb91a651d2b858483e0d332f4dbb7c805989",
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "new_technical_instance": true,
+    "original_instances_and_receipts_unchanged": true,
+    "session_unchanged": true,
+    "same_canonical_cycle": true,
+    "same_branch": true,
+    "product_unchanged": true,
+    "cycle_state": "VERIFYING",
+    "canonical_postimages_verified": 5,
+    "canonical_postimage_source": "postgres",
+    "effect_owner_pending": false,
+    "replayed_preconditions": [
+      "Current technical instance and source bindings",
+      "Retained-work authentication and task selection",
+      "Current validation receipt for changed execution/model pins"
+    ],
+    "reused": [
+      "Canonical session and owned cycle",
+      "Accepted COMMITTING and alignment",
+      "Original Native work and contributor identities",
+      "Qualified validator and signed review"
+    ],
+    "operations": [
+      {
+        "binding": "workflow_entry_select",
+        "operation_id": "op_5023c5922fecfad5b5fa1356af506956c3cdc80d",
+        "journal_sha256": "3a85a4540c3de2a4c9f874abf1e9cbbb6cfcf8d81e42ebdcbe27b788570face0",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_retained_validation_admit",
+        "operation_id": "op_510d2554f6de689615e07958e483449dcba94c8a",
+        "journal_sha256": "c5d3ca7f2812f7a21d55c19f1aa9c803dc0a8760d5c06d7699932a16c3d8434b",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_work_phase_select",
+        "operation_id": "op_ef5538abd88f52d94633f1d9d390d084d3f35946",
+        "journal_sha256": "efcf4f4e3a61b1c0ad4c5ed7e8ffe33f0ecc222c6fa3efe9cca027f91050782b",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_task_select",
+        "operation_id": "op_85cc7f9f0b6ff2bcd28107c3d3471b08f761e9b3",
+        "journal_sha256": "eecd601c304321e1c528846bf4b4da10c2e1e88a6a6f7cd7633c5a5696fe22ed",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_retained_task_work_observe",
+        "operation_id": "op_6c36e04b60fc80e51339404864468a8fc2d51748",
+        "journal_sha256": "e591468bfbea2bd497a707cac27cfd185769f49e3116247b256caa5bd3460f9d",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_validation_execute",
+        "operation_id": "op_f87288a2286e6b3a17cb4530306b2243165e74d9",
+        "journal_sha256": "4cdbafa8429324d74273459d90ca4f7fc5b9d8c087f27983967f17519c83ec6d",
+        "outcome": "completed",
+        "effect_status": "confirmed"
+      },
+      {
+        "binding": "cycle_validation_evaluate",
+        "operation_id": "op_0725c126072ba662e1ee06d92841bd8b9b8580a3",
+        "journal_sha256": "a74a4cb3ac955dc317df6552d56deb60dec25c2f3b8d276bc42b3abc7bef0f28",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_task_advance",
+        "operation_id": "op_42f3a82a5953efefa1d72abf2c6352e0b1e94631",
+        "journal_sha256": "d19486c0eb6531d3a02c4b870e832ef143c61e45813e11d854b63dd612482320",
+        "outcome": "completed",
+        "effect_status": "confirmed"
+      },
+      {
+        "binding": "cycle_validation_evaluate",
+        "operation_id": "op_2f956880bcd990cffb9e88b6f9d72cda20e5f4d9",
+        "journal_sha256": "a20bc687f68ddf0b01e4c9c2ffb02c969765981a2ef5aa6e86d2689c818ddb3b",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_verification_enter",
+        "operation_id": "op_67490170640e6ec8098d43cdcbcb3242a8cd8a0c",
+        "journal_sha256": "26948eee959fe7e98c3a54024a4230a849af13890c02b4fe31ebe6d7e326b743",
+        "outcome": "completed",
+        "effect_status": "confirmed"
+      },
+      {
+        "binding": "cycle_audit_select",
+        "operation_id": "op_ca5a1c8b1976e7bbbbb713829787e122bc706b3e",
+        "journal_sha256": "fec6cd4cf8b0115c21cafcdba02a4083d72f360b805d42f586c9175fcf7a49bd",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      }
+    ],
+    "validation": {
+      "status": "PASS",
+      "manifest_sha256": "4b246a4d1b587d2ec31391593b88b439b1c63f538c27638b33032bdb2525fe43",
+      "product_sha256": "ed1fc8275ab99e7cd4e571b0419fbc2b57928bf93710b4d1da8709b956510c1a",
+      "proof_class": "native",
+      "witness_hashes_verified": true,
+      "checks": [
+        {
+          "test_ref": "TEST-001",
+          "status": "passed",
+          "exit_code": 0,
+          "termination_state": "confirmed",
+          "controller_active_processes": 0,
+          "child_active_processes": 0
+        }
+      ]
+    },
+    "controlled_task_progress_checks": 20,
+    "controlled_retained_continuation_checks": 17,
+    "composed_two_task_sqlite_db_only": "PASS",
+    "composed_transport": "controlled_native_wire",
+    "governance_admission": "PASS",
+    "gate_families": "PASS",
+    "perf_kpi": "PASS",
+    "native_model_calls": 0,
+    "manual_signatures": 0,
+    "new_mode_questions": 0,
+    "new_alignment_questions": 0,
+    "native_audit": {
+      "status": "SKIP",
+      "reason": "Current explicit Native envelope requested in the chat after the earlier envelope expired"
+    },
+    "complete_standard_workflow": false
+  },
+  "audit_launch_recovery": {
+    "status": "PASS",
+    "scope": "Real zero-response audit-launch failure, owner retirement and installed application-port accounting reconciliation",
+    "original_candidate": "07b345f36147c3cd00fe5cf4ba12b992d5843ad2",
+    "original_archive_sha256": "f11c3dea73da55a7b6daacc53f2d0587e1cf7a383118ad5be70f13417d5ce360",
+    "first_attempt": {
+      "status": "FAIL",
+      "stage": "activity_output_context",
+      "public_code": "PROCESS_EXECUTION_FAILED",
+      "diagnostic_code": "STANDARD_HOST_HOME_REQUIRED",
+      "native_sessions": 0,
+      "native_responses": 0,
+      "storage_debit_bytes": 175493,
+      "active_processes": 0
+    },
+    "second_refusal": {
+      "status": "FAIL",
+      "code": "NATIVE_RECONCILIATION_REQUEST_INVALID",
+      "reason": "Sealed empty Native usage digest refused by the zero-response request schema"
+    },
+    "correction_pr": "https://github.com/leuzeus/aidn/pull/217",
+    "candidate": "9f9101de74e793f86a956f163588ce0636a5b93d",
+    "archive_sha256": "7cbcf4d5dfb12e36bacec8587c5a3c2f7d257e64c32b492aa13c6545918e6b3c",
+    "merge_sha": "a03c5562224c07b02a622a3fb9fe38a08847a30f",
+    "owner_retirement": "PASS",
+    "allocation_reconciliation": "allocation_reconciliation_confirmed",
+    "reconciliation_entry": "installed application recovery port",
+    "original_failure_preserved": true,
+    "original_allocations_unchanged": true,
+    "original_instance_unchanged": true,
+    "product_unchanged": true,
+    "real_closure_observation": "Windows Job and current OS process discovery; no Native session was allocated",
+    "original_unknown_validation_unchanged": true,
+    "consumption": {
+      "responses": 0,
+      "bytes": 175493,
+      "refund": false
+    },
+    "native_calls": 0,
+    "manual_signatures": 0,
+    "private_observation_sha256": "fd743bfb6e65647458b6fa6b78d65a0093b359f247a50fa554aafbc9ae9fb6f6",
+    "p0": false
+  },
+  "retained_verification_continuation": {
+    "status": "PASS",
+    "scope": "Installed public continuation of the same owned VERIFYING cycle to independent-audit authorization",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/218",
+    "merge_sha": "eaf6932998984a3e5c471f478bb72a8d54f7d260",
+    "candidate": "6e3db287e359508b648621e21f8a86d2335b264e",
+    "archive_sha256": "1f9da123f1698ce532c397d4df66d63e9181b75beb6c727ce561a3a6338033ab",
+    "catalog_revision": 448,
+    "configuration_sha256": "320dd3dbbe8fd4267031bff045ec9eadc3600bd6e44e80e4883d4306a3367e51",
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "new_technical_instance": true,
+    "source_context_sha256": "eebb3a9f1c6697ce060f324b6d78bb179c5a4693b7b47fd52bb5dcef68cb1abb",
+    "prototype_verdict": "GO_TECHNICAL_READONLY",
+    "source_reader": "PASS",
+    "source_refusals": [
+      "source digest",
+      "audit identity",
+      "criteria binding",
+      "validation digest"
+    ],
+    "original_validator_evidence": "passed",
+    "current_entry": "retained_verification",
+    "reused": [
+      "Owned canonical session and cycle",
+      "COMMITTING and accepted alignment",
+      "Implemented product and completed validation",
+      "Authenticated progression and VERIFYING transition",
+      "Both historical contributor identities"
+    ],
+    "operations": [
+      {
+        "binding": "workflow_entry_select",
+        "operation_id": "op_3f2550b155f8979ec1aa660eaa927a7b912e388c",
+        "journal_sha256": "022d458da84d88b4befbc94c8d766e4f5cb1fc05517ffc574db88688f476eb06",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_retained_verification_admit",
+        "operation_id": "op_74a278d88bdf0884c8a71c4d8f975eed23981988",
+        "journal_sha256": "2803fcef709a05af13fea5db2fd1ad7d390e68fcdea8f7ef6e1049af63cd8a7e",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_work_phase_select",
+        "operation_id": "op_54b9e208d4075b037511921647fada100713c390",
+        "journal_sha256": "25d7e849e63b6b1fb468a81a1f65f4b7b7f3b4a331fa8478a075fe70a28417af",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_audit_select",
+        "operation_id": "op_957a604943d020efc44eb9169a8dd0db5dfe8092",
+        "journal_sha256": "84ca8c8a8148dfa3589fe07208b19ef0bd5c6f37081d5459c3693545b79585b9",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      }
+    ],
+    "original_instances_and_receipts_unchanged": true,
+    "business_state_unchanged": true,
+    "product_unchanged": true,
+    "mode_questions": 0,
+    "alignment_questions": 0,
+    "validation_replays": 0,
+    "native_calls": 0,
+    "manual_signatures": 0,
+    "pure_contract_provider_reducer_checks": 14,
+    "governance_admission": "PASS",
+    "perf_kpi": "PASS",
+    "native_audit": {
+      "status": "SKIP",
+      "reason": "Awaiting applicable exact Native authorization for the corrected candidate"
+    },
+    "worker_environment_preflight": "PASS",
+    "operation_history_authenticated": true,
+    "canonical_sources": [
+      "postgres"
+    ],
+    "native_allocation_absent": true,
+    "private_observation_sha256": "a56b0ba8ddf1d62cc6b9d995be0ee9341919c2f62201d7938d9a0ce4058628b0",
+    "complete_standard_workflow": false
+  },
+  "current_native_balance": {
+    "consumed_responses": 16,
+    "consumed_bytes": 25044982,
+    "remaining_responses": 8,
+    "remaining_bytes": 42063882,
+    "candidate": "6cdd68154055d59b5c40d02e2dc0ea3ee337b60a",
+    "deadline_utc": "2026-11-24T01:23:20.826Z",
+    "configuration_sha256": "51f794d7652d003cca13866ca8ebac7a8ec13fb732a792874315e939f36fe6da",
+    "new_authorization": "ACTIVATED_FROM_OBSERVED_CHAT_CONSENT",
+    "counter_reset": false
+  },
+  "audit_attempt_on_retained_verification": {
+    "status": "FAIL",
+    "candidate": "6e3db287e359508b648621e21f8a86d2335b264e",
+    "configuration_sha256": "320dd3dbbe8fd4267031bff045ec9eadc3600bd6e44e80e4883d4306a3367e51",
+    "stage": "activity_output_context",
+    "first_failure": "PROCESS_EXECUTION_FAILED",
+    "precise_refusal": "STANDARD_RETAINED_VERIFICATION_SOURCE_CHANGED",
+    "audit_actor": "NOT_STARTED",
+    "native_responses": 0,
+    "classification": "product_failure_in_native_preparation",
+    "product_under_audit": "NOT_EVALUATED",
+    "cause": "The historical reader rejected the current Native dispatch effect owner as a pending foreign effect.",
+    "same_inputs_after_owner_retirement": "PASS",
+    "same_audit_context": true,
+    "process_tree_closed": true,
+    "active_processes": 0,
+    "original_history_unchanged": true,
+    "business_state_unchanged": true,
+    "product_unchanged": true,
+    "manual_signatures": 0,
+    "owner_retirement": {
+      "status": "PASS",
+      "entry": "public CLI"
+    },
+    "reconciliation": {
+      "status": "PASS",
+      "entry": "installed application recovery port",
+      "receipt_sha256": "bfc8f899a593deeed67e3900fc2b03ddce7a9bb98dd2356f15c7e7c6013fba89",
+      "original_failure_preserved": true,
+      "original_allocations_unchanged": true,
+      "consumption": {
+        "responses_observed": 0,
+        "response_sha256": [],
+        "storage_debit_bytes": 162125,
+        "native_usage_sha256": "91ca8e4c9d4920fc23a8ca55b6a212898789e98f49becd8f6e7e6b3322aa2eae"
+      }
+    },
+    "private_failure_observation_sha256": "aefc19e94c41800944ed372a734e6434d9d012e41e810aeee4eac30ce9f6debf",
+    "private_diagnosis_sha256": "947a80d49f9222253a48f7249a0b50f508445f8fc8c57afef4940f5dc0bcd236"
+  },
+  "retained_audit_owner_correction": {
+    "status": "PASS_TARGETED_CONTINUATION",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/219",
+    "candidate": "6cdd68154055d59b5c40d02e2dc0ea3ee337b60a",
+    "merge_sha": "ab0aa4e6f100647983faba707c349a77245984a7",
+    "archive_sha256": "bdda0ad2acd4141f10c2187a303f78dd8a5513aa899929da2dbfc338ed4d8c62",
+    "catalog_revision": 449,
+    "configuration_sha256": "51f794d7652d003cca13866ca8ebac7a8ec13fb732a792874315e939f36fe6da",
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "technical_instance": "new_instance_same_owned_session_and_cycle",
+    "scope": "Authenticate the current Native owner during retained historical reads; no general pending-owner exemption.",
+    "controls": [
+      "exact signed reserved allocation",
+      "authenticated running dispatch",
+      "live original process",
+      "exact physical lock",
+      "current canonical resource fence",
+      "reobservation after awaited historical reads"
+    ],
+    "source_reader": "PASS",
+    "installed_public_entry": "PASS",
+    "worker_environment_preflight": "PASS",
+    "operations": [
+      {
+        "binding": "workflow_entry_select",
+        "operation_id": "op_1987ea513bfee973a563d5819719ad4731cae906",
+        "journal_sha256": "fc3eca9e1334e462413d35dcaa7a72b1dcc7ae0476a5bf8900266b908bbd009f",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_retained_verification_admit",
+        "operation_id": "op_096eb68ab02883e2bf4fda99cf7c7b8d553f53e5",
+        "journal_sha256": "9f1c4114465ffae5895623ffb252542c93050fac803bf52f28387b1b41a3ae3e",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_work_phase_select",
+        "operation_id": "op_18a066a7c9422ff6e0f8d13f045da4772b447447",
+        "journal_sha256": "ab375c32e4b5b79318fa64de3c6e706e9c0c13832993117e04f5254dadd97b02",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      },
+      {
+        "binding": "cycle_audit_select",
+        "operation_id": "op_665ee4c888eb6dbf0713aeb92248ebd0d39926d8",
+        "journal_sha256": "96fda5d4f4efd89e9a68980a28c72ece77efeb9e0e445f9b88e1195ee8231eb2",
+        "outcome": "completed",
+        "effect_status": "no_effect"
+      }
+    ],
+    "original_instances_unchanged": true,
+    "prior_failed_audit_and_accounting_unchanged": true,
+    "business_state_unchanged": true,
+    "product_unchanged": true,
+    "source_context_sha256": "eebb3a9f1c6697ce060f324b6d78bb179c5a4693b7b47fd52bb5dcef68cb1abb",
+    "retained_contributors": 2,
+    "mode_questions": 0,
+    "alignment_questions": 0,
+    "validation_replays": 0,
+    "manual_signatures": 0,
+    "targeted_checks": {
+      "native_provenance_and_reconciliation_db_only": 90,
+      "new_retained_audit_owner_cases": 14,
+      "retained_verification": 14,
+      "retained_validation": 17,
+      "model_authority": 57,
+      "audit_context": 15,
+      "closure_review": 7
+    },
+    "validation_evidence": "Production canonical/physical ownership ports with an identified allocation fixture; genuine auditor execution is recorded separately below.",
+    "governance_route": "ASSURED",
+    "governance_admission": "PASS",
+    "perf_kpi": "PASS",
+    "native_audit": {
+      "status": "PASS",
+      "evidence": "genuine independent Native actor, separate fresh read-only context, authenticated by the original installed host",
+      "responses": 4,
+      "storage_debit_bytes": 6351445,
+      "process_tree_closed": true,
+      "active_processes": 0,
+      "report_sha256": "fb9fee18e37a45bef3e3f3708d03948dc0a04414779c2c83b4746ab52be5e52b",
+      "requirements_supported": 3,
+      "usages_supported": 3,
+      "informational_findings": 2,
+      "blocking_findings": 0,
+      "recommendation": "request_closure_review",
+      "private_observation_sha256": "7806369fe4c94b97f36752e2474c9c618a374851f4573f7b056201c3a3f6be73",
+      "authorizes_closure": false
+    },
+    "targeted_governance_audit": {
+      "profile": "TARGETED",
+      "attempt_outcome_integrity": "conformant",
+      "finding": "Reader-only preflight preceded acquisition and did not cover the owned worker boundary",
+      "scope": "same observed failure, bounded owner validation and unchanged provenance"
+    },
+    "private_observation_sha256": "0723a492d9ce31aea25211e46690d3ffd8269ade5a34c863aca951c9495875a2",
+    "complete_standard_workflow": false
+  },
+  "retained_audit_evaluation": {
+    "status": "FAIL",
+    "candidate": "6cdd68154055d59b5c40d02e2dc0ea3ee337b60a",
+    "operation_id": "op_75262701e422f84078912b94862d105afa050e21",
+    "journal_sha256": "eed63380328ad561c38c76d1d1bcd9cc67c87a9abd19a348b03cdc62f4721450",
+    "outcome": "blocked",
+    "effect_status": "no_effect",
+    "reason_code": "NATIVE_OWNER_RETIRED_WITNESS_CHANGED",
+    "classification": "product_failure_in_historical_witness_validation",
+    "audit_actor_result": "completed",
+    "historical_native_lock_bytes_unchanged": true,
+    "historical_native_lock_stable_identity_unchanged": true,
+    "changed_metadata_fields": [
+      "ctime_ns"
+    ],
+    "cause_boundary": "The archived retirement observer requires the old full change-time digest after a subsequent Native launch.",
+    "original_history_unchanged": true,
+    "business_state_unchanged": true,
+    "product_unchanged": true,
+    "private_observation_sha256": "074039ad51fd80fb6b7ec46612f041a18f4a9259e5dac7dd8fc2298e68e78c7a",
+    "correction_status": "delivered_as_220_and_221_original_refusal_preserved",
+    "prototype": {
+      "status": "PASS",
+      "public_continuation": false,
+      "canonical_writes": 0,
+      "native_calls": 0,
+      "blocking_findings": 0,
+      "evidence_sha256": "880871110fef1f30241a335a5c9a86cfc29b7786d4caa98ba66c0123fb39733d"
+    }
+  },
+  "retired_witness_metadata_correction": {
+    "status": "PASS",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/220",
+    "head": "8261d8fdc6cb089e09b3fe582850cc5ba4b69344",
+    "merge_sha": "294148f59448358168a0aef8513104bb4db6b2fd",
+    "scope": "Historical retired witness validates exact authenticated owner bytes and stable physical identity; later ctime-only metadata changes no longer invalidate an already retired witness.",
+    "original_retirement_records_unchanged": true,
+    "live_owner_full_identity_unchanged": true,
+    "checks": {
+      "native_provenance_and_reconciliation": 103,
+      "new_physical_witness_cases": 13,
+      "model_authority": 57,
+      "audit": 9,
+      "closure": 7
+    },
+    "governance_route": "ASSURED",
+    "governance_admission": "PASS",
+    "perf_kpi": "PASS"
+  },
+  "retained_audit_continuation": {
+    "status": "PASS_TARGETED_CONTINUATION",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/221",
+    "candidate": "202c249470d1449fe5412949a19ed232edba0c8b",
+    "head": "4bfeec635b812be4d9290f2ec6fbef540c75a683",
+    "merge_sha": "8c8867b93eb0851fecb03bd278d4800e3a288a45",
+    "candidate_and_head_tree": "e638bfe4d3198ca16d277cf22cf46fe475b3663c",
+    "archive_sha256": "7345ba19e22d7677e8f54b034e01e3045c3e48d115448c2003b67c9c74bf50a6",
+    "catalog_revision": 452,
+    "technical_instance": "new_instance_same_owned_session_and_cycle",
+    "scope": "Authenticate the retained genuine independent audit and its validation chain, then evaluate it through the current public entry without rerunning the actor.",
+    "prior_failed_evaluation_unchanged": true,
+    "original_native_accounting_unchanged": true,
+    "new_native_authorization": false,
+    "validation_replays": 0,
+    "mode_questions": 0,
+    "alignment_questions": 0,
+    "manual_signatures": 0,
+    "source_and_installed": [
+      {
+        "status": "PASS",
+        "mode": "source",
+        "candidate": "202c249470d1449fe5412949a19ed232edba0c8b",
+        "archive_sha256": "7345ba19e22d7677e8f54b034e01e3045c3e48d115448c2003b67c9c74bf50a6",
+        "configuration_sha256": "b3464f427f46f2819873c428e930e32032b03b0f8566cac44f4593c88bcb32e9",
+        "instance_sha256": "788938f0d35f8a955808cc4e37ca674a0d954e23548c92f1e50f5dafedce14e0",
+        "stage": "public_retained_audit_to_human_closure_review",
+        "canonical_backend": "postgres",
+        "state_mode": "db-only",
+        "original_history_unchanged": true,
+        "business_unchanged": true,
+        "product_unchanged": true,
+        "native_calls": 0,
+        "manual_signatures": 0,
+        "private_observation_sha256": "669552704b34c9804b9d5bee749e61953de0163fb3120a7d8097ee9419fc933b"
+      },
+      {
+        "status": "PASS",
+        "mode": "installed",
+        "candidate": "202c249470d1449fe5412949a19ed232edba0c8b",
+        "archive_sha256": "7345ba19e22d7677e8f54b034e01e3045c3e48d115448c2003b67c9c74bf50a6",
+        "configuration_sha256": "51f9d20efdb3bd5e35027e15e18ddeddb882f93f1b8dc354d0137fb257550c2d",
+        "instance_sha256": "48f8e33982a91be93c2fc595c53462147f0954c47380f16065e1257bd3992979",
+        "stage": "public_retained_audit_to_human_closure_review",
+        "canonical_backend": "postgres",
+        "state_mode": "db-only",
+        "original_history_unchanged": true,
+        "business_unchanged": true,
+        "product_unchanged": true,
+        "native_calls": 0,
+        "manual_signatures": 0,
+        "private_observation_sha256": "c340147aefbfd3aaf621e002458f591363e417506c7ba31f42a89e6477ef4cce"
+      }
+    ],
+    "checks": {
+      "new_retained_audit": 13,
+      "retained_verification": 14,
+      "retained_validation": 17,
+      "model_authority": 57,
+      "entry_selection": 7,
+      "audit": 9,
+      "closure_review": 7
+    },
+    "governance_route": "ASSURED",
+    "governance_admission": "PASS",
+    "perf_kpi": "PASS",
+    "ci_branch_policy": {
+      "initial_status": "FAIL",
+      "reason": "Missing integration merge ancestry",
+      "resolution": "Merged integration ancestry; candidate and final PR head have identical source trees; final admission PASS"
+    },
+    "actual_closure_decision": "PASS_RECORDED_ONCE_RECEIPT_ACCEPTANCE_FAILED",
+    "cycle_close": "NOT_YET_EXERCISED",
+    "session_delivery": "NOT_YET_EXERCISED",
+    "complete_standard_workflow": false
+  },
+  "closure_receipt_acceptance": {
+    "status": "FAIL",
+    "candidate": "202c249470d1449fe5412949a19ed232edba0c8b",
+    "archive_sha256": "7345ba19e22d7677e8f54b034e01e3045c3e48d115448c2003b67c9c74bf50a6",
+    "configuration_sha256": "51f9d20efdb3bd5e35027e15e18ddeddb882f93f1b8dc354d0137fb257550c2d",
+    "stage": "accept_completed_closure_receipt",
+    "reason_code": "PROCESS_OPERATION_AUTHORITY_TIMEOUT",
+    "operation_id": "op_c6e71b464a49e5020bf4626fd2e47a4eb9aa287c",
+    "question_sha256": "98abab6b4b7fda47bf49a20443f1603769e4aa4c4460f6c696bed1eda74c5d01",
+    "choice": "retain",
+    "human_results": 1,
+    "instance_receipt_accepted": false,
+    "public_cli_reproduction": true,
+    "manual_signatures": 0,
+    "native_calls": 0,
+    "original_history_unchanged": true,
+    "business_unchanged": true,
+    "private_evidence_sha256": "36ef719fd215232686353521a5bff881a834a8a9fc9e508de98b018cbc511b0e",
+    "timing_samples_ms": [
+      14289,
+      11985
+    ],
+    "correction": {
+      "pull_request": "https://github.com/leuzeus/aidn/pull/222",
+      "head": "1165e383cee22cba437426dd93cd9b4282754685",
+      "merge_sha": "1034627c4dff2eb370d2d41aac0315ff9ba1cf72",
+      "governance_admission": "PASS",
+      "perf_kpi": "PASS",
+      "prototype": {
+        "status": "PASS",
+        "kind": "isolated_readonly_held_cas",
+        "evidence_sha256": "abe1d8ba3fad7e045d0e0f769b3aab81ccdf46ed6fcc77f32d0a0d6d490b3579",
+        "canonical_writes": 0,
+        "native_calls": 0
+      },
+      "public_closure": "NOT_YET_EXERCISED"
+    }
+  },
+  "retained_closure_preparation": {
+    "status": "PASS_DRAFT_SOURCE_PREVIEW_SUPERSEDED",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/223",
+    "candidate": "a81fe148710b32b7784168ab7a1903ba57c1aa17",
+    "archive_sha256": "74ac185016492571568ac9e366c76cd8b183bead1ef844d94f0389c83b85d9df",
+    "catalog_revision": 455,
+    "prototype": {
+      "status": "PASS",
+      "canonical_writes": 0,
+      "native_calls": 0,
+      "source_evidence_sha256": "8a5f2544a077e377bf2e54111d7e617fdb004d12f365165b028d4b98c4e97539",
+      "negative_cases": [
+        {
+          "name": "altered original configuration",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_CONFIGURATION_CHANGED"
+        },
+        {
+          "name": "different original boundary",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_BOUNDARY_CHANGED"
+        },
+        {
+          "name": "cancelled read",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_CANCELLED"
+        },
+        {
+          "name": "untrusted ownership claim",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_OWNER_UNSETTLED"
+        },
+        {
+          "name": "changed validation checks",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_VALIDATION_CHANGED"
+        }
+      ],
+      "negative_evidence_sha256": "d42f32f83bd2b6624a302966cc15492c5844c53fdff01f3b734bef7ccf968ed3"
+    },
+    "user_decision_preserved": true,
+    "new_closure_questions": 0,
+    "manual_signatures": 0,
+    "public_source": "PASS",
+    "public_installed": "SKIP_SUPERSEDED_BEFORE_INSTALLED_TEST",
+    "actual_close": "NOT_YET_EXERCISED",
+    "complete_standard_workflow": false,
+    "superseded_by": "1a3cbeb7fc5cf3493667903e8bcb883ca077bfc5"
+  },
+  "retained_closure_continuation": {
+    "status": "PASS_CYCLE_CLOSE_COMPLETED",
+    "pull_request": "https://github.com/leuzeus/aidn/pull/223",
+    "candidate": "1a3cbeb7fc5cf3493667903e8bcb883ca077bfc5",
+    "merge_sha": "3de69b9b476ab644c8a02051c7b3f79d89c45a51",
+    "archive_sha256": "233bf3264bf412395746ff7732abae91a7ff5359ea2549a7844874f0540fb52a",
+    "catalog_revision": 456,
+    "technical_instance": "new_instance_same_owned_session_and_cycle",
+    "original_closure_receipt": "unchanged_unaccepted_original_observed_as_retained_source",
+    "user_decision_preserved": true,
+    "new_closure_questions": 0,
+    "manual_signatures": 0,
+    "new_native_calls": 0,
+    "source_and_installed": [
+      {
+        "status": "PASS",
+        "mode": "source",
+        "candidate": "1a3cbeb7fc5cf3493667903e8bcb883ca077bfc5",
+        "archive_sha256": "233bf3264bf412395746ff7732abae91a7ff5359ea2549a7844874f0540fb52a",
+        "configuration_sha256": "79d89f8c9dab7e9bc14579cae9a6a33c3b699eca004d678548967f7607d32076",
+        "instance_sha256": "1f647ecb562d8d7273019909aa903ffcdce052001f1747fdda5cef1b80bccd31",
+        "stage": "public_retained_decision_to_close_preview",
+        "canonical_backend": "postgres",
+        "state_mode": "db-only",
+        "original_history_unchanged": true,
+        "business_unchanged": true,
+        "product_unchanged": true,
+        "native_calls": 0,
+        "manual_signatures": 0,
+        "new_closure_questions": 0,
+        "private_evidence_sha256": "0d37af683f087c0182240c3066be452eb0d400f33a8fe29bb33878df2ad846b5"
+      },
+      {
+        "status": "PASS",
+        "mode": "installed",
+        "candidate": "1a3cbeb7fc5cf3493667903e8bcb883ca077bfc5",
+        "archive_sha256": "233bf3264bf412395746ff7732abae91a7ff5359ea2549a7844874f0540fb52a",
+        "configuration_sha256": "40b840815351688690cf56f876bcfed966289f5c8637e506817449be0b689f62",
+        "instance_sha256": "c79e433f75e41b9bffa68cc9488c4536ef6eb5d74d614bf85dfae3788a92cba6",
+        "stage": "public_retained_decision_to_close_preview",
+        "canonical_backend": "postgres",
+        "state_mode": "db-only",
+        "original_history_unchanged": true,
+        "business_unchanged": true,
+        "product_unchanged": true,
+        "native_calls": 0,
+        "manual_signatures": 0,
+        "new_closure_questions": 0,
+        "private_evidence_sha256": "69481727e1d583ba01613efa2e799f5f2618c73bae95951363e0cce896d9ab89"
+      }
+    ],
+    "recorded_source_probe": {
+      "status": "PASS",
+      "same_proof_as_fresh_reader": true,
+      "private_evidence_sha256": "765f8ae8ed028ab43c02cbb3e4856bcd672fb4c7a5b0a265e0a9f7a4255a2873",
+      "negative_evidence_sha256": "d42f32f83bd2b6624a302966cc15492c5844c53fdff01f3b734bef7ccf968ed3",
+      "negative_cases": [
+        {
+          "name": "altered original configuration",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_CONFIGURATION_CHANGED"
+        },
+        {
+          "name": "different original boundary",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_BOUNDARY_CHANGED"
+        },
+        {
+          "name": "cancelled read",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_CANCELLED"
+        },
+        {
+          "name": "untrusted ownership claim",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_OWNER_UNSETTLED"
+        },
+        {
+          "name": "changed validation checks",
+          "status": "PASS",
+          "reason_code": "STANDARD_RETAINED_CLOSURE_VALIDATION_CHANGED"
+        }
+      ]
+    },
+    "checks": {
+      "retained_closure": 23,
+      "retained_audit": 13,
+      "retained_verification": 14,
+      "model_authority": 57,
+      "sqlite_db_only_terminal_and_final_hook_component": 7
+    },
+    "governance_route": "ASSURED",
+    "governance_admission": "PASS",
+    "perf_kpi": "PASS",
+    "actual_close": "PASS",
+    "complete_standard_workflow": false,
+    "terminal_observation": {
+      "status": "PASS",
+      "canonical_backend": "postgres",
+      "state_mode": "db-only",
+      "cycle_state": "DONE",
+      "head": "6871af7521940cd0498f831a82291b0c8a318138",
+      "instance_sha256": "ba39129a116e3570b72de7af5189db2a2813ff618fa83afbc1b5d68f08bc8138",
+      "context_sha256": "3b7abe94008d795852f9be78552d93f996aa930dd3f823ba50a4bccc4ae03149",
+      "effects": [
+        {
+          "binding": "cycle_close_record",
+          "operation_id": "op_bc2bab5f48a896c601887c3ee64abb11118bddaa",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "confirmed",
+          "accepted": true
+        },
+        {
+          "binding": "cycle_terminal_checkpoint",
+          "operation_id": "op_2a25fefecc47f57e44103665d9310e38b114a8b7",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "confirmed",
+          "accepted": true
+        }
+      ],
+      "original_history_unchanged": true,
+      "product_unchanged": true,
+      "new_closure_questions": 0,
+      "manual_signatures": 0,
+      "owner_pending": false,
+      "private_evidence_sha256": "3b17ed4b0e9f88d8fa93aa69db15d4c1e452ea6abcaec6fe5583cc4090b5defc",
+      "independent_git_observation": {
+        "head": "6871af7521940cd0498f831a82291b0c8a318138",
+        "worktree_clean": true
+      }
+    },
+    "next_boundary": {
+      "status": "FAIL",
+      "operation": "baseline_promotion_decision",
+      "phase": "preview",
+      "error": "PROCESS_JOURNAL_NOT_AUTHENTICATED",
+      "business_effect_dispatched": false,
+      "private_first_failure_sha256": "a95e6cf0d6a5915274853ac5493cc1981666935e476a62478fc54974707906af",
+      "cause": "The promotion reader opens the retained Human journal with the current instance signing key after the terminal reader has already authenticated its original provenance.",
+      "prototype": {
+        "status": "PASS",
+        "kind": "read_only_private_module",
+        "same_actual_closure": true,
+        "new_questions": 0,
+        "manual_signatures": 0,
+        "old_instances_unchanged": true,
+        "current_instance_unchanged": true,
+        "business_unchanged": true,
+        "native_unchanged": true,
+        "evidence_sha256": "757c893e6ab339cf20b5e2659d103cdfbff0eb1e2baaa06c0048f50cbb0a429d",
+        "public_continuation": false
+      }
+    },
+    "r05": {
+      "status": "PASS",
+      "native_responses": 1,
+      "storage_debit_bytes": 2609406,
+      "worker_storage_debit_bytes": 2603617,
+      "elapsed_global_ms": 97374,
+      "journal_sha256": "2adc3b4695e8629c2114fda59b7cbd70d5494253fa4e7e2f46aa2e2a189d1f43",
+      "active_processes": 0,
+      "report_verdict": "none",
+      "recommendation": "continue",
+      "current_signal": "objective_delta",
+      "human_confirmation": {
+        "status": "PASS",
+        "choice": "confirm_alignment",
+        "operation_id": "op_7caf36a3a2584d41cf2792e6cf9d8d0f6a23ba7c",
+        "receipt_id": "receipt_7caf36a3a2584d41cf2792e6cf9d8d0f6a23ba7c",
+        "question_sha256": "748ebca0943e3b631fbb15c514e056bc2f1e17baa5a5cf882ee38941692d159a",
+        "results": 1,
+        "same_receipt_on_redelivery": true,
+        "manual_signatures": 0,
+        "independent_original_author_proof": false,
+        "private_evidence_sha256": "7422a95c7dc02b171469e6cdc01bae6c081f771bcbf45dcd0911624ef688b2c2"
+      },
+      "finalization": {
+        "operation_id": "op_da7d1c7b40168a97ce0e629d1e4d132bcaa04e63",
+        "effect_status": "confirmed",
+        "outcome": "completed"
+      },
+      "remaining_native_budget": {
+        "responses": 7,
+        "bytes": 39454476,
+        "deadline_utc": "2026-11-24T03:44:14.975Z"
+      },
+      "native_evidence_sha256": "ab546004da8b4d4eac3d297a9da01728697a1a2c64a7a22c96e128f2e63ca814",
+      "finalization_evidence_sha256": "fbbfe87f59717da1440df14054f810798d387309e27b11d7eb1c3424f5028e58",
+      "no_second_completion_question": true
+    },
+    "final_hook": {
+      "status": "PASS",
+      "canonical_backend": "postgres",
+      "state_mode": "db-only",
+      "cycle_state": "DONE",
+      "context_sha256": "f522a2fa22e497edc5da7b21c9d6c133f6a99941b2a575a77dc44200ebf9b0c1",
+      "head": "6871af7521940cd0498f831a82291b0c8a318138",
+      "worktree_clean": true,
+      "owner_pending": false,
+      "operation_id": "op_33072aa2229c82e02bd914118d7d01c82ae57744",
+      "outcome": "completed",
+      "effect_status": "confirmed",
+      "facts": {
+        "cycle_close_completed": true,
+        "cycle_retained": true
+      },
+      "receipt_id": "receipt_33072aa2229c82e02bd914118d7d01c82ae57744",
+      "receipt_question_unchanged": true,
+      "private_finalization_evidence_sha256": "4cd0b6417ab92fd8475109ddac95ea3d97f8747182158a0261e3ee6fff23a2f5",
+      "physical_closure_evidence_verified": true,
+      "physical_reader_evidence_sha256": "757c893e6ab339cf20b5e2659d103cdfbff0eb1e2baaa06c0048f50cbb0a429d"
+    }
+  },
+  "retained_completion_continuation": {
+    "status": "PASS_PUBLIC_PROMOTION_REVIEW",
+    "provenance_fix": {
+      "pr": 224,
+      "candidate": "bf3ccf0a6a4734e8200188e27401edfa6f06b1a0",
+      "merge_commit": "95923028dfeb7bc2cb75044d53e8625db4a96c5c",
+      "governance_admission": "PASS",
+      "perf_kpi": "PASS"
+    },
+    "entry_delivery": {
+      "pr": 225,
+      "candidate": "198b4dbc67a521b94369ab1ea44971463d781d2d",
+      "merge_commit": "bdff9cc5646ee81a8e2946437ff159becb85eefb",
+      "archive_sha256": "a2a85e9dcfe2fc6cc8396975e27ef776d1473a60024c2ea1fdcd5fa2cf5ba2cc",
+      "catalog_revision": 461,
+      "governance_route": "ASSURED",
+      "governance_admission": "PASS",
+      "perf_kpi": "PASS"
+    },
+    "runs": [
+      {
+        "status": "PASS",
+        "mode": "source",
+        "candidate": "198b4dbc67a521b94369ab1ea44971463d781d2d",
+        "archive_sha256": "a2a85e9dcfe2fc6cc8396975e27ef776d1473a60024c2ea1fdcd5fa2cf5ba2cc",
+        "configuration_sha256": "242d8d7650d5cbaf910334b92b85c6cd7c26a8d0039d6b0ff12add73b84b5c3e",
+        "instance_sha256": "93ee6ee7137f5363f262ee7ae9b3e866d6aec33dab0307db9b7abad97a110530",
+        "stage": "public_completed_cycle_to_promotion_review",
+        "canonical_backend": "postgres",
+        "state_mode": "db-only",
+        "original_history_unchanged": true,
+        "business_unchanged": true,
+        "product_unchanged": true,
+        "native_calls": 0,
+        "manual_signatures": 0,
+        "new_closure_questions": 0,
+        "private_evidence_sha256": "f0f1de71e7242ca8480ab8c8828c80812492a46643d5a322c22e4f3887490038"
+      },
+      {
+        "status": "PASS",
+        "mode": "installed",
+        "candidate": "198b4dbc67a521b94369ab1ea44971463d781d2d",
+        "archive_sha256": "a2a85e9dcfe2fc6cc8396975e27ef776d1473a60024c2ea1fdcd5fa2cf5ba2cc",
+        "configuration_sha256": "d0ce1d5e6d412f58e66b939faed786626c3335f5999286ced3a81311dbe2a833",
+        "instance_sha256": "6a1647e9d352ccea4b250de1e43138752e5d73f6653672b7498b2b26ae19b276",
+        "stage": "public_completed_cycle_to_promotion_review",
+        "canonical_backend": "postgres",
+        "state_mode": "db-only",
+        "original_history_unchanged": true,
+        "business_unchanged": true,
+        "product_unchanged": true,
+        "native_calls": 0,
+        "manual_signatures": 0,
+        "new_closure_questions": 0,
+        "private_evidence_sha256": "b2e0b194c84a271471919de610170a545f2f08c1c21051802f5e628d4faf7322"
+      }
+    ],
+    "source_probe": {
+      "status": "PASS",
+      "negative_cases": 4,
+      "private_evidence_sha256": "c3112c8bbaa8caed056fe076f1ced5729ba24dcd83e28eb2b28574849b90c95d"
+    },
+    "checks": {
+      "completion_routing": 9,
+      "retained_closure": 23,
+      "baseline_authority": 9,
+      "model_authority": 57,
+      "binding_input_checks": 6,
+      "binding_input_boundaries": 91,
+      "composition": 69,
+      "documentation": "PASS",
+      "sensitivity": "PASS"
+    },
+    "human_promotion": {
+      "status": "PASS",
+      "choice": "promote",
+      "operation_id": "op_ee70ce7e5390067178e027c4900fc1494d258a2e",
+      "receipt_id": "receipt_ee70ce7e5390067178e027c4900fc1494d258a2e",
+      "question_sha256": "4bc380a80577f32ffd1fc480d42df3a322107bbc2429286f8d1297139f33a2a8",
+      "results": 1,
+      "same_receipt_on_redelivery": true,
+      "manual_signatures": 0,
+      "independent_original_author_proof": false,
+      "private_evidence_sha256": "b909c68212cf96a262813126ea0ca63d0f5f7921ccb5bdbf4e966895745865ef"
+    },
+    "promotion_effect": {
+      "status": "PASS_RECORD_AND_CHECKPOINT",
+      "effects": [
+        {
+          "binding": "baseline_promotion_decision",
+          "operation_id": "op_ee70ce7e5390067178e027c4900fc1494d258a2e",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "no_effect",
+          "accepted": true
+        },
+        {
+          "binding": "baseline_promotion_record",
+          "operation_id": "op_9d6fce525ad1498679def84df4e26d006e5f2254",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "confirmed",
+          "accepted": true
+        },
+        {
+          "binding": "baseline_promotion_checkpoint",
+          "operation_id": "op_478f4537858421d1fc06fbc210cac5dfbc4c4f1e",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "confirmed",
+          "accepted": true
+        }
+      ],
+      "baseline_sha256": "5c6b5b1b119bc606bcc894fa441a3667fdd0754e1082ae83bba3f82b6711bec3",
+      "history_sha256": "146275af2526cdfaf6d0a2970361298b80ee798f03428629d73eb6404468b94e",
+      "canonical_backend": "postgres",
+      "state_mode": "db-only",
+      "cycle_state": "DONE",
+      "head": "6871af7521940cd0498f831a82291b0c8a318138",
+      "git_checkpoint": {
+        "status": "no_change",
+        "head": "6871af7521940cd0498f831a82291b0c8a318138",
+        "effect_status": "no_effect"
+      },
+      "owner_pending": false,
+      "original_history_unchanged": true,
+      "product_unchanged": true,
+      "new_closure_questions": 0,
+      "manual_signatures": 0,
+      "promotion_hook": "BLOCKED_BEFORE_FINALIZATION",
+      "private_evidence_sha256": "bdca5b0e86799ae82faa9b9d5162cadcea9d24c716906aba32af29e37f1e8ddb"
+    },
+    "complete_standard_workflow": false,
+    "next_boundary": {
+      "kind": "retained_promotion_continuation_required",
+      "native_responses_used_on_this_candidate": 1,
+      "campaign_responses_used": 18,
+      "remaining_responses": 6,
+      "remaining_output_bytes": 36693871
+    },
+    "promotion_r05": {
+      "status": "PASS_NATIVE_DIAGNOSIS_FAIL_FINALIZATION",
+      "candidate": "198b4dbc67a521b94369ab1ea44971463d781d2d",
+      "native": {
+        "responses": 1,
+        "output_bytes": 2760605,
+        "active_processes": 0,
+        "closed": true,
+        "drift": "none",
+        "context_complete": true,
+        "private_evidence_sha256": "41a797c86f5701b4ba4fe12eb9fa4cd8e2500faa63c33bad0a7f86bc3095eaad"
+      },
+      "first_refusal": {
+        "operation_id": "op_27b2230d12842eab07df32adc63cb1c9b264ac05",
+        "outcome": "blocked",
+        "effect_status": "no_effect",
+        "reason_code": "STANDARD_DRIFT_GATE_BLOCKED",
+        "signal": "objective_delta",
+        "private_evidence_sha256": "305948a60d04416448b7995f9b9a98dfaa5963752cab2c84e51be5b7136b9ca1"
+      },
+      "original_alignment_preserved": true,
+      "new_questions": 0,
+      "manual_signatures": 0
+    },
+    "objective_reuse_prototype": {
+      "status": "PASS_PREPARATION_ONLY",
+      "candidate": "cb309014ff87f8b732c9c9d72da6b5b071fa30f8",
+      "pr": 226,
+      "technical_verdict": "GO_SCOPED_REUSE_PREPARATION",
+      "negative_scope_cases": 7,
+      "scope_fixture_checks": 19,
+      "effect_fence_checks": 28,
+      "completion_checks": 49,
+      "original_human_authenticated": true,
+      "physical_completion_authenticated": true,
+      "new_questions": 0,
+      "manual_signatures": 0,
+      "model_calls": 0,
+      "business_effects": 0,
+      "public_continuation": "NOT_RUN",
+      "private_evidence_sha256": "6100b215ad1f8f80c5b26bcc1c317d9a1e7f36d35061fdbce00356e80ce0dc11",
+      "merge_commit": "0ee642a35ea51b0e76f2cf7a517c03fc4c7b75f6",
+      "governance_admission": "PASS",
+      "perf_kpi": "PASS"
+    }
+  },
+  "retained_promotion_continuation": {
+    "status": "PASS_RETAINED_PROMOTION_FINALIZATION",
+    "entry_delivery": {
+      "pr": 227,
+      "candidate": "a07a5864d1238d1d35f18b390230e6d9b28e64ef",
+      "pr_head": "37fe1976b59738505af4083bbeba61c18cc23899",
+      "pr_head_tree_identical": true,
+      "merged_tree_identical": true,
+      "git_tree_sha256": "52db8ab2fd46fbc5e95ed0a5e29bd0c5816cd733",
+      "merge_commit": "40978667c62fe1b7b5563aaebcd134c5aade4a84",
+      "archive_sha256": "787daa1f31ebfc137e6a8ebd30cc2aea4cc0934772a5984cccbaa3234a382e12",
+      "catalog_revision": 465,
+      "governance_route": "ASSURED",
+      "governance_admission": "PASS",
+      "perf_kpi": "PASS"
+    },
+    "runs": [
+      {
+        "status": "PASS",
+        "mode": "source",
+        "candidate": "a07a5864d1238d1d35f18b390230e6d9b28e64ef",
+        "archive_sha256": "787daa1f31ebfc137e6a8ebd30cc2aea4cc0934772a5984cccbaa3234a382e12",
+        "configuration_sha256": "0fa6f58212063f2093772dbfdb1c178560323d4424ecdaede2c1a9b8fc8ae77c",
+        "instance_sha256": "6a666a52464b5a048c082bbf5fbaac9e979b4b4de5b16d12ae85dfb0d19a7a53",
+        "stage": "public_recorded_promotion_to_r05_finalization",
+        "canonical_backend": "postgres",
+        "state_mode": "db-only",
+        "original_history_unchanged": true,
+        "business_unchanged": true,
+        "product_unchanged": true,
+        "native_calls": 0,
+        "new_questions": 0,
+        "manual_signatures": 0,
+        "private_evidence_sha256": "d85420b5bb977573a64cc5a6469f31dbc65be23d3b2e0ca4b60d50f7b8c026ff"
+      },
+      {
+        "status": "PASS",
+        "mode": "installed",
+        "candidate": "a07a5864d1238d1d35f18b390230e6d9b28e64ef",
+        "archive_sha256": "787daa1f31ebfc137e6a8ebd30cc2aea4cc0934772a5984cccbaa3234a382e12",
+        "configuration_sha256": "4ecbd49aaaf2bc11519628898ce18ebed0d36a2e750dd0dea6fc8adcf538e60e",
+        "instance_sha256": "f63f9ee315395b36179795ae4a36d707d5970caef1c0f2585aaa4c3fb629217c",
+        "stage": "public_recorded_promotion_to_r05_finalization",
+        "canonical_backend": "postgres",
+        "state_mode": "db-only",
+        "original_history_unchanged": true,
+        "business_unchanged": true,
+        "product_unchanged": true,
+        "native_calls": 0,
+        "new_questions": 0,
+        "manual_signatures": 0,
+        "private_evidence_sha256": "abd7854e7c88ba43150b6fbb4d1b492be8508c456f33daf71ebca2f6d2d548c3"
+      }
+    ],
+    "source_probe": {
+      "status": "PASS_READ_ONLY_BOUNDARY",
+      "negative_cases": 7,
+      "private_evidence_sha256": "f9cf91ba18a2da1b70978b11b756d6552954eaaaf976bfb7d9ac2bdffa940581"
+    },
+    "checks": {
+      "routing_and_contracts": 9,
+      "objective_scope": 19,
+      "retained_completion": 9,
+      "composition": 69,
+      "binding_inputs": 6,
+      "binding_input_boundaries": 91,
+      "sqlite_promotion_hook": 5,
+      "documentation": "PASS",
+      "policies": "PASS",
+      "sensitivity": "PASS"
+    },
+    "original_alignment_authenticated": true,
+    "original_promotion_authenticated": true,
+    "first_refusal_preserved": true,
+    "manual_signatures": 0,
+    "complete_standard_workflow": false,
+    "finalization": {
+      "status": "PASS",
+      "drift": {
+        "binding": "drift_check_finalize",
+        "operation_id": "op_a2577190a447fce90b57e5d107e321b974e5e542",
+        "phase": "receipted",
+        "outcome": "completed",
+        "effect_status": "confirmed",
+        "accepted": true,
+        "reason_code": null
+      },
+      "promotion": {
+        "binding": "baseline_promotion_finalize",
+        "operation_id": "op_a1f7b622bbf5a4057114231b59de5aca7033748e",
+        "phase": "receipted",
+        "outcome": "completed",
+        "effect_status": "confirmed",
+        "accepted": true,
+        "reason_code": null
+      },
+      "operations": [
+        {
+          "binding": "workflow_entry_select",
+          "operation_id": "op_470c20119ff289a213ba7979202a1045e0ba8c75",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "no_effect",
+          "accepted": true,
+          "reason_code": null
+        },
+        {
+          "binding": "cycle_close_completed_select",
+          "operation_id": "op_42991f1b5f96c67543d85685c8c5353734680070",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "no_effect",
+          "accepted": true,
+          "reason_code": null
+        },
+        {
+          "binding": "drift_check_finalize",
+          "operation_id": "op_a2577190a447fce90b57e5d107e321b974e5e542",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "confirmed",
+          "accepted": true,
+          "reason_code": null
+        },
+        {
+          "binding": "baseline_promotion_finalize",
+          "operation_id": "op_a1f7b622bbf5a4057114231b59de5aca7033748e",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "confirmed",
+          "accepted": true,
+          "reason_code": null
+        },
+        {
+          "binding": "session_preclose_checkpoint",
+          "operation_id": "op_0b6a5e85889e040505d05e7fd52d0f29bfea64f9",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "confirmed",
+          "accepted": true,
+          "reason_code": null
+        },
+        {
+          "binding": "session_close_admit",
+          "operation_id": "op_e14cc15bc3666149a6c17a4c0c22ab9d93c889fa",
+          "phase": "receipted",
+          "outcome": "completed",
+          "effect_status": "no_effect",
+          "accepted": true,
+          "reason_code": null
+        }
+      ],
+      "canonical_backend": "postgres",
+      "state_mode": "db-only",
+      "head": "6871af7521940cd0498f831a82291b0c8a318138",
+      "git_clean": true,
+      "owner_pending": false,
+      "original_history_unchanged": true,
+      "product_unchanged": true,
+      "new_questions": 0,
+      "manual_signatures": 0,
+      "native_calls": 0,
+      "private_evidence_sha256": "c878505dbf29fab15e269335b3d9553caea209ca6b86ae848ca13ea4c423309a",
+      "canonical_postimages": {
+        "current_sha256": "7c19fb339c06926e07df4d5553e3f57c753ebe9b65d6a4fe61c61aad7c84390e",
+        "baseline_sha256": "5063d2c102a3863e6cdc722df6788a103e1f602ff9107f0924057359caba7fa2",
+        "history_sha256": "788028c8105ae7f1ef4c9194879f62d135771d685bc12ae0b8c4c0326db9863a",
+        "one_promotion_entry": true,
+        "one_completion_confirmation": true
+      }
+    },
+    "next_boundary": {
+      "kind": "native",
+      "binding": null,
+      "requirements": [
+        "EXPLICIT_EXECUTION_AUTHORIZATION_REQUIRED"
+      ],
+      "errors": [],
+      "campaign_responses_used": 18,
+      "remaining_responses": 6,
+      "remaining_output_bytes": 36693871
+    },
+    "physical_observation": {
+      "status": "PASS",
+      "canonical_backend": "postgres",
+      "state_mode": "db-only",
+      "witnesses": [
+        {
+          "event": "drift_check_completed",
+          "run_id": "process_drift_op_a2577190a447fce90b57e5d107e321b974e5e542",
+          "sha256": "d641dbc51387b712839daf22bb60212be311759576ec0ef44336b73eba1b29af",
+          "matches": 1,
+          "offset": 6583
+        },
+        {
+          "event": "checkpoint_summary",
+          "run_id": "process_promote_a1f7b622bbf5a4057114231b59de5aca7033748e",
+          "sha256": "378fe645c67d6538cdebf1cff0ffd3cb3cbc315d8c0fa716ff090e3bc5524e71",
+          "matches": 1,
+          "offset": 8206
+        }
+      ],
+      "canonical_report_sha256": "a35e74654da0590ad6a50742d125bdbf9ead03af3f0542c7d1eb6d7d41f4a088",
+      "canonical_postimages": {
+        "baseline/current.md": "5063d2c102a3863e6cdc722df6788a103e1f602ff9107f0924057359caba7fa2",
+        "baseline/history.md": "788028c8105ae7f1ef4c9194879f62d135771d685bc12ae0b8c4c0326db9863a",
+        "snapshots/context-snapshot.md": "8f18317233ffd8003462b8bd6d45fdb91dd2822167ca6e7917c632f25380f159",
+        "index.md": "775ce7baa5e6e74f23da7629b01e7c0327336b85056aede0ba48fd5759933619",
+        "CURRENT-STATE.md": "7c19fb339c06926e07df4d5553e3f57c753ebe9b65d6a4fe61c61aad7c84390e"
+      },
+      "original_alignment_timestamp_preserved": true,
+      "owner_pending": false,
+      "private_evidence_sha256": "1f2fc998a00ad60633ea555c26b48ad3f9480f8dc972ce88704f5188ee457d34"
+    }
+  },
+  "session_closure_continuation": {
+    "status": "FAIL_SESSION_CLOSURE_RECEIPT_ACCEPTANCE",
+    "candidate": "a07a5864d1238d1d35f18b390230e6d9b28e64ef",
+    "archive_sha256": "787daa1f31ebfc137e6a8ebd30cc2aea4cc0934772a5984cccbaa3234a382e12",
+    "configuration_sha256": "4ecbd49aaaf2bc11519628898ce18ebed0d36a2e750dd0dea6fc8adcf538e60e",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "native": {
+      "status": "PASS",
+      "responses": 1,
+      "output_bytes": 2791507,
+      "closed": true,
+      "active_processes": 0,
+      "drift": "none",
+      "context_complete": true,
+      "recommendation": "continue",
+      "private_evidence_sha256": "2cbfac293e9dac4e4bfeb7b69046b19936cd332278d3593b120bcbbc4cd1fc01"
+    },
+    "consent": {
+      "evidence_class": "operator-accepted-local-history-observation",
+      "independent_original_author_proof": false,
+      "manual_signature_steps": 0,
+      "private_evidence_sha256": "4b666805427c1b4101fe84f9f0f043a3876b52ce2eac5038f6233b9b7d848cc9"
+    },
+    "budget": {
+      "cumulative": {
+        "responses": 19,
+        "bytes": 33206500
+      },
+      "remaining": {
+        "responses": 5,
+        "bytes": 33902364
+      },
+      "deadline": "2026-11-24T18:12:02.350Z"
+    },
+    "original_history_unchanged": true,
+    "product_unchanged": true,
+    "manual_signatures": 0,
+    "complete_standard_workflow": false,
+    "drift_finalization": {
+      "status": "PASS",
+      "operation_id": "op_995145ca754e9da648d6c35893a8999c8733f1b5",
+      "outcome": "completed",
+      "effect_status": "confirmed",
+      "owner_pending": false,
+      "private_evidence_sha256": "c7f31b80dcbe7f0aa5014a605b6412c9f47f36c2e8781a5e3aea683a7e8a1e51"
+    },
+    "next_boundary": {
+      "kind": "operation",
+      "binding": "session_closure_decision",
+      "requirements": [],
+      "errors": []
+    },
+    "physical_observation": {
+      "status": "PASS",
+      "candidate": "a07a5864d1238d1d35f18b390230e6d9b28e64ef",
+      "canonical_backend": "postgres",
+      "state_mode": "db-only",
+      "operation_id": "op_995145ca754e9da648d6c35893a8999c8733f1b5",
+      "report_sha256": "c88e2e8827aeae6fe9ac23cce1bff82bf65eddca65b51658a06ede610dbc8ed7",
+      "event_sha256": "7558ff6865dcd17ce049db16bcf694fa9421afa05b4727d5f25a2310ea0ed354",
+      "event_offset": 8735,
+      "event_count": 1,
+      "original_alignment_reused": true,
+      "original_alignment_timestamp_preserved": true,
+      "owner_pending": false,
+      "private_evidence_sha256": "7136782b106cae1502629621d5549865aef896cce6e8923078bab968c2f0f465"
+    },
+    "human_closure": {
+      "status": "FAIL",
+      "operation_id": "op_bb8ac83fa9005999226baf171c687bebffae0155",
+      "question_sha256": "a59c7e4f3187946c797744d667878e4c55cef3c7b23129969470ccc4c72a895d",
+      "choices": [
+        "close",
+        "refused",
+        "deferred",
+        "cancelled"
+      ],
+      "manual_signatures": 0,
+      "response_received": true,
+      "choice": "close",
+      "receipt_count": 1,
+      "receipt_outcome": "completed",
+      "effect_status": "no_effect",
+      "process_accepted": false,
+      "reason_code": "PROCESS_OPERATION_AUTHORITY_TIMEOUT",
+      "private_evidence_sha256": "f0cf324162db8ce37cf47e7808f51bf6f341c0df1c677c377537f9a67f5b96db"
+    },
+    "correction": {
+      "pull_request": 228,
+      "commit": "bb6cb3acc72fe4d2f1c27eaa403ea9ef5dd50c0a",
+      "merged": true
+    }
+  },
+  "retained_session_closure": {
+    "status": "PARTIAL_SESSION_WRITER_CHECKPOINT_PASS_FINAL_HOOK_UNKNOWN",
+    "pull_request": 229,
+    "candidate": "ea9b0fc7c63de67ff27bb11ca1e570cd672b5b0c",
+    "archive_sha256": "a6103342f515742e532973dc134db9c9b020a969984e0bfb8256169e50e2a61b",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "source_and_installed": {
+      "status": "PASS",
+      "source_proof_sha256": "63d1a7c5abb4e9e569adf74551f2e8ca404ef4d51e05c018a96026d9739afe85",
+      "installed_proof_sha256": "4d98d80cd48f7e17e98072137ad5575eb34f536a6a3c8e74634558f2c8fcd92e",
+      "original_history_unchanged": true,
+      "product_unchanged": true,
+      "business_effects": 0,
+      "manual_signatures": 0,
+      "new_questions": 0,
+      "native_calls": 0
+    },
+    "retained_response": {
+      "operation_id": "op_bb8ac83fa9005999226baf171c687bebffae0155",
+      "choice": "close",
+      "original_receipt_unchanged": true,
+      "original_process_receipt_still_unaccepted": true,
+      "new_human_response": false
+    },
+    "reader_prototype": {
+      "status": "PASS",
+      "private_evidence_sha256": "39dc0e16d863152d3a4b9d6c7fae719021cf02124e2ba393c313e0051b308c46"
+    },
+    "refusals": {
+      "status": "PASS",
+      "checks": [
+        "original configuration bytes",
+        "start configuration bytes",
+        "different decision",
+        "missing start",
+        "provider model",
+        "criteria",
+        "authority",
+        "product scope",
+        "controller",
+        "unprotected old evidence"
+      ],
+      "private_evidence_sha256": "4de41dd483584a5c863ae101bf988dbf513a97121f812f688470eb16dc3fc8fa"
+    },
+    "complete_standard_workflow": false,
+    "current_boundary": {
+      "status": "FAIL",
+      "kind": "operation",
+      "binding": "session_close_finalize",
+      "requirements": [],
+      "errors": [],
+      "owner_pending": true,
+      "head": "6871af7521940cd0498f831a82291b0c8a318138",
+      "git_clean": true,
+      "private_evidence_sha256": "f76044c7beb1473e5ac08c414fda350178634b92ee28530a59e7e2d06baf0f18"
+    },
+    "operations": [
+      {
+        "binding": "workflow_entry_select",
+        "operation_id": "op_0a7e1ee96938800936b674978c59c5e312c35d09",
+        "phase": "receipted",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "accepted": true
+      },
+      {
+        "binding": "session_close_record",
+        "operation_id": "op_76c9c854bf229dc5682f579fcc5b57e2c5fcfd58",
+        "phase": "receipted",
+        "outcome": "completed",
+        "effect_status": "confirmed",
+        "accepted": true
+      },
+      {
+        "binding": "session_close_checkpoint",
+        "operation_id": "op_62905349957ac5edf5ce2279afd1dae86863d513",
+        "phase": "receipted",
+        "outcome": "completed",
+        "effect_status": "confirmed",
+        "accepted": true
+      },
+      {
+        "binding": "session_close_finalize",
+        "operation_id": "op_eb2ffa6523c76b6e939d63f59a7dbb11d82b7e56",
+        "phase": "receipted",
+        "outcome": "reconciliation_required",
+        "effect_status": "unknown",
+        "accepted": true
+      }
+    ],
+    "final_hook_diagnostic": {
+      "status": "PASS_READ_ONLY_DIAGNOSIS",
+      "operation_id": "op_eb2ffa6523c76b6e939d63f59a7dbb11d82b7e56",
+      "unknown_preserved": true,
+      "owner_pending": true,
+      "start_run_present": true,
+      "physical_close_event_count": 0,
+      "canonical_preimages_unchanged": true,
+      "gate_signals": [
+        "objective_delta"
+      ],
+      "private_evidence_sha256": "9807c6f8ab38f743be8e8b573f352eb225a4d35c9d669a78a9aae350016df642"
+    }
+  },
+  "session_hook_objective_fix": {
+    "pull_request": 230,
+    "merge_sha": "b082da2c32a5c0af06b1a998a32373d3ff11da13",
+    "status": "PASS_COMPONENT_AND_AUTHENTICATED_READER",
+    "reader_checks": 14,
+    "sqlite_ordinary_checks": 20,
+    "sqlite_objective_checks": 21,
+    "files_objective_checks": 21,
+    "private_prototype_sha256": "13781b8c8e2313cc86ad089199425ea8291671f1fe699564c3cc9f93f4513ce3",
+    "live_hook_after_fix": "SKIP"
+  },
+  "session_hook_recovery": {
+    "pull_request": 231,
+    "merge_sha": "57e7a16acab46af4aaf1b10978f5140716abdd29",
+    "candidate": "ac1bca5cdf2229634ed71ffd80e919818f0a0cd7",
+    "archive_sha256": "ccec65cde1e8ae166d96f08c54fde43c24724116e0d17800831107da7d50cf7e",
+    "status": "PASS_INSTALLED_POSTGRES_CHECKPOINT_ONLY_RECOVERY",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "operation_id": "op_eb2ffa6523c76b6e939d63f59a7dbb11d82b7e56",
+    "recovery_sha256": "7373546dc11f06f9ff3760114ab82c3088655e539ad06311bfc93565f1769642",
+    "private_evidence_sha256": "8e16a8c4ce284b1247814530befa4f3bb975d8d003421b8fe5364da10cd57402",
+    "original_history_unchanged": true,
+    "original_unknown_preserved": true,
+    "physical_business_state_unchanged": true,
+    "owner_pending": false,
+    "recovery_attempts": 1,
+    "completed_replay": {
+      "status": "PASS",
+      "written": false,
+      "record_unchanged": true,
+      "private_evidence_sha256": "c3f4ae6188d9b374c34d2917584c3c6e9e8f0d49d7ce107765b6e45673a599c3"
+    },
+    "session_closed": false,
+    "workflow_resumed": false,
+    "native_calls": 0,
+    "new_questions": 0,
+    "manual_signatures": 0,
+    "process_observer_gap": {
+      "status": "OPEN",
+      "explicit_target_preview": "FAIL",
+      "reason": "The Windows console host owned by the observing CLI is included as its descendant. Supported cwd target resolution passes with the same canonical scope and configuration checks; discovery is unchanged.",
+      "private_observation_sha256": "ba5ca9234dc5ba4c45abeeb499bb972ccac716398b3ee7ae5238088950cdd04a"
+    },
+    "checks": {
+      "controlled": 17,
+      "sqlite_storage_restart": 4,
+      "files_storage_restart": 4
+    },
+    "full_same_candidate_P0": "SKIP"
+  },
+  "retained_session_checkpoint_continuation": {
+    "pull_request": 232,
+    "merge_sha": "d294182feb3264c7f4eb82df7619a6e130ff4c70",
+    "candidate": "7d9c6b924cfb43388c302bd0194c9ffec3f0d624",
+    "archive_sha256": "acb6bcf819aa6864bb5d1b7be343b9a287b78285a7c51f67a6c9dc4e5b723e64",
+    "status": "PASS_INSTALLED_POSTGRES_SESSION_CLOSE",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "source_reader_prototype": "PASS",
+    "installed_public_admission": "PASS",
+    "installed_reader_refusal_cases": 4,
+    "physical_verification_sha256": "dc57d659616f384a0218b147a359db92cc77408d1410138c68f793904991798c",
+    "admission_evidence_sha256": "e549522d58d695ca6b349656e07ba9d8a6890aae54d146adaa2c6ae1fed4b5f2",
+    "session_state": "CLOSED",
+    "session_closure_status": "completed",
+    "cycle_state": "DONE",
+    "baseline": "v0.3",
+    "event_sha256": "52b990e0da3d4f2f7af506163a4e9356d5891711864e2e280ef3e039fae1bd22",
+    "event_count": 1,
+    "start_run_file_removed": true,
+    "git_head": "6871af7521940cd0498f831a82291b0c8a318138",
+    "git_clean": true,
+    "owner_pending": false,
+    "original_history_unchanged": true,
+    "original_unknown_preserved": true,
+    "product_unchanged": true,
+    "new_questions": 0,
+    "manual_signatures": 0,
+    "native_calls": 0,
+    "operations": {
+      "finalize": {
+        "operation_id": "op_152b4b0de5ff6b0168913ed02bc271f9032df0ff",
+        "effect_status": "confirmed",
+        "output_sha256": "2b8ce5dc274b2bb1d1b52436240d235522be32c8fb2079cefe20880714141cdb"
+      }
+    },
+    "delivery_checkpoint": {
+      "status": "FAIL_PREVIEW",
+      "reason_code": "STANDARD_SESSION_DELIVERY_POSTIMAGE_CHANGED",
+      "physical_effect": "NOT_DISPATCHED",
+      "evidence_sha256": "6a97ea1930fac7f37a3385def8736315dcc757aec66ce1a2a899eecdef379855",
+      "diagnosis": "The reader compares post-close metadata to its pre-close hash. The confirmed hook changed updated_at but its v1 output retained content hashes without post-write metadata hashes. The current fixture supplied fresh metadata through an injected reader and did not exercise this host comparison."
+    },
+    "full_same_candidate_P0": "SKIP"
+  },
+  "session_delivery_postimage_correction": {
+    "pull_request": 233,
+    "merge_sha": "9ac95616524135a34afb19a259c2c47563b6ea16",
+    "status": "PASS_TARGETED_FIXTURES",
+    "meaning": "Current v2 close receipts bind post-CAS metadata; ordinary legacy DB receipts continue to refuse missing historical metadata.",
+    "current_receipt_fixture_checks": 11
+  },
+  "retained_session_delivery_continuation": {
+    "status": "PASS_INSTALLED_DELIVERY_CHECKPOINT",
+    "candidate": "68c45fc660fe1508d0fd500725079bc9169418cb",
+    "archive_sha256": "98816d15a5f346fb11524e85e08bad100f260891856042ed5d9c6a9b2410f2bb",
+    "instance": "standard-session-delivery-pr234",
+    "instance_sha256": "2302bb8e6742995e830b831984ffa0c707296354ee417731475e68df2f704795",
+    "delivery_operation_id": "op_e2377ba9d80906d1122e3b994694f570fd09b0ae",
+    "delivery_journal_sha256": "b51e27f4da038ff50d69e5a8c333440e84795d55cd5040bbf31d62a1d002b78b",
+    "delivery_output_sha256": "d9af5dd7f258b040123f314ffd972aef58c1a8e5a86037482b1228b1bf1ebefb",
+    "effect_status": "no_effect",
+    "canonical_documents_unchanged": true,
+    "old_journals_unchanged": true,
+    "old_instances_unchanged": true,
+    "git_head": "6871af7521940cd0498f831a82291b0c8a318138",
+    "git_clean": true,
+    "physical_close_event_count": 1,
+    "no_reclose": true,
+    "native_calls": 0,
+    "new_questions": 0,
+    "manual_signatures": 0,
+    "pull_request": 234,
+    "merge_sha": "9ba73f0336cb48085353705a599d2ca858d14a0b",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "metadata_basis": "fresh_canonical_observation",
+    "historical_postwrite_metadata_reconstructed": false,
+    "physical_evidence_sha256": "c391ee59c3c7e14489a63f78ae36ac907beb39032071c563643ea9cd71421251",
+    "integration": {
+      "status": "FAIL_PREVIEW",
+      "reason_code": "PROCESS_JOURNAL_NOT_AUTHENTICATED",
+      "effect": "NOT_DISPATCHED",
+      "evidence_sha256": "4cff17d16a9b30379581430e2b2b4e48de931839cfb25a1bae613b3ea265937b",
+      "diagnosis": "The current integration reader uses the current technical instance journal authority for a cycle finalized under an earlier retained instance. Historical cycle/promotion capabilities are not wired at this boundary."
+    },
+    "full_same_candidate_P0": "SKIP"
+  },
+  "retained_session_integration_authority": {
+    "status": "PASS_INSTALLED_INTEGRATION_PREVIEW",
+    "candidate": "04bd30eba320da2f36375df0919f9230c4f8cb63",
+    "archive_sha256": "87c683717d9682e9ce13e438f3c29582846a08dc9fae2e9a92ee375cc9c0156e",
+    "instance": "standard-session-integration-pr235",
+    "instance_sha256": "10c4ffe68e121ea28968fb335e8f349ab992b71eada15f2bd89b5c0849bf9e6e",
+    "delivery_operation_id": "op_7e24b06e933c30f290e8df730cf429bbf77b4940",
+    "delivery_journal_sha256": "fafcd90f3befab73b23eb14194e7484b30f1bfac3ca2e0f0850fcfd31ace1d8f",
+    "delivery_output_sha256": "f1119f31573e6877dd2b6c5bfc034d7496248cae6781f22176ec61a41ba96cfb",
+    "effect_status": "no_effect",
+    "canonical_documents_unchanged": true,
+    "old_journals_unchanged": true,
+    "old_instances_unchanged": true,
+    "git_head": "6871af7521940cd0498f831a82291b0c8a318138",
+    "git_clean": true,
+    "physical_close_event_count": 1,
+    "no_reclose": true,
+    "native_calls": 0,
+    "new_questions": 0,
+    "manual_signatures": 0,
+    "pull_request": 235,
+    "merge_sha": "994b4e476f6f6f1bee10cbab50cc2041d384ac05",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "physical_evidence_sha256": "358be837578a84d2f6719b2ac5f9c3525e13db0ae42a8e3cd3755dfad436c2aa",
+    "preview_sha256": "17a62c6a459c90021bbe9e246de9f2483e63ae16e319a266371ef42742ad0aed",
+    "integration_can_apply": true,
+    "integration_effect": "NOT_DISPATCHED",
+    "human_integration_decision": "PENDING",
+    "old_delivery_receipt_preserved": true,
+    "replayed_prerequisite": "A new technical instance with changed implementation bindings revalidated its deterministic no-effect delivery predecessor; session closure, Human choices, product, audit and Native activities were not repeated.",
+    "full_same_candidate_P0": "SKIP"
+  },
+  "session_integration_acceptance_timeout": {
+    "status": "FAIL",
+    "candidate": "04bd30eba320da2f36375df0919f9230c4f8cb63",
+    "archive_sha256": "87c683717d9682e9ce13e438f3c29582846a08dc9fae2e9a92ee375cc9c0156e",
+    "stage": "integration decision receipt acceptance",
+    "reason_code": "PROCESS_OPERATION_AUTHORITY_TIMEOUT",
+    "classification": "product_failure",
+    "operation_id": "op_9067df513b956b54ddd2c870977d39071217aaaf",
+    "journal_sha256": "b3a5003fba357ed529f7791733c804b140ecfcd6662eb6476d615d3b6b153343",
+    "choice": "integrate-to-session",
+    "results": 1,
+    "receipt_accepted": false,
+    "integration_dispatched": false,
+    "business_state_unchanged": true,
+    "manual_signatures": 0,
+    "native_calls": 0,
+    "evidence_class": "operator-accepted-local-history-observation",
+    "independent_original_author_proof": false,
+    "private_evidence_sha256": "4ffc767cf7a368e2c6d84a8e35d7ada3380ab1fb3e24c9068bc2bc0e1246fa06",
+    "correction": {
+      "pull_request": 236,
+      "head": "94dcba1b67885d9fca19d187d7e3d6bad093bda6",
+      "merge_sha": "bd78770fa24f7a3c34508b4b6295d0053a83914c",
+      "governance_admission": "PASS",
+      "perf_kpi": "PASS",
+      "guard_fixture_checks": 8,
+      "complete_standard_workflow": false
+    }
+  },
+  "retained_session_integration_continuation": {
+    "status": "PASS",
+    "candidate": "ca0745101f4944bc252b36cbf057dba7aae88e46",
+    "archive_sha256": "d68653e8e126ab133d29967d6317e04f77411b8bda39b853051d3d80a3a4e155",
+    "instance": "standard-retained-integration-pr237",
+    "instance_sha256": "d436b73694a4a554baa108143ee2d81d48c76b6f5f18c42d7ad58fc4401af654",
+    "integration_operation_id": "op_abebd4ce4e8dd9ec0308f57073834fc796ef6152",
+    "integration_journal_sha256": "446f0acdff7a577f50efdc686740333bd286360f25120f23ea0376060d42e0d5",
+    "integration_output_sha256": "05ebea1fb84e56203814bbf0e0b5dd8729c56a3ebffe0fcad7608e87ed0f344e",
+    "decision_operation_id": "op_9067df513b956b54ddd2c870977d39071217aaaf",
+    "decision_receipt": "receipt_9067df513b956b54ddd2c870977d39071217aaaf",
+    "effect_status": "confirmed",
+    "previous_target_head": "c1e5651f55fe266e606e8048e74e370493132979",
+    "target_head": "6871af7521940cd0498f831a82291b0c8a318138",
+    "single_physical_integration": true,
+    "canonical_documents_unchanged": true,
+    "old_journals_unchanged": true,
+    "old_instances_unchanged": true,
+    "git_clean": true,
+    "physical_close_event_count": 1,
+    "no_reclose": true,
+    "native_calls": 0,
+    "manual_signatures": 0,
+    "pull_request": 237,
+    "merge_sha": "85a15d44cbfcfbbc249a9103c555058628bb27c6",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "physical_evidence_sha256": "574b421bbaa353bacf57606f71a7c8272f11c8ee723639320a511b445bbf6f2e",
+    "consent_reused": true,
+    "new_questions": 0,
+    "original_consent_receipt_accepted": false,
+    "original_consent_receipt_immutable": true,
+    "evidence_class": "operator-accepted-local-history-observation",
+    "independent_original_author_proof": false,
+    "governance_admission": "PASS",
+    "perf_kpi": "PASS",
+    "full_same_candidate_P0": "SKIP",
+    "delivery": "PRIVATE_PR_OPEN_CONFIRMED",
+    "delivery_provider_preparation": {
+      "initial_preview": "FAIL",
+      "reason_code": "STANDARD_SESSION_PUSH_TRANSPORT_REQUIRED",
+      "classification": "operator_preparation_gap",
+      "effect": "NOT_DISPATCHED",
+      "correction": "Bound the existing protected provider profile to the successor technical instance, then verified its live identity before requesting a fresh public action.",
+      "status": "PASS",
+      "configuration_unchanged": true,
+      "instance_unchanged": true,
+      "journals_unchanged": true,
+      "provider_context_sha256": "a76066366330c99495b796070a959802092ff1c0482930dda09694fa7ea65d6b",
+      "private_evidence_sha256": "81a6c05669d6d6639d8691c97785f8449d1c05fa81e2c954924728dccccd1767",
+      "native_calls": 0,
+      "remote_writes": 0
+    }
+  },
+  "retained_session_pr_delivery": {
+    "candidate": "ca0745101f4944bc252b36cbf057dba7aae88e46",
+    "archive_sha256": "d68653e8e126ab133d29967d6317e04f77411b8bda39b853051d3d80a3a4e155",
+    "status": "PASS_PUSH_AND_OPEN",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "instance": "standard-retained-integration-pr237",
+    "instance_sha256": "a395a1de2cd5592f5a0d1afc48f94e6f5987804f228b17f62b1fba2fd28e4058",
+    "push": {
+      "operation_id": "op_9aec998f62e7f675fb8534aaff81346b854cb60f",
+      "journal_sha256": "ee023ef982836a0dec1c8bff27bb7136dcae43c3466e1334f7928578d6b536ca",
+      "outcome": "completed",
+      "effect_status": "confirmed",
+      "accepted": true
+    },
+    "open": {
+      "operation_id": "op_acbaf9330c761ac77d1165eec44c7741cebe963d",
+      "journal_sha256": "4bfff0ee2e2880562c21a7e56138dec8e1989dfa9f8093ce49c8eccaf793a452",
+      "outcome": "completed",
+      "effect_status": "confirmed",
+      "accepted": true
+    },
+    "remote_ref_verified": true,
+    "private_pull_request_number": 1,
+    "pull_request_state": "OPEN",
+    "remote_head": "6871af7521940cd0498f831a82291b0c8a318138",
+    "product_ci": "PASS",
+    "remote_observation_sha256": "3169417896d1e3aaef7048773ef97a38a4ed7f44cd98b64dd649aca506211c8a",
+    "operation_observation_sha256": "4acab034acb6f6c2b51686e7cbaa43037d0db7d1dbab20accd3b13cbcfa244dd",
+    "next": {
+      "status": "FAIL_PREVIEW",
+      "operation": "session_pr_record",
+      "reason_code": "PROCESS_JOURNAL_NOT_AUTHENTICATED",
+      "effect": "NOT_DISPATCHED",
+      "owner_pending": false,
+      "evidence_sha256": "733762ca0e00740853608b0b00049655b4d0bcad75807c08c937993bf7c3ad14"
+    },
+    "native_calls": 0,
+    "new_questions": 0,
+    "manual_signatures": 0,
+    "full_same_candidate_P0": "SKIP",
+    "targeted_correction": {
+      "pull_request": 238,
+      "candidate": "c80a090293af5d532a9d1c72d3e14e1fd57a6ac0",
+      "entry_point": "retained_session_pr_open",
+      "historical_reader_prototype": {
+        "status": "GO_READ_ONLY_PROTOTYPE",
+        "evidence_sha256": "9adba8c97b4884be8599b3c22ec15f4a50df1bfbe666dfd14e8df5c7c0a4402d"
+      },
+      "entry_prototype": {
+        "status": "GO_READ_ONLY_PROTOTYPE",
+        "evidence_sha256": "4c8c31809b95face33d499eb17fab01f4cd7c652094cfa67792a592dafe4f8c8",
+        "lineage_count": 11,
+        "elapsed_ms": 59124
+      },
+      "canonical_writes": 0,
+      "remote_writes": 0,
+      "native_calls": 0,
+      "installed_continuation": "PASS_RECORD_CHECKPOINT_CONFIRMED_HEAD",
+      "full_same_candidate_P0": "SKIP"
+    }
+  },
+  "retained_session_pr_record_continuation": {
+    "status": "PASS_RECORD_CHECKPOINT_CONFIRMED_HEAD",
+    "pull_request": 238,
+    "merged_sha": "9a6f1e0ba05787b28503dd56133ee041a1de5813",
+    "candidate": "c80a090293af5d532a9d1c72d3e14e1fd57a6ac0",
+    "archive_sha256": "ee9f420b416cbe9c9a0875a87c7048bd8c7970c6039d86c36d4f4433f556badc",
+    "entry_point": "retained_session_pr_open",
+    "canonical_backend": "postgres",
+    "state_mode": "db-only",
+    "instance_id": "standard-pr-delivery-pr238",
+    "instance_sha256": "2aa474cc5eaf9fc312ecc5223f208fb6555895835640d811b479b54723cc9f18",
+    "operations": [
+      {
+        "binding": "workflow_entry_select",
+        "operation_id": "op_7998a4f91869109a09039794ad7577bb0067c1bd",
+        "journal_sha256": "73786983b27f72ae80365fde28cf549f31c1025e17c86d771f55e650d4e4f8da",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "accepted": true
+      },
+      {
+        "binding": "session_pr_record",
+        "operation_id": "op_e5afddcbe75f88f456b027da0237e14da1216d19",
+        "journal_sha256": "f9fe9a56049e9fcb4deba9ff6a10caaa9c063f09039729121f7992fa50aaecbb",
+        "outcome": "completed",
+        "effect_status": "confirmed",
+        "accepted": true
+      },
+      {
+        "binding": "session_pr_checkpoint",
+        "operation_id": "op_160a53b8684368c7413df77eb2676527df8c43e3",
+        "journal_sha256": "fcd6c9ad3a0549f670464878e0bab756710a93118e3e17fca7dc30081fd5ceaf",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "accepted": true
+      },
+      {
+        "binding": "session_pr_update_push",
+        "operation_id": "op_2f62aa5c291b751ed2d00fba4df5e37b6d91a8ba",
+        "journal_sha256": "47dd8373bf2702c1457cf03e260c199b5fb3a4e62e3c8aa45b2115e4f18a5ce3",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "accepted": true
+      },
+      {
+        "binding": "session_pr_review_content_observe",
+        "operation_id": "op_c24c06a476f8e922f35df7205c004c94afed68f0",
+        "journal_sha256": "cdccecf18975ed4c0fe9ea9bd24aabc1a8e3086a9419c4616db101a8279f1f7e",
+        "outcome": "completed",
+        "effect_status": "no_effect",
+        "accepted": true
+      }
+    ],
+    "canonical_postimages_verified": true,
+    "canonical_postimage_count": 3,
+    "physical_evidence_sha256": "bc04eeeb90b00f08c73d9d3c843dadd1cc34648aae3fb49733e37b26f183f5d5",
+    "remote_observation_sha256": "6b5a72bdf5ee09d5022add6ef240233326bbcb0e1d981e965df3901debced21c",
+    "remote_head": "6871af7521940cd0498f831a82291b0c8a318138",
+    "product_ci": "PASS",
+    "repeated_integration": 0,
+    "repeated_pr_open": 0,
+    "new_physical_push": 0,
+    "original_histories_unchanged": true,
+    "new_questions": 0,
+    "manual_signatures": 0,
+    "native_calls": 0,
+    "review": {
+      "status": "REVIEW_COMPLETED_CAPTURE_BLOCKED",
+      "reviewer_repository_access": "PASS",
+      "provider_review_count": 0,
+      "codex_summary": "COMPLETED_NO_FINDINGS",
+      "result_format": "IssueComment versioned summary with full commit identity; separate prose receipt has abbreviated identity",
+      "remote_evidence_sha256": "6b40d16cad65365cf4121c32c69395706a2bf904410532d4f49adb0b77db0873",
+      "protection": {
+        "status": "PASS",
+        "pull_request_required": true,
+        "required_product_check": true,
+        "strict_checks": true,
+        "enforce_admins": true,
+        "resolve_conversations": true,
+        "force_push": false,
+        "deletion": false,
+        "evidence_sha256": "55e07afe0b719bf54491d38993634401c368e425a2939f5d1c5902929b6ac8b8",
+        "unchanged_refs": true
+      },
+      "first_public_capture": {
+        "status": "FAIL",
+        "layer": "operator",
+        "reason": "STANDARD_ENTRY_ACTION_CHANGED",
+        "cause": "Missing control selector on exact apply; no provider read",
+        "evidence_sha256": "aafa6c8ab2084a1f7a4c777772f08024de41ede0f018b793bb51775f246c13fe"
+      },
+      "corrected_public_capture": {
+        "status": "FAIL",
+        "reason": "PROCESS_CONTROL_AUTHORITY_TIMEOUT",
+        "evidence_sha256": "1bd51f8277308b3c79ecdcdc4a83d17d1cfcfa97e28e870be049548285c10db8",
+        "timing": {
+          "started_ms": 1795569098843,
+          "ended_ms": 1795569115502,
+          "exit_code": 1
+        }
+      },
+      "installed_provider_diagnostic": {
+        "status": "FAIL",
+        "reason": "GITHUB_REVIEW_EVENT_NODE_CHANGED",
+        "elapsed_ms": 5453,
+        "evidence_sha256": "3dd1fc6edcf9398aa3d51c810a8909859430191a15964ec8913e8eee2f2af3de"
+      },
+      "isolated_source_prototype": {
+        "status": "PASS",
+        "scope": "Read-only live-provider observation of the exact completed summary, including pinned Bot editor; not workflow delivery",
+        "evidence_sha256": "075c24a1aab0e882172a6678fedb38e8cc9557e4b21dfc37a3ad1a8ffa52c626",
+        "elapsed_ms": 6679,
+        "installed": "SKIP",
+        "control_delivery": "SKIP",
+        "triage": "SKIP",
+        "merge": "SKIP"
+      },
+      "original_instance_unchanged": true,
+      "original_operations_unchanged": true,
+      "native_calls": 0,
+      "new_human_questions": 0,
+      "manual_signatures": 0
+    },
+    "merge": "NOT_RUN",
+    "post_merge_sync": "NOT_RUN",
+    "full_same_candidate_P0": "SKIP",
+    "review_history": [
+      {
+        "status": "WAITING_FOR_EXTERNAL_REVIEW",
+        "content_observation": "PASS",
+        "durable_wait_evidence_sha256": "919383a43c5a2900270f4eb2ed9c0e747ec993657c13962f5d7b581c355344ee",
+        "request_sent": true,
+        "request_result_sha256": "95affbaabe9db8cad2a06b458c5124f9ee91986aba779e5a9f1fe5aaac746222",
+        "latest_remote_evidence_sha256": "be97f718f38afcd1751ba1520dee995879d09654b9ae22c702ddd2e9df92ce8d",
+        "provider_review_count": 0,
+        "reviewer_repository_access": "UNAVAILABLE_IN_CONNECTED_INSTALLATION",
+        "selected_repository_inventory_checked": true,
+        "browser_settings": "AUTHENTICATION_REQUIRED",
+        "configuration_change_applied": false
+      }
+    ]
+  },
+  "codex_review_summary_correction": {
+    "candidate": "276ce88ef4074a3e3ed00f6112a0f5952f082b16",
+    "correction_pr": 239,
+    "archive_sha256": "9da8d01a666c3434416e689bf6c940eefa20e4c558fe4ec4af46fb02fa553fcd",
+    "status": "PASS",
+    "scope": "Installed provider observation and authentication only; no workflow delivery",
+    "source_event_contract": "github-pr-review-event.v2",
+    "elapsed_ms": 13995,
+    "evidence_sha256": "6eb2a30a3188c48c70cd1f634dcccb543de9f4c38d559a3beff3889b08448e87",
+    "provider_verified": true,
+    "complete_body_retained": true,
+    "original_publication_time_retained": true,
+    "formal_review_fabricated": false,
+    "approval_established": false,
+    "merge_authorization": "not-established",
+    "native_calls": 0,
+    "manual_signatures": 0,
+    "original_instance_and_operations_unchanged": true,
+    "direct_resume_first_attempt": {
+      "status": "FAIL",
+      "candidate": "0ac4eb2ea71e58ad338dfcc3f32154e0d48a69de",
+      "reason": "STANDARD_HOST_AUTHORITY_CHANGED",
+      "written": false,
+      "evidence_sha256": "758b3e98af4afca519e509d154ace2c02d6322874bd22aa526b3af69a66d0348"
+    },
+    "cross_candidate_review_wait_continuation": "SKIP",
+    "workflow_delivery": "SKIP",
+    "native_triage": "SKIP",
+    "merge_and_sync": "SKIP",
+    "full_standard_workflow": false,
+    "delivery": {
+      "composition_checks": 69,
+      "governance_admission": "PASS",
+      "focused_summary_checks": 29,
+      "perf_run": 45527092456,
+      "governance_run": 45527092462,
+      "db_only_capture_and_resume_checks": 43,
+      "generic_control_checks": 27,
+      "status": "MERGED",
+      "merge_commit": "6ca82305e52a56e9b07a4bccde607af3923e410a",
+      "perf_kpi": "PASS",
+      "governance_lane": "ASSURED",
+      "ordinary_github_host": "PASS"
+    }
+  },
+  "user_authorized_external_merge": {
+    "status": "PHYSICAL_MERGE_CONFIRMED_CONTROL_CAPTURE_BLOCKED",
+    "candidate": "c80a090293af5d532a9d1c72d3e14e1fd57a6ac0",
+    "archive_sha256": "ee9f420b416cbe9c9a0875a87c7048bd8c7970c6039d86c36d4f4433f556badc",
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "authorization": "Explicit user instruction to merge the private pilot PR; connector invocation fenced to exact head",
+    "physical_merge": {
+      "status": "PASS",
+      "head_oid": "6871af7521940cd0498f831a82291b0c8a318138",
+      "merge_oid": "ba413c8b4ccb4e475d05c825ecc5ec7ea1fe7e46",
+      "parent_oids": [
+        "3e91c007406e86d78a6f965f75a76b57f912ae8f",
+        "6871af7521940cd0498f831a82291b0c8a318138"
+      ],
+      "merged_at": "2026-11-25T02:05:07Z",
+      "base_tip_matches_merge": true,
+      "base_protection_enabled": true,
+      "evidence_sha256": "25b4f0a4c1cddc19c9837b679508a3caad6cc4c5e5016b01b95d28a9f15fcb2c"
+    },
+    "public_preview": {
+      "status": "PASS",
+      "kind": "control",
+      "can_apply": true,
+      "evidence_sha256": "2630fbc8e76d213310f31bc3f139c108b48a05c52e57e8885cd420efa9d3942c"
+    },
+    "public_control_capture": {
+      "status": "FAIL",
+      "reason": "PROCESS_CONTROL_AUTHORITY_TIMEOUT",
+      "elapsed_ms": 15425,
+      "evidence_sha256": "1bd51f8277308b3c79ecdcdc4a83d17d1cfcfa97e28e870be049548285c10db8"
+    },
+    "accepted_operations_unchanged": true,
+    "accepted_operation_count": 5,
+    "observation_sha256": "e71447fe697f25aac846e9b9a8065f1e2c8bf60113564af8b2c391e5aa2bcf72",
+    "native_calls": 0,
+    "new_human_questions": 0,
+    "manual_signatures": 0,
+    "qualification_scope": "Externally performed merge relative to the retained workflow; not a nominal workflow merge receipt",
+    "workflow_merge": "SKIP",
+    "post_merge_sync": "SKIP",
+    "full_same_candidate_P0": "SKIP",
+    "next_step": "Repair the bounded external merge control capture and continue from the retained review wait; preserve the physical merge and accepted history without repeating either."
+  },
+  "retained_external_merge_capture": {
+    "status": "PARTIAL_RESERVED_CONTROL_DELIVERY_FAILED",
+    "candidate": "239bfa9178ac73362a015bdd9f037c29810e527d",
+    "archive_sha256": "a07592891867b6c660855951ab1f5314e11a489a6bb5579f52b1e4c1603c7878",
+    "configuration_sha256": "e72e16a6ff9a495ac71865c29e23a82711678eb960a223f466d78c6f98d7653c",
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "correction_pr": 240,
+    "merge_commit": "0f1852d3cefe6590a4adad961a88223115a9456b",
+    "entry": {
+      "status": "PASS",
+      "evidence_sha256": "597f63223c9ee72a1d2962261617f0768d19699b0c2d5f5c1fd14c15a15efffd",
+      "accepted_operations": 1,
+      "original_history_unchanged": true,
+      "product_unchanged": true,
+      "owner_pending": false
+    },
+    "control_preview": {
+      "status": "PASS",
+      "evidence_sha256": "f27d0667c4d345d433aab1a7ddd8a1a61b916c218d35de48b25eb46631dcf4d6"
+    },
+    "control_delivery": {
+      "status": "FAIL",
+      "reason": "PROCESS_CONTROL_AUTHORITY_TIMEOUT",
+      "elapsed_ms": 125420,
+      "evidence_sha256": "1bd51f8277308b3c79ecdcdc4a83d17d1cfcfa97e28e870be049548285c10db8",
+      "reservation_retained": true,
+      "capture_phase": "reserved",
+      "accepted_event": false,
+      "capture_evidence_sha256": "db2054e422c9a1b8a31a32b53fc8248ffad91be22ac9848c3020b743be91615c"
+    },
+    "read_only_diagnostic": {
+      "status": "PASS",
+      "elapsed_ms": 48072,
+      "history_reads": [
+        7913,
+        8352,
+        8421,
+        8132
+      ],
+      "provider_reads": [
+        5498,
+        5531
+      ],
+      "evidence_sha256": "ddee1d96b4095c3906848765680ee6f1de15091a1ba106b035cd0752d57fabb7",
+      "instance_and_reservation_unchanged": true
+    },
+    "cause": "The reducer wrapped provider re-verification in its separate five-second local authority deadline; increasing the inbox I/O deadline did not cover delivery.",
+    "regression": {
+      "previous_archive": "FAIL_PROCESS_CONTROL_AUTHORITY_TIMEOUT",
+      "corrected_host": "PASS",
+      "scope": "Full fixture delivery after provider verification exceeds five seconds; changed Git context still refuses delivery"
+    },
+    "native_calls": 0,
+    "new_human_questions": 0,
+    "manual_signatures": 0,
+    "physical_merge_repeated": false,
+    "nominal_workflow_merge": "SKIP",
+    "post_merge_sync": "SKIP",
+    "full_same_candidate_P0": "SKIP",
+    "next_step": "Deliver the bounded provider-verification handoff fix, then explicitly recover the retained expired capture. Do not delete or rewrite the reservation, fabricate its delivery, or repeat the physical merge."
+  },
+  "provider_control_delivery_handoff": {
+    "correction_pr": 241,
+    "status": "MERGED",
+    "candidate": "a8e04d163918128e21411304b5699a73db912741",
+    "archive_sha256": "c8448a4e3f57e0018dae255d1d7825e25290f190a123c9cfd98d96a97a23a9da",
+    "merge_commit": "4808d7f64c638ef338f9a28b152376f8edb92db0",
+    "scope": "Bounded provider verification precedes the reducer local gate; exact capture/context and CAS remain enforced. No expiry renewal or frozen-instance migration.",
+    "governance": {
+      "lane": "ASSURED",
+      "admission": "PASS",
+      "run": 45538044788,
+      "selected_families": 10,
+      "perf": "PASS",
+      "perf_run": 45538044771
+    },
+    "validation": {
+      "previous_archive_regression": "FAIL_PROCESS_CONTROL_AUTHORITY_TIMEOUT",
+      "source_full_delivery_regression": "PASS",
+      "source_full_delivery_checks": 6,
+      "installed_component_regression": "PASS",
+      "installed_component_checks": 6,
+      "fixture_support": "source checkout",
+      "review_control_db_only_checks": 45,
+      "generic_control_checks": 27,
+      "composition_checks": 69,
+      "ordinary_github_host": "PASS",
+      "documentation_and_sensitivity": "PASS",
+      "evidence_sha256": "1446db940810cec578e0b872b63ac681ec00d5033610d8520b20912d454dbf77",
+      "standalone_packaged_fixture": "UNAVAILABLE_REQUIRES_GIT_FIXTURE_OWNER"
+    },
+    "current_live_boundary": {
+      "status": "REFUSED_AS_REQUIRED",
+      "reason": "STANDARD_PR_EXTERNAL_MERGE_CAPTURE_EXPIRED",
+      "phase": "reserved",
+      "evidence_sha256": "a0bb442dc0371bac8e4d249ae7a8177c069fb904be8bb5f51ea3e314b197def9",
+      "original_instance_capture_and_history_unchanged": true,
+      "owner_pending": false
+    },
+    "native_calls": 0,
+    "new_human_questions": 0,
+    "manual_signatures": 0,
+    "physical_merge_repeated": false,
+    "live_capture_recovery": "SKIP",
+    "post_merge_sync": "SKIP",
+    "full_same_candidate_P0": "SKIP"
+  },
+  "retained_expired_merge_capture_recovery": {
+    "correction_pr": 242,
+    "status": "PASS_INSTALLED_RECOVERY_AND_INCIDENT_DISPOSITION",
+    "candidate": "9862bf3292e0a7bbea888f51449c08aef2629fd7",
+    "archive_sha256": "f7d9f5a9bf6558daca305585e263faa1227916503a3380e0d0346db607404da1",
+    "configuration_sha256": "f21f5bf1693d5844cb72346dfeaf0cecb7e78ce6b1cf3596aca3db591d942245",
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "scope": "Explicit continuation from the original signed expired reserved capture, with fresh material verification and immutable predecessor history.",
+    "governance": {
+      "lane": "ASSURED",
+      "admission": "PASS",
+      "run": 45541731357,
+      "selected_families": 10,
+      "perf": "PASS",
+      "perf_run": 45541731354
+    },
+    "validation": {
+      "source_recovery_checks": 39,
+      "installed_recovery_checks": 39,
+      "composition_checks": 69,
+      "entry_checks": 7,
+      "review_control_checks": 45,
+      "generic_control_checks": 27,
+      "ordinary_github": "PASS",
+      "documentation_policies_and_sensitivity": "PASS"
+    },
+    "installed_entry": {
+      "status": "PASS",
+      "accepted_operations": 2,
+      "effect_status": "no_effect",
+      "evidence_sha256": "acfb453feb67a1d555aaa085fb8f764d5542ba753e83b2ee5dbf5ac6272e6cb8",
+      "original_history_unchanged": true,
+      "original_capture_and_reservation_unchanged": true,
+      "product_unchanged": true,
+      "owner_pending": false
+    },
+    "human_disposition": {
+      "status": "PASS",
+      "question_sha256": "eef8eeb28699e82caee4f527bbfbd64a5df97ac840f9bc6e653c6d1c3e047699",
+      "choice": "acknowledge_external_merge_for_r09",
+      "severity": "L1_LOW",
+      "accepted_results": 1,
+      "same_receipt_on_redelivery": true,
+      "evidence_sha256": "7a5e9265baad77112d5e5dfe2b5f5cb8080635a0d1eceb33f91133a808b87f86",
+      "independent_original_author_proof": false
+    },
+    "native_calls": 0,
+    "new_human_questions": 1,
+    "manual_signatures": 0,
+    "physical_merge_repeated": false,
+    "nominal_workflow_merge": "SKIP",
+    "post_merge_sync": "SKIP",
+    "full_same_candidate_P0": "SKIP",
+    "post_merge_checkout": {
+      "first_refusal": "WORKFLOW_POST_MERGE_SOURCE_CHECKOUT_REQUIRED",
+      "effect_dispatched": false,
+      "refusal_evidence_sha256": "5c65d23e2952b8e932bf335770c64add9bf14d800c17c3444e3f2b248e132a2b",
+      "preparation": "EXPLICIT_EXTERNAL_CHECKOUT_PREPARATION",
+      "evidence_sha256": "3272c3b648bc0e90cd7d257ebf8061fd65e33470f9d6cf67be9dedb86c4ba5af",
+      "clean_before_and_after": true,
+      "source_branch_selected": true,
+      "session_branch_preserved": true,
+      "canonical_session_and_instance_unchanged": true,
+      "missing_workflow_step": "Source checkout is still an external preparation prerequisite; this does not qualify an uninterrupted full workflow."
+    },
+    "r09_fetch": {
+      "status": "PASS",
+      "accepted_effects": 1,
+      "physical_fetches": 1,
+      "alignment": {
+        "ahead": 0,
+        "behind": 2
+      },
+      "measurement_accepted": true,
+      "evidence_sha256": "f0673a6a032f2ef8af3ac58329b19bc65cef75deb6d87354485a0775c09dc3f4",
+      "first_following_refusal": "STANDARD_PR_POST_MERGE_COMPLETION_SOURCE_REQUIRED",
+      "owner_pending": false,
+      "original_history_unchanged": true
+    }
+  },
+  "retained_post_merge_source_correction": {
+    "correction_pr": 243,
+    "status": "INSTALLED_R09_MEASUREMENT_PASS_DECISION_ACCEPTANCE_EXPIRED",
+    "head": "a1b16d4da264f52236596588bd3cb83a8931d850",
+    "scope": "Authenticate the retained original opening, accepted L1 Human disposition and confirmed fetch; resume at a new R09 measurement without repeated merge, disposition or fetch.",
+    "opening_lookup_prototype": {
+      "status": "PASS",
+      "evidence_sha256": "d4e49fccd766d252027627c25227b6d8df15b0081908a9fc22de51c0e62ed019",
+      "substitution_refused": true
+    },
+    "authenticated_source_prototype": {
+      "status": "PASS",
+      "evidence_sha256": "a9f00c8bb5a6a43dd4b13e08cfab2a51ae2cbea889182d2d5a5305a8dc74cde2",
+      "canonical_git_provider_writes": 0,
+      "native_calls": 0
+    },
+    "validation": {
+      "retained_boundary": 52,
+      "composition": 69,
+      "entry": 7,
+      "ordinary_real_git_r09_fast_forward_cold_recovery_and_admission": "PASS",
+      "docs_policies_sensitivity": "PASS",
+      "installed_retained_boundary": 52
+    },
+    "installed_continuation": "BLOCKED",
+    "post_merge_sync": "SKIP",
+    "manual_signatures": 0,
+    "new_native_calls": 0,
+    "candidate": "78ed00b265d093fe4f91adfaa1631123230e81f7",
+    "governance": {
+      "lane": "ASSURED",
+      "admission": "PASS",
+      "run": 45547503128,
+      "selected_families": 10,
+      "perf": "PASS",
+      "perf_run": 45547503028
+    },
+    "archive_sha256": "01672d843145c3ee1b96e15071ac753025d33fad8f637a18cf766d725c0878d1",
+    "model_revision": 502,
+    "entry": {
+      "status": "PASS",
+      "outcome": "completed",
+      "effect_status": "no_effect",
+      "repeated_disposition": false,
+      "repeated_fetch": false
+    },
+    "measurement": "PASS",
+    "question_recovery": {
+      "status": "PASS",
+      "effect_status": "no_effect",
+      "outcome": "deferred",
+      "reason": "expired_before_display"
+    },
+    "recorded_decision": {
+      "status": "RECEIPTED_UNACCEPTED",
+      "failure": "STANDARD_PR_POST_MERGE_DECISION_EXPIRED",
+      "failure_stage": "receipt acceptance",
+      "evidence_sha256": "224d5c31431401882ba94d4e999a0bb8aeac15cb8b477f706ddf1d9848bdfc11",
+      "choice": "fast_forward",
+      "manual_signatures": 0,
+      "physical_git_writes": 0
+    }
+  },
+  "retained_recorded_post_merge_decision_correction": {
+    "correction_pr": 244,
+    "head": "0be7c5ada7d9c97eaaaec33676c7e80c1d329373",
+    "status": "INSTALLED_R09_COMPLETE_PUBLIC_EXIT_REFUSED",
+    "scope": "Explicit successor authenticates the expired receipted/unaccepted Human choice and unchanged exact Git subject before separately granted fast-forward and ordinary R09 completion.",
+    "source_prototype": {
+      "status": "PASS",
+      "evidence_sha256": "b8fe7aca6f6ae26103a47291694bc3806e5c896bbddbdc39917d19857578cf8f",
+      "canonical_git_provider_writes": 0,
+      "native_calls": 0,
+      "substituted_decision_refused": true
+    },
+    "validation": {
+      "retained_boundaries_and_source_fences": 67,
+      "composition": 69,
+      "entry": 7,
+      "ordinary_real_git_r09_fast_forward_cold_recovery_and_admission": "PASS",
+      "docs_policies_sensitivity": "PASS",
+      "physical_merged_product_tests": {
+        "status": "PASS",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "governance": {
+      "lane": "ASSURED",
+      "local_route": "PASS",
+      "run": 45554719554,
+      "admission": "PASS",
+      "selected_families": 10,
+      "perf": "PASS",
+      "perf_run": 45554719582
+    },
+    "installed_continuation": "FAIL",
+    "post_merge_sync": "PASS",
+    "new_human_questions": 0,
+    "manual_signatures": 0,
+    "new_native_calls": 0,
+    "candidate": "171283555126501ff49d7adb10955cf2aea7bd82",
+    "archive_sha256": "4f845de25f9403d8c8878adf63009ddaac35fb2972156651f5adac6bfb49b713",
+    "model_revision": 504,
+    "model_sha256": "15744b73d837c9d06d8603a6606b533ca46183df196d0cbdb6a69365c8bc94b6",
+    "configuration_sha256": "fd47d374de6be952d02584fb3df6c8a41618eb1219a49930d7f9c35557dc2630",
+    "post_merge_sync_verifier_candidate": "105a300a6f52c8aaac6b34da39fba1adfe08b894",
+    "public_terminal": {
+      "status": "FAIL",
+      "reason": "STANDARD_SESSION_INTEGRATION_DECISION_REQUIRED",
+      "stage": "after accepted R09 completion and composed returns",
+      "instance_sha256": "0b60736c264619c3450ba8a42fcb2dd7460a6ae0b41c98a05fba92590c175590",
+      "evidence_sha256": "805c531b85447d6697363a36320c942c08bf7fb7e7a2835d3bcd5d464bea7635",
+      "historical_instance_unchanged": true
+    },
+    "original_independent_lookup": {
+      "status": "FAIL",
+      "reason": "ARTIFACT_POSTGRES_WORKER_UNAVAILABLE",
+      "worker_error": "ENOBUFS",
+      "limit_bytes": 33554432,
+      "evidence_sha256": "7c5d5bbe1881e4a365ac32a99e2e8fecbc7b5bd0cd5704670bfe4fe503fd2b4a"
+    },
+    "operations": [
+      {
+        "binding": "workflow_entry_select",
+        "operation_id": "op_1d888afc1faa2a100ef75b3907f16854dd971575",
+        "receipt_sha256": "a65293ddc2b7bb1cd9439d8ce47572c1800e2d153192cb560670a72048dbb6fc",
+        "output_sha256": "4832b838021dafae844b7f1edf231b2d858ee741184c21019d0ed174b1d7f730",
+        "effect_status": "no_effect",
+        "accepted": true
+      },
+      {
+        "binding": "session_pr_retained_merge_select",
+        "operation_id": "op_357e362325548f5a010fc3f1573dcd936020b8ec",
+        "receipt_sha256": "e216bf3e1997bf357f238e1a3e4a4804b130bf55294676bce36db1ba007ca54c",
+        "output_sha256": "7157e5184108b777b10818264ee42048bdcb76ff3351a269f6dd9cc236565772",
+        "effect_status": "no_effect",
+        "accepted": true
+      },
+      {
+        "binding": "session_pr_post_merge_fast_forward",
+        "operation_id": "op_9ae42b021eeff8bd0913f8ce563cff21b068a9ed",
+        "receipt_sha256": "72dd3ca016b390e3ffdf2e8ee5744b483d59c1d379ab3ae952c7a2ee5b36083e",
+        "output_sha256": "d317fb2ec6903f70047adc44288b5f194d30f4dcc6af51771f33fac923ee9cde",
+        "effect_status": "confirmed",
+        "accepted": true
+      },
+      {
+        "binding": "session_pr_post_merge_measure",
+        "operation_id": "op_52089f7c0837d3eb64fc87049699e53831158c16",
+        "receipt_sha256": "7480f3be6709f5f7e20c3c7797d0eacfbaa5c4e1a8a6dc954a554a1b9486c7a0",
+        "output_sha256": "b5bcfdedab30cdf3ef51e956f52a5a8f81ee8a0296ebf7b77f1b592417dccb97",
+        "effect_status": "no_effect",
+        "accepted": true
+      },
+      {
+        "binding": "session_pr_post_merge_complete",
+        "operation_id": "op_7a267c97d8289c5b1dc68536ed9a1d05bcf6aa6d",
+        "receipt_sha256": "01becdda8b8e97cab252a928d7ddc9359d8d96bbbc8d62e6817838db4b2637b7",
+        "output_sha256": "b6ee0d8d592d271657a3ed9b559c4a982f1f56a94754edb49fcdf9ecddd819e2",
+        "effect_status": "no_effect",
+        "accepted": true
+      }
+    ],
+    "physical_fast_forwards": 1,
+    "replayed_human_choices": 0,
+    "repeated_fetches": 0,
+    "repeated_merges": 0,
+    "original_native_journals_unchanged": true,
+    "timing": {
+      "scope": "Targeted installed deterministic R09 continuation through its historical exit refusal; not a full performance baseline",
+      "public_cli_calls": 29,
+      "public_cli_ms": 1474899,
+      "elapsed_between_first_and_last_cli_ms": 1643972,
+      "native_calls": 0,
+      "new_human_waits": 0
+    }
+  },
+  "retained_r09_completion_exit_correction": {
+    "correction_pr": 245,
+    "head": "ff64efab1e4dcd2df91c0f47f8a02f37c668e0ad",
+    "candidate": "105a300a6f52c8aaac6b34da39fba1adfe08b894",
+    "archive_sha256": "5e84399a2968eb65a813f2f435337d76b767df5e4eda09dc29d50e01d8444455",
+    "status": "INSTALLED_READ_ONLY_POST_MERGE_VERIFICATION_PASS",
+    "scope": "Correct retained route exit and canonical path inventory; verify existing R09 completion without replaying business effects",
+    "governance": {
+      "lane": "ASSURED",
+      "local_route": "PASS",
+      "admission": "PASS",
+      "run": 45560291126,
+      "selected_families": 10,
+      "perf": "PASS",
+      "perf_run": 45560291184
+    },
+    "validation": {
+      "retained_routes_and_refusals": {
+        "status": "PASS",
+        "checks": 69
+      },
+      "composed_return_to_terminal": "PASS_CONTROLLED_FIXTURE",
+      "historical_exit_refusal_reproduced": true,
+      "composition": {
+        "status": "PASS",
+        "checks": 69
+      },
+      "entry": {
+        "status": "PASS",
+        "checks": 7
+      },
+      "artifact_commands": {
+        "status": "PASS",
+        "checks": 59,
+        "scope": "actual SQLite and PostgreSQL double"
+      },
+      "artifact_delete_regression": {
+        "status": "PASS",
+        "checks": 42
+      },
+      "docs_policies_cli_sensitivity": "PASS"
+    },
+    "installed_observation": {
+      "status": "PASS",
+      "evidence_sha256": "ff87e3fd6f4bb1ea48ca79660bd05951676671b2171c0ac0120188e3e9ede071",
+      "execution_candidate": "171283555126501ff49d7adb10955cf2aea7bd82",
+      "execution_archive_sha256": "4f845de25f9403d8c8878adf63009ddaac35fb2972156651f5adac6bfb49b713",
+      "backend": "postgres",
+      "state_mode": "db-only",
+      "session_state": "CLOSED",
+      "cycle_state": "DONE",
+      "baseline": "v0.3",
+      "canonical_documents_unchanged": true,
+      "canonical_completion_lookup": "PASS",
+      "live_alignment": "PASS",
+      "local_remote_heads_equal": true,
+      "ahead": 0,
+      "behind": 0,
+      "git_clean": true,
+      "physical_fast_forwards": 1,
+      "product_sha256": "ed1fc8275ab99e7cd4e571b0419fbc2b57928bf93710b4d1da8709b956510c1a",
+      "completion_plan_sha256": "bf73fa795d9d95e24474f10fa53bec05330e616dd77f1a5fa8758dabf2513d9e",
+      "original_history_unchanged": true,
+      "original_unaccepted_decision_preserved": true,
+      "owner_pending": false
+    },
+    "native_calls": 0,
+    "new_human_questions": 0,
+    "manual_signatures": 0,
+    "repeated_fetches": 0,
+    "repeated_merges": 0,
+    "old_instance_terminal": false,
+    "full_nominal_same_candidate": "SKIP"
+  },
+  "latest_qualification_boundary": {
+    "status": "PASS",
+    "scope": "Physical and canonical post-merge synchronization independently verified; original technical exit refusal preserved",
+    "execution_candidate": "171283555126501ff49d7adb10955cf2aea7bd82",
+    "verification_candidate": "105a300a6f52c8aaac6b34da39fba1adfe08b894",
+    "session_closed": true,
+    "cycle_done": true,
+    "baseline": "v0.3",
+    "post_merge_complete": true,
+    "original_instance_terminal": false,
+    "corrected_terminal": "PASS_CONTROLLED_FIXTURE",
+    "full_nominal_same_candidate": false
+  }
+}

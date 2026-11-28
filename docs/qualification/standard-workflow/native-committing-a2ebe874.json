@@ -1,0 +1,373 @@
+{
+  "candidate": "a2ebe87487291550bf2283da8bbd0f18158be5d1",
+  "archive_sha256": "679075ceba2e259de35d0658b6762e6f1d22fb2116d631318f417dbc3b7ce34b",
+  "predecessor": "cb9ed086ea426c7644d1f18a2c10a8ac1c500a78",
+  "correction_pr": "https://github.com/leuzeus/aidn/pull/208",
+  "model_revision": 431,
+  "backend": "Windows/PostgreSQL",
+  "state_mode": "db-only",
+  "campaign_state": "BLOCKED_PREWORK_EVALUATION",
+  "scenario": "Fresh candidate replay in an isolated qualification workspace; no predecessor canonical session or decision receipt was imported",
+  "execution_origin": "Source CLI with the frozen installed pilot and validation profile",
+  "package_installation": "PASS",
+  "source_installed_inventory": {
+    "models": 16,
+    "provider_bindings": 131,
+    "implementation_files": 689,
+    "implementation_sha256": "b6990510d341740c9a5277df06c5387ef0210f74a83eaf7168187fa23e595d13"
+  },
+  "github_provider_identity": "PASS",
+  "native_hooks": {
+    "expected": 2,
+    "observed": 2,
+    "status": "PASS"
+  },
+  "cycle_validation": {
+    "host_material_check": "PASS",
+    "configuration_sha256": "af1f505c847eb8ce564f8518835d382dcb14ec454087de70c33106d33c5ce945",
+    "process_plan_sha256": "096fd33762eb6223405ce93a3d39753239ed59e83002b6ddf14945537803bfa0",
+    "case_limit_ms": 60000,
+    "cases": [
+      {
+        "id": "filesystem_access",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 10452,
+        "active_processes": 0,
+        "companion_active_processes": 0,
+        "sha256": "12d6c047ab672b725f10f4c752007f70cc8c08fe684efbadc74810346de9f811"
+      },
+      {
+        "id": "timeout",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 8354,
+        "active_processes": 0,
+        "sha256": "9876521d7a4a73809550c83a0bb0467ac59a9a704614c300e98be0a0a158e6bb"
+      },
+      {
+        "id": "cancel",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 6127,
+        "active_processes": 0,
+        "sha256": "a5961deff9ac7ad983e96271d901546ecfb8b2f3cc5beeb003b768c4d1b1e073"
+      },
+      {
+        "id": "callback",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 6165,
+        "active_processes": 0,
+        "sha256": "65dfdf940022ab473e53540de5f1e12c9c327d24284c41a7d5aa63b113e3f3ca"
+      }
+    ],
+    "review": "PASS",
+    "review_evidence_sha256": "3389322ffc203269564bda71a74e405d028e6e138c148350e8d94f044274a6ac",
+    "qualification_sha256": "088521e48d26d318f6c5f8d931a6df0c2a1de4d880dd6c563d4d2a43376cbefa",
+    "profile_sha256": "697ba81a25572f25b380bdadae652c29aced7d5b0bbe1e8fd57d94f306088474",
+    "manual_signature_steps": 0,
+    "original_author_identity_assurance": "operator-accepted-local-history-observation; independent original-author proof remains open",
+    "scope": "Validator boundary only; product validation has not executed"
+  },
+  "canonical_storage": {
+    "backend": "postgres",
+    "state_mode": "db-only",
+    "two_checkouts_same_bootstrap": {
+      "status": "PASS",
+      "canonical_artifacts": 35,
+      "peer_import": false,
+      "scope": "Two installed checkouts read the same canonical bootstrap inventory; no session resume has run yet"
+    },
+    "bootstrap_import": "Explicit installation import of 35 current scaffold documents; no historical session or cycle migration",
+    "two_checkouts_same_session": {
+      "status": "PASS",
+      "canonical_session_count": 1,
+      "mode": "COMMITTING",
+      "canonical_content_sha256": "9d869d5721bf1611a8124c1965b4e3dd4a5d09f7a1d198b9f5bb9ccbad29fd53",
+      "peer_import": false,
+      "scope": "Independent installed CLI reads of the same canonical session; no workflow execution or resumption in the peer checkout"
+    },
+    "two_checkouts_same_session_and_cycle": {
+      "status": "PASS",
+      "session_owner_matches_session": true,
+      "attached_cycle_matches": true,
+      "canonical_artifacts": [
+        {
+          "role": "S001",
+          "sha256": "5caa33579d34eabc15622b20585325558a847bb04a2322d7bbb2902e6a729614"
+        },
+        {
+          "role": "brief",
+          "sha256": "2af69a89d8b1add109c05d0f23f1a3a0cfcd8d1eb508f72ad86add03d2c901c2"
+        },
+        {
+          "role": "status",
+          "sha256": "b44c450c9eb67478e9bc775323d5e33771155d6fe51b9e27e6de925bcf0f12f5"
+        }
+      ],
+      "evidence_sha256": "80b838ec1543c1c821d8912a339a15c4a6575244702353c3323c319d1cee618d",
+      "peer_import": false,
+      "scope": "Independent installed CLI reads from two checkouts; peer workflow execution and resumption remain untested"
+    }
+  },
+  "preparation_findings": [
+    {
+      "phase": "preparation helper",
+      "reason": "ENOENT: full request not yet frozen",
+      "repair": "Use the discovery inventory for provider identity until the validator profile is ready",
+      "resolved": true,
+      "native_calls": 0
+    },
+    {
+      "phase": "peer installation preview",
+      "reason": "UNOWNED_AGENTS_BLOCK",
+      "repair": "Preserve the unchanged Git seed before the fresh installation; no canonical peer import",
+      "resolved": true,
+      "native_calls": 0
+    },
+    {
+      "phase": "public entry preview before instance creation",
+      "reason": "PROCESS_EXECUTION_PROTECTED_ROOT_INVALID",
+      "repair": "Consolidate two protected subdirectories under their existing parent, preserving coverage within the 16-root limit",
+      "resolved": true,
+      "same_archive": true,
+      "same_validator_configuration": true,
+      "same_accepted_validator_review": true,
+      "native_calls": 0
+    }
+  ],
+  "signed_mode": {
+    "status": "PASS",
+    "choice": "COMMITTING",
+    "operation_id": "op_4db24903fa903f67428fbe320a0e14dbdff6bac7",
+    "receipt_id": "receipt_4db24903fa903f67428fbe320a0e14dbdff6bac7",
+    "accepted_results": 1,
+    "tampered_choice_refused": true,
+    "same_receipt_on_redelivery": true,
+    "cold_process_receipt_recovery": "PASS",
+    "new_mode_questions": 0,
+    "manual_signature_steps": 0,
+    "proof_sha256": "154b7d28700625f001856448a86b775aef94dec8038467d9e4984b3037702f62",
+    "evidence_class": "operator-accepted-local-history-observation",
+    "independent_original_author_proof": false,
+    "applied_in_canonical_session": true
+  },
+  "native_authorization": {
+    "status": "PASS",
+    "configuration_sha256": "2b2f933bcb75c740fea874e79906fd9cf866b8c7911c5933a0687aaf08a1bdbb",
+    "max_responses": 24,
+    "max_bytes": 67108864,
+    "max_turn_ms": 600000,
+    "duration_ms": 3600000,
+    "manual_signature_steps": 0
+  },
+  "native": {
+    "status": "PASS",
+    "scope": "Three diagnostics and one initial planning/audit actor completed with closed journals and zero processes; the subsequent deterministic plan evaluation refused the proposal.",
+    "launched": true,
+    "responses": 5,
+    "responses_scope": "Observed responses in completed Native generations; no retry or renewed grant after the deterministic refusal",
+    "activities": [
+      {
+        "generation": 1,
+        "status": "PASS",
+        "output_contract": "standard-drift-report.v1",
+        "answer_sha256": "90307fd60951bf3c394a9e3c8f77cdf2d697e9d1b4f95e3a3db5a5e5e7fb2858",
+        "answer_hash_scope": "Retained native-result artifact including its answer envelope",
+        "active_processes": 0,
+        "responses": 1,
+        "storage_budget_debit_bytes": 2109661,
+        "supervised_process_ms": 102184,
+        "trace_sha256": "976bb013b1ab15bca2354d5ae439a6112eb244eb5fbdb67bf52868a4485c859c",
+        "thread_usage": [
+          {
+            "thread_sha256": "ff871e70401efd2aa7ae3e396a626f29c38c279f3e80cfa52d53de901bcfe84e",
+            "counters": {
+              "totalTokens": 29735,
+              "inputTokens": 28619,
+              "cachedInputTokens": 0,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 1116,
+              "reasoningOutputTokens": 31
+            }
+          }
+        ],
+        "usage_scope": "latest observed cumulative snapshot per thread; not a billed total"
+      },
+      {
+        "generation": 2,
+        "status": "PASS",
+        "output_contract": "standard-drift-report.v1",
+        "answer_sha256": "3d668c785030415357192f9d10e18193f04351a72a19f13ffe2b3c53d9d19020",
+        "answer_hash_scope": "Retained native-result artifact including its answer envelope",
+        "active_processes": 0,
+        "responses": 1,
+        "storage_budget_debit_bytes": 2567886,
+        "supervised_process_ms": 112414,
+        "trace_sha256": "335223fba47d26726ea835de78bbb401e37cf47079f094c140b86d5f0e92959c",
+        "thread_usage": [
+          {
+            "thread_sha256": "7b27a2b15cc92475c18b52a9b1b62902f68cc293b2006f10b105b2663303ebff",
+            "counters": {
+              "totalTokens": 32594,
+              "inputTokens": 31136,
+              "cachedInputTokens": 0,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 1458,
+              "reasoningOutputTokens": 0
+            }
+          }
+        ],
+        "usage_scope": "latest observed cumulative snapshot per thread; not a billed total"
+      },
+      {
+        "generation": 3,
+        "status": "PASS",
+        "output_contract": "standard-drift-report.v1",
+        "answer_sha256": "aaf9b5f5652ad6a69f68cfac0ab6152194e760723ad902af22985da9980dc636",
+        "answer_hash_scope": "Retained native-result artifact including its answer envelope",
+        "active_processes": 0,
+        "responses": 1,
+        "storage_budget_debit_bytes": 2605747,
+        "supervised_process_ms": 112968,
+        "trace_sha256": "a47ebec2fb4c507ae960715f30662faf58ae6e3e3a0e6fde7b5454b839fd1c08",
+        "thread_usage": [
+          {
+            "thread_sha256": "336b311db92f1b4ea7f22749f5de135b37ff8c8ef88c33a154c6196f0fb5ef80",
+            "counters": {
+              "totalTokens": 32612,
+              "inputTokens": 31137,
+              "cachedInputTokens": 0,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 1475,
+              "reasoningOutputTokens": 0
+            }
+          }
+        ],
+        "usage_scope": "latest observed cumulative snapshot per thread; not a billed total"
+      },
+      {
+        "generation": 4,
+        "status": "PASS",
+        "output_contract": "standard-cycle-prework-report.v1",
+        "answer_sha256": "935d2899d84f3275120fd6d7ec072c41d3d3c6fc5dab1a02162743847cec0dfb",
+        "answer_hash_scope": "Retained native-result artifact including its answer envelope",
+        "active_processes": 0,
+        "responses": 2,
+        "storage_budget_debit_bytes": 3450827,
+        "supervised_process_ms": 138414,
+        "trace_sha256": "6c4d8c3d56f3bc58d83dbe942e846a336d4ebbf44e960ee5f24567c6907c70ce",
+        "thread_usage": [
+          {
+            "thread_sha256": "3e6ba8c2e59e172a985201b5917a799a1dcd1a271496e8aaf42286ff806ee54d",
+            "counters": {
+              "totalTokens": 78524,
+              "inputTokens": 76250,
+              "cachedInputTokens": 37760,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 2274,
+              "reasoningOutputTokens": 41
+            }
+          }
+        ],
+        "usage_scope": "latest observed cumulative snapshot per thread; not a billed total"
+      }
+    ]
+  },
+  "full_nominal": "FAIL",
+  "installed_nominal": "SKIP",
+  "same_session_resume": "SKIP",
+  "p0_complete": false,
+  "limitations": [
+    "The local chat observer is an accepted pilot exception, not independent proof of the original author; lot 2b remains open.",
+    "The predecessor first failure is retained unchanged; targeted regressions do not prove genuine-model compliance.",
+    "A fresh candidate replay is not resumption of the predecessor workspace."
+  ],
+  "report_checkpoint_at": "2026-11-23T02:34:08.763Z",
+  "requested_diagnosis": {
+    "status": "PASS",
+    "choice": "request_diagnosis",
+    "operation_id": "op_a9f7b479ace9823cf4406233c8fcb07b4942bd11",
+    "receipt_id": "receipt_a9f7b479ace9823cf4406233c8fcb07b4942bd11",
+    "accepted_results": 1,
+    "tampered_choice_refused": true,
+    "same_receipt_on_redelivery": true,
+    "cold_process_receipt_recovery": "PASS",
+    "repeated_human_questions": 0,
+    "manual_signature_steps": 0,
+    "evidence_class": "operator-accepted-local-history-observation",
+    "independent_original_author_proof": false
+  },
+  "alignment": {
+    "status": "PASS",
+    "choice": "confirm_alignment",
+    "accepted_results": 1,
+    "operation_id": "op_5b083c398f280ae93ae470106097ccceb426498d",
+    "question_sha256": "e885d35696cb96f14b790fcc12a160276dc7b43184b1206e2987a2691189c972",
+    "subject_sha256": "9477b6dc6aa2e716ce57181dee8cd651eae8ba9ae81cb17406d5df5cb3f11067",
+    "receipt_id": "receipt_5b083c398f280ae93ae470106097ccceb426498d",
+    "tampered_choice_refused": true,
+    "same_receipt_on_redelivery": true,
+    "cold_process_receipt_recovery": "PASS",
+    "business_answers": 1,
+    "manual_signature_steps": 0,
+    "answer_form": "Structured reply identifying the exact displayed question",
+    "evidence_class": "operator-accepted-local-history-observation",
+    "independent_original_author_proof": false,
+    "physical_checkpoint": {
+      "candidate": "a2ebe87487291550bf2283da8bbd0f18158be5d1",
+      "backend": "postgres",
+      "state_mode": "db-only",
+      "status": "PASS",
+      "operation_id": "op_16f94c0ddb8395b6d672b42608092972c7b018fa",
+      "receipt_id": "receipt_16f94c0ddb8395b6d672b42608092972c7b018fa",
+      "accepted_results": 1,
+      "evaluation_operation_id": "op_f96a8da782ee29ab07e8aef0e4fc3641891fd144",
+      "output_sha256": "ccc35d982c1e57ca0cd4f7179d514c9267fe0ca054014b96188eb5e6899d1459",
+      "canonical_report_sha256": "db9e5901ef77f4ebbbc77951cf157993c25ff037b1c930e618b867182040bd9d",
+      "same_report_from_two_checkouts": true,
+      "authenticated_alignment_used": true,
+      "raw_evidence_sha256": "7a49ccdbdd66f5e00d04e5a587bbd2fc50d902eb8285dd11e718abfbb8cc2a4b",
+      "observed_at": "2026-11-23T02:21:36.648Z"
+    }
+  },
+  "prework_contract_replay": {
+    "status": "PASS",
+    "intent_required_rule": "SPEC-R03",
+    "architecture_required_rule": "SPEC-R04",
+    "answer_sha256": "935d2899d84f3275120fd6d7ec072c41d3d3c6fc5dab1a02162743847cec0dfb",
+    "scope": "A real actor supplied both mandatory audit rules and the Native report contract passed; this is not the later plan evaluation result"
+  },
+  "product_before_planning": {
+    "status": "PASS",
+    "physical_files_unchanged_from_seed": true,
+    "file_sha256": [
+      "81beb0d272d1db36213fc707861b53108a0cbb1a2446b9d455898d44006d8865",
+      "70d900458b5b7a6306428a95ffa50a7a397154e9f4bc0e4fa5bdd9168a4eef9f"
+    ],
+    "observation_scope": "Physical product bytes compared with the Git seed before planning; this observation executes no product test"
+  },
+  "first_failure": {
+    "operation": "cycle_prework_evaluate",
+    "operation_id": "op_2c92943a53a012b23b0f3c9745a697ed12f07f68",
+    "reason_code": "STANDARD_CYCLE_PLAN_EVIDENCE_INVALID",
+    "outcome": "blocked",
+    "effect_status": "no_effect",
+    "receipt_id": "receipt_2c92943a53a012b23b0f3c9745a697ed12f07f68",
+    "trace_sha256": "181204c09c1c769a0509155d10c89cf7ebacab797c10e4ade4ee10077e500c6b",
+    "journal_sha256": "cf678a452396c7f123e90506ab583d6e857c12c40bd6433ef823387785c76978",
+    "missing_proposal_reference": "audit:SPEC.md",
+    "all_proposal_references_match_supplied_evidence": true,
+    "both_audits_already_cite_spec": true,
+    "original_answer_unchanged": true,
+    "product_files_unchanged": true,
+    "product_tests": "not_executed",
+    "diagnosis": "Adding the supplied SPEC reference to an in-memory clone passes the same pure evaluator; no judgement or live report was changed or submitted",
+    "retry": "not_executed"
+  },
+  "targeted_correction": {
+    "candidate": "020382a90184496d375629983a502103f694cf72",
+    "correction_pr": 209,
+    "report": "native-prework-replay-020382a9.json",
+    "status": "PASS",
+    "scope": "one isolated real Native prework replay and pure deterministic evaluation",
+    "live_instance_resumed": false
+  }
+}

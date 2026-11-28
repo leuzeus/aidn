@@ -1,0 +1,93 @@
+{
+  "pilot_candidate": "c79bf0d79ae4af0d3fa40ef59d13100a07a61eee",
+  "pilot_archive_sha256": "97c31cdf05ade66eb1d9cc3384b4d7d716a31c599aaf8df843696ac8cc194ccd",
+  "interface_candidate": "72fcb258dfcc1d7fc5a21a815eece3bb18e34fde",
+  "interface_archive_sha256": "ad586f2615c84f72dadf96da15a1f57648a072786a6a5b88c4c95c70a57d5025",
+  "platform": "Windows",
+  "state_mode": "FILES",
+  "interface": "Codex MCP form elicitation",
+  "installed_transport_discovery": {
+    "status": "PASS",
+    "scope": "fresh real Codex app-server",
+    "tools": [
+      "session",
+      "question",
+      "ask"
+    ],
+    "compared_implementation_files": 5
+  },
+  "form_and_public_host_fixture": {
+    "status": "PASS",
+    "identity": "disposable independently enrolled test connection",
+    "answers": 1,
+    "receipts": 1,
+    "choice": "COMMITTING",
+    "cold_before_and_after_acceptance": "PASS",
+    "changed_merge_subject_refused": "PASS",
+    "replacement_client_refused": "PASS",
+    "tool_supplied_answer_refused": "PASS"
+  },
+  "genuine_chat": {
+    "session": "S001",
+    "declared_choice": "COMMITTING",
+    "question_sha256": "5a885eaeffece1e1043ea435314172a748f7e62f3b9ba27e5a9e4d835a3bed6e",
+    "message_observation": "first-party thread item retained in private pilot evidence",
+    "verified_account_binding": "UNAVAILABLE",
+    "signed_source": "UNAVAILABLE",
+    "canonical_phase": "staged",
+    "receipts": 0,
+    "genuine_form_processing": "SKIP",
+    "continuation": "SKIP"
+  },
+  "historical_message_recovery": {
+    "interface_candidate": "1b666e1a6434afa360ee683904f14699a053518c",
+    "interface_archive_sha256": "503807ce9fca998343afc49260fb1414af7d3c9c0adcbc304989e8d8b18bc24d",
+    "compared_implementation_files": 6,
+    "original_codex_user_message_lookup": "PASS",
+    "lookup_transport": "thread/items/list on the installed Codex app-server",
+    "installed_mcp_recovery": "PASS",
+    "scope": "original pilot instance with the separately installed connector",
+    "genuine_source_attestation": "UNAVAILABLE",
+    "host_response": "awaiting_attestation",
+    "canonical_journal_byte_identical": true,
+    "canonical_receipts": 0,
+    "new_form_requests": 0,
+    "native_model_calls": 0,
+    "signed_fixture_recovery": {
+      "status": "PASS",
+      "canonical_receipts": 1,
+      "new_form_requests": 0,
+      "cold_retry_same_receipt": true,
+      "different_enrolled_author_refused": true,
+      "changed_message_and_question_refused": true
+    }
+  },
+  "accepted_local_observation": {
+    "status": "PASS",
+    "evidence_class": "operator-accepted-local-history-observation",
+    "scope": "S001 mode question on the frozen Windows pilot",
+    "independent_original_author_proof": false,
+    "user_exception_consent": "observed in the same Codex chat",
+    "issuer": "dedicated local observer",
+    "issuer_scope": "local-only pilot helper outside the installed package",
+    "issuer_script_sha256": "85e26d339b3e6dc0a2702a81d67b4aeb554e98ecf7dd749217c54f09070908ea",
+    "private_signing_key": "generated for this source in memory",
+    "canonical_operation": "op_43c033c3c30747f792bfe09ff94ccc76074c5041",
+    "receipt": "receipt_43c033c3c30747f792bfe09ff94ccc76074c5041",
+    "canonical_phase": "receipted",
+    "canonical_receipts": 1,
+    "choice": "COMMITTING",
+    "observation_sha256": "8276e666875cbb7c55d9ea0ff2c9f9ea6fb2626fbd4938a98a6406d6524e7ae5",
+    "operation_file_sha256": "3cb26502c8970f3f18c37fa3f7605c15bdc434e83b28180156c3eccceba01901",
+    "tampered_choice_refused": true,
+    "cold_process_recovered_same_receipt": true,
+    "mode_applied_in_session": true,
+    "mode_applied_in_current_state": true,
+    "new_mode_questions": 0,
+    "manual_signature_steps": 0,
+    "next_public_step": "native",
+    "product_authenticated_interface": "UNAVAILABLE"
+  },
+  "full_workflow": "SKIP",
+  "p0_go": false
+}

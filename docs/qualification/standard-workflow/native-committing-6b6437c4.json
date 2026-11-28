@@ -1,0 +1,423 @@
+{
+  "candidate": "6b6437c4715a500124f3de7978bcbe4ca23efdf2",
+  "archive_sha256": "8b24ebdcf497f65aff765099c65b09b20802c3b9ec6162432f5f5fede4f09957",
+  "predecessor": "2fe9c20caffce69e7c888f4d04975e85ca20d2b8",
+  "correction_pr": "https://github.com/leuzeus/aidn/pull/205",
+  "model_revision": 429,
+  "backend": "Windows/FILES",
+  "package_installation": "PASS",
+  "source_installed_inventory": {
+    "models": 16,
+    "provider_bindings": 131,
+    "implementation_files": 689,
+    "implementation_sha256": "c0ce0fe09f8e8d0a8a86e7ab7ce4caa814fcb5a9bc51ed8a5a1f0fcf1f7b44a3"
+  },
+  "github_provider_identity": "PASS",
+  "native_hooks": {
+    "expected": 2,
+    "observed": 2,
+    "status": "PASS"
+  },
+  "cycle_validation": {
+    "host_material_check": "PASS",
+    "configuration_sha256": "84d326a8d51a860f1b2469e4f5ba77554c02dc0b3af38e846d6899d75dd99e51",
+    "process_plan_sha256": "98a928ccba8a75bd312ed57099d9e192dbd3db77af908e6f446bc52f1da235b5",
+    "case_limit_ms": 60000,
+    "cases": [
+      {
+        "id": "filesystem_access",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 11265,
+        "active_processes": 0,
+        "companion_active_processes": 0,
+        "sha256": "ced67198dfdc2311aa71c9b1b9661c07aff3643cd1d5ac6643d748fc560596cc"
+      },
+      {
+        "id": "timeout",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 8136,
+        "active_processes": 0,
+        "sha256": "6961ac889c3eca4f7291eceb213e5e0f9a0d010ef3d66efd8aba7fbb132ff326"
+      },
+      {
+        "id": "cancel",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 6098,
+        "active_processes": 0,
+        "sha256": "b3926849588afc9b0dab884f9b3347be22d6110295a818339b8ac6af71021503"
+      },
+      {
+        "id": "callback",
+        "status": "READY_FOR_INDEPENDENT_REVIEW",
+        "elapsed_ms": 5899,
+        "active_processes": 0,
+        "sha256": "952131cea3fc8c313bcef09cfdce265d22cffb750d61f8db5a87a4bfd9fa9369"
+      }
+    ],
+    "attestation_sha256": "94228cf124b80578164474a6c77effc998c69410f5434843b7e7081021a4a03b",
+    "signed_boundary": "PASS",
+    "oracle": "PASS",
+    "assurance_profile": "codex-cooperative-access.v1",
+    "filesystem_evidence_method": "windows-access-check.v1",
+    "read_isolation": "not_guaranteed",
+    "network_isolation": "not_guaranteed",
+    "qualification_sha256": "90c4ef1776ffb062de2c7986229c3bcbbc4185ab1cc75219d84a0a715ac1cf5c",
+    "profile_sha256": "7eeed934ad5237e22692c73e5775ebae9c6a9ee72ab961228f9bc9a03c27ad0b",
+    "review": {
+      "status": "PASS",
+      "evidence_class": "operator-accepted-local-history-observation",
+      "answer_association": "explicit-plain-reply-to-pending-review-local-interpretation",
+      "independent_original_author_proof": false,
+      "manual_signature_steps": 0,
+      "tampered_attestation_refused": true
+    }
+  },
+  "public_full_nominal": "FAIL",
+  "windows_installed_nominal": "SKIP",
+  "p0_go": false,
+  "complete_standard_workflow": false,
+  "prior_receipts_migrated": false,
+  "prior_business_intent_retained": [
+    "COMMITTING",
+    "request_diagnosis"
+  ],
+  "public_entry": {
+    "status": "FAIL",
+    "mode": "COMMITTING",
+    "mode_applied": true,
+    "mode_receipt": "receipt_d868949013e3595155e1f77ae2c33ea7383640ca",
+    "mode_result_count": 1,
+    "new_mode_questions": 0,
+    "manual_signature_steps": 0,
+    "cold_receipt_recovered": true,
+    "next_stage": "Preserve failed occurrence; correct producer constraints and refusal evidence before a new frozen candidate replay"
+  },
+  "limits": "The local chat observer does not establish independent proof of original author identity.",
+  "full_configuration_sha256": "82ddfc7b96182d4f756d3a929b809030438d4a20e66ac224ee881dbce439ae6b",
+  "preserved_diagnosis": {
+    "choice": "request_diagnosis",
+    "status": "ACCEPTED",
+    "answer_association": "explicit-continuation-of-diagnosis-local-interpretation",
+    "new_diagnosis_questions": 0,
+    "operation_id": "op_63a7ae815c546965283faaf8b219c39f2183eb3e",
+    "question_sha256": "08a1d3bb62b61b64ad359e94b37f5c85737a6729fc0d6d7ef1c99c6bfb67d454",
+    "receipt_id": "receipt_63a7ae815c546965283faaf8b219c39f2183eb3e",
+    "result_count": 1,
+    "cold_receipt_recovered": true,
+    "tampered_choice_refused": true,
+    "manual_signature_steps": 0,
+    "next_public_action": "native",
+    "next_generation": 3,
+    "additional_diagnosis": "PASS",
+    "fresh_evaluation": "op_033cae193b3ebc59980cf3c2bf8b561f44db3793",
+    "distinct_native_occurrences": true,
+    "intervening_cycle_finalizer_count": 0,
+    "second_human_decision": "CONFIRM_ALIGNMENT_ACCEPTED",
+    "second_human_receipt": "receipt_e3c54d113cb4ca9fcc3abedc6a92ab05a38ad412",
+    "second_human_result_count": 1,
+    "second_human_cold_receipt_recovered": true
+  },
+  "native_authorization": {
+    "status": "ACCEPTED",
+    "configuration_sha256": "5b14cf871864f9a9d0f3d13280eebd642ccff40bdc09959b66f084c6b0d44f7b",
+    "max_responses": 24,
+    "max_bytes": 67108864,
+    "max_turn_ms": 600000,
+    "deadline": "2026-11-22T19:36:17.016Z"
+  },
+  "connector_composition": {
+    "connector": "1b666e1a6434afa360ee683904f14699a053518c",
+    "original_receipt_reader": "FAIL",
+    "error": "PROCESS_MODEL_INVALID",
+    "reason": "The installed connector retained the previous 256-node model bound; the candidate model has 266 nodes.",
+    "mode_already_accepted": true,
+    "composed_reader": "PASS",
+    "imports_only": true,
+    "source_module_sha256": "85f83dcac509502615ed53b61364385024b69403f683b1f7dc08669437f08c4a",
+    "composed_module_sha256": "b0b7a84b0ff3fada8124a5f24e44165e9923d5660ea5cc0285251785743dcef3",
+    "runtime_dependency_candidate": "6b6437c4715a500124f3de7978bcbe4ca23efdf2",
+    "installed_connector_qualification": "SKIP",
+    "composition": "Only the process-instance store reads with the frozen candidate kernel; connector authority, offer, Codex message and receipt verification retain their pinned connector code. Current workflow entry remains explicitly injected by the pilot.",
+    "first_composition_submit_failure": "TypeError: authority.verifyHumanEnvelope is not a function",
+    "first_composition_failed_before_valid_submission": true,
+    "first_composition_sha256": "8ea091f4b44316b1eb4277e4b660f5f1d2f33fa09f266d4e0c8d99b4fde4e000"
+  },
+  "last_observed_before_first_native": {
+    "operations": 6,
+    "decisions": [
+      {
+        "binding": "mode_decision",
+        "operation_id": "op_d868949013e3595155e1f77ae2c33ea7383640ca",
+        "receipt_id": "receipt_d868949013e3595155e1f77ae2c33ea7383640ca",
+        "record_sha256": "c5bf1b9c6f07882ed09a99bcc05eb83fc254ad5c7600b06816709d9443ec5111",
+        "result_count": 1,
+        "manual_signature_steps": 0
+      }
+    ],
+    "physical_artifacts": [
+      {
+        "kind": "session",
+        "sha256": "a3e906991b29b8a86e1f302accc0b0a4bdfdb61b2169071fb69fd1bfac91de66"
+      },
+      {
+        "kind": "current_state",
+        "sha256": "9c83e681eeb61f70ffc13a33c6b12b72cf189cae94401d4157bbe6117e6f1305"
+      }
+    ]
+  },
+  "preparation_repairs": [
+    {
+      "error": "STANDARD_CYCLE_BRANCH_EXISTS",
+      "classification": "pilot-preparation-defect",
+      "first_preview_sha256": "d67574f2cdbe95f3d4c0864d06681076c7846c50fb0ac970ada7e228802d2fcc",
+      "observed_before_cycle_creation": true,
+      "old_candidate_branch_inherited": true,
+      "remote_branch_existed": false,
+      "current_head_unchanged": true,
+      "old_history_preserved": true,
+      "action": "Retain the inactive inherited branch under a distinct local name and prune obsolete remote references.",
+      "product_change": false
+    }
+  ],
+  "native_runs": [
+    {
+      "generation": 1,
+      "status": "RUNNING",
+      "first_failure": null,
+      "journal_phase": "closed",
+      "trace_sha256": "16e67881bcacbaf0f441c9e02aaa573e33a05337b5590aee0424e1df9364b247",
+      "journal_sha256": "a9d3ee6a6403606899faa78e1cd8595520b5346c253804eed63104cb1fb8be0b",
+      "exit_code": 0,
+      "process_closure": "confirmed",
+      "active_processes": 0,
+      "elapsed_global_ms": 141117,
+      "client_reported_usage": [
+        {
+          "totalTokens": 28527,
+          "inputTokens": 27447,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 1080,
+          "reasoningOutputTokens": 24
+        }
+      ],
+      "activity_status": "PASS"
+    },
+    {
+      "generation": 2,
+      "status": "RUNNING",
+      "first_failure": null,
+      "journal_phase": "closed",
+      "trace_sha256": "1886bdbdf19be69cf6014fcf58a0056b4890ed03c0962d5656becf38a7904266",
+      "journal_sha256": "5859e805f9a224da907688e120fcdd630a53b7af7db114d7fafda849686226fa",
+      "exit_code": 0,
+      "process_closure": "confirmed",
+      "active_processes": 0,
+      "elapsed_global_ms": 736591,
+      "client_reported_usage": [
+        {
+          "totalTokens": 31491,
+          "inputTokens": 29994,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 1497,
+          "reasoningOutputTokens": 20
+        }
+      ],
+      "activity_status": "PASS"
+    },
+    {
+      "generation": 3,
+      "status": "RUNNING",
+      "first_failure": null,
+      "journal_phase": "closed",
+      "trace_sha256": "af87fbc1772d817e8359ee98d9557c44bbc608c0b6b5b1ecff935f81cd62ee80",
+      "journal_sha256": "3e72d874757e1b5336b6b129e0e4ab25873ce62c4c67a91f58c0bcdd044b3214",
+      "exit_code": 0,
+      "process_closure": "confirmed",
+      "active_processes": 0,
+      "elapsed_global_ms": 1175206,
+      "client_reported_usage": [
+        {
+          "totalTokens": 31467,
+          "inputTokens": 29993,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 1474,
+          "reasoningOutputTokens": 0
+        }
+      ],
+      "activity_status": "PASS"
+    },
+    {
+      "generation": 4,
+      "status": "FAILED",
+      "first_failure": "PROCESS_SESSION_ANSWER_INVALID",
+      "journal_phase": "failed",
+      "trace_sha256": "a07557d44941f656cefe456c514783edbd5131e79e4cccc0a0f596dc9c04b553",
+      "journal_sha256": "49c872ec6c977b56019fa96637ac25362d014b6cffd00b213be854563d2f4409",
+      "exit_code": 0,
+      "process_closure": "confirmed",
+      "active_processes": 0,
+      "elapsed_global_ms": 2026139,
+      "client_reported_usage": [
+        {
+          "totalTokens": 71215,
+          "inputTokens": 68737,
+          "cachedInputTokens": 34176,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 2478,
+          "reasoningOutputTokens": 58
+        }
+      ],
+      "activity_status": "FAIL"
+    }
+  ],
+  "native_responses_observed": 5,
+  "native_consumption": [
+    {
+      "generation": 1,
+      "phase": "closed",
+      "tree_closed": true,
+      "responses": 1,
+      "storage_debit_bytes": 1869159,
+      "native_usage_sha256": "a9e16c5871b2603b4ea7de2593eee919491a6a2f51342905c8443f7b2922e15f"
+    },
+    {
+      "generation": 2,
+      "phase": "closed",
+      "tree_closed": true,
+      "responses": 1,
+      "storage_debit_bytes": 2354111,
+      "native_usage_sha256": "75043c1bba7518c7f2ea38166cfa7dccde0ac5157207ad29d2a8027e6a9cdeed"
+    },
+    {
+      "generation": 3,
+      "phase": "closed",
+      "tree_closed": true,
+      "responses": 1,
+      "storage_debit_bytes": 2296515,
+      "native_usage_sha256": "ee32e038f1c05e393403ea1caeb91f91fd9a75bf09bfa926e6958e01fe7856ed"
+    },
+    {
+      "generation": 4,
+      "phase": "failed",
+      "tree_closed": true,
+      "responses": 2,
+      "storage_debit_bytes": 3114589,
+      "native_usage_sha256": "546f919d75e6fee509aae8d582164957da28cb204e0a7cceb467e5e096476c5d"
+    }
+  ],
+  "native_totals": {
+    "responses": 5,
+    "storage_debit_bytes": 9634374,
+    "deadline": "2026-11-22T19:36:17.016Z"
+  },
+  "progress": {
+    "operations": 26,
+    "decisions": [
+      {
+        "binding": "mode_decision",
+        "operation_id": "op_d868949013e3595155e1f77ae2c33ea7383640ca",
+        "receipt_id": "receipt_d868949013e3595155e1f77ae2c33ea7383640ca",
+        "record_sha256": "c5bf1b9c6f07882ed09a99bcc05eb83fc254ad5c7600b06816709d9443ec5111",
+        "result_count": 1,
+        "manual_signature_steps": 0
+      },
+      {
+        "binding": "drift_recovery_decision",
+        "operation_id": "op_63a7ae815c546965283faaf8b219c39f2183eb3e",
+        "receipt_id": "receipt_63a7ae815c546965283faaf8b219c39f2183eb3e",
+        "record_sha256": "c499f2de653d4c788c6565068ba18f578ca77fc3abc9a5aae1d08892dd314ec0",
+        "result_count": 1,
+        "manual_signature_steps": 0
+      },
+      {
+        "binding": "drift_recovery_decision",
+        "operation_id": "op_e3c54d113cb4ca9fcc3abedc6a92ab05a38ad412",
+        "receipt_id": "receipt_e3c54d113cb4ca9fcc3abedc6a92ab05a38ad412",
+        "record_sha256": "dac6275e2e44e0abb998edc9f8eca25e9268f4b1694ab43dec009a761c6fd545",
+        "result_count": 1,
+        "manual_signature_steps": 0
+      }
+    ],
+    "physical_artifacts": [
+      {
+        "kind": "session",
+        "sha256": "e0b0d1e58c9448b4d8377fb7480a7ba0c73e293dfe88081b2c305ef939de00a9"
+      },
+      {
+        "kind": "current_state",
+        "sha256": "af35937a56e2935844c0545c1eb74d9690049aaf4012afef8dc773d60e88a004"
+      },
+      {
+        "kind": "cycle_status",
+        "sha256": "9ba77ef77ef52ac3cb271c729ed58d0a9d4df0f8260a852177ebf97238e234ab"
+      }
+    ],
+    "physical_git": {
+      "head": "f03479103c2f1b055abf10b53fc5eca0a9519945",
+      "product": [
+        {
+          "file": "interval.mjs",
+          "sha256": "81beb0d272d1db36213fc707861b53108a0cbb1a2446b9d455898d44006d8865"
+        },
+        {
+          "file": "interval.test.mjs",
+          "sha256": "70d900458b5b7a6306428a95ffa50a7a397154e9f4bc0e4fa5bdd9168a4eef9f"
+        }
+      ]
+    }
+  },
+  "observed_at": "2026-11-22T19:30:16.171Z",
+  "fresh_checkpoint": {
+    "status": "PASS",
+    "candidate": "6b6437c4715a500124f3de7978bcbe4ca23efdf2",
+    "finalizer_receipt": "receipt_b60d024b0f17ab81ad2834aade4659c39c6f6033",
+    "evaluation_operation_id": "op_033cae193b3ebc59980cf3c2bf8b561f44db3793",
+    "checkpoint_receipt": "receipt_4fbe6fb77dd7445acbe9849817da475c0011549f",
+    "iteration": 2,
+    "physical_event_matches": 1,
+    "event_sha256": "31b9548d56c6bfb3b0ea993c33681d7ae9170c5ae139dde88228857d2e09e5cc",
+    "physical_index_sha256": "f483552e49cb6f212548daf7c3d560514ee8fa5e4ea064c9528978a0f410668e",
+    "index_bytes": 330907,
+    "checkpoint_elapsed_ms": 38568,
+    "manual_signature_steps": 0,
+    "duplicate_completion_questions": 0
+  },
+  "first_native_failure": {
+    "status": "FAIL",
+    "generation": 4,
+    "stage": "initial cycle prework proposal and intent/architecture assessment",
+    "occurrence_id": "root/5/committing/4/assess/0",
+    "contract": "standard-cycle-prework-report.v1",
+    "error": "PROCESS_SESSION_ANSWER_INVALID",
+    "trace_sha256": "a07557d44941f656cefe456c514783edbd5131e79e4cccc0a0f596dc9c04b553",
+    "context_sha256": "51aff6db2d5f0a4d7faaf0d3cd126900ad3a9b401ea22d1297cc484c747f235d",
+    "output_bindings_sha256": "6b4573bc5391bb5c37fbced3679f7d890d949455f4831dd3dcfd21d0f105fc77",
+    "original_rejected_answer": "UNAVAILABLE",
+    "cause": "unclassified",
+    "retry_performed": false,
+    "product_bytes_unchanged": true,
+    "product_tests": "SKIP",
+    "process_closure": "PASS",
+    "active_processes": 0,
+    "post_failure_preview": "NATIVE_OWNER_DISPOSITION_UNPROVEN_EFFECTS",
+    "post_failure_preview_sha256": "7854abcbc30a52f0b038d148db591c175730e6e4753f129a66d3cb3b0c187018",
+    "observation": "The adapter validated the ephemeral final answer before retaining a native-result. Available local records do not expose the rejected text or offending constraint. The failed occurrence remains fenced; process closure does not establish business disposition."
+  },
+  "synthetic_contract_counterexample": {
+    "status": "PASS",
+    "genuine_rejected_answer_recovered": false,
+    "native_calls": 0,
+    "transport_accepts_text_rejected_by_full_schema": true,
+    "field": "$.report.proposal.scope[0]",
+    "establishes_real_failure_cause": false,
+    "observation": "A synthetic plan containing code comparison operators in a safe-prose field passes the strict transport projection but fails the full host schema. The projection omits patterns and bounds; those full constraints were absent from the producer instructions."
+  },
+  "session_continuity": {
+    "status": "SKIP",
+    "scenario": "Fresh candidate replay in another checkout of the same private repository",
+    "observation": "Repeated session/cycle labels and objectives do not establish continuity. FILES identity and accessible session history across checkouts remain a separate qualification case."
+  }
+}

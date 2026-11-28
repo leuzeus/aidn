@@ -1,0 +1,159 @@
+{
+  "observed_date": "2026-11-25",
+  "scope": "Windows PostgreSQL pilot preparation and readiness for a real authenticated STANDARD answer",
+  "windows": {
+    "candidate": "105a300a6f52c8aaac6b34da39fba1adfe08b894",
+    "archive_sha256": "5e84399a2968eb65a813f2f435337d76b767df5e4eda09dc29d50e01d8444455",
+    "purpose": "Source preflight before the final one-candidate measurement",
+    "postgres_dedicated_database": {
+      "status": "PASS",
+      "dedicated_login": true,
+      "access_to_prior_pilot_database": false,
+      "evidence_sha256": "f84fba997a840a976ad5fb00b87d5a24b28b2144c52994630be8802cec581593"
+    },
+    "two_checkouts": {
+      "status": "PASS",
+      "canonical_backend": "postgres",
+      "state_mode": "db-only",
+      "initial_canonical_artifacts": 35,
+      "same_project_and_scope": true,
+      "same_canonical_hashes": true,
+      "same_local_bootstrap_tree": true,
+      "historical_pilot_copied": false,
+      "product_untouched": true,
+      "prior_product_tests": {
+        "status": "PASS",
+        "passed": 4
+      },
+      "first_installation_refusal": "UNOWNED_INSTALLATION_ASSET",
+      "neutral_scaffold_retained_before_install": true,
+      "evidence_sha256": "9349d1f0722ce8e550160aa66b7d319448e3e802b23855d725262e595c8d1f25"
+    },
+    "public_source_startup": {
+      "status": "PASS",
+      "boundary": "AUTHENTICATED_HUMAN_DECISION_REQUIRED",
+      "completed_operations": [
+        "workflow_entry_select",
+        "context_reload",
+        "session_entry_admit",
+        "session_initialize"
+      ],
+      "authenticated_answer": "UNAVAILABLE",
+      "first_decision_phase": "staged",
+      "accepted_answers": 0,
+      "physical_native_allocations": 0,
+      "same_question_after_cold_restart": true,
+      "canonical_instance_read_in_peer": true,
+      "canonical_session_read_in_peer": true,
+      "owner_pending": false,
+      "cycle_created": false,
+      "remote_writes": 0,
+      "product_untouched": true,
+      "measured_run": "SKIP",
+      "evidence_sha256": "ff630134dc22edc89d5eb19199ea6e658ebd042140de12cd74348d70229eba94"
+    },
+    "codex_and_native_readiness": {
+      "executable_version": "codex-cli 0.171.0-alpha.13.2",
+      "executable_sha256": "2a1ec3f1dd463fd30224be4c0c67d3fe83d3d863a3d7539ccad366952436d2aa",
+      "sandbox_status": "ready",
+      "enabled_trusted_hooks": 0,
+      "work_hook_readiness": "UNAVAILABLE",
+      "validator_controls": "SKIP",
+      "native_actor": "SKIP",
+      "evidence_sha256": "4390f7f1a5c1f7fdbf539c7a34ca7a9fc5ee402656469dde1285c510e3609eba"
+    }
+  },
+  "lot_2b": {
+    "pr": 203,
+    "status": "UNAVAILABLE",
+    "state": "draft",
+    "base_candidate": "105a300a6f52c8aaac6b34da39fba1adfe08b894",
+    "connector_candidate": "b895a0288f9acc75554e9b349293bb77c497fa9e",
+    "connector_archive_sha256": "6929cace8f64cc4ea1ea3e0d5fdd285445f730d29a714922a5bbc0667ef3cb40",
+    "installed_codex_discovery": {
+      "status": "PASS",
+      "compared_implementation_files": 6,
+      "tools": [
+        "ask",
+        "question",
+        "recover_message",
+        "session"
+      ],
+      "form_supported": true,
+      "enrolled": false,
+      "evidence_sha256": "c8aa80b3f623f6ced12f9143fdd9ce9d06c490e5a1f916ad60e2321206a12d62"
+    },
+    "installed_postgres_receipt_lookup": {
+      "status": "PASS",
+      "configured_backend_only": true,
+      "old_receipt_recovered": true,
+      "missing_connection_refused": true,
+      "old_records_preserved": true,
+      "source_class": "historical local operator observation",
+      "new_receipts": 0,
+      "evidence_sha256": "7cec5ad350d7074f2a009c1728d1546b38cff5a5dd6a606c5eed7818e7c63cd6"
+    },
+    "fixture": {
+      "status": "PASS",
+      "controlled_enrollment": true,
+      "one_answer_one_receipt": true,
+      "cold_delivery": true,
+      "historical_signed_fixture_recovery": true,
+      "evidence_sha256": "7eab4d7a87144adb84485eb46f2092d32e13c29d978319dec5e1791ef034d6b4"
+    },
+    "codex_device_proof": {
+      "status": "UNAVAILABLE",
+      "codex_account_connected": true,
+      "result": "providerUnavailable",
+      "credential_reported": false,
+      "scope": "Exact tested Windows Codex build and connected pilot profile",
+      "evidence_sha256": "43914b2beb12ac24b120240d8aa6a59b9fb56690c792dbaf12eb603e5f0f3828"
+    },
+    "verification_of_actual_user_origin": "UNAVAILABLE",
+    "live_form_and_acceptance": "SKIP",
+    "manual_signatures_requested": 0,
+    "governance": {
+      "contract": "governance-route.v1",
+      "route": "ASSURED",
+      "status": "PASS",
+      "admission_run": 45648468385,
+      "required_families": "SKIP_DRAFT",
+      "perf_run": 45648468253,
+      "perf_status": "PASS"
+    }
+  },
+  "lot_1_linux_baseline": {
+    "scope": "Historical Codex Cloud task observed on 2026-11-21, consulted through the desktop conversation",
+    "candidate": "69e43d9296d7ebf2616ec16d2170be4dad3c83b4",
+    "operating_system": "Debian 13 x86_64",
+    "node": "24.19.0",
+    "git": "2.52.0",
+    "codex": "0.159.0-alpha.3",
+    "hosted_cli_authenticated": "PASS",
+    "git_provider_candidate": "PASS",
+    "local_candidate_checkout": "FAIL",
+    "local_checkout_reason": "Candidate object absent and the attempted temporary directory was read-only",
+    "private_pilot_git_access": "FAIL",
+    "private_access_observed_http": 403,
+    "reviewer_identity": "UNAVAILABLE",
+    "cgroup_v2_mounted": "PASS",
+    "cgroup_delegation": "UNAVAILABLE",
+    "cgroup_mount": "read-only",
+    "controlled_local_descendant_closure": {
+      "status": "PASS",
+      "descendants": 2,
+      "scope": "Controlled SIGTERM of tracked child and grandchild"
+    },
+    "all_descendants_after_supervisor_death": "SKIP",
+    "current_candidate_recheck": "SKIP"
+  },
+  "final_candidate_qualification": {
+    "windows_full_nominal": "SKIP",
+    "cold_resume_and_unknown_campaign": "SKIP",
+    "clean_installed_nominal": "SKIP",
+    "windows_postgres_p0": "OPEN",
+    "p0_complete": false,
+    "full_measured_run": "SKIP"
+  },
+  "next_gate": "Bind a genuine project user response to the exact question using a trusted issuer, verify one accepted receipt on a cold reopen, and finalize the frozen nominal campaign. The preliminary question remains available for diagnosis."
+}
