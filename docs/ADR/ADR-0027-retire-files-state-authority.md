@@ -17,6 +17,10 @@ state from SQL. `dual` maintains visible projections; `db-only` materializes
 detailed Markdown on demand. A missing or unavailable canonical store refuses
 the operation instead of falling back to files.
 
+Checkpoint reload, gating and synchronization checks also use the selected SQL
+backend. An index export preference does not switch their canonical source;
+import and export remain separate explicit operations.
+
 `files` is rejected as a configuration, environment or CLI runtime selection.
 Historical schemas and records can still describe it. Their bytes, signatures,
 receipts and unresolved effects are not converted into new authority.

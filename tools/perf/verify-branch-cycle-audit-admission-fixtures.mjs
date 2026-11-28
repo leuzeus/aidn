@@ -397,6 +397,7 @@ async function verifySessionObjectives(tmpRoot, onCreated) {
     // The same parser must read explicitly selected terminal closure intent,
     // while ordinary observations must keep the active-only cycle rule.
     fs.writeFileSync(statusFile, caseStatus.replace(/^state: IMPLEMENTING$/m, 'state: DONE'));
+    seedSqliteFixture(root);
     const terminalBefore = snapshot();
     const closed = await observations({ cycle_dir: 'C101-feature-alpha', session_id: 'S101' });
     const ordinaryTerminal = await observations(null);

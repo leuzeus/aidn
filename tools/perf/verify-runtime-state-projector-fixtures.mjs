@@ -176,7 +176,7 @@ function main() {
     }
 
     const result = runJson("tools/runtime/project-runtime-state.mjs", [
-      "--target", fixture,
+      "--target", filesRepo,
       "--out", outFile,
       "--json",
       "--write",
@@ -286,7 +286,7 @@ function main() {
 
     const textOut = execFileSync(process.execPath, [
       "tools/runtime/project-runtime-state.mjs",
-      "--target", fixture,
+      "--target", filesRepo,
       "--out", outFile,
     ], {
       cwd: process.cwd(),

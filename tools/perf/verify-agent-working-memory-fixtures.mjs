@@ -13,6 +13,7 @@ import { validateJsonSchema } from "../../src/core/contracts/json-schema-validat
 import handoffSchema from "../../src/core/contracts/cli-output/runtime-project-handoff-packet.v1.schema.json" with { type: "json" };
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { createSqliteRuntimeArtifactStore } from "../../src/adapters/runtime/sqlite-runtime-artifact-store.mjs";
+import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
 import { createPostgresRuntimeArtifactStore } from "../../src/adapters/runtime/postgres-runtime-artifact-store.mjs";
 import { createRuntimePersistenceFakePgClientFactory } from "./runtime-persistence-fake-pg-lib.mjs";
 import { createArtifactProjectorAdapter } from "../../src/adapters/runtime/artifact-projector-adapter.mjs";
@@ -124,11 +125,14 @@ try {
     fs.writeFileSync(inputFile, original);
   });
   await check("live admission refusal leaves latest memory intact", async () => {
-    const before = fs.readFileSync(capture.working_memory.context_file); const original = fs.readFileSync(runtimeFile);
-    fs.writeFileSync(runtimeFile, original.toString().replace("repair_layer_status: clean", "repair_layer_status: block"));
-    const out = command("tools/perf/checkpoint.mjs", ["--working-memory", inputRef, "--write", "--mode", "THINKING", "--json"]);
-    assert.notEqual(out.status, 0); assert.match(out.stderr, /WORKING_MEMORY_CHECKPOINT_REFUSED/);
-    assert.deepEqual(fs.readFileSync(capture.working_memory.context_file), before); fs.writeFileSync(runtimeFile, original);
+    const before = fs.readFileSync(capture.working_memory.context_file);
+    const artifacts = createProjectArtifactStore({ targetRoot: root }), original = artifacts.getArtifact('RUNTIME-STATE.md');
+    try {
+      artifacts.upsertArtifact({ ...original, content: original.content.replace('repair_layer_status: clean', 'repair_layer_status: block') });
+      const out = command("tools/perf/checkpoint.mjs", ["--working-memory", inputRef, "--write", "--mode", "THINKING", "--json"]);
+      assert.notEqual(out.status, 0); assert.match(out.stderr, /WORKING_MEMORY_CHECKPOINT_REFUSED/);
+      assert.deepEqual(fs.readFileSync(capture.working_memory.context_file), before);
+    } finally { artifacts.upsertArtifact(original); artifacts.close(); }
   });
   await check("explicitly skipped gate cannot capture memory", async () => {
     const out = command("tools/perf/checkpoint.mjs", ["--working-memory", inputRef, "--write", "--skip-gate-evaluate", "--json"]);

@@ -90,6 +90,11 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
   if (canonicalPostgres) {
     reloadIndex.indexBackend = 'postgres';
     syncCheckIndex.indexBackend = 'postgres';
+  } else {
+    // Export format preferences never replace canonical SQL for admission or
+    // checkpoint verification. Import/export remains an explicit operation.
+    reloadIndex.indexBackend = syncCheckIndex.indexBackend = 'sqlite';
+    reloadIndex.indexFile = syncCheckIndex.indexFile = indexSqliteOutputPath;
   }
 
   const reloadStarted = Date.now();
