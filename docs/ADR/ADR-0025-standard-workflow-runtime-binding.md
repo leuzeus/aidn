@@ -6027,6 +6027,24 @@ The original occurrence retains its unknown business outcome. The journal
 refuses subsequent generations on that interrupted instance and requires
 fresh context for a later attempt.
 
+### Read-only Native answer rejection and physical ownership
+
+A separate SQL-only historical recovery entry admits one closed R05 auditor
+assignment whose typed answer was rejected. Its fixed diagnostic verifies the
+original configuration and model source, signed process and allocation history,
+matched failed return, checkpoint delta, worker and OS closure, unchanged product
+and terminated creator. Exactly one new resource and assignment, no new result,
+and the unchanged inherited history are required. Write-capable actors, other
+failures, changed products and unresolved closure refuse.
+
+The existing v1 owner-disposition writer binds this private witness into its
+signed subject and reobserves it during physical retirement. An explicit saved
+action and exact digest authorize only that retirement. Original process,
+allocation, dispatch, rejected report and consumption remain unchanged; a
+separate receipt grants neither accounting reconciliation, business completion,
+Native renewal nor resumption. Current code cannot execute historical bindings.
+The entry supplies no Native or business executor and creates no new store.
+
 ### Reconciliation artifact projection
 
 Reconciliation retains a complete canonical artifact identity and metadata

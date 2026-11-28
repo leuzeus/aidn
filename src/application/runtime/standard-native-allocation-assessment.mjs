@@ -6,6 +6,7 @@ import { readNativeAllocationCheckpoint } from './native-allocation-evidence.mjs
 import { readAgentRunFile } from './agent-run-configuration-service.mjs';
 import { observeNativeInheritedCheckpoint } from './standard-native-post-assignment-assessment.mjs';
 import { observeReadOnlyNativeStorageStop } from './native-readonly-storage-interruption.mjs';
+import { observeReadOnlyNativeRejectedAnswer } from './native-readonly-rejected-answer.mjs';
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const stableInventory = ({ authentication, observed_at_ms, ...material }) => shadowHash(material);
@@ -89,10 +90,13 @@ export function createStandardNativeAllocationAssessment({ artifacts, configurat
         configuration_sha256: shadowHash(configuration), inventory_sha256: shadowHash(after.inventory),
         observed_at_ms: after.inventory.observed_at_ms, ...material, business_effect: 'unknown', complete_resource_closure: false,
         permits_effects: false, permits_resume: false, permits_native_renewal: false, permits_owner_retirement: false, written: false }), after.inventory);
-      const readOnlyStorageStop = observeReadOnlyNativeStorageStop({ instance: after.instance, journal: JSON.parse(artifacts.read(
+      const diagnostic = { instance: after.instance, journal: JSON.parse(artifacts.read(
         'workflows/native-allocations/' + material.journal_id + '.json', { required: true }).content),
-        configuration, signer, artifacts, productSha256: after.context.native.product_sha256 });
-      return { inventory: after.inventory, assessment, ...(readOnlyStorageStop ? { readOnlyStorageStop } : {}) };
+        configuration, signer, artifacts, productSha256: after.context.native.product_sha256, assessment };
+      const readOnlyStorageStop = observeReadOnlyNativeStorageStop(diagnostic);
+      const readOnlyRejectedAnswer = observeReadOnlyNativeRejectedAnswer(diagnostic);
+      return { inventory: after.inventory, assessment, ...(readOnlyStorageStop ? { readOnlyStorageStop } : {}),
+        ...(readOnlyRejectedAnswer ? { readOnlyRejectedAnswer } : {}) };
     },
   });
 }

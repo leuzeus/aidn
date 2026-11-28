@@ -6943,6 +6943,18 @@ finite Native grants are unchanged.
 
 ## Native owner disposition candidate
 
+Run `node tools/perf/verify-native-readonly-rejected-recovery-fixtures.mjs`
+for a typed R05 answer rejection on SQLite/db-only. The real canonical, public
+workflow entry and owner/fence ports use RPC and supervisor doubles. The fixture
+checks active-creator refusal, read-only preview, exact saved action, product
+change refusal, separate physical retirement and inert receipt replay in a new
+process, and an interrupted retirement intent reports its known separate write
+before a new process finishes the same action. It preserves the original failed allocation and unresolved assignment,
+never grants accounting, resumption or renewal and cleans its owned corpus.
+It makes no model call and does not qualify a live PostgreSQL retirement or a
+complete STANDARD journey. PostgreSQL observation and actual Native qualification
+require separate retained evidence.
+
 Run `node tools/perf/verify-native-readonly-storage-recovery-fixtures.mjs db-only`
 for a retained storage stop with a missing checkpoint after a read-only
 assignment. The controlled common host builds a disposable legacy corpus with
