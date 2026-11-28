@@ -56,7 +56,7 @@ export function createStandardNativeOwnerDisposition({ targetRoot, stateMode, ar
     if (post) { signer.verify(post.inventory); signer.verify(post.assessment); assertNativePostAssignmentAssessment(post.assessment, post.inventory); }
     const observed = post ? { inventory: post.inventory, assessment: post.assessment.base_assessment } : assess(instanceId, input), a = observed.assessment;
     signer.verify(observed.inventory); signer.verify(a);
-    const readOnly = profile === 'no_assignment' && observed.readOnlyStorageStop;
+    const readOnly = profile === 'no_assignment' && (observed.readOnlyStorageStop ?? observed.readOnlyRejectedAnswer);
     if (readOnly && (readOnly.instance_sha256 !== a.instance_sha256 || readOnly.journal_sha256 !== a.journal_sha256
       || readOnly.dispatch_id !== a.dispatch_id || readOnly.dispatch_sha256 !== a.dispatch_sha256))
       fail('NATIVE_OWNER_DISPOSITION_SUBJECT_CHANGED');
@@ -73,7 +73,8 @@ export function createStandardNativeOwnerDisposition({ targetRoot, stateMode, ar
       allowRetired: Boolean(retained?.attempts.some(row => row.lease !== null)) });
     return { ...observed, dispatch, lease, intention, lock, post_assignment_assessment: post?.assessment ?? null,
       subject_sha256: H({ assessment: stableAssessment(a), inventory: material(observed.inventory, dispatch.dispatch_id),
-        ...(readOnly ? { read_only_storage_stop: readOnly } : {}),
+        ...(observed.readOnlyStorageStop ? { read_only_storage_stop: observed.readOnlyStorageStop } : {}),
+        ...(observed.readOnlyRejectedAnswer ? { read_only_rejected_answer: observed.readOnlyRejectedAnswer } : {}),
         ...(post ? { post_assignment: stablePostAssessment(post.assessment) } : {}) }) };
   }
   function assertSubject(plan, observed) {

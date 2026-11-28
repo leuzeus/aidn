@@ -1,5 +1,14 @@
 # 04 JSON Contracts
 
+`standard-native-owner-recovery.v1` locates one retained SQL instance, dispatch
+and generation and pins its original resolved configuration file. The prepared
+`standard-native-owner-recovery-action.v1` binds that request and the current
+recovery implementation to the existing signed v1 owner-disposition plan.
+These are request and derived preparation data, not model execution authority.
+The existing disposition receipt retains false resume, renewal, accounting and
+complete-closure permissions. Historical records and failed assignments are
+not converted or completed by physical-owner retirement.
+
 `standard-windows-operator-authority.v1` is the public enrollment record read
 from the Windows machine registry. `standard-host-source.webauthn.v1` is the
 verified panel source. Its assertion carries the original bytes signed by the

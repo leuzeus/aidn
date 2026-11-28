@@ -350,6 +350,16 @@ finalization; `--verify` retains its read-only verification behavior.
     below Native denied roots; a conflicting layout returns
     `STANDARD_VALIDATION_NATIVE_READ_CONFLICT` without starting a workflow or
     repairing permissions. This check does not qualify the validator.
+    A `standard-native-owner-recovery.v1` configuration selects only historical
+    retirement of a closed read-only R05 actor whose answer was rejected.
+    It names the SQL target, instance/hash, dispatch/generation and pinned
+    resolved `original_configuration`. Preview authenticates the original
+    source, unchanged product, checkpoint delta, closure and terminated creator
+    and returns `standard-native-owner-recovery-action.v1` without writes.
+    Apply requires the saved `--action-file`, `--execute` and exact
+    `--expect-plan`. Its existing owner receipt preserves the failed assignment
+    and grants no accounting reconciliation, business completion, resumption
+    or Native renewal. FILES, other actors/failures and changed evidence refuse.
     A `standard-session-close-recovery.v1` configuration names `target_root`,
     `instance_id`, `operation_id` and the pinned resolved `original_configuration`.
     It previews only the bounded returned final-hook failure with unchanged

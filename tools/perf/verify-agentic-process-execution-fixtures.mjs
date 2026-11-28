@@ -278,7 +278,8 @@ const checkPrefixes = [
 ];
 const allocationResumeChild = process.argv[2] === "--resume-allocation" && process.argv.length === 4;
 const readOnlyStorageChild = process.argv[2]?.startsWith("--native-readonly-storage-create=") && process.argv.length >= 4;
-if (!allocationResumeChild && !readOnlyStorageChild && !process.argv.slice(2).some(argument => checkFlags.has(argument)
+const readOnlyRejectedChild = process.argv[2] === '--native-readonly-rejected-create=db-only' && process.argv.length === 4;
+if (!allocationResumeChild && !readOnlyStorageChild && !readOnlyRejectedChild && !process.argv.slice(2).some(argument => checkFlags.has(argument)
   || checkPrefixes.some(prefix => argument.startsWith(prefix) && argument.length > prefix.length))) {
   throw Error("Select a focused execution fixture, for example --checkpoint-only or --standard-composed-mode=files");
 }
@@ -998,6 +999,16 @@ if (process.argv[2] === "--mixed-continue") {
     const owned = fs.realpathSync(root);
     assert.equal(path.dirname(owned), fs.realpathSync(os.tmpdir())); assert.ok(path.basename(owned).startsWith("aidn-agentic-execution-"));
     fs.rmSync(owned, { recursive: true, force: true });
+  }
+} else if (readOnlyRejectedChild) {
+  const { createReadOnlyRejectedAnswerFixture } = await import('./native-readonly-rejected-fixture-lib.mjs');
+  const output = process.argv[3];
+  assert(path.isAbsolute(output) && !fs.existsSync(output));
+  const data = await createReadOnlyRejectedAnswerFixture({ operatorHome: fs.realpathSync(path.dirname(output)), mixedFixture, bootstrapMixed });
+  fs.writeFileSync(output, JSON.stringify(data), { flag: 'wx' });
+  if (process.send) {
+    process.send({ ready: 'read_only_rejected_owner_active' });
+    await new Promise(resolve => process.once('message', resolve));
   }
 } else if (readOnlyStorageChild) {
   const { createReadOnlyStorageStopFixture } = await import('./native-readonly-storage-fixture-lib.mjs');

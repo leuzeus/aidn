@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-native-owner-recovery.v1",
+  "x-aidn-contract-version": "standard-native-owner-recovery.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "target_root", "instance_id", "instance_sha256", "dispatch_id", "generation", "original_configuration"],
+  "properties": {
+    "contract_version": { "const": "standard-native-owner-recovery.v1" },
+    "target_root": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "instance_id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,95}$" },
+    "instance_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "dispatch_id": { "type": "string", "pattern": "^native_dispatch_[a-f0-9]{40}$" },
+    "generation": { "type": "integer", "minimum": 1 },
+    "original_configuration": {
+      "type": "object", "additionalProperties": false, "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    }
+  }
+}
