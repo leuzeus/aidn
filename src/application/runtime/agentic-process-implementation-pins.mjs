@@ -222,7 +222,7 @@ const files = [
   "src/application/runtime/project-artifact-store-service.mjs", "src/application/runtime/project-artifact-store-worker.mjs",
   "src/core/ports/project-artifact-store-port.mjs", "src/adapters/runtime/artifact-store.mjs",
   "src/adapters/runtime/postgres-runtime-artifact-store.mjs", "src/adapters/runtime/postgres-artifact-command-lib.mjs",
-  "src/adapters/runtime/agent-execution-fence.mjs", "src/core/workflow/artifact-compare-swap.mjs",
+  "src/adapters/runtime/agent-execution-fence.mjs", "src/core/workflow/artifact-compare-swap.mjs", "src/core/workflow/reconciliation-artifact-projection.mjs",
   "src/application/runtime/agentic-process-execution-composition.mjs", "src/application/runtime/agentic-process-execution-host.mjs",
   "src/application/runtime/agentic-process-owned-run.mjs", "src/application/runtime/agentic-process-service.mjs",
   "src/application/runtime/journaled-native-allocation.mjs", "src/adapters/runtime/native-allocation-journal-store.mjs",

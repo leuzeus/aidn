@@ -5,6 +5,7 @@ import { POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION } from '../../applica
 import { guardCanonicalMutation } from './agent-execution-fence.mjs';
 import { assertArtifactCompareDelete, assertArtifactCompareDeleteRequest, assertArtifactCompareSwap } from '../../core/workflow/artifact-compare-swap.mjs';
 import { prepareLockedArtifactReplacement } from '../../lib/workflow/artifact-replacement-lib.mjs';
+import { projectReconciliationArtifacts } from '../../core/workflow/reconciliation-artifact-projection.mjs';
 
 // All identifiers below are internal constants; values always use parameters.
 async function upsert(client, table, row, keys) {
@@ -46,9 +47,9 @@ function artifactPaths(values, auditRoot) {
 export async function executePostgresArtifactCommand(client, scopes, action, options = {}) {
   if (action === 'compare-and-delete') assertArtifactCompareDeleteRequest(options);
   const writing = ['upsert', 'compare-and-swap', 'compare-and-delete', 'replace'].includes(action);
-  if (!['upsert', 'compare-and-swap', 'compare-and-delete', 'replace', 'get', 'get-many', 'list', 'list-paths'].includes(action)) throw new Error('ARTIFACT_COMMAND_UNSUPPORTED');
+  if (!['upsert', 'compare-and-swap', 'compare-and-delete', 'replace', 'get', 'get-many', 'list', 'list-paths', 'list-reconciliation'].includes(action)) throw new Error('ARTIFACT_COMMAND_UNSUPPORTED');
   const paths = action === 'get-many' ? artifactPaths(options.paths, options.auditRoot) : null;
-  const artifactPath = ['list', 'list-paths'].includes(action) || paths ? null
+  const artifactPath = ['list', 'list-paths', 'list-reconciliation'].includes(action) || paths ? null
     : validateArtifactPath(['upsert', 'compare-and-swap'].includes(action) ? options.artifact?.path : options.path, options.auditRoot);
   await client.query(writing ? 'BEGIN' : 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
   try {
@@ -76,9 +77,10 @@ export async function executePostgresArtifactCommand(client, scopes, action, opt
     if (action === 'list-paths') {
       const limit = Math.max(1, Math.min(10000, Math.floor(Number(options.limit) || 50)));
       result = (await client.query('SELECT path FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 ORDER BY path LIMIT $2', [scope, limit])).rows.map(row => row.path);
-    } else if (action === 'list') {
+    } else if (action === 'list' || action === 'list-reconciliation') {
       const limit = Math.max(1, Math.min(10000, Math.floor(Number(options.limit) || 50)));
       result = (await client.query('SELECT * FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 ORDER BY updated_at DESC, path LIMIT $2', [scope, limit])).rows.map(mapped);
+      if (action === 'list-reconciliation') result = projectReconciliationArtifacts(result, options.instanceId);
     } else if (action === 'get') {
       result = mapped((await client.query('SELECT * FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 AND path=$2', [scope, artifactPath])).rows[0]);
     } else if (paths) {

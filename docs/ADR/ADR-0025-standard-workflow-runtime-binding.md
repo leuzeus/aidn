@@ -6027,6 +6027,24 @@ The original occurrence retains its unknown business outcome. The journal
 refuses subsequent generations on that interrupted instance and requires
 fresh context for a later attempt.
 
+### Reconciliation artifact projection
+
+Reconciliation retains a complete canonical artifact identity and metadata
+inventory while transferring only the bodies its instance reader consumes.
+The additive project-artifact port performs this fixed projection inside the
+same canonical statement and transaction, before the PostgreSQL worker response.
+SQLite applies the same projection to its single statement. All content hashes
+and recognized record shapes and paths are checked before foreign bodies are
+omitted. Unknown namespaces remain observed artifacts. Decision and control
+inboxes keep their bodies for the existing operation and event crosslinks.
+
+This read capability changes no canonical row, schema, owner, receipt or source
+authority. The reader still authenticates current records and reobserves the
+inventory and context before returning a diagnostic. Content, row and transport
+bounds remain in force; an unsupported adapter or truncated inventory refuses
+the observation. A successful observation grants neither resource closure nor
+business resumption. A failed Native report remains failed.
+
 ## Capturing an operator answer
 
 The Codex MCP transport presents a prepared STANDARD question using form

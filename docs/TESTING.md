@@ -1173,6 +1173,29 @@ closure. Report these unexecuted obligations separately from component PASS.
 
 ## Retained-resource inventory foundation
 
+`node tools/perf/verify-reconciliation-artifact-projection-fixtures.mjs`
+adds a canonical SQLite history whose foreign operation bodies exceed the
+inventory byte bound. The actual reconciliation host still discovers the
+signed current orphan and retains every artifact and metadata digest. It
+requests no authority and changes neither the instance nor its journal.
+Foreign record corruption, invalid scope and missing adapter capability are
+refused. A PostgreSQL command double verifies one canonical-scope SELECT in a
+repeatable-read read-only transaction, matching the SQLite projection and
+rolling back on failure. This case also runs in the existing project artifact
+store fixture gate. It does not qualify a live PostgreSQL server or Native
+recovery.
+
+This projection targets SQLite and PostgreSQL. FILES checks below are historical
+regression coverage and do not qualify the database workflow.
+
+The fixed projection verifies all content hashes and validates recognized
+foreign records before omitting their bodies. Every artifact identity and
+metadata digest remains in the observation. Current records and all decision
+and control inbox bodies remain available to the ordinary authenticated
+crosslink checks. The 16 MiB retained-content bound, path count, worker output
+bound and absence of effect permission are unchanged. Missing capability does
+not fall back to full-body enumeration.
+
 `node tools/perf/verify-standard-reconciliation-inventory-fixtures.mjs files`
 (or `dual` / `db-only`) exercises the actual internal operation-host inventory
 port, canonical files or SQLite, signed orphan journals absent from instance

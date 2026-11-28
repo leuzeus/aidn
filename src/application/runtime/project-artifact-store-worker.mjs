@@ -4,7 +4,7 @@ import { isMainThread, parentPort } from 'node:worker_threads';
 async function execute(input, readOnly) {
   try {
     const request = JSON.parse(readOnly ? input : fs.readFileSync(0, 'utf8'));
-    if (readOnly && !['get', 'get-many', 'list', 'list-paths'].includes(request.action)) throw new Error('ARTIFACT_POSTGRES_READ_ACTION_REQUIRED');
+    if (readOnly && !['get', 'get-many', 'list', 'list-paths', 'list-reconciliation'].includes(request.action)) throw new Error('ARTIFACT_POSTGRES_READ_ACTION_REQUIRED');
     const { createRuntimeArtifactStore } = await import('./runtime-persistence-service.mjs');
     const store = createRuntimeArtifactStore({ targetRoot: request.targetRoot });
     if (typeof store.executeArtifactCommand !== 'function') throw new Error('ARTIFACT_BACKEND_CHANGED');
