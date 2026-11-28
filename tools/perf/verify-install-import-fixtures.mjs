@@ -600,7 +600,7 @@ function checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
 function checkCaseCliOverride(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const target = prepareTmp(repoRoot, sourceTarget, tmpRoot, "cli-override");
   const out = runInstall(repoRoot, target, codexStubBin, ["--artifact-import-store", "dual-sqlite"], {
-    AIDN_STATE_MODE: "files",
+    AIDN_STATE_MODE: "dual",
     AIDN_INDEX_STORE_MODE: "file",
   });
   const indexJson = path.join(target, ".aidn", "runtime", "index", "workflow-index.json");

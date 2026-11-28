@@ -13,7 +13,7 @@ import { CODEX_STARTUP_ENVIRONMENT_PROFILES } from '../../src/core/agents/codex-
 import { assertHandoffPublicationPlan, assertHandoffPublicationOutput } from '../../src/core/workflow/standard-handoff-publication.mjs';
 import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
 import { preWriteAdmit } from '../runtime/pre-write-admit.mjs';
-const mode = process.argv[2] ?? 'files'; assert(['files','dual','db-only'].includes(mode)); assert.equal(process.argv.length,3);
+const mode = process.argv[2] ?? 'dual'; assert(["dual","db-only"].includes(mode)); assert.equal(process.argv.length,3);
 const owned = [], root = createFreshStandardWorkflowFixture(mode, owned, { absentOptionalDocuments: ['HANDOFF-PACKET.md'] });
 const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()),'aidn-handoff-publication-')); owned.push(base);
 const sha=b=>createHash('sha256').update(b).digest('hex'), pin=p=>({path:p,sha256:sha(fs.readFileSync(p))});

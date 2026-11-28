@@ -49,7 +49,7 @@ const fixtureAuthority = model => ({
   scope_id: "fixture-scope", model_sha256: shadowHash(model), policy_pins: agenticPolicyPins(model),
 });
 function fixture(arena, m, processStore, readAuthority = () => fixtureAuthority(m)) {
-  const store = () => processStore ?? createAgenticProcessStore({ targetRoot: arena, stateMode: "files" });
+  const store = () => processStore ?? createAgenticProcessStore({ targetRoot: arena, stateMode: "dual" });
   const file = id => path.join(arena, "journal", id + ".json");
   function read(id) {
     const { authentication, ...record } = JSON.parse(fs.readFileSync(file(id), "utf8"));
@@ -91,11 +91,11 @@ function fixture(arena, m, processStore, readAuthority = () => fixtureAuthority(
 }
 function initialize(arena, m) {
   for (const name of [".aidn", "journal", "effects"]) fs.mkdirSync(path.join(arena, name), { recursive: true });
-  fs.writeFileSync(path.join(arena, ".aidn/config.json"), JSON.stringify({ runtime: { stateMode: "files" } }));
+  fs.writeFileSync(path.join(arena, ".aidn/config.json"), JSON.stringify({ runtime: { stateMode: "dual" } }));
   fixture(arena, m).service().initialize({ instanceId: "fixture", model: m, write: true });
 }
 async function step(arena, phase = "complete") {
-  const store = createAgenticProcessStore({ targetRoot: arena, stateMode: "files" });
+  const store = createAgenticProcessStore({ targetRoot: arena, stateMode: "dual" });
   let state = createAgenticProcessService({ store }).inspect("fixture");
   const m = state.record.model;
   let authority;
@@ -139,7 +139,7 @@ async function inspectionStoreCases() {
   const m = { contract_version: "agentic-process-model.v2", model_id: "inspection_probe", revision: 1,
     participants: [{ id: "project" }], roles: [], policies: [], nodes: [op("probe")], entry: "probe",
     operation_pins: { fixture_write: shadowHash(binding) } };
-  for (const stateMode of ["files", "dual", "db-only"]) {
+  for (const stateMode of ["dual", "db-only"]) {
     const arena = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-inspection-store-"));
     console.log(JSON.stringify({ arena, stateMode, fixture_authority: true, inspection_store_contract: true }));
     fs.mkdirSync(path.join(arena, ".aidn"));

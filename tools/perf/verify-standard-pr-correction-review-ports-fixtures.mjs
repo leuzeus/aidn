@@ -7,8 +7,8 @@ import { createPrCorrectionReopenFixture } from './standard-pr-correction-fixtur
 import { createStandardPrCorrectionCheckpoint } from '../../src/application/runtime/standard-pr-correction-checkpoint.mjs';
 import { createStandardPrCorrectionReview } from '../../src/application/runtime/standard-pr-correction-review.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
-const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files', owned = [], temporary = fs.realpathSync(os.tmpdir());
-assert.ok(['files', 'dual', 'db-only'].includes(mode));
+const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'dual', owned = [], temporary = fs.realpathSync(os.tmpdir());
+assert.ok(['dual', 'db-only'].includes(mode));
 const op = n => 'op_' + String(n).repeat(40), git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: 'pipe', windowsHide: true }).trim();
 let checks = 0, completed = false;
 const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + mode + ': ' + name); };

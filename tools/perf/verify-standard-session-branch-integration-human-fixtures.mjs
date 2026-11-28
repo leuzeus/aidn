@@ -89,7 +89,7 @@ await test('v6 capture is immutable, cold-readable without provider calls and ne
 if (!process.argv.includes('--contract-only')) {
   const owned = [], temporary = fs.realpathSync(os.tmpdir());
   try {
-    for (const mode of ['files', 'dual', 'db-only']) await test('real canonical v6 store, cold capture and HMAC tamper refusal: ' + mode, async () => {
+    for (const mode of ['dual', 'db-only']) await test('real canonical v6 store, cold capture and HMAC tamper refusal: ' + mode, async () => {
       const root = createStandardWorkflowFixture(mode, owned), makeInbox = () => createProcessDecisionInboxStore({ targetRoot: root, stateMode: mode }), f = fixture(makeInbox);
       f.sources.set('fixture:answer', f.claim()); const capture = await f.human().reserve(f.record, 'fixture:answer'), receipt = { receipt_id: 'fixture_receipt' };
       f.record.results.push({ output: f.human().output(f.record, capture), receipt }); const cold = fixture(makeInbox); cold.human().acknowledge(capture.inbox_id, receipt);

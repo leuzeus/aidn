@@ -355,7 +355,7 @@ await check("R12: call procedure creates a scoped occurrence, never independent 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agentic-process-"));
 const profile = buildAgentProfile({ id: "fixture-adapter", label: "Fixture", defaultRole: "coordinator", roles: AGENT_ROLES });
 const adapter = { getProfile: () => profile, canHandleRole: ({ role, action }) => canAgentRolePerform(role, action) };
-function composition(m = model(), { stateMode = "files", resultTimeoutMs = 1000 } = {}) {
+function composition(m = model(), { stateMode = "dual", resultTimeoutMs = 1000 } = {}) {
   const targetRoot = fs.mkdtempSync(path.join(temp, "client-"));
   if (stateMode !== "files") {
     fs.mkdirSync(path.join(targetRoot, ".aidn"));
@@ -376,7 +376,7 @@ function composition(m = model(), { stateMode = "files", resultTimeoutMs = 1000 
 }
 try {
   await verifyProcessDataFixtures(check);
-  for (const stateMode of ["files", "dual", "db-only"]) await check("V2 XML event/loop/collection/calls use canonical authorities and deterministic simulation: " + stateMode, async () => {
+  for (const stateMode of ["dual", "db-only"]) await check("V2 XML event/loop/collection/calls use canonical authorities and deterministic simulation: " + stateMode, async () => {
     const m = extendedModel(), c = composition(m, { stateMode });
     assert.equal(c.initialize(false).written, false);
     let current = c.initialize();
@@ -406,7 +406,7 @@ try {
     assert.equal(simulation.trace.at(-1).instance_sha256, current.record.instance_sha256);
     assert.deepEqual(simulation.trace.at(-1).cursor, current.cursor);
   });
-  for (const stateMode of ["files", "dual", "db-only"]) await check("compiled BPMN uses canonical service authorities and simulation parity: " + stateMode, async () => {
+  for (const stateMode of ["dual", "db-only"]) await check("compiled BPMN uses canonical service authorities and simulation parity: " + stateMode, async () => {
     const xml = fs.readFileSync(new URL("../../tests/fixtures/agentic-process/structured-delivery.bpmn", import.meta.url), "utf8");
     const { model: m } = compileBpmnProcess({ xml, modelId: "delivery", revision: 1, participantId: "delivery", roles: example.roles, policies: example.policies });
     const c = composition(m, { stateMode });
@@ -446,7 +446,7 @@ try {
     const assignment = await c.service.assign({ instanceId: "fixture", expectedSha256: start.record.instance_sha256, occurrenceId: "root", eventId: "assigned", write: true });
     assert.equal(assignment.decision.decision, "reuse"); c.state.result = resultFor(inspect(assignment.record).occurrences[0]);
     const accepted = await c.service.accept({ instanceId: "fixture", expectedSha256: assignment.record.instance_sha256, occurrenceId: "root", eventId: "accepted", resultId: c.state.result.result_id, write: true });
-    assert.equal(accepted.cursor.status, "COMPLETED"); assert.equal(createAgenticProcessStore({ targetRoot: c.targetRoot, stateMode: "files" }).read("fixture").record.instance_sha256, accepted.record.instance_sha256);
+    assert.equal(accepted.cursor.status, "COMPLETED"); assert.equal(createAgenticProcessStore({ targetRoot: c.targetRoot, stateMode: "dual" }).read("fixture").record.instance_sha256, accepted.record.instance_sha256);
     const repeated = await c.service.accept({ instanceId: "fixture", expectedSha256: accepted.record.instance_sha256, occurrenceId: "root", eventId: "accepted", resultId: c.state.result.result_id, write: true });
     assert.equal(repeated.written, false); assert.equal(repeated.record.revision, accepted.record.revision);
     assert.throws(() => c.store.compareAndSwap(assignment.record, assignment.content_sha256), /REVISION_CONFLICT/);

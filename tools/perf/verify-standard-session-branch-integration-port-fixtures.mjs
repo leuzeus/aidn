@@ -20,7 +20,7 @@ function fixture() {
   const target = 'S001-example', source = 'C001-feature-example';
   git(root, 'init', '-b', target); git(root, 'config', 'user.name', 'Fixture'); git(root, 'config', 'user.email', 'fixture@example.invalid');
   git(root, 'config', 'core.autocrlf', 'false'); git(root, 'config', 'commit.gpgSign', 'false');
-  put(root, '.aidn/config.json', JSON.stringify({ version: 1, runtime: { stateMode: 'files' } }));
+  put(root, '.aidn/config.json', JSON.stringify({ version: 1, runtime: { stateMode: 'dual' } }));
   put(root, '.gitignore', '.aidn/runtime/\n' + fenceIgnore + '\n');
   const names = ['sessions/S001.md', 'cycles/C001-feature-example/status.md', 'CURRENT-STATE.md', 'snapshots/context-snapshot.md'];
   for (const name of names) put(root, 'docs/audit/' + name, '# Fixture canonical document\n');

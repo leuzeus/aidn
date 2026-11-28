@@ -14,7 +14,7 @@ function parseArgs(argv) {
     cache: ".aidn/runtime/cache/reload-state.json",
     eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
     indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
-    stateMode: envStateMode || "files",
+    stateMode: envStateMode || "dual",
     stateModeExplicit: false,
     indexFile: ".aidn/runtime/index/workflow-index.sqlite",
     indexBackend: "auto",
@@ -98,8 +98,8 @@ function parseArgs(argv) {
   if (!args.target) {
     throw new Error("Missing value for --target");
   }
-  if (!["files", "dual", "db-only"].includes(args.stateMode)) {
-    throw new Error("Invalid --state-mode. Expected files|dual|db-only");
+  if (!["dual", "db-only"].includes(args.stateMode)) {
+    throw new Error("Invalid --state-mode. Expected dual|db-only");
   }
   if (!["auto", "json", "sqlite", "postgres"].includes(args.indexBackend)) {
     throw new Error("Invalid --index-backend. Expected auto|json|sqlite|postgres");

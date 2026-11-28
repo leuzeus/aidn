@@ -47,7 +47,7 @@ try {
   for (const args of [['init', '-b', 'test/preparation'], ['config', 'user.name', 'AIDN fixture'], ['config', 'user.email', 'fixture@example.invalid'],
     ['add', 'docs', '.aidn/config.json'], ['commit', '-m', 'fixture']]) run('git', args);
   prepareActivationFixture(target, repo);
-  fs.writeFileSync(path.join(target, '.aidn/config.json'), JSON.stringify({ version: 1, runtime: { stateMode: 'files', indexStoreMode: 'dual-sqlite' } }));
+  fs.writeFileSync(path.join(target, '.aidn/config.json'), JSON.stringify({ version: 1, runtime: { stateMode: 'dual', indexStoreMode: 'dual-sqlite' } }));
   for (const name of ['CURRENT-STATE.md', 'RUNTIME-STATE.md']) {
     const file = path.join(target, 'docs/audit', name);
     fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/^runtime_state_mode:.*$/m, 'runtime_state_mode: files'));

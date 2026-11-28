@@ -18,7 +18,7 @@ export async function retainStandardGitCheckpointPrefix({ host, resumeFile, auth
   assert(authorization.global_deadline_ms > authorization.authorized_at_ms);
 
   const artifacts = createStandardWorkflowArtifacts({ targetRoot: saved.fixture.configuration.target_root });
-  assert(['files', 'dual'].includes(artifacts.describe().state_mode));
+  assert(["dual"].includes(artifacts.describe().state_mode));
   const before = host.inspect(), nativeBefore = H(host.inspectAllocations());
   const frame = before.cursor.occurrences.find(row => row.node_id === 'session_pr_correction_checkpoint' && row.status === 'READY');
   assert(frame, 'ACTUAL_COMMON_GIT_CHECKPOINT_FRONTIER_REQUIRED');

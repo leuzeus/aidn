@@ -39,9 +39,9 @@ if (process.argv[2] === "--accept") {
   console.log(JSON.stringify({ instance_sha256: result.record.instance_sha256 }));
 } else {
   if (process.argv.slice(2).some(arg => arg !== "--existing-session" && !/^--mode=(files|dual|db-only)$/.test(arg))) throw Error("STANDARD_PREFIX_ARGUMENT_INVALID");
-  const stateMode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "files";
+  const stateMode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "dual";
   const existingSession = process.argv.includes("--existing-session");
-  if (!["files", "dual", "db-only"].includes(stateMode)) throw Error("STANDARD_PREFIX_MODE_INVALID");
+  if (!["dual", "db-only"].includes(stateMode)) throw Error("STANDARD_PREFIX_MODE_INVALID");
   const owned = [], assets = loadStandardWorkflowAssets(); let success = false;
   try {
     const target = createFreshStandardWorkflowFixture(stateMode, owned), privateRoot = fs.mkdtempSync(path.join(temp, "aidn-standard-composition-")); owned.push(privateRoot);

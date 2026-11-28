@@ -149,14 +149,14 @@ discovery and every required read. Consultation never replaces admission.
 - a successful generic pre-write admission does not admit a particular native patch: its phase, first task and exact file operations must pass the native write check
 - do not change a frozen plan to expand an edit's own permission; use the governed scope-change process
 
-9) Performance hook (mandatory in dual/db-only; optional in files):
+9) Performance hook (mandatory in dual/db-only):
 - run `npx aidn codex run-json-hook --skill cycle-create --mode COMMITTING --target . --json`
 - the runtime `aidn-cycle-create` hook applies continuity admission before delegating to generic checkpoint/index/repair behavior
 - in DB-backed modes, continuity admission reads the configured canonical runtime backend before visible session/cycle projections and reports `continuity_context_source`, `continuity_context_backend`, `canonical_continuity_status`, and any `canonical_continuity_ambiguities`
 - in strict `db-only`, STOP when the canonical runtime is unavailable or has ambiguous active session/cycle candidates; do not infer continuity from stale visible anchors or latest-row timestamps
 - a current cycle branch that is not registered yet is treated as a new-cycle candidate and still requires an explicit R1/R2/R3 choice when its continuity base cannot be proven
 - expect machine-visible continuity outcomes such as `proceed_r1_strict_chain`, `proceed_r2_session_base_with_import`, or `stop_choose_continuity_rule`
-- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill cycle-create --project-runtime-state --json`.
 - in dual/db-only, use the hydrated payload to read `repair_layer_status`, `repair_layer_advice`, prioritized artifacts, and continuity hints before acting.
@@ -167,7 +167,7 @@ discovery and every required read. Consultation never replaces admission.
 - in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
 - in files, this hook remains non-blocking by default.
 - in dual/db-only, prefer `--fail-on-repair-block` on the JSON hook invocation and STOP on `repair_layer_status=block`.
-- DB runtime sync (mandatory in dual/db-only; optional in files):
+- DB runtime sync (mandatory in dual/db-only):
 - run `npx aidn runtime sync-db-first-selective --target . --json` (falls back to full sync when needed).
 - for DB-first write-through on a specific artifact, run `npx aidn runtime db-first-artifact --target . --path <relative-audit-path> --source-file <file> --json`.
 - in dual/db-only, this step is mandatory and blocking on failure.

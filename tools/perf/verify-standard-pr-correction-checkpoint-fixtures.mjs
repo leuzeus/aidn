@@ -18,7 +18,7 @@ import { verifyPrCorrectionReservedDispatch } from './standard-pr-correction-res
 const H = 'a'.repeat(64), op = n => 'op_' + String(n).repeat(40), owned = [], temporary = fs.realpathSync(os.tmpdir());
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
 const input = { contract_version: 'standard-pr-correction-checkpoint-input.v1', reopen_operation_id: op(1) };
-const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files';
+const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'dual';
 const reservedOnly = process.argv.includes('--reserved-only');
 let checks = 0;
 const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + name); };

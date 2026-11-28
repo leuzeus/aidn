@@ -18,9 +18,9 @@ import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-
 export async function verifyStandardExistingCycleEntry({ selectedMode } = {}) {
   const owned = [], temporary = fs.realpathSync(os.tmpdir()), H = "a".repeat(64); let checks = 0, success = false;
   const pass = name => { checks++; console.log("PASS " + name); };
-  if (selectedMode && !["files", "dual", "db-only"].includes(selectedMode)) throw Error("FIXTURE_MODE_INVALID");
+  if (selectedMode && !["dual", "db-only"].includes(selectedMode)) throw Error("FIXTURE_MODE_INVALID");
   try {
-    for (const persistence of selectedMode ? [selectedMode] : ["files", "dual", "db-only"]) {
+    for (const persistence of selectedMode ? [selectedMode] : ["dual", "db-only"]) {
       const targetRoot = createFreshStandardWorkflowFixture(persistence, owned), ops = createStandardWorkflowOperations({ targetRoot }), artifacts = createStandardWorkflowArtifacts({ targetRoot });
       const git = (...args) => execFileSync("git", ["-C", targetRoot, "-c", `core.hooksPath=${process.platform === "win32" ? "NUL" : "/dev/null"}`, ...args], { encoding: "utf8", windowsHide: true }).trim();
       const checkpoint = message => { git("add", "."); git("commit", "--allow-empty", "-m", message); };

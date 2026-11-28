@@ -180,7 +180,6 @@ function main() {
       indexSqlitePath,
     ]);
 
-    const filesMode = runMode(tmpTarget, "files", indexSqlitePath);
     const dualMode = runMode(tmpTarget, "dual", indexSqlitePath);
     const dbOnlyMode = runMode(tmpTarget, "db-only", indexSqlitePath);
 
@@ -207,17 +206,6 @@ function main() {
       checks,
       pass,
       samples: {
-        files: {
-          reload: {
-            decision: filesMode.reload.decision,
-            reason_codes: stableArray(filesMode.reload.reason_codes),
-          },
-          gate: {
-            action: filesMode.gate.action,
-            result: filesMode.gate.result,
-            reason_code: filesMode.gate.reason_code ?? null,
-          },
-        },
         dual: {
           reload: {
             decision: dualMode.reload.decision,

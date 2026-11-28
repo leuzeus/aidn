@@ -22,7 +22,7 @@ const owned=fs.mkdtempSync(path.join(fixtureTemp,'aidn-default-resource-source-'
 for(const name of ['project','control','review','native-home','authority']){dirs[name]=path.join(owned,name);fs.mkdirSync(dirs[name]);}
 const git=fs.realpathSync.native(execFileSync(path.join(process.env.SystemRoot,'System32/where.exe'),['git.exe'],{encoding:'utf8',windowsHide:true}).trim().split(/\r?\n/)[0]);
 execFileSync(git,['-C',dirs.project,'-c','init.templateDir=','init','--initial-branch=work'],{windowsHide:true,stdio:'pipe'});
-fs.mkdirSync(path.join(dirs.project,'.aidn'));fs.writeFileSync(path.join(dirs.project,'.aidn','config.json'),JSON.stringify({runtime:{stateMode:'files',persistence:{backend:'sqlite'}}}));
+fs.mkdirSync(path.join(dirs.project,'.aidn'));fs.writeFileSync(path.join(dirs.project,'.aidn','config.json'),JSON.stringify({runtime:{stateMode:'dual',persistence:{backend:'sqlite'}}}));
 const {manifest}=verificationWindowsController(owned);
 const scopedNativeExecutable=path.join(owned,'aidn-resource-fixture-native-'+randomUUID()+'.exe');
 fs.copyFileSync(manifest.helper_path,scopedNativeExecutable);

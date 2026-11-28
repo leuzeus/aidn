@@ -10,7 +10,7 @@ function parseArgs(argv) {
   const args = {
     target: ".",
     cache: ".aidn/runtime/cache/reload-state.json",
-    stateMode: envStateMode || "files",
+    stateMode: envStateMode || "dual",
     stateModeExplicit: false,
     indexFile: ".aidn/runtime/index/workflow-index.sqlite",
     indexBackend: "auto",
@@ -54,8 +54,8 @@ function parseArgs(argv) {
   if (!args.cache) {
     throw new Error("Missing value for --cache");
   }
-  if (!["files", "dual", "db-only"].includes(args.stateMode)) {
-    throw new Error("Invalid --state-mode. Expected files|dual|db-only");
+  if (!["dual", "db-only"].includes(args.stateMode)) {
+    throw new Error("Invalid --state-mode. Expected dual|db-only");
   }
   if (!args.indexFile) {
     throw new Error("Missing value for --index-file");

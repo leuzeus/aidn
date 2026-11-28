@@ -14,7 +14,7 @@ import { artifactMetadataHash } from '../../src/core/workflow/artifact-compare-s
 import { createStandardHumanDecisions } from '../../src/application/runtime/standard-workflow-human-decisions.mjs';
 import { createProcessDecisionInboxStore } from '../../src/adapters/runtime/process-decision-inbox-store.mjs';
 import { createOperationJournalSigner } from '../../src/core/workflow/process-operation-journal.mjs';
-const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files', owned = [];
+const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'dual', owned = [];
 const decisionV2 = process.argv.includes('--decision-v2');
 const decisionV3 = process.argv.includes('--decision-v3');
 const agedPlan = process.argv.includes('--aged-plan');
@@ -22,7 +22,7 @@ let planClock = null;
 assert.ok(!(decisionV2 && decisionV3));
 const candidate = { cycle_id: decisionV3 ? 'C017' : 'C001', title: decisionV3 ? 'chosen-by-person' : 'review-correction', objective: 'Correct the reviewed boundary through an ordinary governed cycle.' };
 const lateMetadata = process.argv.find(x => x.startsWith('--late-metadata='))?.slice(16) ?? null;
-assert.ok(['files', 'dual', 'db-only'].includes(mode));
+assert.ok(['dual', 'db-only'].includes(mode));
 assert.ok(lateMetadata === null || mode !== 'files' && ['provider', 'authorization'].includes(lateMetadata));
 const op = n => 'op_' + String(n).repeat(40), H = 'a'.repeat(64);
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: 'pipe', windowsHide: true }).trim();

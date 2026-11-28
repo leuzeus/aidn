@@ -508,13 +508,7 @@ async function runCoordinatorDispatch({
   finalResult.coordination_log_entry = buildCoordinationLogEntry(finalResult);
   finalResult.coordination_history_event = buildCoordinationHistoryEvent(finalResult);
   const updatedAt = new Date().toISOString();
-  if (effectiveStateMode === "files") {
-    appendCoordinationLog(coordinationLogPath, finalResult.coordination_log_entry, {
-      updatedAt,
-      governanceMetadata,
-    });
-    finalResult.coordination_log_appended = true;
-  } else {
+  {
     const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot, effectiveStateMode);
     const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {
       exists: false,

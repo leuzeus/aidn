@@ -21,7 +21,7 @@ const json = file => JSON.parse(fs.readFileSync(new URL("../../" + file, import.
 const original = json("tests/fixtures/workflow-shadow/diagnostic-correction.v1.json");
 const base = { ...original, workflow_id: "reviewed-correction", entry: "approval",
   steps: original.steps.filter(step => step.id !== "diagnose"), transitions: original.transitions.filter(edge => edge.from !== "diagnose") };
-const context = { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: "0.11.0", workflow_version: 7, state_mode: "files" };
+const context = { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: "0.11.0", workflow_version: 7, state_mode: "dual" };
 const scope = { target_sha256: "a".repeat(64), persistence_sha256: "b".repeat(64), runtime_scope_id: "scope.fixture", activation: { authority_id: "fixture", revision: 1 } };
 const evidence = [{ ref: "human-review-fixture", sha256: "c".repeat(64) }];
 const candidate = () => { const value = structuredClone(base); value.revision++; value.transitions.find(edge => edge.max_traversals).max_traversals = 1; return value; };
@@ -90,7 +90,7 @@ try {
     const changed = { ...projection, markdown: projection.markdown + "stale" }; const { projection_sha256, ...body } = changed; changed.projection_sha256 = shadowHash(body);
     assert.equal(checkWorkflowProjection(value, compiled(), changed), false);
   });
-  for (const stateMode of ["files", "dual", "db-only"]) await check("reviewed activation persists without migrating instances: " + stateMode, () => {
+  for (const stateMode of ["dual", "db-only"]) await check("reviewed activation persists without migrating instances: " + stateMode, () => {
     const targetRoot = path.join(root, stateMode); fs.mkdirSync(targetRoot);
     fs.mkdirSync(path.join(targetRoot, ".aidn")); fs.writeFileSync(path.join(targetRoot, ".aidn/config.json"), JSON.stringify({ runtime: { stateMode } }));
     if (stateMode !== "files") createArtifactStore({ sqliteFile: path.join(targetRoot, ".aidn/runtime/index/workflow-index.sqlite") }).close();
@@ -144,10 +144,10 @@ try {
     if (stateMode === "db-only") assert.equal(fs.existsSync(path.join(targetRoot, "docs")), false);
   });
   await check("active baseline refuses activation and an expanded ceiling cannot be approved", () => {
-    const targetRoot = path.join(root, "active"); fs.mkdirSync(targetRoot); const options = { targetRoot, stateMode: "files" };
+    const targetRoot = path.join(root, "active"); fs.mkdirSync(targetRoot); const options = { targetRoot, stateMode: "dual" };
     const instances = createWorkflowInstanceStore(options), selections = createWorkflowSelectionStore(options);
     const state = createWorkflowInstance({ instanceId: "source", definition: base, context, scope }); instances.compareAndSwap(state, null);
-    const service = createWorkflowCandidateService({ instances, selections, readAuthority: () => ({ scope, stateMode: "files", productVersion: "0.11.0" }) });
+    const service = createWorkflowCandidateService({ instances, selections, readAuthority: () => ({ scope, stateMode: "dual", productVersion: "0.11.0" }) });
     const input = { baseInstanceId: "source", definition: candidate(), explanation: "Candidate." }, preview = service.propose(input);
     assert.equal(preview.quiescent, false);
     assert.throws(() => service.activate({ ...input, expectedPreviewSha256: preview.preview_sha256, review: review(preview), write: true }), /BASELINE_ACTIVE/);
@@ -167,7 +167,7 @@ try {
     const selected = activateWorkflowCandidate({ seed, scope, proposal: changed, review: review(preview) });
     let initialized = false;
     const service = createWorkflowCandidateService({ selections: { read: () => ({ record: selected }) }, instances: {},
-      readAuthority: () => ({ scope, stateMode: "files", productVersion: "0.11.0" }), initializeInstance: () => { initialized = true; } });
+      readAuthority: () => ({ scope, stateMode: "dual", productVersion: "0.11.0" }), initializeInstance: () => { initialized = true; } });
     assert.equal(service.inspect(base.workflow_id).selection_sha256, selected.selection_sha256);
     assert.throws(() => service.initializeSelected({ workflowId: base.workflow_id, instanceId: "future", expectedSelectionSha256: selected.selection_sha256, write: true }), /COMPILATION_CHANGED/);
     assert.equal(initialized, false);

@@ -11,7 +11,7 @@ import { assertStandardOperationInput, assertStandardOperationOutput } from '../
 import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-schema-validator.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 const temporary = fs.realpathSync(os.tmpdir()), owned = [], H = 'a'.repeat(64), op = x => 'op_' + x.repeat(40);
-const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files';
+const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'dual';
 const agedPlan = process.argv.includes('--aged-plan');
 let planClock = null;
 async function prepareOriginal(fn) {

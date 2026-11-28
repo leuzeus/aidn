@@ -43,7 +43,7 @@ async function contracts() {
 }
 
 export async function verifyOwnedCycleResume({ mode, phase, prefix, enter = false, withChecks = false }) {
-  assert.ok(["files", "dual", "db-only"].includes(mode)); assert.ok(["OPEN", "IMPLEMENTING", "VERIFYING"].includes(phase));
+  assert.ok(["dual", "db-only"].includes(mode)); assert.ok(["OPEN", "IMPLEMENTING", "VERIFYING"].includes(phase));
   assert.ok(Number.isInteger(prefix) && prefix >= 0 && prefix <= 2);
   if (enter && (phase === "VERIFYING" || prefix === 2) || withChecks && (phase === "OPEN" || prefix !== 2 || enter)) throw Error("OWNED_RESUME_FIXTURE_SCOPE_INVALID");
   const owned = [], root = createFreshStandardWorkflowFixture(mode, owned), artifacts = createStandardWorkflowArtifacts({ targetRoot: root }),

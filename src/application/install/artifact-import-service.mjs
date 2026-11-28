@@ -12,8 +12,10 @@ import {
 } from "../../lib/config/aidn-config-lib.mjs";
 
 export function resolveArtifactImportDefaults(args, configData = {}) {
+  const configStateMode = resolveConfigStateMode(configData);
   const explicitStore = normalizeIndexStoreMode(args?.artifactImportStore);
   if (explicitStore) {
+    if (!["sqlite", "dual-sqlite", "all"].includes(explicitStore)) throw Error("AIDN_INSTALL_SQL_STORE_REQUIRED: use sqlite, dual-sqlite or all; file/sql are export formats, not a canonical runtime");
     return {
       store: explicitStore,
       withContent: explicitStore === "sqlite" || explicitStore === "dual-sqlite" || explicitStore === "all",
@@ -24,6 +26,7 @@ export function resolveArtifactImportDefaults(args, configData = {}) {
 
   const envStore = normalizeIndexStoreMode(process.env.AIDN_INDEX_STORE_MODE);
   if (envStore) {
+    if (!["sqlite", "dual-sqlite", "all"].includes(envStore)) throw Error("AIDN_INSTALL_SQL_STORE_REQUIRED");
     return {
       store: envStore,
       withContent: envStore === "sqlite" || envStore === "dual-sqlite" || envStore === "all",
@@ -44,16 +47,15 @@ export function resolveArtifactImportDefaults(args, configData = {}) {
   }
 
   const configStore = resolveConfigIndexStore(configData);
-  if (configStore) {
+  if (configStore && ["sqlite", "dual-sqlite", "all"].includes(configStore)) {
     return {
       store: configStore,
       withContent: configStore === "sqlite" || configStore === "dual-sqlite" || configStore === "all",
-      stateMode: stateModeFromIndexStore(configStore),
+      stateMode: configStateMode ?? stateModeFromIndexStore(configStore),
       source: "config-index-store",
     };
   }
 
-  const configStateMode = resolveConfigStateMode(configData);
   if (configStateMode) {
     const store = defaultIndexStoreFromStateMode(configStateMode);
     return {

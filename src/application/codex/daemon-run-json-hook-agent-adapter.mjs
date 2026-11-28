@@ -82,8 +82,10 @@ function parseSkillHookArgs(commandArgs = []) {
 }
 
 function normalizeStateMode(value) {
-  const stateMode = String(value ?? "").trim().toLowerCase() || "files";
-  return ["files", "dual", "db-only"].includes(stateMode) ? stateMode : "files";
+  const stateMode = String(value ?? "").trim().toLowerCase() || "dual";
+  if (stateMode === "files") throw Object.assign(Error("AIDN_FILES_STATE_MODE_RETIRED"), { code: "AIDN_FILES_STATE_MODE_RETIRED" });
+  if (!["dual", "db-only"].includes(stateMode)) throw Error("INVALID_AIDN_STATE_MODE");
+  return stateMode;
 }
 
 function buildPrOrchestrateSummary(result) {

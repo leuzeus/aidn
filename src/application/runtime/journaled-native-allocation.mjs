@@ -39,7 +39,7 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
   const reconciliationHistory = createNativeReconciliationHistoryReader({ ...options, configuration: config, signer, environment });
   const controlRecords = createProcessControlInboxStore(options);
   const journalId = nativeJournalId({ instance_id: config.instance_id, scope_id: preview.scope_id });
-  const projectionRequired = initial.stateMode === "dual" || initial.stateMode === "files" && preview.persistence.backend === "postgres";
+  const projectionRequired = initial.stateMode === "dual";
   function observe() {
     const current = executor.preview();
     if (current.scope_id !== preview.scope_id || current.model_sha256 !== preview.model_sha256) fail("NATIVE_ALLOCATION_AUTHORITY_CHANGED");

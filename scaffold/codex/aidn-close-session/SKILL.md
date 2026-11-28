@@ -119,11 +119,11 @@ Update:
 ### Next Entry Point
 ### Snapshot updated? (checked)
 
-8) Performance hook (mandatory in dual/db-only; optional in files):
+8) Performance hook (mandatory in dual/db-only):
 - run `npx aidn codex run-json-hook --skill close-session --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
 - the runtime `aidn-close-session` hook applies open-cycle resolution admission before delegating to generic `session-close` checkpoint/index/repair behavior
 - expect machine-visible outcomes such as `close_session_allowed`, `blocked_open_cycles_must_be_resolved`, or `blocked_cycle_resolution_decision_required`
-- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill close-session --project-runtime-state --json`.
 - in dual/db-only, use the hydrated payload to read `repair_layer_status`, `repair_layer_advice`, prioritized artifacts, and continuity hints before acting.
@@ -138,7 +138,7 @@ Update:
   until this final hook has confirmed its closure; do not clear its reference
   before the check or guess a historical session after a refusal.
 - in files, this hook remains non-blocking by default.
-- DB runtime sync (mandatory in dual/db-only; optional in files):
+- DB runtime sync (mandatory in dual/db-only):
 - run `npx aidn runtime sync-db-first-selective --target . --json` (falls back to full sync when needed).
 - for DB-first write-through on a specific artifact, run `npx aidn runtime db-first-artifact --target . --path <relative-audit-path> --source-file <file> --json`.
 - in dual/db-only, this step is mandatory and blocking on failure.

@@ -24,7 +24,7 @@ import { createProcessDispatchRecordStore } from '../../src/adapters/runtime/pro
 import { inspectInterruptedReopenLock, retireInterruptedReopenLock } from '../../src/application/runtime/local-artifact-owner-retirement.mjs';
 const fixture = selectedMode => createPrCorrectionReopenFixture(selectedMode, owned);
 const H = 'a'.repeat(64), op = 'op_' + '1'.repeat(40), owned = [], temporary = fs.realpathSync(os.tmpdir());
-const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files';
+const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'dual';
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
 const set = (text, key, value) => {
   const re = new RegExp('^([ \\t]*-?[ \\t]*)' + key + ':[^\\r\\n]*$', 'gm');
@@ -35,14 +35,14 @@ const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + n
 
 const fixtureSigner = createOperationJournalSigner(() => Buffer.alloc(32, 68));
 function reopenDisposition(root, artifacts, readOperation) {
-  return createStandardOperationDisposition({ targetRoot: root, stateMode: 'files', signer: fixtureSigner, artifacts,
+  return createStandardOperationDisposition({ targetRoot: root, stateMode: 'dual', signer: fixtureSigner, artifacts,
     readAuthority: () => ({ fixture: 'reopen-observer' }), readOperation,
     readContext: () => ({ head: git(root, 'rev-parse', 'HEAD'), documents: prCorrectionReopenPaths('S001').map(name => artifacts.read(name).sha256) }),
   });
 }
 function acquireRetirement(root, record, expectedLockSha256, file, predecessorFile = null) {
   const artifacts = createStandardWorkflowArtifacts({ targetRoot: root }), fence = artifacts.resourceFence();
-  const { record: dispatch } = createProcessDispatchRecordStore({ targetRoot: root, stateMode: 'files' }).read(record.operation_id);
+  const { record: dispatch } = createProcessDispatchRecordStore({ targetRoot: root, stateMode: 'dual' }).read(record.operation_id);
   fixtureSigner.verify(record); fixtureSigner.verify(dispatch);
   assert.equal(dispatch.output_sha256, record.results[0].receipt.output_sha256);
   assert.equal(dispatch.preview_sha256, shadowHash(record.preview));

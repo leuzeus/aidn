@@ -90,7 +90,7 @@ export async function verifyCanonicalSessionClose() {
     });
     await check("nested_checkpoint_failure_cannot_be_reported_as_success", async () => {
       assert.throws(() => runWorkflowHookUseCase({ targetRoot: root, runtimeDir: path.resolve("tools/perf"),
-        args: { stateMode: "files", indexStore: "file", strict: true, phase: "session-close", mode: "COMMITTING",
+        args: { stateMode: "dual", indexStore: "file", strict: true, phase: "session-close", mode: "COMMITTING",
           eventFile: ".aidn/runtime/perf/workflow-events.ndjson", runIdFile: ".aidn/runtime/perf/run-id.txt",
           indexOutput: "index.json", indexSqlOutput: "index.sql", indexSqliteOutput: "index.sqlite", indexSyncCheckOut: "check.json" },
         completedCheckpoint: { ok: false, gate: { result: "stop" }, summary: { result: "stop" } },

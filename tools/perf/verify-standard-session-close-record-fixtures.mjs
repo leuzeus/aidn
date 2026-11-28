@@ -23,14 +23,14 @@ import { createStandardSessionDeliveryCheckpoint } from "../../src/application/r
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import { runGatingEvaluateUseCase } from '../../src/application/runtime/gating-evaluate-use-case.mjs';
-const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7) ?? "files";
+const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7) ?? "dual";
 const agedCheckpoint = process.argv.includes("--aged-checkpoint"), agedDelivery = process.argv.includes("--aged-delivery");
 const agedHook = process.argv.includes("--aged-hook");
 const objectiveCompletion = process.argv.includes('--objective-completion');
 if (objectiveCompletion && !process.argv.includes('--final-hook')) throw Error('FIXTURE_OBJECTIVE_HOOK_REQUIRED');
 if (agedHook && !process.argv.includes("--final-hook")) throw Error("FIXTURE_AGED_HOOK_ARGUMENT_INVALID");
 if (agedCheckpoint && !process.argv.includes("--checkpoint") || agedDelivery && !process.argv.includes("--delivery-checkpoint")) throw Error("FIXTURE_AGED_CHECKPOINT_ARGUMENT_INVALID");
-if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
+if (!["dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
 const finalFault = process.argv.find(arg => arg.startsWith("--final-hook-fault="))?.slice("--final-hook-fault=".length);
 const policyFault = process.argv.includes("--constraint-policy-fault");
 const delivery = process.argv.includes("--delivery-checkpoint"), deliveryFault = process.argv.includes("--delivery-grant-after-git");

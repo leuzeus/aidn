@@ -7,7 +7,7 @@ function parseArgs(argv) {
   const args = {
     target: ".",
     mode: "UNKNOWN",
-    stateMode: envStateMode || "files",
+    stateMode: envStateMode || "dual",
     strict: false,
     json: false,
   };
@@ -38,8 +38,8 @@ function parseArgs(argv) {
   if (!["THINKING", "EXPLORING", "COMMITTING", "UNKNOWN"].includes(args.mode)) {
     throw new Error("Invalid --mode. Expected THINKING|EXPLORING|COMMITTING|UNKNOWN");
   }
-  if (!["files", "dual", "db-only"].includes(args.stateMode)) {
-    throw new Error("Invalid AIDN_STATE_MODE. Expected files|dual|db-only");
+  if (!["dual", "db-only"].includes(args.stateMode)) {
+    throw new Error("Invalid AIDN_STATE_MODE. Expected dual|db-only");
   }
   return args;
 }

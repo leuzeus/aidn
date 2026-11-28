@@ -12,12 +12,12 @@ import { createStandardWorkflowArtifacts } from "../../src/application/runtime/s
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { artifactContentHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
 
-export async function verifyStandardSessionPlanValidity(pass, { modes = ["files", "dual", "db-only"] } = {}) {
+export async function verifyStandardSessionPlanValidity(pass, { modes = ["dual", "db-only"] } = {}) {
   const temporary = fs.realpathSync(os.tmpdir());
   const git = (root, ...args) => execFileSync("git", ["-C", root, "-c", "core.hooksPath=" + (process.platform === "win32" ? "NUL" : "/dev/null"), ...args],
     { encoding: "utf8", windowsHide: true, stdio: "pipe", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } }).trim();
   for (const mode of modes) {
-    assert.ok(["files", "dual", "db-only"].includes(mode));
+    assert.ok(["dual", "db-only"].includes(mode));
     for (const scenario of ["valid", "revoked", "context", "head", "destination-branch"]) {
       const owned = []; let success = false;
       try {
@@ -90,5 +90,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   let checks = 0;
   await verifyStandardSessionPlanValidity(name => { checks++; console.log("PASS " + name); }, mode ? { modes: [mode] } : {});
   console.log(JSON.stringify({ status: "PASS", checks, scope: "current-session-initialization-after-one-day", clock: "injected",
-    business_ports: "actual", state_modes: mode ? [mode] : ["files", "dual", "db-only"], native_model_calls: 0, installed_archive: "NOT_RUN" }));
+    business_ports: "actual", state_modes: mode ? [mode] : ["dual", "db-only"], native_model_calls: 0, installed_archive: "NOT_RUN" }));
 }

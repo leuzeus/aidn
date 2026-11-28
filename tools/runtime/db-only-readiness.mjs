@@ -31,6 +31,9 @@ const DB_FIRST_MARKERS = [
   // Canonical artifact port resolves SQLite/PostgreSQL without visible-file
   // fallback; console fixtures exercise both transports and DB-only reads.
   "createProjectArtifactStore(",
+  // Explicit legacy migration verifies SQL authority and only reads FILES as
+  // its declared source. It never supplies a runtime fallback.
+  "createRuntimeArtifactStore(",
   // STANDARD checkpoints and hooks use this same backend-resolved canonical
   // port, including the inspected cycle checkpoint's injected artifact port.
   "createStandardWorkflowArtifacts(",

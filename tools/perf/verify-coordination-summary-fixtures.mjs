@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { seedSqliteFixture } from './test-sqlite-fixture-lib.mjs';
 import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -108,6 +109,7 @@ function main() {
     initGitRepo(blockedTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(dbOnlyTarget, { workingBranch: "feature/C101-alpha" });
     for (const target of [readyTarget, blockedTarget, dbOnlyTarget]) {
+      seedSqliteFixture(target);
       prepareActivationFixture(target, repoRoot);
       prepareNpmActivationFixture(target, repoRoot);
       execFileSync("git", ["-C", target, "add", "."], { stdio: "pipe" });

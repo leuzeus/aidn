@@ -32,7 +32,7 @@ export async function verifyInitialNativeAuthorizationEpochs(check, { journalFix
       }
     } finally { Date.now = realNow; }
   });
-  for (const mode of ["files", "dual", "db-only"]) await check(`native initial epoch ${mode}: expired unused original grant retains zero-allocation origin and requires authenticated scope closure`, async () => {
+  for (const mode of ["dual", "db-only"]) await check(`native initial epoch ${mode}: expired unused original grant retains zero-allocation origin and requires authenticated scope closure`, async () => {
     const f = journalFixture({ stateMode: mode, git: true }), original = f.authorize(), realNow = Date.now;
     assert.throws(() => f.open().prepareAuthorizationEpoch({ originalAuthorization: original }), /INITIAL_AUTHORIZATION_NOT_EXPIRED/);
     const offset = original.global_deadline_ms + 1 - realNow(); Date.now = () => realNow() + offset;
@@ -130,7 +130,7 @@ export async function verifyInitialNativeAuthorizationEpochs(check, { journalFix
 }
 
 export async function verifyNativeAuthorizationEpochs(check, { readyResumeFixture, mixedFixture, bootstrapMixed }) {
-  for (const mode of ["files", "dual", "db-only"]) await check(`native epoch ${mode}: fresh verified closure authorizes a new cumulative grant without replaying historical work`, async () => {
+  for (const mode of ["dual", "db-only"]) await check(`native epoch ${mode}: fresh verified closure authorizes a new cumulative grant without replaying historical work`, async () => {
     let duringReservation = async () => {};
     const f = await readyResumeFixture({ stateMode: mode, async beforeWorker() { await duringReservation(); } }), initial = f.actor.inspect(), original = structuredClone(f.auth), realNow = Date.now;
     const oldCheckpoint = f.actor.readCheckpoint(1), oldEvents = structuredClone(oldCheckpoint.state.instance.events);

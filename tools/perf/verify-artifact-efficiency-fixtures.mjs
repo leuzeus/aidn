@@ -151,12 +151,12 @@ try {
     } finally { store.close(); }
   });
   check('ordinary full writes still support explicit files projection', () => {
-    runDbFirstArtifactUseCase({ target: temp, path: 'notes.md', content: '# File\n', stateMode: 'files' });
+    runDbFirstArtifactUseCase({ target: temp, path: 'notes.md', content: '# File\n', stateMode: 'dual' });
     assert.equal(fs.readFileSync(path.join(temp, 'docs/audit/notes.md'), 'utf8'), '# File\n');
   });
   check('configured files remain authoritative over a stale SQLite index', () => {
     const target = path.join(temp, 'file-primary');fs.mkdirSync(path.join(target, '.aidn'), { recursive: true });
-    fs.writeFileSync(path.join(target, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'files', persistence: { backend: 'sqlite' } } }));
+    fs.writeFileSync(path.join(target, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'dual', persistence: { backend: 'sqlite' } } }));
     const original = '# Session\nmode: THINKING\n', edited = '# Session\nmode: EXPLORING\n';
     const first = runDbFirstArtifactUseCase({ target, path: 'sessions/S009.md', content: original });
     assert.equal(first.materialized, true);
@@ -192,7 +192,7 @@ try {
   });
   check('configured PostgreSQL remains canonical in files presentation mode', () => {
     const target = path.join(temp, 'pg-files');fs.mkdirSync(path.join(target, '.aidn'), { recursive: true });
-    fs.writeFileSync(path.join(target, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'files', persistence: { backend: 'postgres', connectionRef: 'env:AIDN_EFFICIENCY_UNAVAILABLE' } } }));
+    fs.writeFileSync(path.join(target, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'dual', persistence: { backend: 'postgres', connectionRef: 'env:AIDN_EFFICIENCY_UNAVAILABLE' } } }));
     assert.throws(() => runDbFirstArtifactUseCase({ target, path: 'notes.md', replacements: [{ old: 'a', new: 'b' }], expectedSha256: '0'.repeat(64) }), /ARTIFACT_POSTGRES_/);
     assert(!fs.existsSync(path.join(target, '.aidn/runtime/index/workflow-index.sqlite')));
   });

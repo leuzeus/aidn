@@ -894,7 +894,7 @@ export async function runSessionPlan({
     if (currentStateText) currentStateWrite = writeUtf8IfChanged(currentStatePath, nextCurrentState);
     // Visible outputs still follow the historical session-plan contract.
     // Materialization is delayed until every canonical write above succeeded.
-    for (const item of dbFirstWrites) item.materialized = effectiveStateMode === 'dual' || effectiveStateMode === 'files';
+    for (const item of dbFirstWrites) item.materialized = effectiveStateMode === 'dual';
   }
 
   const draftWrite = writeJsonIfChanged(resolveTargetPath(absoluteTargetRoot, draftFile), draftPayload, {

@@ -89,9 +89,9 @@ Before the first durable write in this skill, run:
 - do not duplicate the full recovery plan outside the owning artifact
 - keep `repair_layer_status` and `repair_primary_reason` aligned with the latest hydrated/runtime digest when repair context is relevant
 
-8) Performance hook (mandatory in dual/db-only; optional in files):
+8) Performance hook (mandatory in dual/db-only):
 - run `npx aidn codex run-json-hook --skill drift-check --mode COMMITTING --target . --json`
-- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - After a closure-requested drift check succeeds and records `drift_check_completed`, retry `cycle-close`. A preview or a warning/refusal is not completion; resolve its reported cause without deleting history or bypassing ordinary mapping.
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill drift-check --project-runtime-state --json`.

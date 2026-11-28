@@ -42,7 +42,7 @@ export async function verifyStandardHandoffDisposition(mode,{only=null,unreturne
 async function runCase(mode,scenario,{unreturned=false}={}){
 const assertPlan=unreturned?assertUnreturnedHandoffContinuationPlan:assertHandoffContinuationPlan;
 const assertAudit=unreturned?assertUnreturnedHandoffContinuationDisposition:assertHandoffContinuationDisposition;
-assert(['files','dual','db-only'].includes(mode));
+assert(["dual","db-only"].includes(mode));
 const owned=[],root=createFreshStandardWorkflowFixture(mode,owned,{absentOptionalDocuments:['HANDOFF-PACKET.md']}),artifacts=createStandardWorkflowArtifacts({targetRoot:root}),key=Buffer.alloc(32,149),signer=createOperationJournalSigner(()=>key);
 const control=fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()),'aidn-handoff-operation-control-'));owned.push(control);
 let clock=Date.now(),allowed=true,sourceAllowed=true,sourceReads=0;const sourceExpiry=clock+3600000;

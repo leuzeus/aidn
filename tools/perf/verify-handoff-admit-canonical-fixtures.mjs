@@ -29,7 +29,7 @@ export async function verifyCanonicalHandoffAdmission() {
     runtime: { stateMode: mode, persistence: { backend, connectionRef: 'env:AIDN_HANDOFF_FIXTURE_PG' } } }));
   const command = (script, args) => {
     const run = spawnSync(process.execPath, [script, '--target', root, ...args], { encoding: 'utf8', windowsHide: true,
-      env: { ...process.env, AIDN_STATE_MODE: 'files', AIDN_RUNTIME_PERSISTENCE_BACKEND: '' }, timeout: 60000 });
+      env: { ...process.env, AIDN_STATE_MODE: 'dual', AIDN_RUNTIME_PERSISTENCE_BACKEND: '' }, timeout: 60000 });
     assert.equal(run.status, 0, run.stderr || run.stdout); return JSON.parse(run.stdout);
   };
   const check = async (id, fn) => { await fn(); runs.push({ id, pass: true }); };
@@ -52,7 +52,7 @@ export async function verifyCanonicalHandoffAdmission() {
       write(`docs/audit/${name}`, '# Bootstrap\nmode: unknown\nactive_cycle: C999\n');
     write('docs/audit/cycles/C101-feature-alpha/status.md', 'state: UNKNOWN\nlast_updated: 2099-01-01T00:00:00Z\n');
     const stale = inventory(path.join(root, 'docs'));
-    for (const mode of ['db-only', 'dual', 'files']) await check(`postgres_${mode}_ignores_stale_visible_projections`, async () => {
+    for (const mode of ["db-only","dual"]) await check(`postgres_${mode}_ignores_stale_visible_projections`, async () => {
       const data = structuredClone(payload);
       for (const row of data.artifacts.filter(a => ['HANDOFF-PACKET.md', 'RUNTIME-STATE.md'].includes(a.path))) {
         row.content = row.content.replace(/runtime_state_mode: \S+/, `runtime_state_mode: ${mode}`); row.sha256 = sha(row.content);

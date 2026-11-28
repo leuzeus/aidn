@@ -855,7 +855,7 @@ repeated corrections and the complete C2 journey remain unqualified.
 
 The targeted decision/inbox and composition suites cover these boundaries. The
 real-port correction-cycle suite selects `--decision-v2` separately in each
-`--mode=files|dual|db-only` run. Its accepted-operation/provider/human capabilities
+`--mode=dual|db-only` run. Its accepted-operation/provider/human capabilities
 remain doubles. Component evidence cannot establish the production dispatcher
 UNKNOWN chain, genuine human/native/provider/OS, configured PostgreSQL or exact
 installed archive. Exact-source results remain pending at this source change.

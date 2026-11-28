@@ -371,7 +371,7 @@ async function verifySessionObjectives(tmpRoot, onCreated) {
     eventFile: path.join(root, '.aidn/runtime/perf/workflow-events.ndjson'),
     indexSyncCheckFile: path.join(root, '.aidn/runtime/index/index-sync-check.json'),
     indexFile: path.join(root, '.aidn/runtime/index/workflow-index.sqlite'),
-    indexBackend: 'sqlite', stateMode: 'files', mode: 'COMMITTING',
+    indexBackend: 'sqlite', stateMode: 'dual', mode: 'COMMITTING',
     reloadResult: { decision: 'full', fallback: false, reason_codes: ['BRANCH_CHANGED'] },
     gitAdapter: createLocalGitAdapter(), completionContext,
   });
@@ -384,7 +384,7 @@ async function verifySessionObjectives(tmpRoot, onCreated) {
     const before = snapshot();
     const observed = await observations(null);
     const gate = runJson('tools/perf/gating-evaluate.mjs', [
-      '--target', root, '--state-mode', 'files', '--mode', 'COMMITTING',
+      '--target', root, '--state-mode', 'dual', '--mode', 'COMMITTING',
       '--reload-decision', 'full', '--reload-fallback', 'false',
       '--reload-reason-codes', 'BRANCH_CHANGED', '--no-emit-event', '--json',
     ]);

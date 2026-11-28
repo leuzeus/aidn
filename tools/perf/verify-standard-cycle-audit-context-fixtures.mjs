@@ -8,7 +8,7 @@ import { createProjectArtifactStore } from "../../src/application/runtime/projec
 import { shadowHash, checkShadowJson } from "../../src/core/workflow/shadow-json.mjs";
 const temporary = fs.realpathSync(os.tmpdir()), H = "a".repeat(64), op = "op_" + "b".repeat(40);
 let checks = 0; const pass = name => { checks++; console.log("PASS " + name); };
-for (const mode of ["files", "dual", "db-only"]) {
+for (const mode of ["dual", "db-only"]) {
   const root = fs.mkdtempSync(path.join(temporary, "aidn-audit-context-"));
   try {
     fs.mkdirSync(path.join(root, ".aidn")); fs.mkdirSync(path.join(root, "docs/audit"), { recursive: true });

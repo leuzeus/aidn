@@ -845,7 +845,7 @@ export function createIndexStore(options = {}) {
         outputs.push({ kind: "sql", path: out.path, written: out.written, bytes_written: out.bytes_written });
       }
       if (mode === "sqlite" || mode === "dual-sqlite" || mode === "all") {
-        const protectWorkflowRecords = !options.targetRoot || (resolveConfigStateMode(readAidnProjectConfig(options.targetRoot).data) ?? "files") !== "files";
+        const protectWorkflowRecords = true;
         const out = writeSqliteIndex(sqliteOutput, payload, schemaFile, protectWorkflowRecords);
         outputs.push({ kind: "sqlite", path: out.path, written: out.written, bytes_written: out.bytes_written });
       }

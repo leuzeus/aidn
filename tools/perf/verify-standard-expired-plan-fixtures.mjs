@@ -55,7 +55,7 @@ export async function verifyStandardExpiredPlans({ includeCurrentValidity = true
   let checks = 0;
   const owned = [], pass = name => { checks++; console.log("PASS " + name); };
   try {
-    for (const mode of ["files", "dual", "db-only"]) {
+    for (const mode of ["dual", "db-only"]) {
       const root = createStandardWorkflowFixture(mode, owned), privateRoot = fs.mkdtempSync(path.join(temporary, "aidn-standard-expired-")); owned.push(privateRoot);
       const keyFile = path.join(privateRoot, "host.key"); fs.writeFileSync(keyFile, randomBytes(32));
       // Only the first dispatch result is doubled to construct a signed legacy

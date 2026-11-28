@@ -214,7 +214,7 @@ function collectOptions(f, extra = {}) {
 
 let cleanup = false;
 try {
-  for (const mode of ["files", "dual", "db-only"]) {
+  for (const mode of ["dual", "db-only"]) {
     check(`postgres_${mode}_canonical_agreement_prevents_false_warning`, () => {
       const f = fixture("agreement", { stateMode: mode, visibleObjective: unrelated });
       const result = invoke(f); const payload = successful(result);
@@ -226,7 +226,7 @@ try {
       assert.deepEqual(payload.levels.level2.active_signals, ["objective_delta"]); canonicalReadOnce(result);
     });
   }
-  for (const mode of ["files", "db-only"]) check(`postgres_${mode}_without_visible_audit`, () => {
+  for (const mode of ["dual", "db-only"]) check(`postgres_${mode}_without_visible_audit`, () => {
     const f = fixture("fileless", { stateMode: mode, visible: false });
     const result = invoke(f); successful(result); canonicalReadOnce(result);
     assert(!fs.existsSync(path.join(f.root, "docs/audit")), "gating materialized visible audit files");
@@ -308,7 +308,7 @@ try {
     assert.equal(result.reads.length, 1);
   });
   check("postgres_configuration_overrides_conflicting_runtime_environment", () => {
-    const f = fixture("conflicting-environment", { stateMode: "files", visibleObjective: unrelated });
+    const f = fixture("conflicting-environment", { stateMode: "dual", visibleObjective: unrelated });
     const result = invoke(f, { environment: { AIDN_RUNTIME_PERSISTENCE_BACKEND: "sqlite", AIDN_INDEX_STORE_MODE: "json" } });
     successful(result); canonicalReadOnce(result);
   });
@@ -367,12 +367,7 @@ try {
     assert.equal(result.payload[0].sessionObjective, objective); assert.equal(result.payload[0].cycleGoal, objective);
     canonicalReadOnce(result);
   });
-  check("files_mode_keeps_checkout_intent_without_loading_postgres", () => {
-    const f = fixture("files-local", { stateMode: "files", backend: "sqlite", visibleObjective: unrelated });
-    const result = invoke(f); const payload = successful(result, "warn");
-    assert.deepEqual(payload.levels.level2.active_signals, ["objective_delta"]);
-    assert.equal(result.reads.length, 0);
-  });
+  // FILES selection and unavailable SQL refusal are covered by retirement fixtures.
   for (const mode of ["dual", "db-only"]) check(mode === "dual"
     ? "sqlite_dual_preserves_checkout_intent_with_custom_index"
     : "sqlite_db_only_honors_custom_canonical_index", () => {

@@ -104,8 +104,8 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
     targetRoot,
     cachePath,
     stateMode: args.stateMode,
-    indexFile: args.stateMode !== "files" ? reloadIndex.indexFile : "",
-    indexBackend: args.stateMode !== "files" ? reloadIndex.indexBackend : "",
+    indexFile: reloadIndex.indexFile,
+    indexBackend: reloadIndex.indexBackend,
     writeCache: true,
   });
   const reloadDurationMs = Date.now() - reloadStarted;

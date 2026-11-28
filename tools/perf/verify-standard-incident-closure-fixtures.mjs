@@ -14,8 +14,8 @@ import { writeAidnProjectConfig, readAidnProjectConfig } from '../../src/lib/con
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 import { artifactContentHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
 
-const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'files';
-assert(['files', 'dual', 'db-only'].includes(mode));
+const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'dual';
+assert(['dual', 'db-only'].includes(mode));
 const incidentId = 'INC-TMP-20261115-000000-fixture';
 const incidentPath = `incidents/${incidentId}.md`;
 const sessionPath = 'sessions/S001.md', snapshotPath = 'snapshots/context-snapshot.md';

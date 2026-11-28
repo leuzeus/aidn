@@ -10,8 +10,8 @@ import { createTrackedFixtureFilter, initGitRepo } from "./test-git-fixture-lib.
 import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 import { validateJsonSchema } from "../../src/core/contracts/json-schema-validator.mjs";
 import schema from "../../src/core/contracts/cli-output/runtime-pre-write-admit.v1.schema.json" with { type: "json" };
-export async function verifyPromotionPrewrite(mode = "files", { verbose = false } = {}) {
-if (!["files", "dual", "db-only"].includes(mode)) throw Error("PROMOTION_PREWRITE_FIXTURE_MODE_INVALID");
+export async function verifyPromotionPrewrite(mode = "dual", { verbose = false } = {}) {
+if (!["dual", "db-only"].includes(mode)) throw Error("PROMOTION_PREWRITE_FIXTURE_MODE_INVALID");
 const parent = fs.realpathSync(os.tmpdir()), root = fs.mkdtempSync(path.join(parent, "aidn-promote-prewrite-"));
 const sha = data => createHash("sha256").update(data).digest("hex"), checks = [];
 const write = (name, text) => { const p = path.join(root, name); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, text); };
@@ -76,5 +76,5 @@ try {
 }
 }
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
-  console.log(JSON.stringify(await verifyPromotionPrewrite(process.argv.find(v => v.startsWith("--mode="))?.slice(7) ?? "files", { verbose: true })));
+  console.log(JSON.stringify(await verifyPromotionPrewrite(process.argv.find(v => v.startsWith("--mode="))?.slice(7) ?? "dual", { verbose: true })));
 }

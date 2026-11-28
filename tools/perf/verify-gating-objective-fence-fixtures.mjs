@@ -44,7 +44,7 @@ const alignment = { contract_version: "standard-drift-objective-disposition.v1",
   source_event_id: "fixture_event", ...objectives, rationale: "Exact fixture opinion", prepared_at_ms: 100 };
 const eventFile = path.join(root, "events.ndjson"), prefix = Buffer.from('{"event":"preserved_prefix"}\n');
 const args = () => ({ cache: "cache.json", eventFile, indexSyncCheckFile: "sync.json", indexFile: "index.sqlite",
-  indexBackend: "auto", stateMode: "files", stateModeExplicit: true, mode: "THINKING", thresholdFiles: 3,
+  indexBackend: "auto", stateMode: "dual", stateModeExplicit: true, mode: "THINKING", thresholdFiles: 3,
   thresholdMinutes: null, reloadDecision: "incremental", reloadFallback: "false", reloadReasonCodes: "",
   emitEvent: true, completeDriftCheck: true, runId: "fixture_fence" });
 const observations = () => ({ sessionObjective: objectives.session_objective, cycleGoal: objectives.cycle_objective,
@@ -163,7 +163,7 @@ try {
   for (const scenario of ["context-revocation", "context-process-change"]) {
     let reads = 0, authorized = true, effects = 0, owners = 0, currentSha = H;
     globalThis.objectiveFenceFixture = { observe: async () => observations(), artifacts: {
-      root, describe: () => ({ state_mode: "files" }), ownerPending: () => false,
+      root, describe: () => ({ state_mode: "dual" }), ownerPending: () => false,
       read: () => ({ sha256: null }), withLocalEffectOwner: async (_plan, callback) => { owners++; return callback(); },
       compareAndSwap: () => { effects++; }, project: () => { effects++; },
     } };
@@ -199,7 +199,7 @@ try {
     const physical = path.join(root, '.aidn/runtime/perf/workflow-events.ndjson');
     fs.mkdirSync(path.dirname(physical), { recursive: true }); fs.writeFileSync(physical, prefix);
     globalThis.objectiveFenceFixture = { observe: async () => observations(), artifacts: {
-      root, describe: () => ({ state_mode: 'files' }), ownerPending: () => false,
+      root, describe: () => ({ state_mode: 'dual' }), ownerPending: () => false,
       read: name => rows.get(name) ?? { sha256: null }, withLocalEffectOwner: async (_plan, callback) => callback(),
       compareAndSwap: change => { assert.equal(rows.has(change.path), false); rows.set(change.path, { content: change.after, sha256: change.after_sha256 }); }, project: () => {},
     } };

@@ -75,7 +75,7 @@ export function captureContextIdentity({ targetRoot, stateMode, packageRoot = PA
     for (const relative of [".aidn/config.json", ".aidn/project", "AGENTS.md", ".agents", ".codex"]) {
       directoryManifest(root, relative, budget, inputs);
     }
-    const effectiveMode = resolveEffectiveStateMode({ targetRoot: root, stateMode: stateMode || "files" });
+    const effectiveMode = resolveEffectiveStateMode({ targetRoot: root, stateMode: stateMode || "dual" });
     const identity = {
       target_root: root,
       project_id: workspace.project_id,

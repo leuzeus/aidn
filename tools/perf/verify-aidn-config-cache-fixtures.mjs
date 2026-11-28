@@ -263,7 +263,7 @@ function main() {
     assert(created.data.runtime.stateMode === "dual", "created config should be read after missing-cache invalidation");
     assert(afterCreated.invalidations >= 1, "created config should invalidate cached missing state");
 
-    created.data.runtime.stateMode = "files";
+    created.data.runtime.stateMode = "db-only";
     const rereadAfterMutation = readAidnProjectConfig(targetRoot);
     const afterMutationRead = readStats();
     assert(rereadAfterMutation.data.runtime.stateMode === "dual", "returned config data should be cloned before exposing cache");
@@ -286,20 +286,20 @@ function main() {
 
     writeAidnProjectConfig(targetRoot, {
       runtime: {
-        stateMode: "files",
+        stateMode: "dual",
       },
     });
     const afterWrite = readStats();
     const written = readAidnProjectConfig(targetRoot);
     const afterWrittenRead = readStats();
     assert(afterWrite.writes === 1, "write helper should record a cache-aware write");
-    assert(written.data.runtime.stateMode === "files", "write helper should clear stale cached config");
+    assert(written.data.runtime.stateMode === "dual", "write helper should clear stale cached config");
     assert(afterWrittenRead.misses >= afterWrite.misses + 1, "first read after write helper should miss");
     assert(readStats().entries === 1, "cache should contain one target config entry");
 
     const bytesBeforeVersionHelpers = fs.readFileSync(written.path);
     const statsBeforeVersionHelpers = JSON.stringify(readStats());
-    const legacyConfig = { runtime: { stateMode: "files" }, install: { artifactImportStore: "file", custom: { keep: true } } };
+    const legacyConfig = { runtime: { stateMode: "dual" }, install: { artifactImportStore: "dual-sqlite", custom: { keep: true } } };
     const legacyBefore = JSON.stringify(legacyConfig);
     validateAidnProjectConfig({});
     validateAidnProjectConfig(legacyConfig);
@@ -308,7 +308,7 @@ function main() {
     const finalized = withInstalledAidnVersion(legacyConfig, "0.8.0");
     assert(finalized.version === 1, "product version must not replace root schema version");
     assert(finalized.install.aidnVersion === "0.8.0", "explicit finalization must set the supplied product version");
-    assert(finalized.runtime.stateMode === "files" && finalized.install.artifactImportStore === "file", "finalization lost configured defaults");
+    assert(finalized.runtime.stateMode === "dual" && finalized.install.artifactImportStore === "dual-sqlite", "finalization lost configured defaults");
     assert(JSON.stringify(legacyConfig) === legacyBefore, "pure finalization mutated its input");
     finalized.install.custom.keep = false;
     assert(legacyConfig.install.custom.keep === true, "pure finalization must clone nested extensions");
@@ -367,7 +367,7 @@ function main() {
     }
     expectWriteFailure(
       targetRoot,
-      { version: 1, profile: "files", runtime: { stateMode: "files" } },
+      { version: 1, profile: "dual", runtime: { stateMode: "dual" } },
       "late-rename-failure",
       {
         fsImpl: {

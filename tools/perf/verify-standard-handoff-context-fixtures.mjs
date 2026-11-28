@@ -11,7 +11,7 @@ import { assertHandoffContext } from '../../src/core/workflow/standard-handoff-c
 import { resolveRuntimeSqliteFile } from '../../src/application/runtime/runtime-persistence-service.mjs';
 import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
 
-const mode = process.argv[2] ?? 'files'; assert(['files', 'dual', 'db-only'].includes(mode)); assert.equal(process.argv.length, 3);
+const mode = process.argv[2] ?? 'dual'; assert(['dual', 'db-only'].includes(mode)); assert.equal(process.argv.length, 3);
 const owned = [], root = createFreshStandardWorkflowFixture(mode, owned), artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
 const contents = { 'CURRENT-STATE.md': '# Current state\nmode: COMMITTING\nbranch_kind: cycle\nactive_session: S001\nactive_cycle: C001\ndor_state: READY\nfirst_plan_step: Preserve canonical handoff context\n',
   'sessions/S001.md': '# Session\nsession_id: S001\nsession_branch: S001-handoff\nstate: OPEN\n',

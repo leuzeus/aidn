@@ -219,13 +219,7 @@ async function runCoordinatorRecordArbitration({
   const updatedAt = event.ts;
   let arbitrationLogAppended = false;
   let arbitrationDbFirst = null;
-  if (effectiveStateMode === "files") {
-    appendArbitrationLog(arbitrationPath, arbitrationMarkdown, {
-      updatedAt,
-      governanceMetadata,
-    });
-    arbitrationLogAppended = true;
-  } else {
+  {
     const relativeArbitrationPath = String(arbitrationFile).replace(/\\/g, "/").replace(/^docs\/audit\//i, "");
     const { dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot, effectiveStateMode);
     const sqliteFallback = dbBackedMode ? loadSqliteIndexPayloadSafe(absoluteTargetRoot) : {

@@ -57,6 +57,6 @@ Purpose:
 ## Navigation Rules
 
 - `docs/audit/*` remains checkout-bound and must not be relocated by shared runtime behavior.
-- `files`, `dual`, and `db-only` remain supported operating modes.
+- `dual` and `db-only` remain supported operating modes.
 - PostgreSQL shared coordination stays explicit opt-in.
 - release/provenance must stay tied to `VERSION`, `package.json`, manifest, and checksums.

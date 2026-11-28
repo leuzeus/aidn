@@ -187,7 +187,7 @@ const CASES = [
         fs.writeFileSync(cycleFile, text, "utf8");
       }
       const sessionFile = path.join(targetRoot, "docs", "audit", "sessions", "S201-multi.md");
-      fs.appendFileSync(sessionFile, "\n\n### PR Orchestration\n- pr_status: `merged`\n- pr_review_status: `approved`\n- post_merge_sync_status: `required`\n\n### Session close gate satisfied?\n- [x] Yes\n", "utf8");
+      fs.appendFileSync(sessionFile, "\n\nstate: CLOSED\n### PR Orchestration\n- pr_status: `merged`\n- pr_review_status: `approved`\n- post_merge_sync_status: `required`\n\n### Session close gate satisfied?\n- [x] Yes\n", "utf8");
     },
   },
   {
@@ -397,9 +397,9 @@ function runCase(tmpRoot, testCase, onTargetCreated) {
   if (typeof testCase.configureGit === "function") {
     testCase.configureGit(targetRoot);
   }
-  if (testCase.env?.AIDN_STATE_MODE === "db-only") {
+  {
     // Seed the canonical store explicitly; db-only must not pass via local files.
-    runJson("tools/perf/index-sync.mjs", ["--target", targetRoot, "--store", "sqlite", "--json"], testCase.env);
+    runJson("tools/perf/index-sync.mjs", ["--target", targetRoot, "--store", "sqlite", "--with-content", "--json"], testCase.env);
   }
 
   const hook = runJson("tools/perf/start-session-hook.mjs", [

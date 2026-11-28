@@ -9,7 +9,7 @@ import { withStandardDispatchContext } from '../../src/application/runtime/stand
 const owned = [], H = 'a'.repeat(64), B = 'b'.repeat(64), id = 'op_' + '1'.repeat(40);
 let succeeded = false, checks = 0;
 try {
-  for (const mode of ['files', 'dual', 'db-only']) {
+  for (const mode of ['dual', 'db-only']) {
     const root = createStandardWorkflowFixture(mode, owned), artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
     const name = 'notes/borrowed-disposition-owner-fixture.md', before = artifacts.read(name);
     assert.equal(before.sha256, null); assert.equal(artifacts.metadataHash(name), null);

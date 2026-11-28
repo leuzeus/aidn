@@ -32,7 +32,7 @@ try {
   assert.deepEqual(snapshot(root), first); checks.reinstall_including_receipt_idempotent = true;
   const unknown = target("unknown-document"); put(unknown, "docs/audit/SPEC.md", "# Client customized specification\n");
   const beforeUnknown = snapshot(unknown); const conflict = await plan(unknown); assert(!conflict.ok); assert(conflict.errors.some((e) => e.includes("UNOWNED_INSTALLATION_ASSET"))); assert.deepEqual(snapshot(unknown), beforeUnknown); checks.unknown_local_document_not_adopted = true;
-  const interrupted = target("interrupted"); put(interrupted, ".aidn/config.json", '{"version":1,"install":{"aidnVersion":"0.7.2"},"runtime":{"stateMode":"files"}}\n');
+  const interrupted = target("interrupted"); put(interrupted, ".aidn/config.json", '{"version":1,"install":{"aidnVersion":"0.7.2"},"runtime":{"stateMode":"dual"}}\n');
   const partial = await apply(interrupted, "install", { failAfter: 3 }); assert(!partial.ok); assert.equal(readConfig(interrupted).install.aidnVersion, "0.7.2");
   assert.equal(executeCodexAssets({ repoRoot, targetRoot: interrupted, action: "resume", dryRun: false }).ok, false);
   const resume = await apply(interrupted, "resume"); assert(resume.ok, resume.errors.join(";")); assert.equal(readConfig(interrupted).install.aidnVersion, version); checks.interruption_resume_and_explicit_scope = true;
@@ -124,7 +124,7 @@ try {
   checks.completed_import_not_replayed_and_unknown_postgres_import_refused = true;
   const frozen = target("frozen-resume-defaults"), previousEnv = { AIDN_INDEX_STORE_MODE: process.env.AIDN_INDEX_STORE_MODE, AIDN_STATE_MODE: process.env.AIDN_STATE_MODE, AIDN_RUNTIME_PERSISTENCE_BACKEND: process.env.AIDN_RUNTIME_PERSISTENCE_BACKEND, AIDN_RUNTIME_PERSISTENCE_CONNECTION_REF: process.env.AIDN_RUNTIME_PERSISTENCE_CONNECTION_REF };
   try {
-    process.env.AIDN_INDEX_STORE_MODE = "file"; process.env.AIDN_STATE_MODE = "files"; process.env.AIDN_RUNTIME_PERSISTENCE_BACKEND = "sqlite";
+    process.env.AIDN_INDEX_STORE_MODE = "file"; process.env.AIDN_STATE_MODE = "dual"; process.env.AIDN_RUNTIME_PERSISTENCE_BACKEND = "sqlite";
     const frozenArgs = { ...args, skipArtifactImport: false }; delete frozenArgs.artifactImportStore;
     const frozenPlan = await planInstallation({ repoRoot, targetRoot: frozen, args: frozenArgs }); assert(frozenPlan.ok, frozenPlan.errors.join(";"));
     const stopped = await executeInstallation({ repoRoot, targetRoot: frozen, args: frozenArgs, dryRun: false, expectedPlanId: frozenPlan.plan_id, failAfterStaging: true }); assert(!stopped.ok);

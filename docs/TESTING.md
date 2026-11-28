@@ -82,8 +82,8 @@ or four-minute duration and agree even when the clock advances between reads.
 A ticking-clock regression exercises the real authorization validator and
 checks that the original authorization remains unchanged.
 
-The targeted selectors are `--native-initial-epoch-mode=files|dual|db-only`
-and `--native-epoch-mode=files|dual|db-only` on
+The targeted selectors are `--native-initial-epoch-mode=dual|db-only`
+and `--native-epoch-mode=dual|db-only` on
 `verify-agentic-process-execution-fixtures.mjs`. These are controlled fixture
 checks. Native budgets, expiry checks, source authentication and resource-closure
 requirements in production remain unchanged.
@@ -118,7 +118,7 @@ prefix is declared explicitly; they do not qualify an entire STANDARD journey,
 genuine Native, a real provider or an installed archive.
 
 The same required corpus includes
-`--standard-existing-open-work-mode=files|dual|db-only`. These cases use the
+`--standard-existing-open-work-mode=dual|db-only`. These cases use the
 published STANDARD model and real canonical stores for plan adoption, two
 admitted tasks, validation, linked progress and the final-verification call.
 They use identified Native transport doubles and stop at VERIFYING.
@@ -216,7 +216,7 @@ across jobs. Report Codex tokens only from recorded usage.
 
 ## Delivered root work from an owned OPEN plan candidate, 2026-11-12
 
-The focused `--standard-existing-open-work-mode=files|dual|db-only` cases load
+The focused `--standard-existing-open-work-mode=dual|db-only` cases load
 the exact delivered STANDARD model, arrange an owned canonical two-task plan,
 then execute entry, adoption, selection, DoR, implementation, scoped work, real
 checks and advancement through the final-verification call. They stop before
@@ -250,8 +250,8 @@ COMMITTING mode through the existing prepare/apply ports before starting R05.
 They assert that the diagnostic observes that mode, then retain the actual
 report, forged-source refusals, recovery waits and accepted human-source checks.
 Mode preparation is fixture setup; these cases do not qualify a human mode
-choice. The selectors are `--drift-mode=files|dual|db-only` and
-`--drift-recovery-mode=files|dual|db-only`. Native budgets and the production mode
+choice. The selectors are `--drift-mode=dual|db-only` and
+`--drift-recovery-mode=dual|db-only`. Native budgets and the production mode
 guard stay unchanged. Original failed attempts, including pending logical
 ownership, remain separate from corrected fresh scopes.
 
@@ -267,7 +267,7 @@ scope; the v4 schema stays byte-identical. Both schemas are direct runtime
 and process pins. Identified symbolic preflight selects fresh or owned OPEN
 entry to size the actual delivered graph; its replay and response counts
 provide no business authority or product qualification. The focused
-`--standard-existing-open-mode=files|dual|db-only` cases execute the delivered
+`--standard-existing-open-mode=dual|db-only` cases execute the delivered
 root through actual canonical/session/Git/DoR/phase ports, with one identified
 startup Native diagnostic double and no planner or work response. They retain
 the actual C001 plan instead of applying an unused C002 constructor proposal,
@@ -279,7 +279,7 @@ STANDARD acceptance remain separate outstanding qualifications.
 
 ## Accepted canonical plan selection, 2026-11-12
 
-The focused `--canonical-plan-selection-mode=files|dual|db-only` cases execute
+The focused `--canonical-plan-selection-mode=dual|db-only` cases execute
 signed cold canonical adoption, the actual read-only selector, one current
 read-only intent/architecture assessment, real DoR and phase entry. The selector reobserves the canonical source and authenticates the
 accepted origin ID and record digest. Deliberately changed plan content must
@@ -314,13 +314,13 @@ human choice and real mode application then precede Native context observation.
 The cases retain parameter/input/output identity checks, accepted operation and
 occurrence resolution, one identified Native double, actual R05 finalization,
 retained dispatch and exact simulation at the wait and at completion. The focused
-selector is `--dataflow-mode=files|dual|db-only`. This fixture correction changes
+selector is `--dataflow-mode=dual|db-only`. This fixture correction changes
 neither the runtime mode guard nor Native budgets and proves no genuine Native
 execution or full admission.
 
 ## Canonical OPEN plan to DoR and phase entry, 2026-11-12
 
-The focused `--canonical-plan-readiness-mode=files|dual|db-only` execution
+The focused `--canonical-plan-readiness-mode=dual|db-only` execution
 cases use the same real canonical preimage and signed cold adoption as the
 observation component, then one current read-only assessment, actual DoR
 evaluation and an explicitly authorized phase effect. The source remains canonical content/metadata. No Native
@@ -338,7 +338,7 @@ canonical provenance from Native evidence, leaves DoR and implementation
 permission pending, and permits no imported completed tasks in this first path.
 Current source, metadata, backend, scope, process and owner checks surround the
 actual entry admission. Task paths must fit the configured product scope.
-The execution fixture selects `--canonical-plan-adoption-mode=files|dual|db-only`
+The execution fixture selects `--canonical-plan-adoption-mode=dual|db-only`
 for real canonical setup, context/entry ports, controlled refusal probes and
 signed dispatch with acceptance in a separate Node process. Planning preimages
 are fixture setup; the process-change probe is injected. FILES has no SQL-only
@@ -484,7 +484,7 @@ cycle checkpoint; only a separate fresh full journey can qualify that path.
 
 The default required startup-mode fixture also runs the existing-session entry
 checks in FILES, DUAL and DB-only. The standalone selector is
-`verify-standard-existing-session-entry-fixtures.mjs [--mode=files|dual|db-only]`.
+`verify-standard-existing-session-entry-fixtures.mjs [--mode=dual|db-only]`.
 It checks typed identity/mode admission, the preserved legacy empty admission,
 create-only refusal, no mode renewal, unchanged canonical content/metadata and
 the real THINKING startup hook with exact SIM and no human/model task.
@@ -1616,7 +1616,7 @@ encoding, closed-envelope schema, expiry, subject, source reference, source kind
 and payload-author boundaries with fixture Ed25519 principals. Its explicit
 historical-verification capability is not reducer acceptance evidence.
 
-`node tools/perf/verify-standard-ordinary-entry-fixtures.mjs --mode=files|dual|db-only`
+`node tools/perf/verify-standard-ordinary-entry-fixtures.mjs --mode=dual|db-only`
 drives the public CLI's production STANDARD composition on a fresh activated
 fixture. It checks immutable preview, exact host-key preparation/initialization,
 deterministic operations, cold H wait/resume, Ed25519 fixture-source forgery and
@@ -1840,7 +1840,7 @@ while the planned write timestamp may advance. These selectors qualify neither
 live PostgreSQL nor a genuine Native producer.
 
 The separate `--incident-partial-write` selector on either external-premerge or
-external-pretriage-session, with optional `--incident-state-mode=files|dual|db-only`,
+external-pretriage-session, with optional `--incident-state-mode=dual|db-only`,
 refuses exactly one current admission after the first real trace write. Require
 a valid persisted and accepted generic reconciliation-required/unknown receipt,
 empty success facts, the exact after/before canonical prefix, retained tracker
@@ -1943,9 +1943,9 @@ open until their missing routes and execution evidence exist.
 `node tools/perf/verify-standard-pr-correction-decision-fixtures.mjs` checks the
 closed correction-review/human-source contracts, distinct wait/refuse/defer/cancel
 outcomes, exact subject binding, source reuse refusal and durable signed inbox v7
-on files/dual/db-only. It uses a trusted checkpoint-source double and a human
+on dual/db-only. It uses a trusted checkpoint-source double and a human
 provider double. `node tools/perf/verify-standard-pr-correction-review-ports-fixtures.mjs
---mode=files|dual|db-only` separately checks review of actual canonical reopening
+--mode=dual|db-only` separately checks review of actual canonical reopening
 and Git checkpoints, including the accepted no-effect DB-only boundary, fresh
 provider refusal, cancellation, retained ownership and foreign HEAD refusal.
 Its accepted records and provider authority are fixture doubles. Neither suite
@@ -1956,7 +1956,7 @@ ordering and fixed bindings are checked by the composition suite.
 ### Explicit native authorization epochs
 
 Run `node tools/perf/verify-agentic-process-execution-fixtures.mjs
---native-epoch-mode=files|dual|db-only --retain-on-failure` separately per mode.
+--native-epoch-mode=dual|db-only --retain-on-failure` separately per mode.
 Actual allocator/worker admission, authenticated journals and canonical stores
 consume a fresh explicit grant, retaining the unchanged initial deadline and
 all cumulative debits. The injected fixture clock passes the old deadline.
@@ -1969,7 +1969,7 @@ must preserve every original accepted event and checkpoint.
 Approval, native transport and process control are doubles. Genuine human,
 provider and native all-resource closure, general unknown-effect reconciliation,
 correction-cycle admission and exact installed archive qualification remain
-separate. `--native-initial-epoch-mode=files|dual|db-only` selects the separate
+separate. `--native-initial-epoch-mode=dual|db-only` selects the separate
 expired-unused-initial-grant route. It checks the explicit v3 journal's empty
 origin, scope-bound authenticated closure, no launch during preparation or
 activation, exact new grant at generation one, cold readers and common replay.
@@ -2006,7 +2006,7 @@ it does not automatically stage a replacement.
 The dedicated legacy-reader fixture constructs its first expiry result with
 a scoped synthetic initializer refusal. Current session initialization does
 not expire for elapsed preparation age. The host, admission, Git, canonical
-stores and HMAC journals on files/dual/db-only are actual, with an injected
+stores and HMAC journals on dual/db-only are actual, with an injected
 clock and fixture authorization capability. A fresh Node process prepares the
 successor without an authorization call or any checkout-file change, then a
 separate explicit stage obtains a distinct grant. The suite checks the retained
@@ -2028,7 +2028,7 @@ or exact installed-archive claim.
 
 These are session-initialization and fixed-host published-prefix proofs. The
 separate `node tools/perf/verify-standard-mixed-expired-prefix-fixtures.mjs
---mode=<files|dual|db-only>` suite exercises the published revision-71 model and
+--mode=<dual|db-only>` suite exercises the published revision-71 model and
 its actual data bindings through `createStandardWorkflowExecution` and mixed.step.
 Its 13 checks per mode cover an actual expired dispatch, accepted WAITING/no_effect,
 read-only cold wait calls with either write setting, explicit new-Node preparation,
@@ -2056,7 +2056,7 @@ ordinary-host initialization after one day. Its FILES, DUAL and DB-only SQLite
 cases check a current valid plan, dispatch-time revocation, changed canonical
 context or HEAD, and a conflicting destination branch. Refusals preserve the
 business preimages and Git state; success applies the original plan once.
-Run that helper directly with `--mode=files|dual|db-only` for a selected backend.
+Run that helper directly with `--mode=dual|db-only` for a selected backend.
 The synthetic legacy receipt above supplies no current execution proof.
 Use `--legacy-reader-only` on the legacy suite to select its reader corpus
 separately from current preview and session validity components.
@@ -2071,7 +2071,7 @@ It checks changed content at the same HEAD, changed head/base/source/product,
 event races, lost authority, remote divergence and cancellation. It does not
 authenticate a canonical native producer. The candidate host binds the source
 factory separately.
-`verify-standard-pr-correction-reopen-fixtures.mjs --mode=files|dual|db-only`
+`verify-standard-pr-correction-reopen-fixtures.mjs --mode=dual|db-only`
 uses actual canonical CAS, metadata, projection, local Git and pre-write admission,
 with a doubled source/continuation authority. It reopens the CLOSED owner,
 preserves closure report/completion bodies, resets closure gates and leaves
@@ -2107,7 +2107,7 @@ postimages remain available for diagnosis. Successful cleanup keeps its existing
 physical-parent and generated-name checks. OS Job closure remains separate from
 business-resource closure.
 
-`verify-standard-pr-correction-checkpoint-fixtures.mjs --mode=files|dual|db-only`
+`verify-standard-pr-correction-checkpoint-fixtures.mjs --mode=dual|db-only`
 checks the internal checkpoint component now selected after reopening by the
 candidate host and IR. This suite does not execute that host route. It derives
 its finite scope from an accepted reopening plan and output,
@@ -2188,7 +2188,7 @@ trials and production defaults are unchanged. The explicit fixture-only
 `--standard-composed-max-responses=<n>` selects an initial allowance for a new
 trial and fails if insufficient; it never renews an existing authorization.
 
-The execution fixture's separate `--standard-mode-work-mode=files|dual|db-only`
+The execution fixture's separate `--standard-mode-work-mode=dual|db-only`
 selection runs the published model through the mixed host for one authenticated
 mode choice and typed analysis. `--standard-mode-work-session=THINKING|EXPLORING`
 and `--standard-mode-work-disposition=thinking_complete|nonretained|waiting|retain_requested`
@@ -2291,7 +2291,7 @@ partial writes and missing projection preserve explicit non-success; unchanged
 work remains subject to checks. Native provider and exact installed archive
 qualification are separate. See the standard workflow plan for observed runs.
 
-`--cycle-verification-mode=contract|files|dual|db-only|partial|projection` in the
+`--cycle-verification-mode=contract|dual|db-only|partial|projection` in the
 agentic execution corpus selects evidence consumption and verification-entry
 checks. The contract case distinguishes incomplete task/test coverage from
 lifecycle completion. Integrated cases reuse actual admissions, canonical ports,
@@ -2312,13 +2312,13 @@ It executes a controlled Node check; source authentication and the execution bou
 fixture capabilities. Every result remains labelled `proof_class: fixture`.
 The existing agentic execution corpus includes this suite, selectable with
 `--cycle-validation-mode=contract`, and integrates the real source authority,
-operation journal and IR with `--cycle-validation-mode=files|dual|db-only`.
+operation journal and IR with `--cycle-validation-mode=dual|db-only`.
 Those integrated cases require the admitted product update, no extra model
 allocation, retained dispatch without repeating the verifier, and exact common
 reducer simulation. Files also requires continuation in a fresh Node process.
 Native sandbox/provider and exact installed-archive proofs remain separate.
 
-`--cycle-work-mode=contract|files|dual|db-only|report|source` selects native task
+`--cycle-work-mode=contract|dual|db-only|report|source` selects native task
 input and observed-work checks in the existing agentic execution corpus. The
 native transport is a fixture capability; canonical operations, admissions,
 source authentication and work evaluation use production ports. The task's
@@ -2327,7 +2327,7 @@ must refuse a mismatched report or changed surrounding context without erasing
 the product. A fresh Node resumes files evaluation without a third allocation.
 These checks do not qualify a real native provider or deterministic code tests.
 
-`--cycle-readiness-mode=contract|files|dual|db-only|partial|projection|refusal|stale`
+`--cycle-readiness-mode=contract|dual|db-only|partial|projection|refusal|stale`
 in the agentic execution corpus selects deterministic DoR and explicit phase
 transition checks. The contract selector also advances an injected clock past
 the plan limit during the final context observation and checks that the writer
@@ -2339,7 +2339,7 @@ transport and granting identity remain fixture capabilities; they do not prove
 real provider or installed-archive execution. Run results are recorded in the
 standard workflow implementation plan.
 
-`--cycle-plan-mode=contract|files|dual|db-only|partial|projection` in the existing
+`--cycle-plan-mode=contract|dual|db-only|partial|projection` in the existing
 agentic execution corpus selects typed planning checks. Contract checks exercise
 adaptive depth, REQ/test mapping, usage classes, stale/foreign scope, a single
 safe permission block and refusal of a writable native profile before sessions.
@@ -2356,7 +2356,7 @@ does not qualify real native/human identity, DoR/implementation or an archive.
 
 `drift-cycle-fixture-lib.mjs`, called by the existing recovery fixture, exercises
 real runtime-refresh/cycle application ports under a doubled provenance reader.
-`--cycle-port-mode=files|dual|db-only|partial|projection` selects its five cases;
+`--cycle-port-mode=dual|db-only|partial|projection` selects its five cases;
 the unfiltered recovery fixture includes all five. They verify explicit grants,
 canonical metadata retention, a blocked dirty-worktree checkpoint, observed
 external Git reconciliation, exact cycle effects and stale-source refusal.
@@ -2364,7 +2364,7 @@ An unrelated external commit must refuse. Failed post-effect observation and
 lost required projection retain unknown effects and the owner, with no success
 facts or repeat effect. This does not authenticate a real human/native provider.
 
-`--drift-cycle-mode=files|dual|db-only` in the execution corpus uses a qualification
+`--drift-cycle-mode=dual|db-only` in the execution corpus uses a qualification
 IR with durable cycle parameters and journal-derived identities. The dual case
 follows the CR branch; the others follow the accepted new-cycle choice. Actual
 mode/initial-cycle ports establish fixture preconditions. Native/human/grant
@@ -2389,7 +2389,7 @@ requires stopped admission. The unfiltered fixture includes this scenario too.
 The requirements-delta admission corpus installs current activation assets and
 uses fresh context/coordination in its temporary clients; relocated historical
 Codex context remains refused and the tracked corpus is not converted.
-`--drift-cr-mode=<files|dual|db-only>` in the production execution fixture uses
+`--drift-cr-mode=<dual|db-only>` in the production execution fixture uses
 the mixed authority and a qualification IR resolving the confirmed recovery
 record identity. Its actual evaluation/decision/record journals are authenticated;
 only the native wire, human and write-grant capabilities are fixtures. It must
@@ -2616,7 +2616,7 @@ not extend any deadline, renew authority or rerun the frozen experiment.
 content and thread observations. Complete bounded review bodies, their hashes,
 comment actor node IDs and exact base/ref identities are required; oversized,
 missing or changed content refuses. Historical v1 interfaces retain their own
-envelopes. `verify-standard-session-pr-review-fixtures.mjs --mode=files|dual|db-only
+envelopes. `verify-standard-session-pr-review-fixtures.mjs --mode=dual|db-only
 --content` selects the distinct content binding over actual canonical/Git/bare
 successor ports with doubled accepted-history lookup and GitHub transport. The
 published model uses that content binding without changing the historical one.
@@ -2746,7 +2746,7 @@ common operation registry in the launch fingerprint. It simulates altered reader
 bytes through an intercepted file read, checks that the actual fingerprint
 changes, restores the reader and verifies the original fingerprint again; it
 does not alter the checkout.
-`verify-standard-session-pr-review-fixtures.mjs --mode=files|dual|db-only`
+`verify-standard-session-pr-review-fixtures.mjs --mode=dual|db-only`
 connects the actual successor checkpoint/push and canonical postimages to this
 reader and the thread observer. Preview makes no provider call. Observation
 retains both fresh snapshots, with triage and policy acceptance still pending.
@@ -2784,7 +2784,7 @@ fault: no confirmation or owner release is allowed. A redirected projection
 directory must refuse before evaluation/write; unavailable host link privilege
 is reported separately as SKIP.
 
-`--drift-recovery-mode=<files|dual|db-only>` in the execution suite exercises the
+`--drift-recovery-mode=<dual|db-only>` in the execution suite exercises the
 production mixed host, authenticated typed native diagnostic (transport double),
 durable human report/resume and actual canonical findings writer. No operator
 passes evaluation/decision IDs to steps: the qualification IR resolves them.
@@ -2802,7 +2802,7 @@ the eventual choice. Cycle creation consumes successful admission output for
 continuity and uses accepted initializer input for later leaves; files/dual/
 db-only include blocked admission, reopen/retained receipts and exact simulation.
 The partial-effect scenario must retain uncertainty and prohibit another effect.
-`--case=files|dual|db-only|exploring|partial|checkpoint-partial` selects one cycle scenario; the
+`--case=dual|db-only|exploring|partial|checkpoint-partial` selects one cycle scenario; the
 unfiltered command retains all six. The cycle port must also refuse another
 session identity; successful admission data does not replace the selected session.
 These source-installed, real-port fixtures use human/grant fixture capabilities;
@@ -2814,7 +2814,7 @@ parameters without approval facts, completed identities/journal values, tamperin
 missing data/readers, scoped loops, parallel collections nested in calls, exact
 simulation and early refusal of unsafe/ambiguous mappings. These are synthetic
 core records, not journal-authentication or effect qualification.
-`--dataflow-mode=<files|dual|db-only>` in the production execution suite uses
+`--dataflow-mode=<dual|db-only>` in the production execution suite uses
 actual bootstrap and R05 ports on a disposable source-installed project. The IR
 supplies parameter-derived inputs and prior result identities without a driver
 passing report/evaluation IDs. It also derives a human question from a MAC-checked
@@ -2826,14 +2826,14 @@ full standard graph, native isolation or exact installed archive qualification.
 `--drift-only` selects typed R05 output checks in the production native suite.
 Closed report/schema negatives cover missing output, wrong context, invented
 evidence, inconsistent diagnosis and failed/refused responses. Disposable
-source-installed files/dual/db-only projects execute actual bootstrap ports,
+source-installed dual/db-only projects execute actual bootstrap ports,
 produce a native report through the production adapter with a transport double,
 and evaluate it through the deterministic signed operation port. The same IR
 routes clean and confirmed drift to explicit finalization/recovery waits and
 replays/simulates exactly. Context changes and modified protected evidence must
 refuse. A report or routing fact is not R05 completion, recovery authorization
 or DoR. No real model, provider or exact archive installation is qualified.
-`--drift-contract-only`, `--drift-git-only` and `--drift-mode=<files|dual|db-only>`
+`--drift-contract-only`, `--drift-git-only` and `--drift-mode=<dual|db-only>`
 split this set without altering the required default. A tracked private-file
 change must stay absent from the native diagnostic input and make a clean scoped
 report enter recovery wait. Git observations retain hashes/counts outside the
@@ -2843,7 +2843,7 @@ confinement or semantic diagnostic qualification.
 `--drift-finalize-contract-only` checks the closed followup contract, fixed
 internal hook/run wiring and refusal of drift/partial/recovery preconditions.
 Its hook adapter is a spy, not an execution claim.
-`--drift-finalize-mode=<files|dual|db-only>` selects disposable source-installed
+`--drift-finalize-mode=<dual|db-only>` selects disposable source-installed
 project checks: actual canonical report persistence and fixed R05 hook, own new
 completion event, retained result without a second hook, and identical reducer
 simulation. Files also refuses a changed producer configuration and an explicit
@@ -2854,7 +2854,7 @@ reconciliation and owner retention, no automatic rerun. These selectors do not
 remove cases from the default suite. They use a native transport double and
 do not qualify a real model, OS confinement, exact archive or complete workflow.
 
-`--drift-completion-mode=<files|dual|db-only>` selects terminal-context fixtures
+`--drift-completion-mode=<dual|db-only>` selects terminal-context fixtures
 in the same suite. Actual bootstrap, mode and cycle-creation ports prepare the
 project; terminal state is then seeded as an explicit fixture precondition, not
 proof of validation or terminal transition. DONE/NO_GO/DROPPED owners include an
@@ -2972,7 +2972,7 @@ full replacement refuses omission. This covers producer SQL selection as well
 as the common predicate and does not establish live PostgreSQL qualification.
 
 `verify-standard-workflow-host-fixtures.mjs` adds an IR consumer of the three
-real bootstrap ports. It uses canonical files/SQLite in files/dual/db-only,
+real bootstrap ports. It uses canonical files/SQLite in dual/db-only,
 signed previews, journal CAS and actual business effects. Acceptance runs in
 new Node processes with the retained host key; it verifies no business replay,
 single dispatch under contention, durable waits and exact reducer simulation.
@@ -3043,7 +3043,7 @@ The required gate includes `tools/perf/verify-process-operation-fixtures.mjs`
 for the L1 v2 operation foundation: closed bindings/intents/receipts, explicit
 non-success outcomes, unknown-effect reconciliation, exact shared-reducer
 replay/simulation, authenticated bounded ports, receipt CAS races and durable
-waits in files/dual/db-only. It uses real local stores with authority doubles
+waits in dual/db-only. It uses real local stores with authority doubles
 and checks v1 hashes against a frozen `dd1dbab` oracle, mixed native/operation
 semantics, authenticated control delivery and provider-event reuse refusal.
 It does not use the standard business adapters. The native-only composition also refuses
@@ -3127,7 +3127,7 @@ post-test loop polarity and explicit limit failures, fixed item identities,
 repeated/nested calls, recursion and expansion limits. The canonical service
 suite executes the structured diagram with the default IR v2 target and the
 extended diagram with raw host events on explicit IR v1. Both run in
-files/dual/db-only and compare the retained cursor and hash with simulation.
+dual/db-only and compare the retained cursor and hash with simulation.
 The operation fixtures route a bound IR v2 delivery to the extended diagram's
 approved task. Native execution, live PostgreSQL, graphical import and
 installed-package qualification remain NOT_RUN.
@@ -3193,7 +3193,7 @@ an unreadable child or a missing required root, and verify bounded diagnostics
 and retained consumption on refusal. They do not attribute an earlier native
 failure whose filesystem error was not recorded.
 Keep the existing agent-reuse and workflow-instance regression suites intact.
-The production composition also runs files/dual/db-only over real temporary
+The production composition also runs dual/db-only over real temporary
 SQLite and over the real PostgreSQL artifact adapter with an offline SQL wire
 double. It checks canonical selection, CAS conflicts, reservations, rollback,
 projection failure, backend drift, unavailable PostgreSQL without SQLite fallback,
@@ -3579,7 +3579,7 @@ Cycle closure runs `verify-cycle-close-admission-fixtures.mjs` in
 `codex-context-admission` and `verify-cycle-close-completion-fixtures.mjs` in
 `codex-context-completion`.
 They distinguish specific admission from final checkpoint success, exercise
-`DONE`, `NO_GO` and `DROPPED` after clearing active focus in files/dual/db-only,
+`DONE`, `NO_GO` and `DROPPED` after clearing active focus in dual/db-only,
 and retain ordinary mapping refusal. Missing/ambiguous ownership, incomplete
 canonical usage evidence, nested refusal and warning have negative cases.
 The same fixture suite exercises closure warning -> explicit drift completion ->
@@ -3723,7 +3723,7 @@ external conflicts and whole-tree preservation. The v1 contract rejects false
 conformance claims. `verify-client-adoption-install-fixtures.mjs` checks fresh
 generation, update previews, divergent managed files, exact adapter/history and
 outside-block preservation, idempotence and owned-generation rollback in
-files/dual/db-only. Its optional `--package-root` and `--baseline-package-root`
+dual/db-only. Its optional `--package-root` and `--baseline-package-root`
 allow exact installed package candidates; source defaults alone are fixture proof.
 
 For final context qualification, build with `tools/build-release.mjs
@@ -4429,7 +4429,7 @@ The required `codex-scoped-context-selection` gate runs
 and reserved controls cover accepted dependency closure, ambiguous and absent
 rules, historical hypotheses, explicit cross-worktree coordination, late UTF-8
 exceptions and complete JSON byte budgets. It exercises the real consultation
-CLI in files/dual/db-only mode environments and the real SQLite store, verifies
+CLI in dual/db-only mode environments and the real SQLite store, verifies
 no output/projection write, changed authority/source/backend fingerprints,
 refusal of caller-removed obligations and local overrides of configured
 PostgreSQL. A live files-mode change invalidates an unchanged index. The existing
@@ -4995,7 +4995,7 @@ checks complete canonical presence, redirection refusal and DB-only behavior.
 `node tools/perf/verify-standard-cycle-audit-context-fixtures.mjs` checks lossless
 long normative text and Unicode, scope-stable dispatch receipts, changed audit
 documents, new conditional documents and the unchanged total context ceiling in
-files/dual/db-only. These component checks use a fixture verification bridge.
+dual/db-only. These component checks use a fixture verification bridge.
 
 `node tools/perf/verify-agentic-process-execution-fixtures.mjs --cycle-audit-mode=contract`
 includes all three. Its `files` and `db-only` selections exercise actual local
@@ -5020,7 +5020,7 @@ and exact installed-archive qualification remain separate evidence classes.
 The [fixture construction record](qualification/agentic-process/fixture-construction-2026-11-03.json) records the offline port/host checks and their proof boundaries.
 `node tools/perf/verify-agentic-process-execution-fixtures.mjs --cycle-closure-mode=contract`
 runs closure decision and review semantics plus the actual file/SQLite inbox
-adapter in files/dual/db-only. It checks a cold Node restart, deduplication,
+adapter in dual/db-only. It checks a cold Node restart, deduplication,
 MAC tampering, unavailable/unverified human sources, distinct declined outcomes
 and exact historical v1/v2 reads. The human verifier and accepted-audit bridge
 are fixture capabilities. These checks do not qualify the full operation-host
@@ -5121,7 +5121,7 @@ The session-report and baseline-promotion port fixtures also accept
 `--aged-plan` on FILES, DUAL and DB-only SQLite. Current source, grant,
 preimage/postimage, refusal and partial-effect checks retain their original
 boundaries. Successful reports/records still leave final hooks pending.
-`verify-standard-workflow-mode-fixtures.mjs --source-installed --mode=files|dual|db-only --aged-plan`
+`verify-standard-workflow-mode-fixtures.mjs --source-installed --mode=dual|db-only --aged-plan`
 exercises the published startup component's original old mode-application and
 start-finalization plans. Human-source authentication is a fixture capability;
 the effect ports and fixed start hook are actual, with real hook time progressing.
@@ -5554,7 +5554,7 @@ canonical scope selection, table-before-scope reservations, parameterized target
 deletion and rollback requests. These checks do not qualify live PostgreSQL or
 the R10 resolution, confirmed-resume and retained-trace executor.
 
-`node tools/perf/verify-standard-incident-closure-fixtures.mjs --mode=files|dual|db-only`
+`node tools/perf/verify-standard-incident-closure-fixtures.mjs --mode=dual|db-only`
 exercises the private closure candidate with actual local ownership/fences,
 filesystem or SQLite authority, exact metadata revisions, two retained traces,
 canonical deletion and visible projection cleanup. Controlled losses after one
@@ -5615,7 +5615,7 @@ still block R09. This is scaffold/Git-port evidence; exact archive installation,
 incident source authentication and published R10 execution remain separate gates.
 
 `node tools/perf/verify-standard-pr-incident-tracking-fixtures.mjs
---mode=files|dual|db-only` exercises actual canonical creation and verified-state
+--mode=dual|db-only` exercises actual canonical creation and verified-state
 updates through the private tracking port. Sources and effect grants are
 controlled. Filesystem/SQLite CAS, exact metadata, required DUAL projection,
 DB-only non-export, no-age application, no-effect replay, source/grant refusal,
@@ -5734,7 +5734,7 @@ transfer to integration success. All owned fixture roots must finish cleanup.
 The published-model composed selector supplies a separate proof of the complete
 authenticated local chain when it passes; these component counts do not do so.
 
-`verify-standard-session-pr-admission-fixtures.mjs --mode=files|dual|db-only`
+`verify-standard-session-pr-admission-fixtures.mjs --mode=dual|db-only`
 checks the next read-only re-anchor and actual PR admission. Each mode uses real
 Git integration, canonical files or SQLite, a source-installed disposable project
 and an executable clean-filter control. The complete project tree must remain
@@ -5749,7 +5749,7 @@ or creates a PR, authenticates a real provider, or qualifies an installed archiv
 `verify-standard-session-closure-human-fixtures.mjs` checks the closed private
 contracts, provider verification, immutable v5 captures, refusal/deferral/cancellation
 and actual files/SQLite stores. `verify-standard-session-closure-context-fixtures.mjs`
-accepts `--mode=files|dual|db-only`: canonical reads must leave every project byte
+accepts `--mode=dual|db-only`: canonical reads must leave every project byte
 unchanged, and a changed document must yield a new admitted hash. The fixture
 writer explicitly confirms its effect so a retained lock cannot masquerade as
 subject invalidation. Earlier fourth-check results without that assertion are
@@ -5791,7 +5791,7 @@ for explicit PR orchestration. Unknown effects retain ownership and empty facts,
 with no blind hook retry after run consumption.
 
 The focused `verify-standard-session-close-record-fixtures.mjs` takes
-`--mode=files|dual|db-only`, `--checkpoint`, `--final-hook`, and the separate
+`--mode=dual|db-only`, `--checkpoint`, `--final-hook`, and the separate
 `--checkpoint-fault=grant_after_git` injection. Files components passed 15 checks
 through the actual start/close hooks and local Git; their decision/R05 source
 capabilities are fixture injections. This is separate from a composed-model
@@ -5839,7 +5839,7 @@ the final hook.
 
 ### Session push with an explicit local remote
 
-`verify-standard-session-push-fixtures.mjs --mode=<files|dual|db-only>` exercises
+`verify-standard-session-push-fixtures.mjs --mode=<dual|db-only>` exercises
 closed private contracts, exact-plan permission checks, actual Git push to a
 host-supplied temporary bare remote, branch/ref postconditions, unchanged local
 refs/index, stale remote rejection and the equal-head path without another push.
@@ -5886,7 +5886,7 @@ POST, repository/ref/URL correlation, pagination limits, changed head/base,
 closed/merged/draft refusal, lost authority and unconfirmed effects. No API
 response or metadata marker grants review approval, merge or synchronization.
 
-`verify-standard-session-pr-open-fixtures.mjs --mode=<files|dual|db-only>` adds
+`verify-standard-session-pr-open-fixtures.mjs --mode=<dual|db-only>` adds
 the actual application/owner protocol and provider adapter. Its doubled REST
 transport reads actual local bare Git refs and retains fake provider records
 outside the checkout. Accepted push/admission/current-instance capabilities are
@@ -5962,7 +5962,7 @@ corresponding governed checkpoint/update push and review/merge/sync remain open.
 `verify-standard-session-pr-record-authority-fixtures.mjs` checks the authority's
 historical lookup and physical-event/provider guards with accepted-record and
 provider capabilities injected. `verify-standard-session-pr-record-fixtures.mjs
---mode=<files|dual|db-only>` checks the real canonical writer, stores, projection
+--mode=<dual|db-only>` checks the real canonical writer, stores, projection
 and isolated Git status on source-installed fixtures. Its closure/PR source is
 injected. It tests exact preimages/grants, real postimages and the db-only path
 without export or invented commit; a files-mode fault loses authority after the
@@ -5970,7 +5970,7 @@ first CAS and requires unknown-owner retention. These components do not prove
 real human/provider identities or the complete signed standard chain.
 
 The canonical PR continuation is checked by
-`verify-standard-session-pr-successor-fixtures.mjs --mode=<files|dual|db-only>`.
+`verify-standard-session-pr-successor-fixtures.mjs --mode=<dual|db-only>`.
 It runs the actual canonical writer, successor authority, Git checkpoint, bare
 remote push and GitHub PR adapter. Only accepted-operation lookup/closure history
 and the REST transport are injected. It checks immutable historical hashes,
@@ -6143,14 +6143,14 @@ write, pre-effect authority/prefix/context refusal, and post-report revocation,
 changed context/alignment or lost hook confirmation. These last cases remain
 uncertain with the written report retained. The gate, evaluation and
 artifact/owner ports are controlled in those v3 tests. The existing
-`--drift-finalize-mode=files|dual|db-only` selection instead executes real report
+`--drift-finalize-mode=dual|db-only` selection instead executes real report
 persistence and the actual R05 hook with an old prepared plan. Prepare in the
 past, then use progressing real time during the hook so its independent event
 timestamp still proves correlation to the invocation. Neither selection proves
 a complete native or installed STANDARD workflow.
 
 The historical opt-in `--expire-checkpoint` probe extended this component to expiry of
-`cycle_checkpoint_finalize`. Its first files/dual/db-only runs are retained FAIL,
+`cycle_checkpoint_finalize`. Its first dual/db-only runs are retained FAIL,
 after 13 passing checks each: the initial hook guard returns
 `blocked/no_effect/STANDARD_CYCLE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED` for expired
 age, before the later specific `STANDARD_PLAN_EXPIRED` check. The explicit
@@ -6168,7 +6168,7 @@ check did not exercise the hook or fresh continuation; the historical
 `--expire-checkpoint` components supplied that evidence. Earlier 20-check
 results remain tied to their exact pre-option snapshots.
 
-The corrected historical opt-in probe passed 25 checks per files/dual/db-only on the
+The corrected historical opt-in probe passed 25 checks per dual/db-only on the
 published cycle-131 component. It prepares the original expiring intention in
 the past and observes age 300001 ms before returning to the progressing real
 clock for cold preparation and the hook. Four original refusals remain accepted;
@@ -6196,7 +6196,7 @@ configured PostgreSQL or exact installed-package acceptance.
 
 For the 2026-11-11 delivery plan-validity decision, add `--aged-plan` to
 `verify-standard-session-branch-integration-port-fixtures.mjs` for actual FILES
-finite Git integration. Add `--mode=files|dual|db-only --aged-plan` to each of
+finite Git integration. Add `--mode=dual|db-only --aged-plan` to each of
 `verify-standard-session-push-fixtures.mjs`,
 `verify-standard-session-pr-open-fixtures.mjs`,
 `verify-standard-session-pr-record-fixtures.mjs`,
@@ -6238,15 +6238,15 @@ actual changed adapters rather than the generic SPIKE initializer alone:
 
 - `verify-drift-recovery-fixtures.mjs --aged-plan` covers canonical DUAL recovery
   recording and change-request writes, numeric validation and real late faults.
-  `--cycle-port-mode=files|dual|db-only --aged-plan` adds current context,
+  `--cycle-port-mode=dual|db-only --aged-plan` adds current context,
   no-effect Git checkpoint observation and original cycle initialization.
-  `--cr-write-mode=files|dual|db-only --aged-plan` selects actual CR writes.
+  `--cr-write-mode=dual|db-only --aged-plan` selects actual CR writes.
 - `verify-standard-drift-rollback-fixtures.mjs --aged-plan` covers actual FILES
   product replacement, malformed timestamps, current source/grant refusals and
   uncertainty after a partial effect. It is not a three-backend proof.
-- `verify-standard-pr-correction-expiry-fixtures.mjs --mode=files|dual|db-only`
+- `verify-standard-pr-correction-expiry-fixtures.mjs --mode=dual|db-only`
   now checks valid original old reopen/checkpoint plans; the filename is legacy.
-  `verify-standard-pr-correction-cycle-ports-fixtures.mjs --mode=files|dual|db-only
+  `verify-standard-pr-correction-cycle-ports-fixtures.mjs --mode=dual|db-only
   --aged-plan` covers the separate corrective cycle initializer.
 - `verify-standard-spike-wrapper-preconditions.mjs --aged-plan` covers the actual
   FILES wrapper, with `--dual-nominal` or `--db-only-nominal` for canonical SQLite
@@ -6261,7 +6261,7 @@ STANDARD workflow qualification remain separate. An executed selector becomes
 PASS only after its raw terminal outcome and cleanup envelope are authenticated.
 
 `node tools/perf/verify-standard-pr-correction-real-ports-fixtures.mjs
---mode=files|dual|db-only --retain-always` selects the new deterministic preflight.
+--mode=dual|db-only --retain-always` selects the new deterministic preflight.
 The default required family runs each mode once. `--positive-only` is a narrow
 positive diagnostic. `--grant-only` checks revocation during the provider
 await and a changed authenticated prior receipt at the same instance prefix
@@ -6297,7 +6297,7 @@ qualification remain required. `--retain-always` leaves projects and raw outcome
 for terminal capture; it is not a resource-closure assertion.
 
 `node tools/perf/verify-standard-pr-correction-expiry-fixtures.mjs
---mode=files|dual|db-only` retains its legacy filename and now tests current
+--mode=dual|db-only` retains its legacy filename and now tests current
 validity of original day-old reopen and checkpoint plans. Each case prepares
 its original using an injected past business-adapter clock and restores present
 time before application without rewriting a plan, grant or budget. Protected
@@ -6319,7 +6319,7 @@ Qualification results remain pending until terminal capture.
 
 ### Accepted correction-cycle creation and planning entry
 
-`verify-standard-pr-correction-cycle-ports-fixtures.mjs --mode=files|dual|db-only`
+`verify-standard-pr-correction-cycle-ports-fixtures.mjs --mode=dual|db-only`
 checks the new cycle port on a newly source-installed disposable project, with
 retained terminal projects. It uses the actual accepted checkpoint reader and
 ordinary cycle admissions/initializer/CAS/Git/SQLite. Accepted journal, human
@@ -6365,7 +6365,7 @@ and compares initial execution/simulation identities through the same reducer.
 An additional v2 control-only model completes all 256 empty-sequence nodes and
 compares terminal cold replay/simulation without a model call. This establishes
 structural termination, not a business workflow. The context metadata suite
-`verify-standard-cycle-context-metadata-fixtures.mjs --mode=files|dual|db-only`
+`verify-standard-cycle-context-metadata-fixtures.mjs --mode=dual|db-only`
 checks a positive FILES wait and canonical classification-only changes after
 the actual runtime refresh CAS, requiring the same precise UNKNOWN reason and
 retained owner in DUAL/DB-only. The runtime gate selects these cases and the four
@@ -6376,7 +6376,7 @@ work, cycle closure, session reclosure and causal redelivery unqualified.
 
 ### Corrective PR redelivery component
 
-`node tools/perf/verify-standard-pr-redelivery-fixtures.mjs --mode=files|dual|db-only`
+`node tools/perf/verify-standard-pr-redelivery-fixtures.mjs --mode=dual|db-only`
 uses real local branch integration, Git push and the production GitHub adapter
 with doubled REST. Accepted closure/cycle/human journal capabilities are injected.
 It checks distinct closed contracts, wrong cycle/uncertain integration/stale PR,
@@ -6456,7 +6456,7 @@ repeated corrections and the complete C2 journey remain unqualified.
 
 The targeted decision/inbox and composition suites cover these boundaries. The
 real-port correction-cycle suite selects `--decision-v2` separately in each
-`--mode=files|dual|db-only` run. Its accepted-operation/provider/human capabilities
+`--mode=dual|db-only` run. Its accepted-operation/provider/human capabilities
 remain doubles. Component evidence cannot establish the production dispatcher
 UNKNOWN chain, genuine human/native/provider/OS, configured PostgreSQL or exact
 installed archive. Exact-source results remain pending at this source change.
@@ -6498,7 +6498,7 @@ started separately on d07e12d2 with its normal timeout. It is not yet qualified.
 Governance Admission and the entire L1-L8/A1-A10 plan remain unfinished.
 ## Canonical cycle-choice recording component
 
-`verify-standard-cycle-choice-record-fixtures.mjs --mode=files|dual|db-only`
+`verify-standard-cycle-choice-record-fixtures.mjs --mode=dual|db-only`
 uses the actual operation host, signed H receipt, existing artifact owner/CAS
 and a fresh Node acceptance process. Each explicit fixture contains current
 and reported cycles with all four carryover dispositions. It checks preservation
@@ -6523,7 +6523,7 @@ real PostgreSQL and installed qualification remain separate gates.
 
 ## Canonical cycle-choice Git checkpoint component
 
-`verify-standard-cycle-choice-checkpoint-fixtures.mjs --mode=files|dual|db-only`
+`verify-standard-cycle-choice-checkpoint-fixtures.mjs --mode=dual|db-only`
 runs the actual host after an authenticated canonical choice record. FILES and
 DUAL commit only its approved Markdown postimages on the current branch;
 DB-only must retain the same HEAD without exporting canonical rows. The cases
@@ -6547,7 +6547,7 @@ or installed full-workflow qualification.
 
 ## Baseline promotion with a controlled objective-completion reader
 
-`verify-standard-baseline-promotion-ports-fixtures.mjs --mode=files|dual|db-only`
+`verify-standard-baseline-promotion-ports-fixtures.mjs --mode=dual|db-only`
 with `--final-hook --promotion-checkpoint --keep-cycle-branch
 --objective-completion --retain-always` creates different session/cycle goals
 and uses the actual R05 evaluator, Git checkpoint and canonical promotion
@@ -6579,7 +6579,7 @@ This private port establishes physical Git/product behavior only. It does not au
 
 ## Accepted-source physical cycle activation component
 
-Run `node tools/perf/verify-standard-cycle-choice-activation-fixtures.mjs --mode=files|dual|db-only` when changing the protected physical activation operation. The common host consumes actual accepted H/record/checkpoint journals from the controlled fixture and observes the selected product tree. Its H source and lifecycle/phase setup remain controlled; this is no proof of genuine human/Native actors, prior phase work or installed execution.
+Run `node tools/perf/verify-standard-cycle-choice-activation-fixtures.mjs --mode=dual|db-only` when changing the protected physical activation operation. The common host consumes actual accepted H/record/checkpoint journals from the controlled fixture and observes the selected product tree. Its H source and lifecycle/phase setup remain controlled; this is no proof of genuine human/Native actors, prior phase work or installed execution.
 
 Select `--mode=files --select-current` for already-selected no-change. The FILES variants `--fault=index_ack`, `--fault=grant_after_index` and `--fault=product_ack` exercise completed or partial physical effects while requiring a signed UNKNOWN, retained owner, cold read and no replay. Ordinary cases check current-grant refusal across the last source await, a day-old prepared plan with unchanged authority, canonical/configuration preservation, unchanged branch tips, cold acceptance and exact replay. All cases deny canonical adoption and implementation permission.
 
@@ -6595,7 +6595,7 @@ The post-ref revocation case must leave the original index unchanged and UNKNOWN
 
 ## Accepted selected-context checkpoint component
 
-Run `node tools/perf/verify-standard-selected-context-checkpoint-fixtures.mjs --mode=files|dual|db-only` for the protected common-host checkpoint of an accepted activation. `--mode=files --select-current` selects no-change, while `--mode=files --fault=grant_after_ref` and `--fault=index_ack` retain signed UNKNOWN and ownership after partial or complete Git effects. All roots remain for review. The activation prerequisite fixture retains its direct CLI behavior and can supply its completed prefix without authorizing the following checkpoint.
+Run `node tools/perf/verify-standard-selected-context-checkpoint-fixtures.mjs --mode=dual|db-only` for the protected common-host checkpoint of an accepted activation. `--mode=files --select-current` selects no-change, while `--mode=files --fault=grant_after_ref` and `--fault=index_ack` retain signed UNKNOWN and ownership after partial or complete Git effects. All roots remain for review. The activation prerequisite fixture retains its direct CLI behavior and can supply its completed prefix without authorizing the following checkpoint.
 
 The cases execute actual H/record/source-CP/activation/selected-CP journals using a controlled H source and grants. They verify exact overlay selection, current-grant refusal during the last awaited source read, an unused owner release before effect, old preparation with current authority, canonical content/metadata and product/configuration preservation, DB-only absence, cold acknowledgement and exact replay. The post-ref revocation case must preserve the old index; a cold complete postimage after index ACK loss must keep UNKNOWN. The retained owner blocks another preparation. Neither raw physical confirmation nor fixture setup may grant phase or implementation permission.
 
@@ -6604,7 +6604,7 @@ Lifecycle and OPEN/VERIFYING metadata are staged preconditions. These cases do n
 
 ## Accepted selected focus component
 
-Run node tools/perf/verify-standard-selected-focus-fixtures.mjs --mode=files|dual|db-only for actual common-host focus CAS after the accepted selected checkpoint. FILES --phase=OPEN and --phase=IMPLEMENTING preserve those canonical phases; the default phase is VERIFYING. FILES --select-current restores the already-current owned OPEN cycle, and --fault=cas_ack loses the first focus CAS acknowledgement. The seven variants precede the unchanged final nominal case.
+Run node tools/perf/verify-standard-selected-focus-fixtures.mjs --mode=dual|db-only for actual common-host focus CAS after the accepted selected checkpoint. FILES --phase=OPEN and --phase=IMPLEMENTING preserve those canonical phases; the default phase is VERIFYING. FILES --select-current restores the already-current owned OPEN cycle, and --fault=cas_ack loses the first focus CAS acknowledgement. The seven variants precede the unchanged final nominal case.
 
 The fixture uses actual signed H/record/source-CP/activation/selected-CP/focus operations, controlled H/grants and staged legal canonical phase preconditions. It checks exactly three focus writes, unchanged selected status/plan/progress and deferred history, unchanged Git/index/refs/product/configuration, metadata-preserving CAS and DB-only absence. It rejects changed or UNKNOWN source, missing grants and last-source-await revocation. Success is accepted cold and replayed without effects; partial CAS retains signed UNKNOWN/owner and blocks another preparation. Ordinary entry still requests the unresolved choice; focus data is no fresh phase/DoR or work permission. These cases do not qualify imported work, published routing, genuine Native/H actors, PostgreSQL or an installed archive.
 
@@ -6632,9 +6632,9 @@ For changes to shared fixture composition, keep the existing direct selected-foc
 
 ## Canonical progress continuation components, 2026-11-13
 
-`verify-standard-canonical-resume-fixtures.mjs --contracts-only` checks the four closed schema definitions, operation-ID-only inputs and the existing readiness output’s closed canonical_plan/canonical_progress origin links; foreign kinds, identities, hashes, permissions and effect origins refuse. `--mode=files|dual|db-only --checks; add --guards for FILES` executes the controlled H/canonical/Git prefix, real read-only complete VERIFYING admission, trusted product snapshot, two actual registered Node checks, owned four-document verification CAS and authenticated audit selection. Imported task/history data are staged fixture preconditions. The case retains full canonical/physical witnesses and all eleven classification fields; only normal write timestamps may advance. The FILES guard variant changes and restores the controlled H source and canonical context, observes an actual foreign pending effect owner and rejects a changed process revision; it checks unchanged canonical business/Git/product/instance state and no staged operation. It allocates no Native actor and does not qualify a Native auditor.
+`verify-standard-canonical-resume-fixtures.mjs --contracts-only` checks the four closed schema definitions, operation-ID-only inputs and the existing readiness output’s closed canonical_plan/canonical_progress origin links; foreign kinds, identities, hashes, permissions and effect origins refuse. `--mode=dual|db-only --checks; add --guards for FILES` executes the controlled H/canonical/Git prefix, real read-only complete VERIFYING admission, trusted product snapshot, two actual registered Node checks, owned four-document verification CAS and authenticated audit selection. Imported task/history data are staged fixture preconditions. The case retains full canonical/physical witnesses and all eleven classification fields; only normal write timestamps may advance. The FILES guard variant changes and restores the controlled H source and canonical context, observes an actual foreign pending effect owner and rejects a changed process revision; it checks unchanged canonical business/Git/product/instance state and no staged operation. It allocates no Native actor and does not qualify a Native auditor.
 
-`verify-agentic-process-execution-fixtures.mjs --canonical-resume-native-mode=files|dual|db-only --canonical-resume-native-phase=OPEN|IMPLEMENTING --canonical-resume-native-intent=import_now --retain-always` resumes a staged imported TASK-001 prefix. It proves the bare read-only source cannot initiate unfinished work, then runs current readiness and the existing two-document implementation-entry CAS before selecting TASK-002. A denied current implementation-effect grant must refuse staging without business writes or Native allocation. Actual controlled Native task work, two registered Node checks, one current task advance, verification and a separate controlled Native auditor retain source-bound evidence. Imported TASK-001 never receives a fabricated current work receipt. OPEN enters IMPLEMENTING; IMPLEMENTING keeps its phase.
+`verify-agentic-process-execution-fixtures.mjs --canonical-resume-native-mode=dual|db-only --canonical-resume-native-phase=OPEN|IMPLEMENTING --canonical-resume-native-intent=import_now --retain-always` resumes a staged imported TASK-001 prefix. It proves the bare read-only source cannot initiate unfinished work, then runs current readiness and the existing two-document implementation-entry CAS before selecting TASK-002. A denied current implementation-effect grant must refuse staging without business writes or Native allocation. Actual controlled Native task work, two registered Node checks, one current task advance, verification and a separate controlled Native auditor retain source-bound evidence. Imported TASK-001 never receives a fabricated current work receipt. OPEN enters IMPLEMENTING; IMPLEMENTING keeps its phase.
 
 The `--canonical-resume-native-phase=VERIFYING --canonical-resume-native-intent=integrate_now` variant stages two imported completed tasks, observes the current product and runs current checks before one controlled Native auditor, with no Native work response. Its worker audit bridge exercises `acceptedWorkSnapshot` through the canonical-resume product branch and its trusted snapshot reader. A partial Native-work auditor alone does not cover that branch.
 
@@ -6682,7 +6682,7 @@ the public journey and the installed archive require separate qualification.
 
 Run `node tools/perf/verify-standard-owned-cycle-resume-fixtures.mjs --contracts-only` for the closed entry-only source and output schemas, preserved selected input, ordinary/integration-only intent, all three phase descriptors, working-progress context fencing and inconsistent/foreign source refusals. These pure checks perform no host, H or Native execution.
 
-The runtime fixture accepts `--mode=files|dual|db-only --phase=OPEN|IMPLEMENTING|VERIFYING --prefix=0|1|2`. It constructs explicit lifecycle/task/history DATA through real fixture ports/CAS, then executes only current protected D operations. Canonical and product progress stay uncommitted before the owned source admission; no choice, activation or checkpoint receipt is invented. `--enter` checks current DoR and the existing separate two-document implementation effect for unfinished OPEN/IMPLEMENTING work. `--checks` requires complete IMPLEMENTING/VERIFYING data and runs two registered Node checks, four-document verification/history retention and audit selection. Metadata classification, Git/product/index witnesses, signed journal/cold acceptance and exact replay are retained.
+The runtime fixture accepts `--mode=dual|db-only --phase=OPEN|IMPLEMENTING|VERIFYING --prefix=0|1|2`. It constructs explicit lifecycle/task/history DATA through real fixture ports/CAS, then executes only current protected D operations. Canonical and product progress stay uncommitted before the owned source admission; no choice, activation or checkpoint receipt is invented. `--enter` checks current DoR and the existing separate two-document implementation effect for unfinished OPEN/IMPLEMENTING work. `--checks` requires complete IMPLEMENTING/VERIFYING data and runs two registered Node checks, four-document verification/history retention and audit selection. Metadata classification, Git/product/index witnesses, signed journal/cold acceptance and exact replay are retained.
 
 Required representative cases are FILES/OPEN/prefix1, DUAL/IMPLEMENTING/prefix1 with entry, and DB-only/VERIFYING/prefix2 with checks. Actual execution verdicts and unexecuted gates must be reported separately; fixture DATA, controlled grants and a successful D component do not qualify genuine actors, the published root, PostgreSQL or a final installed archive.
 
@@ -6697,19 +6697,19 @@ Run `node tools/perf/verify-standard-cycle-source-selection-fixtures.mjs` for cl
 
 The required owned-source cases also execute the actual plan and phase selectors: partial OPEN admission remains DATA; unfinished IMPLEMENTING work consumes a separately granted current entry and returns its real phase ID; complete VERIFYING data returns the accepted canonical identity and performs current checks/verification/audit. The published existing-OPEN fixture follows the actual owned-entry/preparation calls and root phase selector with one identified startup transport double. Catalog v6 tests preserve the v4/v5 scope readers, closed embedded calls, actor boundaries and the existing node cap. Source/model authoring, component execution, controlled actors, genuine actors, installed archive and the whole original plan retain separate verdicts.
 
-The delivered two-task `--standard-existing-open-work-mode=files|dual|db-only` cases also require the actual owned-resume origin, plan-selection v2 and current phase-selection identities. They refuse a legacy-adoption substitute and retain the original task writes, three real validation checks, progress chain, final-verification call, scope/classification preservation and exact replay assertions. The phase selector itself grants no work permission or validation evidence; the original one-startup/two-task controlled actor counts and finite fixture grants are unchanged.
+The delivered two-task `--standard-existing-open-work-mode=dual|db-only` cases also require the actual owned-resume origin, plan-selection v2 and current phase-selection identities. They refuse a legacy-adoption substitute and retain the original task writes, three real validation checks, progress chain, final-verification call, scope/classification preservation and exact replay assertions. The phase selector itself grants no work permission or validation evidence; the original one-startup/two-task controlled actor counts and finite fixture grants are unchanged.
 
 
 ## Published complete canonical-cycle verification
 
-The focused `--standard-existing-complete-mode=files|dual|db-only` cases use the delivered root unchanged with an owned two-task plan whose completed prefix and VERIFYING phase are explicitly staged DATA. One identified startup diagnostic actor runs; no current planner, task writer or auditor runs. The actual source and phase selectors must bypass implementation entry and task advancement, then call the published canonical product observation, two real Node checks, linked evaluation and four-document verification before stopping at auditor selection. The fixture checks the exact call input/return, unchanged original plan, retained history prefix, appended current verification, current consistency, owner closure and exact simulation. These cases do not establish historical work, genuine actors, installation or the whole STANDARD journey.
+The focused `--standard-existing-complete-mode=dual|db-only` cases use the delivered root unchanged with an owned two-task plan whose completed prefix and VERIFYING phase are explicitly staged DATA. One identified startup diagnostic actor runs; no current planner, task writer or auditor runs. The actual source and phase selectors must bypass implementation entry and task advancement, then call the published canonical product observation, two real Node checks, linked evaluation and four-document verification before stopping at auditor selection. The fixture checks the exact call input/return, unchanged original plan, retained history prefix, appended current verification, current consistency, owner closure and exact simulation. These cases do not establish historical work, genuine actors, installation or the whole STANDARD journey.
 
 The three required cases are added without changing the previous 294 cases in relative order or the final full nominal. The exact expanded-command policy changes with the manifest; no dispatcher deadline or original finite actor grant changes.
 
 
 ## Published selected-cycle call with a current controlled H source
 
-The focused `--standard-selected-root-mode=files|dual|db-only` cases reuse only explicitly generated canonical preconditions. The arrangement helper returns before initializing its old choice process; the delivered root must capture a new current-question selection through an identified H port. It then executes the eight selected-entry operations, actual branch activation and focus, current plan/phase selectors, current product checks, verification and auditor selection. The selected target contains a different product value from the source branch, so changing a pointer or accepting staged completion cannot substitute for observing the selected product. Deferred cycle data, original planning, exact selected-call input/return, owner closure and exact replay remain checked. One controlled startup actor runs and no task writer or auditor runs in this case. These fixtures do not establish genuine Human/Native behavior or installed/full STANDARD qualification.
+The focused `--standard-selected-root-mode=dual|db-only` cases reuse only explicitly generated canonical preconditions. The arrangement helper returns before initializing its old choice process; the delivered root must capture a new current-question selection through an identified H port. It then executes the eight selected-entry operations, actual branch activation and focus, current plan/phase selectors, current product checks, verification and auditor selection. The selected target contains a different product value from the source branch, so changing a pointer or accepting staged completion cannot substitute for observing the selected product. Deferred cycle data, original planning, exact selected-call input/return, owner closure and exact replay remain checked. One controlled startup actor runs and no task writer or auditor runs in this case. These fixtures do not establish genuine Human/Native behavior or installed/full STANDARD qualification.
 
 The three required selected-root cases preserve the previous 297 cases in relative order and keep the full nominal last. Their finite actor grant is unchanged, and the dispatcher adds no deadline.
 
@@ -7084,7 +7084,7 @@ published-model qualification, genuine actors, installed archive or full plan
 acceptance. Original required manifest order, argv and Native grant limits remain.
 
 
-The focused private selector --native-post-assignment-mode=files|dual|db-only
+The focused private selector --native-post-assignment-mode=dual|db-only
 in verify-agentic-process-execution-fixtures.mjs exercises the actual common
 host, bootstrap operations, allocator, signed assignment/result admission,
 checkpoint, diagnostic assessment and cold reopen. Native RPC answers and the
@@ -7117,7 +7117,7 @@ acceptance. Existing required argv/order, Native budgets and historical failed
 attempts remain unchanged.
 
 
-The private native-post-assignment-owner-fixture-lib.mjs verify files|dual|db-only
+The private native-post-assignment-owner-fixture-lib.mjs verify dual|db-only
 command creates its original Native allocation through the controlled common-host
 fixture creator, then terminates that actual creator before preparing v2. Its
 fixture signing key is fixed in code. Operator keys and saved configuration live
@@ -7178,11 +7178,11 @@ command covers the closed v2 request/grant/receipt and v5 journal data, retained
 v1-v4 origins, inherited receipts, non-refunded response/storage/usage, known
 Native sessions/scope, separate finite epochs and denied global permissions.
 Its work, source signatures and closure/consent are synthetic DATA. Optional
-files|dual|db-only arguments also exercise actual canonical journal storage.
+dual|db-only arguments also exercise actual canonical journal storage.
 These checks provide no live writer, source discovery or resume qualification.
 
 The native-post-assignment-reconciliation-fixture-lib.mjs verify
-files|dual|db-only command creates a new controlled failed allocation, its
+dual|db-only command creates a new controlled failed allocation, its
 accepted result/checkpoint and actual owner-v2 retirement. Operator HMAC,
 resource-source Ed25519, canonical stores, physical witnesses and cold Node
 actors use actual ports; Native RPC, Native-tree closure and consent remain
@@ -8319,3 +8319,7 @@ regression for execution, interruption and independent continuity admission.
 A separate local-only PostgreSQL source probe authenticates genuine retained
 Human evidence and current exact Git tips without writing either store.
 Installed execution and final P0 qualification require their own evidence.
+
+## Retired FILES migration verification
+
+`npm run perf:verify-files-retirement` verifies both SQLite SQL profiles, explicit legacy migration, byte preservation of COMMITTING and opaque historical records, session/cycle ownership, interruption and source drift. It also proves read-only preview and rejection of FILES runtime selections. Existing SQL profile changes ignore stale visible Markdown and preserve canonical rows. It makes no model call. Live PostgreSQL migration and installed cross-version workflow continuation require separate evidence. Historical FILES reports and versioned schemas retain their original meaning. See [ADR-0027](ADR/ADR-0027-retire-files-state-authority.md).

@@ -162,7 +162,7 @@ else {
       gitIndex: fs.readFileSync(path.join(targetRoot, '.git/index')),
     };
     try {
-      for (const stateMode of ['dual', 'files']) {
+      for (const stateMode of ["dual"]) {
         const configured = JSON.parse(admissionConfigBefore);
         configured.runtime.stateMode = stateMode;
         fs.writeFileSync(admissionConfigPath, JSON.stringify(configured));

@@ -135,7 +135,7 @@ try {
 
   await check("staged_rollback_preserves_unrelated_fields_and_previous_version", async () => {
     const root = target("staged-fields");
-    const baseline = { version: 1, install: { aidnVersion: "0.7.2" }, runtime: { stateMode: "files" }, clientExisting: "keep" };
+    const baseline = { version: 1, install: { aidnVersion: "0.7.2" }, runtime: { stateMode: "dual" }, clientExisting: "keep" };
     put(root, ".aidn/config.json", JSON.stringify(baseline) + "\n");
     const interrupted = await executeInstallation({ repoRoot, targetRoot: root, args: installArgs, dryRun: false, failAfterStaging: true });
     assert.equal(interrupted.ok, false);

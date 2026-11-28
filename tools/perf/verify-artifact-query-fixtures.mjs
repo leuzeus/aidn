@@ -169,17 +169,17 @@ export async function verifyArtifactQueryFixtures() {
       assert.equal(selectArtifactQuery({payload:base,backend:'files',scope,params:{schema_version:1,expected_revision:selected.source_revision}}).status,'ok');
     });
     for(const row of base.artifacts){const dest=path.join(target,'docs/audit',row.path);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.writeFileSync(dest,row.content);}
-    fs.mkdirSync(path.join(target,'.aidn'));fs.writeFileSync(path.join(target,'.aidn/config.json'),JSON.stringify({runtime:{stateMode:'files'}}));
+    fs.mkdirSync(path.join(target,'.aidn'));fs.writeFileSync(path.join(target,'.aidn/config.json'),JSON.stringify({runtime:{stateMode:'dual'}}));
     const fingerprint=()=>hash(JSON.stringify(base.artifacts.map(row=>fs.readFileSync(path.join(target,'docs/audit',row.path),'utf8'))));
     const before=fingerprint(),files=await queryProjectArtifacts({targetRoot:target,params:{schema_version:1}});
     check('real files consultation is read-only and equals pure selection',()=>{assert.equal(files.status,'ok');assert.deepEqual(files.fields,selected.fields);assert.equal(fingerprint(),before);});
     const filesV2=await queryProjectArtifacts({targetRoot:target,profile:ACTIVE_STATE_RECHECK_PROFILE,params:recheckParams});
     check('public v2 files service returns all twenty facts read-only',()=>{assertTwenty(filesV2);assert.equal(fingerprint(),before);});
-    for(const invalid of [{runtime:{stateMode:'files',persistence:{backend:'postgres-typo'}}},{runtime:{stateMode:'invalid'}},{version:999}]){
+    for(const invalid of [{runtime:{stateMode:'dual',persistence:{backend:'postgres-typo'}}},{runtime:{stateMode:'invalid'}},{version:999}]){
       fs.writeFileSync(path.join(target,'.aidn/config.json'),JSON.stringify(invalid));
       await assert.rejects(queryProjectArtifacts({targetRoot:target,params:{schema_version:1},snapshotReader:async()=>{throw Error('SHOULD_NOT_READ_BACKEND');}}),/ARTIFACT_QUERY_CONFIG_INVALID/);checks++;
     }
-    fs.writeFileSync(path.join(target,'.aidn/config.json'),JSON.stringify({runtime:{stateMode:'files'}}));
+    fs.writeFileSync(path.join(target,'.aidn/config.json'),JSON.stringify({runtime:{stateMode:'dual'}}));
     await assert.rejects(queryProjectArtifacts({targetRoot:target,params:{schema_version:1},afterRead:()=>fs.appendFileSync(path.join(target,'docs/audit/CURRENT-STATE.md'),'\nConcurrent update\n')}),/SOURCE_CHANGED/);checks++;
     fs.writeFileSync(path.join(target,'docs/audit/CURRENT-STATE.md'),base.artifacts[0].content);
     await assert.rejects(queryProjectArtifacts({targetRoot:target,params:{schema_version:1},afterRead:()=>{
@@ -229,7 +229,7 @@ export async function verifyArtifactQueryFixtures() {
       const failed=cli(['--profile',ACTIVE_STATE_RECHECK_PROFILE,'--params-file','query.json','--json']);
       assert.equal(failed.status,2);assert.equal(JSON.parse(failed.stdout).errors[0].code,'ARTIFACT_QUERY_CANONICAL_UNAVAILABLE');
     });
-    fs.writeFileSync(path.join(target,'.aidn/config.json'),JSON.stringify({runtime:{stateMode:'files'}}));
+    fs.writeFileSync(path.join(target,'.aidn/config.json'),JSON.stringify({runtime:{stateMode:'dual'}}));
     prepareActivationFixture(target,root);
     check('real activated CLI returns factual query contract',()=>{
       const value=cli(['--profile','active-state.v1','--params-file','query.json','--json']);

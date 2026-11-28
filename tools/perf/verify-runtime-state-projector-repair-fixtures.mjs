@@ -91,7 +91,7 @@ function verifyScenario(tempRoot, name, payload, expectations, options = {}) {
   if (options.observe) {
     const configPath = path.join(repo, ".aidn", "config.json");
     const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-    config.runtime = { stateMode: options.stateMode ?? "files", indexStoreMode: "file" };
+    config.runtime = { stateMode: options.stateMode ?? "dual", indexStoreMode: "file" };
     writeJson(configPath, config);
     initGitRepo(repo, { sourceBranch: "dev" });
     const identity = captureContextIdentity({ targetRoot: repo });
@@ -372,7 +372,7 @@ function verifyLatestTimestampMutant(tempRoot) {
 
   const mutantPath = path.join(tempRoot, "runtime-state-projector-latest-mutant.mjs");
   fs.writeFileSync(mutantPath, mutatedSource, "utf8");
-  const liveContext = { status: "captured", state_mode: "files", fingerprint: "a".repeat(64) };
+  const liveContext = { status: "captured", state_mode: "dual", fingerprint: "a".repeat(64) };
   const probePayload = observePayload(canonicalDecisionPayload({
     decisionTs: "2026-03-09T02:00:00Z",
     repairPayloadTs: "2026-03-09T02:10:00Z",

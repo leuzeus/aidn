@@ -143,7 +143,7 @@ if (process.argv[2] === '--verify-binding-pins') {
   const capsule = createProcessDispatchRecordStore({ targetRoot: data.root, stateMode: data.mode }).read(data.operation_id).record;
   signer.verify(capsule); save(dataFile + '.witness.json', { kind, capsule_sha256: H(capsule), pid: process.pid, counters: runtime.counters }); process.exit(42);
 } else {
-  const mode = process.argv[2]; assert(['files', 'dual', 'db-only'].includes(mode)); assert.equal(process.argv.length, 3);
+  const mode = process.argv[2]; assert(['dual', 'db-only'].includes(mode)); assert.equal(process.argv.length, 3);
   const owned = [], root = createFreshStandardWorkflowFixture(mode, owned, { absentOptionalDocuments: ['HANDOFF-PACKET.md'] });
   const privateRoot = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aidn-handoff-returned-')); owned.push(privateRoot);
   const control = path.join(privateRoot, 'control'); fs.mkdirSync(control);

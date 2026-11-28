@@ -251,7 +251,7 @@ if (path.resolve(process.argv[1] ?? "") === script) {
     console.log(JSON.stringify(await acceptRecordedChoice({ root, keyFile, sourcesFile, operationId, clock: Number(clock) })));
   } else {
     const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7), withChecks = process.argv.includes("--checks"), withGuards = process.argv.includes("--guards"), contractsOnly = process.argv.includes("--contracts-only");
-    if (!contractsOnly && !["files", "dual", "db-only"].includes(mode) || contractsOnly && (mode || withChecks || withGuards) || withGuards && mode !== "files") throw Error("CANONICAL_RESUME_FIXTURE_SCOPE_INVALID");
+    if (!contractsOnly && !["dual", "db-only"].includes(mode) || contractsOnly && (mode || withChecks || withGuards) || withGuards && mode !== "files") throw Error("CANONICAL_RESUME_FIXTURE_SCOPE_INVALID");
     contracts();
     if (mode) await verifyCanonicalCycleChoiceRecord(mode, { childScript: script, pass, checkpoint: true, activation: true, selectedCheckpoint: true, selectedFocus: true,
       focusCheckpoint: true, selectedPhase: "VERIFYING", arrangeBeforeBranches: f => arrange(f, { withChecks }),

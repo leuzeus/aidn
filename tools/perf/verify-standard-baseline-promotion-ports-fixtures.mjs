@@ -16,12 +16,12 @@ import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { validateJsonSchemaDefinition, validateJsonSchema } from "../../src/core/contracts/json-schema-validator.mjs";
 import outputSchema from "../../src/core/contracts/workflow-definition/standard-baseline-promotion-output.v1.schema.json" with { type: "json" };
-const selected = process.argv.find(v => v.startsWith("--mode="))?.slice(7) ?? "files";
+const selected = process.argv.find(v => v.startsWith("--mode="))?.slice(7) ?? "dual";
 if (!["files", "dual", "db-only", "partial", "projection", "source", "instance", "revoked", "revoked-post"].includes(selected)) throw Error("PROMOTION_FIXTURE_MODE_INVALID");
 const mode = selected === "partial" ? "db-only" : selected === "projection" ? "dual" : ["source", "instance", "revoked", "revoked-post"].includes(selected) ? "files" : selected;
 const finalFault = process.argv.find(value => value.startsWith("--final-hook-fault="))?.slice("--final-hook-fault=".length);
 if (finalFault !== undefined && (!process.argv.includes("--final-hook") || !["event", "suffix", "projection", "grant_after"].includes(finalFault))) throw Error("PROMOTION_FINAL_FAULT_INVALID");
-if (process.argv.includes("--final-hook") && (!["files", "dual", "db-only"].includes(selected) || finalFault === "suffix" && mode === "files" || finalFault === "projection" && mode !== "dual")) throw Error("PROMOTION_FINAL_MODE_INVALID");
+if (process.argv.includes("--final-hook") && (!["dual", "db-only"].includes(selected) || finalFault === "suffix" && mode === "files" || finalFault === "projection" && mode !== "dual")) throw Error("PROMOTION_FINAL_MODE_INVALID");
 const promotionCheckpoint = process.argv.includes("--promotion-checkpoint"), keepCycleBranch = process.argv.includes("--keep-cycle-branch");
 const retainedRecord = process.argv.includes('--retained-record');
 if (retainedRecord && !process.argv.includes('--final-hook')) throw Error('PROMOTION_RETAINED_RECORD_FLAGS_INVALID');

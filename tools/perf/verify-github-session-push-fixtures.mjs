@@ -24,7 +24,7 @@ let checks = 0; const test = async (name, fn) => { if (asyncOnly && !name.starts
 function fixture({ asynchronous = false } = {}) {
   const base = fs.mkdtempSync(path.join(parent, 'aidn-github-push-')); owned.push(base); const root = path.join(base, 'project'), remote = path.join(base, 'remote.git');
   fs.mkdirSync(root); fs.mkdirSync(remote); git(root, 'init', '-b', 'dev'); git(root, 'config', 'user.name', 'Fixture'); git(root, 'config', 'user.email', 'fixture@example.invalid');
-  fs.mkdirSync(path.join(root, '.aidn')); fs.writeFileSync(path.join(root, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'files' } }));
+  fs.mkdirSync(path.join(root, '.aidn')); fs.writeFileSync(path.join(root, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'dual' } }));
   fs.writeFileSync(path.join(root, '.gitignore'), '.aidn/runtime/\n' + fenceIgnore + '\n');
   fs.writeFileSync(path.join(root, 'app.txt'), 'base\n'); git(root, 'add', '.'); git(root, 'commit', '-m', 'fixture base');
   git(remote, 'init', '--bare'); git(root, 'push', remote, 'HEAD:refs/heads/dev'); const initial = git(root, 'rev-parse', 'HEAD');

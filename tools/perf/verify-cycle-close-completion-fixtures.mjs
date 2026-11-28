@@ -37,7 +37,7 @@ function sync(root) {
   const result = run(root, 'tools/perf/index-sync.mjs', ['--store', 'sqlite']);
   assert.equal(result.status, 0);
 }
-function fixture(mode = 'files', withDrift = true) {
+function fixture(mode = 'dual', withDrift = true) {
   const root = copyFixtureToTmp(corpus, os.tmpdir(), 'aidn-close-completion', {
     filter: source => fs.statSync(source).isDirectory() || trackedCorpus.has(path.relative(repo, source).replaceAll('\\', '/')),
   });
@@ -83,7 +83,7 @@ try {
   assert.equal(detectGatingSignals({ ...policy, changedFiles: ['a', 'b', 'c', 'd'] }).scope_growth, true);
   assert.equal(detectGatingSignals({ ...policy, repairLayerOpenCount: 1 }).repair_findings_open, true);
   console.log('PASS R05 policy: no imposed age threshold, explicit caller choice, missing proof and material drift remain distinct');
-  for (const mode of ['files', 'dual', 'db-only']) {
+  for (const mode of ['dual', 'db-only']) {
     const root = fixture(mode, false);
     // Construct an original generic-event input for this fixture. It is not a
     // signed objective-completion receipt or proof of an actual old invocation.
@@ -108,7 +108,7 @@ try {
     assert.equal(detectGatingSignals({ changedFiles: [file], reloadReasonCodes: [] }).cross_domain_touch, true, file);
   }
   assert.equal(detectGatingSignals({ changedFiles: [statusPath], reloadReasonCodes: [] }).cross_domain_touch, false);
-  for (const mode of ['files', 'dual', 'db-only']) for (const finalState of ['DONE', 'NO_GO', 'DROPPED']) {
+  for (const mode of ['dual', 'db-only']) for (const finalState of ['DONE', 'NO_GO', 'DROPPED']) {
     const root = fixture(mode);
     put(root, statusPath, status(finalState));
     if (mode === "db-only" && finalState === "DONE") {
@@ -141,7 +141,7 @@ try {
     assert.equal(run(root, 'tools/perf/reload-check.mjs').result.decision, 'stop', 'closure must not authorize ordinary work');
     console.log(`PASS ${mode} ${finalState}: strict closure, no active cycle, ordinary mapping still refused`);
   }
-  for (const mode of ['files', 'db-only']) {
+  for (const mode of ['dual', 'db-only']) {
     const root = fixture(mode);
     put(root, statusPath, status('DONE', 'PARTIAL'));
     if (mode !== 'files') {
@@ -186,7 +186,7 @@ try {
     assert.equal(completed(root), proofCount);
     console.log(`PASS ${kind}: refusal propagated through hook and Codex wrapper`);
   }
-  for (const mode of ['files', 'dual', 'db-only']) {
+  for (const mode of ['dual', 'db-only']) {
     const root = fixture(mode);
     put(root, statusPath, status('DONE'));
     const current = path.join(root, 'docs/audit/CURRENT-STATE.md');
@@ -228,7 +228,7 @@ try {
     console.log(`PASS ${mode}: clean warm closure retains elapsed proof; foreign, wrong-mode and future proofs still warn`);
   }
   }
-  for (const mode of ['files', 'dual', 'db-only']) {
+  for (const mode of ['dual', 'db-only']) {
     const root = fixture(mode, false);
     put(root, statusPath, status('DONE'));
     fs.appendFileSync(path.join(root, 'docs/audit/sessions/S101-alpha.md'), '\nClosure reviewed.\n');

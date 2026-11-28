@@ -5,7 +5,7 @@ import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-
 import { readWorkflowProjectAuthority, readWorkflowProjectExecutionAuthority } from "../../src/application/runtime/workflow-instance-composition.mjs";
 import { agenticProcessPersistence } from "../../src/application/runtime/agentic-process-persistence.mjs";
 
-const targetRoot = createFreshStandardWorkflowFixture("files"), receipt = path.join(targetRoot, ".aidn/install/receipt.json");
+const targetRoot = createFreshStandardWorkflowFixture("dual"), receipt = path.join(targetRoot, ".aidn/install/receipt.json");
 const observe = () => readWorkflowProjectExecutionAuthority({ targetRoot });
 const separate = { project: readWorkflowProjectAuthority({ targetRoot }), persistence: agenticProcessPersistence({ targetRoot }) };
 const original = fs.readFileSync;

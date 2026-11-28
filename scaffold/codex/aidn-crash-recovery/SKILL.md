@@ -32,7 +32,7 @@ Recover the repository to the smallest safe resumable state after an abrupt stop
 - `docs/audit/CRASH-RECOVERY-RUNBOOK.md`
 
 2) Hydrate DB-backed runtime context:
-- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
+- state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`dual|db-only`).
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill crash-recovery --project-runtime-state --json`.
 - in dual/db-only, use the hydrated payload to read `repair_layer_status`, `repair_layer_advice`, prioritized artifacts, and continuity hints before acting.
 - prefer `docs/audit/RUNTIME-STATE.md` as the short runtime digest when it has just been refreshed by hydration.

@@ -61,7 +61,7 @@ function result(state, outcome = "completed", facts = {}, effect = "no_effect") 
     receipt: receipt(frame.operation.intent, outcome, facts, effect) });
 }
 async function check(name, callback) { await callback(); count++; console.log("PASS " + name); }
-function fixture(mode = "files", timeout = 1000, m = model()) {
+function fixture(mode = "dual", timeout = 1000, m = model()) {
   const targetRoot = path.join(root, "case-" + ++serial); fs.mkdirSync(path.join(targetRoot, ".aidn"), { recursive: true });
   fs.writeFileSync(path.join(targetRoot, ".aidn/config.json"), JSON.stringify({ runtime: { stateMode: mode } }));
   if (mode !== "files") createArtifactStore({ sqliteFile: path.join(targetRoot, ".aidn/runtime/index/workflow-index.sqlite") }).close();
@@ -173,7 +173,7 @@ try {
     for (const patch of [{ instance_id: "foreign" }, { instance_sha256: OTHER }, { model_sha256: OTHER }, { occurrence_id: "foreign" }])
       assert.throws(() => advanceAgenticProcess(start, { event_id: "foreign", kind: "operation_intent", occurrence_id: "root", intent: { ...intent(start), ...patch } }), /BINDING_CHANGED/);
   });
-  for (const mode of ["files", "dual", "db-only"]) await check("trusted operation ports preserve CAS, preview and durable waiting: " + mode, async () => {
+  for (const mode of ["dual", "db-only"]) await check("trusted operation ports preserve CAS, preview and durable waiting: " + mode, async () => {
     const c = fixture(mode), args = { instanceId: "fixture", expectedSha256: c.start.record.instance_sha256, occurrenceId: "root", eventId: "admit" };
     const preview = await c.service().prepareOperation(args);
     assert.equal(c.store().read("fixture").record.revision, 1); assert.equal(preview.written, false);

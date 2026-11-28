@@ -14,7 +14,7 @@ export function defaultCycleCloseHookArguments(runtimeDir) {
     indexOutput: ".aidn/runtime/index/workflow-index.json",
     indexStore: envStore || "",
     indexStoreExplicit: false,
-    stateMode: envStateMode || "files",
+    stateMode: envStateMode || "dual",
     indexSqlOutput: ".aidn/runtime/index/workflow-index.sql",
     indexSqliteOutput: ".aidn/runtime/index/workflow-index.sqlite",
     indexSchemaFile: path.join(runtimeDir, "sql", "schema.sql"),

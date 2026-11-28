@@ -22,7 +22,7 @@ function parseArgs(argv) {
     runIdFile: ".aidn/runtime/perf/current-run-id.txt",
     indexStore: envStore || "",
     indexStoreExplicit: false,
-    stateMode: envStateMode || "files",
+    stateMode: envStateMode || "dual",
     indexOutput: ".aidn/runtime/index/workflow-index.json",
     indexSqlOutput: ".aidn/runtime/index/workflow-index.sql",
     indexSqliteOutput: ".aidn/runtime/index/workflow-index.sqlite",
@@ -111,9 +111,9 @@ function parseArgs(argv) {
   if (!["THINKING", "EXPLORING", "COMMITTING", "UNKNOWN"].includes(args.mode)) {
     throw new Error("Invalid --mode. Expected THINKING|EXPLORING|COMMITTING|UNKNOWN");
   }
-  args.stateMode = String(args.stateMode ?? "").trim().toLowerCase() || "files";
-  if (!["files", "dual", "db-only"].includes(args.stateMode)) {
-    throw new Error("Invalid AIDN_STATE_MODE. Expected files|dual|db-only");
+  args.stateMode = String(args.stateMode ?? "").trim().toLowerCase() || "dual";
+  if (!["dual", "db-only"].includes(args.stateMode)) {
+    throw new Error("Invalid AIDN_STATE_MODE. Expected dual|db-only");
   }
   if (!args.indexStore) {
     args.indexStore = resolveDefaultIndexStore(args.stateMode);
@@ -174,7 +174,7 @@ function buildErrorResult(args, targetRoot, error) {
     skill: "start-session",
     target_root: targetRoot,
     mode: args?.mode ?? "UNKNOWN",
-    state_mode: args?.stateMode ?? "files",
+    state_mode: args?.stateMode ?? "dual",
     strict: args?.strict === true,
     action: "blocked_hook_error",
     result: "stop",

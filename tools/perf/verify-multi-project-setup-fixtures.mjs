@@ -36,7 +36,7 @@ try {
   put(target, 'AGENTS.md', 'Client instructions\n');
   assert.equal(inspectProject(target).state, 'absent');
   const install = await executeInstallation({ repoRoot, targetRoot: target, dryRun: false,
-    args: { pack: 'core', initDefaults: true, projectName: 'neutral client', runtimeStateMode: 'files', artifactImportStore: 'file', sourceBranch: 'dev' } });
+    args: { pack: 'core', initDefaults: true, projectName: 'neutral client', runtimeStateMode: 'dual', artifactImportStore: 'dual-sqlite', sourceBranch: 'dev' } });
   assert(install.ok, JSON.stringify(install.errors));
   put(target, 'node_modules/aidn-workflow/package.json', { name: 'aidn-workflow', version });
   put(target, 'node_modules/aidn-workflow/VERSION', version);
@@ -44,7 +44,7 @@ try {
   const second = path.join(root, 'second'); fs.mkdirSync(second); spawnSync('git', ['init', '--quiet', second]); put(second, 'personal.txt', 'untouched');
   const secondBefore = snapshot(second), targetBefore = snapshot(target);
   assert.equal(updateStatus(inspectProject(target), version), 'up-to-date');
-  const candidate = await verifyInstallationCandidate({ repoRoot, targetRoot: target, args: { persistencePolicy: 'verify-only', artifactImportStore: 'file', runtimeStateMode: 'files' } });
+  const candidate = await verifyInstallationCandidate({ repoRoot, targetRoot: target, args: { persistencePolicy: 'verify-only', artifactImportStore: 'dual-sqlite', runtimeStateMode: 'dual' } });
   assert(candidate.ok, JSON.stringify(candidate.errors));
   assert.deepEqual(snapshot(target), targetBefore);
   assert.deepEqual(readProjects(home), { schema_version: 1, projects: [] }); assert(!fs.existsSync(home));
@@ -103,7 +103,7 @@ try {
   fs.renameSync(path.join(root, 'saved-modules'), path.join(target, 'node_modules'));
   const interrupted = path.join(root, 'interrupted'); fs.mkdirSync(interrupted); spawnSync('git', ['init', '--quiet', interrupted]);
   const partial = await executeInstallation({ repoRoot, targetRoot: interrupted, dryRun: false, failAfter: 1,
-    args: { pack: 'core', initDefaults: true, runtimeStateMode: 'files', artifactImportStore: 'file' } });
+    args: { pack: 'core', initDefaults: true, runtimeStateMode: 'dual', artifactImportStore: 'dual-sqlite' } });
   assert.equal(partial.ok, false); assert.equal(inspectProject(interrupted).state, 'interrupted');
   checks.push('numeric-semver; no-op-and-no-downgrade; staged-migration-refusal-before-project-npm; confirmation-drift; unknown-and-inconsistent');
   const release = { tag_name: 'v0.10.0', draft: false, prerelease: false, assets: ['aidn-workflow-0.10.0.tgz','manifest.json','checksums.txt'].map(name => ({ name, browser_download_url: `https://github.com/leuzeus/aidn/releases/download/v0.10.0/${name}` })) };

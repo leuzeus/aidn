@@ -12,7 +12,7 @@ import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-sche
 import { assertStandardOperationOutput } from '../../src/core/workflow/standard-operation-contracts.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 const temporary = fs.realpathSync(os.tmpdir()), owned = [], H = 'a'.repeat(64), operation = 'op_' + '1'.repeat(40);
-const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files';
+const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'dual';
 const agedPlan = process.argv.includes('--aged-plan');
 let planClock = null;
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();

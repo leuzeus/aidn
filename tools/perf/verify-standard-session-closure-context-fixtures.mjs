@@ -8,8 +8,8 @@ import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-
 import { createStandardWorkflowOperations } from "../../src/application/runtime/standard-workflow-operations.mjs";
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { readStandardSessionClosureContext } from "../../src/application/runtime/standard-session-closure-context.mjs";
-const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "files";
-if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
+const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "dual";
+if (!["dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
 const owned = [], temporary = fs.realpathSync(os.tmpdir()); let completed = false, checks = 0;
 const pass = name => { checks++; console.log("PASS " + name); };
 function snapshot(root) { const rows = []; const walk = dir => { for (const item of fs.readdirSync(dir, { withFileTypes: true })) {

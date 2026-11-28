@@ -142,7 +142,7 @@ function verifySourceOfTruthRuntimeGates() {
     warnings,
     blockingReasons,
     runtimeStateExists: true,
-    runtimeStateMode: "files",
+    runtimeStateMode: "dual",
     effectiveStateMode: "db-only",
     repairLayerStatus: "warn",
     currentStateFreshness: "unknown",

@@ -11,7 +11,7 @@ import { createProjectArtifactStore } from "../../src/application/runtime/projec
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 
 const args = process.argv.slice(2), stateMode = args[0]?.slice(7);
-if (args.length !== 1 || !args[0].startsWith("--mode=") || !["files", "dual", "db-only"].includes(stateMode)) throw Error("FIXTURE_ARGUMENT_INVALID");
+if (args.length !== 1 || !args[0].startsWith("--mode=") || !["dual", "db-only"].includes(stateMode)) throw Error("FIXTURE_ARGUMENT_INVALID");
 const owned = [], git = (root, ...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", windowsHide: true }).trim();
 let checks = 0;
 // Preserve all fresh projects, including failures. No cleanup or copying live state.

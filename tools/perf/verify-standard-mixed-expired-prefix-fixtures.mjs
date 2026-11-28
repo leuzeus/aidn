@@ -84,8 +84,8 @@ if (process.argv[2] === "--prepare") {
   assert.deepEqual(counters, { grants: 0, native: 0 }); assert.equal(runtime.inspectAllocations(), null);
   console.log(JSON.stringify({ preview, counters, allocations: null }));
 } else {
-  const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "files";
-  if (!["files", "dual", "db-only"].includes(mode)) throw Error("MIXED_PREFIX_MODE_INVALID");
+  const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "dual";
+  if (!["dual", "db-only"].includes(mode)) throw Error("MIXED_PREFIX_MODE_INVALID");
   const expiredBindings = (process.argv.find(value => value.startsWith("--expire-bindings="))?.slice("--expire-bindings=".length)
     ?? "session_initialize").split(",");
   if (!expiredBindings.length || new Set(expiredBindings).size !== expiredBindings.length

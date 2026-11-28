@@ -18,7 +18,7 @@ export function createWorkflowSelectionStore(options) {
 
 export function createProjectWorkflowCandidateService({ targetRoot }) {
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
-  const options = { targetRoot: root, stateMode: resolveConfigStateMode(readAidnProjectConfig(root).data) ?? "files" };
+  const options = { targetRoot: root, stateMode: resolveConfigStateMode(readAidnProjectConfig(root).data) ?? "dual" };
   const lifecycle = createLegacyProjectWorkflowInstanceService({ targetRoot: root });
   const service = createWorkflowCandidateService({ selections: createWorkflowSelectionStore(options), instances: createWorkflowInstanceStore(options),
     readAuthority: () => readWorkflowProjectAuthority({ targetRoot: root }), initializeInstance: request => lifecycle.initialize(request) });

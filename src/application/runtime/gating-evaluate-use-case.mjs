@@ -203,8 +203,8 @@ export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir, c
       args.stateMode = configStateMode;
     }
   }
-  if (!["files", "dual", "db-only"].includes(args.stateMode)) {
-    throw new Error("Invalid effective state mode. Expected files|dual|db-only");
+  if (!["dual", "db-only"].includes(args.stateMode)) {
+    throw new Error("Invalid effective state mode. Expected dual|db-only");
   }
   if (args.stateMode !== "files") {
     args.indexFile = resolveRuntimeTargetPath(targetRoot, args.indexFile);

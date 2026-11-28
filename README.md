@@ -69,7 +69,7 @@ compatible; diagnostic receipts require explicit writes and grant no permission.
 - Scaffold distribution with runtime enforcement
 - Deterministic installation
 - Separation between product spec and project adapter
-- Explicit state modes: `files | dual | db-only`
+- Explicit state modes: `dual | db-only`
 - Entropy regulation before structural decisions
 - Long-term coherence over local optimization
 - AI stability and low cognitive load
@@ -287,23 +287,25 @@ do not establish delivery readiness.
 
 Runtime state modes:
 
+FILES is retired. Existing FILES projects must use the explicit
+[verified migration](docs/INSTALL.md#retired-files-state-migration) before update or
+runtime execution; SQLite remains the default and PostgreSQL stays optional.
+
 | Mode | Canonical source | Local projections | Shared runtime |
 | --- | --- | --- | --- |
-| `files` | checkout-bound Markdown and project files | generated locally when requested | no shared runtime unless explicitly configured |
-| `dual` | runtime DB plus checked-in audit artifacts | local SQLite/projection artifacts remain available | explicit shared surfaces may be enabled, but checkout-bound files stay local |
+| `dual` | SQLite or optional PostgreSQL; audit files are projections | local SQLite/projection artifacts remain available | explicit shared surfaces may be enabled, but checkout-bound files stay local |
 | `db-only` | runtime DB is primary for supported runtime state | minimal re-anchor anchors stay visible; detailed Markdown can be materialized on demand | shared runtime stays opt-in and never relocates checkout-bound artifacts |
 
 Mode at a glance:
 
 | Mode | Source of truth | What to inspect first | Recommended checks |
 | --- | --- | --- | --- |
-| `files` | checkout-bound Markdown and project files | `docs/audit/*`, `docs/`, workspace-local files | `npm run perf:verify-cli-no-implicit-write`, `npm run perf:verify-cli-output-contracts` |
-| `dual` | runtime DB plus checkout-bound audit files | local SQLite projections plus audit Markdown | `npm run perf:verify-state-mode-parity`, `npm run perf:verify-runtime-payload-builders` |
+| `dual` | SQLite or optional PostgreSQL; audit files are projections | local SQLite projections plus audit Markdown | `npm run perf:verify-state-mode-parity`, `npm run perf:verify-runtime-payload-builders` |
 | `db-only` | runtime DB for supported runtime state, with protected re-anchor anchors and Markdown projections on demand | `.aidn/runtime/context/*`, minimal audit anchors, and the configured runtime backend | `npm run perf:verify-state-mode-parity`, `npm run perf:verify-db-only-readiness` |
 
 Rules:
 
-- `files`, `dual`, and `db-only` are supported operating modes, not interchangeable aliases.
+- `dual` and `db-only` are supported operating modes, not interchangeable aliases.
 - `dual` keeps local projections for compatibility and verification.
 - `db-only` removes the need for file-backed runtime state, but keeps protected re-anchor anchors so agents can restart safely; detailed projections remain reconstructible from the runtime backend.
 - shared PostgreSQL coordination remains explicit opt-in and never becomes the default path for checkout-bound artifacts.

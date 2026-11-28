@@ -189,7 +189,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   try {
     let checks = 0; const check = (name, fn) => { fn(); checks++; console.log('PASS ' + name); };
     const fixture = verifyNativePostAssignmentReconciliationContracts(check), mode = process.argv[2], owned = [];
-    if (mode) { assert.ok(['files', 'dual', 'db-only'].includes(mode)); await verifyNativeReconciliationKernelStorage(mode, fixture, check, owned); }
+    if (mode) { assert.ok(['dual', 'db-only'].includes(mode)); await verifyNativeReconciliationKernelStorage(mode, fixture, check, owned); }
     console.log(JSON.stringify({ status: 'PASS_POST_ASSIGNMENT_RECONCILIATION_DATA', checks, mode: mode ?? null, retained_arenas: owned,
       closure_and_consent: 'SYNTHETIC_DATA', actual_canonical_store: Boolean(mode), physical_reconciliation_writer: 'NOT_RUN', Native_calls: 0, full_standard: false }));
   } catch (error) { console.error(error); process.exitCode = 1; }

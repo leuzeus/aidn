@@ -49,7 +49,6 @@ function parseArgs(argv) {
     repairLayerTriageFile: ".aidn/runtime/index/repair-layer-triage.json",
     repairLayerTriageSummaryFile: ".aidn/runtime/index/repair-layer-triage-summary.md",
     stateMode: "",
-    forceInFiles: false,
     fallbackFull: true,
     strict: false,
     json: false,
@@ -77,8 +76,6 @@ function parseArgs(argv) {
     } else if (token === "--state-mode") {
       args.stateMode = String(argv[i + 1] ?? "").trim().toLowerCase();
       i += 1;
-    } else if (token === "--force-in-files") {
-      args.forceInFiles = true;
     } else if (token === "--no-fallback-full") {
       args.fallbackFull = false;
     } else if (token === "--strict") {
@@ -96,7 +93,7 @@ function parseArgs(argv) {
     throw new Error("Missing value for --target");
   }
   if (args.stateMode && !normalizeStateMode(args.stateMode)) {
-    throw new Error("Invalid --state-mode. Expected files|dual|db-only");
+    throw new Error("Invalid --state-mode. Expected dual|db-only");
   }
   return args;
 }

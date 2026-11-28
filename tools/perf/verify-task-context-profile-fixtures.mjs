@@ -37,7 +37,7 @@ try {
   for (const args of [["init", "-b", "test/context-profile"], ["config", "user.name", "AIDN fixture"], ["config", "user.email", "fixture@example.invalid"],
     ["add", "docs", ".aidn/config.json"], ["commit", "-m", "fixture"]]) assert.equal(run("git", args).status, 0);
   prepareActivationFixture(target, repo);
-  fs.writeFileSync(path.join(target, ".aidn/config.json"), JSON.stringify({ version: 1, runtime: { stateMode: "files", indexStoreMode: "dual-sqlite" } }));
+  fs.writeFileSync(path.join(target, ".aidn/config.json"), JSON.stringify({ version: 1, runtime: { stateMode: "dual", indexStoreMode: "dual-sqlite" } }));
   for (const name of ["CURRENT-STATE.md", "RUNTIME-STATE.md"]) {
     const file = path.join(target, "docs/audit", name);
     fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(/^runtime_state_mode:.*$/m, "runtime_state_mode: files"));
@@ -182,7 +182,7 @@ try {
 
   const identity = captureContextIdentity({ targetRoot: target }); assert.equal(identity.status, "captured");
   for (let i = 0; i < 3; i++) persistHookContext({ targetRoot: target, skill: "context-reload", rawPayload: { fixture_observation: i },
-    normalized: { ts: `2026-10-20T12:00:0${i}Z`, ok: i < 2, decision: i < 2 ? "allow" : "deny", mode: "THINKING", state_mode: "files", reason_codes: i < 2 ? [] : ["fixture-denial"] },
+    normalized: { ts: `2026-10-20T12:00:0${i}Z`, ok: i < 2, decision: i < 2 ? "allow" : "deny", mode: "THINKING", state_mode: "dual", reason_codes: i < 2 ? [] : ["fixture-denial"] },
     sourceMeta: { execution_id: `fixture-observation-${i}`, command: "synthetic fixture observer", command_status: i < 2 ? 0 : 1,
       provenance: { kind: "hook-command-observation.v1", before: identity, after: identity, command_status: i < 2 ? 0 : 1, command_signal: null, command_error: false } } });
   const historyFile = path.join(target, ".aidn/runtime/context/codex-context.json"), historyBefore = hash(fs.readFileSync(historyFile));

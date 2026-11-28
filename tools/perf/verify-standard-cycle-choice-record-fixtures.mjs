@@ -122,7 +122,7 @@ if (["--accept-record", "--inspect-record"].includes(process.argv[2])) {
   console.log(JSON.stringify(await acceptRecordedChoice({ root, keyFile, sourcesFile, operationId, clock: Number(clock), inspectOnly: process.argv[2] === "--inspect-record" })));
 } else {
   const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7);
-  if (!process.argv.includes("--contracts-only") && !["files", "dual", "db-only"].includes(mode)) throw Error("CHOICE_RECORD_FIXTURE_SCOPE_REQUIRED");
+  if (!process.argv.includes("--contracts-only") && !["dual", "db-only"].includes(mode)) throw Error("CHOICE_RECORD_FIXTURE_SCOPE_REQUIRED");
   if (mode && process.argv.includes("--contracts-only")) throw Error("CHOICE_RECORD_FIXTURE_SCOPE_CONFLICT");
   const faultAfterFirstCas = process.argv.includes("--fault-after-first-cas");
   if (faultAfterFirstCas && mode !== "files") throw Error("CHOICE_RECORD_PARTIAL_EFFECT_FILES_REQUIRED");

@@ -31,7 +31,7 @@ function snapshot(folder) {
   }));
 }
 try {
-  for (const mode of ["files", "dual", "db-only"]) await check("new JSON workflow defaults to agentic without XML/profile opt-in: " + mode, async () => {
+  for (const mode of ["dual", "db-only"]) await check("new JSON workflow defaults to agentic without XML/profile opt-in: " + mode, async () => {
     const targetRoot = fixture(), service = createProjectWorkflowInstanceService({ targetRoot });
     put(path.join(targetRoot, ".aidn/config.json"), { runtime: { stateMode: mode } });
     if (mode !== "files") createArtifactStore({ sqliteFile: path.join(targetRoot, ".aidn/runtime/index/workflow-index.sqlite") }).close();
@@ -62,7 +62,7 @@ try {
     const definition = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/workflow-shadow/diagnostic-correction.v1.json", import.meta.url)));
     const version = fs.readFileSync(new URL("../../VERSION", import.meta.url), "utf8").trim();
     definition.compatibility.product_version = version;
-    const context = { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: version, workflow_version: 7, state_mode: "files" };
+    const context = { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: version, workflow_version: 7, state_mode: "dual" };
     const old = service.initialize({ engine: "legacy", instanceId: "historical", definition, context, write: true });
     assert.throws(() => service.initialize({ instanceId: "historical", model, write: true }), /WORKFLOW_INSTANCE_ENGINE_CONFLICT/);
     assert.equal(service.inspect("historical").instance.instance_sha256, old.instance.instance_sha256);
@@ -78,7 +78,7 @@ try {
     const definition = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/workflow-shadow/diagnostic-correction.v1.json", import.meta.url)));
     const version = fs.readFileSync(new URL("../../VERSION", import.meta.url), "utf8").trim(); definition.compatibility.product_version = version;
     service.initialize({ instanceId: "same", model, write: true });
-    createLegacyProjectWorkflowInstanceService({ targetRoot }).initialize({ instanceId: "same", definition, context: { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: version, workflow_version: 7, state_mode: "files" }, write: true });
+    createLegacyProjectWorkflowInstanceService({ targetRoot }).initialize({ instanceId: "same", definition, context: { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: version, workflow_version: 7, state_mode: "dual" }, write: true });
     assert.throws(() => service.inspect("same"), /WORKFLOW_ENGINE_AMBIGUOUS/);
     assert.equal(service.inspect("same", { engine: "agentic" }).record.model.model_id, model.model_id);
     assert.equal(service.inspect("same", { engine: "legacy" }).instance.instance_id, "same");

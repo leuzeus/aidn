@@ -97,9 +97,9 @@ selection and projection. Existing refusals retain their minimum and expansion
 references. Optional units may be omitted explicitly; mandatory units are never
 truncated. Historical
 workflows and default projections remain available.
-The existing scoped hydration path requires an explicitly prepared index even
-in files mode; a missing index refuses the workflow context without creating
-one. Standalone files-mode artifact queries read their canonical files directly.
+The scoped hydration path requires an explicitly prepared index; a missing
+index refuses the workflow context without creating one. Runtime artifact
+queries use the selected SQL authority and never fall back to visible Markdown.
 
 `--projection-profile compact.v2` selects `codex-workflow-step-agent-compact.v2`.
 It preserves the compact.v1 decisions and checks while storing identical context
@@ -675,7 +675,7 @@ These surfaces are public and contract-backed, but they are more operational or 
 - `aidn runtime project-coordination-summary --json`
 - `aidn runtime sync-db-first --json`
 - `aidn runtime sync-db-first-selective --json`
-- `aidn runtime mode-migrate --json` previews the config, schema, and projection plan; add `--write` to apply it
+- `aidn runtime mode-migrate --to dual|db-only --json` previews a verified legacy migration or SQL profile change; add `--write` to copy legacy content and publish configuration last. `--backend sqlite|postgres` and `--connection-ref env:NAME` select a new SQL destination for legacy FILES. Existing SQL backend changes use persistence adoption. Repair and materialization remain separate explicit commands. See [migration instructions](INSTALL.md#retired-files-state-migration).
 - `aidn runtime session-plan --json`
 - `aidn runtime db-first-artifact --json`
 - `aidn runtime artifact-store list --json`
@@ -713,13 +713,13 @@ freshness. Standard models use the dedicated complete `--templates` selector.
 from the executing package's `scaffold/docs_audit` distribution (ADR-0013), without
 a parallel name mapping. It returns exact audit-relative `path`, contextual title,
 distribution and current source hashes, `read_method` and `projection_path`.
-Project template contents remain governed artifacts: files in files mode,
+Project template contents remain governed artifacts:
 canonical SQLite in dual/db-only, and configured PostgreSQL regardless of visible
 anchors. This inventory reads one fresh database snapshot without list truncation;
 it never imports, repairs, aliases or materializes. Missing distributed project
 models, duplicate references, unavailable scope/backend and unsafe links fail.
 The returned observation is consultative: obtain the required complete models via
-batch `artifact-fetch` in database modes or grouped file reads in files mode.
+batch `artifact-fetch` from the selected SQL authority.
 Admission, freshness, revision and closure checks remain separate and mandatory.
 Artifact consultation and writes support an explicit `--view agent`. This v1
 view keeps the existing result envelope, backend, identity, SHA256, verdict and

@@ -1018,8 +1018,9 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     effectClass: "preview",
     jsonContract: "runtime-mode-migrate.v1.schema.json",
     safeArgs: ["runtime", "mode-migrate", "--to", "dual", "--json"],
+    allowNonZero: true,
     noMutationPaths: [".aidn/runtime"],
-    notes: "Previews runtime mode config, schema, and projection changes; --json never implies mutation.",
+    notes: "Previews verified legacy FILES migration or a SQL profile change, preserving SQL authority; --json never implies mutation.",
   }),
   commandPolicy({
     id: "runtime-mode-migrate-write",
@@ -1027,7 +1028,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     effectClass: "mutating",
     jsonContract: "runtime-mode-migrate.v1.schema.json",
     safeArgs: ["runtime", "mode-migrate", "--to", "dual", "--write", "--json"],
-    notes: "Applies runtime mode boundaries and atomically updates config only after explicit --write intent.",
+    notes: "Verifies sessions, cycle ownership and retained history, copies legacy bytes if necessary, and publishes dual/db-only config last after explicit --write intent.",
   }),
   commandPolicy({
     id: "runtime-session-plan",

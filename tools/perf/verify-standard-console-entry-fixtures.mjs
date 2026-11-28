@@ -14,7 +14,7 @@ import outputSchema from "../../src/core/contracts/cli-output/runtime-workflow-a
 // Real public console CLI, published model, authority, journal and local ports.
 // No Native transport is launchable and no human/provider source is supplied.
 export function createStandardConsoleFixture() {
-  const owned = [], target = createFreshStandardWorkflowFixture("files", owned);
+  const owned = [], target = createFreshStandardWorkflowFixture("dual", owned);
   const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-standard-console-"));
   const dirs = Object.fromEntries(["control", "review", "home", "authority"].map(name => { const p = path.join(base, name); fs.mkdirSync(p); return [name, p]; }));
   const pin = file => ({ path: file, sha256: createHash("sha256").update(fs.readFileSync(file)).digest("hex") });

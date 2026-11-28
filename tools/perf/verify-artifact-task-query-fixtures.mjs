@@ -85,7 +85,7 @@ export async function verifyArtifactTaskQueries() {
     const payload=artifactQueryFixturePayload(scope);
     payload.artifacts[2].content+='\n### Final closure exception\nDo not certify missing or expired proof.\n';
     for(const row of payload.artifacts){const p=target+'/docs/audit/'+row.path;fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,row.content);}
-    const config={version:1,runtime:{stateMode:'files',indexStoreMode:'dual-sqlite'},workflow:{sourceBranch:'dev'}};
+    const config={version:1,runtime:{stateMode:'dual',indexStoreMode:'dual-sqlite'},workflow:{sourceBranch:'dev'}};
     fs.writeFileSync(target+'/.aidn/config.json',JSON.stringify(config));
     fs.rmSync(target+'/docs/audit/HANDOFF-PACKET.md',{force:true});
     const docs={'QUERY-RULES.md':'## Admission\nUse fresh canonical admission and retain every refusal.\n### Exception\nAn expired proof never authorizes closure.\n## Closure\nREQ, TEST, GAP and CR must be reconciled by the existing closure checks.\n',
@@ -109,7 +109,7 @@ export async function verifyArtifactTaskQueries() {
     const consumers=manifest.profiles.filter(p=>p.requires_client_task_policy),ids=new Set(consumers.flatMap(p=>[...p.mandatory,...Object.values(p.conditional).flat(),...p.optional]));
     assert.deepEqual({profiles:consumers,consumed:manifest.artifacts.map(c=>({artifact_type:c.artifact_type,contract_version:c.contract_version,fields:c.fields.filter(f=>ids.has(f.id)),sections:c.sections}))},compatibility);
     checks.push('three versioned consumers pin semantic fields and complete closure sections');
-    for(const mode of ['files','dual','db-only']) {
+    for(const mode of ["dual","db-only"]) {
       fs.writeFileSync(target+'/.aidn/config.json',JSON.stringify({...config,runtime:{...config.runtime,stateMode:mode}}));
       for(const name of ['CURRENT-STATE.md','RUNTIME-STATE.md']){
         const file=target+'/docs/audit/'+name;fs.writeFileSync(file,fs.readFileSync(file,'utf8').replace(/^runtime_state_mode:.*$/m,'runtime_state_mode: '+mode));

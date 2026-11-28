@@ -179,8 +179,8 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
     const targetRoot = fs.mkdtempSync(path.join(parent, 'aidn-pr-review-call-'));
     try {
       fs.mkdirSync(path.join(targetRoot, '.aidn'));
-      fs.writeFileSync(path.join(targetRoot, '.aidn', 'config.json'), JSON.stringify({ runtime: { stateMode: 'files' } }));
-      const store = createAgenticProcessStore({ targetRoot, stateMode: 'files', env: {} });
+      fs.writeFileSync(path.join(targetRoot, '.aidn', 'config.json'), JSON.stringify({ runtime: { stateMode: 'dual' } }));
+      const store = createAgenticProcessStore({ targetRoot, stateMode: 'dual', env: {} });
       assert.equal(store.compareAndSwap(instance, null).written, true);
       const before = store.read(instance.instance_id).content_sha256;
       const child = spawnSync(process.execPath, ['--input-type=module', '-e', `
@@ -189,7 +189,7 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
         import { createAgenticProcessService } from ${JSON.stringify(new URL('../../src/application/runtime/agentic-process-service.mjs', import.meta.url).href)};
         import { resolveProcessFrameInput } from ${JSON.stringify(new URL('../../src/core/workflow/process-frame-input.mjs', import.meta.url).href)};
         const { targetRoot, instanceId, callOccurrence } = JSON.parse(readFileSync(0, 'utf8'));
-        const store = createAgenticProcessStore({ targetRoot, stateMode: 'files', env: {} });
+        const store = createAgenticProcessStore({ targetRoot, stateMode: 'dual', env: {} });
         const { record: instance, cursor } = createAgenticProcessService({ store }).inspect(instanceId);
         const frame = cursor.occurrences.find(row => row.call_scope_id === callOccurrence && row.node_id === 'pr_review_effects_verify');
         const { input } = resolveProcessFrameInput({ instance, cursor, occurrenceId: frame.occurrence_id });

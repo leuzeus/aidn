@@ -159,9 +159,7 @@ function readJsonIndex(indexFile) {
 
 function verifyGroupedArtifactSources({ targetRoot, payload, selected, stateMode, scoped }) {
   if (!workflowObservationActive(targetRoot)) return;
-  const paths = new Set(selected.map(row => row.path).filter(file => stateMode === "files" && !scoped
-    || ["SPEC.md", "WORKFLOW.md"].includes(file)));
-  if (stateMode === "files" && !scoped) for (const file of ["CURRENT-STATE.md", "RUNTIME-STATE.md"]) paths.add(file);
+  const paths = new Set(selected.map(row => row.path).filter(file => ["SPEC.md", "WORKFLOW.md"].includes(file)));
   const fail = () => { throw Object.assign(new Error("WORKFLOW_CONTEXT_SOURCE_MISMATCH: refresh the owned index/projection from its canonical authority before retrying"), { code: "WORKFLOW_CONTEXT_SOURCE_MISMATCH" }); };
   const root = fs.realpathSync(targetRoot);
   for (const file of paths) {
@@ -701,6 +699,8 @@ function firstStateMode(latest) {
 }
 
 function resolveEffectiveStateMode(targetRoot, latest, requestedSkill) {
+  const config = readAidnProjectConfig(targetRoot);
+  const configStateMode = resolveConfigStateMode(config.data);
   const envStateMode = normalizeStateMode(process.env.AIDN_STATE_MODE);
   if (envStateMode) {
     return {
@@ -709,8 +709,6 @@ function resolveEffectiveStateMode(targetRoot, latest, requestedSkill) {
     };
   }
 
-  const config = readAidnProjectConfig(targetRoot);
-  const configStateMode = resolveConfigStateMode(config.data);
   if (configStateMode) {
     return {
       mode: configStateMode,
@@ -734,7 +732,8 @@ function resolveEffectiveStateMode(targetRoot, latest, requestedSkill) {
     };
   }
 
-  const requestedSkillMode = normalizeStateMode(requestedSkill ? latest?.[requestedSkill]?.state_mode : "");
+  const retainedMode = value => String(value ?? '').trim().toLowerCase() === 'files' ? null : normalizeStateMode(value);
+  const requestedSkillMode = retainedMode(requestedSkill ? latest?.[requestedSkill]?.state_mode : "");
   if (requestedSkillMode) {
     return {
       mode: requestedSkillMode,
@@ -742,7 +741,7 @@ function resolveEffectiveStateMode(targetRoot, latest, requestedSkill) {
     };
   }
 
-  const historicalMode = normalizeStateMode(firstStateMode(latest));
+  const historicalMode = retainedMode(firstStateMode(latest));
   if (historicalMode) {
     return {
       mode: historicalMode,
@@ -751,7 +750,7 @@ function resolveEffectiveStateMode(targetRoot, latest, requestedSkill) {
   }
 
   return {
-    mode: "files",
+    mode: "dual",
     source: "default",
   };
 }
@@ -791,7 +790,7 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
       reuse_reasons: entry?.reuse_reasons ?? ["missing_command_provenance"],
       provenance: entry?.provenance ?? null,
       mode: entry?.mode ?? "UNKNOWN",
-      state_mode: entry?.state_mode ?? "files",
+      state_mode: entry?.state_mode ?? "dual",
       decision: entry?.decision ?? null,
       action: entry?.action ?? null,
       result: entry?.result ?? null,
@@ -854,18 +853,6 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
       });
       const selection = scopedRequested ? selectScopedContext({
         payload: index.payload, request: args.contextRequest, adoption, backend,
-        readCanonicalText: effectiveStateMode === "files" ? (artifact) => {
-          const auditRoot = path.resolve(index.payload.audit_root || path.join(targetRoot, "docs/audit"));
-          const file = path.resolve(auditRoot, artifact.path);
-          const withinRoot = path.relative(targetRoot, file);
-          if (withinRoot.startsWith("..") || path.isAbsolute(withinRoot)) return null;
-          try {
-            const realFile = fs.realpathSync(file);
-            const relative = path.relative(fs.realpathSync(targetRoot), realFile);
-            if (relative.startsWith("..") || path.isAbsolute(relative)) return null;
-            return new TextDecoder("utf-8", { fatal: true }).decode(fs.readFileSync(realFile));
-          } catch { return null; }
-        } : undefined,
       }) : selectArtifacts(index.payload, args.maxArtifactBytes, {
         minRelationConfidence: args.minRelationConfidence,
         relationThresholds: args.relationThresholds,

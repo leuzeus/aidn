@@ -11,7 +11,7 @@ const sourceConfig = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/re
 let checks = 0; const pass = name => { checks++; console.log("PASS " + name); };
 try {
   fs.mkdirSync(path.join(root, ".aidn")); fs.mkdirSync(path.join(root, "docs/audit/notes"), { recursive: true });
-  const config = structuredClone(sourceConfig); config.runtime.stateMode = "files"; config.runtime.persistence = { backend: "sqlite" };
+  const config = structuredClone(sourceConfig); config.runtime.stateMode = "dual"; config.runtime.persistence = { backend: "sqlite" };
   const configPath = path.join(root, ".aidn/config.json"); fs.writeFileSync(configPath, JSON.stringify(config));
   fs.writeFileSync(path.join(root, "docs/audit/CURRENT-STATE.md"), "# Local fixture\n");
   fs.writeFileSync(path.join(root, "docs/audit/notes/Notes with spaces é.md"), "# Human-readable name\n");

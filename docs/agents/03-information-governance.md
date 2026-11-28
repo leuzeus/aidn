@@ -46,7 +46,7 @@ The source of truth, metadata, lifecycle status, and scope of each concept must 
 - metadata is governed, not incidental
 - lifecycle status is part of the contract for governed concepts
 - concepts can be governed, subsumed, or excluded
-- files / dual / db-only are supported modes and must remain distinguishable
+- dual / db-only are supported modes and must remain distinguishable
 - every exposed concept declares owner, lifecycle, scope, retention, projections, migration, and replacement
 - projections, fixtures, caches, and exports are never canonical by implication
 - proof distinguishes package source, scaffold, fixture corpus, installed client, and external pilot
@@ -59,13 +59,16 @@ The source of truth, metadata, lifecycle status, and scope of each concept must 
 
 ## Modes
 
+FILES is retired; legacy records remain readable, and only the explicit
+`runtime mode-migrate --write` transition may import legacy state. See
+[ADR-0027](../ADR/ADR-0027-retire-files-state-authority.md).
+
 STANDARD decision issuer authorization is owned by the project administrator.
 Its signed revisions live in the protected STANDARD host home in each storage
 mode. The checkout and canonical workflow database carry decisions and receipts
 under their existing authorities. Each execution host applies the same approved
 revision explicitly before relying on its authorization.
 
-- `files`: checkout-bound Markdown and project files are authoritative
 - `dual`: runtime DB/index is canonical for runtime state and Markdown projection is required
 - `db-only`: runtime DB is canonical; minimal re-anchor Markdown anchors may stay visible, while detailed Markdown projections are materialized on demand
 
@@ -114,10 +117,7 @@ If a concept already has a parent surface or an orthogonal telemetry layer, do n
 Keep the source-of-truth policy, metadata policy, and governance diagnostics in sync with the information model.
 
 Workflow incident tracking follows SPEC-R10. Its configured project artifact
-source is distinct from repair findings. With the default local backend, files
-mode reads the incident Markdown; dual/db-only read the configured artifact
-record. Explicit PostgreSQL artifact persistence remains canonical even in files
-mode. A visible copy never replaces a missing canonical database record. After verified resolution and
+source is distinct from repair findings. Both supported profiles read the configured SQL artifact record. A visible copy never replaces a missing canonical database record. After verified resolution and
 confirmed resume, explicit cleanup removes temporary tracking and retains only
 the concise session/snapshot trace. The archived lifecycle refers to that trace.
 The scaffold Git ignore classifies only `/docs/audit/incidents/INC-TMP-*.md`

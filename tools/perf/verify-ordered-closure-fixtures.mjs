@@ -72,7 +72,7 @@ try {
     assert.equal(result.status, "REFUSED"); assert.equal(f.calls.length, 0);
   });
   for (const [name, binding] of [
-    ["files mode retains legacy path", () => ({ target_root: root, backend: "sqlite", state_mode: "files", stop_required: false, revision: "b".repeat(64) })],
+    ["files mode retains legacy path", () => ({ target_root: root, backend: "sqlite", state_mode: "dual", stop_required: false, revision: "b".repeat(64) })],
     ["foreign target", (n, b) => ({ ...b, target_root: root + "/foreign" })],
     ["canonical unavailable", (n, b) => ({ ...b, backend: "unavailable" })],
     ["global stop", (n, b) => ({ ...b, stop_required: true })],

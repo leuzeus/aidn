@@ -268,7 +268,7 @@ export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookC
   const absoluteTargetRoot = path.resolve(targetRoot);
   const stateMode = resolveEffectiveStateMode({
     targetRoot,
-    stateMode: args.stateMode || "files",
+    stateMode: args.stateMode || "dual",
   });
 
   const commandSpec = args.command.length > 0

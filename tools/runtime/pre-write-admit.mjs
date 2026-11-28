@@ -723,7 +723,7 @@ export async function preWriteAdmit({
   const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
   const configData = readAidnProjectConfig(absoluteTargetRoot).data;
   const stateModeEnv = String(process.env.AIDN_STATE_MODE ?? "").trim();
-  const effectiveStateMode = stateModeEnv ? normalizeStateMode(stateModeEnv) ?? "files" : resolveConfigStateMode(configData) ?? "files";
+  const effectiveStateMode = stateModeEnv ? normalizeStateMode(stateModeEnv) ?? "dual" : resolveConfigStateMode(configData) ?? "dual";
   const configuredPostgres = resolveConfigRuntimePersistence(configData)?.backend === "postgres";
   const canonicalRequired = configuredPostgres || effectiveStateMode === "db-only"
     || effectiveStateMode === "dual" && workflowObservationActive(absoluteTargetRoot);

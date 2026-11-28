@@ -9,7 +9,7 @@ const temporary = fs.realpathSync(os.tmpdir()), root = fs.mkdtempSync(path.join(
 const H = 'a'.repeat(64), O = 'b'.repeat(40), op = x => 'op_' + x.repeat(40);
 const put = (name, content) => { const file = path.join(root, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, content); };
 const sourceBranch = 'C001-feature-example', sessionPath = 'sessions/S001.md', cyclePath = 'cycles/C001-feature-example/status.md';
-put('.aidn/config.json', JSON.stringify({ version: 1, runtime: { stateMode: 'files' } }));
+put('.aidn/config.json', JSON.stringify({ version: 1, runtime: { stateMode: 'dual' } }));
 const sessionText = 'session_id: S001\nstate: CLOSED\nsession_closure_status: completed\nmode: COMMITTING\nsession_branch: S001-example\n';
 const cycleText = 'state: DONE\nsession_owner: S001\nbranch_name: ' + sourceBranch + '\n';
 put('docs/audit/' + sessionPath, sessionText); put('docs/audit/' + cyclePath, cycleText);

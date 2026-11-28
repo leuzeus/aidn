@@ -24,11 +24,11 @@ const original = json("tests/fixtures/workflow-shadow/diagnostic-correction.v1.j
 // A supported bounded path; diagnosis remains explicitly unsupported.
 const definition = { ...original, workflow_id: "reviewed-correction", entry: "approval",
   steps: original.steps.filter(s => s.id !== "diagnose"), transitions: original.transitions.filter(e => e.from !== "diagnose") };
-const context = { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: "0.11.0", workflow_version: 7, state_mode: "files" };
+const context = { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: "0.11.0", workflow_version: 7, state_mode: "dual" };
 const scope = { target_sha256: "a".repeat(64), persistence_sha256: "a".repeat(64), runtime_scope_id: "scope.fixture", activation: { authority_id: "authority.fixture", revision: 2 } };
 const evidence = [{ ref: "fixture-review", sha256: "b".repeat(64) }];
 const source = json("tests/fixtures/agent-execution/contracts/complete-chain.json").plan;
-const initial = (mode = "files", def = definition) => createWorkflowInstance({ instanceId: "fixture", definition: def, context: { ...context, state_mode: mode }, scope });
+const initial = (mode = "dual", def = definition) => createWorkflowInstance({ instanceId: "fixture", definition: def, context: { ...context, state_mode: mode }, scope });
 function segment(instance = initial(), runId = "run.fixture") {
   const configuration = { contract_version: "agent-run-configuration.v2", run_id: runId,
     target_root: os.tmpdir(), workflow: bindWorkflowSegment({ definition: instance.definition, context: instance.compilation.context, stepId: "correction", canonical: source.canonical }) };
@@ -43,7 +43,7 @@ const success = pending => ({ run_id: pending.run_id, plan_sha256: pending.plan_
   attempts: [{ task_id: "task", acceptance: "accepted", evidence }], cleanup: { status: "not_requested" } });
 
 if (process.argv[2] === "--interrupted-effect") {
-  const root = process.argv[3], point = process.argv[4], store = createWorkflowInstanceStore({ targetRoot: root, stateMode: "files" });
+  const root = process.argv[3], point = process.argv[4], store = createWorkflowInstanceStore({ targetRoot: root, stateMode: "dual" });
   const state = store.read("fixture").instance;
   assert(inspectWorkflowInstance(state).pending);
   if (point === "after-effect") fs.writeFileSync(path.join(root, "effect-proof.json"), JSON.stringify(success(inspectWorkflowInstance(state).pending)));
@@ -98,7 +98,7 @@ try {
     assert.equal(inspectWorkflowInstance(changed).step_id, "approval");
     assert.throws(() => assertCurrentWorkflowCompilation(changed), /COMPILATION_CHANGED/);
   });
-  for (const stateMode of ["files", "dual", "db-only"]) await check("canonical checkpoint reconnect and competing writer: " + stateMode, () => {
+  for (const stateMode of ["dual", "db-only"]) await check("canonical checkpoint reconnect and competing writer: " + stateMode, () => {
     const targetRoot = path.join(root, stateMode); fs.mkdirSync(targetRoot);
     fs.mkdirSync(path.join(targetRoot, ".aidn")); fs.writeFileSync(path.join(targetRoot, ".aidn/config.json"), JSON.stringify({ runtime: { stateMode } }));
     const sqliteFile = path.join(targetRoot, ".aidn/runtime/index/workflow-index.sqlite");
@@ -145,12 +145,12 @@ try {
   });
   for (const point of ["before-effect", "after-effect"]) await check("process interruption " + point + " preserves intent without duplicate dispatch", async () => {
     const targetRoot = path.join(root, point); fs.mkdirSync(targetRoot);
-    let state = intend(approve(initial())); const store = createWorkflowInstanceStore({ targetRoot, stateMode: "files" }); store.compareAndSwap(state, null);
+    let state = intend(approve(initial())); const store = createWorkflowInstanceStore({ targetRoot, stateMode: "dual" }); store.compareAndSwap(state, null);
     const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--interrupted-effect", targetRoot, point], { encoding: "utf8", windowsHide: true });
     assert.equal(child.status, 31, child.stderr);
-    const reconnect = createWorkflowInstanceStore({ targetRoot, stateMode: "files" }); let dispatch = 0;
+    const reconnect = createWorkflowInstanceStore({ targetRoot, stateMode: "dual" }); let dispatch = 0;
     const service = createWorkflowInstanceService({ store: reconnect,
-      readAuthority: () => ({ scope, stateMode: "files", productVersion: "0.11.0" }), readSegment: () => segment(),
+      readAuthority: () => ({ scope, stateMode: "dual", productVersion: "0.11.0" }), readSegment: () => segment(),
       lifecycle: { async invoke(args) { assert.equal(args.command, "agent-run-status"); dispatch++;
         return point === "after-effect" ? { errors: [], status: JSON.parse(fs.readFileSync(path.join(targetRoot, "effect-proof.json"))) } : { errors: ["AGENT_RUN_NOT_FOUND"], status: null }; } } });
     assert.equal(service.inspect("fixture").cursor.status, "reconciliation_required"); assert.equal(dispatch, 0);
@@ -160,9 +160,9 @@ try {
     assert.equal(dispatch, 1);
   });
   await check("service preview is pure, duplicate decision rejected and activation rechecked", () => {
-    const targetRoot = path.join(root, "service"); fs.mkdirSync(targetRoot); const store = createWorkflowInstanceStore({ targetRoot, stateMode: "files" });
+    const targetRoot = path.join(root, "service"); fs.mkdirSync(targetRoot); const store = createWorkflowInstanceStore({ targetRoot, stateMode: "dual" });
     let revoked = false;
-    const service = createWorkflowInstanceService({ store, readAuthority: () => ({ scope: revoked ? { ...scope, activation: { ...scope.activation, revision: 3 } } : scope, stateMode: "files", productVersion: "0.11.0" }) });
+    const service = createWorkflowInstanceService({ store, readAuthority: () => ({ scope: revoked ? { ...scope, activation: { ...scope.activation, revision: 3 } } : scope, stateMode: "dual", productVersion: "0.11.0" }) });
     const input = { instanceId: "fixture", definition, context };
     assert.equal(service.initialize(input).written, false); assert.deepEqual(fs.readdirSync(targetRoot), []);
     const state = service.initialize({ ...input, write: true }).instance;
@@ -171,13 +171,13 @@ try {
     service.decide(request); assert.throws(() => service.decide(request), /REVISION_CONFLICT/);
   });
   await check("durable intent dispatch uses existing lifecycle preview and rejects stale action approval", async () => {
-    const targetRoot = path.join(root, "dispatch"); fs.mkdirSync(targetRoot); const store = createWorkflowInstanceStore({ targetRoot, stateMode: "files" });
+    const targetRoot = path.join(root, "dispatch"); fs.mkdirSync(targetRoot); const store = createWorkflowInstanceStore({ targetRoot, stateMode: "dual" });
     const state = intend(approve(initial())), data = segment(); store.compareAndSwap(state, null);
     let runtimes = 0, materialRevision = 1;
     const lifecycle = createAgentRunLifecycle({ readContext: async () => ({ ...data, snapshot: null,
       targetIdentity: { target_root: data.configuration.target_root }, preconditions: { blockers: [], materialRevision } }),
       createRuntime: async () => { runtimes++; throw Object.assign(new Error("FIXTURE_RUNTIME_BOUNDARY"), { code: "FIXTURE_RUNTIME_BOUNDARY" }); } });
-    const service = createWorkflowInstanceService({ store, readAuthority: () => ({ scope, stateMode: "files", productVersion: "0.11.0" }), readSegment: () => data, lifecycle });
+    const service = createWorkflowInstanceService({ store, readAuthority: () => ({ scope, stateMode: "dual", productVersion: "0.11.0" }), readSegment: () => data, lifecycle });
     const request = { instanceId: "fixture", expectedSha256: state.instance_sha256, command: "agent-run" };
     const preview = await service.segment(request); assert.equal(preview.can_apply, true); assert.equal(runtimes, 0);
     await assert.rejects(service.segment({ ...request, execute: true }), /EXPLICIT_EFFECT_REQUIRED/);

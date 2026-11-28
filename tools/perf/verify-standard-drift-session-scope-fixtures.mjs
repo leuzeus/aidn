@@ -10,8 +10,8 @@ import { createStandardWorkflowArtifacts } from "../../src/application/runtime/s
 import { readStandardDriftContext, captureStandardDriftContextFence } from "../../src/application/runtime/standard-drift-report.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { verifyStandardGitHead } from "./standard-git-head-fixture-lib.mjs";
-const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "files";
-if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
+const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "dual";
+if (!["dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
 const owned = [], temporary = fs.realpathSync(os.tmpdir()); let complete = false, checks = 0;
 const pass = name => { checks++; console.log("PASS " + name); };
 if (process.argv.includes("--git-head-only")) {

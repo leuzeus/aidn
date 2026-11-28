@@ -31,7 +31,7 @@ const manifest = {
   roots: roles.map((role) => ({ role, root: path.join(root, role), worktree_id: "root-" + role,
     branch: "codex/fixture-" + role, head: "2".repeat(40), identity: { root_id: "root-" + role, authority_id: "authority-fixture" },
     activation: { state: "active", authority_id: "authority-fixture", revision: 1 }, attempt_marker_present: false,
-    installation: { plan_id: "old-plan", persistence_policy: "verify-only", state_mode: "files", applied: true, verified: true },
+    installation: { plan_id: "old-plan", persistence_policy: "verify-only", state_mode: "dual", applied: true, verified: true },
     receipt: { path: path.join(root, role, ".aidn/install/receipt.json"), root_id: "root-" + role, sha256: sha("5") },
     hooks: { config: { path: path.join(root, role, ".codex/hooks.json"), sha256: sha("c") }, definition,
       handlers: [{ path: ".codex/hooks/neutral-pre-tool.mjs", sha256: sha("d") }] } })),

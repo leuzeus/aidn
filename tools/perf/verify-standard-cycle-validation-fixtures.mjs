@@ -23,7 +23,7 @@ try {
     ["elapsed", {}], ["elapsed-refused", {}], ["elapsed-prefix", {}], ["elapsed-work", {}]];
   const refusals = ["refused", "stale", "grant-race", "elapsed-refused", "elapsed-prefix", "elapsed-work"];
   for (const [selected, options] of scenarios) {
-    const root = createStandardWorkflowFixture("files", owned), base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-validation-fixture-")); owned.push(base);
+    const root = createStandardWorkflowFixture("dual", owned), base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-validation-fixture-")); owned.push(base);
     const f = createValidationProfileFixture(base, options), product = path.join(root, "product"); fs.mkdirSync(product); const file = path.join(product, "app.mjs"); fs.writeFileSync(file, "export const value = " + (selected === "negative-code" ? "1" : "2") + ";\n");
     const bytes = fs.readFileSync(file), files = [{ path: "app.mjs", present: true, bytes: bytes.length, sha256: hash(bytes) }];
     const workOutput = { facts: { cycle_work_observed: true }, observations: { task: { test_refs: ["TEST:VALUE"] } } };

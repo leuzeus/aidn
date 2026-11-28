@@ -43,7 +43,7 @@ export async function verifyStandardHandoffBeforeEffectCuts(mode,{only=null}={})
 async function runCase(mode,scenario,{unreturned=false}={}){
 const assertPlan=assertHandoffBeforeEffectPlan;
 const assertAudit=assertHandoffBeforeEffectDisposition;
-assert(['files','dual','db-only'].includes(mode));
+assert(["dual","db-only"].includes(mode));
 const owned=[],root=createFreshStandardWorkflowFixture(mode,owned,{absentOptionalDocuments:['HANDOFF-PACKET.md']}),artifacts=createStandardWorkflowArtifacts({targetRoot:root}),key=Buffer.alloc(32,149),signer=createOperationJournalSigner(()=>key);
 const control=fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()),'aidn-handoff-operation-control-'));owned.push(control);
 let clock=Date.now(),allowed=true,sourceAllowed=true,sourceReads=0;const sourceExpiry=clock+3600000;
@@ -70,7 +70,7 @@ async function dispatch(c){const staged=await c.host.stage(c.preview,{write:true
 const refusalSignal=new AbortController();
 const prepared=await prepare('projection-continuation-physical-bounded',{boundary:point=>{
  if(point==='before_handoff_no_effect_confirmation'){if(scenario==='permission_revoked')dispositionAllowed=false;else if(scenario==='cancelled')refusalSignal.abort();}
- 
+
 }});
 const staged=await prepared.host.stage(prepared.preview,{write:true,expectedPreviewSha256:H(prepared.preview)});
 const config={root,control,model,clock,key:key.toString('hex'),id:prepared.id,operation_id:staged.operation_id,unreturned};

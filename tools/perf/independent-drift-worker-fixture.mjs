@@ -14,7 +14,7 @@ for await (const part of process.stdin) {
 const sent = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
 const { configuration, authorization } = sent;
 const f = { configuration, dirs: { product: path.join(configuration.target_root, "product"), control: configuration.control_root } };
-const instances = createAgenticProcessStore({ targetRoot: configuration.target_root, stateMode: "files" });
+const instances = createAgenticProcessStore({ targetRoot: configuration.target_root, stateMode: "dual" });
 let observations = 0, assignedObservations = 0;
 const t = transport(f, {
   async onConfigRead() {

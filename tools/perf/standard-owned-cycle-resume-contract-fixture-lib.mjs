@@ -24,7 +24,7 @@ export function ownedResumeSourceContractFixture(phase = "IMPLEMENTING", history
           dor_state: phase === "OPEN" ? "NOT_READY" : "READY", scope_frozen: phase === "OPEN" ? "false" : "true" }, canonical },
       evidence_refs: canonical.map(row => ({ ref: "docs/audit/" + row.path, sha256: row.sha256 })) };
   return { source: { entry_operation_id: id, entry_sha256: "6".repeat(64), input: { contract_version: "standard-cycle-entry-input.v1", session_id, cycle_id: null }, output },
-    input: { entry_operation_id: id }, current: { scope, backend: { state_mode: "files" }, status_content: status,
+    input: { entry_operation_id: id }, current: { scope, backend: { state_mode: "dual" }, status_content: status,
       git: { branch, head: scope.head, diff: "", diff_scope: "configured-product-files-only", diff_sha256: artifactContentHash(""),
         global_diff_sha256: artifactContentHash(""), status_sha256: artifactContentHash(""), other_changes: { count: 0, sha256: shadowHash([]) } },
       physical_focus: focus.map(name => ({ path: "docs/audit/" + name, sha256: artifactContentHash(`fixture ${name}\n`) })) } };

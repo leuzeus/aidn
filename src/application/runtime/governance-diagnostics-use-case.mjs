@@ -638,7 +638,7 @@ export function evaluateObservedGovernanceArtifact(entry, targetRoot, resolveArt
       candidatePath: entry.relative_path,
     });
   const fields = parseSimpleMap(resolution.text);
-  const runtimeStateMode = normalizeScalar(fields.get("runtime_state_mode") ?? "files") || "files";
+  const runtimeStateMode = normalizeScalar(fields.get("runtime_state_mode") ?? "dual") || "dual";
   const sourceOfTruth = evaluateSourceOfTruthPolicy(entry.source_of_truth_concept, runtimeStateMode);
   const metadata = evaluateMetadataPolicy(entry.concept, {
     contract_version: normalizeScalar(fields.get("contract_version") ?? ""),

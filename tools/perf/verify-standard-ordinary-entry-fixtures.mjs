@@ -15,7 +15,7 @@ import { verifyPublicNativeEntryFixture } from "./standard-native-entry-fixture-
 // project. No runner/controller/authorization doubles are passed to production.
 // Native configuration is deliberately unusable for launch: these tests must
 // complete D/H without starting a model, not claim genuine human/native proof.
-const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7) ?? "files";
+const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7) ?? "dual";
 const owned = [], target = createFreshStandardWorkflowFixture(mode, owned);
 const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-ordinary-entry-"));
 console.log(JSON.stringify({ proof_class: "offline-public-cli-fixture-principals", target, base, mode }));

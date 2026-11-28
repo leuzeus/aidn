@@ -17,7 +17,7 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { createStandardOwnedEntryContinuation } from "../../src/application/runtime/standard-owned-entry-continuation.mjs";
 import { readAgenticProductSnapshot } from "../../src/application/runtime/agentic-process-execution-composition.mjs";
 const mode=process.argv.find(arg=>arg.startsWith("--mode="))?.slice(7);
-assert(["files","db-only"].includes(mode),"Expected --mode=files or --mode=db-only");
+assert(["db-only"].includes(mode),"Expected --mode=files or --mode=db-only");
 const root=createFreshStandardWorkflowFixture(mode,[]),base=fs.mkdtempSync(path.join(os.tmpdir(),"aidn-owned-public-"));
 const operations=createStandardWorkflowOperations({targetRoot:root}),artifacts=createStandardWorkflowArtifacts({targetRoot:root});
 const git=(...args)=>execFileSync("git",["-C",root,"-c",`core.hooksPath=${process.platform==="win32"?"NUL":"/dev/null"}`,...args],{encoding:"utf8",windowsHide:true,stdio:"pipe"}).trim();

@@ -12,8 +12,8 @@ import { writeAidnProjectConfig, readAidnProjectConfig } from '../../src/lib/con
 import { artifactContentHash, artifactMetadataHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 
-const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'files';
-assert(['files', 'dual', 'db-only'].includes(mode));
+const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'dual';
+assert(['dual', 'db-only'].includes(mode));
 const recordOperation = 'session_pr_incident_record', resolveOperation = 'session_pr_incident_resolve';
 const incidentId = 'INC-TMP-20261115-000000-op_' + 'a'.repeat(40), tracker = `incidents/${incidentId}.md`;
 const instance = Object.freeze({ instance_id: 'tracking_fixture', instance_sha256: 'a'.repeat(64), scope_id: 'fixture_scope' });

@@ -15,7 +15,8 @@ import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-
 const repo = fileURLToPath(new URL("../../", import.meta.url));
 const temporary = fs.realpathSync(os.tmpdir());
 const git = (root, ...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: "pipe", windowsHide: true }).trim();
-export function createStandardWorkflowFixture(mode = "files", owned = []) {
+export function createStandardWorkflowFixture(mode = "dual", owned = []) {
+  if (!["dual", "db-only"].includes(mode)) throw Error("FIXTURE_STATE_MODE_INVALID");
   const root = fs.mkdtempSync(path.join(temporary, "aidn-standard-ports-")); owned.push(root);
   const source = path.join(repo, "tests/fixtures/repo-installed-core");
   // Derive a temporary fixture only from tracked corpus bytes. A developer's
@@ -37,7 +38,7 @@ export function createStandardWorkflowFixture(mode = "files", owned = []) {
   adapter.runtimePolicy.preferredStateMode = mode; fs.writeFileSync(adapterPath, JSON.stringify(adapter, null, 2));
   const runtimeFile = path.join(root, "docs/audit/RUNTIME-STATE.md");
   fs.writeFileSync(runtimeFile, fs.readFileSync(runtimeFile, "utf8").replace(/^runtime_state_mode:.*$/m, `runtime_state_mode: ${mode}`));
-  if (mode !== "files") {
+  {
     // Explicit fixture construction, not a runtime fallback or conversion of
     // historical instances. The real index projector creates the temporary
     // canonical store from the copied Markdown before DB-first reads begin.
@@ -64,7 +65,7 @@ export function createStandardWorkflowFixture(mode = "files", owned = []) {
 // discovery/login is stubbed: no native executor or model is invoked here.
 // This is source-install qualification, not an exact-archive qualification.
 export function createFreshStandardWorkflowFixture(mode = "db-only", owned = [], { absentOptionalDocuments = [] } = {}) {
-  if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_STATE_MODE_INVALID");
+  if (!["dual", "db-only"].includes(mode)) throw Error("FIXTURE_STATE_MODE_INVALID");
   if (!Array.isArray(absentOptionalDocuments) || absentOptionalDocuments.some(name => !["baseline/history.md", "index.md", "HANDOFF-PACKET.md"].includes(name))
     || new Set(absentOptionalDocuments).size !== absentOptionalDocuments.length) throw Error("FIXTURE_OPTIONAL_DOCUMENT_INVALID");
   const root = fs.mkdtempSync(path.join(temporary, "aidn-standard-fresh-")); owned.push(root);
@@ -73,7 +74,7 @@ export function createFreshStandardWorkflowFixture(mode = "db-only", owned = [],
   const bin = path.join(root, ".fixture-bin"); fs.mkdirSync(bin);
   if (process.platform === "win32") fs.writeFileSync(path.join(bin, "codex.cmd"), '@echo off\r\nif "%1"=="login" if "%2"=="status" echo Logged in\r\nexit /b 0\r\n');
   else { const file = path.join(bin, "codex"); fs.writeFileSync(file, '#!/usr/bin/env sh\nif [ "$1" = "login" ] && [ "$2" = "status" ]; then echo "Logged in"; fi\nexit 0\n'); fs.chmodSync(file, 0o755); }
-  const store = { files: "file", dual: "dual-sqlite", "db-only": "sqlite" }[mode];
+  const store = { dual: "dual-sqlite", "db-only": "sqlite" }[mode];
   execFileSync(process.execPath, [path.join(repo, "tools/install.mjs"), "--target", root, "--pack", "core", "--init-defaults", "--project-name", "component-fixture",
     "--source-branch", "dev", "--artifact-import-store", store, "--runtime-persistence-backend", "sqlite", "--no-codex-migrate-custom",
     ...(absentOptionalDocuments.length ? ["--skip-artifact-import"] : [])],
@@ -83,7 +84,7 @@ export function createFreshStandardWorkflowFixture(mode = "db-only", owned = [],
     // No referenced artifact, runtime head or historical record is deleted.
     assert.ok(fs.realpathSync(root).startsWith(temporary + path.sep));
     const artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
-    if (mode !== "files" && fs.existsSync(resolveRuntimeSqliteFile({ targetRoot: root })))
+    if (fs.existsSync(resolveRuntimeSqliteFile({ targetRoot: root })))
       for (const name of absentOptionalDocuments) assert.equal(artifacts.read(name).sha256, null);
     for (const name of absentOptionalDocuments) {
       const file = path.join(root, "docs/audit", name);

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { seedSqliteFixture } from "./test-sqlite-fixture-lib.mjs";
 import os from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -135,13 +136,14 @@ function main() {
     fs.cpSync(path.resolve(fixture), filesRepo, { recursive: true });
     const filesConfigPath = path.join(filesRepo, ".aidn/config.json");
     const filesConfig = JSON.parse(fs.readFileSync(filesConfigPath, "utf8"));
-    filesConfig.runtime = { ...filesConfig.runtime, stateMode: "files", indexStoreMode: "files" };
+    filesConfig.runtime = { ...filesConfig.runtime, stateMode: "dual", indexStoreMode: "dual-sqlite" };
     fs.writeFileSync(filesConfigPath, JSON.stringify(filesConfig));
+    seedSqliteFixture(filesRepo);
     const filesOut = path.join(tempRoot, "RUNTIME-STATE-files.md");
     const defaultFilesOut = path.join(filesRepo, "docs/audit/RUNTIME-STATE.md");
     const defaultBefore = fs.existsSync(defaultFilesOut) ? fs.readFileSync(defaultFilesOut, "utf8") : null;
     for (const flags of [[], ["--out", filesOut], ["--out", filesOut, "--dry-run"], ["--out", filesOut, "--write"]]) {
-      const filesResult = runJson("tools/runtime/project-runtime-state.mjs", ["--target", filesRepo, "--json", ...flags], { AIDN_STATE_MODE: "files", AIDN_INDEX_STORE_MODE: "files" });
+      const filesResult = runJson("tools/runtime/project-runtime-state.mjs", ["--target", filesRepo, "--json", ...flags], { AIDN_STATE_MODE: "dual", AIDN_INDEX_STORE_MODE: "dual-sqlite" });
       assert(filesResult.shared_state_backend === null, "files mode must explicitly report no shared backend");
       assert(validateJsonSchema(filesResult, schema).length === 0, "files-mode projector output must match its public contract");
       for (const invalidBackend of [false, "files", [], {}]) {
@@ -157,7 +159,7 @@ function main() {
       const failure = spawnSync(process.execPath, ["tools/runtime/project-runtime-state.mjs", "--target", filesRepo,
         "--hydrated-file", invalidHydration, "--out", invalidOut, "--json", ...flags], {
         cwd: process.cwd(), encoding: "utf8", windowsHide: true,
-        env: { ...process.env, AIDN_STATE_MODE: "files", AIDN_INDEX_STORE_MODE: "files" },
+        env: { ...process.env, AIDN_STATE_MODE: "dual", AIDN_INDEX_STORE_MODE: "dual-sqlite" },
       });
       assert(failure.status === 1, "unsafe hydrated path must refuse the CLI projection");
       const refused = JSON.parse(failure.stdout);
@@ -297,8 +299,8 @@ function main() {
     resultPayload = {
       ok: true,
       status: "PASS",
-      files_mode_contract: "PASS",
-      files_mode_variants: 4,
+      local_sql_contract: "PASS",
+      local_sql_variants: 4,
       malformed_backend_refusals: true,
       db_mode_contracts: "PASS",
       success_cleanup: true,

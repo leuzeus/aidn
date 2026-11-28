@@ -13,7 +13,7 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 
 export async function verifyStandardPreviewValidity(pass) {
   const temporary = fs.realpathSync(os.tmpdir());
-  for (const mode of ["files", "dual", "db-only"]) {
+  for (const mode of ["dual", "db-only"]) {
     const owned = [];
     try {
       const root = createStandardWorkflowFixture(mode, owned);

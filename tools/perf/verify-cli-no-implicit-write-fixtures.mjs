@@ -41,6 +41,7 @@ function printUsage() {
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const AIDN_BIN = path.join(REPO_ROOT, "bin", "aidn.mjs");
+import { seedSqliteFixture } from './test-sqlite-fixture-lib.mjs';
 
 function copyFixture(sourceRoot) {
   const stamp = new Date().toISOString().replace(/[-:.]/g, "").replace("T", "T").replace("Z", "Z");
@@ -52,7 +53,7 @@ function copyFixture(sourceRoot) {
       return ![".git", ".agents", ".codex", ".aidn/install", ".aidn/codex"].some((prefix) => relative === prefix || relative.startsWith(prefix + "/")) && relative !== "AGENTS.md";
     },
   });
-  try { prepareActivationFixture(tmpRoot, REPO_ROOT); }
+  try { seedSqliteFixture(tmpRoot); prepareActivationFixture(tmpRoot, REPO_ROOT); }
   catch (error) { fs.rmSync(tmpRoot, { recursive: true, force: true }); throw error; }
   return tmpRoot;
 }

@@ -26,7 +26,7 @@ const owned = [], key = randomBytes(32), signer = createOperationJournalSigner((
 let checks = 0;
 const test = (name, run) => { run(); checks++; console.log("PASS " + name); };
 try {
-  const root = createStandardWorkflowFixture("files", owned);
+  const root = createStandardWorkflowFixture("dual", owned);
   const privateRoot = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-history-key-")); owned.push(privateRoot);
   const configuration = { target_root: root, instance_id: "history", control_root: privateRoot,
     product_root: path.join(privateRoot, "product"), review_root: path.join(privateRoot, "review"), native: { home: path.join(privateRoot, "home") } };
@@ -42,7 +42,7 @@ try {
   const scopeId = shadowHash({ project: project.scope, persistence: persistence.binding_sha256,
     process_host: { version: 1, profile: "standard-mixed.v1", state_mode: project.stateMode, key_id: signer.keyId, model_sha256: shadowHash(model), model_source_sha256: null } });
   let instance = createAgenticProcess({ instanceId: configuration.instance_id, scopeId, model, policyPins: agenticPolicyPins(model) });
-  const store = createProcessOperationJournalStore({ targetRoot: root, stateMode: "files" }), journals = [];
+  const store = createProcessOperationJournalStore({ targetRoot: root, stateMode: "dual" }), journals = [];
   for (const [index, node] of ["first", "second"].entries()) {
     const occurrenceId = "root/" + index, id = operationJournalId(instance, occurrenceId), input = {}, snapshot = {};
     const preview = signer.seal({ contract_version: "standard-operation-preview.v1", instance_id: instance.instance_id,
@@ -66,7 +66,7 @@ try {
   const open = (config = configuration, readSigningKey = () => key) => createStandardProcessAuthority({ configuration: config, model, readSigningKey,
     readProductSha256: () => { throw Error("HISTORICAL_DIAGNOSTIC_PRODUCT_READ_UNEXPECTED"); } });
   const authority = open();
-  createAgenticProcessStore({ targetRoot: root, stateMode: "files" }).compareAndSwap(instance, null);
+  createAgenticProcessStore({ targetRoot: root, stateMode: "dual" }).compareAndSwap(instance, null);
   let authorizations = 0, nativeControllers = 0;
   const host = createStandardWorkflowMixedHost({ configuration, readSigningKey: () => key,
     authorize: async () => { authorizations++; throw Error("UNEXPECTED_AUTHORIZATION"); } },
@@ -139,7 +139,7 @@ try {
       tree_proof_sha256: shadowHash(closure.process_tree), tree_closed: true, owned_status: "COMPLETED", first_failure: null,
       checkpoint: { path: checkpointFile, sha256: bytesHash(checkpointFile), state_sha256: shadowHash(state), instance_sha256: instance.instance_sha256 },
       consumption: { responses_observed: 0, response_sha256: [], storage_debit_bytes: 0, native_usage_sha256: null }, closure_ref: { path: closureFile, sha256: bytesHash(closureFile) } }] });
-  createNativeAllocationJournalStore({ targetRoot: root, stateMode: "files" }).compareAndSwap(journal, null);
+  createNativeAllocationJournalStore({ targetRoot: root, stateMode: "dual" }).compareAndSwap(journal, null);
   test("signed historical checkpoint remains readable after code changes and grant expiry", () => {
     assert.deepEqual(authority.inspectDiagnostic(instance).checkpoint, state);
     assert.deepEqual(host.inspectDiagnostic().native.checkpoint, state);

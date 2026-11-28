@@ -126,7 +126,7 @@ async function freshEpoch(item) {
     current_native_scope_included: true, new_allocations: 0, actual_source_Ed25519: true, consent_and_closure: 'SYNTHETIC_FIXTURE' };
 }
 export async function verifyNativePostAssignmentReconciliationFixture(mode) {
-  assert.ok(['files', 'dual', 'db-only'].includes(mode));
+  assert.ok(['dual', 'db-only'].includes(mode));
   const item = await make(mode), data = item.data, preparation = read(item.preparation), q = preparation.request;
   const original = immutable(data), nativeBefore = artifacts(data).read('workflows/native-allocations/' + q.journal_id + '.json', { required: true }).content;
   assert.equal(q.contract_version, 'native-allocation-reconciliation-request.v2'); assert.equal(q.minimum_consumption.responses_observed, 1);

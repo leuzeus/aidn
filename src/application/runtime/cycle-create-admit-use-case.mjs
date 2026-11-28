@@ -42,7 +42,7 @@ function makeResult(base, overrides = {}) {
     planning_arbitration_status: base.planning_arbitration_status,
     shared_planning_source: base.shared_planning_source ?? "current-state",
     continuity_context_source: base.continuity_context_source ?? "visible-files",
-    continuity_context_backend: base.continuity_context_backend ?? "files",
+    continuity_context_backend: base.continuity_context_backend ?? "dual",
     canonical_runtime_available: base.canonical_runtime_available === true,
     canonical_runtime_required: base.canonical_runtime_required === true,
     canonical_continuity_status: base.canonical_continuity_status ?? "visible-files",

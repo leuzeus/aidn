@@ -8,7 +8,6 @@ import { assertProjectArtifactPathInventory, assertProjectReconciliationArtifact
 import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { artifactContentHash, artifactMetadataHash } from "../../core/workflow/artifact-compare-swap.mjs";
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
-import { writeFileAtomicSync } from "../../lib/fs/atomic-write-lib.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import ownerSchema from "../../core/contracts/workflow-definition/process-local-effect-owner.v1.schema.json" with { type: "json" };
@@ -27,49 +26,37 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
   function describe() {
     const config = readAidnProjectConfig(root).data; validateAidnProjectConfig(config);
-    const stateMode = resolveConfigStateMode(config) ?? "files";
+    const stateMode = resolveConfigStateMode(config) ?? "dual";
     if (env.AIDN_STATE_MODE && env.AIDN_STATE_MODE.trim().toLowerCase() !== stateMode) fail("STANDARD_STATE_MODE_CONFLICT");
     const persistence = resolveEffectiveRuntimePersistence({ targetRoot: root, env });
     if (config.runtime?.persistence?.backend === "postgres" && persistence.backend !== "postgres") fail("STANDARD_CANONICAL_BACKEND_CONFLICT");
     return { state_mode: stateMode, backend: persistence.backend, source: persistence.source,
-      connection_ref: persistence.connectionRef, database: stateMode !== "files" || persistence.backend === "postgres" };
+      connection_ref: persistence.connectionRef, database: true };
   }
   function relative(value) {
     if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,191}$/.test(value)
       || value.split("/").some(part => [".", "..", ".git", ".aidn", ".codex"].includes(part))) fail("STANDARD_ARTIFACT_PATH_INVALID");
     return value;
   }
-  const location = value => agentRunPhysicalPath(path.join(root, "docs/audit", relative(value)), { missing: true });
   function open(readOnly) {
     const current = describe();
     if (current.backend === "sqlite" && !fs.existsSync(resolveRuntimeSqliteFile({ targetRoot: root }))) fail("STANDARD_CANONICAL_STORE_UNAVAILABLE");
     return createProjectArtifactStore({ targetRoot: root, readOnly, existingOnly: true, env });
   }
   function readRow(name, row, selected, required) {
-    if (selected.database && row && (row.content_format !== "utf8" || typeof row.content !== "string" || artifactContentHash(row.content) !== row.sha256))
+    if (row && (row.content_format !== "utf8" || typeof row.content !== "string" || artifactContentHash(row.content) !== row.sha256))
       fail("STANDARD_ARTIFACT_INTEGRITY_INVALID");
     if (!row && required) fail("STANDARD_REQUIRED_ARTIFACT_MISSING");
-    return { path: name, content: row?.content ?? null, sha256: row?.sha256 ?? null, source: selected.database ? selected.backend : "files" };
+    return { path: name, content: row?.content ?? null, sha256: row?.sha256 ?? null, source: selected.backend };
   }
   function read(name, { required = false } = {}) {
     relative(name); const selected = describe(); let row = null;
-    if (selected.database) {
-      const store = open(true);
-      try { row = store.getArtifact(name); } finally { store.close(); }
-    } else {
-      const file = location(name);
-      if (fs.existsSync(file)) { const observed = readAgentRunFile(file, { json: false, maxBytes: STANDARD_ARTIFACT_MAX_BYTES }); row = { content: observed.value.toString("utf8"), sha256: observed.sha256 }; }
-    }
+    const store = open(true);
+    try { row = store.getArtifact(name); } finally { store.close(); }
     return readRow(name, row, selected, required);
   }
   function readMany(names, { required = [], includeMetadata = false } = {}) {
     const requiredNames = new Set(required), selected = describe();
-    if (!selected.database) {
-      return names.map(name => {
-        const observed = read(name, { required: requiredNames.has(name) });
-        return includeMetadata ? { ...observed, metadata_sha256: metadataHash(name) } : observed;
-      });
-    }
     const paths = names.map(relative), store = open(true);
     try {
       if (store.backend !== selected.backend) fail("STANDARD_CANONICAL_BACKEND_CONFLICT");
@@ -85,7 +72,7 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     if (!activeOwner) fail("STANDARD_EFFECT_OWNER_REQUIRED");
     fence().assert(activeOwner.lease);
     relative(change.path); const selected = describe();
-    if (selected.database) {
+    {
       const store = open(false);
       try {
         if (typeof store.compareAndSwapArtifact !== "function") fail("STANDARD_CANONICAL_CAS_REQUIRED");
@@ -97,22 +84,19 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
           canonical: buildCanonicalFromMarkdown(change.after, { relativePath: change.path, classification: { kind, family, ...(cycle ? { subtype: "status" } : {}) } }),
           ...(cycle ? { cycle_id: cycle[1], subtype: "status" } : {}), ...(isSession ? { session_id: path.basename(change.path, ".md") } : {}) } });
       } finally { store.close(); }
-      return { committed: true, projection: selected.state_mode === "dual" || selected.state_mode === "files" ? "pending" : "not_requested" };
+      return { committed: true, projection: selected.state_mode === "dual" ? "pending" : "not_requested" };
     }
-    if (read(change.path).sha256 !== change.before_sha256) fail("STANDARD_ARTIFACT_REVISION_CONFLICT");
-    writeFileAtomicSync(location(change.path), change.after);
-    return { committed: true, projection: "canonical" };
   }
   function project(names) {
     if (activeOwner) fence().assert(activeOwner.lease);
     const selected = describe();
-    if (!selected.database || selected.state_mode === "db-only") return { requested: false };
+    if (selected.state_mode === "db-only") return { requested: false };
     const store = open(false);
     try { return store.materializeArtifacts({ targetRoot: root, auditRoot: "docs/audit", onlyPaths: names, dryRun: false }); }
     finally { store.close(); }
   }
   function metadataHash(name) {
-    relative(name); if (!describe().database) return null;
+    relative(name);
     const store = open(true);
     try { const row = store.getArtifact(name); return row ? artifactMetadataHash(row) : null; } finally { store.close(); }
   }
@@ -122,7 +106,6 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     relative(change.path);
     if (!Object.hasOwn(change, "before_metadata_sha256") || change.before_metadata_sha256 !== null && !/^[a-f0-9]{64}$/.test(change.before_metadata_sha256)) fail("STANDARD_METADATA_PREIMAGE_REQUIRED");
     const selected = describe();
-    if (!selected.database) return { ...compareAndSwap(change), metadata_sha256: null };
     const store = open(false);
     try {
       const previous = store.getArtifact(change.path);
@@ -224,34 +207,19 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
         || path.posix.isAbsolute(name) || path.win32.isAbsolute(name) || name.split("/").some(part => !part || [".", ".."].includes(part))) fail("STANDARD_ARTIFACT_INVENTORY_INVALID");
       return name;
     };
-    if (selected.database) {
-      const store = open(true);
-      try { const paths = assertProjectArtifactPathInventory(store).listArtifactPaths(10000); if (paths.length >= 10000) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED"); names = paths.map(nameOf); }
-      finally { store.close(); }
-    } else {
-      const folder = agentRunPhysicalPath(path.join(root, "docs/audit")); let entries = 0;
-      const walk = (at, depth = 0) => {
-        if (depth > 64) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED");
-        for (const name of fs.readdirSync(at).sort()) {
-          if (++entries >= 10000) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED");
-          const file = agentRunPhysicalPath(path.join(at, name)), stat = fs.lstatSync(file);
-          if (stat.isDirectory()) walk(file, depth + 1);
-          else if (stat.isFile()) names.push(nameOf(path.relative(folder, file).replaceAll("\\", "/")));
-          else fail("STANDARD_ARTIFACT_INVENTORY_UNSUPPORTED");
-        }
-      };
-      walk(folder);
-    }
+    const store = open(true);
+    try { const paths = assertProjectArtifactPathInventory(store).listArtifactPaths(10000); if (paths.length >= 10000) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED"); names = paths.map(nameOf); }
+    finally { store.close(); }
     names.sort();
     if (new Set(names.map(name => process.platform === "win32" ? name.toLowerCase() : name)).size !== names.length) fail("STANDARD_ARTIFACT_INVENTORY_AMBIGUOUS");
-    return { complete: true, source: selected.database ? selected.backend : "files", paths: names, sha256: shadowHash(names) };
+    return { complete: true, source: selected.backend, paths: names, sha256: shadowHash(names) };
   }
   // A single canonical list statement supplies DB content and metadata together.
   // Do not enumerate a projection and then import it as a recovery authority.
   // This is an observation, not a transaction fence or an effect disposition.
   function observeInventory({ instanceId = null } = {}) {
     const selected = describe(); let rows;
-    if (selected.database) {
+    {
       const store = open(true);
       try { rows = instanceId === null ? store.listArtifacts(10000)
         : assertProjectReconciliationArtifactInventory(store).listReconciliationArtifacts(instanceId, 10000); }
@@ -268,7 +236,7 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
           fail("STANDARD_ARTIFACT_INTEGRITY_INVALID");
         return { path: row.path, content: row.content, sha256: row.sha256, metadata_sha256: artifactMetadataHash(row) };
       });
-    } else rows = inventory().paths.map(name => ({ ...read(name, { required: true }), metadata_sha256: null }));
+    }
     let bytes = 0;
     for (const row of rows) {
       relative(row.path);
@@ -278,7 +246,7 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     rows.sort((a, b) => a.path.localeCompare(b.path, "en"));
     if (new Set(rows.map(row => process.platform === "win32" ? row.path.toLowerCase() : row.path)).size !== rows.length)
       fail("STANDARD_ARTIFACT_INVENTORY_AMBIGUOUS");
-    return { source: selected.database ? selected.backend : "files", binding_sha256: shadowHash(selected), rows };
+    return { source: selected.backend, binding_sha256: shadowHash(selected), rows };
   }
   function listDatabaseArtifacts(expectedBackend) {
     const store = open(true);
@@ -324,18 +292,12 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
   function sessions() {
     const selected = describe();
     if (selected.backend === "postgres") return postgresTopology(selected).sessions();
-    if (selected.database) return selectSessions(listDatabaseArtifacts().map(row => row.path), readRequired);
-    const folder = agentRunPhysicalPath(path.join(root, "docs/audit/sessions"), { missing: true });
-    const names = fs.existsSync(folder) ? fs.readdirSync(folder).map(name => "sessions/" + name) : [];
-    return selectSessions(names, readRequired);
+    return selectSessions(listDatabaseArtifacts().map(row => row.path), readRequired);
   }
   function cycles() {
     const selected = describe();
     if (selected.backend === "postgres") return postgresTopology(selected).cycles();
-    if (selected.database) return selectCycles(listDatabaseArtifacts().map(row => row.path), readRequired);
-    const directory = agentRunPhysicalPath(path.join(root, "docs/audit/cycles"), { missing: true });
-    const names = fs.existsSync(directory) ? fs.readdirSync(directory).filter(name => /^C\d+[^/]*$/.test(name)).map(name => `cycles/${name}/status.md`) : [];
-    return selectCycles(names, readRequired);
+    return selectCycles(listDatabaseArtifacts().map(row => row.path), readRequired);
   }
   return Object.freeze({ root, describe, read, readMany, inventory, observeInventory, observeTopology, sessions, cycles, metadataHash, compareAndSwapPreservingMetadata, compareAndSwap, project, withLocalEffectOwner, assertLocalEffectOwner,
     resourceFence: () => fence(), localOwnerPending: () => fs.existsSync(lock()), ownerPending: () => fs.existsSync(lock()) || fence().read().record?.state === "held" });

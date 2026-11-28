@@ -13,10 +13,10 @@ import { nativeJournalId } from '../../src/core/workflow/native-allocation-journ
 import { createOperationJournalSigner } from '../../src/core/workflow/process-operation-journal.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 
-const args = process.argv.slice(2), modes = ['files', 'dual', 'db-only'];
+const args = process.argv.slice(2), modes = ['dual', 'db-only'];
 if (args.some(value => !modes.includes(value) && value !== '--contracts-only') || args.filter(value => modes.includes(value)).length > 1)
   throw Object.assign(Error('NATIVE_DISPATCH_FIXTURE_ARGUMENT_INVALID'), { code: 'NATIVE_DISPATCH_FIXTURE_ARGUMENT_INVALID' });
-const contractsOnly = args.includes('--contracts-only'), mode = args.find(value => modes.includes(value)) ?? 'files';
+const contractsOnly = args.includes('--contracts-only'), mode = args.find(value => modes.includes(value)) ?? 'dual';
 const key = () => Buffer.alloc(32, 73), signer = createOperationJournalSigner(key), H = value => shadowHash(value);
 const uuid = n => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
 let checks = 0;

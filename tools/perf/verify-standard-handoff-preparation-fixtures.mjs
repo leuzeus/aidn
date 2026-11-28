@@ -16,7 +16,7 @@ import { createLocalProcessAdapter } from '../../src/adapters/runtime/local-proc
 import { assertModeWorkDecisionOutput } from '../../src/core/workflow/standard-mode-work-continuation.mjs';
 import { handoffPreparationPaths } from '../../src/core/workflow/standard-handoff-preparation.mjs';
 import { shadowHash as H } from '../../src/core/workflow/shadow-json.mjs';
-export async function verifyStandardHandoffPreparationPorts({ modes = ['files', 'dual', 'db-only'] } = {}) {
+export async function verifyStandardHandoffPreparationPorts({ modes = ['dual', 'db-only'] } = {}) {
   const owned = [], retained = new Set(), checks = [], hash = 'a'.repeat(64);
   const op = label => 'op_' + H(label).slice(0, 40), git = (root, ...args) => execFileSync('git', ['--no-optional-locks', '-C', root, ...args], { encoding: 'utf8', windowsHide: true });
   const check = (name, condition) => { assert(condition, name); checks.push(name); };

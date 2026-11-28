@@ -586,21 +586,7 @@ async function collectCurrentStateFromIndex(targetRoot, args, gitAdapter, comple
 }
 
 async function collectCurrentState(targetRoot, args, gitAdapter, completionCycleId = null) {
-  if (args.stateMode === "files" && args.indexBackend !== "postgres") {
-    return collectCurrentStateFromFiles(targetRoot, gitAdapter, completionCycleId);
-  }
-  try {
-    return await collectCurrentStateFromIndex(targetRoot, args, gitAdapter, completionCycleId);
-  } catch (error) {
-    if (args.stateMode === "dual" && args.indexBackend !== "postgres") {
-      const fallback = collectCurrentStateFromFiles(targetRoot, gitAdapter, completionCycleId);
-      fallback.state_source = "files";
-      fallback.state_mode_fallback = "index_unavailable";
-      fallback.state_mode_fallback_reason = String(error.message ?? error);
-      return fallback;
-    }
-    throw error;
-  }
+  return collectCurrentStateFromIndex(targetRoot, args, gitAdapter, completionCycleId);
 }
 
 function readCache(cachePath) {
@@ -743,8 +729,8 @@ export async function runReloadCheckUseCase({ args, targetRoot, completionCycleI
       args.stateMode = configStateMode;
     }
   }
-  if (!["files", "dual", "db-only"].includes(args.stateMode)) {
-    throw new Error("Invalid effective state mode. Expected files|dual|db-only");
+  if (!["dual", "db-only"].includes(args.stateMode)) {
+    throw new Error("Invalid effective state mode. Expected dual|db-only");
   }
   args.cache = resolveRuntimeTargetPath(targetRoot, args.cache);
   args.indexBackend = resolveWorkflowSnapshotBackend(targetRoot, args.indexFile, args.indexBackend);

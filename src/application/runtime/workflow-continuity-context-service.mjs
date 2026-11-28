@@ -1,4 +1,5 @@
 import path from "node:path";
+import { normalizeStateMode } from '../../lib/config/aidn-config-lib.mjs';
 import { readPrOpeningLocator } from "../../core/workflow/standard-session-pr-record.mjs";
 import {
   createRuntimeCanonicalSnapshotReader,
@@ -362,7 +363,7 @@ function buildCanonicalCycles(payload, auditRoot) {
 
 export async function resolveWorkflowContinuityContext({
   targetRoot,
-  effectiveStateMode = "files",
+  effectiveStateMode = "dual",
   visibleCurrentState,
   visibleSessions = [],
   visibleCycles = [],
@@ -371,8 +372,8 @@ export async function resolveWorkflowContinuityContext({
   const runtimePersistence = resolveEffectiveRuntimePersistence({
     targetRoot,
   });
-  const dbBackedMode = effectiveStateMode === "dual" || effectiveStateMode === "db-only";
-  const canonicalRequired = effectiveStateMode === "db-only" || runtimePersistence.backend === "postgres";
+  normalizeStateMode(effectiveStateMode);
+  const canonicalRequired = true;
   const visible = {
     current_state: visibleCurrentState,
     sessions: visibleSessions,
@@ -385,9 +386,6 @@ export async function resolveWorkflowContinuityContext({
     canonical_continuity_ambiguities: [],
     warning: "",
   };
-  if (!dbBackedMode && runtimePersistence.backend !== "postgres") {
-    return visible;
-  }
 
   const reader = runtimeSnapshotReaderFactory({
     targetRoot,
@@ -403,7 +401,8 @@ export async function resolveWorkflowContinuityContext({
   if (!snapshot?.exists || !snapshot?.payload) {
     return {
       ...visible,
-      source: "visible-files-fallback",
+      current_state: { ...visibleCurrentState, active_session: 'none', active_cycle: 'none' },
+      sessions: [], cycles: [], source: "runtime-canonical-unavailable",
       backend_kind: backendKind,
       canonical_continuity_status: "unavailable",
       warning: normalizeScalar(snapshot?.warning) || `canonical ${backendKind} runtime snapshot is unavailable`,

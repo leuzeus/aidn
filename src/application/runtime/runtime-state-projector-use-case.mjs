@@ -582,7 +582,7 @@ export function buildRuntimeStateDigest({
   sessionResolution,
   cycleStatusResolution,
 } = {}) {
-  const runtimeStateMode = String(dbBackedMode ? effectiveStateMode : (hydrated?.state_mode ?? "files"));
+  const runtimeStateMode = String(dbBackedMode ? effectiveStateMode : (hydrated?.state_mode ?? "dual"));
   const governanceMetadata = deriveGovernedRuntimeArtifactMetadata({
     workspace,
     runtimeStateMode,

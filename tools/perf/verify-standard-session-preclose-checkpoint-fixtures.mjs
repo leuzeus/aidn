@@ -10,10 +10,10 @@ import { createStandardWorkflowOperations } from "../../src/application/runtime/
 import { createStandardSessionPrecloseCheckpoint } from "../../src/application/runtime/standard-session-preclose-checkpoint.mjs";
 import { runGatingEvaluateUseCase } from "../../src/application/runtime/gating-evaluate-use-case.mjs";
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
-const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7) ?? "files";
+const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7) ?? "dual";
 const fault = process.argv.includes("--grant-after-git");
 const agedPlan = process.argv.includes("--aged-plan");
-if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
+if (!["dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
 const owned = [], temp = fs.realpathSync(os.tmpdir()), H = "a".repeat(64), id = n => "op_" + String(n).repeat(40);
 const git = (root, ...args) => execFileSync("git", ["-C", root, "-c", "core.hooksPath=NUL", ...args], { encoding: "utf8", windowsHide: true, stdio: "pipe" }).trim();
 let checks = 0, complete = false;

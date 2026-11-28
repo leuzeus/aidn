@@ -248,7 +248,7 @@ async function main() {
       }
       return child;
     }
-    for (const mode of ["files", "dual", "db-only"]) {
+    for (const mode of ["dual", "db-only"]) {
       const child = cli([], 0, { AIDN_STATE_MODE: mode });
       const result = JSON.parse(child.stdout.trim());
       check(`${mode}_cli_public_contract`, validateJsonSchema(result, schema).length, 0);
@@ -256,7 +256,7 @@ async function main() {
       check(`${mode}_cli_scope`, result.artifacts.map((row) => row.unit_id), ["invariants"]);
     }
     fs.writeFileSync(requestFile, JSON.stringify(request(["local"], { optional: ["optional"] })));
-    const cliBaseline = JSON.parse(cli([], 0, { AIDN_STATE_MODE: "files" }).stdout);
+    const cliBaseline = JSON.parse(cli([], 0, { AIDN_STATE_MODE: "dual" }).stdout);
     const baselineFile = path.join(temporary, "prior-complete-selection.json");
     fs.writeFileSync(baselineFile, JSON.stringify(cliBaseline));
     const inputSnapshot = () => JSON.stringify(fs.readdirSync(temporary, { recursive: true, withFileTypes: true })
@@ -265,7 +265,7 @@ async function main() {
         return [path.relative(temporary, file), hash(fs.readFileSync(file))];
       }).sort());
     const beforeDeltaCli = inputSnapshot();
-    const deltaChild = cli(["--context-baseline-file", baselineFile], 0, { AIDN_STATE_MODE: "files" });
+    const deltaChild = cli(["--context-baseline-file", baselineFile], 0, { AIDN_STATE_MODE: "dual" });
     const cliDelta = JSON.parse(deltaChild.stdout);
     check("delta_cli_current_public_contract", validateJsonSchema(cliDelta, schema).length, 0);
     check("delta_cli_retains_fresh_mandatory_closure", cliDelta.artifacts.map(unit => unit.unit_id), ["invariants", "local"]);
@@ -285,7 +285,8 @@ async function main() {
     check("cli_no_hidden_bundle_write", !fs.existsSync(path.join(temporary, ".aidn/runtime/context/hydrated-context.json")));
     check("cli_no_visible_projection_write", !fs.existsSync(path.join(temporary, "docs/audit/RUNTIME-STATE.md")));
     fs.appendFileSync(path.join(temporary, "docs/audit/SPEC.md"), "\nLive file changed without index refresh.\n");
-    check("files_stale_index_cannot_override_live_rule", (await hydrate(request(["invariants"]))).context_selection.errors[0].reason, "source_revision_mismatch");
+    const canonicalAfterProjectionDrift = await hydrate(request(["invariants"]), { backend: "sqlite", indexFile: sqliteFile });
+    check("sql_authority_ignores_stale_visible_projection", canonicalAfterProjectionDrift.artifacts.map(row => row.content_excerpt), sqliteResult.artifacts.map(row => row.content_excerpt));
     fs.writeFileSync(path.join(temporary, "docs/audit/SPEC.md"), documents["SPEC.md"]);
     check("effect_policy_consultative_read_only", resolveCliEffectClass("aidn codex hydrate-context", ["--context-selection-file", requestFile, "--json"]), "read-only");
     fs.mkdirSync(path.join(temporary, ".aidn"), { recursive: true });

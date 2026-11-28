@@ -71,7 +71,7 @@ if (process.argv[2] === '--deliver') {
   const parent = fs.realpathSync(os.tmpdir()), owned = []; let checks = 0;
   const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + name); };
   const selected = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7);
-  if (selected && !['files', 'dual', 'db-only'].includes(selected)) throw Error('FIXTURE_MODE_INVALID');
+  if (selected && !['dual', 'db-only'].includes(selected)) throw Error('FIXTURE_MODE_INVALID');
   try {
     if (!process.argv.includes('--body-transfer-only')) await verifyCodexReviewSummary({ test, workingDirectory: parent });
     // Exercise the composed driver's real arrangement -> durable provider store
@@ -81,7 +81,7 @@ if (process.argv[2] === '--deliver') {
       ['positive', 'Complete fixture review evidence.'],
       ['correction', 'The exported product value needs a bounded correction in a new admitted cycle, followed by impacted validation and fresh delivery.'],
     ]) {
-      const root = createStandardWorkflowFixture('files', owned), privateRoot = fs.mkdtempSync(path.join(parent, 'aidn-standard-body-control-'));
+      const root = createStandardWorkflowFixture('dual', owned), privateRoot = fs.mkdtempSync(path.join(parent, 'aidn-standard-body-control-'));
       owned.push(privateRoot);
       const remote = fs.mkdtempSync(path.join(parent, 'aidn-standard-body-remote-')); owned.push(remote);
       git(root, 'branch', 'main');
@@ -153,7 +153,7 @@ if (process.argv[2] === '--deliver') {
         assert.deepEqual(validateJsonSchemaDefinition(schema, '#', { contractKind: 'workflow-definition' }), []);
       }
     });
-    for (const mode of selected ? [selected] : ['files', 'dual', 'db-only']) {
+    for (const mode of selected ? [selected] : ['dual', 'db-only']) {
       const root = createStandardWorkflowFixture(mode, owned), privateRoot = fs.mkdtempSync(path.join(parent, 'aidn-standard-pr-control-')); owned.push(privateRoot);
       fs.writeFileSync(path.join(privateRoot, 'host.key'), randomBytes(32));
       const p = { repository_id: 'R_fixture', node_id: 'PR_fixture', number: 7, head_oid: git(root, 'rev-parse', 'HEAD'), base_oid: 'b'.repeat(40),

@@ -48,7 +48,7 @@ if (process.argv[2] === "--accept") {
   let checks = 0;
   const pass = name => { checks++; process.stdout.write(`PASS ${name}\n`); };
   try {
-    for (const mode of ["files", "dual", "db-only"]) {
+    for (const mode of ["dual", "db-only"]) {
       await verifyStandardReconciliationInventory(mode, pass);
       const root = createStandardWorkflowFixture(mode, owned), privateRoot = fs.mkdtempSync(path.join(temporary, "aidn-standard-key-")); owned.push(privateRoot);
       const keyFile = path.join(privateRoot, "host.key"); fs.writeFileSync(keyFile, randomBytes(32));
@@ -174,14 +174,14 @@ if (process.argv[2] === "--accept") {
     }
     // A stopped-state fixture, not proof of OS process-tree death. Its canonical
     // intent is real; its claimed state is authored using the fixture host key.
-    const root = createStandardWorkflowFixture("files", owned), privateRoot = fs.mkdtempSync(path.join(temporary, "aidn-standard-key-")); owned.push(privateRoot);
+    const root = createStandardWorkflowFixture("dual", owned), privateRoot = fs.mkdtempSync(path.join(temporary, "aidn-standard-key-")); owned.push(privateRoot);
     const keyFile = path.join(privateRoot, "host.key"); fs.writeFileSync(keyFile, randomBytes(32));
     const runtime = host(root, keyFile), initial = runtime.initialize({ instanceId: "stopped" });
     runtime.initialize({ instanceId: "stopped", write: true, expectedResultSha256: initial.record.instance_sha256 });
     const frame = runtime.inspect("stopped").cursor.occurrences.find(row => row.status === "READY");
     const preview = await runtime.preview({ instanceId: "stopped", expectedSha256: initial.record.instance_sha256, occurrenceId: frame.occurrence_id });
     const staged = await runtime.stage(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
-    const journal = createProcessOperationJournalStore({ targetRoot: root, stateMode: "files" }), original = journal.read(staged.operation_id);
+    const journal = createProcessOperationJournalStore({ targetRoot: root, stateMode: "dual" }), original = journal.read(staged.operation_id);
     const { authentication, key_id, ...body } = original.record;
     const signed = createOperationJournalSigner(() => fs.readFileSync(keyFile));
     journal.compareAndSwap(signed.seal({ ...body, phase: "dispatching", revision: 2, owner: { generation: "00000000-0000-0000-0000-000000000001", pid: 1 } }), original.content_sha256);
@@ -217,7 +217,7 @@ if (process.argv[2] === "--accept") {
     assert.equal(createStandardWorkflowArtifacts({ targetRoot: partialRoot }).ownerPending(), true);
     pass("real partial SQLite effects retain an authenticated unknown result and prohibit fresh dispatch after reopen");
     checks += await verifyStandardExpiredPlans();
-    for (const mode of ["files", "dual", "db-only"]) checks += await verifyStandardOperationDisposition(mode, pass);
+    for (const mode of ["dual", "db-only"]) checks += await verifyStandardOperationDisposition(mode, pass);
     process.stdout.write(JSON.stringify({ status: "PASS", checks, proof: "offline-real-business-ports-common-reducer-and-new-node-hosts", authorization: "fixture-capability", native: "NOT_RUN", installed_archive: "NOT_RUN", full_standard_workflow: "NOT_YET_DELIVERED" }) + "\n");
   } finally {
     for (const root of owned) {

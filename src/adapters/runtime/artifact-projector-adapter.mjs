@@ -429,6 +429,18 @@ function buildCycleTables(auditRoot) {
   return { cycles, fileMap, cycleTagPairs };
 }
 
+// Same classification/ownership rules for the initial importer and explicit
+// legacy migration. The original bytes remain outside this derived metadata.
+export function projectArtifactMetadata(relativePath, raw) {
+  const classification = inferArtifactClassification(relativePath);
+  const text = path.extname(relativePath).toLowerCase() === '.md' ? decodeUtf8OrNull(raw) : null;
+  const canonical = text ? buildCanonicalFromMarkdown(text, { relativePath, classification }) : null;
+  const resolution = deriveOwnershipFromCanonical(relativePath, inferArtifactOwnership(relativePath), canonical);
+  return { ...classification, ...resolution.ownership,
+    ...(resolution.metadata ?? inferOwnershipMetadata(relativePath, resolution.ownership)),
+    canonical_format: canonical?.format ?? null, canonical };
+}
+
 function buildArtifactRows(auditRoot, options = {}) {
   const embedContent = options.embedContent === true;
   const files = walkFiles(auditRoot);
@@ -438,41 +450,18 @@ function buildArtifactRows(auditRoot, options = {}) {
     const raw = fs.readFileSync(absolutePath);
     const mtimeNs = readPreciseMtimeNs(absolutePath, stats);
     const relativePath = path.relative(auditRoot, absolutePath).replace(/\\/g, "/");
-    const classification = inferArtifactClassification(relativePath);
-    const extension = path.extname(relativePath).toLowerCase();
-    const textContent = extension === ".md" ? decodeUtf8OrNull(raw) : null;
-    const canonical = textContent
-      ? buildCanonicalFromMarkdown(textContent, {
-        relativePath,
-        classification,
-      })
-      : null;
-    const inferredOwnership = inferArtifactOwnership(relativePath);
-    const ownershipResolution = deriveOwnershipFromCanonical(relativePath, inferredOwnership, canonical);
-    const ownership = ownershipResolution.ownership;
-    const ownershipMetadata = ownershipResolution.metadata ?? inferOwnershipMetadata(relativePath, ownership);
+    const metadata = projectArtifactMetadata(relativePath, raw);
     const contentPayload = embedContent
       ? encodeArtifactContent(raw)
       : { content_format: null, content: null };
     artifacts.push({
       path: relativePath,
-      kind: classification.kind,
-      family: classification.family,
-      subtype: classification.subtype,
-      gate_relevance: classification.gate_relevance,
-      classification_reason: classification.classification_reason,
+      ...metadata,
       sha256: sha256Buffer(raw),
       size_bytes: stats.size,
       mtime_ns: mtimeNs,
-      session_id: ownership.session_id,
-      cycle_id: ownership.cycle_id,
-      source_mode: ownershipMetadata.source_mode,
-      entity_confidence: ownershipMetadata.entity_confidence,
-      legacy_origin: ownershipMetadata.legacy_origin,
       content_format: contentPayload.content_format,
       content: contentPayload.content,
-      canonical_format: canonical?.format ?? null,
-      canonical,
       updated_at: toIsoFromStat(stats),
     });
   }

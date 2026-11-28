@@ -80,7 +80,7 @@ for (const name of ['baseline/current.md', 'snapshots/context-snapshot.md', 'WOR
 const cliCache = path.join(root, 'cli.json');
 for (const write of [false, true]) {
  const result = spawnSync(process.execPath, [path.join(sourceRoot, 'tools/perf/reload-check.mjs'), '--target', root,
-  '--state-mode', 'files', '--cache', cliCache, '--json', ...(write ? ['--write-cache'] : [])],
+  '--state-mode', 'dual', '--cache', cliCache, '--json', ...(write ? ['--write-cache'] : [])],
   { encoding: 'utf8', windowsHide: true, timeout: 15000 });
  assert.equal(result.status, 0, result.stderr); const payload = JSON.parse(result.stdout);
  assert.notEqual(payload.decision, 'stop'); assert.equal(payload.cache_written, write); assert.equal(fs.existsSync(cliCache), write);

@@ -221,7 +221,7 @@ async function main() {
     const runs = CASES.map(testCase => runCase(tmpRoot, testCase, target => createdTargets.push(target)));
     const canonical = await verifyCanonicalBaselinePromotion(), pass = runs.every(run => run.pass === true) && canonical.every(run => run.pass);
     const prewrite = [];
-    for (const mode of ["files", "dual", "db-only"]) prewrite.push(await verifyPromotionPrewrite(mode));
+    for (const mode of ["dual", "db-only"]) prewrite.push(await verifyPromotionPrewrite(mode));
     const component = await verifyStandardBaselinePromotionComponent();
     const output = { ts: new Date().toISOString(), runs, canonical, prewrite, component, pass };
     if (args.json) console.log(JSON.stringify(output, null, 2));

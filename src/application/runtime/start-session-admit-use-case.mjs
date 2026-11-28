@@ -75,8 +75,7 @@ export async function runStartSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN"
     gitAdapter,
   });
   const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
-  const canonicalRequired = effectiveStateMode === "db-only"
-    || resolveEffectiveRuntimePersistence({ targetRoot: absoluteTargetRoot }).backend === "postgres";
+  const canonicalRequired = true;
   const visibleCurrentState = canonicalRequired ? {
     audit_root: auditRoot, file_path: path.join(auditRoot, "CURRENT-STATE.md"),
     active_session: "none", active_cycle: "none", branch_kind: "unknown",

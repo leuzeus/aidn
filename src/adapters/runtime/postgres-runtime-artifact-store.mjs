@@ -502,6 +502,7 @@ export function createPostgresRuntimeArtifactStore({
     sourceSqliteFile = "",
     adoptionStatus = "",
     adoptionMetadata = null,
+    requireEmptyTarget = false,
   }) {
     if (!connection.ok) {
       throw new Error(connection.message);
@@ -540,6 +541,16 @@ export function createPostgresRuntimeArtifactStore({
         // covers the legacy snapshot scope this operation actually purges.
         for (const candidateScopeKey of scopeCandidates.slice().sort()) {
           await guardCanonicalMutation(client, candidateScopeKey);
+        }
+        if (requireEmptyTarget) {
+          // Legacy FILES migration may establish a NEW SQL scope, never replace
+          // one discovered after preview. Use the same table lock as every
+          // artifact writer and check all scoped rows before any deletion.
+          const legacy = await client.query("SELECT to_regclass('aidn_runtime.runtime_snapshots') AS name");
+          for (const table of [...RELATIONAL_TABLE_SPECS.map(([name]) => name), 'runtime_scope_registry', ...(legacy.rows[0]?.name ? ['runtime_snapshots'] : [])]) {
+            const occupied = await client.query(`SELECT 1 FROM aidn_runtime.${table} WHERE scope_key = ANY($1::text[]) LIMIT 1`, [scopeCandidates]);
+            if (occupied.rows.length) throw new Error('AIDN_MODE_MIGRATION_TARGET_CONFLICT');
+          }
         }
         const checkpoints = await client.query("SELECT path, content_format, content FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 AND (path LIKE 'workflows/instances/%' OR path LIKE 'workflows/definitions/%' OR path LIKE 'workflows/process-instances/%' OR path LIKE 'workflows/operation-records/%' OR path LIKE 'workflows/decision-inbox/%' OR path LIKE 'workflows/control-inbox/%' OR path LIKE 'workflows/native-allocations/%' OR path LIKE 'workflows/native-dispatches/%' OR path LIKE 'workflows/native-owner-dispositions/%' OR path LIKE 'workflows/native-allocation-reconciliations/%')", [scopeKey]);
         assertWorkflowRecordProjection(checkpoints.rows, normalizedPayload.artifacts);

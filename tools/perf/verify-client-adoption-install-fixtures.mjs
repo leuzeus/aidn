@@ -52,7 +52,7 @@ try {
   client.acceptance.decisionRef = "docs/audit/decisions/client-adoption.md";
   const prior = structuredClone(client);
   client.revision = 2; client.history = [{ adoptionId: client.adoptionId, revision: 1, reference: ".aidn/project/adoption-history/revision-1.json", sha256: hash(JSON.stringify(prior)) }];
-  for (const mode of ["files", "dual", "db-only"]) {
+  for (const mode of ["dual", "db-only"]) {
     stage = mode;
     const target = path.join(temp, mode); fs.mkdirSync(path.join(target, ".aidn/project"), { recursive: true });
     const adapterFile = path.join(target, ".aidn/project/workflow.adapter.json");

@@ -34,7 +34,7 @@ The registered private PR incident record/resolve bindings use the normal host
 grant and existing local effect owner/fence. Only the ignored canonical TEMP
 tracker changes, through explicit content and metadata CAS. FILES writes the
 canonical file; DUAL projects the configured record; DB-only writes no detailed
-projection. Explicit PostgreSQL persistence remains canonical in files mode.
+projection. Both active profiles read canonical SQL; FILES is retired.
 The owning Human comes from its authenticated capture. Resolution consumes the
 accepted matching R09 chain. Known partial writes preserve their exact plan;
 unknown states keep their owner. No rule edit, shared table, source authority
@@ -197,14 +197,14 @@ references and `input_resolution` remain inside its signed operation preview.
 They reuse existing artifact scope/CAS/projection and introduce no shared table,
 credential, automatic approval fact or historical conversion.
 
-Date: 2026-03-28  
+Date: 2026-03-28
 Status: current codebase inventory
 
 Purpose:
 
 - provide a single source of truth for runtime path scope
 - separate checkout-bound artifacts from worktree-local runtime state and shared-runtime candidates
-- define the no-regression rules for `files`, `dual`, and `db-only`
+- define the no-regression rules for `dual` and `db-only`
 
 ## Scope Classes
 
@@ -218,14 +218,14 @@ Purpose:
 | Path or surface | Scope | Shared by default | Current source of truth | Notes |
 | --- | --- | --- | --- | --- |
 | `package/catalogs/standard-workflow-startup.v1.json` and its process-model JSON | `checkout-bound` package source; immutable asset of the installed package revision | no | versioned package catalog, IR, SPEC and skill/code pins | Partial fresh-session startup component. Source descriptor enters host scope and signed operation snapshots; existing process instances embed their exact model. No automatic pin repair, default workflow activation or historical conversion. |
-| `workflows/process-instances/<id>.json` audit artifact | `checkout-bound` in files; configured runtime artifact scope in DB modes | no | files or configured canonical artifact store; configured PostgreSQL always wins | ADR-0022 internal structured profile. Explicit writes and existing CAS/fence; policy, model and occurrence pins. Separate format; no automatic migration, native execution or new shared coordination surface. |
+| `workflows/process-instances/<id>.json` audit artifact | configured runtime artifact scope | no | configured canonical artifact store; configured PostgreSQL always wins | ADR-0022 internal structured profile. Explicit writes and existing CAS/fence; policy, model and occurrence pins. Separate format; no automatic migration, native execution or new shared coordination surface. |
 | Workflow console view and loopback dashboard | `ephemeral` | no | derived from configured canonical artifacts and explicit supervisor status | ADR-0020. Per-record observation, retained/live distinction; memory-only token. Actions reuse the same CLI application services and admissions; no direct SQL or new shared surface. |
-| `workflows/definitions/<workflow-id>.json` audit artifact | `checkout-bound` in files; configured runtime artifact scope in DB modes | no | files or configured canonical artifact store; configured PostgreSQL always wins | ADR-0019 reviewed selection for explicit future instances. Retained review/preview hashes; existing instances stay pinned. Bulk DB projections refuse stale content. No new shared surface. |
-| `workflows/instances/<id>.json` audit artifact | `checkout-bound` in files; configured runtime artifact scope in DB modes | no | files or configured canonical artifact store; configured PostgreSQL always wins | ADR-0018 internal opt-in instance. Dual JSON is derived; db-only has no automatic visible projection. Existing reservation fence applies; no new shared coordination table. |
-| `workflows/operation-records/<id>.json` audit artifact | `checkout-bound` in files; configured runtime artifact scope in DB modes | no | existing canonical artifact CAS; visible JSON is derived in dual | ADR-0025 signed operation preview/intent, dispatch owner and authenticated result. Out-of-product host key capability is never serialized. R09 continuity reads the authenticated origin journal and its accepted process history. An interrupted R09 completion can reobserve Git under its original grant. No implicit takeover or provider write retry. No new shared coordination table. |
-| `workflows/decision-inbox/<id>.json` audit artifact | `checkout-bound` in files; configured runtime artifact scope in DB modes | no | existing canonical artifact CAS; visible JSON is derived in dual | ADR-0025 trusted human source capture, exact question and globally deduplicated source identity. Missing answers wait; refusal, deferral and cancellation remain non-success. Native human/provider adapters require independent qualification. |
-| `workflows/control-inbox/<id>.json` audit artifact | `checkout-bound` in files; configured runtime artifact scope in DB modes | no | existing canonical artifact CAS; visible JSON is derived when required | Signed human/external capture and durable delivery acknowledgement. Actual provider authentication and applicability remain host responsibilities. Native continuation verifies accepted control history and its current context before allocating again. |
-| `workflows/native-allocations/<id>.json` audit artifact | `checkout-bound` in files; configured runtime artifact scope in DB modes | no | existing canonical artifact CAS; visible JSON is derived when required | Signed owned reservation, original ceilings, protected checkpoint/closure references and observed accounting. Explicit native-only continuation restores history, never live resources. No new shared coordination table, automatic retry, deadline extension or standard-workflow qualification. The privileged key capability exists in trusted parent/worker memory and private bounded IPC; it is not a product artifact. |
+| `workflows/definitions/<workflow-id>.json` audit artifact | configured runtime artifact scope | no | configured canonical artifact store; configured PostgreSQL always wins | ADR-0019 reviewed selection for explicit future instances. Retained review/preview hashes; existing instances stay pinned. Bulk DB projections refuse stale content. No new shared surface. |
+| `workflows/instances/<id>.json` audit artifact | configured runtime artifact scope | no | configured canonical artifact store; configured PostgreSQL always wins | ADR-0018 internal opt-in instance. Dual JSON is derived; db-only has no automatic visible projection. Existing reservation fence applies; no new shared coordination table. |
+| `workflows/operation-records/<id>.json` audit artifact | configured runtime artifact scope | no | existing canonical artifact CAS; visible JSON is derived in dual | ADR-0025 signed operation preview/intent, dispatch owner and authenticated result. Out-of-product host key capability is never serialized. R09 continuity reads the authenticated origin journal and its accepted process history. An interrupted R09 completion can reobserve Git under its original grant. No implicit takeover or provider write retry. No new shared coordination table. |
+| `workflows/decision-inbox/<id>.json` audit artifact | configured runtime artifact scope | no | existing canonical artifact CAS; visible JSON is derived in dual | ADR-0025 trusted human source capture, exact question and globally deduplicated source identity. Missing answers wait; refusal, deferral and cancellation remain non-success. Native human/provider adapters require independent qualification. |
+| `workflows/control-inbox/<id>.json` audit artifact | configured runtime artifact scope | no | existing canonical artifact CAS; visible JSON is derived when required | Signed human/external capture and durable delivery acknowledgement. Actual provider authentication and applicability remain host responsibilities. Native continuation verifies accepted control history and its current context before allocating again. |
+| `workflows/native-allocations/<id>.json` audit artifact | configured runtime artifact scope | no | existing canonical artifact CAS; visible JSON is derived when required | Signed owned reservation, original ceilings, protected checkpoint/closure references and observed accounting. Explicit native-only continuation restores history, never live resources. No new shared coordination table, automatic retry, deadline extension or standard-workflow qualification. The privileged key capability exists in trusted parent/worker memory and private bounded IPC; it is not a product artifact. |
 | `docs/audit/SPEC.md`, `docs/audit/WORKFLOW.md`, `docs/audit/WORKFLOW-KERNEL.md`, `docs/audit/WORKFLOW_SUMMARY.md`, `docs/audit/CODEX_ONLINE.md` | `checkout-bound` workflow bootstrap | no | worktree checkout or scaffold materialization | Protected workflow surfaces; strict `db-only` cleanup must not quarantine them. |
 | `docs/audit/CURRENT-STATE.md`, `docs/audit/RUNTIME-STATE.md`, `docs/audit/HANDOFF-PACKET.md`, `docs/audit/snapshots/context-snapshot.md`, `docs/audit/baseline/current.md`, `docs/audit/baseline/history.md`, `docs/audit/parking-lot.md` | `checkout-bound` minimal re-anchor anchors | no | runtime backend plus protected visible anchor | In strict `db-only`, these anchors stay visible/protected so agents can re-anchor; the runtime DB remains canonical. |
 | `docs/audit/cycles/C*`, `docs/audit/sessions/S*.md`, coordination summaries, agent health summaries, detailed runtime projections | `checkout-bound` runtime/state materialization | no | runtime backend with explicit materialization | In strict `db-only`, detailed managed runtime files are not written automatically and may be quarantined after external backup, except active session/cycle paths referenced by current state. |
@@ -267,20 +267,20 @@ refuses reuse. See [working memory](AGENT_WORKING_MEMORY.md).
 
 This overlay names the logical owner of key information concepts. It complements the physical path matrix above.
 
-| Concept | `files` mode source | `dual` mode source | `db-only` mode source | Projection / cache |
-| --- | --- | --- | --- | --- |
-| Workflow rules | `docs/audit/SPEC.md` | same checkout-bound file | protected workflow bootstrap plus hidden runtime config | generated summaries/materialized SPEC on demand |
-| Project policy | `.aidn/project/workflow.adapter.json` | same local/project file | same local/project file | `WORKFLOW.md`, `CODEX_ONLINE.md`, `index.md` on demand |
-| Runtime defaults | `.aidn/config.json` | same worktree-local file | same worktree-local file with explicit `runtime.dbOnly` strict policy | CLI status output |
-| Runtime project context | workspace resolver plus optional locator/env IDs | runtime DB registry plus workspace resolver | runtime DB registry plus workspace resolver | `project_context` JSON output, `runtime_scope_registry` |
-| Session state | `docs/audit/sessions/S*.md` | runtime DB/index plus visible Markdown projection | runtime DB with protected minimal re-anchor pointer | `CURRENT-STATE.md`, runtime heads, active session materialization when explicitly available |
-| Cycle state | `docs/audit/cycles/*/status.md` | runtime DB/index plus visible Markdown projection | runtime DB with protected minimal re-anchor pointer | `CURRENT-STATE.md`, runtime heads, active cycle materialization when explicitly available |
-| Artifact inventory | checkout scan | runtime artifact store | runtime artifact store | SQLite/local exports, materialized docs |
-| Runtime digests | generated Markdown files | runtime store plus generated Markdown | runtime backend plus protected minimal digest anchors | `.aidn/runtime/context/hydrated-context.json`, `RUNTIME-STATE.md`, `HANDOFF-PACKET.md` |
-| Repair findings | local scan/report | repair-layer runtime tables | repair-layer runtime tables | repair reports and summaries |
-| Coordination records | `.aidn/runtime/context/*` | local context or explicit shared backend | local context or explicit shared backend | `COORDINATION-LOG.md`, `COORDINATION-SUMMARY.md` |
-| Agent roster | `docs/audit/AGENT-ROSTER.md` | same checkout-bound file | runtime/configured agent registry, materialized on demand | health and selection summaries |
-| CLI output contracts | package `src/core/contracts/cli-output/*.schema.json` | same package contract | same package contract | generated docs future |
+| Concept | `dual` mode source | `db-only` mode source | Projection / cache |
+| --- | --- | --- | --- |
+| Workflow rules | same checkout-bound file | protected workflow bootstrap plus hidden runtime config | generated summaries/materialized SPEC on demand |
+| Project policy | same local/project file | same local/project file | `WORKFLOW.md`, `CODEX_ONLINE.md`, `index.md` on demand |
+| Runtime defaults | same worktree-local file | same worktree-local file with explicit `runtime.dbOnly` strict policy | CLI status output |
+| Runtime project context | runtime DB registry plus workspace resolver | runtime DB registry plus workspace resolver | `project_context` JSON output, `runtime_scope_registry` |
+| Session state | runtime DB/index plus visible Markdown projection | runtime DB with protected minimal re-anchor pointer | `CURRENT-STATE.md`, runtime heads, active session materialization when explicitly available |
+| Cycle state | runtime DB/index plus visible Markdown projection | runtime DB with protected minimal re-anchor pointer | `CURRENT-STATE.md`, runtime heads, active cycle materialization when explicitly available |
+| Artifact inventory | runtime artifact store | runtime artifact store | SQLite/local exports, materialized docs |
+| Runtime digests | runtime store plus generated Markdown | runtime backend plus protected minimal digest anchors | `.aidn/runtime/context/hydrated-context.json`, `RUNTIME-STATE.md`, `HANDOFF-PACKET.md` |
+| Repair findings | repair-layer runtime tables | repair-layer runtime tables | repair reports and summaries |
+| Coordination records | local context or explicit shared backend | local context or explicit shared backend | `COORDINATION-LOG.md`, `COORDINATION-SUMMARY.md` |
+| Agent roster | same checkout-bound file | runtime/configured agent registry, materialized on demand | health and selection summaries |
+| CLI output contracts | same package contract | same package contract | generated docs future |
 
 ## Supervision Persistence Boundary
 
@@ -326,10 +326,6 @@ observed instance of these concepts.
 
 The overlay above describes where each concept lives. These are the operational guarantees the modes must preserve:
 
-- `files`
-  - checkout-bound artifacts are authoritative
-  - local runtime projections are derived from the checkout
-  - shared runtime is ignored unless a locator explicitly opts in
 - `dual`
   - runtime DB and checkout-bound artifacts coexist
   - local SQLite/projection artifacts remain valid and must stay reconstructible
@@ -397,11 +393,11 @@ ADR-0008 or in the shared coordination port.
 
 ## Regression Rules
 
-### `files`
+### Retired FILES
 
-- runtime readers continue to resolve from checkout/worktree-local files first
-- no shared runtime is consulted unless explicitly configured by locator/env/CLI
-- recommended checks: `npm run perf:verify-cli-no-implicit-write`, `npm run perf:verify-cli-output-contracts`
+FILES is accepted only as an explicit migration source. SQL loss or unavailability
+never enables file authority. Historical schemas and qualification reports retain
+their original mode labels. See [ADR-0027](ADR/ADR-0027-retire-files-state-authority.md).
 
 ### `dual`
 

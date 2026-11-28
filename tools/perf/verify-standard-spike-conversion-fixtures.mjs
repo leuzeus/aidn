@@ -18,8 +18,8 @@ import { runConvertToSpikeCompletionAdmitUseCase } from "../../src/application/r
 import { loadStandardWorkflowAssets } from "../../src/application/runtime/standard-workflow-composition.mjs";
 
 const H = "a".repeat(64), ref = { ref: "fixture:spike-result", sha256: H }, roots = [];
-const storage = process.argv.find(value => value.startsWith("--mode="))?.split("=")[1] ?? "files";
-if (!["files", "dual", "db-only"].includes(storage)) throw Error("SPIKE_FIXTURE_MODE_INVALID");
+const storage = process.argv.find(value => value.startsWith("--mode="))?.split("=")[1] ?? "dual";
+if (!["dual", "db-only"].includes(storage)) throw Error("SPIKE_FIXTURE_MODE_INVALID");
 const git = (root, ...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", windowsHide: true }).trim();
 const context = { session_id: "S001", mode: "EXPLORING", objective: "Measure a bounded experimental behavior", product_sha256: H,
   git: { head: "b".repeat(40), branch: "S001-spike" }, preflight_operation_id: "op_" + "b".repeat(40) };

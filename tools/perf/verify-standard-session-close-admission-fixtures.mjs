@@ -16,8 +16,8 @@ import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import schema from "../../src/core/contracts/workflow-definition/standard-session-close-admission-output.v1.schema.json" with { type: "json" };
-const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "files";
-if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
+const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "dual";
+if (!["dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
 const owned = [], temp = fs.realpathSync(os.tmpdir()); let checks = 0, completed = false;
 const pass = name => { checks++; console.log("PASS " + name); };
 function snapshot(root) {
