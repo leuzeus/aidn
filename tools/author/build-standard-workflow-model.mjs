@@ -1076,9 +1076,27 @@ const retainedValidationRef = pinTarget(retainedValidationTarget);
 node('retained_validation', 'call', { target: retainedValidationRef });
 inputs.push({ node_id: 'retained_validation', fields: { implementation_operation_id: { source: 'operation_output', node_id: 'work_phase_select', path: ['observations', 'implementation_operation_id'] } } });
 
-// Keep the existing root bound by grouping the deterministic preparation
-// already isolated from integration. Its routing, effects and inputs are
-// unchanged; the target contains no Native activity and takes no caller data.
+// Routing facts belong to entry_select's root scope. Called models start with
+// empty local facts; only the already selected deterministic sequence may move
+// into a call. No caller fact is inherited or synthesized in the callee.
+const deliveryRoute = nodes.find(row => row.id === 'session_integration_preparation_route');
+deliveryRoute.branches.splice(1, 0,
+  { flow_id: 'delivered', node_id: 'session_delivery_prepare', condition: 'retained_session_delivery_requested' },
+  { flow_id: 'checkpoint', node_id: 'session_checkpoint_delivery_prepare', condition: 'retained_session_checkpoint_requested' });
+const deliveryPreparation = nodes.find(row => row.id === 'session_integration_prepare');
+deliveryPreparation.children[0] = 'session_close_prepare';
+const checkpointDeliveryNodes = ['session_close_finalize', 'session_delivery_prepare'].map(id => structuredClone(nodes.find(row => row.id === id)));
+const checkpointDeliveryInputs = inputs.filter(row => checkpointDeliveryNodes.some(node => node.id === row.node_id)).map(row => structuredClone(row));
+const checkpointDeliveryTarget = { contract_version: 'agentic-process-model.v2', model_id: 'aidn-standard-checkpoint-delivery-preparation', revision: 1,
+  participants: [{ id: 'project' }], roles: [], policies: [], entry: 'checkpoint_delivery',
+  nodes: [{ id: 'checkpoint_delivery', kind: 'sequence', participant_ref: 'project', children: checkpointDeliveryNodes.map(row => row.id) }, ...checkpointDeliveryNodes],
+  operation_pins: pinsFor(checkpointDeliveryNodes), call_interface: { parameters: {}, returns: {} },
+  data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [], inputs: checkpointDeliveryInputs } };
+const checkpointDeliveryRef = pinTarget(checkpointDeliveryTarget);
+for (const id of ['session_close_preparation_route', 'session_delivery_retained_ready', 'session_close_finalize']) {
+  nodes.splice(nodes.findIndex(row => row.id === id), 1);
+  const input = inputs.findIndex(row => row.node_id === id); if (input >= 0) inputs.splice(input, 1);
+}
 const deliveryPreparationNames = new Set();
 function collectDeliveryPreparation(id) {
   const row = nodes.find(row => row.id === id);
@@ -1099,6 +1117,19 @@ const deliveryPreparationTarget = { contract_version: 'agentic-process-model.v2'
   data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [], inputs: deliveryPreparationInputs } };
 const deliveryPreparationRef = pinTarget(deliveryPreparationTarget);
 node('session_integration_prepare', 'call', { target: deliveryPreparationRef }); inputs.push({ node_id: 'session_integration_prepare', fields: {} });
+node('session_delivery_prepare', 'call', { target: integrationPreparationRef }); inputs.push({ node_id: 'session_delivery_prepare', fields: {} });
+node('session_checkpoint_delivery_prepare', 'call', { target: checkpointDeliveryRef }); inputs.push({ node_id: 'session_checkpoint_delivery_prepare', fields: {} });
+// Reuse the identical closed close-writer/checkpoint/final-hook call in the
+// corrective suffix, preserving its leaves/order and the 288-node root bound.
+const correctiveCloseAt = correctiveTail.indexOf('correction_session_close_record');
+if (correctiveTail.slice(correctiveCloseAt, correctiveCloseAt + 3).join(',') !== 'correction_session_close_record,correction_session_close_checkpoint,correction_session_close_finalize')
+  throw Error('STANDARD_CORRECTIVE_SESSION_CLOSE_ORDER_CHANGED');
+correctiveTail.splice(correctiveCloseAt, 3, 'correction_session_close_record');
+for (const id of ['correction_session_close_record', 'correction_session_close_checkpoint', 'correction_session_close_finalize']) {
+  nodes.splice(nodes.findIndex(row => row.id === id), 1);
+  const input = inputs.findIndex(row => row.node_id === id); if (input >= 0) inputs.splice(input, 1);
+}
+node('correction_session_close_record', 'call', { target: sessionPreparationRef }); inputs.push({ node_id: 'correction_session_close_record', fields: {} });
 
 const policy = (id, assurance_profile, allowed_permissions, independent_review = false) => ({ id, version: 1, assurance_profile, mode: "COMMITTING",
   independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });
@@ -1117,6 +1148,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...policy("exploring_planning", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" }, policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
     policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
   operation_pins: pinsFor(nodes), call_targets: [
+    { ...checkpointDeliveryRef, model: checkpointDeliveryTarget },
     { ...deliveryPreparationRef, model: deliveryPreparationTarget },
     { ...integrationPreparationRef, model: integrationPreparationTarget },
     { ...sessionPreparationRef, model: sessionPreparationTarget },

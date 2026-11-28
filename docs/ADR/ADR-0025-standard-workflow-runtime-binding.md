@@ -6190,10 +6190,30 @@ as an accepted evaluation. Existing v1 continuation remains finalization-only.
 
 Entry selection v18 and the closed v2 proof are derived journal evidence, not a
 new store or effect authority. Catalogue v8 raises only its binding inventory
-bound from 256 to 264 (258 authored bindings); previous schemas are unchanged.
-The deterministic session-delivery preparation is grouped into a pinned call
-with the same leaves, routing and empty interface, keeping the 288-node root
-bound and 256 KiB model-file bound. This grouping adds no Human question or grant.
+bound from 256 to 264; previous schemas are unchanged. The current graph has
+255 authored bindings after sharing the corrective close call.
+Session-delivery routing remains in the root scope that owns the authenticated
+entry facts. Calls start with empty local facts; they cannot inherit those facts
+or choose a default branch in their absence. Only the selected ordinary or
+checkpoint preparation sequence is grouped into a pinned call with an empty
+interface. A delivered session goes directly to the integration preparation;
+retained integration skips that preparation. Ordinary and corrective close
+paths share the same writer/checkpoint/final-hook call. These structures preserve
+leaf order, the 288-node root bound and 256 KiB model-file bound, and add no Human
+question, Native occurrence or effect grant. Historical instances keep their
+own model and receipts; continuation authenticates the retained close decision.
+
+Retained session-closure entry/proof v2 covers the separate accepted-close
+boundary: an exact checkpointed-promotion origin, eleven settled operations and
+one subsequent call waiting for an inaccessible routing fact. The request pins
+the original instance hash; the proof retains its post-decision event digest.
+The signed Human choice is authenticated historically and its current subject
+is reobserved. The originating checkpointed-promotion retirement is revalidated
+against its accepted entry; it supplies neither accounting reconciliation nor
+complete closure of the historical Native journal. V1 remains limited to its
+unaccepted close boundary. A successor technical instance may continue the same
+session and cycle through the separately granted close writer, checkpoint and
+final hook without another Human choice, session initialization or Native run.
 
 Source acceptance, fixture routing and installed real execution are reported
 separately. Neither source proof nor owner retirement reconciles unknown model

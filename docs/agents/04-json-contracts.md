@@ -65,6 +65,13 @@ inbox. The empty session-close input v2 delegates selection to the fixed host;
 historical v1 writer plans remain readable. These are derived journal evidence,
 not a new canonical store, receipt migration, effect grant or Native renewal.
 
+The closed v2 entry separately names an accepted close at the characterized
+`accepted_close_route_wait` boundary and pins its original instance hash. Proof
+v2 binds the sole post-decision call event and the reauthenticated checkpointed
+origin retirement, with `start_native_closure_claimed=false`. It supplies no new
+Human choice, Native grant or reconciliation. V1 keeps its original unaccepted
+boundary; entry selection v18 retains its existing output shape.
+
 `standard-retained-promotion-entry.v1` and its closed proof name a settled
 no-effect promotion R05 refusal, original accepted record/checkpoint and saved
 Native evaluation. Entry selection v7 keeps that continuation separate from

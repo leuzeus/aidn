@@ -89,13 +89,13 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   const correctionSequence = correctionSteps();
   assert.deepEqual(correctionSequence, ["correction_initialize", "correction_branch_audit", "correction_cycle_drift_report", "correction_cycle_drift_evaluate", "correction_cycle_drift_finalize", "correction_cycle_checkpoint", "correction_session_start_finalize", "correction_plan", "correction_plan_evaluate", "correction_plan_record", "correction_readiness", "correction_implementation_enter",
     "correction_task_loop", "correction_audit_select", "correction_audit_review", "correction_audit_evaluate", "correction_closure_decide", "correction_close_record", "correction_cycle_terminal_checkpoint", "correction_closure_drift_report", "correction_closure_drift_evaluate", "correction_closure_drift_finalize", "correction_close_finalize",
-    "correction_promotion_eligibility", "correction_session_preclose_checkpoint", "correction_session_close_admit", "correction_session_closure_drift_report", "correction_session_closure_drift_evaluate", "correction_session_closure_drift_finalize", "correction_session_closure_decide", "correction_session_close_record", "correction_session_close_checkpoint", "correction_session_close_finalize", "correction_session_delivery_checkpoint", "correction_session_branch_integration_decide", "correction_session_branch_integrate", "correction_pr_redelivery_push", "correction_pr_review_observe", "correction_pr_review_capture", "correction_pr_review_event_route", "correction_pr_pretriage_route"]);
+    "correction_promotion_eligibility", "correction_session_preclose_checkpoint", "correction_session_close_admit", "correction_session_closure_drift_report", "correction_session_closure_drift_evaluate", "correction_session_closure_drift_finalize", "correction_session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize", "correction_session_delivery_checkpoint", "correction_session_branch_integration_decide", "correction_session_branch_integrate", "correction_pr_redelivery_push", "correction_pr_review_observe", "correction_pr_review_capture", "correction_pr_review_event_route", "correction_pr_pretriage_route"]);
   assert.equal(assets.model.nodes.find(row => row.id === "correction_initialize").binding_ref, "session_pr_correction_cycle_initialize");
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
   // Fresh and corrective R05 share the target's finalizer binding.
-  assert.equal(assets.catalog.bindings.length, 258); assert.equal(assets.catalog.activities.length, 24);
+  assert.equal(assets.catalog.bindings.length, 255); assert.equal(assets.catalog.activities.length, 24);
   assert.deepEqual(assets.catalog.bindings.filter(row => row.model_ref?.model_id === "aidn-standard-mode-handoff")
     .map(row => [row.node_id, row.binding.id]).sort(), [
       ["mode_handoff_decide", "mode_work_continue_decision"], ["mode_handoff_summary", "handoff_summary_prepare"],
@@ -143,7 +143,7 @@ test("correction work and closure consume the new implementation and new validat
   assert.deepEqual(fields("correction_cycle_terminal_checkpoint").closure_operation_id, { source: "operation_id", node_id: "correction_close_record" });
   assert.deepEqual(fields("correction_close_finalize").closure_operation_id, { source: "operation_id", node_id: "correction_close_record" });
   const operations = assets.catalog.bindings.filter(row => row.node_id.startsWith("correction_") && !["correction_initialize", "correction_branch_audit", "correction_cycle_checkpoint", "correction_cycle_drift_evaluate", "correction_cycle_drift_finalize", "correction_plan_evaluate", "correction_plan_record", "correction_readiness", "correction_implementation_enter"].includes(row.node_id));
-  assert.equal(operations.length, 34);
+  assert.equal(operations.length, 31);
   assert.ok(operations.every(row => row.binding.id !== "session_pr_open" && row.binding.id !== "session_push"));
   const audit = assets.model.nodes.find(row => row.id === "correction_audit_review"); assert.equal(audit.policy_ref, "audit");
   const sequence = correctionSteps();
@@ -159,7 +159,7 @@ test("correction promotion and session reclosure use new cycle, R05, human and d
     assert.deepEqual(fields("correction_" + node)[field], { source: "operation_id", node_id: "correction_" + source });
   }
   assert.deepEqual(fields("correction_session_branch_integrate"), {});
-  assert.deepEqual(fields("correction_session_close_finalize"), {});
+  assert.deepEqual(assets.model.call_targets.find(row => row.model_id === 'aidn-standard-session-close-preparation').model.data_bindings.inputs.find(row => row.node_id === 'session_close_finalize').fields, {});
   assert.deepEqual(fields("correction_session_delivery_checkpoint"), {});
   assert.equal(assets.model.nodes.find(row => row.id === "correction_session_start_finalize").binding_ref, "session_start_finalize");
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);
@@ -175,7 +175,11 @@ test("authored literal/operation-only inputs satisfy their actual closed operati
 });
 function correctionSteps() {
   return assets.model.nodes.find(row => row.id === 'correction_cycle').children.flatMap(id =>
-    id === 'correction_tail' ? assets.model.nodes.find(row => row.id === id).children : [id]);
+    id === 'correction_tail' ? assets.model.nodes.find(row => row.id === id).children : [id]).flatMap(id => {
+      if (id !== 'correction_session_close_record') return [id];
+      const called = assets.model.call_targets.find(row => row.model_id === 'aidn-standard-session-close-preparation').model;
+      return called.nodes.find(row => row.id === called.entry).children;
+    });
 }
 function committingSteps() {
   const node = assets.model.nodes.find(row => row.id === "cycle_work"), delivery = assets.model.nodes.find(row => row.id === "session_pr_delivery");
@@ -184,7 +188,7 @@ function committingSteps() {
   if (delivery) { assert.equal(delivery.kind, 'sequence'); assert.equal(children.at(-1), delivery.id); children.splice(-1, 1, ...delivery.children); }
   const sessionDelivery = assets.model.nodes.find(row => row.id === 'session_delivery_work');
   const preparation = assets.model.call_targets.find(row => row.model_id === 'aidn-standard-integration-preparation').model;
-  const prepared = ['session_close_preparation_route', ...preparation.nodes.find(row => row.id === preparation.entry).children];
+  const prepared = ['session_integration_preparation_route', ...preparation.nodes.find(row => row.id === preparation.entry).children];
   const opening = assets.model.call_targets.find(row => row.model_id === 'aidn-standard-session-pr-opening').model;
   return [...children, ...(sessionDelivery?.children ?? []).flatMap(id => id === 'session_integration_preparation_route' ? prepared : id === 'session_pr_open_route' ? opening.nodes.find(row => row.id === opening.entry).children : [id]), ...review.children];
 }
@@ -543,7 +547,7 @@ test("delivery checkpoint follows confirmed session finalization with no implied
   assert.equal(binding.executor_kind, "deterministic"); assert.equal(binding.effect_class, "mutating");
   assert.equal(binding.input_contract, "standard-session-delivery-checkpoint-input.v2");
   const children = committingSteps();
-  assert.equal(children.indexOf("session_delivery_checkpoint"), children.indexOf("session_close_preparation_route") + 1);
+  assert.equal(children.indexOf("session_delivery_checkpoint"), children.indexOf("session_integration_preparation_route") + 1);
   assert.deepEqual(assets.model.call_targets.find(row => row.model_id === "aidn-standard-integration-preparation").model.data_bindings.inputs.find(row => row.node_id === "session_delivery_checkpoint").fields, {});
 });
 test("local integration has a separate explicit human subject and deterministic Git effect after delivery", () => {
@@ -714,9 +718,10 @@ test("catalog v8 admits the bounded continuation while closed v4-v7 formats reta
   // Schema-only legacy DATA fixtures; no historical record or model identity is converted.
   const legacy = structuredClone(assets.catalog);
   legacy.contract_version = "standard-workflow-catalog.v7";
-  assert.ok(validateJsonSchema(legacy, catalogSchemaV7, "$", { contractKind: "workflow-definition" }).length > 0);
-  legacy.bindings = legacy.bindings.slice(0, 256);
   assert.deepEqual(validateJsonSchema(legacy, catalogSchemaV7, "$", { contractKind: "workflow-definition" }), []);
+  const oversized = structuredClone(legacy);
+  while (oversized.bindings.length <= 256) oversized.bindings.push(structuredClone(legacy.bindings[0]));
+  assert.ok(validateJsonSchema(oversized, catalogSchemaV7, "$", { contractKind: "workflow-definition" }).length > 0);
   for (const activity of legacy.activities) if (activity.output_contract === "standard-cycle-prework-report.v1") activity.output_contract = "standard-cycle-plan-proposal.v1";
   legacy.contract_version = "standard-workflow-catalog.v6";
   assert.deepEqual(validateJsonSchema(legacy, catalogSchemaV6, "$", { contractKind: "workflow-definition" }), []);
@@ -857,11 +862,11 @@ test("the ordinary loader authenticates the two final-verification operations fo
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV8, "#", { contractKind: "workflow-definition" }), []);
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 288);
-  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 127);
+  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 124);
   assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 131);
   assert.ok(read('package/catalogs/process-models/aidn-standard.v1.json').length <= 262144);
   const target = loaded.model.call_targets.find(row => row.model_id === 'aidn-standard-final-verification'), { model: child, ...identity } = target;
-  assert.equal(loaded.model.call_targets.length, 27);
+  assert.equal(loaded.model.call_targets.length, 28);
   assert.equal(child.model_id, "aidn-standard-final-verification");
   assert.deepEqual(identity, processModelIdentity(child));
   const retainedValidation = loaded.model.call_targets.find(row => row.model_id === 'aidn-standard-retained-validation').model;
